@@ -1,0 +1,552 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum ProblemStatus {
+  DRAFT
+  PUBLISHED
+  FLAGGED
+  ARCHIVED
+}
+
+enum MathDomain {
+  ANALYSIS
+  ALGEBRA
+  ARITHMETIC
+  GEOMETRY
+  COMBINATORICS
+  PROBABILITY
+  TOPOLOGY
+  LOGIC
+  OTHER
+}
+
+enum QualityStatus {
+  UNREVIEWED
+  GOOD
+  EXCELLENT
+  NEEDS_WORK
+}
+
+enum ConceptStatus {
+  MISSING
+  STUB
+  USABLE
+  REVIEWED
+  EXCELLENT
+  CONTROVERSIAL
+}
+
+enum SourceType {
+  PROBLEM
+  CONCEPT
+  PLAYLIST
+}
+
+enum TargetType {
+  PROBLEM
+  CONCEPT
+  PLAYLIST
+  POST
+  PROOF
+  UNKNOWN
+}
+
+enum AttemptStatus {
+  STARTED
+  BLOCKED
+  SOLVED
+  REVIEW_LATER
+}
+
+enum PostType {
+  COMMENT
+  HINT
+  SOLUTION
+  GENERALIZATION
+  CORRECTION
+}
+
+enum VoteType {
+  UP
+  DOWN
+  ELEGANT
+  PEDAGOGICAL
+  ORIGINAL
+  USEFUL_HINT
+}
+
+enum PlaylistVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum PlaylistNodeKind {
+  PROBLEM
+  CONCEPT
+  NOTE
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+  ACTION_TAKEN
+}
+
+enum SuggestionStatus {
+  OPEN
+  PLANNED
+  CLOSED
+}
+
+model User {
+  id              Int              @id @default(autoincrement())
+  username        String           @unique
+  email           String?          @unique
+  passwordHash    String?
+  bio             String?
+  reputation      Int              @default(0)
+  role            Role             @default(USER)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  problems        Problem[]
+  conceptsCreated Concept[]        @relation("ConceptCreatedBy")
+  conceptsEdited  Concept[]        @relation("ConceptLastEditedBy")
+  revisions       PageRevision[]
+  conceptTalkPosts ConceptTalkPost[]
+  conceptWatches  ConceptWatch[]
+  attempts        ProblemAttempt[]
+  posts           DiscussionPost[]
+  playlists       Playlist[]
+  votes           Vote[]
+  reports         Report[]
+  sessions        Session[]
+  favorites       ProblemFavorite[]
+  proofs          ProblemProof[]
+  proofComments   ProofComment[]
+  problemScores   ProblemScore[]
+  suggestions     Suggestion[]
+  playlistFollows PlaylistFollow[]
+  quotes          Quote[]
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Problem {
+  id            Int              @id @default(autoincrement())
+  slug          String           @unique
+  title         String
+  bodyMarkdown  String
+  bodyHtml      String
+  authorId      Int
+  difficulty    Int?
+  domain        MathDomain       @default(OTHER)
+  origin        String           @default("Unknown")
+  originChapter String?
+  originPage    String?
+  originNote    String?
+  license       String           @default("CC BY-SA 4.0")
+  listed        Boolean          @default(true)
+  status        ProblemStatus    @default(PUBLISHED)
+  qualityStatus QualityStatus    @default(UNREVIEWED)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  author        User             @relation(fields: [authorId], references: [id])
+  thread        DiscussionThread?
+  attempts      ProblemAttempt[]
+  playlistItems PlaylistItem[]
+  tags          ProblemTag[]
+  favorites     ProblemFavorite[]
+  proofs        ProblemProof[]
+  scores        ProblemScore[]
+  circuitNodes  PlaylistNode[]
+  quoteLinks    QuoteProblem[]
+
+  @@index([status, createdAt])
+}
+
+model Concept {
+  id             Int            @id @default(autoincrement())
+  slug           String         @unique
+  title          String
+  bodyMarkdown   String
+  bodyHtml       String
+  domain         MathDomain      @default(OTHER)
+  status         ConceptStatus  @default(STUB)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  createdById    Int?
+  lastEditedById Int?
+  createdBy      User?          @relation("ConceptCreatedBy", fields: [createdById], references: [id])
+  lastEditedBy   User?          @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
+  aliases        ConceptAlias[]
+  references     ConceptReference[]
+  talkPosts      ConceptTalkPost[]
+  watchers       ConceptWatch[]
+  circuitNodes   PlaylistNode[]
+  quoteLinks     QuoteConcept[]
+}
+
+model PageRevision {
+  id          Int        @id @default(autoincrement())
+  pageType    SourceType
+  pageId      Int
+  markdown    String
+  editedById  Int?
+  editSummary String?
+  createdAt   DateTime   @default(now())
+  editedBy    User?      @relation(fields: [editedById], references: [id], onDelete: SetNull)
+
+  @@index([pageType, pageId, createdAt])
+}
+
+model Tag {
+  id          Int          @id @default(autoincrement())
+  slug        String       @unique
+  name        String
+  description String?
+  problems    ProblemTag[]
+}
+
+model ProblemTag {
+  problemId Int
+  tagId     Int
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([problemId, tagId])
+}
+
+model ConceptAlias {
+  id        Int     @id @default(autoincrement())
+  conceptId Int
+  alias     String
+  aliasSlug String  @unique
+  concept   Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([conceptId, alias])
+}
+
+model ConceptReference {
+  id        Int      @id @default(autoincrement())
+  conceptId Int
+  title     String
+  url       String?
+  note      String?
+  position  Int
+  createdAt DateTime @default(now())
+  concept   Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([conceptId, position])
+}
+
+model ConceptTalkPost {
+  id           Int      @id @default(autoincrement())
+  conceptId    Int
+  authorId     Int
+  bodyMarkdown String
+  bodyHtml     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  concept      Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([conceptId, createdAt])
+}
+
+model ConceptWatch {
+  userId    Int
+  conceptId Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  concept   Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@id([userId, conceptId])
+  @@index([conceptId])
+}
+
+model InternalLink {
+  id         Int        @id @default(autoincrement())
+  sourceType SourceType
+  sourceId   Int
+  targetSlug String
+  targetType TargetType @default(CONCEPT)
+  exists     Boolean    @default(false)
+  label      String?
+  createdAt  DateTime   @default(now())
+
+  @@unique([sourceType, sourceId, targetSlug, label])
+  @@index([targetSlug, exists])
+}
+
+model ProblemAttempt {
+  id                   Int           @id @default(autoincrement())
+  userId               Int
+  problemId            Int
+  startedAt            DateTime      @default(now())
+  discussionUnlockAt   DateTime
+  status               AttemptStatus @default(STARTED)
+  privateNotesMarkdown String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem              Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+}
+
+model ProblemFavorite {
+  userId    Int
+  problemId Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([userId, problemId])
+  @@index([problemId])
+}
+
+model ProblemProof {
+  id           Int            @id @default(autoincrement())
+  problemId    Int
+  authorId     Int
+  bodyMarkdown String
+  bodyHtml     String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  problem      Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  author       User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments     ProofComment[]
+
+  @@index([problemId, createdAt])
+}
+
+model ProofComment {
+  id           Int          @id @default(autoincrement())
+  proofId      Int
+  authorId     Int
+  bodyMarkdown String
+  bodyHtml     String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  proof        ProblemProof @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([proofId, createdAt])
+}
+
+model ProblemScore {
+  userId     Int
+  problemId  Int
+  naturality Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem    Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([userId, problemId])
+  @@index([problemId])
+}
+
+model DiscussionThread {
+  id        Int              @id @default(autoincrement())
+  problemId Int              @unique
+  createdAt DateTime         @default(now())
+  problem   Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  posts     DiscussionPost[]
+}
+
+model DiscussionPost {
+  id           Int              @id @default(autoincrement())
+  threadId     Int
+  authorId     Int
+  bodyMarkdown String
+  bodyHtml     String
+  parentId     Int?
+  type         PostType         @default(COMMENT)
+  score        Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  deletedAt    DateTime?
+  thread       DiscussionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author       User             @relation(fields: [authorId], references: [id])
+}
+
+model Vote {
+  id         Int        @id @default(autoincrement())
+  userId     Int
+  targetType TargetType
+  targetId   Int
+  voteType   VoteType   @default(UP)
+  createdAt  DateTime   @default(now())
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+}
+
+model Playlist {
+  id                  Int                @id @default(autoincrement())
+  slug                String             @unique
+  title               String
+  descriptionMarkdown String
+  descriptionHtml     String
+  authorId            Int
+  visibility          PlaylistVisibility @default(PUBLIC)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  author              User               @relation(fields: [authorId], references: [id])
+  items               PlaylistItem[]
+  followers           PlaylistFollow[]
+  circuitNodes        PlaylistNode[]
+}
+
+model PlaylistItem {
+  id           Int      @id @default(autoincrement())
+  playlistId   Int
+  problemId    Int
+  position     Int
+  noteMarkdown String?
+  playlist     Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  problem      Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, problemId])
+  @@index([playlistId, position])
+}
+
+model PlaylistFollow {
+  userId     Int
+  playlistId Int
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@id([userId, playlistId])
+  @@index([playlistId])
+}
+
+model PlaylistNode {
+  id           Int              @id @default(autoincrement())
+  playlistId   Int
+  kind         PlaylistNodeKind @default(NOTE)
+  problemId    Int?
+  conceptId    Int?
+  title        String?
+  bodyMarkdown String?
+  bodyHtml     String?
+  position     Int
+  isStart      Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  playlist     Playlist         @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  problem      Problem?         @relation(fields: [problemId], references: [id], onDelete: SetNull)
+  concept      Concept?         @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+  choices      PlaylistChoice[] @relation("ChoiceFrom")
+  incoming     PlaylistChoice[] @relation("ChoiceTo")
+
+  @@index([playlistId, position])
+  @@index([problemId])
+  @@index([conceptId])
+}
+
+model PlaylistChoice {
+  id         Int          @id @default(autoincrement())
+  fromNodeId Int
+  toNodeId   Int
+  label      String
+  note       String?
+  position   Int
+  createdAt  DateTime     @default(now())
+  fromNode   PlaylistNode @relation("ChoiceFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode     PlaylistNode @relation("ChoiceTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@index([fromNodeId, position])
+  @@index([toNodeId])
+}
+
+model Quote {
+  id                Int            @id @default(autoincrement())
+  slug              String         @unique
+  text              String
+  attributedTo      String?
+  provenance        String         @default("Unknown")
+  provenanceDetails String?
+  noteMarkdown      String?
+  noteHtml          String?
+  contributorId     Int?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  contributor       User?          @relation(fields: [contributorId], references: [id], onDelete: SetNull)
+  relatedProblems   QuoteProblem[]
+  relatedConcepts   QuoteConcept[]
+
+  @@index([createdAt])
+  @@index([attributedTo])
+}
+
+model QuoteProblem {
+  quoteId   Int
+  problemId Int
+  quote     Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([quoteId, problemId])
+  @@index([problemId])
+}
+
+model QuoteConcept {
+  quoteId   Int
+  conceptId Int
+  quote     Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  concept   Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@id([quoteId, conceptId])
+  @@index([conceptId])
+}
+
+model Report {
+  id         Int          @id @default(autoincrement())
+  reporterId Int
+  targetType TargetType
+  targetId   Int
+  reason     String
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now())
+  reporter   User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+}
+
+model Suggestion {
+  id        Int              @id @default(autoincrement())
+  authorId  Int?
+  title     String
+  body      String
+  status    SuggestionStatus @default(OPEN)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  author    User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}

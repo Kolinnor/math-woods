@@ -1,0 +1,349 @@
+import Link from "next/link";
+
+function Faq({ question, children }: { question: string; children: React.ReactNode }) {
+  return (
+    <details className="faq-item">
+      <summary>{question}</summary>
+      <div className="faq-answer">{children}</div>
+    </details>
+  );
+}
+
+export default function AboutPage() {
+  return (
+    <div className="mx-auto max-w-5xl">
+      <section className="about-promise">
+        <p className="about-eyebrow">Math Woods' first promise</p>
+        <h1>Free forever. No ads.</h1>
+        <p>
+          Problems, notes, discussions, playlists, imports, and exports stay free. Math Woods will not sell attention
+          or put ads beside mathematics.
+        </p>
+      </section>
+
+      <section className="about-principles">
+        <div>
+          <h2>Open by design</h2>
+          <p>The code, public pages, revisions, and exports should be easy to inspect and reuse.</p>
+        </div>
+        <div>
+          <h2>People remain responsible</h2>
+          <p>Tools can help. A person still has to understand, check, source, and stand behind each contribution.</p>
+        </div>
+        <div>
+          <h2>Respect the source</h2>
+          <p>Ideas travel. Wording, attribution, and permission still matter.</p>
+        </div>
+      </section>
+
+      <section className="about-credit">
+        <p className="about-eyebrow">How this site was made</p>
+        <h2>Built with Codex, under human direction.</h2>
+        <p>
+          Math Woods was directed and reviewed by its human creator, and coded with help from Codex, an AI coding
+          agent by OpenAI. The published site remains a human responsibility.
+        </p>
+      </section>
+
+      <section className="about-section">
+        <h2>Mission and funding</h2>
+        <Faq question="Will Math Woods really remain free?">
+          <p>
+            Yes. Problems, concepts, playlists, discussions, personal notes, imports, and exports stay free. Solutions
+            will not sit behind a paywall.
+          </p>
+        </Faq>
+        <Faq question="Will the site ever contain advertising?">
+          <p>
+            No. Math Woods will not display ads, sponsored problems, paid rankings, affiliate links, or promotional
+            content disguised as editorial content. No ads is a hard rule.
+          </p>
+        </Faq>
+        <Faq question="How can the site be funded without ads or subscriptions?">
+          <p>
+            Possible sources are donations, grants, institutional support, and low running costs. Supporters do not buy
+            editorial influence, user data, rankings, or special access.
+          </p>
+        </Faq>
+        <Faq question="Does ad-free also mean no advertising trackers?">
+          <p>
+            Yes. Math Woods should not build advertising profiles or sell personal data. Any operational analytics
+            should stay minimal.
+          </p>
+        </Faq>
+      </section>
+
+      <section className="about-section" id="open-source">
+        <h2>Open source and public knowledge</h2>
+        <Faq question="Is Math Woods open source?">
+          <p>
+            Yes. The application code is licensed under{" "}
+            <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener noreferrer">
+              GNU AGPL-3.0-or-later
+            </a>
+            . This license is designed for network software and requires operators of modified public versions to make
+            their corresponding source code available to users.
+          </p>
+        </Faq>
+        <Faq question="Why use the AGPL for the software?">
+          <p>
+            The AGPL says that a public modified version of the site must make its corresponding source available to
+            its users.
+          </p>
+        </Faq>
+        <Faq question="Can someone fork Math Woods?">
+          <p>
+            Yes. Forks are allowed. They must follow the AGPL terms and keep the required notices.
+          </p>
+        </Faq>
+        <Faq question="Can users export their work?">
+          <p>
+            Yes. Public content and personal work should remain portable through Markdown and other simple formats.
+            Private notes are not public encyclopedia content and should never be included in public exports or datasets.
+          </p>
+        </Faq>
+      </section>
+
+      <section className="about-section">
+        <h2>Content licenses</h2>
+        <Faq question="What is the default license for original contributions?">
+          <p>
+            Original public problems and encyclopedia-style content use{" "}
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="noopener noreferrer">
+              CC BY-SA 4.0
+            </a>{" "}
+            by default. Others may share and adapt it if they give credit, mark changes, and use the same license for
+            adaptations.
+          </p>
+        </Faq>
+        <Faq question="Which content licenses are accepted?">
+          <p>
+            Math Woods accepts CC BY-SA 4.0, CC BY 4.0, CC0 1.0, and verified public-domain material.
+          </p>
+        </Faq>
+        <Faq question="Why not use NonCommercial or NoDerivatives licenses?">
+          <p>
+            Creative Commons explains that <strong>NC</strong> restricts commercial uses and <strong>ND</strong> forbids
+            sharing adaptations. Those restrictions make content harder to combine, translate, correct, and
+            reformulate. Math Woods is ad-free; its public content should still be reusable.
+          </p>
+        </Faq>
+        <Faq question="What does attribution require?">
+          <p>
+            Keep the author or source, the license, a useful link, and a note when the wording changed.
+          </p>
+        </Faq>
+        <Faq question="Are license labels legal advice?">
+          <p>
+            No. They are reminders. When permission is unclear, do not copy the material.
+          </p>
+        </Faq>
+      </section>
+
+      <section className="about-section">
+        <h2>Books, contests, and problem origins</h2>
+        <Faq question="Can I copy a problem directly from a book?">
+          <p>
+            Usually not. Do not copy a book’s wording unless the material is under a compatible license, genuinely in
+            the public domain, or the rights holder has granted suitable permission. Buying or owning a book does not
+            grant republication rights.
+          </p>
+        </Faq>
+        <Faq question="Should problems be reformulated?">
+          <p>
+            Yes. Prefer an independent, clear reformulation written from your own understanding of the mathematical
+            idea. Record the approximate origin and any known chapter, page, problem number, or historical note. A
+            reformulation should improve clarity and preserve attribution, not disguise copying.
+          </p>
+        </Faq>
+        <Faq question="Is reformulation always enough to avoid copyright issues?">
+          <p>
+            No. Mathematical ideas and facts are different from a source’s particular expression, but a rewrite that
+            remains too close may still be problematic. Some collections also have specific terms of use. When in doubt,
+            link to the source, write a genuinely independent problem, or leave it unpublished until permission is clear.
+          </p>
+        </Faq>
+        <Faq question="What about olympiad and competition problems?">
+          <p>
+            Treat them like any other published material. Check the organizer’s reuse policy before reproducing the
+            official wording. When allowed, identify the competition, year, round, and problem number. Otherwise, prefer
+            an independently worded variation and keep a transparent origin note.
+          </p>
+        </Faq>
+        <Faq question="What if the origin is unknown?">
+          <p>
+            Use <strong>Unknown</strong> and explain what is known in the provenance note. Unknown origin is not a license:
+            do not publish recognizable recent wording merely because its first author cannot be identified. The field
+            is an invitation for later research and correction.
+          </p>
+        </Faq>
+        <Faq question="Can a problem inspired by another problem be published?">
+          <p>
+            Yes, when it is a genuinely new expression or variation and the relationship is documented. Mention the
+            inspiration, describe important changes, and choose a license only for material you are entitled to license.
+          </p>
+        </Faq>
+      </section>
+
+      <section className="about-section" id="creating-problems">
+        <h2>Creating problems</h2>
+        <Faq question="What kind of problem statement works well here?">
+          <p>
+            Often, the best version is a small riddle: <em>does there exist</em> an object with this property?{" "}
+            <em>Which examples are possible</em>? "Show that no such function exists" may be equivalent, yet it gives
+            away the destination too early.
+          </p>
+        </Faq>
+        <Faq question="How should I title a problem?">
+          <p>
+            Prefer a short, descriptive title. Sentence case usually looks better than capitalizing every word. Avoid
+            putting formulas directly in the title; put the mathematics in the statement instead. The title can stay
+            plain.
+          </p>
+        </Faq>
+        <Faq question="Do new problems need to be polished?">
+          <p>
+            No. A clear statement, honest uncertainty, and useful tags are enough.
+          </p>
+        </Faq>
+        <Faq question="How should I use the difficulty score?">
+          <p>
+            The 1-100 score is only a rough signal. Difficulty depends heavily on what the reader already knows, how
+            recently they saw the topic, and whether the problem uses a familiar trick. As a loose convention:
+            1-10 is pre-university or warm-up material; 11-25 is early undergraduate; 26-45 is solid undergraduate;
+            46-65 is advanced undergraduate or beginning graduate; 66-85 is graduate or contest-level hard; 86-100 is
+            research-flavored, very technical, or unusually demanding. Use the number, not tags like "easy" or "hard".
+          </p>
+        </Faq>
+        <Faq question="What should I check before publishing?">
+          <p>
+            Check that you can share the wording. Record any known source. If the source is unclear, say so.
+          </p>
+        </Faq>
+      </section>
+
+      <section className="about-section">
+        <h2>Creating playlists</h2>
+        <Faq question="Should playlist problems be reusable?">
+          <p>
+            Usually, yes. Listed problems can appear in several paths and keep their discussion in one place.
+          </p>
+        </Faq>
+        <Faq question="When should a problem be specific to one playlist?">
+          <p>
+            Some steps only make sense inside a particular route: a tiny diagnostic question, a local warm-up, a
+            reference to the previous branch, or an exercise whose wording depends on the playlist. In those cases,
+            make it playlist-specific. It stays accessible from the playlist and stays out of the general index.
+          </p>
+        </Faq>
+        <Faq question="Can a playlist mix both kinds?">
+          <p>
+            Yes. A playlist can mix public problems, concepts, notes, and local exercises.
+          </p>
+        </Faq>
+      </section>
+
+      <section className="about-section">
+        <h2>Artificial intelligence</h2>
+        <Faq question="Is AI allowed on Math Woods?">
+          <p>
+            AI may help with brainstorming, formatting, translation, code, or cleanup. It is not an authority or a
+            substitute for checking the mathematics.
+          </p>
+        </Faq>
+        <Faq question="Was Math Woods itself coded using AI?">
+          <p>
+            Yes. Math Woods was coded with help from Codex, an AI coding agent by OpenAI, under human direction and
+            review.
+          </p>
+        </Faq>
+        <Faq question="Can AI-generated content be published automatically?">
+          <p>
+            No. Public content needs a responsible human contributor.
+          </p>
+        </Faq>
+        <Faq question="Should meaningful AI assistance be disclosed?">
+          <p>
+            Yes. If AI substantially shaped a problem, proof, translation, or rewrite, mention it in the edit summary
+            or provenance note.
+          </p>
+        </Faq>
+        <Faq question="May users use AI while solving problems?">
+          <p>
+            Personal learning choices are not policed. Public solutions should be understood and checked by the person
+            posting them.
+          </p>
+        </Faq>
+        <Faq question="Can AI be used to invent sources or origins?">
+          <p>
+            Absolutely not. AI-generated citations and provenance claims must be independently verified against reliable
+            sources. If verification fails, write <strong>Unknown</strong> rather than guessing.
+          </p>
+        </Faq>
+        <Faq question="Will private notes be used to train AI?">
+          <p>
+            No. Private notes are private workspace data. They should not be published, sold, or included in public
+            datasets or AI training material by Math Woods.
+          </p>
+        </Faq>
+      </section>
+
+      <section className="about-section">
+        <h2>Community and governance</h2>
+        <Faq question="Should Math Woods feel like Stack Exchange?">
+          <p>
+            Not really. Math Woods should allow rough pages to appear. Think of a woodland map: clearings opening,
+            paths branching, notes getting corrected, useful pages slowly becoming better.
+          </p>
+        </Faq>
+        <Faq question="Is it acceptable to publish unfinished material?">
+          <p>
+            Yes, if it is honest and useful. A problem can be marked <strong>Needs work</strong>; a concept can begin as
+            a stub; an origin can be <strong>Unknown</strong>; a conjecture can have no proof.
+          </p>
+        </Faq>
+        <Faq question="Who is responsible for public contributions?">
+          <p>
+            Contributors remain responsible for what they publish. Revisions, sources, reports, and discussion make
+            corrections possible.
+          </p>
+        </Faq>
+        <Faq question="How are disputes handled?">
+          <p>
+            Prefer sources, clear reasoning, and discussion. Moderators may mark disputed content, roll back harmful
+            changes, or temporarily restrict pages.
+          </p>
+        </Faq>
+        <Faq question="What should I do when I find copied or incorrectly licensed content?">
+          <p>
+            Report it with the suspected original source and a short explanation. The content can be hidden during
+            review.
+          </p>
+        </Faq>
+        <Faq question="What matters more: having many problems or having trustworthy problems?">
+          <p>
+            Trustworthiness. Clear origins and careful rewrites matter more than size.
+          </p>
+        </Faq>
+      </section>
+
+      <section className="about-links">
+        <div>
+          <h2>Useful documents</h2>
+          <p className="muted">Short references for editing and licensing.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/contributing" className="button secondary">
+            Contribution guidelines
+          </Link>
+          <Link href="/suggestions" className="button secondary">
+            Suggest an improvement
+          </Link>
+          <a href="https://creativecommons.org/share-your-work/cclicenses/" rel="noopener noreferrer" className="button secondary">
+            Creative Commons licenses
+          </a>
+        </div>
+      </section>
+    </div>
+  );
+}

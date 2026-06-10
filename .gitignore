@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+.next/
+node_modules/
+runtime/
+backups/
+
+*.log
+*.tsbuildinfo
