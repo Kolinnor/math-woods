@@ -1061,6 +1061,22 @@ button.secondary:hover,
   box-shadow: 0 1px 1px rgb(0 0 0 / 0.06), 0 5px 12px rgb(0 0 0 / 0.06);
 }
 
+button.attempt-action-button {
+  border-color: var(--problem-opened-border);
+  color: var(--problem-opened);
+}
+
+button.attempted-state-button,
+button.attempted-state-button:hover,
+button.attempted-state-button:disabled {
+  background: var(--problem-opened);
+  border-color: var(--problem-opened);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.08), 0 7px 16px rgb(37 99 235 / 0.22);
+  color: #ffffff;
+  cursor: default;
+  opacity: 1;
+}
+
 button.solved-state-button,
 button.solved-state-button:hover,
 button.solved-state-button:disabled {

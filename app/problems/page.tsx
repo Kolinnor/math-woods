@@ -182,7 +182,8 @@ export default async function ProblemsPage({
   const qualityValue = Object.values(QualityStatus).includes(quality as QualityStatus)
     ? (quality as QualityStatus)
     : undefined;
-  const sortValue = ["newest", "attempted", "favorited", "difficulty"].includes(sort) ? sort : "newest";
+  const normalizedSort = sort === "attempted" ? "solved" : sort;
+  const sortValue = ["newest", "solved", "favorited", "difficulty"].includes(normalizedSort) ? normalizedSort : "newest";
   const advancedLogic = filterLogic === "OR" ? "OR" : "AND";
   const advancedFilters = parseAdvancedFilters(filterField, filterOp, filterValue);
   const advancedClauses = advancedFilters
@@ -190,7 +191,7 @@ export default async function ProblemsPage({
     .filter((filter): filter is Prisma.ProblemWhereInput => Boolean(filter));
   const requestedPage = Math.max(1, Number.parseInt(page, 10) || 1);
   const orderBy: Prisma.ProblemOrderByWithRelationInput =
-    sortValue === "attempted"
+    sortValue === "solved"
       ? { attempts: { _count: "desc" } }
       : sortValue === "favorited"
         ? { favorites: { _count: "desc" } }
@@ -259,7 +260,7 @@ export default async function ProblemsPage({
       tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       favorites: { select: { userId: true } },
-      _count: { select: { attempts: true, favorites: true } }
+      _count: { select: { attempts: { where: { status: "SOLVED" } }, favorites: true } }
     }
   });
   const displayedProblemIds = problems.map((problem) => problem.id);
@@ -382,7 +383,7 @@ export default async function ProblemsPage({
           </select>
           <select name="sort" defaultValue={sortValue}>
             <option value="newest">Newest</option>
-            <option value="attempted">Most attempted</option>
+            <option value="solved">Most solved</option>
             <option value="favorited">Most loved</option>
             <option value="difficulty">Hardest first</option>
           </select>
@@ -428,7 +429,7 @@ export default async function ProblemsPage({
                 <div>
                   <h2 className="font-semibold">{problem.title}</h2>
                   <p className="meta">
-                    by {displayNameForUser(problem.author)} / {pluralize(problem._count.attempts, "attempt")}
+                    by {displayNameForUser(problem.author)} / {pluralize(problem._count.attempts, "solved")}
                   </p>
                   <p className="meta">
                     {(problem.domains.length ? problem.domains.map((item) => item.domain) : [problem.domain])

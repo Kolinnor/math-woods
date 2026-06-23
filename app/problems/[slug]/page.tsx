@@ -396,11 +396,6 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
         <section className="zen-hide discussion-surface mt-8">
           <div className="mb-3 flex items-center justify-between gap-4">
             <h2 className="font-semibold">Discussion</h2>
-            {!attempt && user && (
-              <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
-                <button type="submit">Start this problem</button>
-              </form>
-            )}
           </div>
 
           {!user && (
@@ -465,6 +460,19 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
 
       <aside className="zen-hide grid content-start gap-5">
         <section className="action-surface">
+          {user && attempt?.status !== "SOLVED" && (
+            attempt ? (
+              <button type="button" className="secondary attempted-state-button w-full" disabled>
+                Attempted
+              </button>
+            ) : (
+              <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
+                <button type="submit" className="secondary attempt-action-button w-full">
+                  I am attempting to solve this problem
+                </button>
+              </form>
+            )
+          )}
           {attempt?.status === "SOLVED" ? (
             <button type="button" className="secondary solved-state-button w-full" disabled>
               <Check size={17} />
@@ -474,7 +482,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
             <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
               <button type="submit" className="secondary w-full">
                 <Check size={17} />
-                I solved this problem
+                I solved it
               </button>
             </form>
           ) : problem.verificationMode === ProblemVerificationMode.SELF_CHECK ? (
