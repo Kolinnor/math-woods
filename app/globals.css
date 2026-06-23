@@ -2457,24 +2457,6 @@ button.domain-browser-expand {
   width: 1.6rem;
 }
 
-.problem-link.problem-favorite.block::before {
-  align-items: center;
-  background: #d94674;
-  border-radius: 999px;
-  box-shadow: 0 2px 8px rgb(217 70 116 / 0.22);
-  color: #ffffff;
-  content: "\2665";
-  display: inline-grid;
-  font-size: 0.85rem;
-  font-weight: 850;
-  height: 1.6rem;
-  justify-content: center;
-  position: absolute;
-  right: 0.85rem;
-  top: 2.75rem;
-  width: 1.6rem;
-}
-
 .problem-link.problem-own.block::before {
   background: #dc2626;
   box-shadow: 0 2px 8px rgb(220 38 38 / 0.25);
