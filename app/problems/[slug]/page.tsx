@@ -173,7 +173,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
     .filter((group) => group.relations.length > 0);
   const canEditProblem = Boolean(user && (problem.authorId === user.id || canModerate(user.role)));
   const showSpoilerTags = problem.spoilerTags.length > 0 && (attempt?.status === "SOLVED" || canEditProblem);
-  const problemDomains = problem.domains.length ? problem.domains.map((item) => item.domain) : [problem.domain];
+  const problemDomains = problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain];
 
   return (
     <div className="problem-page grid gap-6 lg:grid-cols-[1fr_18rem]">

@@ -255,11 +255,13 @@ model Problem {
 model ProblemDomain {
   problemId Int
   domain    MathDomain
+  mscCode   String
   position  Int        @default(0)
   problem   Problem    @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
-  @@id([problemId, domain])
+  @@id([problemId, mscCode])
   @@index([domain])
+  @@index([mscCode])
   @@index([problemId, position])
 }
 

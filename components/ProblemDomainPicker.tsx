@@ -1,32 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import type { MathDomain } from "@prisma/client";
+import type { DomainOption } from "@/lib/domains";
 
 const MAX_PROBLEM_DOMAINS = 3;
 
-type DomainOption = {
-  value: MathDomain;
-  label: string;
-};
-
 type ProblemDomainPickerProps = {
   domains: DomainOption[];
-  initialValues: MathDomain[];
+  initialValues: string[];
 };
+
+function findOption(domains: DomainOption[], value: string) {
+  return domains.flatMap((domain) => [domain, ...(domain.children ?? [])]).find((domain) => domain.value === value);
+}
 
 export function ProblemDomainPicker({ domains, initialValues }: ProblemDomainPickerProps) {
   const initial = initialValues.length ? initialValues.slice(0, MAX_PROBLEM_DOMAINS) : [domains[0]?.value];
-  const [values, setValues] = useState(initial.filter(Boolean) as MathDomain[]);
+  const [values, setValues] = useState(initial.filter(Boolean));
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  function updateValue(index: number, value: MathDomain) {
+  function updateValue(index: number, value: string) {
     setValues((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
   }
 
   function addDomain() {
-    const fallback = domains.find((domain) => !values.includes(domain.value))?.value ?? domains[0]?.value;
+    const used = new Set(values);
+    const fallback = domains.flatMap((domain) => [domain, ...(domain.children ?? [])]).find((domain) => !used.has(domain.value));
     if (!fallback) return;
-    setValues((current) => [...current, fallback].slice(0, MAX_PROBLEM_DOMAINS));
+    setValues((current) => [...current, fallback.value].slice(0, MAX_PROBLEM_DOMAINS));
   }
 
   function removeDomain(index: number) {
@@ -44,34 +45,77 @@ export function ProblemDomainPicker({ domains, initialValues }: ProblemDomainPic
         )}
       </div>
       <div className="domain-picker-list">
-        {values.map((value, index) => (
-          <div key={`${index}-${value}`} className="domain-picker-row">
-            <select
-              name="domains"
-              value={value}
-              aria-label={index === 0 ? "Primary domain" : `Additional domain ${index + 1}`}
-              onChange={(event) => updateValue(index, event.target.value as MathDomain)}
-            >
-              {domains.map((domain) => (
-                <option key={domain.value} value={domain.value}>
-                  {domain.label}
-                </option>
-              ))}
-            </select>
-            {index > 0 && (
-              <button
-                type="button"
-                className="secondary domain-remove-button"
-                aria-label="Remove this domain"
-                onClick={() => removeDomain(index)}
-              >
-                -
-              </button>
-            )}
-          </div>
-        ))}
+        {values.map((value, index) => {
+          const selected = findOption(domains, value);
+
+          return (
+            <div key={`${index}-${value}`} className="domain-picker-row">
+              <input type="hidden" name="domains" value={value} />
+              <div className="domain-choice-panel">
+                <div className="domain-choice-current">
+                  <span>{selected?.label ?? "Other"}</span>
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      className="secondary domain-remove-button"
+                      aria-label="Remove this domain"
+                      onClick={() => removeDomain(index)}
+                    >
+                      -
+                    </button>
+                  )}
+                </div>
+                <div className="domain-choice-grid">
+                  {domains.map((domain) => {
+                    const isExpanded = expanded === `${index}:${domain.value}`;
+                    const hasChildren = Boolean(domain.children?.length);
+
+                    return (
+                      <div key={domain.value} className="domain-choice">
+                        <button
+                          type="button"
+                          className={value === domain.value ? "domain-main-button domain-selected" : "domain-main-button"}
+                          onClick={() => updateValue(index, domain.value)}
+                        >
+                          {domain.label}
+                        </button>
+                        {hasChildren && (
+                          <button
+                            type="button"
+                            className="domain-expand-button"
+                            aria-expanded={isExpanded}
+                            aria-label={`Show ${domain.label} subdomains`}
+                            onClick={() => setExpanded(isExpanded ? null : `${index}:${domain.value}`)}
+                          >
+                            {isExpanded ? "^" : "v"}
+                          </button>
+                        )}
+                        {isExpanded && (
+                          <div className="domain-subchoices">
+                            {domain.children!.map((child) => (
+                              <button
+                                key={child.value}
+                                type="button"
+                                className={value === child.value ? "domain-subchoice domain-selected" : "domain-subchoice"}
+                                onClick={() => updateValue(index, child.value)}
+                              >
+                                {child.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <p className="muted text-xs">Choose up to {MAX_PROBLEM_DOMAINS}. The first one is the main domain.</p>
+      <p className="muted text-xs">
+        Choose up to {MAX_PROBLEM_DOMAINS}. Click a main domain for a quick choice, or open the arrow for MSC subdomains.
+      </p>
     </div>
   );
 }

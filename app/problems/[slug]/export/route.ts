@@ -8,6 +8,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     where: { slug },
     include: {
       author: true,
+      domains: { orderBy: { position: "asc" } },
       tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       proofs: { include: { author: true }, orderBy: { createdAt: "asc" } }
@@ -22,6 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       title: problem.title,
       slug: problem.slug,
       author: problem.author.username,
+      domains: problem.domains.length ? problem.domains.map((domain) => domain.mscCode) : [problem.domain],
       tags: problem.tags.map(({ tag }) => tag.name),
       spoilerTags: problem.spoilerTags.map(({ tag }) => tag.name),
       difficulty: problem.difficulty,

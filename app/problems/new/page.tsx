@@ -1,4 +1,3 @@
-import { MathDomain } from "@prisma/client";
 import { createProblemAction } from "@/lib/actions/problem-actions";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -70,7 +69,7 @@ export default async function NewProblemPage({
           />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
-          <ProblemDomainPicker domains={MATH_DOMAINS} initialValues={[MathDomain.OTHER]} />
+          <ProblemDomainPicker domains={MATH_DOMAINS} initialValues={["OTHER"]} />
           <label className="grid gap-2">
             <span className="text-sm font-medium">Difficulty (1–100)</span>
             <input name="difficulty" type="number" min="1" max="100" placeholder="50" />

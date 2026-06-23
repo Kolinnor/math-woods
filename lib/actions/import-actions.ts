@@ -102,7 +102,7 @@ export async function importMarkdownAction(formData: FormData) {
         bodyMarkdown,
         bodyHtml: await renderMarkdownContent(bodyMarkdown),
         difficulty,
-        domain: domains[0],
+        domain: domains[0].domain,
         origin:
           boundedText(
             getStringAttribute(parsed.attributes, "origin") ?? getStringAttribute(parsed.attributes, "source"),

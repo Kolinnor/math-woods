@@ -1,12 +1,13 @@
 import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { Heart } from "lucide-react";
+import { DomainBrowserNav } from "@/components/DomainBrowserNav";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemStatusLegend } from "@/components/ProblemStatusLegend";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { domainLabel, MATH_DOMAINS } from "@/lib/domains";
+import { domainLabel, FLAT_DOMAIN_OPTIONS, MATH_DOMAINS, parseDomainCode } from "@/lib/domains";
 import { pluralize } from "@/lib/pluralize";
 import { problemLinkClass } from "@/lib/problem-link";
 import { qualityLabel } from "@/lib/quality";
@@ -66,13 +67,16 @@ function textWhere(field: "title" | "bodyMarkdown" | "origin", op: string, value
 }
 
 function parseDomainFilter(value: string) {
-  const normalized = value.trim().toUpperCase().replace(/\s+/g, "_") as MathDomain;
-  if (Object.values(MathDomain).includes(normalized)) return normalized;
-  return MATH_DOMAINS.find((item) => item.label.toLowerCase() === value.trim().toLowerCase())?.value;
+  return parseDomainCode(value);
 }
 
-function domainWhere(domain: MathDomain): Prisma.ProblemWhereInput {
-  return { OR: [{ domain }, { domains: { some: { domain } } }] };
+function domainWhere(domainCode: string): Prisma.ProblemWhereInput {
+  if (Object.values(MathDomain).includes(domainCode as MathDomain)) {
+    const domain = domainCode as MathDomain;
+    return { OR: [{ domain }, { domains: { some: { domain } } }] };
+  }
+
+  return { domains: { some: { mscCode: domainCode } } };
 }
 
 function parseQualityFilter(value: string) {
@@ -178,7 +182,7 @@ export default async function ProblemsPage({
     Number.isInteger(parsedDifficulty) && parsedDifficulty >= 1 && parsedDifficulty <= 100
       ? parsedDifficulty
       : undefined;
-  const domainValue = Object.values(MathDomain).includes(domain as MathDomain) ? (domain as MathDomain) : undefined;
+  const domainValue = domain ? parseDomainCode(domain) : undefined;
   const qualityValue = Object.values(QualityStatus).includes(quality as QualityStatus)
     ? (quality as QualityStatus)
     : undefined;
@@ -324,18 +328,7 @@ export default async function ProblemsPage({
       </div>
 
       <div className="filter-tabs">
-        <Link href="/problems" className={!domainValue ? "active" : ""}>
-          All domains
-        </Link>
-        {MATH_DOMAINS.map((item) => (
-          <Link
-            key={item.value}
-            href={`/problems?domain=${item.value}`}
-            className={domainValue === item.value ? "active" : ""}
-          >
-            {item.label}
-          </Link>
-        ))}
+        <DomainBrowserNav domains={MATH_DOMAINS} selectedDomain={domainValue} />
         <Link href="/problems?tag=conjecture" className={tagSlug === "conjecture" ? "active" : ""}>
           Conjectures
         </Link>
@@ -352,7 +345,7 @@ export default async function ProblemsPage({
         <div className="problem-search-filters">
           <select name="domain" defaultValue={domainValue ?? ""}>
             <option value="">Any domain</option>
-            {MATH_DOMAINS.map((item) => (
+            {FLAT_DOMAIN_OPTIONS.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
@@ -393,7 +386,7 @@ export default async function ProblemsPage({
           </label>
         </div>
         <ProblemFilterBuilder
-          domains={MATH_DOMAINS.map((item) => ({ value: item.value, label: item.label }))}
+          domains={FLAT_DOMAIN_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
           initialFilters={advancedFilters}
           initialLogic={advancedLogic}
           statuses={Object.values(QualityStatus).map((status) => ({ value: status, label: qualityLabel(status) }))}
@@ -432,7 +425,7 @@ export default async function ProblemsPage({
                     by {displayNameForUser(problem.author)} / {pluralize(problem._count.attempts, "solved")}
                   </p>
                   <p className="meta">
-                    {(problem.domains.length ? problem.domains.map((item) => item.domain) : [problem.domain])
+                    {(problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain])
                       .map(domainLabel)
                       .join(" / ")} / {qualityLabel(problem.qualityStatus)}
                   </p>

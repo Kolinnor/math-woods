@@ -1558,7 +1558,79 @@ button.domain-add-button {
 .domain-picker-row {
   display: grid;
   gap: 0.45rem;
+}
+
+.domain-choice-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.7rem;
+}
+
+.domain-choice-current {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.domain-choice-current span {
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.domain-choice-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.domain-choice {
+  display: grid;
+  gap: 0.35rem;
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+button.domain-main-button,
+button.domain-expand-button,
+button.domain-subchoice {
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: none;
+  color: var(--ink);
+  min-height: 2.15rem;
+  padding: 0.4rem 0.6rem;
+}
+
+button.domain-main-button {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+button.domain-expand-button {
+  min-width: 2.1rem;
+}
+
+.domain-subchoices {
+  display: grid;
+  gap: 0.25rem;
+  grid-column: 1 / -1;
+  max-height: 13rem;
+  overflow: auto;
+  padding-left: 0.5rem;
+}
+
+button.domain-subchoice {
+  font-size: 0.82rem;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+button.domain-selected,
+button.domain-selected:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--ink);
 }
 
 .quality-unreviewed {
@@ -2099,7 +2171,8 @@ button.domain-add-button {
   overflow-x: auto;
 }
 
-.filter-tabs a {
+.filter-tabs a,
+.filter-tabs button {
   border-bottom: 2px solid transparent;
   color: var(--muted);
   font-size: 0.85rem;
@@ -2109,8 +2182,64 @@ button.domain-add-button {
 }
 
 .filter-tabs a:hover,
-.filter-tabs a.active {
+.filter-tabs a.active,
+.filter-tabs button:hover {
   border-bottom-color: var(--accent);
+  color: var(--ink);
+}
+
+.domain-browser-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.domain-browser-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.domain-browser-main,
+.domain-browser-all {
+  display: inline-flex;
+}
+
+button.domain-browser-expand {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 0;
+  padding-inline: 0.35rem;
+}
+
+.domain-browser-subdomains {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.15rem;
+  left: 0;
+  max-height: 18rem;
+  min-width: min(24rem, 88vw);
+  overflow: auto;
+  padding: 0.4rem;
+  position: absolute;
+  top: 100%;
+  z-index: 10;
+}
+
+.domain-browser-subdomains a {
+  border-radius: 6px;
+  border-bottom: 0;
+  padding: 0.42rem 0.55rem;
+}
+
+.domain-browser-subdomains a:hover,
+.domain-browser-subdomains a.active {
+  background: var(--accent-soft);
   color: var(--ink);
 }
 

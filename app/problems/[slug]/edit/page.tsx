@@ -70,7 +70,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
         <div className="grid gap-4 sm:grid-cols-2">
           <ProblemDomainPicker
             domains={MATH_DOMAINS}
-            initialValues={problem.domains.length ? problem.domains.map((item) => item.domain) : [problem.domain]}
+            initialValues={problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain]}
           />
           <label className="grid gap-2">
             <span className="text-sm font-medium">Difficulty (1–100)</span>
