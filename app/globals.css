@@ -2164,54 +2164,103 @@ button.domain-selected:hover {
 }
 
 .filter-tabs {
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  gap: 0.2rem;
+  display: grid;
+  gap: 0.55rem;
   margin-bottom: 1rem;
-  overflow-x: auto;
 }
 
 .filter-tabs a,
 .filter-tabs button {
-  border-bottom: 2px solid transparent;
-  color: var(--muted);
   font-size: 0.85rem;
   font-weight: 600;
-  padding: 0.55rem 0.7rem;
   white-space: nowrap;
 }
 
-.filter-tabs a:hover,
-.filter-tabs a.active,
-.filter-tabs button:hover {
-  border-bottom-color: var(--accent);
-  color: var(--ink);
+.domain-browser-nav {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  width: 100%;
 }
 
-.domain-browser-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
+.domain-browser-grid {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  width: 100%;
 }
 
 .domain-browser-group {
-  display: inline-flex;
-  flex-wrap: wrap;
-  position: relative;
+  align-items: stretch;
+  background: rgb(var(--background-base-rgb) / 0.42);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.35rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.domain-browser-group.has-selected-child {
+  border-color: var(--accent-border);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 22%, transparent);
 }
 
 .domain-browser-main,
 .domain-browser-all {
-  display: inline-flex;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  display: flex;
+  min-height: 2.45rem;
+  overflow: hidden;
+  padding: 0.55rem 0.7rem;
+  text-overflow: ellipsis;
 }
 
-button.domain-browser-expand {
-  background: transparent;
+.domain-browser-all {
+  justify-content: center;
+}
+
+.domain-browser-main {
+  border: 0;
+  border-radius: 0;
+}
+
+.domain-browser-main:hover,
+.domain-browser-all:hover,
+.domain-browser-main.active,
+.domain-browser-all.active {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.domain-browser-main.active,
+.domain-browser-all.active {
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+button.domain-browser-expand,
+button.domain-browser-expand:hover {
+  background: var(--panel-muted);
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  min-height: 0;
-  padding-inline: 0.35rem;
+  color: var(--muted);
+  min-height: 2.45rem;
+  padding: 0;
+}
+
+button.domain-browser-expand.active,
+button.domain-browser-expand:hover {
+  color: var(--accent);
+}
+
+button.domain-browser-expand:disabled {
+  color: transparent;
+  cursor: default;
 }
 
 .domain-browser-subdomains {
@@ -2220,21 +2269,30 @@ button.domain-browser-expand {
   border-radius: 8px;
   box-shadow: var(--shadow);
   display: grid;
-  gap: 0.15rem;
-  left: 0;
-  max-height: 18rem;
-  min-width: min(24rem, 88vw);
-  overflow: auto;
-  padding: 0.4rem;
-  position: absolute;
-  top: 100%;
-  z-index: 10;
+  gap: 0.55rem;
+  max-height: none;
+  padding: 0.75rem;
+  width: 100%;
+}
+
+.domain-browser-subdomains-heading {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.domain-browser-subdomains-grid {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
 }
 
 .domain-browser-subdomains a {
   border-radius: 6px;
-  border-bottom: 0;
-  padding: 0.42rem 0.55rem;
+  color: var(--ink);
+  padding: 0.5rem 0.6rem;
+  white-space: normal;
 }
 
 .domain-browser-subdomains a:hover,
