@@ -36,6 +36,7 @@ async function loadProblems() {
     take: 180,
     include: {
       tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
+      favorites: { select: { userId: true } },
       _count: { select: { attempts: true, favorites: true } }
     }
   });
@@ -62,6 +63,10 @@ function problemScore(problem: TipProblem, phrases: readonly string[]) {
   return score;
 }
 
+function externalFavoriteCount(problem: TipProblem) {
+  return problem.favorites.filter((favorite) => favorite.userId !== problem.authorId).length;
+}
+
 function relatedProblemsForTip(problems: TipProblem[], tipIndex: number) {
   const phrases = TIP_MATCHERS[tipIndex] ?? [];
 
@@ -72,9 +77,9 @@ function relatedProblemsForTip(problems: TipProblem[], tipIndex: number) {
       if (right.score !== left.score) return right.score - left.score;
       return (
         right.problem._count.attempts +
-        right.problem._count.favorites -
+        externalFavoriteCount(right.problem) -
         left.problem._count.attempts -
-        left.problem._count.favorites
+        externalFavoriteCount(left.problem)
       );
     })
     .slice(0, 5)

@@ -26,6 +26,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
+import { pluralize } from "@/lib/pluralize";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { qualityLabel } from "@/lib/quality";
@@ -76,6 +77,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
   });
 
   if (!problem) notFound();
+  const isOwnProblem = user?.id === problem.authorId;
   const canViewArchived = user && (problem.authorId === user.id || canModerate(user.role));
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
 
@@ -140,12 +142,12 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
       : Promise.resolve([]),
     postVoteGroupsPromise,
     proofVoteGroupsPromise,
-    user
+    user && !isOwnProblem
       ? prisma.problemFavorite.findUnique({
           where: { userId_problemId: { userId: user.id, problemId: problem.id } }
         })
       : null,
-    prisma.problemFavorite.count({ where: { problemId: problem.id } }),
+    prisma.problemFavorite.count({ where: { problemId: problem.id, userId: { not: problem.authorId } } }),
     user && relatedProblemIds.length
       ? prisma.problemAttempt.findMany({
           where: { userId: user.id, status: "SOLVED", problemId: { in: relatedProblemIds } },
@@ -499,15 +501,22 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
               </button>
             </form>
           )}
-          <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
-            <button
-              type="submit"
-              className={favorite ? "favorite-state-button w-full" : "secondary favorite-action-button w-full"}
-            >
-              <Heart size={17} fill={favorite ? "currentColor" : "none"} />
-              {favorite ? "Favorited" : "Add this problem to favorites"} {"\u00b7"} {favoriteCount}
-            </button>
-          </form>
+          {isOwnProblem ? (
+            <div className="own-problem-favorite-note">
+              <span className="problem-own-dot" aria-hidden="true" />
+              Your problem {"\u00b7"} {pluralize(favoriteCount, "favorite")}
+            </div>
+          ) : (
+            <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
+              <button
+                type="submit"
+                className={favorite ? "favorite-state-button w-full" : "secondary favorite-action-button w-full"}
+              >
+                <Heart size={17} fill={favorite ? "currentColor" : "none"} />
+                {favorite ? "Favorited" : "Add this problem to favorites"} {"\u00b7"} {pluralize(favoriteCount, "favorite")}
+              </button>
+            </form>
+          )}
           {ownVerificationRequests.length > 0 && attempt?.status !== "SOLVED" && (
             <div className="verification-history">
               {ownVerificationRequests.map((request) => (

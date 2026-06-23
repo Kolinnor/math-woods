@@ -35,6 +35,7 @@ export default async function HomePage() {
       take: 6,
       include: {
         author: true,
+        favorites: { select: { userId: true } },
         _count: { select: { attempts: true, favorites: true } }
       }
     }),
@@ -69,6 +70,9 @@ export default async function HomePage() {
   ]);
 
   const featured = problems[0];
+  const featuredFavoriteCount = featured
+    ? featured.favorites.filter((favorite) => favorite.userId !== featured.authorId).length
+    : 0;
   const tip = dailyTip();
   const tagline = heroTaglines[Math.floor(Math.random() * heroTaglines.length)] ?? heroTaglines[0];
   const solvedIds = new Set(solvedAttempts.map((attempt) => attempt.problemId));
@@ -128,7 +132,7 @@ export default async function HomePage() {
               <h3 className="mt-2 text-xl font-semibold">{featured.title}</h3>
               <p className="meta mt-3">
                 difficulty {featured.difficulty ?? "unset"}/100 · {pluralize(featured._count.attempts, "attempt")} ·{" "}
-                {pluralize(featured._count.favorites, "favorite")}
+                {pluralize(featuredFavoriteCount, "favorite")}
               </p>
             </Link>
           ) : (

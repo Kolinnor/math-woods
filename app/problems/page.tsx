@@ -258,6 +258,7 @@ export default async function ProblemsPage({
       domains: { orderBy: { position: "asc" } },
       tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
+      favorites: { select: { userId: true } },
       _count: { select: { attempts: true, favorites: true } }
     }
   });
@@ -408,66 +409,68 @@ export default async function ProblemsPage({
       </p>
 
       <div className="list-surface">
-        {problems.map((problem) => (
-          <Link
-            key={problem.id}
-            href={`/problems/${problem.slug}`}
-            title={user?.id === problem.authorId ? "Your problem" : favoriteIds.has(problem.id) ? "Favorite problem" : undefined}
-            className={`${problemLinkClass(
-              "list-row block",
-              solvedIds.has(problem.id) ? "solved" : openedIds.has(problem.id) ? "opened" : null
-            )}${user?.id === problem.authorId ? " problem-own" : favoriteIds.has(problem.id) ? " problem-favorite" : ""}`}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="font-semibold">{problem.title}</h2>
-                <p className="meta">
-                  by {displayNameForUser(problem.author)} / {pluralize(problem._count.attempts, "attempt")}
-                </p>
-                <p className="meta">
-                  {(problem.domains.length ? problem.domains.map((item) => item.domain) : [problem.domain])
-                    .map(domainLabel)
-                    .join(" / ")} / {qualityLabel(problem.qualityStatus)}
-                </p>
-                {problem.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {problem.tags.map(({ tag }) => (
-                      <span key={tag.id} className="tag">
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {showSpoilerTags && problem.spoilerTags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="meta">Spoiler:</span>
-                    {problem.spoilerTags.map(({ tag }) => (
-                      <span key={tag.id} className="tag spoiler-tag">
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
+        {problems.map((problem) => {
+          const isOwnProblem = user?.id === problem.authorId;
+          const isUserFavorite = !isOwnProblem && favoriteIds.has(problem.id);
+          const externalFavoriteCount = problem.favorites.filter((favorite) => favorite.userId !== problem.authorId).length;
+
+          return (
+            <Link
+              key={problem.id}
+              href={`/problems/${problem.slug}`}
+              title={isOwnProblem ? "Your problem" : isUserFavorite ? "Favorite problem" : undefined}
+              className={`${problemLinkClass(
+                "list-row block",
+                solvedIds.has(problem.id) ? "solved" : openedIds.has(problem.id) ? "opened" : null
+              )}${isOwnProblem ? " problem-own" : isUserFavorite ? " problem-favorite" : ""}`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">{problem.title}</h2>
+                  <p className="meta">
+                    by {displayNameForUser(problem.author)} / {pluralize(problem._count.attempts, "attempt")}
+                  </p>
+                  <p className="meta">
+                    {(problem.domains.length ? problem.domains.map((item) => item.domain) : [problem.domain])
+                      .map(domainLabel)
+                      .join(" / ")} / {qualityLabel(problem.qualityStatus)}
+                  </p>
+                  {problem.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {problem.tags.map(({ tag }) => (
+                        <span key={tag.id} className="tag">
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {showSpoilerTags && problem.spoilerTags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="meta">Spoiler:</span>
+                      {problem.spoilerTags.map(({ tag }) => (
+                        <span key={tag.id} className="tag spoiler-tag">
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="problem-card-stats">
+                  <span
+                    className={isUserFavorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
+                    title={isUserFavorite ? "You favorited this problem" : "Favorites"}
+                  >
+                    <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />
+                    {externalFavoriteCount}
+                  </span>
+                  <span className="meta">
+                    {problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set"}
+                  </span>
+                </div>
               </div>
-              <div className="problem-card-stats">
-                <span
-                  className={
-                    favoriteIds.has(problem.id)
-                      ? "problem-favorite-count problem-favorite-count-own"
-                      : "problem-favorite-count"
-                  }
-                  title={favoriteIds.has(problem.id) ? "You favorited this problem" : "Favorites"}
-                >
-                  <Heart size={15} fill={favoriteIds.has(problem.id) ? "currentColor" : "none"} />
-                  {problem._count.favorites}
-                </span>
-                <span className="meta">
-                  {problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set"}
-                </span>
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
         {problems.length === 0 && <p className="empty-state">No problems match these filters.</p>}
       </div>
 

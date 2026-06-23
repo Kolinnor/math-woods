@@ -1088,6 +1088,28 @@ button.favorite-state-button:hover {
   color: #ffffff;
 }
 
+.own-problem-favorite-note {
+  align-items: center;
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  display: flex;
+  font-weight: 750;
+  gap: 0.5rem;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.9rem;
+}
+
+.problem-own-dot {
+  background: #dc2626;
+  clip-path: polygon(50% 0%, 100% 38%, 85% 38%, 85% 100%, 62% 100%, 62% 67%, 38% 67%, 38% 100%, 15% 100%, 15% 38%, 0% 38%);
+  display: inline-block;
+  height: 1rem;
+  width: 1rem;
+}
+
 button.danger,
 .button.danger {
   background: var(--notice-red-stripe);

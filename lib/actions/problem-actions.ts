@@ -623,6 +623,16 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
 export async function toggleProblemFavoriteAction(problemId: number, problemSlug: string) {
   const user = await requireUser();
   await assertRateLimit(`favorite:${user.id}`, 60, 60_000);
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: { authorId: true }
+  });
+
+  if (!problem || problem.authorId === user.id) {
+    revalidatePath(`/problems/${problemSlug}`);
+    return;
+  }
+
   const key = { userId: user.id, problemId };
   const existing = await prisma.problemFavorite.findUnique({
     where: { userId_problemId: key }

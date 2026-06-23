@@ -37,7 +37,17 @@ export default async function ProfilePage({
 
   if (!user) notFound();
 
-  const [problems, playlists, revisions, solved, favorites, solvedCount, currentUserSolved, reputation] = await Promise.all([
+  const [
+    problems,
+    playlists,
+    revisions,
+    solved,
+    favorites,
+    solvedCount,
+    externalFavoriteCount,
+    currentUserSolved,
+    reputation
+  ] = await Promise.all([
     prisma.problem.findMany({
       where: { authorId: user.id, status: "PUBLISHED", listed: true },
       orderBy: { createdAt: "desc" },
@@ -60,13 +70,16 @@ export default async function ProfilePage({
       take: 50
     }),
     prisma.problemFavorite.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, problem: { authorId: { not: user.id } } },
       include: { problem: true },
       orderBy: { createdAt: "desc" },
       take: 50
     }),
     prisma.problemAttempt.count({
       where: { userId: user.id, status: "SOLVED" }
+    }),
+    prisma.problemFavorite.count({
+      where: { userId: user.id, problem: { authorId: { not: user.id } } }
     }),
     currentUser
       ? prisma.problemAttempt.findMany({
@@ -104,7 +117,7 @@ export default async function ProfilePage({
             Solved · {solvedCount}
           </Link>
           <Link href={`/profile/${user.username}?view=favorites`} className="rounded border border-line px-3 py-2">
-            Favorites · {user._count.favorites}
+            Favorites · {externalFavoriteCount}
           </Link>
         </nav>
 
@@ -208,7 +221,7 @@ export default async function ProfilePage({
             </div>
             <div className="flex justify-between gap-3">
               <span>Favorites</span>
-              <span>{user._count.favorites}</span>
+              <span>{externalFavoriteCount}</span>
             </div>
           </div>
         </section>
