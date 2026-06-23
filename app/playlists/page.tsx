@@ -1,0 +1,48 @@
+import Link from "next/link";
+import { prisma } from "@/lib/db";
+import { pluralize } from "@/lib/pluralize";
+import { displayNameForUser } from "@/lib/user-display";
+
+export const dynamic = "force-dynamic";
+
+export default async function PlaylistsPage() {
+  const playlists = await prisma.playlist.findMany({
+    orderBy: { createdAt: "desc" },
+    include: {
+      author: true,
+      items: true,
+      _count: { select: { followers: true } }
+    }
+  });
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Playlists</h1>
+          <p className="muted mt-1">Ordered paths for learning through problems.</p>
+        </div>
+        <Link href="/playlists/new" className="button">
+          New
+        </Link>
+      </div>
+
+      <div className="grid gap-3">
+        {playlists.map((playlist) => (
+          <Link key={playlist.id} href={`/playlists/${playlist.slug}`} className="panel block p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-semibold">{playlist.title}</h2>
+                <p className="muted text-sm">by {displayNameForUser(playlist.author)}</p>
+              </div>
+              <span className="muted text-sm">
+                {pluralize(playlist.items.length, "problem")} · {pluralize(playlist._count.followers, "follower")}
+              </span>
+            </div>
+          </Link>
+        ))}
+        {playlists.length === 0 && <p className="muted panel p-5">No playlists yet.</p>}
+      </div>
+    </div>
+  );
+}

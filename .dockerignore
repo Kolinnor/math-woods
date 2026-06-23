@@ -1,0 +1,12 @@
+.git
+.next
+node_modules
+runtime
+backups
+_release
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+!.env.production.example
