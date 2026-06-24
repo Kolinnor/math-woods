@@ -4,6 +4,16 @@ import sanitizeHtml from "sanitize-html";
 import { findLatexRanges } from "./latex-ranges.ts";
 import { replaceWikiLinks } from "./wikilinks.ts";
 
+function externalLinkAttributes(href: string | undefined): Record<string, string> {
+  if (!href) return {};
+  if (!/^https?:\/\//i.test(href)) return {};
+
+  return {
+    target: "_blank",
+    rel: "noopener noreferrer nofollow ugc"
+  };
+}
+
 function protectLatex(input: string) {
   const replacements = new Map<string, string>();
   const ranges = findLatexRanges(input);
@@ -108,7 +118,7 @@ export async function renderMarkdown(markdown: string, missingSlugs = new Set<st
       "path"
     ]),
     allowedAttributes: {
-      a: ["href", "class", "rel"],
+      a: ["href", "class", "rel", "target"],
       code: ["class"],
       span: ["class", "style"],
       math: ["xmlns", "display"],
@@ -116,6 +126,15 @@ export async function renderMarkdown(markdown: string, missingSlugs = new Set<st
       svg: ["xmlns", "width", "height", "viewBox", "viewbox"],
       path: ["d"],
       "*": ["aria-hidden"]
+    },
+    transformTags: {
+      a: (_tagName, attribs) => ({
+        tagName: "a",
+        attribs: {
+          ...attribs,
+          ...externalLinkAttributes(attribs.href)
+        }
+      })
     },
     allowedStyles: {
       span: {
@@ -136,6 +155,7 @@ export async function renderMarkdown(markdown: string, missingSlugs = new Set<st
         width: [/^-?\d+(\.\d+)?(em|ex|px|rem|%)$/]
       }
     },
-    allowedSchemes: ["http", "https", "mailto", "tel", "/"]
+    allowedSchemes: ["http", "https", "mailto", "tel"],
+    allowProtocolRelative: false
   });
 }

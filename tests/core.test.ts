@@ -15,6 +15,7 @@ import { renderMarkdown } from "../lib/markdown.ts";
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "../lib/markdown-preview.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
+import { sanitizeReportPath } from "../lib/security.ts";
 import { parseTagInput } from "../lib/tags.ts";
 
 assert.equal(slugify("Relations de Viète"), "relations-de-viete");
@@ -133,5 +134,23 @@ const renderedCode = await renderMarkdown("Code `$x$` and `[[not a link]]`, then
 assert.equal(renderedCode.includes("<code>$x$</code>"), true);
 assert.equal(renderedCode.includes("<code>[[not a link]]</code>"), true);
 assert.equal(renderedCode.includes('href="/concepts/polynomial"'), true);
+
+const renderedUnsafeMarkdown = await renderMarkdown("<script>alert(1)</script><img src=x onerror=alert(1)>");
+assert.equal(renderedUnsafeMarkdown.includes("<script"), false);
+assert.equal(renderedUnsafeMarkdown.includes("onerror"), false);
+
+const renderedUnsafeLink = await renderMarkdown("[bad](javascript:alert(1))");
+assert.equal(renderedUnsafeLink.includes('href="javascript:'), false);
+
+const renderedExternalLink = await renderMarkdown("[external](https://example.com)");
+assert.equal(renderedExternalLink.includes('href="https://example.com"'), true);
+assert.equal(renderedExternalLink.includes('rel="noopener noreferrer nofollow ugc"'), true);
+assert.equal(renderedExternalLink.includes('target="_blank"'), true);
+
+const renderedProtocolRelativeLink = await renderMarkdown("[external](//example.com/path)");
+assert.equal(renderedProtocolRelativeLink.includes('href="//example.com/path"'), false);
+
+assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
+assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");
 
 console.log("core tests ok");

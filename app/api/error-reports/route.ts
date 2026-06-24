@@ -5,12 +5,14 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { sanitizeReportPath } from "@/lib/security";
 
 const MAX_MESSAGE_LENGTH = 1200;
 const MAX_STACK_LENGTH = 8000;
 const MAX_PATH_LENGTH = 600;
 const MAX_DIGEST_LENGTH = 160;
 const MAX_SOURCE_LENGTH = 80;
+const MAX_REPORT_BODY_BYTES = 16_000;
 
 function cleanString(value: unknown, maxLength: number) {
   if (typeof value !== "string") return null;
@@ -29,6 +31,11 @@ export async function POST(request: Request) {
   const headerStore = await headers();
   const currentUser = await getCurrentUser();
   const rateLimitKey = clientKey(headerStore.get("x-forwarded-for"), currentUser?.id ?? null);
+  const contentLength = Number(headerStore.get("content-length") ?? 0);
+
+  if (Number.isFinite(contentLength) && contentLength > MAX_REPORT_BODY_BYTES) {
+    return NextResponse.json({ ok: false }, { status: 413 });
+  }
 
   try {
     await assertRateLimit(rateLimitKey, 20, 5 * 60_000);
@@ -47,7 +54,7 @@ export async function POST(request: Request) {
   const message = cleanString(data.message, MAX_MESSAGE_LENGTH);
   if (!message) return NextResponse.json({ ok: false }, { status: 400 });
 
-  const path = cleanString(data.path, MAX_PATH_LENGTH) ?? "/";
+  const path = sanitizeReportPath(data.path, MAX_PATH_LENGTH) ?? "/";
   const source = cleanString(data.source, MAX_SOURCE_LENGTH) ?? "client";
   const stack = cleanString(data.stack, MAX_STACK_LENGTH);
   const digest = cleanString(data.digest, MAX_DIGEST_LENGTH);

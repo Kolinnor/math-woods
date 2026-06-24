@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { sanitizeReportPath } from "@/lib/security";
 
 type ErrorReportInput = {
   message: string;
@@ -35,7 +36,7 @@ export function reportClientError(input: ErrorReportInput) {
 
   const report = {
     ...input,
-    path: input.path ?? `${window.location.pathname}${window.location.search}`
+    path: sanitizeReportPath(input.path ?? `${window.location.pathname}${window.location.search}${window.location.hash}`) ?? "/"
   };
   const key = reportKey(report);
   if (sentReports.has(key)) return;

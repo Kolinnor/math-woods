@@ -335,7 +335,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
           </div>
           {user && (
             <details className="add-proof">
-              <summary>Add another proof</summary>
+              <summary>{proofs.length === 0 ? "Be the first to add your proof !" : "Add another proof"}</summary>
               <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
                 <MarkdownEditor name="bodyMarkdown" minHeight="12rem" lineNumbers={false} />
                 <button type="submit">Publish proof</button>
