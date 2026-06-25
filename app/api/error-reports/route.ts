@@ -72,20 +72,20 @@ export async function POST(request: Request) {
     }
   });
 
-  const admins = await prisma.user.findMany({
-    where: { role: { in: [Role.ADMIN, Role.OWNER] } },
+  const owners = await prisma.user.findMany({
+    where: { role: Role.OWNER },
     select: { id: true }
   });
 
   await Promise.all(
-    admins.map((admin) =>
+    owners.map((owner) =>
       createNotification({
-      userId: admin.id,
-      actorId: null,
-      type: NotificationType.SITE_ERROR_REPORTED,
-      title: "Site error reported",
-      body: `${source}: ${message.slice(0, 180)}`,
-      href: `/moderation#error-report-${report.id}`
+        userId: owner.id,
+        actorId: null,
+        type: NotificationType.SITE_ERROR_REPORTED,
+        title: "Site error reported",
+        body: `${source}: ${message.slice(0, 180)}`,
+        href: `/moderation#error-report-${report.id}`
       })
     )
   );
