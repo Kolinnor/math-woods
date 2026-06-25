@@ -1762,6 +1762,18 @@ button.domain-selected:hover {
   padding-top: 1rem;
 }
 
+.difficulty-filter {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.difficulty-filter-bounds {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .advanced-filter-builder {
   border-top: 1px solid var(--line);
   padding-top: 1rem;
@@ -2185,8 +2197,8 @@ button.domain-selected:hover {
 
 .domain-browser-grid {
   display: grid;
-  gap: 0.45rem;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   width: 100%;
 }
 
@@ -2196,7 +2208,7 @@ button.domain-selected:hover {
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 2.35rem;
+  grid-template-columns: minmax(0, 1fr) 2.75rem;
   min-width: 0;
   overflow: hidden;
 }
@@ -2214,10 +2226,13 @@ button.domain-selected:hover {
   border-radius: 8px;
   color: var(--ink);
   display: flex;
-  min-height: 2.45rem;
+  line-height: 1.18;
+  min-height: 3.05rem;
   overflow: hidden;
-  padding: 0.55rem 0.7rem;
+  overflow-wrap: anywhere;
+  padding: 0.7rem 0.85rem;
   text-overflow: ellipsis;
+  white-space: normal;
 }
 
 .domain-browser-all {
@@ -2249,7 +2264,7 @@ button.domain-browser-expand:hover {
   border-radius: 0;
   box-shadow: none;
   color: var(--muted);
-  min-height: 2.45rem;
+  min-height: 3.05rem;
   padding: 0;
 }
 

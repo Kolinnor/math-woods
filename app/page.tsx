@@ -1,4 +1,3 @@
-import { MathDomain } from "@prisma/client";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { dailyTip } from "@/lib/daily-tip";
@@ -145,7 +144,7 @@ export default async function HomePage() {
             <h2>Browse by domain</h2>
           </div>
           <div className="domain-grid">
-            {MATH_DOMAINS.filter((item) => item.value !== MathDomain.OTHER).map((domain) => (
+            {MATH_DOMAINS.map((domain) => (
               <Link
                 key={domain.value}
                 href={`/problems?domain=${domain.value}`}

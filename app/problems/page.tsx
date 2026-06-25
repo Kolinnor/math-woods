@@ -18,6 +18,31 @@ export const dynamic = "force-dynamic";
 
 const PROBLEMS_PER_PAGE = 40;
 type SearchValue = string | string[] | undefined;
+type DifficultyRange = {
+  value: string;
+  label: string;
+  min?: number;
+  max?: number;
+};
+
+const DIFFICULTY_RANGES: DifficultyRange[] = [
+  { value: "", label: "Any difficulty" },
+  { value: "1-5", label: "Just started (1-5)", min: 1, max: 5 },
+  { value: "6-19", label: "Beginner / High school (6-19)", min: 6, max: 19 },
+  { value: "20-39", label: "Intermediate / Undergraduate (20-39)", min: 20, max: 39 },
+  { value: "40-64", label: "Advanced / Graduate (40-64)", min: 40, max: 64 },
+  { value: "65-84", label: "Expert / Research-ready (65-84)", min: 65, max: 84 },
+  { value: "85-100", label: "Professional mathematician (85-100)", min: 85, max: 100 }
+];
+
+function parseDifficultyBound(value: string | undefined) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 100 ? parsed : undefined;
+}
+
+function parseDifficultyRange(value: string | undefined) {
+  return DIFFICULTY_RANGES.find((range) => range.value === value) ?? DIFFICULTY_RANGES[0];
+}
 
 function problemsHref(params: Record<string, number | string | string[] | undefined>) {
   const query = new URLSearchParams();
@@ -148,6 +173,9 @@ export default async function ProblemsPage({
     q?: string;
     tag?: string;
     difficulty?: string;
+    difficultyRange?: string;
+    difficultyMin?: string;
+    difficultyMax?: string;
     domain?: string;
     quality?: string;
     sort?: string;
@@ -164,6 +192,9 @@ export default async function ProblemsPage({
     q = "",
     tag = "",
     difficulty = "",
+    difficultyRange = "",
+    difficultyMin = "",
+    difficultyMax = "",
     domain = "",
     quality = "",
     sort = "newest",
@@ -176,12 +207,27 @@ export default async function ProblemsPage({
   } = await searchParams;
   const showSpoilerTags = includeSpoilerTags === "1" || includeSpoilerTags === "on";
   const query = q.trim();
+  const queryTagSlug = ensureSlug(query, "");
   const tagSlug = ensureSlug(tag, "");
-  const parsedDifficulty = Number(difficulty);
-  const difficultyValue =
-    Number.isInteger(parsedDifficulty) && parsedDifficulty >= 1 && parsedDifficulty <= 100
-      ? parsedDifficulty
-      : undefined;
+  const legacyDifficultyValue = parseDifficultyBound(difficulty);
+  const difficultyRangeOption = parseDifficultyRange(difficultyRange);
+  const manualDifficultyMin = parseDifficultyBound(difficultyMin);
+  const manualDifficultyMax = parseDifficultyBound(difficultyMax);
+  const rawDifficultyMin = manualDifficultyMin ?? difficultyRangeOption.min ?? legacyDifficultyValue;
+  const rawDifficultyMax = manualDifficultyMax ?? difficultyRangeOption.max ?? legacyDifficultyValue;
+  const difficultyMinValue =
+    rawDifficultyMin !== undefined && rawDifficultyMax !== undefined ? Math.min(rawDifficultyMin, rawDifficultyMax) : rawDifficultyMin;
+  const difficultyMaxValue =
+    rawDifficultyMin !== undefined && rawDifficultyMax !== undefined ? Math.max(rawDifficultyMin, rawDifficultyMax) : rawDifficultyMax;
+  const difficultyWhere =
+    difficultyMinValue !== undefined || difficultyMaxValue !== undefined
+      ? {
+          difficulty: {
+            ...(difficultyMinValue !== undefined ? { gte: difficultyMinValue } : {}),
+            ...(difficultyMaxValue !== undefined ? { lte: difficultyMaxValue } : {})
+          }
+        }
+      : null;
   const domainValue = domain ? parseDomainCode(domain) : undefined;
   const qualityValue = Object.values(QualityStatus).includes(quality as QualityStatus)
     ? (quality as QualityStatus)
@@ -202,22 +248,30 @@ export default async function ProblemsPage({
         : sortValue === "difficulty"
           ? { difficulty: "desc" }
           : { createdAt: "desc" };
+  const queryClauses: Prisma.ProblemWhereInput[] = [];
+  if (query) {
+    queryClauses.push(
+      { title: { contains: query, mode: "insensitive" } },
+      { bodyMarkdown: { contains: query, mode: "insensitive" } },
+      { origin: { contains: query, mode: "insensitive" } },
+      { tags: { some: { tag: { name: { contains: query, mode: "insensitive" } } } } }
+    );
+    if (queryTagSlug) {
+      queryClauses.push({ tags: { some: { tag: { slug: { contains: queryTagSlug } } } } });
+    }
+    if (showSpoilerTags) {
+      queryClauses.push({ spoilerTags: { some: { tag: { name: { contains: query, mode: "insensitive" } } } } });
+      if (queryTagSlug) {
+        queryClauses.push({ spoilerTags: { some: { tag: { slug: { contains: queryTagSlug } } } } });
+      }
+    }
+  }
   const whereClauses: Prisma.ProblemWhereInput[] = [
     { status: "PUBLISHED" },
     { listed: true },
-    ...(query
-      ? [
-          {
-            OR: [
-              { title: { contains: query, mode: "insensitive" } },
-              { bodyMarkdown: { contains: query, mode: "insensitive" } },
-              { origin: { contains: query, mode: "insensitive" } }
-            ]
-          } satisfies Prisma.ProblemWhereInput
-        ]
-      : []),
+    ...(queryClauses.length ? [{ OR: queryClauses } satisfies Prisma.ProblemWhereInput] : []),
     ...(tagSlug ? [tagWhere(tagSlug, showSpoilerTags)].filter((item): item is Prisma.ProblemWhereInput => Boolean(item)) : []),
-    ...(difficultyValue ? [{ difficulty: difficultyValue }] : []),
+    ...(difficultyWhere ? [difficultyWhere] : []),
     ...(domainValue ? [domainWhere(domainValue)] : []),
     ...(qualityValue ? [{ qualityStatus: qualityValue }] : []),
     ...(advancedClauses.length
@@ -291,7 +345,9 @@ export default async function ProblemsPage({
   const paginationParams = {
     q: query,
     tag: tagSlug,
-    difficulty: difficultyValue,
+    difficultyRange: difficultyRangeOption.value || undefined,
+    difficultyMin: manualDifficultyMin ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : undefined),
+    difficultyMax: manualDifficultyMax ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : undefined),
     domain: domainValue,
     quality: qualityValue,
     sort: sortValue === "newest" ? undefined : sortValue,
@@ -329,9 +385,6 @@ export default async function ProblemsPage({
 
       <div className="filter-tabs">
         <DomainBrowserNav domains={MATH_DOMAINS} selectedDomain={domainValue} />
-        <Link href="/problems?tag=conjecture" className={tagSlug === "conjecture" ? "active" : ""}>
-          Conjectures
-        </Link>
       </div>
 
       <LiveSearchForm className="problem-search-shell mb-6">
@@ -343,30 +396,36 @@ export default async function ProblemsPage({
           <button type="submit">Search</button>
         </div>
         <div className="problem-search-filters">
-          <select name="domain" defaultValue={domainValue ?? ""}>
-            <option value="">Any domain</option>
-            {FLAT_DOMAIN_OPTIONS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <select name="tag" defaultValue={tagSlug}>
-            <option value="">Any tag</option>
-            {tags.map((item) => (
-              <option key={item.id} value={item.slug}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-          <input
-            name="difficulty"
-            type="number"
-            min="1"
-            max="100"
-            defaultValue={difficultyValue ?? ""}
-            placeholder="Difficulty"
-          />
+          {domainValue && <input type="hidden" name="domain" value={domainValue} />}
+          <div className="difficulty-filter">
+            <select name="difficultyRange" defaultValue={difficultyRangeOption.value}>
+              {DIFFICULTY_RANGES.map((range) => (
+                <option key={range.value || "any"} value={range.value}>
+                  {range.label}
+                </option>
+              ))}
+            </select>
+            <div className="difficulty-filter-bounds">
+              <input
+                name="difficultyMin"
+                type="number"
+                min="1"
+                max="100"
+                defaultValue={manualDifficultyMin ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : "")}
+                placeholder="Min"
+                aria-label="Minimum difficulty"
+              />
+              <input
+                name="difficultyMax"
+                type="number"
+                min="1"
+                max="100"
+                defaultValue={manualDifficultyMax ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : "")}
+                placeholder="Max"
+                aria-label="Maximum difficulty"
+              />
+            </div>
+          </div>
           <select name="quality" defaultValue={qualityValue ?? ""}>
             <option value="">Any status</option>
             <option value="NEEDS_WORK">Needs work</option>

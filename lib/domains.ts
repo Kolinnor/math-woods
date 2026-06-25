@@ -111,7 +111,7 @@ export const MATH_DOMAINS: DomainOption[] = [
   },
   {
     value: MathDomain.OTHER,
-    label: "Applied and other mathematics",
+    label: "Others",
     domain: MathDomain.OTHER,
     children: [
       option("65", "65 Numerical analysis", MathDomain.OTHER),
