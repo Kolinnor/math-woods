@@ -2,12 +2,34 @@ import { loginAction, registerAction } from "@/lib/actions/auth-actions";
 import { MATH_LEVEL_HELP_TEXT, MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/user-display";
 
-export default function LoginPage() {
+function loginErrorMessage(reason: string | undefined) {
+  if (reason === "rate-limited") return "Too many sign-in attempts. Please wait a moment and try again.";
+  if (reason === "invalid") return "The username/email or password is not correct.";
+  return null;
+}
+
+function registerErrorMessage(reason: string | undefined) {
+  if (reason === "rate-limited") return "Too many account creation attempts. Please wait a moment and try again.";
+  if (reason === "already-used") return "This profile name or email is already used.";
+  if (reason === "invalid") return "The account information could not be accepted. Please check the form and try again.";
+  return null;
+}
+
+export default async function LoginPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ loginError?: string; registerError?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const loginError = loginErrorMessage(params.loginError);
+  const registerError = registerErrorMessage(params.registerError);
+
   return (
     <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
       <section>
         <h1 className="mb-2 text-2xl font-bold">Sign in</h1>
         <p className="muted mb-5">Use your username or email.</p>
+        {loginError && <p className="quality-banner quality-needs-work mb-4">{loginError}</p>}
         <form action={loginAction} className="panel grid gap-4 p-5">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Username or email</span>
@@ -24,6 +46,7 @@ export default function LoginPage() {
       <section>
         <h2 className="mb-2 text-2xl font-bold">Create account</h2>
         <p className="muted mb-5">Create an account to solve, discuss, and contribute problems.</p>
+        {registerError && <p className="quality-banner quality-needs-work mb-4">{registerError}</p>}
         <form action={registerAction} className="panel grid gap-4 p-5">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Profile name</span>
