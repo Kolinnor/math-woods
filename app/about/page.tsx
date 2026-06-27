@@ -180,6 +180,15 @@ export default function AboutPage() {
             away the direction too early.
           </p>
         </Faq>
+        <Faq question="Does a problem statement have to be the most direct formulation?">
+          <p>
+            Not always. A good statement can sometimes invite a plausible wrong first idea, as long as the wording is
+            honest and mathematically precise. For example, asking when the even number <span>{"$2n$"}</span> is
+            divisible by both <span>{"$n$"}</span> and <span>{"$n-1$"}</span> can be more interesting than immediately
+            naming the hidden condition. The point is not to trick readers with ambiguity, but to let them discover
+            which details matter.
+          </p>
+        </Faq>
         <Faq question="How should I title a problem?">
           <p>
             Prefer a short, descriptive title. Sentence case usually looks better than capitalizing every word. Avoid
