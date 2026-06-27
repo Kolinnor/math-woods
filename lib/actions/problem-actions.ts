@@ -6,18 +6,27 @@ import {
   ProblemStatus,
   ProblemVerificationMode,
   QualityStatus,
+  MathDomain,
   SourceType,
   TargetType,
   VoteType
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser, requireVerifiedUser } from "@/lib/auth";
+import {
+  checkHintAchievements,
+  checkProblemSolvedByOthersAchievements,
+  checkProofAchievements,
+  checkSolveAchievements,
+  checkUsefulPostAchievements
+} from "@/lib/achievements";
+import { requireVerifiedUser } from "@/lib/auth";
 import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { syncInternalLinks } from "@/lib/internal-links";
 import { createNotification, notifyProblemAuthor } from "@/lib/notifications";
+import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { linkSpecificProblem, syncProblemRelationGroups } from "@/lib/problem-relations";
 import {
@@ -42,10 +51,12 @@ export async function createProblemAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:create:${user.id}`, 5, 60_000);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+  const language = parseContentLanguage(formData.get("language"));
+  const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement");
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
-  const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"));
-  const domain = domains[0].domain;
+  const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
+  const domain = domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER;
   const origin = boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin") || "Unknown";
   const originChapter = optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter");
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
@@ -64,9 +75,14 @@ export async function createProblemAction(formData: FormData) {
   );
   const addToPlaylistSlug = ensureSlug(String(formData.get("addToPlaylistSlug") ?? ""), "");
   const parentProblemSlug = ensureSlug(String(formData.get("parentProblemSlug") ?? ""), "");
-  const qualityStatus = parseContributorQualityStatus(formData.get("qualityStatus"), user.role);
+  const qualityStatus = QualityStatus.UNREVIEWED;
   const tags = tagsWithConjecture(boundedText(formData.get("tags"), CONTENT_LIMITS.tagList, "Tags"), formData.get("conjecture"));
   const spoilerTags = boundedText(formData.get("spoilerTags"), CONTENT_LIMITS.tagList, "Spoiler tags");
+  const relatedProblemGroups = boundedText(
+    formData.get("relatedProblemGroups"),
+    CONTENT_LIMITS.relationGroups,
+    "Related problem groups"
+  );
   const proofMarkdown = boundedText(formData.get("proofMarkdown"), CONTENT_LIMITS.markdown, "Initial proof");
 
   if (verificationMode === ProblemVerificationMode.SELF_CHECK && !verificationAnswer) {
@@ -77,9 +93,21 @@ export async function createProblemAction(formData: FormData) {
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const problem = await prisma.$transaction(async (tx) => {
+    if (translationGroupId) {
+      const existingTranslation = await tx.problem.findFirst({
+        where: { translationGroupId, language },
+        select: { slug: true }
+      });
+      if (existingTranslation) {
+        throw new Error("A problem translation already exists in this language.");
+      }
+    }
+
     const created = await tx.problem.create({
       data: {
         slug,
+        language,
+        ...(translationGroupId ? { translationGroupId } : {}),
         title,
         bodyMarkdown,
         bodyHtml,
@@ -134,6 +162,7 @@ export async function createProblemAction(formData: FormData) {
     }
     await syncInternalLinks(SourceType.PROBLEM, created.id, bodyMarkdown, tx);
     await syncProblemDomains(tx, created.id, domains);
+    await syncProblemRelationGroups(tx, created.id, relatedProblemGroups);
     await syncProblemTags(created.id, tags, tx);
     await syncProblemSpoilerTags(created.id, spoilerTags, tx);
     if (proofMarkdown) {
@@ -159,6 +188,9 @@ export async function createProblemAction(formData: FormData) {
   });
 
   revalidatePath("/");
+  if (proofMarkdown) {
+    await checkProofAchievements(user.id);
+  }
   redirect(`/problems/${problem.slug}`);
 }
 
@@ -175,10 +207,11 @@ export async function updateProblemAction(problemId: number, formData: FormData)
   }
 
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+  const language = parseContentLanguage(formData.get("language"));
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement");
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
-  const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"));
-  const domain = domains[0].domain;
+  const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
+  const domain = domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER;
   const origin = boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin") || "Unknown";
   const originChapter = optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter");
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
@@ -215,6 +248,7 @@ export async function updateProblemAction(problemId: number, formData: FormData)
       where: { id: problemId },
       data: {
         title,
+        language,
         bodyMarkdown,
         bodyHtml,
         difficulty,
@@ -265,7 +299,7 @@ export async function updateProblemAction(problemId: number, formData: FormData)
 }
 
 export async function deleteProblemAction(problemId: number) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`problem:delete:${user.id}`, 10, 60_000);
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
@@ -309,7 +343,7 @@ export async function deleteProblemAction(problemId: number) {
 }
 
 export async function markProblemGoodAction(problemId: number, problemSlug: string) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`problem:review:${user.id}`, 30, 60_000);
   if (!canModerate(user.role)) {
     throw new Error("You cannot review this problem.");
@@ -375,7 +409,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
 }
 
 export async function startAttemptAction(problemId: number, problemSlug: string) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`attempt:start:${user.id}`, 60, 60_000);
   const now = new Date();
 
@@ -401,7 +435,7 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
 }
 
 export async function updatePrivateNotesAction(problemId: number, formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`private-notes:${user.id}`, 30, 60_000);
   const privateNotesMarkdown = boundedText(
     formData.get("privateNotesMarkdown"),
@@ -456,6 +490,12 @@ export async function updatePrivateNotesAction(problemId: number, formData: Form
       href: `/problems/${problem.slug}`
     });
   }
+  if (status === "SOLVED" && previousAttempt?.status !== "SOLVED") {
+    await checkSolveAchievements(user.id);
+    if (problem && problem.authorId !== user.id) {
+      await checkProblemSolvedByOthersAchievements(problem.authorId);
+    }
+  }
 }
 
 async function markSolvedNow(problemId: number, problemSlug: string, user: { id: number; username: string; displayName?: string | null }) {
@@ -504,10 +544,16 @@ async function markSolvedNow(problemId: number, problemSlug: string, user: { id:
       href: `/problems/${problemSlug}`
     });
   }
+  if (previousAttempt?.status !== "SOLVED") {
+    await checkSolveAchievements(user.id);
+    if (problem && problem.authorId !== user.id) {
+      await checkProblemSolvedByOthersAchievements(problem.authorId);
+    }
+  }
 }
 
 export async function markProblemSolvedAction(problemId: number, problemSlug: string, formData?: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`problem:solve:${user.id}`, 30, 60_000);
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
@@ -523,10 +569,15 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
 
   if (!problem) throw new Error("Problem not found.");
 
+  if (problem.authorId === user.id) {
+    await markSolvedNow(problemId, problemSlug, user);
+    return;
+  }
+
   if (problem.verificationMode === ProblemVerificationMode.SELF_CHECK) {
     const answer = boundedText(formData?.get("verificationAnswer"), CONTENT_LIMITS.mediumText, "Verification answer");
     if (!verificationMatches(problem.verificationAnswer, answer)) {
-      throw new Error("The verification answer is not correct.");
+      redirect(`/problems/${problemSlug}?verification=incorrect`);
     }
     await markSolvedNow(problemId, problemSlug, user);
     return;
@@ -559,7 +610,7 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
 }
 
 export async function reviewProblemVerificationAction(requestId: number, decision: "APPROVED" | "REJECTED") {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`verification-review:${user.id}`, 30, 60_000);
   const request = await prisma.problemVerificationRequest.findUnique({
     where: { id: requestId },
@@ -603,6 +654,13 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
     }
   });
 
+  if (decision === "APPROVED") {
+    await checkSolveAchievements(request.userId);
+    if (request.problem.authorId !== request.userId) {
+      await checkProblemSolvedByOthersAchievements(request.problem.authorId);
+    }
+  }
+
   await createNotification({
     userId: request.userId,
     actorId: user.id,
@@ -620,8 +678,68 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
   revalidatePath("/me");
 }
 
+export async function createVerificationMessageAction(requestId: number, problemSlug: string, formData: FormData) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`verification-message:${user.id}`, 20, 60_000);
+  const bodyMarkdown = requiredBoundedText(
+    formData.get("bodyMarkdown"),
+    CONTENT_LIMITS.discussionPost,
+    "Verification message"
+  );
+  const request = await prisma.problemVerificationRequest.findUnique({
+    where: { id: requestId },
+    include: {
+      problem: { select: { id: true, slug: true, title: true, authorId: true } },
+      user: { select: { id: true, username: true, displayName: true } }
+    }
+  });
+
+  if (!request || request.problem.slug !== problemSlug) {
+    throw new Error("Verification request not found.");
+  }
+  if (request.status !== "PENDING") {
+    throw new Error("This verification request is already closed.");
+  }
+
+  const isProblemAuthor = request.problem.authorId === user.id;
+  const isRequester = request.userId === user.id;
+  const isModerator = canModerate(user.role);
+  if (!isProblemAuthor && !isRequester && !isModerator) {
+    throw new Error("You cannot join this verification discussion.");
+  }
+
+  await prisma.problemVerificationMessage.create({
+    data: {
+      requestId,
+      authorId: user.id,
+      bodyMarkdown,
+      bodyHtml: await renderMarkdownContent(bodyMarkdown)
+    }
+  });
+
+  const recipientIds = new Set<number>();
+  recipientIds.add(request.userId);
+  recipientIds.add(request.problem.authorId);
+  recipientIds.delete(user.id);
+
+  await Promise.all(
+    [...recipientIds].map((recipientId) =>
+      createNotification({
+        userId: recipientId,
+        actorId: user.id,
+        type: NotificationType.VERIFICATION_MESSAGE,
+        title: "New verification message",
+        body: `${displayNameForUser(user)} replied about "${request.problem.title}".`,
+        href: `/problems/${request.problem.slug}`
+      })
+    )
+  );
+
+  revalidatePath(`/problems/${request.problem.slug}`);
+}
+
 export async function toggleProblemFavoriteAction(problemId: number, problemSlug: string) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`favorite:${user.id}`, 60, 60_000);
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
@@ -645,10 +763,16 @@ export async function toggleProblemFavoriteAction(problemId: number, problemSlug
   }
 
   revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath("/problems");
+  revalidatePath("/");
+  revalidatePath("/tips");
+  revalidatePath("/users");
   revalidatePath(`/profile/${user.username}`);
+  revalidatePath(`/profile/${user.username}?view=favorites`);
+  revalidatePath("/me");
 }
 
-export async function createDiscussionPostAction(threadId: number, problemId: number, formData: FormData) {
+export async function createDiscussionPostAction(problemId: number, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`post:${user.id}`, 12, 60_000);
   const [attempt, problem] = await Promise.all([
@@ -662,21 +786,29 @@ export async function createDiscussionPostAction(threadId: number, problemId: nu
     }),
     prisma.problem.findUnique({
       where: { id: problemId },
-      select: { slug: true, title: true }
+      select: { slug: true, title: true, authorId: true, thread: { select: { id: true } } }
     })
   ]);
 
-  if (!attempt) {
+  if (!problem) throw new Error("Problem not found.");
+  if (!attempt && problem.authorId !== user.id && !canModerate(user.role)) {
     throw new Error("Start this problem before joining the discussion.");
   }
-  if (!problem) throw new Error("Problem not found.");
 
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Discussion message");
   const typeInput = String(formData.get("type") ?? "COMMENT").toUpperCase();
   const type = Object.values(PostType).includes(typeInput as PostType) ? (typeInput as PostType) : PostType.COMMENT;
+  const thread =
+    problem.thread ??
+    (await prisma.discussionThread.upsert({
+      where: { problemId },
+      update: {},
+      create: { problemId },
+      select: { id: true }
+    }));
   await prisma.discussionPost.create({
     data: {
-      threadId,
+      threadId: thread.id,
       authorId: user.id,
       bodyMarkdown,
       bodyHtml: await renderMarkdownContent(bodyMarkdown),
@@ -685,6 +817,10 @@ export async function createDiscussionPostAction(threadId: number, problemId: nu
   });
 
   revalidatePath("/problems");
+  revalidatePath(`/problems/${problem.slug}`);
+  if (type === PostType.HINT) {
+    await checkHintAchievements(user.id);
+  }
   await notifyProblemAuthor({
     problemId,
     actorId: user.id,
@@ -693,52 +829,117 @@ export async function createDiscussionPostAction(threadId: number, problemId: nu
     body: `${displayNameForUser(user)} posted in the discussion of "${problem.title}".`,
     href: `/problems/${problem.slug}`
   });
+  redirect(`/problems/${problem.slug}`);
+}
+
+export async function updateHintAction(postId: number, problemSlug: string, formData: FormData) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`hint:update:${user.id}`, 30, 60_000);
+  const hint = await prisma.discussionPost.findFirst({
+    where: {
+      id: postId,
+      type: PostType.HINT,
+      deletedAt: null,
+      thread: { problem: { slug: problemSlug } }
+    },
+    select: { id: true, authorId: true }
+  });
+
+  if (!hint) throw new Error("Hint not found.");
+  if (hint.authorId !== user.id && !canModerate(user.role)) {
+    throw new Error("You cannot edit this hint.");
+  }
+
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
+  await prisma.discussionPost.update({
+    where: { id: hint.id },
+    data: {
+      bodyMarkdown,
+      bodyHtml: await renderMarkdownContent(bodyMarkdown)
+    }
+  });
+
+  revalidatePath(`/problems/${problemSlug}`);
+  redirect(`/problems/${problemSlug}`);
+}
+
+export async function deleteHintAction(postId: number, problemSlug: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`hint:delete:${user.id}`, 30, 60_000);
+  const hint = await prisma.discussionPost.findFirst({
+    where: {
+      id: postId,
+      type: PostType.HINT,
+      deletedAt: null,
+      thread: { problem: { slug: problemSlug } }
+    },
+    select: { id: true, authorId: true }
+  });
+
+  if (!hint) throw new Error("Hint not found.");
+  if (hint.authorId !== user.id && !canModerate(user.role)) {
+    throw new Error("You cannot delete this hint.");
+  }
+
+  await prisma.discussionPost.update({
+    where: { id: hint.id },
+    data: { deletedAt: new Date() }
+  });
+
+  revalidatePath(`/problems/${problemSlug}`);
+  redirect(`/problems/${problemSlug}`);
 }
 
 export async function votePostAction(postId: number, problemSlug: string) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`vote:${user.id}`, 120, 60_000);
-
-  await prisma.vote.upsert({
-    where: {
-      userId_targetType_targetId: {
-        userId: user.id,
-        targetType: TargetType.POST,
-        targetId: postId
-      }
-    },
-    update: { voteType: VoteType.UP },
-    create: {
-      userId: user.id,
-      targetType: TargetType.POST,
-      targetId: postId,
-      voteType: VoteType.UP
-    }
+  const key = {
+    userId: user.id,
+    targetType: TargetType.POST,
+    targetId: postId
+  };
+  const existing = await prisma.vote.findUnique({
+    where: { userId_targetType_targetId: key }
   });
+
+  let voteAdded = false;
+  if (existing) {
+    await prisma.vote.delete({ where: { userId_targetType_targetId: key } });
+  } else {
+    await prisma.vote.create({ data: { ...key, voteType: VoteType.UP } });
+    voteAdded = true;
+  }
+
+  if (voteAdded) {
+    const post = await prisma.discussionPost.findUnique({
+      where: { id: postId },
+      select: { authorId: true }
+    });
+    if (post) {
+      await checkUsefulPostAchievements(post.authorId);
+    }
+  }
 
   revalidatePath(`/problems/${problemSlug}`);
 }
 
 export async function voteProblemAction(problemId: number) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`vote:${user.id}`, 120, 60_000);
-
-  await prisma.vote.upsert({
-    where: {
-      userId_targetType_targetId: {
-        userId: user.id,
-        targetType: TargetType.PROBLEM,
-        targetId: problemId
-      }
-    },
-    update: { voteType: VoteType.UP },
-    create: {
-      userId: user.id,
-      targetType: TargetType.PROBLEM,
-      targetId: problemId,
-      voteType: VoteType.UP
-    }
+  const key = {
+    userId: user.id,
+    targetType: TargetType.PROBLEM,
+    targetId: problemId
+  };
+  const existing = await prisma.vote.findUnique({
+    where: { userId_targetType_targetId: key }
   });
+
+  if (existing) {
+    await prisma.vote.delete({ where: { userId_targetType_targetId: key } });
+  } else {
+    await prisma.vote.create({ data: { ...key, voteType: VoteType.UP } });
+  }
 
   revalidatePath("/problems");
 }

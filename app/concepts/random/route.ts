@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 function redirectTo(path: string) {
   return new NextResponse(null, {
@@ -9,8 +10,9 @@ function redirectTo(path: string) {
 }
 
 export async function GET() {
+  const language = await getPreferredContentLanguage();
   const concepts = await prisma.concept.findMany({
-    where: { status: { not: "MISSING" } },
+    where: { status: { not: "MISSING" }, language },
     select: { slug: true }
   });
 

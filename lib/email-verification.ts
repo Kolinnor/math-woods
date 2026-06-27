@@ -53,7 +53,7 @@ export async function createAndSendEmailVerification(userId: number) {
       text: [
         `Hi ${displayNameForUser(user)},`,
         "",
-        "Please verify your Math Woods email address before contributing:",
+        "Please verify your Math Woods email address in order to access all functionalities:",
         "",
         link,
         "",
@@ -89,7 +89,7 @@ export async function verifyEmailToken(token: string) {
     prisma.emailVerificationToken.deleteMany({ where: { userId: verification.userId } })
   ]);
 
-  return { ok: true, username: verification.user.username };
+  return { ok: true, userId: verification.userId, username: verification.user.username };
 }
 
 export function mailStatusLabel() {

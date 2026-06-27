@@ -3,14 +3,17 @@ import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
+import { contentLanguageLabel } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
 
-async function searchQuotes(query: string) {
+async function searchQuotes(query: string, language: string) {
   try {
     return await prisma.quote.findMany({
       where: {
+        language,
         OR: [
           { text: { contains: query, mode: "insensitive" } },
           { attributedTo: { contains: query, mode: "insensitive" } },
@@ -34,10 +37,12 @@ export default async function SearchPage({
 }) {
   const query = (await searchParams).q?.trim() ?? "";
   const user = await getCurrentUser();
+  const preferredLanguage = await getPreferredContentLanguage();
   const [concepts, problems, playlists, quotes] = query
     ? await Promise.all([
         prisma.concept.findMany({
           where: {
+            language: preferredLanguage,
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { bodyMarkdown: { contains: query, mode: "insensitive" } },
@@ -51,6 +56,7 @@ export default async function SearchPage({
           where: {
             status: "PUBLISHED",
             listed: true,
+            language: preferredLanguage,
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { bodyMarkdown: { contains: query, mode: "insensitive" } },
@@ -62,6 +68,7 @@ export default async function SearchPage({
         prisma.playlist.findMany({
           where: {
             visibility: "PUBLIC",
+            language: preferredLanguage,
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { descriptionMarkdown: { contains: query, mode: "insensitive" } }
@@ -69,7 +76,7 @@ export default async function SearchPage({
           },
           take: 20
         }),
-        searchQuotes(query)
+        searchQuotes(query, preferredLanguage)
       ])
     : [[], [], [], []];
   const solvedAttempts = user
@@ -92,7 +99,7 @@ export default async function SearchPage({
         </LiveSearchForm>
         {query && (
           <p className="muted mt-3 text-sm" role="status" aria-live="polite">
-            {total} results for "{query}"
+            {total} {contentLanguageLabel(preferredLanguage).toLowerCase()} results for "{query}"
           </p>
         )}
       </div>

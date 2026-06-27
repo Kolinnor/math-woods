@@ -13,6 +13,8 @@ import { extractWikiLinks, replaceWikiLinks } from "../lib/wikilinks.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
+import { parseProblemDomains } from "../lib/problem-domains.ts";
+import { domainLabel, FLAT_DOMAIN_OPTIONS, parseDomainCode } from "../lib/domains.ts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "../lib/markdown-preview.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
@@ -82,6 +84,15 @@ assert.deepEqual(findLatexRanges("Let \\(x^2\\) and \\[y=x+1\\]."), [
 ]);
 assert.equal(parseProblemDifficulty("72"), 72);
 assert.equal(parseProblemDifficulty("101"), null);
+assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
+assert.equal(FLAT_DOMAIN_OPTIONS.some((option) => /^\d{2}\s/.test(option.label)), false);
+assert.equal(parseDomainCode("26"), "26-XX");
+assert.equal(domainLabel("26"), "Real functions");
+assert.equal(domainLabel("26-XX"), "Real functions");
+assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
+  { domain: "ARITHMETIC", mscCode: "11-XX", spoiler: false },
+  { domain: "ANALYSIS", mscCode: "26-XX", spoiler: true }
+]);
 assert.equal(tagsWithConjecture("algebra, conjecture", null), "algebra");
 assert.equal(tagsWithConjecture("algebra", "on"), "algebra, conjecture");
 assert.deepEqual(parseTagInput("easy, facile, linear algebra, vectors").map((tag) => tag.slug), [
@@ -129,6 +140,12 @@ assert.equal(renderedMatrixLatex.includes("mclose"), true);
 assert.equal(renderedMatrixLatex.includes("<svg"), true);
 assert.equal(renderedMatrixLatex.includes("viewBox=") || renderedMatrixLatex.includes("viewbox="), true);
 assert.equal(renderedMatrixLatex.includes("<path"), true);
+
+const renderedSqrtLatex = await renderMarkdown(String.raw`$$\sqrt{\frac{1}{x^2+1}}$$`);
+assert.equal(renderedSqrtLatex.includes("mord sqrt"), true);
+assert.equal(renderedSqrtLatex.includes("<svg"), true);
+assert.equal(renderedSqrtLatex.includes("preserveAspectRatio=") || renderedSqrtLatex.includes("preserveaspectratio="), true);
+assert.equal(renderedSqrtLatex.includes("<path"), true);
 
 const renderedCode = await renderMarkdown("Code `$x$` and `[[not a link]]`, then [[polynomial]].");
 assert.equal(renderedCode.includes("<code>$x$</code>"), true);

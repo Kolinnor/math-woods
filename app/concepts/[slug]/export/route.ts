@@ -20,6 +20,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       type: "concept",
       title: concept.title,
       slug: concept.slug,
+      language: concept.language,
+      translationGroupId: concept.translationGroupId,
       domain: concept.domain.toLowerCase(),
       status: concept.status.toLowerCase(),
       aliases: concept.aliases.map((alias) => alias.alias),

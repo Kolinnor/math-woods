@@ -15,6 +15,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
+    "achievements:backfill": "node scripts/backfill-achievements.mjs",
     "db:seed": "node prisma/seed.mjs",
     "prod:build": "docker compose --env-file .env.production -f docker-compose.infomaniak.yml build",
     "prod:migrate": "docker compose --env-file .env.production -f docker-compose.infomaniak.yml run --rm migrate",

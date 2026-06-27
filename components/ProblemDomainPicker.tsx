@@ -8,18 +8,31 @@ const MAX_PROBLEM_DOMAINS = 3;
 type ProblemDomainPickerProps = {
   domains: DomainOption[];
   initialValues: string[];
+  initialSpoilers?: string[];
 };
 
 function findOption(domains: DomainOption[], value: string) {
-  return domains.flatMap((domain) => [domain, ...(domain.children ?? [])]).find((domain) => domain.value === value);
+  const normalized = value.trim().toUpperCase();
+  return domains
+    .flatMap((domain) => [domain, ...(domain.children ?? [])])
+    .find((domain) => domain.value.toUpperCase() === normalized || domain.aliases?.some((alias) => alias.toUpperCase() === normalized));
 }
 
-export function ProblemDomainPicker({ domains, initialValues }: ProblemDomainPickerProps) {
-  const initial = initialValues.length ? initialValues.slice(0, MAX_PROBLEM_DOMAINS) : [domains[0]?.value];
+export function ProblemDomainPicker({ domains, initialValues, initialSpoilers = [] }: ProblemDomainPickerProps) {
+  const initial = initialValues.length
+    ? initialValues.map((value) => findOption(domains, value)?.value ?? value).slice(0, MAX_PROBLEM_DOMAINS)
+    : [domains[0]?.value];
   const [values, setValues] = useState(initial.filter(Boolean));
+  const [spoilers, setSpoilers] = useState(() => new Set(initialSpoilers.map((value) => findOption(domains, value)?.value ?? value)));
   const [expanded, setExpanded] = useState<string | null>(null);
 
   function updateValue(index: number, value: string) {
+    const previous = values[index];
+    setSpoilers((current) => {
+      const next = new Set(current);
+      if (next.delete(previous)) next.add(value);
+      return next;
+    });
     setValues((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
   }
 
@@ -31,7 +44,25 @@ export function ProblemDomainPicker({ domains, initialValues }: ProblemDomainPic
   }
 
   function removeDomain(index: number) {
+    const removed = values[index];
+    setSpoilers((current) => {
+      const next = new Set(current);
+      next.delete(removed);
+      return next;
+    });
     setValues((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function toggleSpoiler(value: string, checked: boolean) {
+    setSpoilers((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(value);
+      } else {
+        next.delete(value);
+      }
+      return next;
+    });
   }
 
   return (
@@ -54,17 +85,27 @@ export function ProblemDomainPicker({ domains, initialValues }: ProblemDomainPic
               <div className="domain-choice-panel">
                 <div className="domain-choice-current">
                   <span>{selected?.label ?? "Other"}</span>
-                  {index > 0 && (
+                  {values.length > 1 && (
                     <button
                       type="button"
                       className="secondary domain-remove-button"
                       aria-label="Remove this domain"
                       onClick={() => removeDomain(index)}
                     >
-                      -
+                      <span aria-hidden="true" />
                     </button>
                   )}
                 </div>
+                <label className="domain-spoiler-toggle">
+                  <input
+                    name="domainSpoilers"
+                    type="checkbox"
+                    value={value}
+                    checked={spoilers.has(value)}
+                    onChange={(event) => toggleSpoiler(value, event.target.checked)}
+                  />
+                  <span>Hide this domain until solved</span>
+                </label>
                 <div className="domain-choice-grid">
                   {domains.map((domain) => {
                     const isExpanded = expanded === `${index}:${domain.value}`;

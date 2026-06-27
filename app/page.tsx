@@ -1,33 +1,163 @@
 import Link from "next/link";
+import type { QualityStatus } from "@prisma/client";
+import { HomeGuestIntro } from "@/components/HomeGuestIntro";
 import { getCurrentUser } from "@/lib/auth";
 import { dailyTip } from "@/lib/daily-tip";
 import { domainLabel, MATH_DOMAINS } from "@/lib/domains";
 import { prisma } from "@/lib/db";
 import { missingConcepts } from "@/lib/internal-links";
+import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { pluralize } from "@/lib/pluralize";
 import { problemLinkClass } from "@/lib/problem-link";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
-const heroTaglines = [
-  "Every path leads to a problem.",
-  "Explore the woods, one problem at a time.",
-  "A trail of problems, at your own pace",
-  "Where math grows wild",
-  "The Math Woods are full of mysteries"
-];
+type RecommendedProblem = {
+  slug: string;
+  title: string;
+  difficulty: number | null;
+  qualityStatus: QualityStatus;
+  createdAt: Date;
+};
+
+const levelRecommendations: Record<string, { min: number; max: number; slugs: string[] }> = {
+  BEGINNER_PRE_UNIVERSITY: {
+    min: 1,
+    max: 5,
+    slugs: ["solutions-of-x-squared-equals-x", "subsets-of-a-three-element-set", "can-two-consecutive-integers-have-odd-product"]
+  },
+  EARLY_UNDERGRAD: {
+    min: 6,
+    max: 19,
+    slugs: ["two-vectors-spanning-the-plane", "a-dependent-family-in-space", "a-set-that-almost-looks-like-a-subspace"]
+  },
+  UNDERGRAD: {
+    min: 20,
+    max: 39,
+    slugs: []
+  },
+  ADVANCED_UNDERGRAD: {
+    min: 40,
+    max: 64,
+    slugs: ["roots-and-coefficients"]
+  },
+  GRADUATE_CONTEST: {
+    min: 65,
+    max: 84,
+    slugs: []
+  },
+  RESEARCH: {
+    min: 85,
+    max: 100,
+    slugs: []
+  }
+};
+
+function qualityRank(problem: Pick<RecommendedProblem, "qualityStatus">) {
+  if (problem.qualityStatus === "EXCELLENT") return 0;
+  if (problem.qualityStatus === "GOOD") return 1;
+  if (problem.qualityStatus === "UNREVIEWED") return 2;
+  return 3;
+}
+
+function conceptTitleFromSlug(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+async function recommendationsForLevel(level: string, language: string) {
+  const config = levelRecommendations[level];
+  if (!config) return [];
+
+  const curated = config.slugs.length
+    ? await prisma.problem.findMany({
+        where: {
+          slug: { in: config.slugs },
+          status: "PUBLISHED",
+          listed: true,
+          language
+        },
+        select: { slug: true, title: true, difficulty: true, qualityStatus: true, createdAt: true }
+      })
+    : [];
+  const bySlug = new Map(curated.map((problem) => [problem.slug, problem]));
+  const selected: RecommendedProblem[] = config.slugs
+    .map((slug) => bySlug.get(slug))
+    .filter((problem): problem is RecommendedProblem => Boolean(problem));
+  const selectedSlugs = new Set(selected.map((problem) => problem.slug));
+
+  const rangeCandidates = await prisma.problem.findMany({
+    where: {
+      status: "PUBLISHED",
+      listed: true,
+      language,
+      slug: { notIn: [...selectedSlugs] },
+      difficulty: { gte: config.min, lte: config.max },
+      qualityStatus: { in: ["GOOD", "EXCELLENT"] }
+    },
+    select: { slug: true, title: true, difficulty: true, qualityStatus: true, createdAt: true },
+    orderBy: [{ difficulty: "asc" }, { createdAt: "desc" }],
+    take: 8
+  });
+
+  for (const problem of rangeCandidates) {
+    if (selected.length >= 3) break;
+    selected.push(problem);
+    selectedSlugs.add(problem.slug);
+  }
+
+  if (selected.length < 3) {
+    const midpoint = (config.min + config.max) / 2;
+    const fallback = await prisma.problem.findMany({
+      where: {
+        status: "PUBLISHED",
+        listed: true,
+        language,
+        slug: { notIn: [...selectedSlugs] }
+      },
+      select: { slug: true, title: true, difficulty: true, qualityStatus: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 80
+    });
+    const ranked = fallback.sort((left, right) => {
+      const leftDistance = left.difficulty === null ? 1000 : Math.abs(left.difficulty - midpoint);
+      const rightDistance = right.difficulty === null ? 1000 : Math.abs(right.difficulty - midpoint);
+      return qualityRank(left) - qualityRank(right) || leftDistance - rightDistance || right.createdAt.getTime() - left.createdAt.getTime();
+    });
+
+    for (const problem of ranked) {
+      if (selected.length >= 3) break;
+      selected.push(problem);
+    }
+  }
+
+  return selected.slice(0, 3).map(({ slug, title, difficulty }) => ({ slug, title, difficulty }));
+}
+
+async function homeRecommendations(language: string) {
+  const entries = await Promise.all(
+    MATH_LEVEL_OPTIONS.map(async (level) => [level.value, await recommendationsForLevel(level.value, language)] as const)
+  );
+  return Object.fromEntries(entries);
+}
 
 export default async function HomePage() {
   const user = await getCurrentUser();
+  const preferredLanguage = await getPreferredContentLanguage();
   const homeProblemWhere = user
     ? {
         status: "PUBLISHED" as const,
         listed: true,
+        language: preferredLanguage,
         attempts: { none: { userId: user.id, status: "SOLVED" as const } }
       }
-    : { status: "PUBLISHED" as const, listed: true };
-  const [problems, playlists, missing, concepts, currentAttempt, solvedAttempts] = await Promise.all([
+    : { status: "PUBLISHED" as const, listed: true, language: preferredLanguage };
+  const [problems, playlists, missing, concepts, currentAttempt, solvedAttempts, recommendations] = await Promise.all([
     prisma.problem.findMany({
       where: homeProblemWhere,
       orderBy: { createdAt: "desc" },
@@ -39,7 +169,7 @@ export default async function HomePage() {
       }
     }),
     prisma.playlist.findMany({
-      where: { visibility: "PUBLIC" },
+      where: { visibility: "PUBLIC", language: preferredLanguage },
       orderBy: { createdAt: "desc" },
       take: 4,
       include: {
@@ -50,12 +180,13 @@ export default async function HomePage() {
     }),
     missingConcepts(6),
     prisma.concept.findMany({
+      where: { language: preferredLanguage },
       orderBy: { updatedAt: "desc" },
       take: 5
     }),
     user
       ? prisma.problemAttempt.findFirst({
-          where: { userId: user.id, status: { not: "SOLVED" } },
+          where: { userId: user.id, status: { not: "SOLVED" }, problem: { language: preferredLanguage } },
           orderBy: { updatedAt: "desc" },
           include: { problem: true }
         })
@@ -65,7 +196,8 @@ export default async function HomePage() {
           where: { userId: user.id, status: "SOLVED" },
           select: { problemId: true }
         })
-      : []
+      : [],
+    user ? Promise.resolve({}) : homeRecommendations(preferredLanguage)
   ]);
 
   const featured = problems[0];
@@ -73,39 +205,37 @@ export default async function HomePage() {
     ? featured.favorites.filter((favorite) => favorite.userId !== featured.authorId).length
     : 0;
   const tip = dailyTip();
-  const tagline = heroTaglines[Math.floor(Math.random() * heroTaglines.length)] ?? heroTaglines[0];
   const solvedIds = new Set(solvedAttempts.map((attempt) => attempt.problemId));
 
   return (
     <div className="home-page grid gap-10">
-      <section className="home-hero">
-        <div className="home-hero-copy">
-          <h1>{tagline}</h1>
-          <p className="muted home-hero-lede">
-            A quiet place for problem solving and studying mathematics.
-          </p>
-          <div className="home-actions">
-            <Link href="/problems" className="button">
-              Browse problems
-            </Link>
-            <Link href="/concepts" className="button secondary">
-              Browse concepts
-            </Link>
+      {user ? (
+        <section className="home-hero">
+          <div className="home-hero-copy">
+            <div className="home-actions">
+              <Link href="/problems" className="button">
+                Browse problems
+              </Link>
+              <Link href="/concepts" className="button secondary">
+                Browse concepts
+              </Link>
+            </div>
+
+            {currentAttempt && (
+              <Link
+                href={`/problems/${currentAttempt.problem.slug}`}
+                className="continue-card home-continue-card problem-link problem-seen block"
+              >
+                <p className="eyebrow">Continue</p>
+                <h2>{currentAttempt.problem.title}</h2>
+                <p className="muted">{currentAttempt.status.toLowerCase().replace("_", " ")}</p>
+              </Link>
+            )}
           </div>
-
-          {currentAttempt && (
-            <Link
-              href={`/problems/${currentAttempt.problem.slug}`}
-              className="continue-card home-continue-card problem-link problem-seen block"
-            >
-              <p className="eyebrow">Continue</p>
-              <h2>{currentAttempt.problem.title}</h2>
-              <p className="muted">{currentAttempt.status.toLowerCase().replace("_", " ")}</p>
-            </Link>
-          )}
-        </div>
-
-      </section>
+        </section>
+      ) : (
+        <HomeGuestIntro levels={MATH_LEVEL_OPTIONS} recommendations={recommendations} />
+      )}
 
       <section className="daily-tip">
         <p className="daily-tip-label">Tip of the day / level {tip.level}</p>
@@ -226,9 +356,13 @@ export default async function HomePage() {
           </div>
           <div className="grid gap-3">
             {missing.map((item) => (
-              <Link key={item.slug} href={`/concepts/new?title=${item.slug}`} className="flex justify-between gap-3">
-                <span>{item.slug}</span>
-                <span className="muted text-sm">{item.count} links</span>
+              <Link
+                key={item.slug}
+                href={`/concepts/new?title=${encodeURIComponent(conceptTitleFromSlug(item.slug))}`}
+                className="flex justify-between gap-3"
+              >
+                <span>{conceptTitleFromSlug(item.slug)}</span>
+                <span className="muted text-sm">{pluralize(item.count, "link")}</span>
               </Link>
             ))}
             {missing.length === 0 && <p className="muted text-sm">No gaps in the graph yet.</p>}

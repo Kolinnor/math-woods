@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { DAILY_TIPS } from "@/lib/daily-tip";
 import { domainLabel } from "@/lib/domains";
 import { problemLinkClass } from "@/lib/problem-link";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +30,9 @@ const TIP_MATCHERS = [
 
 type TipProblem = Awaited<ReturnType<typeof loadProblems>>[number];
 
-async function loadProblems() {
+async function loadProblems(language: string) {
   return prisma.problem.findMany({
-    where: { status: "PUBLISHED", listed: true },
+    where: { status: "PUBLISHED", listed: true, language },
     orderBy: [{ updatedAt: "desc" }],
     take: 180,
     include: {
@@ -111,9 +112,10 @@ export default async function TipsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const user = await getCurrentUser();
+  const preferredLanguage = await getPreferredContentLanguage();
   const { q = "" } = await searchParams;
   const query = q.trim();
-  const problems = await loadProblems();
+  const problems = await loadProblems(preferredLanguage);
   const solvedAttempts =
     user && problems.length
       ? await prisma.problemAttempt.findMany({

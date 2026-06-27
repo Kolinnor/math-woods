@@ -1,9 +1,12 @@
 import { createPlaylistAction } from "@/lib/actions/playlist-actions";
+import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { requireVerifiedUser } from "@/lib/auth";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export default async function NewPlaylistPage() {
   await requireVerifiedUser();
+  const preferredLanguage = await getPreferredContentLanguage();
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -15,6 +18,7 @@ export default async function NewPlaylistPage() {
           <span className="text-sm font-medium">Title</span>
           <input name="title" required placeholder="Polynomial roots: a progressive path" />
         </label>
+        <LanguageField defaultValue={preferredLanguage} />
         <label className="grid gap-2">
           <span className="text-sm font-medium">Description</span>
           <MarkdownEditor

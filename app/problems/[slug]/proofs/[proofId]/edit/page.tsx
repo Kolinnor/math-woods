@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
-import { updateProofAction } from "@/lib/actions/proof-actions";
+import { deleteProofAction, updateProofAction } from "@/lib/actions/proof-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canModerate } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
+import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,18 @@ export default async function EditProofPage({
           </Link>
         </div>
       </form>
+
+      <section className="danger-zone mt-6">
+        <div>
+          <h2>Delete proof</h2>
+          <p>This removes the proof and its comments from the problem.</p>
+        </div>
+        <form action={deleteProofAction.bind(null, proof.id, proof.problem.slug)}>
+          <ConfirmSubmitButton className="danger" message="Delete this proof? This cannot be undone.">
+            Delete proof
+          </ConfirmSubmitButton>
+        </form>
+      </section>
     </div>
   );
 }

@@ -36,8 +36,8 @@ export default function AboutPage() {
         <p className="about-eyebrow">How this site was made</p>
         <h2>Built with Codex, under human direction.</h2>
         <p>
-          Math Woods was directed and reviewed by its human creator, and coded with help from Codex, an AI coding
-          agent by OpenAI. The published site remains a human responsibility.
+          Math Woods was coded with help from Codex, an AI coding agent by OpenAI, under human direction and review.
+          The published site remains a human responsibility.
         </p>
       </section>
 
@@ -50,16 +50,43 @@ export default function AboutPage() {
         </Faq>
       </section>
 
-      <section className="about-section" id="open-source">
-        <h2>Open source and public knowledge</h2>
-        <Faq question="Is Math Woods open source?">
+      <section className="about-section" id="licensing">
+        <h2>Licensing, reuse, and forks</h2>
+        <Faq question="What license applies to the Math Woods software?">
           <p>
-            Yes. The application code is licensed under{" "}
+            The application code is licensed under{" "}
             <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener noreferrer">
               GNU AGPL-3.0-or-later
             </a>
-            . This license is designed for network software and requires operators of modified public versions to make
-            their corresponding source code available to users.
+            . This means people may study, modify, fork, and host the software, but operators of modified public
+            versions must make the corresponding source code available to their users under the same license.
+          </p>
+        </Faq>
+        <Faq question="What license applies to Math Woods educational content?">
+          <p>
+            Unless otherwise stated, Math Woods educational content, including problems, solutions, explanations, notes,
+            and learning resources, is licensed under{" "}
+            <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener noreferrer">
+              CC BY-NC-SA 4.0
+            </a>
+            . This allows non-commercial educational reuse with attribution, provided adaptations are shared under the
+            same license.
+          </p>
+        </Faq>
+        <Faq question="Can someone make money from Math Woods content?">
+          <p>
+            Not without permission. The CC BY-NC-SA 4.0 content license does not allow commercial reuse of Math Woods
+            educational content. Services mainly intended to generate revenue, advertising income, commercial leads,
+            paid tutoring, course sales, subscriptions, or commercial alternatives to Math Woods need written
+            permission, even if initial access is free.
+          </p>
+        </Faq>
+        <Faq question="Can teachers, students, or creators use Math Woods problems in lessons or videos?">
+          <p>
+            Yes. Math Woods gives additional permission for teachers, students, educational creators, and educational
+            projects to use a small number of Math Woods problems in classes, videos, streams, notes, or learning
+            materials, including on platforms that may be monetized, as long as they credit Math Woods, do not
+            republish a substantial part of the problem bank, and do not present the content as their own database.
           </p>
         </Faq>
         <Faq question="Why use the AGPL for the software?">
@@ -70,7 +97,21 @@ export default function AboutPage() {
         </Faq>
         <Faq question="Can someone fork Math Woods?">
           <p>
-            Yes. Forks are allowed. They must follow the AGPL terms and keep the required notices.
+            Yes. Forks of the software are allowed under the AGPL. Forks must follow the AGPL terms, keep required
+            notices, and make the corresponding source code available when they operate a modified public version.
+          </p>
+        </Faq>
+        <Faq question="Can forks use the Math Woods name or logo?">
+          <p>
+            No. The Math Woods name, logo, domain, and visual identity are protected separately. Unofficial forks or
+            services may not use them in a way that suggests they are official or endorsed.
+          </p>
+        </Faq>
+        <Faq question="Who owns user-submitted content?">
+          <p>
+            Contributors keep responsibility for what they submit. By contributing public content to Math Woods, they
+            confirm that they have the right to publish it and agree that it may be distributed under the Math Woods
+            content license.
           </p>
         </Faq>
         <Faq question="Can users export their work?">
@@ -87,6 +128,13 @@ export default function AboutPage() {
           <p>
             Usually not. Do not copy a book’s wording unless the material is genuinely in the public domain or the
             rights holder has granted suitable permission. Buying or owning a book does not grant republication rights.
+          </p>
+        </Faq>
+        <Faq question="What content should not be copied into Math Woods?">
+          <p>
+            Users must not copy problem statements, solutions, explanations, books, paid problem sets, contest material,
+            or website content unless reuse is clearly permitted. Reports of copied or poorly sourced content should be
+            reviewed, and questionable content may be hidden or removed during review.
           </p>
         </Faq>
         <Faq question="Should problems be reformulated?">
@@ -187,7 +235,7 @@ export default function AboutPage() {
         <Faq question="Was Math Woods itself coded using AI?">
           <p>
             Yes. Math Woods was coded with help from Codex, an AI coding agent by OpenAI, under human direction and
-            review.
+            review. The published site remains a human responsibility.
           </p>
         </Faq>
         <Faq question="Can AI-generated content be published automatically?">

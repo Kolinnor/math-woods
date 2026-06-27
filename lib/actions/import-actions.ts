@@ -1,6 +1,6 @@
 "use server";
 
-import { SourceType } from "@prisma/client";
+import { MathDomain, SourceType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
@@ -15,6 +15,7 @@ import { prisma } from "@/lib/db";
 import { parseAliases, syncConceptAliases } from "@/lib/concept-metadata";
 import { parseMathDomain } from "@/lib/domains";
 import { syncInternalLinks } from "@/lib/internal-links";
+import { parseContentLanguage } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
 import { parseContributorQualityStatus } from "@/lib/quality";
@@ -42,6 +43,7 @@ export async function importMarkdownAction(formData: FormData) {
     "Untitled";
   const safeTitle = boundedText(title, CONTENT_LIMITS.title, "Title");
   const bodyMarkdown = requiredBoundedText(parsed.body, CONTENT_LIMITS.markdown, "Imported body");
+  const language = parseContentLanguage(getStringAttribute(parsed.attributes, "language"));
 
   if (importType === "concept") {
     const slug = await uniqueSlug("concept", safeTitle);
@@ -49,6 +51,7 @@ export async function importMarkdownAction(formData: FormData) {
       const created = await tx.concept.create({
         data: {
           slug,
+          language,
           title: safeTitle,
           bodyMarkdown,
           bodyHtml: await renderMarkdownContent(bodyMarkdown),
@@ -85,7 +88,8 @@ export async function importMarkdownAction(formData: FormData) {
   const spoilerTags = getStringArrayAttribute(parsed.attributes, "spoilerTags");
   const domains = parseProblemDomains(
     getStringArrayAttribute(parsed.attributes, "domains"),
-    getStringAttribute(parsed.attributes, "domain") ?? null
+    getStringAttribute(parsed.attributes, "domain") ?? null,
+    getStringArrayAttribute(parsed.attributes, "spoilerDomains")
   );
   const importedDifficulty = getNumberAttribute(parsed.attributes, "difficulty");
   const difficulty =
@@ -98,11 +102,12 @@ export async function importMarkdownAction(formData: FormData) {
     const created = await tx.problem.create({
       data: {
         slug,
+        language,
         title: safeTitle,
         bodyMarkdown,
         bodyHtml: await renderMarkdownContent(bodyMarkdown),
         difficulty,
-        domain: domains[0].domain,
+        domain: domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER,
         origin:
           boundedText(
             getStringAttribute(parsed.attributes, "origin") ?? getStringAttribute(parsed.attributes, "source"),

@@ -1,10 +1,12 @@
 import { Prisma } from "@prisma/client";
 import Link from "next/link";
+import { LanguageField } from "@/components/LanguageField";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { createQuoteAction } from "@/lib/actions/quote-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 import { canModerate } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -38,11 +40,13 @@ export default async function QuotesPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const user = await getCurrentUser();
+  const preferredLanguage = await getPreferredContentLanguage();
   const canContribute = Boolean(user && (user.emailVerifiedAt || canModerate(user.role)));
   const { q = "" } = await searchParams;
   const query = q.trim();
   const where: Prisma.QuoteWhereInput = query
     ? {
+        language: preferredLanguage,
         OR: [
           { text: { contains: query, mode: "insensitive" } },
           { attributedTo: { contains: query, mode: "insensitive" } },
@@ -50,7 +54,7 @@ export default async function QuotesPage({
           { provenanceDetails: { contains: query, mode: "insensitive" } }
         ]
       }
-    : {};
+    : { language: preferredLanguage };
 
   const { quotes, unavailable } = await findQuotes(where);
 
@@ -124,6 +128,7 @@ export default async function QuotesPage({
               <span className="text-sm font-medium">Quote</span>
               <textarea name="text" required maxLength={1200} placeholder="A sentence or short passage." />
             </label>
+            <LanguageField defaultValue={preferredLanguage} />
             <label className="grid gap-2">
               <span className="text-sm font-medium">Attributed to</span>
               <input name="attributedTo" maxLength={160} placeholder="Grothendieck, Polya, Unknown..." />

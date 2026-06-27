@@ -4,12 +4,18 @@ import Link from "next/link";
 import { Menu, Search } from "lucide-react";
 import { cookies } from "next/headers";
 import "./globals.css";
+import { AchievementToast } from "@/components/AchievementToast";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { getCurrentUser } from "@/lib/auth";
+import { TimeZoneReporter } from "@/components/TimeZoneReporter";
+import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
+import { getCurrentUser } from "@/lib/auth";
+import { CONTENT_LANGUAGE_COOKIE, parseContentLanguage } from "@/lib/languages";
 import { canModerate } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -96,10 +102,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const initialTheme = validTheme(cookieStore.get("math-woods-theme")?.value);
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";
   const initialBackgroundTone = validBackgroundTone(cookieStore.get("math-woods-background-tone")?.value) ?? "sage";
+  const initialLanguage = parseContentLanguage(cookieStore.get(CONTENT_LANGUAGE_COOKIE)?.value);
+  const needsEmailVerification = Boolean(user && !user.emailVerifiedAt && !canModerate(user.role));
 
   return (
     <html
-      lang="en"
+      lang={initialLanguage}
       data-theme={initialTheme}
       data-background={initialBackground}
       data-background-tone={initialBackgroundTone}
@@ -114,9 +122,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <ErrorReporter />
+        <TimeZoneReporter />
         <header className="site-header">
           <nav className="site-nav mx-auto max-w-6xl px-4">
             <Link href="/" className="site-brand" aria-label="Math Woods home">
+              <img src="/icon.svg" alt="" className="site-brand-logo" aria-hidden="true" />
               <span>Math Woods</span>
             </Link>
             <div className="primary-nav">
@@ -128,6 +138,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/competition">Competition</Link>
             </div>
             <div className="nav-tools">
+              <LanguageSelector initialLanguage={initialLanguage} />
               <LiveSearchForm action="/search" className="header-search">
                 <Search size={16} aria-hidden="true" />
                 <input name="q" aria-label="Search Math Woods" placeholder="Search" />
@@ -163,11 +174,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </details>
             </div>
           </nav>
+          {needsEmailVerification && user && (
+            <EmailVerificationBanner userId={user.id} resendAction={resendEmailVerificationAction} />
+          )}
         </header>
+        {user && <AchievementToast userId={user.id} />}
         <main className="site-main mx-auto max-w-6xl px-4 py-8">{children}</main>
         <footer className="site-footer">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm">
-            <p>Math Woods is free, open source, and ad-free.</p>
+          <div className="mx-auto grid max-w-6xl gap-3 px-4 py-6 text-sm md:grid-cols-[1fr_auto] md:items-center">
+            <p>
+              Math Woods code is licensed under AGPL-3.0-or-later. Educational content is licensed under CC BY-NC-SA
+              4.0 unless otherwise stated. The Math Woods name, logo, domain, and visual identity are protected brand
+              assets. Some parts of Math Woods were developed with assistance from AI coding tools, under human
+              direction and review.
+            </p>
             <div className="flex gap-4">
               <Link href="/about">About</Link>
               <Link href="/suggestions">Suggestions</Link>

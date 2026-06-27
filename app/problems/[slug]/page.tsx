@@ -1,7 +1,9 @@
 ﻿import { ProblemVerificationMode } from "@prisma/client";
 import Link from "next/link";
+import { TargetType } from "@prisma/client";
 import { Check, Heart, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
 import { notFound } from "next/navigation";
+import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { HiddenHint } from "@/components/HiddenHint";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
@@ -10,11 +12,14 @@ import { ZenModeToggle } from "@/components/ZenModeToggle";
 import { reportPostAction, reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
   createDiscussionPostAction,
+  deleteHintAction,
+  createVerificationMessageAction,
   markProblemGoodAction,
   markProblemSolvedAction,
   reviewProblemVerificationAction,
   startAttemptAction,
   toggleProblemFavoriteAction,
+  updateHintAction,
   updatePrivateNotesAction,
   votePostAction
 } from "@/lib/actions/problem-actions";
@@ -26,18 +31,28 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
+import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { pluralize } from "@/lib/pluralize";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { qualityLabel } from "@/lib/quality";
 import { canModerate } from "@/lib/roles";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProblemPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProblemPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ verification?: string }>;
+}) {
   const { slug } = await params;
+  const queryParams = searchParams ? await searchParams : {};
   const user = await getCurrentUser();
+  const preferredLanguage = await getPreferredContentLanguage();
   const problem = await prisma.problem.findUnique({
     where: { slug },
     include: {
@@ -80,6 +95,9 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
   const isOwnProblem = user?.id === problem.authorId;
   const canViewArchived = user && (problem.authorId === user.id || canModerate(user.role));
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
+  const hasSpecifiedOrigin =
+    problem.origin.trim().toLowerCase() !== "unknown" ||
+    Boolean(problem.originChapter || problem.originPage || problem.originNote);
 
   const postIds = problem.thread?.posts.map((post) => post.id) ?? [];
   const proofIds = problem.proofs.map((proof) => proof.id);
@@ -101,6 +119,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
       })
     : Promise.resolve([]);
   const [
+    translations,
     links,
     attempt,
     playlists,
@@ -108,10 +127,20 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
     pendingVerificationRequests,
     postVoteGroups,
     proofVoteGroups,
+    userVotes,
     favorite,
     favoriteCount,
     relatedSolvedAttempts
   ] = await Promise.all([
+    prisma.problem.findMany({
+      where: {
+        translationGroupId: problem.translationGroupId,
+        id: { not: problem.id },
+        ...(canViewArchived ? {} : { status: { not: "ARCHIVED" } })
+      },
+      select: { slug: true, title: true, language: true },
+      orderBy: { language: "asc" }
+    }),
     prisma.internalLink.findMany({
       where: { sourceType: "PROBLEM", sourceId: problem.id },
       orderBy: { targetSlug: "asc" }
@@ -129,6 +158,12 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
     user
       ? prisma.problemVerificationRequest.findMany({
           where: { problemId: problem.id, userId: user.id },
+          include: {
+            messages: {
+              include: { author: { select: { username: true, displayName: true } } },
+              orderBy: { createdAt: "asc" }
+            }
+          },
           orderBy: { createdAt: "desc" },
           take: 3
         })
@@ -136,12 +171,30 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
     user && (user.id === problem.authorId || canModerate(user.role))
       ? prisma.problemVerificationRequest.findMany({
           where: { problemId: problem.id, status: "PENDING" },
-          include: { user: { select: { username: true, displayName: true } } },
+          include: {
+            user: { select: { username: true, displayName: true } },
+            messages: {
+              include: { author: { select: { username: true, displayName: true } } },
+              orderBy: { createdAt: "asc" }
+            }
+          },
           orderBy: { createdAt: "asc" }
         })
       : Promise.resolve([]),
     postVoteGroupsPromise,
     proofVoteGroupsPromise,
+    user && (postIds.length || proofIds.length)
+      ? prisma.vote.findMany({
+          where: {
+            userId: user.id,
+            OR: [
+              ...(postIds.length ? [{ targetType: TargetType.POST, targetId: { in: postIds } }] : []),
+              ...(proofIds.length ? [{ targetType: TargetType.PROOF, targetId: { in: proofIds } }] : [])
+            ]
+          },
+          select: { targetType: true, targetId: true }
+        })
+      : Promise.resolve([]),
     user && !isOwnProblem
       ? prisma.problemFavorite.findUnique({
           where: { userId_problemId: { userId: user.id, problemId: problem.id } }
@@ -157,13 +210,14 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
   ]);
   const postVotes = new Map(postVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const proofVotes = new Map(proofVoteGroups.map((item) => [item.targetId, item._count.targetId]));
+  const ownPostVoteIds = new Set(userVotes.filter((vote) => vote.targetType === TargetType.POST).map((vote) => vote.targetId));
+  const ownProofVoteIds = new Set(userVotes.filter((vote) => vote.targetType === TargetType.PROOF).map((vote) => vote.targetId));
   const relatedSolvedIds = new Set(relatedSolvedAttempts.map((attempt) => attempt.problemId));
   const proofs = [...problem.proofs].sort(
     (a, b) => (proofVotes.get(b.id) ?? 0) - (proofVotes.get(a.id) ?? 0) || a.createdAt.getTime() - b.createdAt.getTime()
   );
   const acceptedProofId =
     proofs.length > 0 && (proofVotes.get(proofs[0].id) ?? 0) >= COMMUNITY_ACCEPTED_PROOF_VOTES ? proofs[0].id : null;
-  const discussionVisible = Boolean(attempt);
   const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
   const visibleRelatedGroups = problem.relatedGroups
     .map((group) => ({
@@ -172,12 +226,32 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
     }))
     .filter((group) => group.relations.length > 0);
   const canEditProblem = Boolean(user && (problem.authorId === user.id || canModerate(user.role)));
-  const showSpoilerTags = problem.spoilerTags.length > 0 && (attempt?.status === "SOLVED" || canEditProblem);
-  const problemDomains = problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain];
+  const discussionVisible = Boolean(attempt || canEditProblem);
+  const revealSpoilerDetails = attempt?.status === "SOLVED" || canEditProblem;
+  const showSpoilerTags = problem.spoilerTags.length > 0 && revealSpoilerDetails;
+  const problemDomains = problem.domains.length
+    ? problem.domains.filter((item) => revealSpoilerDetails || !item.spoiler).map((item) => item.mscCode)
+    : [problem.domain];
+  const hiddenDomainCount = revealSpoilerDetails ? 0 : problem.domains.filter((item) => item.spoiler).length;
+  const existingTranslationLanguages = new Set([problem.language, ...translations.map((translation) => translation.language)]);
+  const targetTranslationLanguage =
+    !existingTranslationLanguages.has(preferredLanguage)
+      ? preferredLanguage
+      : SUPPORTED_CONTENT_LANGUAGES.find((language) => !existingTranslationLanguages.has(language.code))?.code;
+  const addTranslationHref = targetTranslationLanguage
+    ? `/problems/new?translateOf=${problem.slug}&language=${targetTranslationLanguage}`
+    : undefined;
+  const verificationMessage =
+    queryParams.verification === "incorrect" ? "This verification answer is not correct yet." : null;
 
   return (
     <div className="problem-page grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
+        {verificationMessage && (
+          <p className="quality-banner quality-needs-work mb-4" role="status">
+            {verificationMessage}
+          </p>
+        )}
         <div className="reading-header mb-5">
           <div className="mb-3 flex justify-end">
             <ZenModeToggle />
@@ -190,7 +264,16 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
             </Link>
             {problem.difficulty ? ` \u00b7 difficulty ${problem.difficulty}/100` : ""}
           </p>
-          <p className="zen-meta muted mt-1 text-sm">{problemDomains.map(domainLabel).join(" / ")}</p>
+          <p className="zen-meta muted mt-1 text-sm">
+            {problemDomains.length ? problemDomains.map(domainLabel).join(" / ") : "Domain hidden until solved"}
+            {hiddenDomainCount > 0 && problemDomains.length > 0 ? " / spoiler domain hidden until solved" : ""}
+          </p>
+          <ContentTranslations
+            currentLanguage={problem.language}
+            hrefPrefix="/problems"
+            translations={translations}
+            createHref={addTranslationHref}
+          />
           {!problem.listed && (
             <p className="zen-meta muted mt-1 text-sm">
               Playlist-specific: this problem is not listed in the public problem index.
@@ -250,19 +333,21 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
         <section className="problem-statement reading-surface">
           <MarkdownBlock html={problem.bodyHtml} />
         </section>
-        <div className="problem-origin-note zen-meta">
-          <span>Origin: {problem.origin}</span>
-          {(problem.originChapter || problem.originPage || problem.originNote) && (
-            <details>
-              <summary>details</summary>
-              <div className="grid gap-1 pt-2">
-                {problem.originChapter && <p>Chapter or section: {problem.originChapter}</p>}
-                {problem.originPage && <p>Page or problem number: {problem.originPage}</p>}
-                {problem.originNote && <p className="whitespace-pre-wrap">{problem.originNote}</p>}
-              </div>
-            </details>
-          )}
-        </div>
+        {hasSpecifiedOrigin && (
+          <div className="problem-origin-note zen-meta">
+            {problem.origin.trim().toLowerCase() !== "unknown" && <span>Origin: {problem.origin}</span>}
+            {(problem.originChapter || problem.originPage || problem.originNote) && (
+              <details>
+                <summary>details</summary>
+                <div className="grid gap-1 pt-2">
+                  {problem.originChapter && <p>Chapter or section: {problem.originChapter}</p>}
+                  {problem.originPage && <p>Page or problem number: {problem.originPage}</p>}
+                  {problem.originNote && <p className="whitespace-pre-wrap">{problem.originNote}</p>}
+                </div>
+              </details>
+            )}
+          </div>
+        )}
 
         <section className="zen-hide proof-section mt-8">
           <div className="section-heading">
@@ -275,64 +360,78 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
           {isConjecture && proofs.length === 0 && (
             <p className="quality-banner quality-stub">This problem is marked as a conjecture. No proof is known here yet.</p>
           )}
-          <div className="grid gap-4">
-            {proofs.map((proof) => {
-              const votes = proofVotes.get(proof.id) ?? 0;
-              const accepted = proof.id === acceptedProofId;
-              const canEditProof = Boolean(user && (proof.authorId === user.id || canModerate(user.role)));
-              return (
-                <article key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
-                  <header className="proof-header">
-                    <div>
-                      {accepted && <span className="accepted-label">Community accepted</span>}
-                      <p className="meta">
-                        Proof by <Link href={`/profile/${proof.author.username}`}>{displayNameForUser(proof.author)}</Link>
-                      </p>
-                    </div>
-                    <div className="proof-actions">
-                      {canEditProof && (
-                        <Link href={`/problems/${problem.slug}/proofs/${proof.id}/edit` as never} className="button secondary">
-                          <Pencil size={16} />
-                          Edit proof
-                        </Link>
-                      )}
-                      {user ? (
-                        <form action={voteProofAction.bind(null, proof.id, problem.slug)}>
-                          <button type="submit" className="secondary">
-                            <ThumbsUp size={16} />
-                            {votes}
-                          </button>
-                        </form>
-                      ) : (
-                        <span className="meta">{votes} useful votes</span>
-                      )}
-                    </div>
-                  </header>
-                  <MarkdownBlock html={proof.bodyHtml} />
-                  <details className="proof-discussion">
-                    <summary>
-                      <MessageSquare size={15} />
-                      Discuss proof {"\u00b7"} {proof.comments.length}
-                    </summary>
-                    <div className="grid gap-3 pt-3">
-                      {proof.comments.map((comment) => (
-                        <div key={comment.id} className="proof-comment">
-                          <p className="meta">{displayNameForUser(comment.author)}</p>
-                          <MarkdownBlock html={comment.bodyHtml} />
+          {proofs.length > 0 && (
+            <details className="proof-reveal-gate">
+              <summary>
+                <span>Reveal proofs</span>
+                <small>Are you sure? This will show solutions.</small>
+              </summary>
+              <div className="grid gap-4 pt-4">
+                {proofs.map((proof) => {
+                  const votes = proofVotes.get(proof.id) ?? 0;
+                  const userVotedProof = ownProofVoteIds.has(proof.id);
+                  const accepted = proof.id === acceptedProofId;
+                  const canEditProof = Boolean(user && (proof.authorId === user.id || canModerate(user.role)));
+                  return (
+                    <article key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
+                      <header className="proof-header">
+                        <div>
+                          {accepted && <span className="accepted-label">Community accepted</span>}
+                          <p className="meta">
+                            Proof by <Link href={`/profile/${proof.author.username}`}>{displayNameForUser(proof.author)}</Link>
+                          </p>
                         </div>
-                      ))}
-                      {user && (
-                        <form action={createProofCommentAction.bind(null, proof.id, problem.slug)} className="grid gap-2">
-                          <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
-                          <button type="submit" className="secondary">Add comment</button>
-                        </form>
-                      )}
-                    </div>
-                  </details>
-                </article>
-              );
-            })}
-          </div>
+                        <div className="proof-actions">
+                          {canEditProof && (
+                            <Link href={`/problems/${problem.slug}/proofs/${proof.id}/edit` as never} className="button secondary">
+                              <Pencil size={16} />
+                              Edit proof
+                            </Link>
+                          )}
+                          {user ? (
+                            <form action={voteProofAction.bind(null, proof.id, problem.slug)}>
+                              <button
+                                type="submit"
+                                className={userVotedProof ? "secondary vote-button-active" : "secondary"}
+                                aria-pressed={userVotedProof}
+                                title={userVotedProof ? "Remove useful vote" : "Mark as useful"}
+                              >
+                                <ThumbsUp size={16} />
+                                {votes}
+                              </button>
+                            </form>
+                          ) : (
+                            <span className="meta">{votes} useful votes</span>
+                          )}
+                        </div>
+                      </header>
+                      <MarkdownBlock html={proof.bodyHtml} />
+                      <details className="proof-discussion">
+                        <summary>
+                          <MessageSquare size={15} />
+                          Discuss proof {"\u00b7"} {proof.comments.length}
+                        </summary>
+                        <div className="grid gap-3 pt-3">
+                          {proof.comments.map((comment) => (
+                            <div key={comment.id} className="proof-comment">
+                              <p className="meta">{displayNameForUser(comment.author)}</p>
+                              <MarkdownBlock html={comment.bodyHtml} />
+                            </div>
+                          ))}
+                          {user && (
+                            <form action={createProofCommentAction.bind(null, proof.id, problem.slug)} className="grid gap-2">
+                              <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
+                              <button type="submit" className="secondary">Add comment</button>
+                            </form>
+                          )}
+                        </div>
+                      </details>
+                    </article>
+                  );
+                })}
+              </div>
+            </details>
+          )}
           {user && (
             <details className="add-proof">
               <summary>{proofs.length === 0 ? "Be the first to add your proof !" : "Add another proof"}</summary>
@@ -381,7 +480,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
               )}
               {canEditProblem && (
                 <div className="related-problem-actions">
-                  <Link href={`/problems/new?parent=${problem.slug}&listed=0`} className="button">
+                  <Link href={`/problems/new?parent=${problem.slug}&listed=0&language=${problem.language}`} className="button">
                     Create problem specific to this one
                   </Link>
                   <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
@@ -407,42 +506,74 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
             </p>
           )}
 
-          {user && !attempt && <p className="muted">The discussion stays hidden until you start the problem.</p>}
+          {user && !attempt && !canEditProblem && <p className="muted">The discussion stays hidden until you start the problem.</p>}
 
-          {discussionVisible && problem.thread && (
+          {discussionVisible && (
             <div className="grid gap-4">
-              {problem.thread.posts.map((post) => (
-                <div key={post.id} className="border-t border-line pt-4">
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                    <div className="muted text-sm">
-                      <span className="rounded border border-line px-2 py-0.5 text-xs">
-                        {post.type.toLowerCase()}
-                      </span>{" "}
-                      by{" "}
-                      <Link href={`/profile/${post.author.username}`} className="underline">
-                        {displayNameForUser(post.author)}
-                      </Link>
+              {(problem.thread?.posts ?? []).map((post) => {
+                const canManageHint = Boolean(user && post.type === "HINT" && (post.authorId === user.id || canModerate(user.role)));
+
+                return (
+                  <div key={post.id} className="border-t border-line pt-4">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                      <div className="muted text-sm">
+                        <span className="rounded border border-line px-2 py-0.5 text-xs">
+                          {post.type.toLowerCase()}
+                        </span>{" "}
+                        by{" "}
+                        <Link href={`/profile/${post.author.username}`} className="underline">
+                          {displayNameForUser(post.author)}
+                        </Link>
+                      </div>
+                      <form action={votePostAction.bind(null, post.id, problem.slug)}>
+                        <button
+                          type="submit"
+                          className={ownPostVoteIds.has(post.id) ? "secondary vote-button-active" : "secondary"}
+                          aria-pressed={ownPostVoteIds.has(post.id)}
+                          title={ownPostVoteIds.has(post.id) ? "Remove useful vote" : "Mark as useful"}
+                        >
+                          Useful {"\u00b7"} {postVotes.get(post.id) ?? 0}
+                        </button>
+                      </form>
                     </div>
-                    <form action={votePostAction.bind(null, post.id, problem.slug)}>
-                      <button type="submit" className="secondary">
-                        Useful {"\u00b7"} {postVotes.get(post.id) ?? 0}
-                      </button>
-                    </form>
+                    {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
+                    {canManageHint && (
+                      <div className="mt-3 grid gap-3 text-sm">
+                        <details>
+                          <summary className="cursor-pointer font-medium">Edit hint</summary>
+                          <form action={updateHintAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
+                            <LazyMarkdownEditor
+                              name="bodyMarkdown"
+                              initialValue={post.bodyMarkdown}
+                              minHeight="7rem"
+                              lineNumbers={false}
+                            />
+                            <button type="submit" className="secondary">
+                              Save hint
+                            </button>
+                          </form>
+                        </details>
+                        <form action={deleteHintAction.bind(null, post.id, problem.slug)}>
+                          <button type="submit" className="secondary">
+                            Delete hint
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                    <details className="mt-3 text-sm">
+                      <summary className="cursor-pointer font-medium">Report post</summary>
+                      <form action={reportPostAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
+                        <textarea name="reason" placeholder="Off-topic, spoiler, incorrect solution..." required />
+                        <button type="submit" className="secondary">
+                          Submit report
+                        </button>
+                      </form>
+                    </details>
                   </div>
-                  {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
-                  <details className="mt-3 text-sm">
-                    <summary className="cursor-pointer font-medium">Report post</summary>
-                    <form action={reportPostAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
-                      <textarea name="reason" placeholder="Off-topic, spoiler, incorrect solution..." required />
-                      <button type="submit" className="secondary">
-                        Submit report
-                      </button>
-                    </form>
-                  </details>
-                </div>
-              ))}
-              {problem.thread.posts.length === 0 && <p className="muted">No messages yet.</p>}
-              <form action={createDiscussionPostAction.bind(null, problem.thread.id, problem.id)} className="grid gap-3">
+                );
+              })}
+              {(problem.thread?.posts.length ?? 0) === 0 && <p className="muted">No messages yet.</p>}
+              <form action={createDiscussionPostAction.bind(null, problem.id)} className="grid gap-3">
                 <select name="type" defaultValue="COMMENT">
                   <option value="COMMENT">Comment</option>
                   <option value="HINT">Hint</option>
@@ -519,6 +650,8 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
               <button
                 type="submit"
                 className={favorite ? "favorite-state-button w-full" : "secondary favorite-action-button w-full"}
+                title={favorite ? "Remove from favorites" : "Add this problem to favorites"}
+                aria-pressed={Boolean(favorite)}
               >
                 <Heart size={17} fill={favorite ? "currentColor" : "none"} />
                 {favorite ? "Favorited" : "Add this problem to favorites"} {"\u00b7"} {pluralize(favoriteCount, "favorite")}
@@ -528,9 +661,34 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
           {ownVerificationRequests.length > 0 && attempt?.status !== "SOLVED" && (
             <div className="verification-history">
               {ownVerificationRequests.map((request) => (
-                <p key={request.id}>
-                  Review: <strong>{request.status.toLowerCase()}</strong>
-                </p>
+                <details key={request.id} className="verification-thread">
+                  <summary>
+                    <span>Review: <strong>{request.status.toLowerCase()}</strong></span>
+                    <span>{request.messages.length ? `${request.messages.length} messages` : "Open discussion"}</span>
+                  </summary>
+                  <div className="verification-thread-body">
+                    <div className="verification-submission">
+                      <strong>Your submitted answer</strong>
+                      <p>{request.answer}</p>
+                    </div>
+                    {request.messages.length > 0 && (
+                      <div className="verification-messages">
+                        {request.messages.map((message) => (
+                          <div key={message.id} className="verification-message">
+                            <p className="meta">by {displayNameForUser(message.author)}</p>
+                            <MarkdownBlock html={message.bodyHtml} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {request.status === "PENDING" && (
+                      <form action={createVerificationMessageAction.bind(null, request.id, problem.slug)} className="grid gap-2">
+                        <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
+                        <button type="submit" className="secondary">Reply privately</button>
+                      </form>
+                    )}
+                  </div>
+                </details>
               ))}
             </div>
           )}
@@ -559,13 +717,38 @@ export default async function ProblemPage({ params }: { params: Promise<{ slug: 
               {pendingVerificationRequests.map((request) => (
                 <div key={request.id} className="verification-review-card">
                   <p className="meta">{displayNameForUser(request.user)}</p>
-                  <p>{request.answer}</p>
+                  <div className="verification-submission">
+                    <strong>Submitted answer</strong>
+                    <p>{request.answer}</p>
+                  </div>
+                  <details className="verification-thread">
+                    <summary>
+                      <span>Open discussion</span>
+                      <span>{request.messages.length ? `${request.messages.length} messages` : "No messages yet"}</span>
+                    </summary>
+                    <div className="verification-thread-body">
+                      {request.messages.length > 0 && (
+                        <div className="verification-messages">
+                          {request.messages.map((message) => (
+                            <div key={message.id} className="verification-message">
+                              <p className="meta">by {displayNameForUser(message.author)}</p>
+                              <MarkdownBlock html={message.bodyHtml} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <form action={createVerificationMessageAction.bind(null, request.id, problem.slug)} className="grid gap-2">
+                        <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
+                        <button type="submit" className="secondary">Reply privately</button>
+                      </form>
+                    </div>
+                  </details>
                   <div className="flex flex-wrap gap-2">
                     <form action={reviewProblemVerificationAction.bind(null, request.id, "APPROVED")}>
-                      <button type="submit" className="secondary">Accept</button>
+                      <button type="submit" className="secondary">Approve answer</button>
                     </form>
                     <form action={reviewProblemVerificationAction.bind(null, request.id, "REJECTED")}>
-                      <button type="submit" className="secondary">Reject</button>
+                      <button type="submit" className="secondary">Close as not accepted</button>
                     </form>
                   </div>
                 </div>

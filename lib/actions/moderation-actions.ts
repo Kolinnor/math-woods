@@ -2,13 +2,13 @@
 
 import { ConceptStatus, ProblemStatus, QualityStatus, ReportStatus, TargetType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { requireModerator, requireUser } from "@/lib/auth";
+import { requireModerator, requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { assertRateLimit } from "@/lib/rate-limit";
 
 export async function reportProblemAction(problemId: number, formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const reason = requiredBoundedText(formData.get("reason"), CONTENT_LIMITS.longNote, "Report reason");
   await assertRateLimit(`report:${user.id}`, 10, 60_000);
 
@@ -26,7 +26,7 @@ export async function reportProblemAction(problemId: number, formData: FormData)
 }
 
 export async function reportConceptAction(conceptId: number, formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const reason = requiredBoundedText(formData.get("reason"), CONTENT_LIMITS.longNote, "Report reason");
   await assertRateLimit(`report:${user.id}`, 10, 60_000);
 
@@ -44,7 +44,7 @@ export async function reportConceptAction(conceptId: number, formData: FormData)
 }
 
 export async function reportPostAction(postId: number, problemSlug: string, formData: FormData) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const reason = requiredBoundedText(formData.get("reason"), CONTENT_LIMITS.longNote, "Report reason");
   await assertRateLimit(`report:${user.id}`, 10, 60_000);
 

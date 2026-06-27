@@ -7,10 +7,19 @@ import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/Proble
 import { ProblemStatusLegend } from "@/components/ProblemStatusLegend";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { domainLabel, FLAT_DOMAIN_OPTIONS, MATH_DOMAINS, parseDomainCode } from "@/lib/domains";
+import {
+  domainCodeAliases,
+  domainDescription,
+  domainLabel,
+  FLAT_DOMAIN_OPTIONS,
+  MATH_DOMAINS,
+  parseDomainCode
+} from "@/lib/domains";
+import { contentLanguageLabel } from "@/lib/languages";
 import { pluralize } from "@/lib/pluralize";
 import { problemLinkClass } from "@/lib/problem-link";
 import { qualityLabel } from "@/lib/quality";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -24,6 +33,7 @@ type DifficultyRange = {
   min?: number;
   max?: number;
 };
+type ProgressFilter = "unsolved" | "solved" | "all";
 
 const DIFFICULTY_RANGES: DifficultyRange[] = [
   { value: "", label: "Any difficulty" },
@@ -34,6 +44,10 @@ const DIFFICULTY_RANGES: DifficultyRange[] = [
   { value: "65-84", label: "Expert / Research-ready (65-84)", min: 65, max: 84 },
   { value: "85-100", label: "Professional mathematician (85-100)", min: 85, max: 100 }
 ];
+
+function parseProgressFilter(value: string | undefined): ProgressFilter {
+  return value === "solved" || value === "all" ? value : "unsolved";
+}
 
 function parseDifficultyBound(value: string | undefined) {
   const parsed = Number(value);
@@ -95,13 +109,27 @@ function parseDomainFilter(value: string) {
   return parseDomainCode(value);
 }
 
-function domainWhere(domainCode: string): Prisma.ProblemWhereInput {
+function domainWhere(domainCode: string, includeSpoilerDomains = false): Prisma.ProblemWhereInput {
   if (Object.values(MathDomain).includes(domainCode as MathDomain)) {
     const domain = domainCode as MathDomain;
-    return { OR: [{ domain }, { domains: { some: { domain } } }] };
+    if (includeSpoilerDomains) return { OR: [{ domain }, { domains: { some: { domain } } }] };
+
+    return {
+      OR: [
+        { domains: { some: { domain, spoiler: false } } },
+        { AND: [{ domains: { none: {} } }, { domain }] }
+      ]
+    };
   }
 
-  return { domains: { some: { mscCode: domainCode } } };
+  return {
+    domains: {
+      some: {
+        mscCode: { in: domainCodeAliases(domainCode) },
+        ...(includeSpoilerDomains ? {} : { spoiler: false })
+      }
+    }
+  };
 }
 
 function parseQualityFilter(value: string) {
@@ -147,7 +175,7 @@ function advancedFilterWhere(filter: ProblemFilterRow, includeSpoilerTags: boole
 
   if (filter.field === "domain") {
     const domainFilter = parseDomainFilter(value);
-    return domainFilter ? domainWhere(domainFilter) : null;
+    return domainFilter ? domainWhere(domainFilter, includeSpoilerTags) : null;
   }
 
   if (filter.field === "status") {
@@ -178,6 +206,7 @@ export default async function ProblemsPage({
     difficultyMax?: string;
     domain?: string;
     quality?: string;
+    progress?: string;
     sort?: string;
     page?: string;
     filterLogic?: string;
@@ -197,6 +226,7 @@ export default async function ProblemsPage({
     difficultyMax = "",
     domain = "",
     quality = "",
+    progress = "",
     sort = "newest",
     page = "1",
     filterLogic = "AND",
@@ -205,6 +235,7 @@ export default async function ProblemsPage({
     filterValue,
     includeSpoilerTags = ""
   } = await searchParams;
+  const preferredLanguage = await getPreferredContentLanguage();
   const showSpoilerTags = includeSpoilerTags === "1" || includeSpoilerTags === "on";
   const query = q.trim();
   const queryTagSlug = ensureSlug(query, "");
@@ -213,6 +244,11 @@ export default async function ProblemsPage({
   const difficultyRangeOption = parseDifficultyRange(difficultyRange);
   const manualDifficultyMin = parseDifficultyBound(difficultyMin);
   const manualDifficultyMax = parseDifficultyBound(difficultyMax);
+  const hasCustomDifficultyBounds =
+    manualDifficultyMin !== undefined ||
+    manualDifficultyMax !== undefined ||
+    (legacyDifficultyValue !== undefined && !difficultyRangeOption.value);
+  const difficultyRangeSelectValue = hasCustomDifficultyBounds ? "custom" : difficultyRangeOption.value;
   const rawDifficultyMin = manualDifficultyMin ?? difficultyRangeOption.min ?? legacyDifficultyValue;
   const rawDifficultyMax = manualDifficultyMax ?? difficultyRangeOption.max ?? legacyDifficultyValue;
   const difficultyMinValue =
@@ -232,8 +268,17 @@ export default async function ProblemsPage({
   const qualityValue = Object.values(QualityStatus).includes(quality as QualityStatus)
     ? (quality as QualityStatus)
     : undefined;
+  const progressValue = parseProgressFilter(progress);
+  const progressFilterWhere: Prisma.ProblemWhereInput | null =
+    user && progressValue === "unsolved"
+      ? { attempts: { none: { userId: user.id, status: "SOLVED" } } }
+      : user && progressValue === "solved"
+        ? { attempts: { some: { userId: user.id, status: "SOLVED" } } }
+        : null;
   const normalizedSort = sort === "attempted" ? "solved" : sort;
-  const sortValue = ["newest", "solved", "favorited", "difficulty"].includes(normalizedSort) ? normalizedSort : "newest";
+  const sortValue = ["newest", "solved", "favorited", "difficulty", "easiest"].includes(normalizedSort)
+    ? normalizedSort
+    : "newest";
   const advancedLogic = filterLogic === "OR" ? "OR" : "AND";
   const advancedFilters = parseAdvancedFilters(filterField, filterOp, filterValue);
   const advancedClauses = advancedFilters
@@ -247,7 +292,9 @@ export default async function ProblemsPage({
         ? { favorites: { _count: "desc" } }
         : sortValue === "difficulty"
           ? { difficulty: "desc" }
-          : { createdAt: "desc" };
+          : sortValue === "easiest"
+            ? { difficulty: "asc" }
+            : { createdAt: "desc" };
   const queryClauses: Prisma.ProblemWhereInput[] = [];
   if (query) {
     queryClauses.push(
@@ -266,23 +313,29 @@ export default async function ProblemsPage({
       }
     }
   }
-  const whereClauses: Prisma.ProblemWhereInput[] = [
+  const baseWhereClauses: Prisma.ProblemWhereInput[] = [
     { status: "PUBLISHED" },
     { listed: true },
     ...(queryClauses.length ? [{ OR: queryClauses } satisfies Prisma.ProblemWhereInput] : []),
     ...(tagSlug ? [tagWhere(tagSlug, showSpoilerTags)].filter((item): item is Prisma.ProblemWhereInput => Boolean(item)) : []),
     ...(difficultyWhere ? [difficultyWhere] : []),
-    ...(domainValue ? [domainWhere(domainValue)] : []),
+    ...(domainValue ? [domainWhere(domainValue, showSpoilerTags)] : []),
     ...(qualityValue ? [{ qualityStatus: qualityValue }] : []),
+    ...(progressFilterWhere ? [progressFilterWhere] : []),
     ...(advancedClauses.length
       ? [{ [advancedLogic]: advancedClauses } satisfies Prisma.ProblemWhereInput]
       : [])
+  ];
+  const whereClauses: Prisma.ProblemWhereInput[] = [
+    ...baseWhereClauses,
+    { language: preferredLanguage }
   ];
   const where: Prisma.ProblemWhereInput = { AND: whereClauses };
   const progressWhere: Prisma.ProblemWhereInput = {
     status: "PUBLISHED",
     listed: true,
-    ...(domainValue ? domainWhere(domainValue) : {})
+    language: preferredLanguage,
+    ...(domainValue ? domainWhere(domainValue, showSpoilerTags) : {})
   };
 
   const [totalProblems, tags, progressTotal, progressSolved] = await Promise.all([
@@ -305,6 +358,17 @@ export default async function ProblemsPage({
         })
       : Promise.resolve(0)
   ]);
+  const otherLanguageProblems =
+    totalProblems === 0
+      ? await prisma.problem.count({
+          where: {
+            AND: [
+              ...baseWhereClauses,
+              { language: { not: preferredLanguage } }
+            ]
+          }
+        })
+      : 0;
   const totalPages = Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
   const currentPage = Math.min(requestedPage, totalPages);
   const problems = await prisma.problem.findMany({
@@ -317,8 +381,9 @@ export default async function ProblemsPage({
       domains: { orderBy: { position: "asc" } },
       tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
+      attempts: { where: { status: "SOLVED" }, select: { userId: true } },
       favorites: { select: { userId: true } },
-      _count: { select: { attempts: { where: { status: "SOLVED" } }, favorites: true } }
+      _count: { select: { favorites: true } }
     }
   });
   const displayedProblemIds = problems.map((problem) => problem.id);
@@ -350,6 +415,7 @@ export default async function ProblemsPage({
     difficultyMax: manualDifficultyMax ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : undefined),
     domain: domainValue,
     quality: qualityValue,
+    progress: user && progressValue !== "unsolved" ? progressValue : undefined,
     sort: sortValue === "newest" ? undefined : sortValue,
     filterLogic: advancedFilters.length ? advancedLogic : undefined,
     filterField: advancedFilters.map((filter) => filter.field),
@@ -361,13 +427,14 @@ export default async function ProblemsPage({
   const resultEnd = Math.min(currentPage * PROBLEMS_PER_PAGE, totalProblems);
   const progressPercent = progressTotal ? Math.round((progressSolved / progressTotal) * 100) : 0;
   const progressScope = domainValue ? domainLabel(domainValue) : "all domains";
+  const selectedDomainDescription = domainValue ? domainDescription(domainValue) : null;
 
   return (
     <div className="directory-page">
       <div className="page-header">
         <div>
           <h1 className="text-2xl font-bold">Problems</h1>
-          <p className="muted mt-1">Browse, attempt, annotate, then reveal the discussion when you are ready.</p>
+          {selectedDomainDescription && <p className="muted mt-1">{selectedDomainDescription}</p>}
           {user ? (
             <p className="progress-summary">
               You solved {progressSolved} of {progressTotal} problems in {progressScope} ({progressPercent}%).
@@ -398,7 +465,8 @@ export default async function ProblemsPage({
         <div className="problem-search-filters">
           {domainValue && <input type="hidden" name="domain" value={domainValue} />}
           <div className="difficulty-filter">
-            <select name="difficultyRange" defaultValue={difficultyRangeOption.value}>
+            <select name="difficultyRange" defaultValue={difficultyRangeSelectValue}>
+              {hasCustomDifficultyBounds && <option value="custom">Custom difficulty</option>}
               {DIFFICULTY_RANGES.map((range) => (
                 <option key={range.value || "any"} value={range.value}>
                   {range.label}
@@ -433,15 +501,23 @@ export default async function ProblemsPage({
             <option value="GOOD">Good</option>
             <option value="EXCELLENT">Excellent</option>
           </select>
+          {user && (
+            <select name="progress" defaultValue={progressValue} aria-label="Solved status">
+              <option value="unsolved">Unsolved</option>
+              <option value="solved">Solved</option>
+              <option value="all">All problems</option>
+            </select>
+          )}
           <select name="sort" defaultValue={sortValue}>
             <option value="newest">Newest</option>
             <option value="solved">Most solved</option>
             <option value="favorited">Most loved</option>
             <option value="difficulty">Hardest first</option>
+            <option value="easiest">Easiest first</option>
           </select>
           <label className="checkbox-inline">
             <input name="includeSpoilerTags" type="checkbox" value="1" defaultChecked={showSpoilerTags} />
-            <span>Include spoiler tags</span>
+            <span>Include spoilers</span>
           </label>
         </div>
         <ProblemFilterBuilder
@@ -458,14 +534,22 @@ export default async function ProblemsPage({
       <p className="result-summary" role="status" aria-live="polite">
         {totalProblems
           ? `Showing ${resultStart}-${resultEnd} of ${totalProblems} problems`
-          : "No problems match these filters."}
+          : `No ${contentLanguageLabel(preferredLanguage).toLowerCase()} problems match these filters.`}
       </p>
 
       <div className="list-surface">
         {problems.map((problem) => {
           const isOwnProblem = user?.id === problem.authorId;
           const isUserFavorite = !isOwnProblem && favoriteIds.has(problem.id);
+          const externalSolveCount = problem.attempts.filter((attempt) => attempt.userId !== problem.authorId).length;
           const externalFavoriteCount = problem.favorites.filter((favorite) => favorite.userId !== problem.authorId).length;
+          const revealSpoilerDomains = showSpoilerTags || solvedIds.has(problem.id);
+          const visibleDomainCodes = problem.domains.length
+            ? problem.domains
+                .filter((item) => revealSpoilerDomains || !item.spoiler)
+                .map((item) => item.mscCode)
+            : [problem.domain];
+          const hiddenDomainCount = revealSpoilerDomains ? 0 : problem.domains.filter((item) => item.spoiler).length;
 
           return (
             <Link
@@ -481,12 +565,12 @@ export default async function ProblemsPage({
                 <div>
                   <h2 className="font-semibold">{problem.title}</h2>
                   <p className="meta">
-                    by {displayNameForUser(problem.author)} / {pluralize(problem._count.attempts, "solved")}
+                    by {displayNameForUser(problem.author)} / {externalSolveCount} solved
                   </p>
                   <p className="meta">
-                    {(problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain])
-                      .map(domainLabel)
-                      .join(" / ")} / {qualityLabel(problem.qualityStatus)}
+                    {visibleDomainCodes.length ? visibleDomainCodes.map(domainLabel).join(" / ") : "Domain hidden"}
+                    {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? " / spoiler domain hidden" : ""} /{" "}
+                    {qualityLabel(problem.qualityStatus)}
                   </p>
                   {problem.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -524,7 +608,17 @@ export default async function ProblemsPage({
             </Link>
           );
         })}
-        {problems.length === 0 && <p className="empty-state">No problems match these filters.</p>}
+        {problems.length === 0 && (
+          <p className="empty-state">
+            No problems match these filters.
+            {otherLanguageProblems > 0 && (
+              <>
+                <br />
+                {pluralize(otherLanguageProblems, "problem")} found in other languages.
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       {totalPages > 1 && (

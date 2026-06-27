@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BackgroundStylePicker } from "@/components/BackgroundStylePicker";
 import {
   changePasswordAction,
+  deleteAccountAction,
   resendEmailVerificationAction,
   revokeOtherSessionsAction,
   updateUserRoleAction
@@ -16,6 +17,7 @@ import { mergeLatexPreferences, type LatexPreferenceValues } from "@/lib/latex-p
 import { ASSIGNABLE_ROLES, isOwner, roleLabel } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
 import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
+import { DeleteAccountDialog } from "./DeleteAccountDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +50,19 @@ const notificationOptions = [
     description: "When another user posts a comment, hint, solution, generalization, or correction."
   },
   {
+    type: NotificationType.ACHIEVEMENT_UNLOCKED,
+    title: "Achievement unlocked",
+    description: "When you unlock a Math Woods achievement."
+  },
+  {
     type: NotificationType.VERIFICATION_REQUESTED,
     title: "Someone requested solution verification",
     description: "When another user asks you to validate their answer to one of your problems."
+  },
+  {
+    type: NotificationType.VERIFICATION_MESSAGE,
+    title: "Someone replied in a private verification discussion",
+    description: "When the problem author or solver replies inside a solution verification thread."
   },
   {
     type: NotificationType.VERIFICATION_APPROVED,
@@ -234,7 +246,7 @@ const latexTextOptions: Array<{
 export default async function SettingsPage({
   searchParams
 }: {
-  searchParams?: Promise<{ tab?: string; updated?: string; verify?: string }>;
+  searchParams?: Promise<{ tab?: string; updated?: string; verify?: string; deleteAccount?: string }>;
 }) {
   const user = await requireUser();
   const currentSession = await getCurrentSession();
@@ -262,6 +274,7 @@ export default async function SettingsPage({
   const notificationPreferenceMap = new Map(
     notificationPreferences.map((preference) => [preference.type, preference.enabled])
   );
+  const accountName = displayNameForUser(user);
   const roleUsers = canManageRoles
     ? await prisma.user.findMany({
         orderBy: [{ role: "desc" }, { username: "asc" }],
@@ -306,20 +319,34 @@ export default async function SettingsPage({
           LaTeX preferences reset to default.
         </p>
       )}
+      {params.deleteAccount === "confirm" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          Type your account name exactly to delete your account.
+        </p>
+      )}
+      {params.deleteAccount === "owner" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          The owner account cannot be deleted here.
+        </p>
+      )}
       {verifyStatus === "sent" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          Verification email sent. Check your inbox before contributing.
+          Verification email sent.
         </p>
       )}
       {verifyStatus === "required" && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          Please verify your email before contributing.
+          Verify your email to unlock contributions.
+        </p>
+      )}
+      {verifyStatus === "rate-limited" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          Too many requests. Please try again later.
         </p>
       )}
       {(verifyStatus === "not-configured" || verifyStatus === "send-failed") && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          Your account was created, but Math Woods could not send the verification email yet. You can still sign in;
-          public contributions will unlock after email delivery is configured and your address is verified.
+          Verification email could not be sent yet.
         </p>
       )}
       {verifyStatus === "already-verified" && (
@@ -360,7 +387,7 @@ export default async function SettingsPage({
             ) : (
               <div className="grid gap-3">
                 <p className="muted text-sm">
-                  Verify <strong>{user.email}</strong> before creating or editing public content.
+                  Verify <strong>{user.email}</strong> to unlock contributions.
                 </p>
                 <p className="muted text-xs">{mailStatusLabel()}</p>
                 <form action={resendEmailVerificationAction}>
@@ -425,6 +452,17 @@ export default async function SettingsPage({
                 </div>
               ))}
             </div>
+          </section>
+
+          <section className="danger-zone account-danger-zone mt-6">
+            <div>
+              <h2>Delete account</h2>
+              <p>
+                This removes your login, email, private notes, votes, favorites, and sessions. Public content stays
+                under a deleted account.
+              </p>
+            </div>
+            <DeleteAccountDialog accountName={accountName} action={deleteAccountAction} />
           </section>
         </>
       )}

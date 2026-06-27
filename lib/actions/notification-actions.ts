@@ -12,7 +12,9 @@ const configurableNotificationTypes = [
   NotificationType.PROBLEM_EDITED,
   NotificationType.PROOF_ADDED,
   NotificationType.DISCUSSION_POSTED,
+  NotificationType.ACHIEVEMENT_UNLOCKED,
   NotificationType.VERIFICATION_REQUESTED,
+  NotificationType.VERIFICATION_MESSAGE,
   NotificationType.VERIFICATION_APPROVED,
   NotificationType.VERIFICATION_REJECTED,
   NotificationType.SITE_ERROR_REPORTED
@@ -24,6 +26,22 @@ export async function markAllNotificationsReadAction() {
 
   await prisma.notification.updateMany({
     where: {
+      userId: user.id,
+      readAt: null
+    },
+    data: { readAt: new Date() }
+  });
+
+  revalidatePath("/", "layout");
+}
+
+export async function markNotificationReadAction(notificationId: number) {
+  const user = await requireUser();
+  await assertRateLimit(`notification-read:${user.id}`, 120, 60_000);
+
+  await prisma.notification.updateMany({
+    where: {
+      id: notificationId,
       userId: user.id,
       readAt: null
     },

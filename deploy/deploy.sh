@@ -22,6 +22,7 @@ fi
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d postgres valkey
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run achievements:backfill
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d app uptime-kuma
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate caddy
 

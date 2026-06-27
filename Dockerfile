@@ -14,6 +14,9 @@ RUN npm ci
 
 FROM deps AS builder
 
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+
 COPY . .
 RUN npx prisma generate
 RUN npm run build
@@ -21,6 +24,7 @@ RUN npm run build
 FROM deps AS migrator
 
 COPY prisma ./prisma
+COPY scripts ./scripts
 RUN npx prisma generate
 CMD ["npm", "run", "prisma:migrate:deploy"]
 

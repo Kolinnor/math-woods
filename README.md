@@ -3,10 +3,10 @@
 Next.js prototype for an open-source math problem site inspired by lichess, Obsidian, and Math StackExchange.
 
 Math Woods' core promise is to remain 100% free and free of advertising. Application code is licensed under
-GNU AGPL-3.0-or-later. Original public content defaults to CC BY-SA 4.0.
+GNU AGPL-3.0-or-later. Educational content defaults to CC BY-NC-SA 4.0 unless otherwise stated.
 
-Math Woods was designed and directed by its human creator and implemented in collaboration with Codex, an AI coding
-agent by OpenAI, under human review.
+Math Woods was coded with help from Codex, an AI coding agent by OpenAI, under human direction and review. The
+published site remains a human responsibility.
 
 ## Implemented Features
 

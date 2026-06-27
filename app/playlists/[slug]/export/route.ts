@@ -28,6 +28,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       type: "playlist",
       title: playlist.title,
       slug: playlist.slug,
+      language: playlist.language,
+      translationGroupId: playlist.translationGroupId,
       author: playlist.author.username,
       visibility: playlist.visibility.toLowerCase()
     }) +

@@ -1,18 +1,25 @@
 import { createProblemAction } from "@/lib/actions/problem-actions";
+import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
+import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
+import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { requireVerifiedUser } from "@/lib/auth";
 import { MATH_DOMAINS } from "@/lib/domains";
 import { prisma } from "@/lib/db";
+import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export default async function NewProblemPage({
   searchParams
 }: {
-  searchParams: Promise<{ playlist?: string; listed?: string; parent?: string }>;
+  searchParams: Promise<{ playlist?: string; listed?: string; parent?: string; translateOf?: string; language?: string }>;
 }) {
   await requireVerifiedUser();
-  const { playlist = "", listed = "1", parent = "" } = await searchParams;
+  const { playlist = "", listed = "1", parent = "", translateOf = "", language = "" } = await searchParams;
+  const preferredLanguage = await getPreferredContentLanguage();
+  const initialLanguage = language ? parseContentLanguage(language) : preferredLanguage;
   const isListedByDefault = listed !== "0";
   const parentProblem = parent
     ? await prisma.problem.findUnique({
@@ -20,17 +27,28 @@ export default async function NewProblemPage({
         select: { slug: true, title: true }
       })
     : null;
+  const sourceProblem = translateOf
+    ? await prisma.problem.findUnique({
+        where: { slug: translateOf },
+        select: { slug: true, title: true, bodyMarkdown: true, language: true, translationGroupId: true }
+      })
+    : null;
+  const defaultStatement =
+    sourceProblem?.bodyMarkdown ??
+    "Write the problem statement here.\n\nYou can use Markdown for structure:\n- bullet points\n- **bold text** and *italic text*\n- links to concepts with [[concept name]]\n\nYou can use LaTeX with $x^2+1$ for inline formulas, or with $$\\sum_{k=1}^n k = \\frac{n(n+1)}{2}$$ for displayed formulas.";
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-2xl font-bold">New problem</h1>
-      <p className="muted mb-5">
-        A short, clear statement is enough.
-      </p>
+    <div className={sourceProblem ? "translation-compose-page" : "mx-auto max-w-3xl"}>
+      <div className="translation-compose-main">
+        <h1 className="mb-2 text-2xl font-bold">New problem</h1>
+        <p className="muted mb-5">
+          A short, clear statement is enough.
+        </p>
 
-      <form action={createProblemAction} className="panel grid gap-4 p-5">
+        <form action={createProblemAction} className="panel grid gap-4 p-5">
         {playlist && <input type="hidden" name="addToPlaylistSlug" value={playlist} />}
         {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
+        {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
         <div className="growth-note">
           <strong>Start small.</strong>
           <span>
@@ -55,31 +73,31 @@ export default async function NewProblemPage({
             </span>
           </div>
         )}
+        {sourceProblem && (
+          <div className="playlist-context-note">
+            <strong>Translating from {contentLanguageLabel(sourceProblem.language)}.</strong>
+            <span>
+              This will create a separate {contentLanguageLabel(initialLanguage)} page linked to "{sourceProblem.title}".
+            </span>
+          </div>
+        )}
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
-          <input name="title" required placeholder="Roots and coefficients" />
+          <input name="title" required defaultValue={sourceProblem?.title ?? ""} placeholder="Roots and coefficients" />
         </label>
+        <LanguageField
+          defaultValue={initialLanguage}
+          help="Each translation is its own page. If English has not been written, there is no English version yet."
+        />
         <label className="grid gap-2">
           <span className="text-sm font-medium">Statement</span>
-          <MarkdownEditor
-            name="bodyMarkdown"
-            initialValue={
-              "Write the problem statement here.\n\nYou can use Markdown for structure:\n- bullet points\n- **bold text** and *italic text*\n- links to concepts with [[concept name]]\n\nYou can use LaTeX with $x^2+1$ for inline formulas, or with $$\\sum_{k=1}^n k = \\frac{n(n+1)}{2}$$ for displayed formulas."
-            }
-          />
+          <MarkdownEditor name="bodyMarkdown" initialValue={defaultStatement} />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <ProblemDomainPicker domains={MATH_DOMAINS} initialValues={["OTHER"]} />
           <label className="grid gap-2">
             <span className="text-sm font-medium">Difficulty (1–100)</span>
             <input name="difficulty" type="number" min="1" max="100" placeholder="50" />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Status</span>
-            <select name="qualityStatus" defaultValue="UNREVIEWED">
-              <option value="UNREVIEWED">Unreviewed (default)</option>
-              <option value="NEEDS_WORK">Needs work</option>
-            </select>
           </label>
         </div>
         <label className="checkbox-field">
@@ -134,6 +152,7 @@ export default async function NewProblemPage({
             <small>No proof is currently known or supplied.</small>
           </span>
         </label>
+        <ProblemRelationPicker />
         <fieldset className="origin-fields grid gap-4">
           <legend className="font-semibold">Solve verification</legend>
           <label className="grid gap-2">
@@ -165,8 +184,16 @@ export default async function NewProblemPage({
             ?
           </a>
         </p>
-        <button type="submit">Publish</button>
-      </form>
+          <button type="submit">Publish</button>
+        </form>
+      </div>
+      {sourceProblem && (
+        <TranslationReferencePanel
+          title={sourceProblem.title}
+          language={sourceProblem.language}
+          markdown={sourceProblem.bodyMarkdown}
+        />
+      )}
     </div>
   );
 }

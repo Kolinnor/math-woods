@@ -54,6 +54,7 @@ export default async function EditPlaylistPage({
       where: {
         status: "PUBLISHED",
         listed: true,
+        language: playlist.language,
         ...(problemQuery
           ? {
               OR: [
@@ -69,6 +70,7 @@ export default async function EditPlaylistPage({
     }),
     prisma.concept.findMany({
       where: {
+        language: playlist.language,
         ...(conceptQuery
           ? {
               OR: [
@@ -124,13 +126,13 @@ export default async function EditPlaylistPage({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/problems/new?playlist=${playlist.slug}&listed=0`} className="button">
+            <Link href={`/problems/new?playlist=${playlist.slug}&listed=0&language=${playlist.language}`} className="button">
               Create playlist-specific problem
             </Link>
-            <Link href={`/problems/new?playlist=${playlist.slug}&listed=1`} className="button secondary">
+            <Link href={`/problems/new?playlist=${playlist.slug}&listed=1&language=${playlist.language}`} className="button secondary">
               Create reusable problem
             </Link>
-            <Link href={`/concepts/new?title=${encodeURIComponent(playlist.title)}`} className="button secondary">
+            <Link href={`/concepts/new?title=${encodeURIComponent(playlist.title)}&language=${playlist.language}`} className="button secondary">
               Create concept
             </Link>
           </div>

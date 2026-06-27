@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
+import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
+import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
 import { deleteProblemAction, updateProblemAction } from "@/lib/actions/problem-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MATH_DOMAINS } from "@/lib/domains";
-import { formatProblemRelationGroupsForTextarea } from "@/lib/problem-relations";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { canAdminister, canModerate } from "@/lib/roles";
 
@@ -25,7 +26,11 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
       relatedGroups: {
         include: {
           relations: {
-            include: { targetProblem: { select: { slug: true } } },
+            include: {
+              targetProblem: {
+                select: { title: true, slug: true, difficulty: true, listed: true, language: true }
+              }
+            },
             orderBy: { position: "asc" }
           }
         },
@@ -63,6 +68,10 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           <span className="text-sm font-medium">Title</span>
           <input name="title" required defaultValue={problem.title} />
         </label>
+        <LanguageField
+          defaultValue={problem.language}
+          help="Changing this moves the page to another language inside the same translation group."
+        />
         <label className="grid gap-2">
           <span className="text-sm font-medium">Statement</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={problem.bodyMarkdown} />
@@ -71,6 +80,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           <ProblemDomainPicker
             domains={MATH_DOMAINS}
             initialValues={problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain]}
+            initialSpoilers={problem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)}
           />
           <label className="grid gap-2">
             <span className="text-sm font-medium">Difficulty (1–100)</span>
@@ -146,21 +156,13 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             <small>No proof is currently known or supplied.</small>
           </span>
         </label>
-        <details className="editor-details">
-          <summary>Related problem boxes</summary>
-          <div className="grid gap-3 pt-3">
-            <p className="muted text-sm">
-              One box per line. Use <code>Box title: problem-slug, another-slug</code>. Unlisted problems are allowed,
-              which is useful for local variations or helper exercises.
-            </p>
-            <textarea
-              className="compact-textarea"
-              name="relatedProblemGroups"
-              defaultValue={formatProblemRelationGroupsForTextarea(problem.relatedGroups)}
-              placeholder={"Easier problems: warm-up-example, first-variation\nSpecific to this problem: local-helper-exercise"}
-            />
-          </div>
-        </details>
+        <ProblemRelationPicker
+          excludeSlug={problem.slug}
+          initialGroups={problem.relatedGroups.map((group) => ({
+            title: group.title,
+            problems: group.relations.map(({ targetProblem }) => targetProblem)
+          }))}
+        />
         <fieldset className="origin-fields grid gap-4">
           <legend className="font-semibold">Solve verification</legend>
           <label className="grid gap-2">

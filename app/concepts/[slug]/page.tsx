@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { toggleConceptWatchAction } from "@/lib/actions/concept-community-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
+import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function ConceptPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const user = await getCurrentUser();
+  const preferredLanguage = await getPreferredContentLanguage();
   const concept = await prisma.concept.findUnique({
     where: { slug },
     include: {
@@ -34,7 +38,15 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     notFound();
   }
 
-  const [outgoingLinks, backlinks, watched] = await Promise.all([
+  const [translations, outgoingLinks, backlinks, watched] = await Promise.all([
+    prisma.concept.findMany({
+      where: {
+        translationGroupId: concept.translationGroupId,
+        id: { not: concept.id }
+      },
+      select: { slug: true, title: true, language: true },
+      orderBy: { language: "asc" }
+    }),
     prisma.internalLink.findMany({
       where: { sourceType: "CONCEPT", sourceId: concept.id },
       orderBy: { targetSlug: "asc" }
@@ -49,6 +61,15 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
         })
       : null
   ]);
+  const existingTranslationLanguages = new Set([concept.language, ...translations.map((translation) => translation.language)]);
+  const targetTranslationLanguage =
+    !existingTranslationLanguages.has(preferredLanguage)
+      ? preferredLanguage
+      : SUPPORTED_CONTENT_LANGUAGES.find((language) => !existingTranslationLanguages.has(language.code))?.code;
+  const addTranslationHref = targetTranslationLanguage
+    ? `/concepts/new?translateOf=${concept.slug}&language=${targetTranslationLanguage}`
+    : undefined;
+
   const [problemBacklinks, conceptBacklinks] = await Promise.all([
     prisma.problem.findMany({
       where: {
@@ -77,6 +98,12 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
             {domainLabel(concept.domain)} · {concept.status.toLowerCase()}
             {concept.lastEditedBy ? ` · edited by ${displayNameForUser(concept.lastEditedBy)}` : ""}
           </p>
+          <ContentTranslations
+            currentLanguage={concept.language}
+            hrefPrefix="/concepts"
+            translations={translations}
+            createHref={addTranslationHref}
+          />
           {concept.aliases.length > 0 && (
             <p className="muted mt-1 text-sm">Also known as: {concept.aliases.map((alias) => alias.alias).join(", ")}</p>
           )}

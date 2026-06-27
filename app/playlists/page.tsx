@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { contentLanguageLabel } from "@/lib/languages";
 import { pluralize } from "@/lib/pluralize";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlaylistsPage() {
+  const preferredLanguage = await getPreferredContentLanguage();
   const playlists = await prisma.playlist.findMany({
+    where: { language: preferredLanguage },
     orderBy: { createdAt: "desc" },
     include: {
       author: true,
@@ -20,7 +24,9 @@ export default async function PlaylistsPage() {
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Playlists</h1>
-          <p className="muted mt-1">Ordered paths for learning through problems.</p>
+          <p className="muted mt-1">
+            Ordered paths for learning through {contentLanguageLabel(preferredLanguage).toLowerCase()} problems.
+          </p>
         </div>
         <Link href="/playlists/new" className="button">
           New

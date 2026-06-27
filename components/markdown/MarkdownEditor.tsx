@@ -22,6 +22,20 @@ import { overlapsRanges } from "@/lib/markdown-ranges";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
 
+type LinkMenuState = {
+  x: number;
+  y: number;
+  from: number;
+  to: number;
+  selectedText: string;
+};
+
+type ConceptSuggestion = {
+  title: string;
+  slug: string;
+  aliases: string[];
+};
+
 type MarkdownEditorProps = {
   name: string;
   initialValue?: string;
@@ -74,6 +88,30 @@ function formatDraftTime(timestamp: number) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(timestamp));
+}
+
+function cleanWikiLinkTarget(value: string) {
+  return value.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function wikiLinkMarkup(target: string, label: string) {
+  const cleanTarget = cleanWikiLinkTarget(target || label);
+  const cleanLabel = label.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
+
+  if (!cleanTarget) return cleanLabel;
+  if (!cleanLabel || cleanLabel.toLowerCase() === cleanTarget.toLowerCase()) return `[[${cleanTarget}]]`;
+  return `[[${cleanTarget}|${cleanLabel}]]`;
+}
+
+function parseSelectedWikiLink(value: string) {
+  const match = value.match(/^\[\[([^\]\n]+)\]\]$/);
+  if (!match) return null;
+
+  const [target, label] = match[1].split("|", 2);
+  return {
+    target: cleanWikiLinkTarget(target),
+    label: (label ?? target).replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim()
+  };
 }
 
 class LatexWidget extends WidgetType {
@@ -191,17 +229,43 @@ class MarkdownHeadingWidget extends WidgetType {
   }
 }
 
-function activeLineOverlaps(view: EditorView, from: number, to: number) {
-  if (!view.state.field(previewFocusField)) return false;
+class MarkdownListMarkWidget extends WidgetType {
+  constructor(
+    readonly marker: string,
+    readonly from: number
+  ) {
+    super();
+  }
 
-  return view.state.selection.ranges.some((range) => {
-    const activeFrom = view.state.doc.lineAt(range.from).from;
-    const activeTo = view.state.doc.lineAt(range.to).to;
-    return activeFrom <= to && activeTo >= from;
-  });
+  eq(other: MarkdownListMarkWidget) {
+    return other.marker === this.marker && other.from === this.from;
+  }
+
+  toDOM(view: EditorView) {
+    const element = document.createElement("span");
+    element.className = "cm-md-list-mark";
+    element.textContent = /^[*+-]$/.test(this.marker) ? "\u2022" : this.marker;
+    element.title = "Click to edit list marker";
+    element.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      view.focus();
+      view.dispatch({
+        selection: { anchor: this.from + this.marker.length },
+        effects: setPreviewFocus.of(true),
+        annotations: previewOnly,
+        scrollIntoView: true
+      });
+    });
+    return element;
+  }
+
+  ignoreEvent() {
+    return true;
+  }
 }
 
-function selectionIsInsideRange(view: EditorView, from: number, to: number) {
+function selectionOverlapsRange(view: EditorView, from: number, to: number) {
   if (!view.state.field(previewFocusField)) return false;
 
   return view.state.selection.ranges.some((range) => {
@@ -216,6 +280,44 @@ function rangeIsStandaloneLine(text: string, from: number, to: number) {
   const lineEnd = nextBreak === -1 ? text.length : nextBreak;
 
   return text.slice(lineStart, from).trim() === "" && text.slice(to, lineEnd).trim() === "";
+}
+
+function latexOpeningDelimiterLength(text: string, position: number) {
+  return text.startsWith("$$", position) || text.startsWith("\\(", position) || text.startsWith("\\[", position) ? 2 : 1;
+}
+
+function revealLatexBeforeDeleting(view: EditorView, direction: "backward" | "forward") {
+  const selection = view.state.selection.main;
+  if (!selection.empty) return false;
+
+  const cursor = selection.from;
+  const text = view.state.doc.toString();
+  const range = findLatexRanges(text).find((item) => (direction === "backward" ? item.to === cursor : item.from === cursor));
+  if (!range) return false;
+
+  const delimiterLength = latexOpeningDelimiterLength(text, range.from);
+  const contentFrom = range.from + delimiterLength;
+  const contentTo = range.to - delimiterLength;
+  const deleteFrom = direction === "backward" ? contentTo - 1 : contentFrom;
+  const deleteTo = direction === "backward" ? contentTo : contentFrom + 1;
+
+  if (deleteFrom < contentFrom || deleteTo > contentTo) {
+    view.dispatch({
+      selection: { anchor: contentFrom },
+      effects: setPreviewFocus.of(true),
+      annotations: previewOnly,
+      scrollIntoView: true
+    });
+    return true;
+  }
+
+  view.dispatch({
+    changes: { from: deleteFrom, to: deleteTo },
+    selection: { anchor: deleteFrom },
+    effects: setPreviewFocus.of(true),
+    scrollIntoView: true
+  });
+  return true;
 }
 
 const setPreviewFocus = StateEffect.define<boolean>();
@@ -236,20 +338,15 @@ function buildLivePreviewDecorations(view: EditorView) {
   const wikiLinks = findWikiLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
   const decorations = latexRanges.flatMap((range) => {
-    if (activeLineOverlaps(view, range.from, range.to)) return [];
-    if (selectionIsInsideRange(view, range.from, range.to)) return [];
+    if (selectionOverlapsRange(view, range.from, range.to)) return [];
     if (range.displayMode && !rangeIsStandaloneLine(text, range.from, range.to)) return [];
 
     const widget = new LatexWidget(range.formula, range.displayMode, range.from);
-    const isMultiline = text.slice(range.from, range.to).includes("\n");
-
-    if (isMultiline) {
-      return [];
-    }
 
     return [
       Decoration.replace({
         widget,
+        block: range.displayMode,
         inclusive: false
       }).range(range.from, range.to)
     ];
@@ -257,7 +354,7 @@ function buildLivePreviewDecorations(view: EditorView) {
 
   decorations.push(
     ...wikiLinks
-      .filter((range) => !activeLineOverlaps(view, range.from, range.to))
+      .filter((range) => !selectionOverlapsRange(view, range.from, range.to))
       .map((range) =>
         Decoration.replace({
           widget: new WikiLinkWidget(range.label, range.from),
@@ -271,6 +368,20 @@ function buildLivePreviewDecorations(view: EditorView) {
       if (overlapsRanges(node.from, node.to, previewRanges)) return;
       const parent = node.node.parent;
       const parentName = parent?.name ?? "";
+      if (node.name === "ListMark") {
+        const active = selectionOverlapsRange(view, node.from, node.to);
+        if (!active) {
+          const marker = view.state.doc.sliceString(node.from, node.to);
+          decorations.push(
+            Decoration.replace({
+              widget: new MarkdownListMarkWidget(marker, node.from),
+              inclusive: false
+            }).range(node.from, node.to)
+          );
+        }
+        return;
+      }
+
       const isMarkup =
         node.name === "HeaderMark" ||
         node.name === "EmphasisMark" ||
@@ -280,7 +391,7 @@ function buildLivePreviewDecorations(view: EditorView) {
         (node.name === "URL" && parentName === "Link");
       const activeFrom = isMarkup ? (parent?.from ?? node.from) : node.from;
       const activeTo = isMarkup ? (parent?.to ?? node.to) : node.to;
-      const active = activeLineOverlaps(view, activeFrom, activeTo);
+      const active = selectionOverlapsRange(view, activeFrom, activeTo);
       const level = headingLevel(node.name);
       const previewClass = markdownPreviewClass(node.name);
 
@@ -355,8 +466,14 @@ export function MarkdownEditor({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const draftKeyRef = useRef<string | null>(null);
+  const linkTargetInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState(initialValue);
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
+  const [linkMenu, setLinkMenu] = useState<LinkMenuState | null>(null);
+  const [linkTarget, setLinkTarget] = useState("");
+  const [linkText, setLinkText] = useState("");
+  const [linkSuggestions, setLinkSuggestions] = useState<ConceptSuggestion[]>([]);
+  const [linkSuggestionsLoading, setLinkSuggestionsLoading] = useState(false);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
@@ -380,6 +497,18 @@ export function MarkdownEditor({
           markdown(),
           history(),
           Prec.highest(keymap.of(historyKeymap)),
+          Prec.highest(
+            keymap.of([
+              {
+                key: "Backspace",
+                run: (view) => revealLatexBeforeDeleting(view, "backward")
+              },
+              {
+                key: "Delete",
+                run: (view) => revealLatexBeforeDeleting(view, "forward")
+              }
+            ])
+          ),
           previewFocusField,
           liveMarkdownPreview,
           previewFocusEvents,
@@ -441,24 +570,96 @@ export function MarkdownEditor({
       }
     };
     const outsideInteraction = (event: Event) => {
-      if (!host.contains(event.target as Node | null)) {
+      const target = event.target as Node | null;
+      const targetElement = target instanceof Element ? target : null;
+      if (targetElement?.closest(".markdown-link-menu")) return;
+
+      if (!host.contains(target)) {
         view.dispatch({ effects: setPreviewFocus.of(false), annotations: previewOnly });
+        setLinkMenu(null);
       }
+    };
+    const openLinkMenu = (event: MouseEvent) => {
+      const selection = view.state.selection.main;
+      if (selection.empty) return;
+
+      const selectedText = view.state.doc.sliceString(selection.from, selection.to).trim();
+      if (!selectedText) return;
+      const selectedLink = parseSelectedWikiLink(selectedText);
+
+      event.preventDefault();
+      view.focus();
+      view.dispatch({ effects: setPreviewFocus.of(true), annotations: previewOnly });
+      setLinkTarget(selectedLink?.target ?? cleanWikiLinkTarget(selectedText));
+      setLinkText(selectedLink?.label ?? selectedText);
+      setLinkMenu({
+        x: event.clientX,
+        y: event.clientY,
+        from: selection.from,
+        to: selection.to,
+        selectedText
+      });
     };
     host.addEventListener("focusin", focusIn);
     host.addEventListener("focusout", focusOut);
+    host.addEventListener("contextmenu", openLinkMenu);
     document.addEventListener("focusin", outsideInteraction, true);
     document.addEventListener("mousedown", outsideInteraction, true);
 
     return () => {
       host.removeEventListener("focusin", focusIn);
       host.removeEventListener("focusout", focusOut);
+      host.removeEventListener("contextmenu", openLinkMenu);
       document.removeEventListener("focusin", outsideInteraction, true);
       document.removeEventListener("mousedown", outsideInteraction, true);
       view.destroy();
       viewRef.current = null;
     };
   }, [draftKey, initialValue, minHeight, name, showLineNumbers]);
+
+  useEffect(() => {
+    if (!linkMenu) return;
+    window.requestAnimationFrame(() => linkTargetInputRef.current?.focus());
+  }, [linkMenu]);
+
+  useEffect(() => {
+    if (!linkMenu) {
+      setLinkSuggestions([]);
+      setLinkSuggestionsLoading(false);
+      return;
+    }
+
+    const query = linkTarget.trim();
+    if (!query) {
+      setLinkSuggestions([]);
+      setLinkSuggestionsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      setLinkSuggestionsLoading(true);
+      fetch(`/api/concepts/suggest?q=${encodeURIComponent(query)}`, {
+        signal: controller.signal
+      })
+        .then((response) => (response.ok ? response.json() : { concepts: [] }))
+        .then((data: { concepts?: ConceptSuggestion[] }) => {
+          setLinkSuggestions(Array.isArray(data.concepts) ? data.concepts : []);
+        })
+        .catch((error) => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          setLinkSuggestions([]);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLinkSuggestionsLoading(false);
+        });
+    }, 160);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [linkMenu, linkTarget]);
 
   function discardDraft() {
     const key = draftKeyRef.current;
@@ -475,6 +676,46 @@ export function MarkdownEditor({
     });
   }
 
+  function closeLinkMenu() {
+    setLinkMenu(null);
+    setLinkSuggestions([]);
+    viewRef.current?.focus();
+  }
+
+  function selectLinkSuggestion(suggestion: ConceptSuggestion) {
+    setLinkTarget(suggestion.title);
+    linkTargetInputRef.current?.focus();
+  }
+
+  function applyLinkMenu() {
+    const view = viewRef.current;
+    if (!view || !linkMenu) return;
+
+    const insert = wikiLinkMarkup(linkTarget, linkText);
+    view.dispatch({
+      changes: {
+        from: linkMenu.from,
+        to: linkMenu.to,
+        insert
+      },
+      selection: { anchor: linkMenu.from + insert.length },
+      effects: setPreviewFocus.of(true),
+      scrollIntoView: true
+    });
+    setLinkMenu(null);
+    setLinkSuggestions([]);
+    view.focus();
+  }
+
+  const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
+  const cleanLinkText = linkText.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
+  const hasExactSuggestion = linkSuggestions.some((suggestion) => {
+    const target = cleanLinkTarget.toLowerCase();
+    const aliases = suggestion.aliases.map((alias) => alias.toLowerCase());
+    return suggestion.title.toLowerCase() === target || suggestion.slug.toLowerCase() === target || aliases.includes(target);
+  });
+  const canApplyLink = Boolean(cleanLinkTarget && cleanLinkText);
+
   return (
     <div className="markdown-editor">
       {restoredDraftAt && (
@@ -486,6 +727,81 @@ export function MarkdownEditor({
         </div>
       )}
       <div ref={hostRef} className="markdown-editor-host" />
+      {linkMenu && (
+        <div
+          className="markdown-link-menu"
+          style={{ left: linkMenu.x, top: linkMenu.y }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="markdown-link-menu-title">
+            <span className="markdown-link-menu-icon" aria-hidden="true" />
+            <strong>Add link</strong>
+          </div>
+          <label>
+            Text shown
+            <input
+              value={linkText}
+              onChange={(event) => setLinkText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && canApplyLink) {
+                  event.preventDefault();
+                  applyLinkMenu();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  closeLinkMenu();
+                }
+              }}
+              placeholder="Text in the article"
+            />
+          </label>
+          <label>
+            Concept page
+            <input
+              ref={linkTargetInputRef}
+              value={linkTarget}
+              onChange={(event) => setLinkTarget(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  applyLinkMenu();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  closeLinkMenu();
+                }
+              }}
+              placeholder="Existing or new concept"
+            />
+          </label>
+          <div className="markdown-link-menu-results">
+            {linkSuggestionsLoading && <p>Searching concepts...</p>}
+            {!linkSuggestionsLoading &&
+              linkSuggestions.map((suggestion) => (
+                <button key={suggestion.slug} type="button" onClick={() => selectLinkSuggestion(suggestion)}>
+                  <strong>{suggestion.title}</strong>
+                  {suggestion.aliases.length > 0 && <span>{suggestion.aliases.slice(0, 3).join(", ")}</span>}
+                </button>
+              ))}
+            {cleanLinkTarget && !hasExactSuggestion && (
+              <div className="markdown-link-menu-new">
+                <span>New concept link: "{cleanLinkTarget}"</span>
+                <a href={`/concepts/new?title=${encodeURIComponent(cleanLinkTarget)}`} target="_blank" rel="noreferrer">
+                  Create page
+                </a>
+              </div>
+            )}
+          </div>
+          <div className="markdown-link-menu-actions">
+            <button type="button" className="secondary" onClick={closeLinkMenu}>
+              Cancel
+            </button>
+            <button type="button" onClick={applyLinkMenu} disabled={!canApplyLink}>
+              Add link
+            </button>
+          </div>
+        </div>
+      )}
       <textarea name={name} value={value} readOnly hidden aria-hidden="true" />
     </div>
   );

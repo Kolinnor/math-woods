@@ -10,14 +10,17 @@ import {
   publishProblemAction
 } from "@/lib/actions/moderation-actions";
 import { requireModerator } from "@/lib/auth";
+import { formatUserDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { qualityLabel } from "@/lib/quality";
+import { getRequestTimeZone } from "@/lib/server-time-zone";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
 export default async function ModerationPage() {
   await requireModerator();
+  const timeZone = await getRequestTimeZone();
 
   const reports = await prisma.report.findMany({
     orderBy: { createdAt: "desc" },
@@ -79,7 +82,7 @@ export default async function ModerationPage() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-sm font-semibold">
-                    {errorReport.source} / {errorReport.createdAt.toLocaleString("en-US")}
+                    {errorReport.source} / {formatUserDateTime(errorReport.createdAt, timeZone)}
                   </div>
                   <p className="muted text-sm">
                     {errorReport.user ? `reported while signed in as ${displayNameForUser(errorReport.user)}` : "anonymous user"}
@@ -120,7 +123,7 @@ export default async function ModerationPage() {
                 <Link href={`/problems/${problem.slug}`} className="font-medium underline">
                   {problem.title}
                 </Link>
-                <p className="muted text-sm">updated {problem.updatedAt.toLocaleString("en-US")}</p>
+                <p className="muted text-sm">updated {formatUserDateTime(problem.updatedAt, timeZone)}</p>
               </div>
               <form action={publishProblemAction.bind(null, problem.id)}>
                 <button type="submit" className="secondary">
@@ -142,7 +145,7 @@ export default async function ModerationPage() {
                 <Link href={`/concepts/${concept.slug}`} className="font-medium underline">
                   {concept.title}
                 </Link>
-                <p className="muted text-sm">updated {concept.updatedAt.toLocaleString("en-US")}</p>
+                <p className="muted text-sm">updated {formatUserDateTime(concept.updatedAt, timeZone)}</p>
               </div>
               <form action={markConceptUsableAction.bind(null, concept.id)}>
                 <button type="submit" className="secondary">
@@ -170,7 +173,7 @@ export default async function ModerationPage() {
                     {report.targetType.toLowerCase()} · {report.status.toLowerCase()}
                   </div>
                   <p className="muted text-sm">
-                    reported by {displayNameForUser(report.reporter)} · {report.createdAt.toLocaleString("en-US")}
+                    reported by {displayNameForUser(report.reporter)} · {formatUserDateTime(report.createdAt, timeZone)}
                   </p>
                 </div>
                 {report.targetType === "PROBLEM" && problem && (

@@ -45,9 +45,12 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+      args:
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:?Set NEXT_SERVER_ACTIONS_ENCRYPTION_KEY in .env.production}
     restart: unless-stopped
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:?Set NEXT_SERVER_ACTIONS_ENCRYPTION_KEY in .env.production}
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
       HOSTNAME: 0.0.0.0

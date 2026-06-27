@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { Bookmark, Pencil, Play } from "lucide-react";
+import { Bookmark, Pencil, Play, ThumbsUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import {
@@ -36,10 +36,15 @@ export default async function PlaylistPage({ params }: { params: Promise<{ slug:
 
   const isEditor = Boolean(user && (user.id === playlist.authorId || canModerate(user.role)));
   const problemIds = playlist.items.map((item) => item.problemId);
-  const [voteCount, followerCount, following, solvedAttempts] = await Promise.all([
+  const [voteCount, ownVote, followerCount, following, solvedAttempts] = await Promise.all([
     prisma.vote.count({
       where: { targetType: "PLAYLIST", targetId: playlist.id }
     }),
+    user
+      ? prisma.vote.findUnique({
+          where: { userId_targetType_targetId: { userId: user.id, targetType: "PLAYLIST", targetId: playlist.id } }
+        })
+      : null,
     prisma.playlistFollow.count({ where: { playlistId: playlist.id } }),
     user
       ? prisma.playlistFollow.findUnique({
@@ -130,8 +135,14 @@ export default async function PlaylistPage({ params }: { params: Promise<{ slug:
             </p>
           )}
           <form action={votePlaylistAction.bind(null, playlist.id)} className="grid gap-3">
-            <button type="submit" className="w-full">
-              Vote &middot; {voteCount}
+            <button
+              type="submit"
+              className={ownVote ? "w-full vote-button-active" : "w-full"}
+              aria-pressed={Boolean(ownVote)}
+              title={ownVote ? "Remove vote" : "Vote for this playlist"}
+            >
+              <ThumbsUp size={17} />
+              {ownVote ? "Remove vote" : "Vote"} &middot; {voteCount}
             </button>
             <Link href={`/playlists/${playlist.slug}/export`} className="button secondary">
               Export Markdown

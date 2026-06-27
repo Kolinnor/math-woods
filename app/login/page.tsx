@@ -45,12 +45,12 @@ export default async function LoginPage({
 
       <section>
         <h2 className="mb-2 text-2xl font-bold">Create account</h2>
-        <p className="muted mb-5">Create an account to solve, discuss, and contribute problems.</p>
+        <p className="muted mb-5">Create an account, then verify your email to solve, discuss, and contribute problems.</p>
         {registerError && <p className="quality-banner quality-needs-work mb-4">{registerError}</p>}
         <form action={registerAction} className="panel grid gap-4 p-5">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Profile name</span>
-            <input name="displayName" placeholder="Emmy Noether" minLength={2} maxLength={DISPLAY_NAME_MAX_LENGTH} required />
+            <input name="displayName" minLength={2} maxLength={DISPLAY_NAME_MAX_LENGTH} required />
             <small className="muted">
               This is the name other people will see. It can contain spaces.
             </small>

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireUser, requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
+import { parseContentLanguage } from "@/lib/languages";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { canAdminister, canModerate } from "@/lib/roles";
 import { ensureSlug } from "@/lib/slug";
@@ -35,6 +36,7 @@ export async function createPlaylistAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`playlist:create:${user.id}`, 5, 60_000);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+  const language = parseContentLanguage(formData.get("language"));
   const descriptionMarkdown = boundedText(
     formData.get("descriptionMarkdown"),
     CONTENT_LIMITS.markdown,
@@ -44,6 +46,7 @@ export async function createPlaylistAction(formData: FormData) {
   const playlist = await prisma.playlist.create({
     data: {
       slug: await uniqueSlug("playlist", title),
+      language,
       title,
       descriptionMarkdown,
       descriptionHtml: await renderMarkdownContent(descriptionMarkdown),
@@ -56,7 +59,7 @@ export async function createPlaylistAction(formData: FormData) {
 }
 
 export async function deletePlaylistAction(playlistId: number) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`playlist:delete:${user.id}`, 10, 60_000);
   if (!canAdminister(user.role)) {
     throw new Error("Only admins can delete playlists.");
@@ -116,31 +119,33 @@ export async function addProblemToPlaylistAction(playlistId: number, formData: F
 }
 
 export async function votePlaylistAction(playlistId: number) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`vote:${user.id}`, 120, 60_000);
-
-  await prisma.vote.upsert({
-    where: {
-      userId_targetType_targetId: {
-        userId: user.id,
-        targetType: TargetType.PLAYLIST,
-        targetId: playlistId
-      }
-    },
-    update: { voteType: VoteType.UP },
-    create: {
-      userId: user.id,
-      targetType: TargetType.PLAYLIST,
-      targetId: playlistId,
-      voteType: VoteType.UP
-    }
+  const playlist = await prisma.playlist.findUnique({
+    where: { id: playlistId },
+    select: { slug: true }
+  });
+  const key = {
+    userId: user.id,
+    targetType: TargetType.PLAYLIST,
+    targetId: playlistId
+  };
+  const existing = await prisma.vote.findUnique({
+    where: { userId_targetType_targetId: key }
   });
 
+  if (existing) {
+    await prisma.vote.delete({ where: { userId_targetType_targetId: key } });
+  } else {
+    await prisma.vote.create({ data: { ...key, voteType: VoteType.UP } });
+  }
+
   revalidatePath("/playlists");
+  if (playlist) revalidatePath(`/playlists/${playlist.slug}`);
 }
 
 export async function togglePlaylistFollowAction(playlistId: number, playlistSlug: string) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   await assertRateLimit(`playlist-follow:${user.id}`, 60, 60_000);
   const key = { userId: user.id, playlistId };
   const existing = await prisma.playlistFollow.findUnique({

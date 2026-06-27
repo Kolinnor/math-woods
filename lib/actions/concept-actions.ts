@@ -3,12 +3,14 @@
 import { ConceptStatus, SourceType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { parseMathDomain } from "@/lib/domains";
 import { refreshLinksForConcept, syncInternalLinks } from "@/lib/internal-links";
+import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { canModerate } from "@/lib/roles";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -22,7 +24,9 @@ export async function createConceptAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`concept:create:${user.id}`, 5, 60_000);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
+  const language = parseContentLanguage(formData.get("language"));
+  const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
+  const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
   const domain = parseMathDomain(formData.get("domain"));
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
@@ -31,9 +35,21 @@ export async function createConceptAction(formData: FormData) {
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const concept = await prisma.$transaction(async (tx) => {
+    if (translationGroupId) {
+      const existingTranslation = await tx.concept.findFirst({
+        where: { translationGroupId, language },
+        select: { slug: true }
+      });
+      if (existingTranslation) {
+        throw new Error("A concept translation already exists in this language.");
+      }
+    }
+
     const created = await tx.concept.create({
       data: {
         slug,
+        language,
+        ...(translationGroupId ? { translationGroupId } : {}),
         title,
         bodyMarkdown,
         bodyHtml,
@@ -59,6 +75,7 @@ export async function createConceptAction(formData: FormData) {
 
   await refreshLinksForConcept(concept.slug);
   revalidatePath("/");
+  await checkConceptAchievements(user.id);
   redirect(`/concepts/${concept.slug}`);
 }
 
@@ -66,7 +83,8 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const user = await requireVerifiedUser();
   await assertRateLimit(`concept:update:${user.id}`, 20, 60_000);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
+  const language = parseContentLanguage(formData.get("language"));
+  const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
   const domain = parseMathDomain(formData.get("domain"));
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
@@ -83,6 +101,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       where: { id: conceptId },
       data: {
         title,
+        language,
         bodyMarkdown,
         bodyHtml,
         domain,

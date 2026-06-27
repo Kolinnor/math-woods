@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ACHIEVEMENTS } from "@/lib/achievements";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { mathLevelLabel } from "@/lib/math-levels";
@@ -18,7 +19,10 @@ export default async function ProfilePage({
 }) {
   const { username } = await params;
   const requestedView = (await searchParams).view;
-  const view = requestedView === "solved" || requestedView === "favorites" ? requestedView : "overview";
+  const view =
+    requestedView === "solved" || requestedView === "favorites" || requestedView === "achievements"
+      ? requestedView
+      : "overview";
   const currentUser = await getCurrentUser();
   const user = await prisma.user.findUnique({
     where: { username },
@@ -45,6 +49,7 @@ export default async function ProfilePage({
     favorites,
     solvedCount,
     externalFavoriteCount,
+    achievementUnlocks,
     currentUserSolved,
     reputation
   ] = await Promise.all([
@@ -81,6 +86,10 @@ export default async function ProfilePage({
     prisma.problemFavorite.count({
       where: { userId: user.id, problem: { authorId: { not: user.id } } }
     }),
+    prisma.achievementUnlock.findMany({
+      where: { userId: user.id },
+      orderBy: { unlockedAt: "desc" }
+    }),
     currentUser
       ? prisma.problemAttempt.findMany({
           where: { userId: currentUser.id, status: "SOLVED" },
@@ -92,6 +101,7 @@ export default async function ProfilePage({
 
   const isSelf = currentUser?.id === user.id;
   const currentUserSolvedIds = new Set(currentUserSolved.map((attempt) => attempt.problemId));
+  const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
@@ -118,6 +128,9 @@ export default async function ProfilePage({
           </Link>
           <Link href={`/profile/${user.username}?view=favorites`} className="rounded border border-line px-3 py-2">
             Favorites · {externalFavoriteCount}
+          </Link>
+          <Link href={`/profile/${user.username}?view=achievements`} className="rounded border border-line px-3 py-2">
+            Achievements / {achievementUnlocks.length}
           </Link>
         </nav>
 
@@ -192,6 +205,30 @@ export default async function ProfilePage({
               {favorites.length === 0 && <p className="muted panel p-5">No favorite problems yet.</p>}
           </div>
         </section>
+        )}
+
+        {view === "achievements" && (
+          <section>
+            <h2 className="mb-3 font-semibold">Achievements</h2>
+            <div className="achievement-grid">
+              {ACHIEVEMENTS.map((achievement) => {
+                const unlock = achievementUnlockMap.get(achievement.key);
+
+                return (
+                  <article
+                    key={achievement.key}
+                    className={`achievement-card${unlock ? "" : " achievement-card-locked"}`}
+                  >
+                    <div>
+                      <strong>{achievement.title}</strong>
+                      <p>{achievement.description}</p>
+                    </div>
+                    <span>{unlock ? unlock.unlockedAt.toLocaleDateString("en-US") : "Locked"}</span>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
         )}
       </article>
 

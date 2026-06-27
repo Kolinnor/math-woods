@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { updateConceptAction } from "@/lib/actions/concept-actions";
 import { requireVerifiedUser } from "@/lib/auth";
@@ -28,6 +29,10 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           <span className="text-sm font-medium">Title</span>
           <input name="title" required defaultValue={concept.title} />
         </label>
+        <LanguageField
+          defaultValue={concept.language}
+          help="Changing this moves the page to another language inside the same translation group."
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Domain</span>

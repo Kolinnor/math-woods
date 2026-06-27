@@ -3,7 +3,8 @@
 import { NotificationType, TargetType, VoteType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser, requireVerifiedUser } from "@/lib/auth";
+import { checkProofAchievements } from "@/lib/achievements";
+import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { notifyProblemAuthor } from "@/lib/notifications";
@@ -31,6 +32,7 @@ export async function createProofAction(problemId: number, problemSlug: string, 
   });
 
   revalidatePath(`/problems/${problemSlug}`);
+  await checkProofAchievements(user.id);
   await notifyProblemAuthor({
     problemId,
     actorId: user.id,
@@ -69,26 +71,47 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
   redirect(`/problems/${problemSlug}`);
 }
 
-export async function voteProofAction(proofId: number, problemSlug: string) {
-  const user = await requireUser();
-  await assertRateLimit(`vote:${user.id}`, 120, 60_000);
+export async function deleteProofAction(proofId: number, problemSlug: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`proof:delete:${user.id}`, 10, 60_000);
 
-  await prisma.vote.upsert({
-    where: {
-      userId_targetType_targetId: {
-        userId: user.id,
-        targetType: TargetType.PROOF,
-        targetId: proofId
-      }
-    },
-    update: { voteType: VoteType.UP },
-    create: {
-      userId: user.id,
-      targetType: TargetType.PROOF,
-      targetId: proofId,
-      voteType: VoteType.UP
-    }
+  const proof = await prisma.problemProof.findUnique({
+    where: { id: proofId },
+    select: { authorId: true, problem: { select: { slug: true } } }
   });
+  if (!proof || proof.problem.slug !== problemSlug) {
+    throw new Error("Proof not found.");
+  }
+  if (proof.authorId !== user.id && !canModerate(user.role)) {
+    throw new Error("You cannot delete this proof.");
+  }
+
+  await prisma.$transaction([
+    prisma.vote.deleteMany({ where: { targetType: TargetType.PROOF, targetId: proofId } }),
+    prisma.problemProof.delete({ where: { id: proofId } })
+  ]);
+
+  revalidatePath(`/problems/${problemSlug}`);
+  redirect(`/problems/${problemSlug}`);
+}
+
+export async function voteProofAction(proofId: number, problemSlug: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`vote:${user.id}`, 120, 60_000);
+  const key = {
+    userId: user.id,
+    targetType: TargetType.PROOF,
+    targetId: proofId
+  };
+  const existing = await prisma.vote.findUnique({
+    where: { userId_targetType_targetId: key }
+  });
+
+  if (existing) {
+    await prisma.vote.delete({ where: { userId_targetType_targetId: key } });
+  } else {
+    await prisma.vote.create({ data: { ...key, voteType: VoteType.UP } });
+  }
 
   revalidatePath(`/problems/${problemSlug}`);
 }

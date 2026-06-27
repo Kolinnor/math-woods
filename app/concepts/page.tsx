@@ -4,14 +4,25 @@ import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { prisma } from "@/lib/db";
 import { domainLabel, MATH_DOMAINS } from "@/lib/domains";
 import { missingConcepts } from "@/lib/internal-links";
+import { contentLanguageLabel } from "@/lib/languages";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
+
+function conceptTitleFromSlug(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 export default async function ConceptsPage({
   searchParams
 }: {
   searchParams: Promise<{ q?: string; domain?: string; status?: string }>;
 }) {
+  const preferredLanguage = await getPreferredContentLanguage();
   const { q = "", domain = "", status = "" } = await searchParams;
   const query = q.trim();
   const domainValue = Object.values(MathDomain).includes(domain as MathDomain) ? (domain as MathDomain) : undefined;
@@ -19,6 +30,7 @@ export default async function ConceptsPage({
     ? (status as ConceptStatus)
     : undefined;
   const where: Prisma.ConceptWhereInput = {
+    language: preferredLanguage,
     ...(query
       ? {
           OR: [
@@ -51,7 +63,9 @@ export default async function ConceptsPage({
         <div className="page-header">
           <div>
             <h1 className="text-2xl font-bold">Concepts</h1>
-            <p className="muted mt-1">A linked, sourced, collaboratively maintained mathematics encyclopedia.</p>
+            <p className="muted mt-1">
+              A linked, sourced, collaboratively maintained mathematics encyclopedia in {contentLanguageLabel(preferredLanguage)}.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/contributing" className="button secondary">
@@ -119,12 +133,16 @@ export default async function ConceptsPage({
         <h2 className="mb-3 font-semibold">Missing concepts</h2>
         <p className="muted mb-4 text-sm">Frequently linked gaps are good places to contribute.</p>
         <div className="grid gap-2">
-          {missing.map((item) => (
-            <Link key={item.slug} href={`/concepts/new?title=${item.slug}`} className="flex justify-between gap-3">
-              <span className="wiki-link missing">{item.slug}</span>
+          {missing.map((item) => {
+            const title = conceptTitleFromSlug(item.slug);
+
+            return (
+            <Link key={item.slug} href={`/concepts/new?title=${encodeURIComponent(title)}`} className="flex justify-between gap-3">
+              <span className="wiki-link missing">{title}</span>
               <span className="muted text-sm">{item.count}</span>
             </Link>
-          ))}
+          );
+          })}
           {missing.length === 0 && <p className="muted text-sm">No missing concepts.</p>}
         </div>
       </aside>

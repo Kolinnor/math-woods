@@ -123,7 +123,7 @@ export async function renderMarkdown(markdown: string, missingSlugs = new Set<st
       span: ["class", "style"],
       math: ["xmlns", "display"],
       annotation: ["encoding"],
-      svg: ["xmlns", "width", "height", "viewBox", "viewbox"],
+      svg: ["xmlns", "width", "height", "viewBox", "viewbox", "preserveAspectRatio", "preserveaspectratio"],
       path: ["d"],
       "*": ["aria-hidden"]
     },

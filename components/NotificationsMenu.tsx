@@ -1,18 +1,12 @@
 import Link from "next/link";
 import { Bell, CheckCheck, Trash2 } from "lucide-react";
 import { clearReadNotificationsAction, markAllNotificationsReadAction } from "@/lib/actions/notification-actions";
+import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
-
-function formatNotificationDate(date: Date) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
+import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export async function NotificationsMenu({ userId }: { userId: number }) {
+  const timeZone = await getRequestTimeZone();
   const [notifications, unreadCount, readCount] = await Promise.all([
     prisma.notification.findMany({
       where: { userId },
@@ -65,7 +59,7 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
             >
               <span>
                 <strong>{notification.title}</strong>
-                <small>{formatNotificationDate(notification.createdAt)}</small>
+                <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
               </span>
               <p>{notification.body}</p>
             </Link>
