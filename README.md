@@ -92,6 +92,19 @@ These tests cover slugs, wikilinks, and core problem-solving flows.
 The Infomaniak/VPS deployment path is documented in `deploy/INFOMANIAK.md`.
 It runs Math Woods on one Docker host with Next.js, PostgreSQL, Valkey rate limiting, Caddy HTTPS, Uptime Kuma, and a Postgres backup script.
 
+## Repository and Remotes
+
+This repository is the active Math Woods codebase. Older "math-garden" names or clones may exist, but current work
+should happen here.
+
+- `origin`: VPS bare repository at `ubuntu@37.156.45.153:~/git/math-woods.git`.
+- `github`: public GitHub repository at `https://github.com/Kolinnor/math-woods.git`.
+
+Important provenance tags:
+
+- `vps-origin-2026-06-10`: original VPS snapshot from June 10, 2026.
+- `public-origin-2026-06-27`: public release state pushed to GitHub on June 27, 2026.
+
 ## Notes
 
 Authentication is still intentionally lightweight for this first prototype. The natural next step is password reset and stronger production-grade rate limiting.
