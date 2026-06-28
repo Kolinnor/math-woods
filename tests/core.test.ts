@@ -12,7 +12,7 @@ import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { extractWikiLinks, replaceWikiLinks } from "../lib/wikilinks.ts";
 import { latexPreviewRenderMode, latexPreviewUsesBlockDecoration } from "../lib/latex-live-preview.ts";
-import { latexCursorTargetForArrow } from "../lib/latex-navigation.ts";
+import { latexCursorTargetForArrow, latexCursorTargetForVerticalArrow } from "../lib/latex-navigation.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
@@ -113,6 +113,14 @@ assert.equal(latexCursorTargetForArrow(centeredDoubleDollarText, centeredDoubleD
 assert.equal(latexCursorTargetForArrow("Let \\(x\\) and \\[y\\].", 4, "forward"), 6);
 assert.equal(latexCursorTargetForArrow("Let \\(x\\) and \\[y\\].", 9, "backward"), 7);
 assert.equal(latexCursorTargetForArrow("No math here", 0, "forward"), null);
+const verticalDisplayText = "above\n$$x+1$$\nbelow";
+assert.equal(latexCursorTargetForVerticalArrow(verticalDisplayText, 0, "down"), 8);
+assert.equal(latexCursorTargetForVerticalArrow(verticalDisplayText, 14, "up"), 8);
+assert.equal(latexCursorTargetForVerticalArrow(verticalDisplayText, 3, "down"), 9);
+const verticalMixedText = `0123456789\n${mixedDollarText}`;
+assert.equal(latexCursorTargetForVerticalArrow(verticalMixedText, 0, "down"), 12);
+assert.equal(latexCursorTargetForVerticalArrow(verticalMixedText, 8, "down"), 21);
+assert.equal(latexCursorTargetForVerticalArrow("above\nplain\nbelow", 0, "down"), null);
 assert.deepEqual(latexDeleteChange("A $x+1$ B", 7, "backward"), { from: 6, to: 7, anchor: 6 });
 assert.deepEqual(latexDeleteChange("A $x+1$ B", 2, "forward"), { from: 2, to: 3, anchor: 2 });
 assert.deepEqual(latexDeleteChange(centeredDoubleDollarText, centeredDoubleDollarText.length, "backward"), {

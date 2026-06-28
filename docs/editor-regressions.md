@@ -95,6 +95,7 @@ Symptom:
 
 - Pressing Left or Right beside a rendered `$...$`, `$$...$$`, `\(...\)`, or `\[...\]` preview jumped over the whole
   math range as if it were an atomic object.
+- Pressing Up or Down from a neighboring line could also skip a rendered display math range instead of entering it.
 - This made ordinary cursor navigation feel wrong, especially for display math blocks.
 
 Root cause:
@@ -107,6 +108,8 @@ Guardrail:
 
 - Left/Right at a rendered LaTeX boundary should move the cursor just inside the source range and set preview focus so
   the source becomes editable.
+- Up/Down from an adjacent line to a line containing rendered LaTeX should also enter the source range when the target
+  logical line contains math.
 - Once the cursor is inside the source range, native character-by-character cursor movement should take over.
 - Do not solve this by removing replacement widgets or by making LaTeX previews permanently editable text.
 
@@ -123,7 +126,8 @@ These are known behavioral fixes that should not be broken when changing live pr
   block and not a character inside the math content.
 - Pressing Backspace at the start of a line that begins with rendered math, for example before `$salut$ $$salut$$`,
   should delete the previous newline like normal text editing, not create or preserve a phantom extra line.
-- Pressing Left or Right next to a rendered math range should enter the math source, not skip over the whole range.
+- Pressing Left, Right, Up, or Down next to a rendered math range should enter the math source, not skip over the whole
+  range.
 - Markdown headings and bullet points should preview in the editor, but their markup must remain editable when the
   cursor enters the relevant range.
 - Right-clicking selected text should open the concept-link menu without losing the selected text.
