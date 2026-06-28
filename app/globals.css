@@ -903,6 +903,16 @@ textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.problem-difficulty-field {
+  align-content: start;
+  align-self: start;
+  justify-items: start;
+}
+
+.problem-difficulty-field input {
+  max-width: 8rem;
+}
+
 .markdown-editor-host {
   border: 1px solid var(--line);
   border-radius: 6px;

@@ -82,7 +82,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             initialValues={problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain]}
             initialSpoilers={problem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)}
           />
-          <label className="grid gap-2">
+          <label className="problem-difficulty-field grid gap-2">
             <span className="text-sm font-medium">Difficulty (1–100)</span>
             <input name="difficulty" type="number" min="1" max="100" defaultValue={problem.difficulty ?? ""} />
           </label>
