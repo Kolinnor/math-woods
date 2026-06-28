@@ -14,7 +14,7 @@ import {
 } from "@codemirror/view";
 import katex from "katex";
 import { useEffect, useRef, useState } from "react";
-import { latexBoundaryDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
+import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
 import { latexPreviewRenderMode, latexPreviewUsesBlockDecoration } from "@/lib/latex-live-preview";
 import { latexCursorTargetForArrow, type LatexArrowDirection } from "@/lib/latex-navigation";
 import { findLatexRanges } from "@/lib/latex-ranges";
@@ -295,7 +295,7 @@ function deleteLatexBoundaryCharacter(view: EditorView, direction: LatexDeleteDi
   if (!selection.empty) return false;
 
   const text = view.state.doc.toString();
-  const change = latexBoundaryDeleteChange(text, selection.from, direction);
+  const change = latexDeleteChange(text, selection.from, direction);
   if (!change) return false;
 
   view.dispatch({

@@ -121,6 +121,8 @@ These are known behavioral fixes that should not be broken when changing live pr
   on the same line.
 - Pressing Backspace or Delete next to a rendered math range must delete one delimiter character, not the whole math
   block and not a character inside the math content.
+- Pressing Backspace at the start of a line that begins with rendered math, for example before `$salut$ $$salut$$`,
+  should delete the previous newline like normal text editing, not create or preserve a phantom extra line.
 - Pressing Left or Right next to a rendered math range should enter the math source, not skip over the whole range.
 - Markdown headings and bullet points should preview in the editor, but their markup must remain editable when the
   cursor enters the relevant range.
