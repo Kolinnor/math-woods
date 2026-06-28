@@ -3732,6 +3732,10 @@ button.relation-remove-button {
   padding: 2rem clamp(1.25rem, 4vw, 3rem);
 }
 
+.problem-statement .prose-math {
+  font-size: 0.95rem;
+}
+
 .reading-header {
   border-bottom: 1px solid var(--line);
   padding-bottom: 1.25rem;
