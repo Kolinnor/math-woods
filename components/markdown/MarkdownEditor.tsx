@@ -336,15 +336,27 @@ function buildLivePreviewDecorations(state: EditorState) {
   const wikiLinks = findWikiLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
   const decorations = latexRanges.flatMap((range) => {
-    if (selectionOverlapsRange(state, range.from, range.to)) {
-      return findLatexSyntaxTokens(text, range).map((token) =>
-        Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
-      );
-    }
-
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
     const widget = new LatexWidget(range.formula, renderDisplayMode, range.from, latexOpeningDelimiterLength(text, range.from));
+
+    if (selectionOverlapsRange(state, range.from, range.to)) {
+      const activeDecorations = findLatexSyntaxTokens(text, range).map((token) =>
+        Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
+      );
+
+      if (renderDisplayMode) {
+        activeDecorations.push(
+          Decoration.widget({
+            widget,
+            block: true,
+            side: 1
+          }).range(range.to)
+        );
+      }
+
+      return activeDecorations;
+    }
 
     return [
       Decoration.replace({

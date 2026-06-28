@@ -93,6 +93,10 @@ assert.equal(latexPreviewRenderMode("Inline display syntax $$x^2 + 1$$ should st
 const standaloneDoubleDollarText = "$$x^2 + 1$$\nnext";
 const standaloneDoubleDollarRanges = findLatexRanges(standaloneDoubleDollarText);
 assert.equal(latexPreviewRenderMode(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), "display");
+const centeredDoubleDollarText = "$$2x+1=3x+2$$";
+const centeredDoubleDollarRanges = findLatexRanges(centeredDoubleDollarText);
+assert.equal(centeredDoubleDollarRanges[0]?.displayMode, true);
+assert.equal(latexPreviewRenderMode(centeredDoubleDollarText, centeredDoubleDollarRanges[0]), "display");
 assert.deepEqual(
   findLatexSyntaxTokens("$$\\operatorname{Ext}^1(G, H_2)$$", findLatexRanges("$$\\operatorname{Ext}^1(G, H_2)$$")[0]).map(
     (item) => item.kind
