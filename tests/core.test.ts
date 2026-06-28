@@ -12,6 +12,7 @@ import { slugify } from "../lib/slug.ts";
 import { extractWikiLinks, replaceWikiLinks } from "../lib/wikilinks.ts";
 import { latexPreviewRenderMode } from "../lib/latex-live-preview.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
+import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
 import { parseProblemDomains } from "../lib/problem-domains.ts";
@@ -92,6 +93,28 @@ assert.equal(latexPreviewRenderMode("Inline display syntax $$x^2 + 1$$ should st
 const standaloneDoubleDollarText = "$$x^2 + 1$$\nnext";
 const standaloneDoubleDollarRanges = findLatexRanges(standaloneDoubleDollarText);
 assert.equal(latexPreviewRenderMode(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), "display");
+assert.deepEqual(
+  findLatexSyntaxTokens("$$\\operatorname{Ext}^1(G, H_2)$$", findLatexRanges("$$\\operatorname{Ext}^1(G, H_2)$$")[0]).map(
+    (item) => item.kind
+  ),
+  [
+    "delimiter",
+    "delimiter",
+    "command",
+    "bracket",
+    "identifier",
+    "bracket",
+    "operator",
+    "number",
+    "bracket",
+    "identifier",
+    "operator",
+    "identifier",
+    "operator",
+    "number",
+    "bracket"
+  ]
+);
 assert.equal(parseProblemDifficulty("72"), 72);
 assert.equal(parseProblemDifficulty("101"), null);
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);

@@ -982,6 +982,35 @@ textarea {
   margin: 0;
 }
 
+.markdown-editor .cm-latex-token {
+  font-weight: 650;
+}
+
+.markdown-editor .cm-latex-delimiter {
+  color: #a78bfa;
+}
+
+.markdown-editor .cm-latex-command {
+  color: #fb7185;
+  font-style: italic;
+}
+
+.markdown-editor .cm-latex-bracket {
+  color: #60a5fa;
+}
+
+.markdown-editor .cm-latex-number {
+  color: #c084fc;
+}
+
+.markdown-editor .cm-latex-operator {
+  color: #fbbf24;
+}
+
+.markdown-editor .cm-latex-identifier {
+  color: #5eead4;
+}
+
 .markdown-editor .cm-md-heading {
   display: inline-block;
   font-family: var(--font-serif);

@@ -18,6 +18,7 @@ import katex from "katex";
 import { useEffect, useRef, useState } from "react";
 import { latexPreviewRenderMode } from "@/lib/latex-live-preview";
 import { findLatexRanges } from "@/lib/latex-ranges";
+import { findLatexSyntaxTokens } from "@/lib/latex-syntax-highlight";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 
@@ -337,7 +338,11 @@ function buildLivePreviewDecorations(view: EditorView) {
   const wikiLinks = findWikiLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
   const decorations = latexRanges.flatMap((range) => {
-    if (selectionOverlapsRange(view, range.from, range.to)) return [];
+    if (selectionOverlapsRange(view, range.from, range.to)) {
+      return findLatexSyntaxTokens(text, range).map((token) =>
+        Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
+      );
+    }
 
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";

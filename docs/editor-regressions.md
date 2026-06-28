@@ -6,6 +6,20 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-06-28 - Raw LaTeX source should remain readable while editing
+
+Expected behavior:
+
+- When a LaTeX range is being edited as raw source, commands such as `\operatorname` and `\longrightarrow` should be
+  visually distinct from braces, numbers, operators, and identifiers.
+- This highlighting is only an editor aid. It must not affect saved Markdown, server rendering, KaTeX output, or
+  copy/paste behavior.
+
+Guardrail:
+
+- Syntax coloring should be implemented with CodeMirror marks over the active raw LaTeX range.
+- Do not color hidden/replaced KaTeX preview widgets, and do not change the LaTeX parsing rules just to improve colors.
+
 ## 2026-06-28 - `$$...$$` did not preview live unless it was standalone
 
 Symptom:
