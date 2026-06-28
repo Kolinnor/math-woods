@@ -4,6 +4,7 @@ import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { requireDraftSession } from "@/lib/draft-session";
 import { MATH_DOMAINS } from "@/lib/domains";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -11,10 +12,12 @@ import { getPreferredContentLanguage } from "@/lib/server-language";
 export default async function NewConceptPage({
   searchParams
 }: {
-  searchParams: Promise<{ title?: string; translateOf?: string; language?: string }>;
+  searchParams: Promise<{ title?: string; translateOf?: string; language?: string; draft?: string }>;
 }) {
   await requireVerifiedUser();
-  const { title = "", translateOf = "", language = "" } = await searchParams;
+  const queryParams = await searchParams;
+  const draftSession = requireDraftSession("/concepts/new", queryParams);
+  const { title = "", translateOf = "", language = "" } = queryParams;
   const preferredLanguage = await getPreferredContentLanguage();
   const initialLanguage = language ? parseContentLanguage(language) : preferredLanguage;
   const sourceConcept = translateOf
@@ -77,7 +80,11 @@ export default async function NewConceptPage({
         </div>
         <label className="grid gap-2">
           <span className="text-sm font-medium">Content</span>
-          <MarkdownEditor name="bodyMarkdown" initialValue={defaultContent} />
+          <MarkdownEditor
+            name="bodyMarkdown"
+            initialValue={defaultContent}
+            draftKey={`concept:new:${draftSession}:body`}
+          />
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-medium">References</span>

@@ -7,6 +7,7 @@ import { TranslationReferencePanel } from "@/components/TranslationReferencePane
 import { requireVerifiedUser } from "@/lib/auth";
 import { MATH_DOMAINS } from "@/lib/domains";
 import { prisma } from "@/lib/db";
+import { requireDraftSession } from "@/lib/draft-session";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -14,10 +15,19 @@ import { getPreferredContentLanguage } from "@/lib/server-language";
 export default async function NewProblemPage({
   searchParams
 }: {
-  searchParams: Promise<{ playlist?: string; listed?: string; parent?: string; translateOf?: string; language?: string }>;
+  searchParams: Promise<{
+    playlist?: string;
+    listed?: string;
+    parent?: string;
+    translateOf?: string;
+    language?: string;
+    draft?: string;
+  }>;
 }) {
   await requireVerifiedUser();
-  const { playlist = "", listed = "1", parent = "", translateOf = "", language = "" } = await searchParams;
+  const queryParams = await searchParams;
+  const draftSession = requireDraftSession("/problems/new", queryParams);
+  const { playlist = "", listed = "1", parent = "", translateOf = "", language = "" } = queryParams;
   const preferredLanguage = await getPreferredContentLanguage();
   const initialLanguage = language ? parseContentLanguage(language) : preferredLanguage;
   const isListedByDefault = listed !== "0";
@@ -91,7 +101,11 @@ export default async function NewProblemPage({
         />
         <label className="grid gap-2">
           <span className="text-sm font-medium">Statement</span>
-          <MarkdownEditor name="bodyMarkdown" initialValue={defaultStatement} />
+          <MarkdownEditor
+            name="bodyMarkdown"
+            initialValue={defaultStatement}
+            draftKey={`problem:new:${draftSession}:statement`}
+          />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <ProblemDomainPicker domains={MATH_DOMAINS} initialValues={["OTHER"]} />
@@ -176,7 +190,12 @@ export default async function NewProblemPage({
         </fieldset>
         <label className="grid gap-2">
           <span className="text-sm font-medium">Initial solution (optional)</span>
-          <MarkdownEditor name="proofMarkdown" initialValue="" minHeight="11rem" />
+          <MarkdownEditor
+            name="proofMarkdown"
+            initialValue=""
+            minHeight="11rem"
+            draftKey={`problem:new:${draftSession}:initial-solution`}
+          />
         </label>
         <p className="muted text-sm">
           Make sure you can share this wording.{" "}

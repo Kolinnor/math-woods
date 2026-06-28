@@ -2,10 +2,16 @@ import { createPlaylistAction } from "@/lib/actions/playlist-actions";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { requireVerifiedUser } from "@/lib/auth";
+import { requireDraftSession } from "@/lib/draft-session";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
-export default async function NewPlaylistPage() {
+export default async function NewPlaylistPage({
+  searchParams
+}: {
+  searchParams: Promise<{ draft?: string }>;
+}) {
   await requireVerifiedUser();
+  const draftSession = requireDraftSession("/playlists/new", await searchParams);
   const preferredLanguage = await getPreferredContentLanguage();
 
   return (
@@ -24,6 +30,7 @@ export default async function NewPlaylistPage() {
           <MarkdownEditor
             name="descriptionMarkdown"
             initialValue={"Goal, prerequisites, recommended order.\n\nSee also [[polynomial]]."}
+            draftKey={`playlist:new:${draftSession}:description`}
           />
         </label>
         <button type="submit">Create</button>
