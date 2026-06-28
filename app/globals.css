@@ -983,12 +983,19 @@ textarea {
 
 .markdown-editor .cm-latex-display-inline {
   display: inline-block;
+  max-width: 100%;
   vertical-align: middle;
+  width: auto;
 }
 
 .markdown-editor .cm-latex-display .katex-display {
   margin: 0;
   text-align: center;
+}
+
+.markdown-editor .cm-latex-display-inline .katex-display {
+  display: inline-block;
+  max-width: 100%;
 }
 
 .markdown-editor .cm-latex-token {
