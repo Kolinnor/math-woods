@@ -4166,7 +4166,10 @@ button.relation-remove-button {
   font-size: 2rem;
   font-weight: 650;
   line-height: 1.15;
+  margin-left: auto;
+  margin-right: auto;
   max-width: 44rem;
+  text-align: center;
 }
 
 .home-guest-grid {
@@ -4202,6 +4205,7 @@ button.relation-remove-button {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+  justify-content: center;
   margin-top: 1.25rem;
 }
 
