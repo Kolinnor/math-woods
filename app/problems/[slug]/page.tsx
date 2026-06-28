@@ -443,7 +443,7 @@ export default async function ProblemPage({
             <details className="add-proof">
               <summary>{proofs.length === 0 ? "Be the first to add your solution!" : "Add another solution"}</summary>
               <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
-                <MarkdownEditor name="bodyMarkdown" minHeight="12rem" lineNumbers={false} />
+                <MarkdownEditor name="bodyMarkdown" minHeight="12rem" lineNumbers={false} resetSignal={proofs.length} />
                 <button type="submit">Publish solution</button>
               </form>
             </details>

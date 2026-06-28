@@ -84,6 +84,7 @@ type MarkdownEditorProps = {
   minHeight?: string;
   lineNumbers?: boolean;
   draftKey?: string;
+  resetSignal?: string | number | null;
 };
 
 type MarkdownDraft = {
@@ -660,11 +661,13 @@ export function MarkdownEditor({
   initialValue = "",
   minHeight = "14rem",
   lineNumbers: showLineNumbers = true,
-  draftKey
+  draftKey,
+  resetSignal = null
 }: MarkdownEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const draftKeyRef = useRef<string | null>(null);
+  const resetSignalRef = useRef(resetSignal);
   const linkTargetInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState(initialValue);
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
@@ -837,6 +840,31 @@ export function MarkdownEditor({
     if (!linkMenu) return;
     window.requestAnimationFrame(() => linkTargetInputRef.current?.focus());
   }, [linkMenu]);
+
+  useEffect(() => {
+    if (resetSignalRef.current === resetSignal) return;
+    resetSignalRef.current = resetSignal;
+
+    const key = draftKeyRef.current;
+    if (key) removeMarkdownDraft(key);
+    setRestoredDraftAt(null);
+    setValue(initialValue);
+    setLinkMenu(null);
+    setLinkSuggestions([]);
+    setSelectedLinkSuggestionQuery(null);
+
+    const view = viewRef.current;
+    if (!view) return;
+
+    view.dispatch({
+      changes: {
+        from: 0,
+        to: view.state.doc.length,
+        insert: initialValue
+      },
+      annotations: previewOnly
+    });
+  }, [initialValue, resetSignal]);
 
   useEffect(() => {
     if (!linkMenu) {
