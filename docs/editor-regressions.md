@@ -6,6 +6,26 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-06-28 - Display LaTeX preview must not use plugin-provided block decorations
+
+Symptom:
+
+- Opening `/problems/new` could throw `RangeError: Block decorations may not be specified via plugins`.
+- A related CodeMirror measurement error, `No tile at position ...`, could appear immediately before or after it.
+
+Root cause:
+
+- Standalone `$$...$$` previews were rendered as block replacement decorations from a `ViewPlugin`.
+- CodeMirror forbids block decorations from plugin decoration sources because they can affect vertical layout after the
+  editor has already planned viewport geometry.
+
+Guardrail:
+
+- Live Markdown/LaTeX decorations must be provided by the direct `EditorView.decorations.from(...)` facet through a
+  `StateField`, not by `ViewPlugin` decoration output.
+- Inline preview widgets may remain inline replacements, but display math widgets that use `block: true` must stay in
+  the direct decoration field.
+
 ## 2026-06-28 - Raw LaTeX source should remain readable while editing
 
 Expected behavior:

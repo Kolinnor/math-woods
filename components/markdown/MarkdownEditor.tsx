@@ -10,8 +10,6 @@ import {
   EditorView,
   keymap,
   lineNumbers,
-  ViewPlugin,
-  type ViewUpdate,
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
@@ -273,10 +271,10 @@ class MarkdownListMarkWidget extends WidgetType {
   }
 }
 
-function selectionOverlapsRange(view: EditorView, from: number, to: number) {
-  if (!view.state.field(previewFocusField)) return false;
+function selectionOverlapsRange(state: EditorState, from: number, to: number) {
+  if (!state.field(previewFocusField)) return false;
 
-  return view.state.selection.ranges.some((range) => {
+  return state.selection.ranges.some((range) => {
     if (range.empty) return range.from > from && range.from < to;
     return Math.max(range.from, from) < Math.min(range.to, to);
   });
@@ -332,13 +330,13 @@ const previewFocusField = StateField.define<boolean>({
   }
 });
 
-function buildLivePreviewDecorations(view: EditorView) {
-  const text = view.state.doc.toString();
+function buildLivePreviewDecorations(state: EditorState) {
+  const text = state.doc.toString();
   const latexRanges = findLatexRanges(text);
   const wikiLinks = findWikiLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
   const decorations = latexRanges.flatMap((range) => {
-    if (selectionOverlapsRange(view, range.from, range.to)) {
+    if (selectionOverlapsRange(state, range.from, range.to)) {
       return findLatexSyntaxTokens(text, range).map((token) =>
         Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
       );
@@ -359,7 +357,7 @@ function buildLivePreviewDecorations(view: EditorView) {
 
   decorations.push(
     ...wikiLinks
-      .filter((range) => !selectionOverlapsRange(view, range.from, range.to))
+      .filter((range) => !selectionOverlapsRange(state, range.from, range.to))
       .map((range) =>
         Decoration.replace({
           widget: new WikiLinkWidget(range.label, range.from),
@@ -368,15 +366,15 @@ function buildLivePreviewDecorations(view: EditorView) {
       )
   );
 
-  syntaxTree(view.state).iterate({
+  syntaxTree(state).iterate({
     enter(node) {
       if (overlapsRanges(node.from, node.to, previewRanges)) return;
       const parent = node.node.parent;
       const parentName = parent?.name ?? "";
       if (node.name === "ListMark") {
-        const active = selectionOverlapsRange(view, node.from, node.to);
+        const active = selectionOverlapsRange(state, node.from, node.to);
         if (!active) {
-          const marker = view.state.doc.sliceString(node.from, node.to);
+          const marker = state.doc.sliceString(node.from, node.to);
           decorations.push(
             Decoration.replace({
               widget: new MarkdownListMarkWidget(marker, node.from),
@@ -396,12 +394,12 @@ function buildLivePreviewDecorations(view: EditorView) {
         (node.name === "URL" && parentName === "Link");
       const activeFrom = isMarkup ? (parent?.from ?? node.from) : node.from;
       const activeTo = isMarkup ? (parent?.to ?? node.to) : node.to;
-      const active = selectionOverlapsRange(view, activeFrom, activeTo);
+      const active = selectionOverlapsRange(state, activeFrom, activeTo);
       const level = headingLevel(node.name);
       const previewClass = markdownPreviewClass(node.name);
 
       if (level && !active) {
-        const headingText = view.state.doc.sliceString(node.from, node.to).replace(/^#{1,6}\s*/, "");
+        const headingText = state.doc.sliceString(node.from, node.to).replace(/^#{1,6}\s*/, "");
         decorations.push(
           Decoration.replace({
             widget: new MarkdownHeadingWidget(headingText, level, node.from),
@@ -424,27 +422,17 @@ function buildLivePreviewDecorations(view: EditorView) {
   return Decoration.set(decorations, true);
 }
 
-const liveMarkdownPreview = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = buildLivePreviewDecorations(view);
+const liveMarkdownPreview = StateField.define<DecorationSet>({
+  create: (state) => buildLivePreviewDecorations(state),
+  update(decorations, transaction) {
+    const focusChanged = transaction.effects.some((effect) => effect.is(setPreviewFocus));
+    if (transaction.docChanged || transaction.selection || focusChanged) {
+      return buildLivePreviewDecorations(transaction.state);
     }
-
-    update(update: ViewUpdate) {
-      const focusChanged = update.transactions.some((transaction) =>
-        transaction.effects.some((effect) => effect.is(setPreviewFocus))
-      );
-      if (update.docChanged || update.selectionSet || focusChanged) {
-        this.decorations = buildLivePreviewDecorations(update.view);
-      }
-    }
+    return decorations;
   },
-  {
-    decorations: (plugin) => plugin.decorations
-  }
-);
+  provide: (field) => EditorView.decorations.from(field)
+});
 
 const previewFocusEvents = EditorView.domEventHandlers({
   mousedown(_event, view) {
