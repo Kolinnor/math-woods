@@ -60,8 +60,12 @@ Guardrail:
 - Do not skip non-standalone `$$...$$` ranges.
 - Double-dollar ranges should render as block/display KaTeX even when they appear after other text on the same line,
   matching Obsidian-style editing.
-- Display math widgets that affect vertical layout must still come from the direct `EditorView.decorations.from(...)`
-  `StateField`, not from plugin-provided decorations.
+- Only display ranges that are standalone on their line should use CodeMirror `block: true` decorations.
+- Non-standalone `$$...$$` ranges should use an inline replacement widget styled as a full-width display preview; using
+  a CodeMirror block decoration in the middle of a line can collapse measurement and stack the equation one character
+  per visual line.
+- Display math widgets that use CodeMirror `block: true` must still come from the direct
+  `EditorView.decorations.from(...)` `StateField`, not from plugin-provided decorations.
 
 ## 2026-06-28 - Ordered list markers wrapped as `1` then `)`
 

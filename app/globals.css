@@ -972,12 +972,18 @@ textarea {
 }
 
 .markdown-editor .cm-latex-display {
+  box-sizing: border-box;
   display: block;
   margin: 0.4rem 0;
   overflow-x: auto;
   padding: 0.55rem 0;
   text-align: center;
   width: 100%;
+}
+
+.markdown-editor .cm-latex-display-inline {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .markdown-editor .cm-latex-display .katex-display {

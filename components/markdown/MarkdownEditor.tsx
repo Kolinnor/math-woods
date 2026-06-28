@@ -14,7 +14,7 @@ import {
 } from "@codemirror/view";
 import katex from "katex";
 import { useEffect, useRef, useState } from "react";
-import { latexPreviewRenderMode } from "@/lib/latex-live-preview";
+import { latexPreviewRenderMode, latexPreviewUsesBlockDecoration } from "@/lib/latex-live-preview";
 import { latexCursorTargetForArrow, type LatexArrowDirection } from "@/lib/latex-navigation";
 import { findLatexRanges } from "@/lib/latex-ranges";
 import { findLatexSyntaxTokens } from "@/lib/latex-syntax-highlight";
@@ -119,6 +119,7 @@ class LatexWidget extends WidgetType {
   constructor(
     readonly formula: string,
     readonly renderDisplayMode: boolean,
+    readonly useBlockLayout: boolean,
     readonly from: number,
     readonly editOffset: number
   ) {
@@ -129,14 +130,17 @@ class LatexWidget extends WidgetType {
     return (
       other.formula === this.formula &&
       other.renderDisplayMode === this.renderDisplayMode &&
+      other.useBlockLayout === this.useBlockLayout &&
       other.from === this.from &&
       other.editOffset === this.editOffset
     );
   }
 
   toDOM(view: EditorView) {
-    const element = document.createElement(this.renderDisplayMode ? "div" : "span");
-    element.className = this.renderDisplayMode ? "cm-latex-preview cm-latex-display" : "cm-latex-preview cm-latex-inline";
+    const element = document.createElement(this.useBlockLayout ? "div" : "span");
+    element.className = this.renderDisplayMode
+      ? `cm-latex-preview cm-latex-display${this.useBlockLayout ? "" : " cm-latex-display-inline"}`
+      : "cm-latex-preview cm-latex-inline";
     element.dataset.latexFrom = String(this.from);
     element.title = "Click to edit";
     element.setAttribute("aria-label", `LaTeX: ${this.formula}`);
@@ -355,7 +359,14 @@ function buildLivePreviewDecorations(state: EditorState) {
   const decorations = latexRanges.flatMap((range) => {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
-    const widget = new LatexWidget(range.formula, renderDisplayMode, range.from, latexOpeningDelimiterLength(text, range.from));
+    const useBlockLayout = renderDisplayMode && latexPreviewUsesBlockDecoration(text, range);
+    const widget = new LatexWidget(
+      range.formula,
+      renderDisplayMode,
+      useBlockLayout,
+      range.from,
+      latexOpeningDelimiterLength(text, range.from)
+    );
 
     if (selectionOverlapsRange(state, range.from, range.to)) {
       const activeDecorations = findLatexSyntaxTokens(text, range).map((token) =>
@@ -366,7 +377,7 @@ function buildLivePreviewDecorations(state: EditorState) {
         activeDecorations.push(
           Decoration.widget({
             widget,
-            block: true,
+            block: useBlockLayout,
             side: 1
           }).range(range.to)
         );
@@ -378,7 +389,7 @@ function buildLivePreviewDecorations(state: EditorState) {
     return [
       Decoration.replace({
         widget,
-        block: renderDisplayMode,
+        block: useBlockLayout,
         inclusive: false
       }).range(range.from, range.to)
     ];
