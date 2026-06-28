@@ -1001,8 +1001,10 @@ textarea {
   color: var(--ink);
   display: inline-block;
   font-weight: 750;
+  min-width: 1ch;
   text-align: center;
-  width: 1ch;
+  white-space: nowrap;
+  width: max-content;
 }
 
 .markdown-editor .cm-md-strong {

@@ -42,3 +42,8 @@ npm.cmd run build
 
 Normal deployment archive excludes `.next`, `node_modules`, `.git`, `backups`, and `.env.production`.
 Never overwrite the server `.env.production`, and never delete backups.
+
+## Editor regression log
+
+Before changing Markdown/LaTeX editor behavior, read `docs/editor-regressions.md`.
+After fixing a new editor regression, add a short dated note there describing the symptom, the root cause, and the guardrail that should prevent the bug from returning.
