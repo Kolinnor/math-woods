@@ -14,6 +14,7 @@ import {
 } from "@codemirror/view";
 import katex from "katex";
 import { useEffect, useRef, useState } from "react";
+import { latexBoundaryDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
 import { latexPreviewRenderMode, latexPreviewUsesBlockDecoration } from "@/lib/latex-live-preview";
 import { latexCursorTargetForArrow, type LatexArrowDirection } from "@/lib/latex-navigation";
 import { findLatexRanges } from "@/lib/latex-ranges";
@@ -289,34 +290,17 @@ function latexOpeningDelimiterLength(text: string, position: number) {
   return text.startsWith("$$", position) || text.startsWith("\\(", position) || text.startsWith("\\[", position) ? 2 : 1;
 }
 
-function revealLatexBeforeDeleting(view: EditorView, direction: "backward" | "forward") {
+function deleteLatexBoundaryCharacter(view: EditorView, direction: LatexDeleteDirection) {
   const selection = view.state.selection.main;
   if (!selection.empty) return false;
 
-  const cursor = selection.from;
   const text = view.state.doc.toString();
-  const range = findLatexRanges(text).find((item) => (direction === "backward" ? item.to === cursor : item.from === cursor));
-  if (!range) return false;
-
-  const delimiterLength = latexOpeningDelimiterLength(text, range.from);
-  const contentFrom = range.from + delimiterLength;
-  const contentTo = range.to - delimiterLength;
-  const deleteFrom = direction === "backward" ? contentTo - 1 : contentFrom;
-  const deleteTo = direction === "backward" ? contentTo : contentFrom + 1;
-
-  if (deleteFrom < contentFrom || deleteTo > contentTo) {
-    view.dispatch({
-      selection: { anchor: contentFrom },
-      effects: setPreviewFocus.of(true),
-      annotations: previewOnly,
-      scrollIntoView: true
-    });
-    return true;
-  }
+  const change = latexBoundaryDeleteChange(text, selection.from, direction);
+  if (!change) return false;
 
   view.dispatch({
-    changes: { from: deleteFrom, to: deleteTo },
-    selection: { anchor: deleteFrom },
+    changes: { from: change.from, to: change.to },
+    selection: { anchor: change.anchor },
     effects: setPreviewFocus.of(true),
     scrollIntoView: true
   });
@@ -534,11 +518,11 @@ export function MarkdownEditor({
             keymap.of([
               {
                 key: "Backspace",
-                run: (view) => revealLatexBeforeDeleting(view, "backward")
+                run: (view) => deleteLatexBoundaryCharacter(view, "backward")
               },
               {
                 key: "Delete",
-                run: (view) => revealLatexBeforeDeleting(view, "forward")
+                run: (view) => deleteLatexBoundaryCharacter(view, "forward")
               },
               {
                 key: "ArrowLeft",

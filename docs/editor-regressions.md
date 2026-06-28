@@ -119,9 +119,8 @@ These are known behavioral fixes that should not be broken when changing live pr
 - Display math delimited by double dollars, such as `$$x^2$$`, should render live when it is a standalone display range.
 - Display math delimited by double dollars should render as centered display math even when it appears after other text
   on the same line.
-- Pressing Backspace or Delete next to a rendered math range must not delete the whole math block at once.
-- Pressing Backspace just after the closing `$` of `$math$` should delete the final math character and reveal/edit the
-  math source, rather than doing nothing.
+- Pressing Backspace or Delete next to a rendered math range must delete one delimiter character, not the whole math
+  block and not a character inside the math content.
 - Pressing Left or Right next to a rendered math range should enter the math source, not skip over the whole range.
 - Markdown headings and bullet points should preview in the editor, but their markup must remain editable when the
   cursor enters the relevant range.

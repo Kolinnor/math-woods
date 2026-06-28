@@ -8,6 +8,7 @@ import {
   getStringAttribute,
   parseMarkdownDocument
 } from "../lib/frontmatter.ts";
+import { latexBoundaryDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { extractWikiLinks, replaceWikiLinks } from "../lib/wikilinks.ts";
 import { latexPreviewRenderMode, latexPreviewUsesBlockDecoration } from "../lib/latex-live-preview.ts";
@@ -112,6 +113,15 @@ assert.equal(latexCursorTargetForArrow(centeredDoubleDollarText, centeredDoubleD
 assert.equal(latexCursorTargetForArrow("Let \\(x\\) and \\[y\\].", 4, "forward"), 6);
 assert.equal(latexCursorTargetForArrow("Let \\(x\\) and \\[y\\].", 9, "backward"), 7);
 assert.equal(latexCursorTargetForArrow("No math here", 0, "forward"), null);
+assert.deepEqual(latexBoundaryDeleteChange("A $x+1$ B", 7, "backward"), { from: 6, to: 7, anchor: 6 });
+assert.deepEqual(latexBoundaryDeleteChange("A $x+1$ B", 2, "forward"), { from: 2, to: 3, anchor: 2 });
+assert.deepEqual(latexBoundaryDeleteChange(centeredDoubleDollarText, centeredDoubleDollarText.length, "backward"), {
+  from: 12,
+  to: 13,
+  anchor: 12
+});
+assert.deepEqual(latexBoundaryDeleteChange(centeredDoubleDollarText, 0, "forward"), { from: 0, to: 1, anchor: 0 });
+assert.equal(latexBoundaryDeleteChange("No math here", 0, "forward"), null);
 assert.deepEqual(
   findLatexSyntaxTokens("$$\\operatorname{Ext}^1(G, H_2)$$", findLatexRanges("$$\\operatorname{Ext}^1(G, H_2)$$")[0]).map(
     (item) => item.kind
