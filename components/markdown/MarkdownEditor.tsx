@@ -16,6 +16,7 @@ import {
 } from "@codemirror/view";
 import katex from "katex";
 import { useEffect, useRef, useState } from "react";
+import { latexPreviewRenderMode } from "@/lib/latex-live-preview";
 import { findLatexRanges } from "@/lib/latex-ranges";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
@@ -117,24 +118,30 @@ function parseSelectedWikiLink(value: string) {
 class LatexWidget extends WidgetType {
   constructor(
     readonly formula: string,
-    readonly displayMode: boolean,
-    readonly from: number
+    readonly renderDisplayMode: boolean,
+    readonly from: number,
+    readonly editOffset: number
   ) {
     super();
   }
 
   eq(other: LatexWidget) {
-    return other.formula === this.formula && other.displayMode === this.displayMode && other.from === this.from;
+    return (
+      other.formula === this.formula &&
+      other.renderDisplayMode === this.renderDisplayMode &&
+      other.from === this.from &&
+      other.editOffset === this.editOffset
+    );
   }
 
   toDOM(view: EditorView) {
-    const element = document.createElement(this.displayMode ? "div" : "span");
-    element.className = this.displayMode ? "cm-latex-preview cm-latex-display" : "cm-latex-preview cm-latex-inline";
+    const element = document.createElement(this.renderDisplayMode ? "div" : "span");
+    element.className = this.renderDisplayMode ? "cm-latex-preview cm-latex-display" : "cm-latex-preview cm-latex-inline";
     element.dataset.latexFrom = String(this.from);
     element.title = "Click to edit";
     element.setAttribute("aria-label", `LaTeX: ${this.formula}`);
     katex.render(this.formula, element, {
-      displayMode: this.displayMode,
+      displayMode: this.renderDisplayMode,
       throwOnError: false
     });
     element.addEventListener("mousedown", (event) => {
@@ -142,7 +149,7 @@ class LatexWidget extends WidgetType {
       event.stopPropagation();
       view.focus();
       view.dispatch({
-        selection: { anchor: this.from + (this.displayMode ? 2 : 1) },
+        selection: { anchor: this.from + this.editOffset },
         effects: setPreviewFocus.of(true),
         annotations: previewOnly,
         scrollIntoView: true
@@ -274,14 +281,6 @@ function selectionOverlapsRange(view: EditorView, from: number, to: number) {
   });
 }
 
-function rangeIsStandaloneLine(text: string, from: number, to: number) {
-  const lineStart = text.lastIndexOf("\n", Math.max(0, from - 1)) + 1;
-  const nextBreak = text.indexOf("\n", to);
-  const lineEnd = nextBreak === -1 ? text.length : nextBreak;
-
-  return text.slice(lineStart, from).trim() === "" && text.slice(to, lineEnd).trim() === "";
-}
-
 function latexOpeningDelimiterLength(text: string, position: number) {
   return text.startsWith("$$", position) || text.startsWith("\\(", position) || text.startsWith("\\[", position) ? 2 : 1;
 }
@@ -339,14 +338,15 @@ function buildLivePreviewDecorations(view: EditorView) {
   const previewRanges = [...latexRanges, ...wikiLinks];
   const decorations = latexRanges.flatMap((range) => {
     if (selectionOverlapsRange(view, range.from, range.to)) return [];
-    if (range.displayMode && !rangeIsStandaloneLine(text, range.from, range.to)) return [];
 
-    const widget = new LatexWidget(range.formula, range.displayMode, range.from);
+    const renderMode = latexPreviewRenderMode(text, range);
+    const renderDisplayMode = renderMode === "display";
+    const widget = new LatexWidget(range.formula, renderDisplayMode, range.from, latexOpeningDelimiterLength(text, range.from));
 
     return [
       Decoration.replace({
         widget,
-        block: range.displayMode,
+        block: renderDisplayMode,
         inclusive: false
       }).range(range.from, range.to)
     ];

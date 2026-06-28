@@ -6,6 +6,25 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-06-28 - `$$...$$` did not preview live unless it was standalone
+
+Symptom:
+
+- `$x$` rendered in the live editor, but `$$x$$` stayed as raw dollar text when it appeared on a line with other text,
+  for example `2x + 1 $$2x+1$$`.
+
+Root cause:
+
+- Display math ranges were skipped entirely unless the `$$...$$` range was alone on its visual line.
+- That avoided broken block layout, but it also meant inline uses of double-dollar syntax received no live preview at all.
+
+Guardrail:
+
+- Do not skip non-standalone `$$...$$` ranges.
+- Standalone display ranges should render as block/display KaTeX.
+- Non-standalone display ranges should still preview, but as an inline widget in the editor. This preserves live feedback
+  without inserting a block-level replacement in the middle of a sentence.
+
 ## 2026-06-28 - Ordered list markers wrapped as `1` then `)`
 
 Symptom:
@@ -35,8 +54,8 @@ These are known behavioral fixes that should not be broken when changing live pr
 - Markdown live preview should update while typing, not only after the editor loses focus.
 - Inline math delimited by single dollars, such as `$x^2$`, should render live when the cursor is outside that range.
 - Display math delimited by double dollars, such as `$$x^2$$`, should render live when it is a standalone display range.
-- Display math should not be preview-replaced when it appears mid-sentence in a way that would destroy surrounding text
-  flow; editing raw delimiters must remain possible.
+- Display math delimited by double dollars should also render live when it appears mid-sentence, but only as an inline
+  editor widget. It must not become a block replacement that destroys surrounding text flow.
 - Pressing Backspace or Delete next to a rendered math range must not delete the whole math block at once.
 - Pressing Backspace just after the closing `$` of `$math$` should delete the final math character and reveal/edit the
   math source, rather than doing nothing.

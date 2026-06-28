@@ -10,6 +10,7 @@ import {
 } from "../lib/frontmatter.ts";
 import { slugify } from "../lib/slug.ts";
 import { extractWikiLinks, replaceWikiLinks } from "../lib/wikilinks.ts";
+import { latexPreviewRenderMode } from "../lib/latex-live-preview.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
@@ -85,6 +86,12 @@ assert.deepEqual(findLatexRanges("Let \\(x^2\\) and \\[y=x+1\\]."), [
 assert.deepEqual(findLatexRanges("A standalone display:\n$$\nx^2 + 1\n$$\n1) continue"), [
   { from: 22, to: 35, formula: "x^2 + 1", displayMode: true }
 ]);
+const inlineDoubleDollarRanges = findLatexRanges("Inline display syntax $$x^2 + 1$$ should still preview.");
+assert.equal(inlineDoubleDollarRanges[0]?.displayMode, true);
+assert.equal(latexPreviewRenderMode("Inline display syntax $$x^2 + 1$$ should still preview.", inlineDoubleDollarRanges[0]), "inline");
+const standaloneDoubleDollarText = "$$x^2 + 1$$\nnext";
+const standaloneDoubleDollarRanges = findLatexRanges(standaloneDoubleDollarText);
+assert.equal(latexPreviewRenderMode(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), "display");
 assert.equal(parseProblemDifficulty("72"), 72);
 assert.equal(parseProblemDifficulty("101"), null);
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
