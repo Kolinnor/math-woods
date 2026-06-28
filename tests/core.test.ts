@@ -11,7 +11,11 @@ import {
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { extractWikiLinks, replaceWikiLinks } from "../lib/wikilinks.ts";
-import { latexPreviewRenderMode, latexPreviewUsesBlockDecoration } from "../lib/latex-live-preview.ts";
+import {
+  latexPreviewDiagnosticsForRange,
+  latexPreviewRenderMode,
+  latexPreviewUsesBlockDecoration
+} from "../lib/latex-live-preview.ts";
 import { latexCursorTargetForArrow, latexCursorTargetForVerticalArrow } from "../lib/latex-navigation.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
@@ -97,10 +101,19 @@ const mixedDollarRanges = findLatexRanges(mixedDollarText);
 assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[0]), "inline");
 assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[1]), "display");
 assert.equal(latexPreviewUsesBlockDecoration(mixedDollarText, mixedDollarRanges[1]), false);
+assert.deepEqual(
+  latexPreviewDiagnosticsForRange(mixedDollarText, mixedDollarRanges[1], true, false).map((diagnostic) => diagnostic.code),
+  ["display-math-inline-display-fallback"]
+);
+assert.deepEqual(
+  latexPreviewDiagnosticsForRange(mixedDollarText, mixedDollarRanges[1], true, true).map((diagnostic) => diagnostic.code),
+  ["display-math-block-on-non-standalone-line"]
+);
 const standaloneDoubleDollarText = "$$x^2 + 1$$\nnext";
 const standaloneDoubleDollarRanges = findLatexRanges(standaloneDoubleDollarText);
 assert.equal(latexPreviewRenderMode(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), "display");
 assert.equal(latexPreviewUsesBlockDecoration(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), true);
+assert.deepEqual(latexPreviewDiagnosticsForRange(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0], true, true), []);
 const centeredDoubleDollarText = "$$2x+1=3x+2$$";
 const centeredDoubleDollarRanges = findLatexRanges(centeredDoubleDollarText);
 assert.equal(centeredDoubleDollarRanges[0]?.displayMode, true);

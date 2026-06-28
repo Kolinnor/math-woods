@@ -15,7 +15,12 @@ import {
 import katex from "katex";
 import { useEffect, useRef, useState } from "react";
 import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
-import { latexPreviewRenderMode, latexPreviewUsesBlockDecoration } from "@/lib/latex-live-preview";
+import {
+  latexPreviewDiagnosticsForRange,
+  latexPreviewRenderMode,
+  latexPreviewUsesBlockDecoration,
+  type LatexPreviewDiagnostic
+} from "@/lib/latex-live-preview";
 import {
   latexCursorTargetForArrow,
   latexCursorTargetForVerticalArrow,
@@ -28,6 +33,36 @@ import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "@/lib/ma
 import { overlapsRanges } from "@/lib/markdown-ranges";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
+
+type LatexWidgetLayoutDiagnostic = {
+  code: "inline-display-widget-measured-wide" | "inline-display-widget-style-drift";
+  severity: "warning";
+  message: string;
+  from: number;
+  to: number;
+  formula: string;
+  line: LatexPreviewDiagnostic["line"];
+  layout: LatexPreviewDiagnostic["layout"];
+  measured: {
+    widgetWidth: number;
+    lineWidth: number;
+    display: string;
+    width: string;
+    katexDisplay: string | null;
+    katexWidth: string | null;
+  };
+};
+
+type MathWoodsEditorDiagnostics = {
+  latexPreviews: LatexPreviewDiagnostic[];
+  latexLayoutWarnings: LatexWidgetLayoutDiagnostic[];
+};
+
+declare global {
+  interface Window {
+    __mathWoodsEditorDiagnostics?: MathWoodsEditorDiagnostics;
+  }
+}
 
 type LinkMenuState = {
   x: number;
@@ -127,7 +162,9 @@ class LatexWidget extends WidgetType {
     readonly renderDisplayMode: boolean,
     readonly useBlockLayout: boolean,
     readonly from: number,
-    readonly editOffset: number
+    readonly editOffset: number,
+    readonly diagnosticSignature: string,
+    readonly diagnostics: LatexPreviewDiagnostic[]
   ) {
     super();
   }
@@ -138,7 +175,8 @@ class LatexWidget extends WidgetType {
       other.renderDisplayMode === this.renderDisplayMode &&
       other.useBlockLayout === this.useBlockLayout &&
       other.from === this.from &&
-      other.editOffset === this.editOffset
+      other.editOffset === this.editOffset &&
+      other.diagnosticSignature === this.diagnosticSignature
     );
   }
 
@@ -148,12 +186,14 @@ class LatexWidget extends WidgetType {
       ? `cm-latex-preview cm-latex-display${this.useBlockLayout ? "" : " cm-latex-display-inline"}`
       : "cm-latex-preview cm-latex-inline";
     element.dataset.latexFrom = String(this.from);
+    element.dataset.latexLayout = this.useBlockLayout ? "block-display" : this.renderDisplayMode ? "inline-display" : "inline";
     element.title = "Click to edit";
     element.setAttribute("aria-label", `LaTeX: ${this.formula}`);
     katex.render(this.formula, element, {
       displayMode: this.renderDisplayMode,
       throwOnError: false
     });
+    scheduleLatexWidgetLayoutDiagnostics(element, this.diagnostics);
     element.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -356,6 +396,123 @@ const previewFocusField = StateField.define<boolean>({
   }
 });
 
+const latexDiagnosticWarningKeys = new Set<string>();
+
+function editorDiagnosticsEnabled() {
+  return process.env.NODE_ENV !== "production";
+}
+
+function editorDiagnosticsStore() {
+  if (!editorDiagnosticsEnabled() || typeof window === "undefined") return null;
+
+  window.__mathWoodsEditorDiagnostics ??= {
+    latexPreviews: [],
+    latexLayoutWarnings: []
+  };
+  return window.__mathWoodsEditorDiagnostics;
+}
+
+function keepLatest<T>(items: T[], limit: number) {
+  if (items.length > limit) items.splice(0, items.length - limit);
+}
+
+function latexDiagnosticSignature(diagnostics: LatexPreviewDiagnostic[]) {
+  return diagnostics
+    .map((diagnostic) => `${diagnostic.code}:${diagnostic.from}:${diagnostic.to}:${diagnostic.layout.kind}:${diagnostic.line.text}`)
+    .join("|");
+}
+
+function reportLatexPreviewDiagnostics(diagnostics: LatexPreviewDiagnostic[]) {
+  if (diagnostics.length === 0) return;
+
+  const store = editorDiagnosticsStore();
+  if (!store) return;
+
+  store.latexPreviews.push(...diagnostics);
+  keepLatest(store.latexPreviews, 200);
+
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.severity === "info") continue;
+
+    const key = latexDiagnosticSignature([diagnostic]);
+    if (latexDiagnosticWarningKeys.has(key)) continue;
+    latexDiagnosticWarningKeys.add(key);
+
+    const log = diagnostic.severity === "error" ? console.error : console.warn;
+    log("[Math Woods editor] LaTeX preview diagnostic", diagnostic);
+  }
+}
+
+function reportLatexLayoutWarning(warning: LatexWidgetLayoutDiagnostic) {
+  const store = editorDiagnosticsStore();
+  if (!store) return;
+
+  store.latexLayoutWarnings.push(warning);
+  keepLatest(store.latexLayoutWarnings, 100);
+
+  const key = `${warning.code}:${warning.from}:${warning.to}:${warning.measured.widgetWidth}:${warning.measured.lineWidth}:${warning.layout.kind}`;
+  if (latexDiagnosticWarningKeys.has(key)) return;
+  latexDiagnosticWarningKeys.add(key);
+  console.warn("[Math Woods editor] LaTeX layout warning", warning);
+}
+
+function scheduleLatexWidgetLayoutDiagnostics(element: HTMLElement, diagnostics: LatexPreviewDiagnostic[]) {
+  if (!editorDiagnosticsEnabled() || typeof window === "undefined") return;
+
+  const inlineDisplayDiagnostic = diagnostics.find(
+    (diagnostic) => diagnostic.code === "display-math-inline-display-fallback"
+  );
+  if (!inlineDisplayDiagnostic) return;
+
+  window.requestAnimationFrame(() => {
+    const lineElement = element.closest(".cm-line") as HTMLElement | null;
+    if (!lineElement || !element.isConnected) return;
+
+    const rect = element.getBoundingClientRect();
+    const lineRect = lineElement.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    const katexDisplay = element.querySelector(".katex-display") as HTMLElement | null;
+    const katexStyle = katexDisplay ? window.getComputedStyle(katexDisplay) : null;
+    const measured = {
+      widgetWidth: rect.width,
+      lineWidth: lineRect.width,
+      display: style.display,
+      width: style.width,
+      katexDisplay: katexStyle?.display ?? null,
+      katexWidth: katexStyle?.width ?? null
+    };
+    const hasTextAround = inlineDisplayDiagnostic.line.before.trim() !== "" || inlineDisplayDiagnostic.line.after.trim() !== "";
+
+    if (style.display !== "inline-block" || katexStyle?.display !== "inline-block") {
+      reportLatexLayoutWarning({
+        code: "inline-display-widget-style-drift",
+        severity: "warning",
+        message: "A mixed-line display math widget no longer has the shrink-to-fit inline display CSS expected by the editor.",
+        from: inlineDisplayDiagnostic.from,
+        to: inlineDisplayDiagnostic.to,
+        formula: inlineDisplayDiagnostic.formula,
+        line: inlineDisplayDiagnostic.line,
+        layout: inlineDisplayDiagnostic.layout,
+        measured
+      });
+    }
+
+    if (hasTextAround && lineRect.width > 0 && rect.width >= lineRect.width * 0.9) {
+      reportLatexLayoutWarning({
+        code: "inline-display-widget-measured-wide",
+        severity: "warning",
+        message: "A mixed-line display math widget is almost as wide as its CodeMirror line and may squeeze surrounding text.",
+        from: inlineDisplayDiagnostic.from,
+        to: inlineDisplayDiagnostic.to,
+        formula: inlineDisplayDiagnostic.formula,
+        line: inlineDisplayDiagnostic.line,
+        layout: inlineDisplayDiagnostic.layout,
+        measured
+      });
+    }
+  });
+}
+
 function buildLivePreviewDecorations(state: EditorState) {
   const text = state.doc.toString();
   const latexRanges = findLatexRanges(text);
@@ -365,12 +522,16 @@ function buildLivePreviewDecorations(state: EditorState) {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
     const useBlockLayout = renderDisplayMode && latexPreviewUsesBlockDecoration(text, range);
+    const diagnostics = latexPreviewDiagnosticsForRange(text, range, renderDisplayMode, useBlockLayout);
+    reportLatexPreviewDiagnostics(diagnostics);
     const widget = new LatexWidget(
       range.formula,
       renderDisplayMode,
       useBlockLayout,
       range.from,
-      latexOpeningDelimiterLength(text, range.from)
+      latexOpeningDelimiterLength(text, range.from),
+      latexDiagnosticSignature(diagnostics),
+      diagnostics
     );
 
     if (selectionOverlapsRange(state, range.from, range.to)) {

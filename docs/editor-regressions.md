@@ -64,6 +64,9 @@ Guardrail:
 - Non-standalone `$$...$$` ranges should use an inline replacement widget styled as a shrink-to-fit display preview.
   Using a CodeMirror block decoration or a 100%-wide inline widget in the middle of a line can collapse measurement and
   stack surrounding text one character per visual line.
+- In development, mixed-line display previews should publish diagnostics to `window.__mathWoodsEditorDiagnostics`.
+  Static diagnostics record why a range used the inline-display fallback; DOM diagnostics warn if the mounted widget
+  drifts away from the expected shrink-to-fit CSS or becomes nearly as wide as its CodeMirror line.
 - Display math widgets that use CodeMirror `block: true` must still come from the direct
   `EditorView.decorations.from(...)` `StateField`, not from plugin-provided decorations.
 
