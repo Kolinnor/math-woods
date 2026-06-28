@@ -90,7 +90,11 @@ assert.deepEqual(findLatexRanges("A standalone display:\n$$\nx^2 + 1\n$$\n1) con
 ]);
 const inlineDoubleDollarRanges = findLatexRanges("Inline display syntax $$x^2 + 1$$ should still preview.");
 assert.equal(inlineDoubleDollarRanges[0]?.displayMode, true);
-assert.equal(latexPreviewRenderMode("Inline display syntax $$x^2 + 1$$ should still preview.", inlineDoubleDollarRanges[0]), "inline");
+assert.equal(latexPreviewRenderMode("Inline display syntax $$x^2 + 1$$ should still preview.", inlineDoubleDollarRanges[0]), "display");
+const mixedDollarText = "$salut$ $$salut$$";
+const mixedDollarRanges = findLatexRanges(mixedDollarText);
+assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[0]), "inline");
+assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[1]), "display");
 const standaloneDoubleDollarText = "$$x^2 + 1$$\nnext";
 const standaloneDoubleDollarRanges = findLatexRanges(standaloneDoubleDollarText);
 assert.equal(latexPreviewRenderMode(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), "display");

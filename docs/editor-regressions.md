@@ -40,24 +40,28 @@ Guardrail:
 - Syntax coloring should be implemented with CodeMirror marks over the active raw LaTeX range.
 - Do not color hidden/replaced KaTeX preview widgets, and do not change the LaTeX parsing rules just to improve colors.
 
-## 2026-06-28 - `$$...$$` did not preview live unless it was standalone
+## 2026-06-28 - `$$...$$` should always preview as display math
 
 Symptom:
 
 - `$x$` rendered in the live editor, but `$$x$$` stayed as raw dollar text when it appeared on a line with other text,
   for example `2x + 1 $$2x+1$$`.
+- A later inline fallback made `$$x$$` preview in the middle of a line, but as inline math rather than an Obsidian-like
+  centered display equation.
 
 Root cause:
 
 - Display math ranges were skipped entirely unless the `$$...$$` range was alone on its visual line.
-- That avoided broken block layout, but it also meant inline uses of double-dollar syntax received no live preview at all.
+- The inline fallback avoided broken block layout, but it made double-dollar syntax behave differently depending on
+  surrounding text.
 
 Guardrail:
 
 - Do not skip non-standalone `$$...$$` ranges.
-- Standalone display ranges should render as block/display KaTeX.
-- Non-standalone display ranges should still preview, but as an inline widget in the editor. This preserves live feedback
-  without inserting a block-level replacement in the middle of a sentence.
+- Double-dollar ranges should render as block/display KaTeX even when they appear after other text on the same line,
+  matching Obsidian-style editing.
+- Display math widgets that affect vertical layout must still come from the direct `EditorView.decorations.from(...)`
+  `StateField`, not from plugin-provided decorations.
 
 ## 2026-06-28 - Ordered list markers wrapped as `1` then `)`
 
@@ -109,8 +113,8 @@ These are known behavioral fixes that should not be broken when changing live pr
 - Markdown live preview should update while typing, not only after the editor loses focus.
 - Inline math delimited by single dollars, such as `$x^2$`, should render live when the cursor is outside that range.
 - Display math delimited by double dollars, such as `$$x^2$$`, should render live when it is a standalone display range.
-- Display math delimited by double dollars should also render live when it appears mid-sentence, but only as an inline
-  editor widget. It must not become a block replacement that destroys surrounding text flow.
+- Display math delimited by double dollars should render as centered display math even when it appears after other text
+  on the same line.
 - Pressing Backspace or Delete next to a rendered math range must not delete the whole math block at once.
 - Pressing Backspace just after the closing `$` of `$math$` should delete the final math character and reveal/edit the
   math source, rather than doing nothing.
