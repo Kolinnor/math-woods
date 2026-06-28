@@ -8,8 +8,8 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { notifyProblemAuthor } from "@/lib/notifications";
+import { canDeleteSolution, canEditSolution } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { canModerate } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
 
 async function renderMarkdownContent(markdown: string) {
@@ -55,7 +55,7 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
   }
-  if (proof.authorId !== user.id && !canModerate(user.role)) {
+  if (!canEditSolution(user, proof)) {
     throw new Error("You cannot edit this solution.");
   }
 
@@ -82,7 +82,7 @@ export async function deleteProofAction(proofId: number, problemSlug: string) {
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
   }
-  if (proof.authorId !== user.id && !canModerate(user.role)) {
+  if (!canDeleteSolution(user, proof)) {
     throw new Error("You cannot delete this solution.");
   }
 

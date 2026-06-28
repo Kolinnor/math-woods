@@ -1,6 +1,7 @@
 ﻿import { ProblemVerificationMode } from "@prisma/client";
 import Link from "next/link";
 import { TargetType } from "@prisma/client";
+import { QualityStatus } from "@prisma/client";
 import { Check, Heart, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import { ContentTranslations } from "@/components/ContentTranslations";
@@ -32,11 +33,17 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
+import {
+  canEditDiscussionHint,
+  canEditProblem,
+  canEditSolution,
+  canSetProblemQualityStatus,
+  canViewArchivedProblem
+} from "@/lib/permissions";
 import { pluralize } from "@/lib/pluralize";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { qualityLabel } from "@/lib/quality";
-import { canModerate } from "@/lib/roles";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -93,7 +100,7 @@ export default async function ProblemPage({
 
   if (!problem) notFound();
   const isOwnProblem = user?.id === problem.authorId;
-  const canViewArchived = user && (problem.authorId === user.id || canModerate(user.role));
+  const canViewArchived = canViewArchivedProblem(user, problem);
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
   const hasSpecifiedOrigin =
     problem.origin.trim().toLowerCase() !== "unknown" ||
@@ -168,7 +175,7 @@ export default async function ProblemPage({
           take: 3
         })
       : Promise.resolve([]),
-    user && (user.id === problem.authorId || canModerate(user.role))
+    user && canEditProblem(user, problem)
       ? prisma.problemVerificationRequest.findMany({
           where: { problemId: problem.id, status: "PENDING" },
           include: {
@@ -225,9 +232,9 @@ export default async function ProblemPage({
       relations: group.relations.filter((relation) => relation.targetProblem.status !== "ARCHIVED")
     }))
     .filter((group) => group.relations.length > 0);
-  const canEditProblem = Boolean(user && (problem.authorId === user.id || canModerate(user.role)));
-  const discussionVisible = Boolean(attempt || canEditProblem);
-  const revealSpoilerDetails = attempt?.status === "SOLVED" || canEditProblem;
+  const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
+  const discussionVisible = Boolean(attempt || canEditCurrentProblem);
+  const revealSpoilerDetails = attempt?.status === "SOLVED" || canEditCurrentProblem;
   const showSpoilerTags = problem.spoilerTags.length > 0 && revealSpoilerDetails;
   const problemDomains = problem.domains.length
     ? problem.domains.filter((item) => revealSpoilerDetails || !item.spoiler).map((item) => item.mscCode)
@@ -320,7 +327,7 @@ export default async function ProblemPage({
             {problem.qualityStatus === "NEEDS_WORK"
               ? "This problem has been marked as needing work."
               : "This problem has not been reviewed by trusted users yet."}
-            {user && canModerate(user.role) && (
+            {user && canSetProblemQualityStatus(user.role, QualityStatus.GOOD) && (
               <form action={markProblemGoodAction.bind(null, problem.id, problem.slug)} className="mt-2">
                 <button type="submit" className="secondary">
                   This problem is good enough for me
@@ -371,7 +378,7 @@ export default async function ProblemPage({
                   const votes = proofVotes.get(proof.id) ?? 0;
                   const userVotedProof = ownProofVoteIds.has(proof.id);
                   const accepted = proof.id === acceptedProofId;
-                  const canEditProof = Boolean(user && (proof.authorId === user.id || canModerate(user.role)));
+                  const canEditProof = Boolean(user && canEditSolution(user, proof));
                   return (
                     <article key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
                       <header className="proof-header">
@@ -478,7 +485,7 @@ export default async function ProblemPage({
               ) : (
                 <p className="muted">No related problems yet.</p>
               )}
-              {canEditProblem && (
+              {canEditCurrentProblem && (
                 <div className="related-problem-actions">
                   <Link href={`/problems/new?parent=${problem.slug}&listed=0&language=${problem.language}`} className="button">
                     Create problem specific to this one
@@ -506,12 +513,12 @@ export default async function ProblemPage({
             </p>
           )}
 
-          {user && !attempt && !canEditProblem && <p className="muted">The discussion stays hidden until you start the problem.</p>}
+          {user && !attempt && !canEditCurrentProblem && <p className="muted">The discussion stays hidden until you start the problem.</p>}
 
           {discussionVisible && (
             <div className="grid gap-4">
               {(problem.thread?.posts ?? []).map((post) => {
-                const canManageHint = Boolean(user && post.type === "HINT" && (post.authorId === user.id || canModerate(user.role)));
+                const canManageHint = Boolean(user && post.type === "HINT" && canEditDiscussionHint(user, post));
 
                 return (
                   <div key={post.id} className="border-t border-line pt-4">

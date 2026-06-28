@@ -1,5 +1,5 @@
 import { QualityStatus, Role } from "@prisma/client";
-import { canModerate } from "./roles.ts";
+import { canSetProblemQualityStatus } from "./permissions.ts";
 
 export function qualityLabel(status: QualityStatus) {
   switch (status) {
@@ -17,11 +17,9 @@ export function qualityLabel(status: QualityStatus) {
 
 export function parseContributorQualityStatus(value: FormDataEntryValue | null, role: Role) {
   const requested = String(value ?? QualityStatus.UNREVIEWED).toUpperCase();
-  if (requested === QualityStatus.NEEDS_WORK) return QualityStatus.NEEDS_WORK;
-  if (requested === QualityStatus.UNREVIEWED) return QualityStatus.UNREVIEWED;
-  if (canModerate(role) && requested === QualityStatus.GOOD) return QualityStatus.GOOD;
-  if (canModerate(role) && requested === QualityStatus.EXCELLENT) {
-    return QualityStatus.EXCELLENT;
+  if (Object.values(QualityStatus).includes(requested as QualityStatus)) {
+    const status = requested as QualityStatus;
+    if (canSetProblemQualityStatus(role, status)) return status;
   }
   return QualityStatus.UNREVIEWED;
 }

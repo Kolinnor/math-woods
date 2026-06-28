@@ -16,7 +16,7 @@ import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { CONTENT_LANGUAGE_COOKIE, parseContentLanguage } from "@/lib/languages";
-import { canModerate } from "@/lib/roles";
+import { canUseModerationTools } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const metadata: Metadata = {
@@ -103,7 +103,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";
   const initialBackgroundTone = validBackgroundTone(cookieStore.get("math-woods-background-tone")?.value) ?? "sage";
   const initialLanguage = parseContentLanguage(cookieStore.get(CONTENT_LANGUAGE_COOKIE)?.value);
-  const needsEmailVerification = Boolean(user && !user.emailVerifiedAt && !canModerate(user.role));
+  const needsEmailVerification = Boolean(user && !user.emailVerifiedAt && !canUseModerationTools(user));
 
   return (
     <html
@@ -158,7 +158,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   {user && <Link href="/me">My work</Link>}
                   {user && <Link href={`/profile/${user.username}`}>{displayNameForUser(user)}</Link>}
                   {user && <Link href="/settings">Settings</Link>}
-                  {user && canModerate(user.role) && <Link href="/moderation">Moderation</Link>}
+                  {user && canUseModerationTools(user) && <Link href="/moderation">Moderation</Link>}
                   {user ? (
                     <form action={logoutAction}>
                       <button className="nav-menu-action" type="submit">

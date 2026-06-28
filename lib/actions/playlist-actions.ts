@@ -7,8 +7,8 @@ import { requireUser, requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { parseContentLanguage } from "@/lib/languages";
+import { canDeletePlaylist, canEditPlaylist } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { canAdminister, canModerate } from "@/lib/roles";
 import { ensureSlug } from "@/lib/slug";
 import { uniqueSlug } from "@/lib/unique-slug";
 
@@ -25,7 +25,7 @@ async function requirePlaylistEditor(playlistId: number, requireVerified = false
   });
 
   if (!playlist) throw new Error("Playlist not found.");
-  if (playlist.authorId !== user.id && !canModerate(user.role)) {
+  if (!canEditPlaylist(user, playlist)) {
     throw new Error("Only the playlist creator can edit this playlist.");
   }
 
@@ -61,15 +61,15 @@ export async function createPlaylistAction(formData: FormData) {
 export async function deletePlaylistAction(playlistId: number) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`playlist:delete:${user.id}`, 10, 60_000);
-  if (!canAdminister(user.role)) {
-    throw new Error("Only admins can delete playlists.");
-  }
 
   const playlist = await prisma.playlist.findUnique({
     where: { id: playlistId },
-    select: { id: true, slug: true }
+    select: { id: true, slug: true, authorId: true }
   });
   if (!playlist) throw new Error("Playlist not found.");
+  if (!canDeletePlaylist(user, playlist)) {
+    throw new Error("You cannot delete this playlist.");
+  }
 
   await prisma.playlist.delete({
     where: { id: playlist.id }

@@ -36,7 +36,17 @@ import {
 import { parseProblemDifficulty, tagsWithConjecture } from "@/lib/problems";
 import { parseContributorQualityStatus } from "@/lib/quality";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { canAdminister, canModerate } from "@/lib/roles";
+import {
+  canArchiveProblem,
+  canEditDiscussionHint,
+  canEditPlaylist,
+  canEditProblem,
+  canJoinProblemDiscussion,
+  canJoinVerificationDiscussion,
+  canReviewProblemVerification,
+  canRollbackProblem,
+  canSetProblemQualityStatus
+} from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
 import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -137,7 +147,7 @@ export async function createProblemAction(formData: FormData) {
         where: { slug: addToPlaylistSlug },
         select: { id: true, authorId: true }
       });
-      if (playlist && (playlist.authorId === user.id || canModerate(user.role))) {
+      if (playlist && canEditPlaylist(user, playlist)) {
         const last = await tx.playlistItem.findFirst({
           where: { playlistId: playlist.id },
           orderBy: { position: "desc" }
@@ -156,7 +166,7 @@ export async function createProblemAction(formData: FormData) {
         where: { slug: parentProblemSlug },
         select: { id: true, authorId: true }
       });
-      if (parentProblem && (parentProblem.authorId === user.id || canModerate(user.role))) {
+      if (parentProblem && canEditProblem(user, parentProblem)) {
         await linkSpecificProblem(tx, parentProblem.id, created.id);
       }
     }
@@ -199,10 +209,10 @@ export async function updateProblemAction(problemId: number, formData: FormData)
   await assertRateLimit(`problem:update:${user.id}`, 20, 60_000);
   const previous = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { authorId: true, slug: true, title: true }
+    select: { authorId: true, slug: true, title: true, qualityStatus: true }
   });
   if (!previous) throw new Error("Problem not found.");
-  if (previous.authorId !== user.id && !canModerate(user.role)) {
+  if (!canEditProblem(user, previous)) {
     throw new Error("You cannot edit this problem.");
   }
 
@@ -228,7 +238,10 @@ export async function updateProblemAction(problemId: number, formData: FormData)
     CONTENT_LIMITS.mediumText,
     "Verification answer"
   );
-  const qualityStatus = parseContributorQualityStatus(formData.get("qualityStatus"), user.role);
+  const qualityStatusInput = formData.get("qualityStatus");
+  const qualityStatus = qualityStatusInput
+    ? parseContributorQualityStatus(qualityStatusInput, user.role)
+    : previous.qualityStatus;
   const tags = tagsWithConjecture(boundedText(formData.get("tags"), CONTENT_LIMITS.tagList, "Tags"), formData.get("conjecture"));
   const spoilerTags = boundedText(formData.get("spoilerTags"), CONTENT_LIMITS.tagList, "Spoiler tags");
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Problem edited";
@@ -307,7 +320,7 @@ export async function deleteProblemAction(problemId: number) {
   });
 
   if (!problem) throw new Error("Problem not found.");
-  if (!canAdminister(user.role)) {
+  if (!canArchiveProblem(user, problem)) {
     throw new Error("You cannot delete this problem.");
   }
 
@@ -345,7 +358,7 @@ export async function deleteProblemAction(problemId: number) {
 export async function markProblemGoodAction(problemId: number, problemSlug: string) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:review:${user.id}`, 30, 60_000);
-  if (!canModerate(user.role)) {
+  if (!canSetProblemQualityStatus(user.role, QualityStatus.GOOD)) {
     throw new Error("You cannot review this problem.");
   }
 
@@ -377,7 +390,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
 
   if (!revision) throw new Error("Revision not found.");
   if (!existingProblem) throw new Error("Problem not found.");
-  if (existingProblem.authorId !== user.id && !canModerate(user.role)) {
+  if (!canRollbackProblem(user, existingProblem)) {
     throw new Error("You cannot roll back this problem.");
   }
 
@@ -621,7 +634,7 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
   });
 
   if (!request) throw new Error("Verification request not found.");
-  if (request.problem.authorId !== user.id && !canModerate(user.role)) {
+  if (!canReviewProblemVerification(user, request.problem)) {
     throw new Error("You cannot review this verification request.");
   }
   if (request.status !== "PENDING") {
@@ -701,10 +714,7 @@ export async function createVerificationMessageAction(requestId: number, problem
     throw new Error("This verification request is already closed.");
   }
 
-  const isProblemAuthor = request.problem.authorId === user.id;
-  const isRequester = request.userId === user.id;
-  const isModerator = canModerate(user.role);
-  if (!isProblemAuthor && !isRequester && !isModerator) {
+  if (!canJoinVerificationDiscussion(user, request)) {
     throw new Error("You cannot join this verification discussion.");
   }
 
@@ -791,7 +801,7 @@ export async function createDiscussionPostAction(problemId: number, formData: Fo
   ]);
 
   if (!problem) throw new Error("Problem not found.");
-  if (!attempt && problem.authorId !== user.id && !canModerate(user.role)) {
+  if (!canJoinProblemDiscussion(user, problem, attempt)) {
     throw new Error("Start this problem before joining the discussion.");
   }
 
@@ -846,7 +856,7 @@ export async function updateHintAction(postId: number, problemSlug: string, form
   });
 
   if (!hint) throw new Error("Hint not found.");
-  if (hint.authorId !== user.id && !canModerate(user.role)) {
+  if (!canEditDiscussionHint(user, hint)) {
     throw new Error("You cannot edit this hint.");
   }
 
@@ -877,7 +887,7 @@ export async function deleteHintAction(postId: number, problemSlug: string) {
   });
 
   if (!hint) throw new Error("Hint not found.");
-  if (hint.authorId !== user.id && !canModerate(user.role)) {
+  if (!canEditDiscussionHint(user, hint)) {
     throw new Error("You cannot delete this hint.");
   }
 

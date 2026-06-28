@@ -4,7 +4,7 @@ import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { deleteProofAction, updateProofAction } from "@/lib/actions/proof-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { canModerate } from "@/lib/roles";
+import { canEditSolution } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 
@@ -29,7 +29,7 @@ export default async function EditProofPage({
   });
 
   if (!proof || proof.problem.slug !== slug) notFound();
-  if (proof.authorId !== user.id && !canModerate(user.role)) notFound();
+  if (!canEditSolution(user, proof)) notFound();
 
   return (
     <div className="mx-auto max-w-3xl">

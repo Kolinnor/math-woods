@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { parseMathLevel } from "@/lib/math-levels";
-import { canModerate, isOwner } from "@/lib/roles";
+import { canUseModerationTools, canUseOwnerTools } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
 import { normalizeDisplayName } from "@/lib/user-display";
 
@@ -95,7 +95,7 @@ export async function requireUser() {
 
 export async function requireVerifiedUser() {
   const user = await requireUser();
-  if (!user.emailVerifiedAt && !canModerate(user.role)) {
+  if (!user.emailVerifiedAt && !canUseModerationTools(user)) {
     redirect("/settings?verify=required");
   }
   return user;
@@ -103,13 +103,13 @@ export async function requireVerifiedUser() {
 
 export async function requireModerator() {
   const user = await requireUser();
-  if (!canModerate(user.role)) redirect("/");
+  if (!canUseModerationTools(user)) redirect("/");
   return user;
 }
 
 export async function requireOwner() {
   const user = await requireUser();
-  if (!isOwner(user.role)) redirect("/");
+  if (!canUseOwnerTools(user)) redirect("/");
   return user;
 }
 

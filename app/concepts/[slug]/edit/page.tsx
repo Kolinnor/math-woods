@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
+import { ConceptStatus } from "@prisma/client";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { updateConceptAction } from "@/lib/actions/concept-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MATH_DOMAINS } from "@/lib/domains";
-import { canModerate } from "@/lib/roles";
+import { canEditConcept, canSetConceptStatus } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,20 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
   });
 
   if (!concept) notFound();
+  if (!canEditConcept(user, concept)) notFound();
+  const canSetStubStatus = canSetConceptStatus(user.role, ConceptStatus.STUB);
+  const canSetUsableStatus = canSetConceptStatus(user.role, ConceptStatus.USABLE);
+  const canSetReviewedStatus = canSetConceptStatus(user.role, ConceptStatus.REVIEWED);
+  const canSetExcellentStatus = canSetConceptStatus(user.role, ConceptStatus.EXCELLENT);
+  const canSetControversialStatus = canSetConceptStatus(user.role, ConceptStatus.CONTROVERSIAL);
+  const canSetCurrentStatus = canSetConceptStatus(user.role, concept.status);
+  const canSetAnyStatus =
+    canSetCurrentStatus &&
+    (canSetStubStatus ||
+      canSetUsableStatus ||
+      canSetReviewedStatus ||
+      canSetExcellentStatus ||
+      canSetControversialStatus);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -62,15 +77,15 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
               .join("\n")}
           />
         </label>
-        {canModerate(user.role) && (
+        {canSetAnyStatus && (
           <label className="grid gap-2">
             <span className="text-sm font-medium">Status</span>
             <select name="status" defaultValue={concept.status}>
-              <option value="STUB">Stub</option>
-              <option value="USABLE">Usable</option>
-              <option value="REVIEWED">Reviewed</option>
-              <option value="EXCELLENT">Excellent</option>
-              <option value="CONTROVERSIAL">Controversial</option>
+              {canSetStubStatus && <option value="STUB">Stub</option>}
+              {canSetUsableStatus && <option value="USABLE">Usable</option>}
+              {canSetReviewedStatus && <option value="REVIEWED">Reviewed</option>}
+              {canSetExcellentStatus && <option value="EXCELLENT">Excellent</option>}
+              {canSetControversialStatus && <option value="CONTROVERSIAL">Controversial</option>}
             </select>
           </label>
         )}

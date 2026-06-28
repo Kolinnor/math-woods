@@ -1,6 +1,6 @@
 import { Role, UserMathLevel } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { canModerate } from "@/lib/roles";
+import { hasTrustedPrivileges } from "@/lib/permissions";
 
 type ReputationProblem = {
   authorId: number;
@@ -29,7 +29,7 @@ export type UserReputationSummary = {
 };
 
 function interactionWeight(role: Role, regularWeight: number, trustedWeight: number) {
-  return canModerate(role) ? trustedWeight : regularWeight;
+  return hasTrustedPrivileges(role) ? trustedWeight : regularWeight;
 }
 
 function scoreProblem(problem: ReputationProblem) {

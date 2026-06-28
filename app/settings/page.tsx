@@ -14,7 +14,8 @@ import { getCurrentSession, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { mailStatusLabel } from "@/lib/email-verification";
 import { mergeLatexPreferences, type LatexPreferenceValues } from "@/lib/latex-preferences";
-import { ASSIGNABLE_ROLES, isOwner, roleLabel } from "@/lib/roles";
+import { assignableRolesFor, canAssignRole, canManageUserRoles } from "@/lib/permissions";
+import { roleLabel } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
 import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
@@ -254,7 +255,7 @@ export default async function SettingsPage({
   const tab =
     params.tab === "notifications" || params.tab === "admin" || params.tab === "latex" ? params.tab : "account";
   const verifyStatus = params.verify;
-  const canManageRoles = isOwner(user.role);
+  const canManageRoles = canManageUserRoles(user);
   const [sessions, notificationPreferences, savedLatexPreferences] = await Promise.all([
     prisma.session.findMany({
       where: {
@@ -579,12 +580,13 @@ export default async function SettingsPage({
         <section className="panel p-5">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">User roles</h2>
-            <p className="muted text-sm">Only the owner can assign moderator and admin roles.</p>
+            <p className="muted text-sm">Admins can manage trusted users. Only the owner can assign admin roles.</p>
           </div>
 
           <div className="grid gap-3">
             {roleUsers.map((managedUser) => {
-              const lockedOwner = managedUser.role === "OWNER";
+              const assignableRoles = assignableRolesFor(user.role).filter((role) => canAssignRole(user, managedUser, role));
+              const lockedRole = assignableRoles.length === 0;
 
               return (
                 <div key={managedUser.id} className="rounded-md border border-line p-3 text-sm">
@@ -595,12 +597,12 @@ export default async function SettingsPage({
                         {roleLabel(managedUser.role)} / joined {formatDate(managedUser.createdAt)}
                       </p>
                     </div>
-                    {lockedOwner ? (
+                    {lockedRole ? (
                       <span className="tag">{roleLabel(managedUser.role)}</span>
                     ) : (
                       <form action={updateUserRoleAction.bind(null, managedUser.id)} className="flex flex-wrap gap-2">
                         <select name="role" defaultValue={managedUser.role} aria-label={`Role for ${managedUser.username}`}>
-                          {ASSIGNABLE_ROLES.map((role) => (
+                          {assignableRoles.map((role) => (
                             <option key={role} value={role}>
                               {roleLabel(role)}
                             </option>

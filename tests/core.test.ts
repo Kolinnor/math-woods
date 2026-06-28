@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { QualityStatus, Role } from "@prisma/client";
+import { ConceptStatus, QualityStatus, Role } from "@prisma/client";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import {
   getBooleanAttribute,
@@ -20,6 +20,18 @@ import { latexCursorTargetForArrow, latexCursorTargetForVerticalArrow } from "..
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
+import {
+  assignableRolesFor,
+  canAssignRole,
+  canDeletePlaylist,
+  canEditProblem,
+  canSetConceptStatus,
+  canSetProblemQualityStatus,
+  canUseAdminTools,
+  canUseModerationTools,
+  hasTrustedPrivileges,
+  isVerifiedContributor
+} from "../lib/permissions.ts";
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
 import { parseProblemDomains } from "../lib/problem-domains.ts";
 import { domainLabel, FLAT_DOMAIN_OPTIONS, parseDomainCode } from "../lib/domains.ts";
@@ -187,8 +199,42 @@ assert.deepEqual(parseTagInput("easy, facile, linear algebra, vectors").map((tag
 ]);
 assert.equal(qualityLabel(QualityStatus.NEEDS_WORK), "Needs work");
 assert.equal(parseContributorQualityStatus("EXCELLENT", Role.USER), QualityStatus.UNREVIEWED);
-assert.equal(parseContributorQualityStatus("EXCELLENT", Role.MODERATOR), QualityStatus.EXCELLENT);
+assert.equal(parseContributorQualityStatus("EXCELLENT", Role.MODERATOR), QualityStatus.UNREVIEWED);
 assert.equal(parseContributorQualityStatus("EXCELLENT", Role.OWNER), QualityStatus.EXCELLENT);
+assert.equal(hasTrustedPrivileges(Role.USER), false);
+assert.equal(hasTrustedPrivileges(Role.MODERATOR), true);
+assert.equal(canUseModerationTools(Role.MODERATOR), true);
+assert.equal(canUseAdminTools(Role.MODERATOR), false);
+assert.equal(canUseAdminTools(Role.ADMIN), true);
+assert.deepEqual(assignableRolesFor(Role.ADMIN), [Role.USER, Role.MODERATOR]);
+assert.deepEqual(assignableRolesFor(Role.OWNER), [Role.USER, Role.MODERATOR, Role.ADMIN]);
+assert.equal(
+  canAssignRole({ id: 1, role: Role.ADMIN }, { id: 2, role: Role.USER }, Role.MODERATOR),
+  true
+);
+assert.equal(
+  canAssignRole({ id: 1, role: Role.ADMIN }, { id: 2, role: Role.USER }, Role.ADMIN),
+  false
+);
+assert.equal(
+  canAssignRole({ id: 1, role: Role.OWNER }, { id: 2, role: Role.USER }, Role.ADMIN),
+  true
+);
+assert.equal(canSetProblemQualityStatus(Role.MODERATOR, QualityStatus.GOOD), true);
+assert.equal(canSetProblemQualityStatus(Role.MODERATOR, QualityStatus.EXCELLENT), false);
+assert.equal(canSetProblemQualityStatus(Role.ADMIN, QualityStatus.EXCELLENT), true);
+assert.equal(canSetConceptStatus(Role.MODERATOR, ConceptStatus.REVIEWED), true);
+assert.equal(canSetConceptStatus(Role.MODERATOR, ConceptStatus.EXCELLENT), false);
+assert.equal(canSetConceptStatus(Role.ADMIN, ConceptStatus.EXCELLENT), true);
+assert.equal(isVerifiedContributor({ id: 1, role: Role.USER, emailVerifiedAt: null }), false);
+assert.equal(isVerifiedContributor({ id: 1, role: Role.USER, emailVerifiedAt: new Date(0) }), true);
+assert.equal(isVerifiedContributor({ id: 1, role: Role.MODERATOR, emailVerifiedAt: null }), true);
+assert.equal(canEditProblem({ id: 1, role: Role.USER }, { authorId: 1 }), true);
+assert.equal(canEditProblem({ id: 1, role: Role.USER }, { authorId: 2 }), false);
+assert.equal(canEditProblem({ id: 1, role: Role.MODERATOR }, { authorId: 2 }), true);
+assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 1 }), true);
+assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 2 }), false);
+assert.equal(canDeletePlaylist({ id: 1, role: Role.ADMIN }, { authorId: 2 }), true);
 assert.equal(headingLevel("ATXHeading3"), 3);
 assert.equal(headingLevel("Paragraph"), null);
 assert.equal(markdownPreviewClass("StrongEmphasis"), "cm-md-strong");

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createSuggestionAction } from "@/lib/actions/suggestion-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { canModerate } from "@/lib/roles";
+import { isVerifiedContributor } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export default async function SuggestionsPage({
   searchParams: Promise<{ submitted?: string }>;
 }) {
   const user = await getCurrentUser();
-  const canContribute = Boolean(user && (user.emailVerifiedAt || canModerate(user.role)));
+  const canContribute = Boolean(user && isVerifiedContributor(user));
   const { submitted } = await searchParams;
   const suggestions = await prisma.suggestion.findMany({
     orderBy: { createdAt: "desc" },

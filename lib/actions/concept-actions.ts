@@ -11,8 +11,8 @@ import { parseAliases, parseReferences, syncConceptAliases, syncConceptReference
 import { parseMathDomain } from "@/lib/domains";
 import { refreshLinksForConcept, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
+import { canEditConcept, canRollbackConcept, canSetConceptStatus } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { canModerate } from "@/lib/roles";
 import { uniqueSlug } from "@/lib/unique-slug";
 
 async function renderMarkdownContent(markdown: string) {
@@ -82,6 +82,15 @@ export async function createConceptAction(formData: FormData) {
 export async function updateConceptAction(conceptId: number, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`concept:update:${user.id}`, 20, 60_000);
+  const existingConcept = await prisma.concept.findUnique({
+    where: { id: conceptId },
+    select: { createdById: true }
+  });
+  if (!existingConcept) throw new Error("Concept not found.");
+  if (!canEditConcept(user, existingConcept)) {
+    throw new Error("You cannot edit this concept.");
+  }
+
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const language = parseContentLanguage(formData.get("language"));
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
@@ -89,11 +98,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Concept edited";
-  const requestedStatus = String(formData.get("status") ?? "STUB") as ConceptStatus;
-  const status =
-    canModerate(user.role) && Object.values(ConceptStatus).includes(requestedStatus)
-      ? requestedStatus
-      : undefined;
+  const statusInput = formData.get("status");
+  const requestedStatus = String(statusInput ?? "") as ConceptStatus;
+  const status = statusInput && canSetConceptStatus(user.role, requestedStatus) ? requestedStatus : undefined;
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   const concept = await prisma.$transaction(async (tx) => {
@@ -150,7 +157,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
 
   if (!revision) throw new Error("Revision not found.");
   if (!existingConcept) throw new Error("Concept not found.");
-  if (existingConcept.createdById !== user.id && !canModerate(user.role)) {
+  if (!canRollbackConcept(user, existingConcept)) {
     throw new Error("You cannot roll back this concept.");
   }
 

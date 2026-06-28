@@ -288,7 +288,7 @@ export default function AboutPage() {
         </Faq>
         <Faq question="How are disputes handled?">
           <p>
-            Prefer sources, clear reasoning, and discussion. Moderators may mark disputed content, roll back harmful
+            Prefer sources, clear reasoning, and discussion. Trusted users may mark disputed content, roll back harmful
             changes, or temporarily restrict pages.
           </p>
         </Faq>

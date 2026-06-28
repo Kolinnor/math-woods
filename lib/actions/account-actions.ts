@@ -4,7 +4,6 @@ import { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
-  requireOwner,
   requireUser,
   revokeOtherSessionsForCurrentUser,
   signOutUser,
@@ -13,8 +12,8 @@ import {
 import { boundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { createAndSendEmailVerification } from "@/lib/email-verification";
+import { assignableRolesFor, canAssignRole } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { ASSIGNABLE_ROLES } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
 
 export async function changePasswordAction(formData: FormData) {
@@ -101,12 +100,13 @@ export async function deleteAccountAction(formData: FormData) {
 }
 
 export async function updateUserRoleAction(userId: number, formData: FormData) {
-  const owner = await requireOwner();
-  await assertRateLimit(`roles:${owner.id}`, 20, 60_000);
+  const actor = await requireUser();
+  await assertRateLimit(`roles:${actor.id}`, 20, 60_000);
 
   const roleInput = String(formData.get("role") ?? "").toUpperCase();
-  const nextRole = ASSIGNABLE_ROLES.includes(roleInput as (typeof ASSIGNABLE_ROLES)[number])
-    ? (roleInput as (typeof ASSIGNABLE_ROLES)[number])
+  const assignableRoles = assignableRolesFor(actor.role);
+  const nextRole = assignableRoles.includes(roleInput as (typeof assignableRoles)[number])
+    ? (roleInput as (typeof assignableRoles)[number])
     : null;
 
   if (!nextRole) throw new Error("Invalid role.");
@@ -117,8 +117,8 @@ export async function updateUserRoleAction(userId: number, formData: FormData) {
   });
 
   if (!target) throw new Error("User not found.");
-  if (target.id === owner.id || target.role === Role.OWNER) {
-    throw new Error("The owner role cannot be changed here.");
+  if (!canAssignRole(actor, target, nextRole)) {
+    throw new Error("You cannot assign this role.");
   }
 
   await prisma.user.update({

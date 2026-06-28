@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
 import { LanguageField } from "@/components/LanguageField";
@@ -9,8 +10,8 @@ import { deleteProblemAction, updateProblemAction } from "@/lib/actions/problem-
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MATH_DOMAINS } from "@/lib/domains";
+import { canDeleteProblem, canEditProblem, canSetProblemQualityStatus } from "@/lib/permissions";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
-import { canAdminister, canModerate } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,13 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
 
   if (!problem) notFound();
   const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
-  const canEditArchivedProblem = problem.authorId === user.id || canModerate(user.role);
-  const canDeleteProblem = canAdminister(user.role);
-  const canSetReviewedStatus = canModerate(user.role);
+  const canEditArchivedProblem = canEditProblem(user, problem);
+  const canDeleteCurrentProblem = canDeleteProblem(user, problem);
+  const canSetCurrentQualityStatus = canSetProblemQualityStatus(user.role, problem.qualityStatus);
+  const canSetUnreviewedStatus = canSetProblemQualityStatus(user.role, QualityStatus.UNREVIEWED);
+  const canSetNeedsWorkStatus = canSetProblemQualityStatus(user.role, QualityStatus.NEEDS_WORK);
+  const canSetGoodStatus = canSetProblemQualityStatus(user.role, QualityStatus.GOOD);
+  const canSetExcellentStatus = canSetProblemQualityStatus(user.role, QualityStatus.EXCELLENT);
   if (problem.status === "ARCHIVED" && !canEditArchivedProblem) notFound();
 
   return (
@@ -86,15 +91,17 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             <span className="text-sm font-medium">Difficulty (1–100)</span>
             <input name="difficulty" type="number" min="1" max="100" defaultValue={problem.difficulty ?? ""} />
           </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Status</span>
-            <select name="qualityStatus" defaultValue={problem.qualityStatus}>
-              <option value="UNREVIEWED">Unreviewed (default)</option>
-              <option value="NEEDS_WORK">Needs work</option>
-              {canSetReviewedStatus && <option value="GOOD">Good</option>}
-              {canSetReviewedStatus && <option value="EXCELLENT">Excellent</option>}
-            </select>
-          </label>
+          {canSetCurrentQualityStatus && (
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">Status</span>
+              <select name="qualityStatus" defaultValue={problem.qualityStatus}>
+                {canSetUnreviewedStatus && <option value="UNREVIEWED">Unreviewed (default)</option>}
+                {canSetNeedsWorkStatus && <option value="NEEDS_WORK">Needs work</option>}
+                {canSetGoodStatus && <option value="GOOD">Good</option>}
+                {canSetExcellentStatus && <option value="EXCELLENT">Excellent</option>}
+              </select>
+            </label>
+          )}
         </div>
         <fieldset className="origin-fields grid gap-4">
           <legend className="font-semibold">Problem origin</legend>
@@ -199,7 +206,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
         <button type="submit">Save changes</button>
       </form>
 
-      {canDeleteProblem && (
+      {canDeleteCurrentProblem && (
         <section className="danger-zone mt-6">
           <div>
             <h2>Delete problem</h2>

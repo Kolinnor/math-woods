@@ -6,8 +6,8 @@ import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { createQuoteAction } from "@/lib/actions/quote-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isVerifiedContributor } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { canModerate } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +41,7 @@ export default async function QuotesPage({
 }) {
   const user = await getCurrentUser();
   const preferredLanguage = await getPreferredContentLanguage();
-  const canContribute = Boolean(user && (user.emailVerifiedAt || canModerate(user.role)));
+  const canContribute = Boolean(user && isVerifiedContributor(user));
   const { q = "" } = await searchParams;
   const query = q.trim();
   const where: Prisma.QuoteWhereInput = query

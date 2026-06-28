@@ -13,7 +13,7 @@ import {
 } from "@/lib/actions/playlist-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { canAdminister, canModerate } from "@/lib/roles";
+import { canDeletePlaylist, canEditPlaylist } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -43,8 +43,8 @@ export default async function EditPlaylistPage({
   });
 
   if (!playlist) notFound();
-  const canEdit = playlist.authorId === user.id || canModerate(user.role);
-  const canDeletePlaylist = canAdminister(user.role);
+  const canEdit = canEditPlaylist(user, playlist);
+  const canDeleteCurrentPlaylist = canDeletePlaylist(user, playlist);
   if (!canEdit) notFound();
 
   const problemQuery = problemSearch.trim();
@@ -275,7 +275,7 @@ export default async function EditPlaylistPage({
         </div>
       </section>
 
-      {canDeletePlaylist && (
+      {canDeleteCurrentPlaylist && (
         <section className="danger-zone">
           <div>
             <h2>Delete playlist</h2>

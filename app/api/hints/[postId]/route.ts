@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { canModerate } from "@/lib/roles";
+import { canRevealHintWithoutAttempt } from "@/lib/permissions";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ postId: string }> }) {
   const user = await getCurrentUser();
@@ -29,8 +29,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pos
 
   if (!post) return NextResponse.json({ error: "Hint not found." }, { status: 404 });
 
-  const canRevealWithoutAttempt =
-    user.id === post.authorId || user.id === post.thread.problem.authorId || canModerate(user.role);
+  const canRevealWithoutAttempt = canRevealHintWithoutAttempt(user, post, post.thread.problem);
 
   if (!canRevealWithoutAttempt) {
     const attempt = await prisma.problemAttempt.findUnique({

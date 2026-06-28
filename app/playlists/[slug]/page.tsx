@@ -9,8 +9,8 @@ import {
 } from "@/lib/actions/playlist-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { canEditPlaylist } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
-import { canModerate } from "@/lib/roles";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export default async function PlaylistPage({ params }: { params: Promise<{ slug:
 
   if (!playlist) notFound();
 
-  const isEditor = Boolean(user && (user.id === playlist.authorId || canModerate(user.role)));
+  const isEditor = Boolean(user && canEditPlaylist(user, playlist));
   const problemIds = playlist.items.map((item) => item.problemId);
   const [voteCount, ownVote, followerCount, following, solvedAttempts] = await Promise.all([
     prisma.vote.count({
