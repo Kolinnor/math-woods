@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { Route } from "next";
 import Link from "next/link";
+import { Inter, Spectral } from "next/font/google";
 import { Menu, Search } from "lucide-react";
 import { cookies } from "next/headers";
 import "./globals.css";
@@ -84,6 +85,19 @@ try {
 
 const usersRoute = "/users" as Route;
 
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-sans"
+});
+
+const spectral = Spectral({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-serif"
+});
+
 function validTheme(value: string | undefined) {
   return value === "light" || value === "dim" || value === "dark" ? value : undefined;
 }
@@ -120,7 +134,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
       </head>
-      <body>
+      <body className={`${inter.variable} ${spectral.variable}`}>
         <ErrorReporter />
         <TimeZoneReporter />
         <header className="site-header">

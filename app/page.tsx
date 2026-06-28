@@ -1,374 +1,445 @@
+import { MathDomain } from "@prisma/client";
+import Image from "next/image";
 import Link from "next/link";
-import type { QualityStatus } from "@prisma/client";
-import { HomeGuestIntro } from "@/components/HomeGuestIntro";
 import { getCurrentUser } from "@/lib/auth";
 import { dailyTip } from "@/lib/daily-tip";
-import { domainLabel, MATH_DOMAINS } from "@/lib/domains";
 import { prisma } from "@/lib/db";
-import { missingConcepts } from "@/lib/internal-links";
-import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
+import { domainLabel } from "@/lib/domains";
+import { renderMarkdown } from "@/lib/markdown";
 import { pluralize } from "@/lib/pluralize";
-import { problemLinkClass } from "@/lib/problem-link";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
-type RecommendedProblem = {
+const recentImages = [
+  {
+    src: "/art/rye.jpg",
+    alt: "Ivan Shishkin, Rye"
+  },
+  {
+    src: "/art/brook-in-the-forest.jpg",
+    alt: "Ivan Shishkin, Brook in the Forest"
+  },
+  {
+    src: "/art/birch-grove.jpg",
+    alt: "Ivan Shishkin, Birch Grove"
+  }
+] as const;
+
+const homeDomains = [
+  { label: "Algebra", domain: MathDomain.ALGEBRA },
+  { label: "Analysis", domain: MathDomain.ANALYSIS },
+  { label: "Number theory", domain: MathDomain.ARITHMETIC },
+  { label: "Geometry", domain: MathDomain.GEOMETRY },
+  { label: "Combinatorics", domain: MathDomain.COMBINATORICS },
+  { label: "Probability", domain: MathDomain.PROBABILITY },
+  { label: "Topology", domain: MathDomain.TOPOLOGY },
+  { label: "More...", href: "/problems" }
+] as const;
+
+type HomeProblem = {
+  id: number;
   slug: string;
   title: string;
+  titleHtml: string;
+  domain: MathDomain;
   difficulty: number | null;
-  qualityStatus: QualityStatus;
-  createdAt: Date;
+  author?: {
+    username: string;
+    displayName: string | null;
+  };
+  _count?: {
+    attempts: number;
+    favorites: number;
+  };
 };
 
-const levelRecommendations: Record<string, { min: number; max: number; slugs: string[] }> = {
-  BEGINNER_PRE_UNIVERSITY: {
-    min: 1,
-    max: 5,
-    slugs: ["solutions-of-x-squared-equals-x", "subsets-of-a-three-element-set", "can-two-consecutive-integers-have-odd-product"]
-  },
-  EARLY_UNDERGRAD: {
-    min: 6,
-    max: 19,
-    slugs: ["two-vectors-spanning-the-plane", "a-dependent-family-in-space", "a-set-that-almost-looks-like-a-subspace"]
-  },
-  UNDERGRAD: {
-    min: 20,
-    max: 39,
-    slugs: []
-  },
-  ADVANCED_UNDERGRAD: {
-    min: 40,
-    max: 64,
-    slugs: ["roots-and-coefficients"]
-  },
-  GRADUATE_CONTEST: {
-    min: 65,
-    max: 84,
-    slugs: []
-  },
-  RESEARCH: {
-    min: 85,
-    max: 100,
-    slugs: []
-  }
-};
-
-function qualityRank(problem: Pick<RecommendedProblem, "qualityStatus">) {
-  if (problem.qualityStatus === "EXCELLENT") return 0;
-  if (problem.qualityStatus === "GOOD") return 1;
-  if (problem.qualityStatus === "UNREVIEWED") return 2;
-  return 3;
+function unwrapSingleParagraph(html: string) {
+  const trimmed = html.trim();
+  const match = trimmed.match(/^<p>([\s\S]*)<\/p>$/);
+  return match ? match[1] : trimmed;
 }
 
-function conceptTitleFromSlug(slug: string) {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+async function renderInlineMarkdown(markdown: string) {
+  return unwrapSingleParagraph(await renderMarkdown(markdown));
 }
 
-async function recommendationsForLevel(level: string, language: string) {
-  const config = levelRecommendations[level];
-  if (!config) return [];
-
-  const curated = config.slugs.length
-    ? await prisma.problem.findMany({
-        where: {
-          slug: { in: config.slugs },
-          status: "PUBLISHED",
-          listed: true,
-          language
-        },
-        select: { slug: true, title: true, difficulty: true, qualityStatus: true, createdAt: true }
-      })
-    : [];
-  const bySlug = new Map(curated.map((problem) => [problem.slug, problem]));
-  const selected: RecommendedProblem[] = config.slugs
-    .map((slug) => bySlug.get(slug))
-    .filter((problem): problem is RecommendedProblem => Boolean(problem));
-  const selectedSlugs = new Set(selected.map((problem) => problem.slug));
-
-  const rangeCandidates = await prisma.problem.findMany({
-    where: {
-      status: "PUBLISHED",
-      listed: true,
-      language,
-      slug: { notIn: [...selectedSlugs] },
-      difficulty: { gte: config.min, lte: config.max },
-      qualityStatus: { in: ["GOOD", "EXCELLENT"] }
-    },
-    select: { slug: true, title: true, difficulty: true, qualityStatus: true, createdAt: true },
-    orderBy: [{ difficulty: "asc" }, { createdAt: "desc" }],
-    take: 8
-  });
-
-  for (const problem of rangeCandidates) {
-    if (selected.length >= 3) break;
-    selected.push(problem);
-    selectedSlugs.add(problem.slug);
-  }
-
-  if (selected.length < 3) {
-    const midpoint = (config.min + config.max) / 2;
-    const fallback = await prisma.problem.findMany({
-      where: {
-        status: "PUBLISHED",
-        listed: true,
-        language,
-        slug: { notIn: [...selectedSlugs] }
-      },
-      select: { slug: true, title: true, difficulty: true, qualityStatus: true, createdAt: true },
-      orderBy: { createdAt: "desc" },
-      take: 80
-    });
-    const ranked = fallback.sort((left, right) => {
-      const leftDistance = left.difficulty === null ? 1000 : Math.abs(left.difficulty - midpoint);
-      const rightDistance = right.difficulty === null ? 1000 : Math.abs(right.difficulty - midpoint);
-      return qualityRank(left) - qualityRank(right) || leftDistance - rightDistance || right.createdAt.getTime() - left.createdAt.getTime();
-    });
-
-    for (const problem of ranked) {
-      if (selected.length >= 3) break;
-      selected.push(problem);
-    }
-  }
-
-  return selected.slice(0, 3).map(({ slug, title, difficulty }) => ({ slug, title, difficulty }));
-}
-
-async function homeRecommendations(language: string) {
-  const entries = await Promise.all(
-    MATH_LEVEL_OPTIONS.map(async (level) => [level.value, await recommendationsForLevel(level.value, language)] as const)
+async function withRenderedTitles<T extends { title: string }>(items: T[]) {
+  return Promise.all(
+    items.map(async (item) => ({
+      ...item,
+      titleHtml: await renderInlineMarkdown(item.title)
+    }))
   );
-  return Object.fromEntries(entries);
+}
+
+function tipDifficultyRange(level: number) {
+  const min = Math.max(1, level * 20 + 1);
+  return { min, max: Math.min(100, min + 19) };
+}
+
+function firstName(name: string) {
+  return name.trim().split(/\s+/)[0] || name;
+}
+
+function initialsForName(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
+  return initials || name.slice(0, 2).toUpperCase() || "MW";
+}
+
+function InlineMathText({ html }: { html: string }) {
+  return <span className="home-inline-math" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function HomeNav({
+  user
+}: {
+  user: { name: string; initials: string; username: string } | null;
+}) {
+  return (
+    <header className="home-forest-nav">
+      <Link href="/" className="home-brand" aria-label="Math Woods home">
+        <img src="/icon.svg" alt="" aria-hidden="true" />
+        <span>Math Woods</span>
+      </Link>
+      <nav className="home-nav-links" aria-label="Main navigation">
+        <Link href="/problems">Problems</Link>
+        <Link href="/concepts">Concepts</Link>
+        <Link href="/playlists">Playlists</Link>
+        <Link href="/tips">Tips</Link>
+        {!user && <Link href="/users">Users</Link>}
+        {user ? (
+          <Link href="/settings" title={`${user.name} / your account`} className="home-avatar">
+            {user.initials}
+          </Link>
+        ) : (
+          <Link href="/login" className="home-login-link">
+            Log in
+          </Link>
+        )}
+      </nav>
+    </header>
+  );
+}
+
+function HomeHero({
+  user,
+  resume
+}: {
+  user: { name: string; initials: string; username: string } | null;
+  resume: { title: string; slug: string } | null;
+}) {
+  const isMember = Boolean(user);
+
+  return (
+    <section className={isMember ? "home-hero-forest home-hero-member" : "home-hero-forest"}>
+      <Image
+        src="/art/morning-in-a-pine-forest.jpg"
+        alt="Ivan Shishkin, Morning in a Pine Forest"
+        fill
+        priority
+        sizes="100vw"
+        className="home-hero-image"
+      />
+      <div className={isMember ? "home-hero-overlay home-hero-overlay-member" : "home-hero-overlay"} />
+      <HomeNav user={user} />
+      {user ? (
+        <div className="home-member-hero-copy">
+          <div>
+            <p className="home-kicker">Welcome back</p>
+            <h1>Hello, {firstName(user.name)}</h1>
+          </div>
+          <div className="home-hero-actions">
+            {resume && (
+              <Link href={`/problems/${resume.slug}`} className="home-button home-button-light">
+                Resume / {resume.title}
+              </Link>
+            )}
+            <Link href="/problems?level=mine" className="home-button home-button-ghost">
+              Find a problem at my level
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="home-guest-hero-copy">
+          <p className="home-kicker">A quiet place for mathematics</p>
+          <h1>Math Woods is a quiet place for problem solving and studying mathematics</h1>
+          <div className="home-hero-actions">
+            <Link href="/problems" className="home-button home-button-accent">
+              Start solving problems
+            </Link>
+            <Link href="/contributing" className="home-button home-button-ghost">
+              How can I contribute?
+            </Link>
+          </div>
+          <p className="home-art-credit">
+            Ivan Shishkin, <em>Morning in a Pine Forest</em> (1889) / public domain
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TrailBand() {
+  return (
+    <section className="home-trail-band" aria-label="How Math Woods works">
+      <div>
+        <strong>01</strong>
+        <p>Problems are written and curated by the community.</p>
+      </div>
+      <div>
+        <strong>02</strong>
+        <p>Each problem connects to an evolving database of mathematical concepts.</p>
+      </div>
+      <div>
+        <strong>03</strong>
+        <p>The site is free and open source. Feel free to contribute!</p>
+      </div>
+    </section>
+  );
+}
+
+function TipOfDay({
+  tip,
+  bodyHtml,
+  practice
+}: {
+  tip: { level: number; title: string };
+  bodyHtml: string;
+  practice: HomeProblem[];
+}) {
+  return (
+    <section className="home-tip-card">
+      <div className="home-tip-image">
+        <Image src="/art/oak-grove.jpg" alt="Ivan Shishkin, Oak Grove" fill sizes="(max-width: 760px) 100vw, 300px" />
+      </div>
+      <div className="home-tip-copy">
+        <p className="home-section-kicker">Tip of the day / level {tip.level}</p>
+        <h2>{tip.title}</h2>
+        <div className="home-tip-body prose-math" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+        {practice.length > 0 && (
+          <>
+            <p className="home-practice-label">Practice this tip</p>
+            <div className="home-practice-list">
+              {practice.map((problem) => (
+                <Link key={problem.id} href={`/problems/${problem.slug}`}>
+                  <InlineMathText html={problem.titleHtml} />
+                  <span>
+                    {domainLabel(problem.domain)} / {problem.difficulty ?? "unset"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ProblemToTry({ problem }: { problem: HomeProblem | null }) {
+  return (
+    <section>
+      <div className="home-section-heading">
+        <h2>Problem to try</h2>
+        <Link href="/problems">all problems</Link>
+      </div>
+      {problem ? (
+        <Link href={`/problems/${problem.slug}`} className="home-featured-problem">
+          <p>{domainLabel(problem.domain)}</p>
+          <h3>
+            <InlineMathText html={problem.titleHtml} />
+          </h3>
+          <span>
+            difficulty {problem.difficulty ?? "unset"}/100 / {pluralize(problem._count?.attempts ?? 0, "attempt")} /{" "}
+            {pluralize(problem._count?.favorites ?? 0, "favorite")}
+          </span>
+        </Link>
+      ) : (
+        <p className="home-empty-card">No problems yet.</p>
+      )}
+    </section>
+  );
+}
+
+function DomainGrid() {
+  return (
+    <section>
+      <div className="home-section-heading">
+        <h2>Browse by domain</h2>
+      </div>
+      <div className="home-domain-grid">
+        {homeDomains.map((item) =>
+          "href" in item ? (
+            <Link key={item.label} href={item.href} className="home-domain-more">
+              {item.label}
+            </Link>
+          ) : (
+            <Link key={item.domain} href={`/problems?domain=${item.domain}`}>
+              {item.label}
+            </Link>
+          )
+        )}
+      </div>
+    </section>
+  );
+}
+
+function RecentlyAdded({ problems }: { problems: HomeProblem[] }) {
+  return (
+    <section>
+      <div className="home-section-heading">
+        <h2>Recently added</h2>
+        <Link href="/problems?sort=recent">browse all</Link>
+      </div>
+      <div className="home-recent-grid">
+        {problems.map((problem, index) => {
+          const image = recentImages[index % recentImages.length];
+          return (
+            <Link key={problem.id} href={`/problems/${problem.slug}`} className="home-recent-card">
+              <div className="home-recent-image">
+                <Image src={image.src} alt={image.alt} fill sizes="(max-width: 760px) 100vw, 33vw" />
+              </div>
+              <div>
+                <p>{domainLabel(problem.domain)}</p>
+                <h3>
+                  <InlineMathText html={problem.titleHtml} />
+                </h3>
+                <span>
+                  difficulty {problem.difficulty ?? "unset"} / by{" "}
+                  {problem.author ? displayNameForUser(problem.author) : "curator"}
+                </span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function TrailCta() {
+  return (
+    <section className="home-trail-cta">
+      <Image src="/art/pine-forest.jpg" alt="Ivan Shishkin, Pine Forest" fill sizes="100vw" />
+      <div className="home-trail-cta-overlay" />
+      <div>
+        <h2>Every problem is a trail. Pick one and go a little deeper.</h2>
+        <Link href="/problems?level=mine" className="home-button home-button-light">
+          Find a problem at my level
+        </Link>
+        <p>
+          Ivan Shishkin, <em>Pine Forest</em> / public domain
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function HomeFooter() {
+  return (
+    <footer className="home-footer">
+      <div>
+        <p>
+          Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated. Artwork by Ivan
+          Shishkin (1832-1898), public domain via Wikimedia Commons. Math Woods name, logo, and visual identity are
+          protected brand assets.
+        </p>
+        <nav aria-label="Footer navigation">
+          <Link href="/about">About</Link>
+          <Link href="/suggestions">Suggestions</Link>
+          <Link href="/contributing">Contribute</Link>
+        </nav>
+      </div>
+    </footer>
+  );
 }
 
 export default async function HomePage() {
   const user = await getCurrentUser();
   const preferredLanguage = await getPreferredContentLanguage();
-  const homeProblemWhere = user
-    ? {
-        status: "PUBLISHED" as const,
-        listed: true,
-        language: preferredLanguage,
-        attempts: { none: { userId: user.id, status: "SOLVED" as const } }
-      }
-    : { status: "PUBLISHED" as const, listed: true, language: preferredLanguage };
-  const [problems, playlists, missing, concepts, currentAttempt, solvedAttempts, recommendations] = await Promise.all([
+  const tip = dailyTip();
+  const { min, max } = tipDifficultyRange(tip.level);
+  const problemWhere = {
+    status: "PUBLISHED" as const,
+    listed: true,
+    language: preferredLanguage
+  };
+
+  const [problemRows, practiceRows, resumeAttempt, tipBodyHtml] = await Promise.all([
     prisma.problem.findMany({
-      where: homeProblemWhere,
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      include: {
-        author: true,
-        favorites: { select: { userId: true } },
-        _count: { select: { attempts: true, favorites: true } }
-      }
-    }),
-    prisma.playlist.findMany({
-      where: { visibility: "PUBLIC", language: preferredLanguage },
+      where: problemWhere,
       orderBy: { createdAt: "desc" },
       take: 4,
       include: {
-        author: true,
-        items: true,
-        _count: { select: { followers: true } }
+        author: { select: { username: true, displayName: true } },
+        _count: { select: { attempts: true, favorites: true } }
       }
     }),
-    missingConcepts(6),
-    prisma.concept.findMany({
-      where: { language: preferredLanguage },
-      orderBy: { updatedAt: "desc" },
-      take: 5
+    prisma.problem.findMany({
+      where: {
+        ...problemWhere,
+        difficulty: { gte: min, lte: max }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        domain: true,
+        difficulty: true
+      }
     }),
     user
       ? prisma.problemAttempt.findFirst({
-          where: { userId: user.id, status: { not: "SOLVED" }, problem: { language: preferredLanguage } },
+          where: {
+            userId: user.id,
+            status: { not: "SOLVED" },
+            problem: problemWhere
+          },
           orderBy: { updatedAt: "desc" },
-          include: { problem: true }
+          include: { problem: { select: { slug: true, title: true } } }
         })
       : null,
-    user
-      ? prisma.problemAttempt.findMany({
-          where: { userId: user.id, status: "SOLVED" },
-          select: { problemId: true }
-        })
-      : [],
-    user ? Promise.resolve({}) : homeRecommendations(preferredLanguage)
+    renderMarkdown(tip.body)
   ]);
 
-  const featured = problems[0];
-  const featuredFavoriteCount = featured
-    ? featured.favorites.filter((favorite) => favorite.userId !== featured.authorId).length
-    : 0;
-  const tip = dailyTip();
-  const solvedIds = new Set(solvedAttempts.map((attempt) => attempt.problemId));
+  const renderedProblems = await withRenderedTitles(problemRows);
+  const renderedPractice = await withRenderedTitles(practiceRows.length > 0 ? practiceRows : problemRows.slice(0, 3));
+  const featured = renderedProblems[0] ?? null;
+  const recent = renderedProblems.slice(1, 4);
+  const homeUser = user
+    ? {
+        name: displayNameForUser(user),
+        initials: initialsForName(displayNameForUser(user)),
+        username: user.username
+      }
+    : null;
+  const resume = resumeAttempt
+    ? {
+        title: resumeAttempt.problem.title,
+        slug: resumeAttempt.problem.slug
+      }
+    : null;
 
   return (
-    <div className="home-page grid gap-10">
-      {user ? (
-        <section className="home-hero">
-          <div className="home-hero-copy">
-            <div className="home-actions">
-              <Link href="/problems" className="button">
-                Browse problems
-              </Link>
-              <Link href="/concepts" className="button secondary">
-                Browse concepts
-              </Link>
-            </div>
-
-            {currentAttempt && (
-              <Link
-                href={`/problems/${currentAttempt.problem.slug}`}
-                className="continue-card home-continue-card problem-link problem-seen block"
-              >
-                <p className="eyebrow">Continue</p>
-                <h2>{currentAttempt.problem.title}</h2>
-                <p className="muted">{currentAttempt.status.toLowerCase().replace("_", " ")}</p>
-              </Link>
-            )}
-          </div>
+    <div className="home-shell">
+      <HomeHero user={homeUser} resume={resume} />
+      <main className="home-main">
+        {!homeUser && <TrailBand />}
+        <TipOfDay tip={tip} bodyHtml={tipBodyHtml} practice={renderedPractice} />
+        <section className="home-duo-grid">
+          <ProblemToTry problem={featured} />
+          <DomainGrid />
         </section>
-      ) : (
-        <HomeGuestIntro levels={MATH_LEVEL_OPTIONS} recommendations={recommendations} />
-      )}
-
-      <section className="daily-tip">
-        <p className="daily-tip-label">Tip of the day / level {tip.level}</p>
-        <h2>{tip.title}</h2>
-        <p className="daily-tip-description">{tip.description}</p>
-        <p>{tip.body}</p>
-      </section>
-
-      <section className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
-        <div>
-          <div className="section-heading">
-            <h2>Problem to try</h2>
-            <Link href="/problems">
-              all problems
-            </Link>
-          </div>
-          {featured ? (
-            <Link
-              href={`/problems/${featured.slug}`}
-              className={problemLinkClass("featured-problem block p-6", solvedIds.has(featured.id))}
-            >
-              <p className="eyebrow">{domainLabel(featured.domain)}</p>
-              <h3 className="mt-2 text-xl font-semibold">{featured.title}</h3>
-              <p className="meta mt-3">
-                difficulty {featured.difficulty ?? "unset"}/100 · {pluralize(featured._count.attempts, "attempt")} ·{" "}
-                {pluralize(featuredFavoriteCount, "favorite")}
-              </p>
-            </Link>
-          ) : (
-            <p className="muted panel p-5">No problems yet.</p>
-          )}
-        </div>
-
-        <div>
-          <div className="section-heading">
-            <h2>Browse by domain</h2>
-          </div>
-          <div className="domain-grid">
-            {MATH_DOMAINS.map((domain) => (
-              <Link
-                key={domain.value}
-                href={`/problems?domain=${domain.value}`}
-              >
-                {domain.label}
-              </Link>
-            ))}
-            <Link href="/problems" className="domain-more-link">
-              More...
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="section-heading">
-          <h2>Recently added</h2>
-        </div>
-        <div className="list-surface grid md:grid-cols-2">
-          {problems.slice(1).map((problem) => (
-            <Link
-              key={problem.id}
-              href={`/problems/${problem.slug}`}
-              className={problemLinkClass("list-row block", solvedIds.has(problem.id))}
-            >
-              <p className="font-semibold">{problem.title}</p>
-              <p className="meta mt-1">
-                {domainLabel(problem.domain)} / by {displayNameForUser(problem.author)}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="home-columns grid gap-8 lg:grid-cols-3">
-        <div>
-          <div className="section-heading">
-            <h2>Playlists</h2>
-            <Link href="/playlists">
-              browse
-            </Link>
-          </div>
-          <div className="grid gap-3">
-            {playlists.map((playlist) => (
-              <Link key={playlist.id} href={`/playlists/${playlist.slug}`} className="border-b border-line pb-3">
-                <div className="font-medium">{playlist.title}</div>
-                <div className="muted text-sm">by {displayNameForUser(playlist.author)}</div>
-                <div className="muted text-sm">
-                  {pluralize(playlist.items.length, "problem")} / {pluralize(playlist._count.followers, "follower")}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="section-heading">
-            <h2>Recently improved</h2>
-            <Link href="/concepts">
-              concepts
-            </Link>
-          </div>
-          <div className="grid gap-3">
-            {concepts.map((concept) => (
-              <Link key={concept.id} href={`/concepts/${concept.slug}`} className="border-b border-line pb-3">
-                <div className="font-medium">{concept.title}</div>
-                <div className="muted text-sm">{concept.status.toLowerCase()}</div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="section-heading">
-            <h2>Missing concepts</h2>
-            <Link href="/concepts/new">
-              define one
-            </Link>
-          </div>
-          <div className="grid gap-3">
-            {missing.map((item) => (
-              <Link
-                key={item.slug}
-                href={`/concepts/new?title=${encodeURIComponent(conceptTitleFromSlug(item.slug))}`}
-                className="flex justify-between gap-3"
-              >
-                <span>{conceptTitleFromSlug(item.slug)}</span>
-                <span className="muted text-sm">{pluralize(item.count, "link")}</span>
-              </Link>
-            ))}
-            {missing.length === 0 && <p className="muted text-sm">No gaps in the graph yet.</p>}
-          </div>
-        </div>
-      </section>
+        <RecentlyAdded problems={recent} />
+      </main>
+      {!homeUser && <TrailCta />}
+      <HomeFooter />
     </div>
   );
 }
