@@ -351,19 +351,19 @@ export default async function ProblemPage({
 
         <section className="zen-hide proof-section mt-8">
           <div className="section-heading">
-            <h2>Proofs</h2>
+            <h2>Solutions</h2>
             <span>{proofs.length}</span>
           </div>
           <p className="muted mb-4 text-sm">
-            The most useful proof appears first. At {COMMUNITY_ACCEPTED_PROOF_VOTES} useful votes, it is marked community accepted.
+            The most useful solution appears first. At {COMMUNITY_ACCEPTED_PROOF_VOTES} useful votes, it is marked community accepted.
           </p>
           {isConjecture && proofs.length === 0 && (
-            <p className="quality-banner quality-stub">This problem is marked as a conjecture. No proof is known here yet.</p>
+            <p className="quality-banner quality-stub">This problem is marked as a conjecture. No solution is known here yet.</p>
           )}
           {proofs.length > 0 && (
             <details className="proof-reveal-gate">
               <summary>
-                <span>Reveal proofs</span>
+                <span>Reveal solutions</span>
                 <small>Are you sure? This will show solutions.</small>
               </summary>
               <div className="grid gap-4 pt-4">
@@ -378,14 +378,14 @@ export default async function ProblemPage({
                         <div>
                           {accepted && <span className="accepted-label">Community accepted</span>}
                           <p className="meta">
-                            Proof by <Link href={`/profile/${proof.author.username}`}>{displayNameForUser(proof.author)}</Link>
+                            Solution by <Link href={`/profile/${proof.author.username}`}>{displayNameForUser(proof.author)}</Link>
                           </p>
                         </div>
                         <div className="proof-actions">
                           {canEditProof && (
                             <Link href={`/problems/${problem.slug}/proofs/${proof.id}/edit` as never} className="button secondary">
                               <Pencil size={16} />
-                              Edit proof
+                              Edit solution
                             </Link>
                           )}
                           {user ? (
@@ -409,7 +409,7 @@ export default async function ProblemPage({
                       <details className="proof-discussion">
                         <summary>
                           <MessageSquare size={15} />
-                          Discuss proof {"\u00b7"} {proof.comments.length}
+                          Discuss solution {"\u00b7"} {proof.comments.length}
                         </summary>
                         <div className="grid gap-3 pt-3">
                           {proof.comments.map((comment) => (
@@ -434,10 +434,10 @@ export default async function ProblemPage({
           )}
           {user && (
             <details className="add-proof">
-              <summary>{proofs.length === 0 ? "Be the first to add your proof !" : "Add another proof"}</summary>
+              <summary>{proofs.length === 0 ? "Be the first to add your solution!" : "Add another solution"}</summary>
               <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
                 <MarkdownEditor name="bodyMarkdown" minHeight="12rem" lineNumbers={false} />
-                <button type="submit">Publish proof</button>
+                <button type="submit">Publish solution</button>
               </form>
             </details>
           )}

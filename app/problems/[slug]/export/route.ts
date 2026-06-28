@@ -39,7 +39,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     }) +
     problem.bodyMarkdown +
     problem.proofs
-      .map((proof, index) => `\n\n## Proof ${index + 1}\n\n_By @${proof.author.username}_\n\n${proof.bodyMarkdown}`)
+      .map((proof, index) => `\n\n## Solution ${index + 1}\n\n_By @${proof.author.username}_\n\n${proof.bodyMarkdown}`)
       .join("");
 
   return markdownResponse(markdown, `${problem.slug}.md`);

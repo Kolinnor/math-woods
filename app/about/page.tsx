@@ -254,7 +254,7 @@ export default function AboutPage() {
         </Faq>
         <Faq question="Should meaningful AI assistance be disclosed?">
           <p>
-            Yes. If AI substantially shaped a problem, proof, translation, or rewrite, mention it in the edit summary
+            Yes. If AI substantially shaped a problem, solution, translation, or rewrite, mention it in the edit summary
             or provenance note.
           </p>
         </Faq>
@@ -277,7 +277,7 @@ export default function AboutPage() {
         <Faq question="Is it acceptable to publish unfinished material?">
           <p>
             Yes, if it is honest and useful. A problem can be marked <strong>Needs work</strong>; a concept can begin as
-            a stub; an origin can be <strong>Unknown</strong>; a conjecture can have no proof.
+            a stub; an origin can be <strong>Unknown</strong>; a conjecture can have no solution.
           </p>
         </Faq>
         <Faq question="Who is responsible for public contributions?">

@@ -20,8 +20,8 @@ export const DAILY_TIPS = [
   {
     level: 1,
     title: "Test the smallest nontrivial cases.",
-    description: "Small examples reveal the shape of the problem before the proof is visible.",
-    body: "Small examples often reveal the right conjecture, an overlooked exception, or the structure of a proof."
+    description: "Small examples reveal the shape of the problem before the solution is visible.",
+    body: "Small examples often reveal the right conjecture, an overlooked exception, or the structure of a solution."
   },
   {
     level: 2,
@@ -80,7 +80,7 @@ export const DAILY_TIPS = [
   {
     level: 2,
     title: "State the induction hypothesis precisely.",
-    description: "A vague induction hypothesis usually creates a vague proof.",
+    description: "A vague induction hypothesis usually creates a vague solution.",
     body: "A strong, explicit hypothesis makes the induction step easier and prevents accidental circular reasoning."
   },
   {
@@ -92,8 +92,8 @@ export const DAILY_TIPS = [
   {
     level: 4,
     title: "Pause after finding a solution.",
-    description: "The first proof is often only the entrance to the idea.",
-    body: "Look for a shorter proof, a generalization, and the exact moment where the main idea entered."
+    description: "The first solution is often only the entrance to the idea.",
+    body: "Look for a shorter solution, a generalization, and the exact moment where the main idea entered."
   }
 ] as const;
 

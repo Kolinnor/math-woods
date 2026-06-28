@@ -41,8 +41,8 @@ const notificationOptions = [
   },
   {
     type: NotificationType.PROOF_ADDED,
-    title: "Someone added a proof",
-    description: "When another user adds a proof to one of your problems."
+    title: "Someone added a solution",
+    description: "When another user adds a solution to one of your problems."
   },
   {
     type: NotificationType.DISCUSSION_POSTED,

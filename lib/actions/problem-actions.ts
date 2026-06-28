@@ -83,7 +83,7 @@ export async function createProblemAction(formData: FormData) {
     CONTENT_LIMITS.relationGroups,
     "Related problem groups"
   );
-  const proofMarkdown = boundedText(formData.get("proofMarkdown"), CONTENT_LIMITS.markdown, "Initial proof");
+  const proofMarkdown = boundedText(formData.get("proofMarkdown"), CONTENT_LIMITS.markdown, "Initial solution");
 
   if (verificationMode === ProblemVerificationMode.SELF_CHECK && !verificationAnswer) {
     throw new Error("Short answer verification requires an expected answer.");

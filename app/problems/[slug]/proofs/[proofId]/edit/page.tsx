@@ -35,9 +35,9 @@ export default async function EditProofPage({
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="mb-2 text-2xl font-bold">Edit proof</h1>
+          <h1 className="mb-2 text-2xl font-bold">Edit solution</h1>
           <p className="muted">
-            Proof by {displayNameForUser(proof.author)} for{" "}
+            Solution by {displayNameForUser(proof.author)} for{" "}
             <Link href={`/problems/${proof.problem.slug}`} className="underline">
               {proof.problem.title}
             </Link>
@@ -51,11 +51,11 @@ export default async function EditProofPage({
 
       <form action={updateProofAction.bind(null, proof.id, proof.problem.slug)} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Proof</span>
+          <span className="text-sm font-medium">Solution</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={proof.bodyMarkdown} minHeight="18rem" />
         </label>
         <div className="flex flex-wrap gap-2">
-          <button type="submit">Save proof</button>
+          <button type="submit">Save solution</button>
           <Link href={`/problems/${proof.problem.slug}`} className="button secondary">
             Cancel
           </Link>
@@ -64,12 +64,12 @@ export default async function EditProofPage({
 
       <section className="danger-zone mt-6">
         <div>
-          <h2>Delete proof</h2>
-          <p>This removes the proof and its comments from the problem.</p>
+          <h2>Delete solution</h2>
+          <p>This removes the solution and its comments from the problem.</p>
         </div>
         <form action={deleteProofAction.bind(null, proof.id, proof.problem.slug)}>
-          <ConfirmSubmitButton className="danger" message="Delete this proof? This cannot be undone.">
-            Delete proof
+          <ConfirmSubmitButton className="danger" message="Delete this solution? This cannot be undone.">
+            Delete solution
           </ConfirmSubmitButton>
         </form>
       </section>

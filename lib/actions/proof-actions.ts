@@ -20,7 +20,7 @@ async function renderMarkdownContent(markdown: string) {
 export async function createProofAction(problemId: number, problemSlug: string, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof:${user.id}`, 6, 60_000);
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Proof");
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Solution");
 
   await prisma.problemProof.create({
     data: {
@@ -37,8 +37,8 @@ export async function createProofAction(problemId: number, problemSlug: string, 
     problemId,
     actorId: user.id,
     type: NotificationType.PROOF_ADDED,
-    title: "New proof on your problem",
-    body: `${displayNameForUser(user)} added a proof.`,
+    title: "New solution on your problem",
+    body: `${displayNameForUser(user)} added a solution.`,
     href: `/problems/${problemSlug}`
   });
 }
@@ -46,17 +46,17 @@ export async function createProofAction(problemId: number, problemSlug: string, 
 export async function updateProofAction(proofId: number, problemSlug: string, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof:update:${user.id}`, 20, 60_000);
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Proof");
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Solution");
 
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
     select: { authorId: true, problem: { select: { slug: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
-    throw new Error("Proof not found.");
+    throw new Error("Solution not found.");
   }
   if (proof.authorId !== user.id && !canModerate(user.role)) {
-    throw new Error("You cannot edit this proof.");
+    throw new Error("You cannot edit this solution.");
   }
 
   await prisma.problemProof.update({
@@ -80,10 +80,10 @@ export async function deleteProofAction(proofId: number, problemSlug: string) {
     select: { authorId: true, problem: { select: { slug: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
-    throw new Error("Proof not found.");
+    throw new Error("Solution not found.");
   }
   if (proof.authorId !== user.id && !canModerate(user.role)) {
-    throw new Error("You cannot delete this proof.");
+    throw new Error("You cannot delete this solution.");
   }
 
   await prisma.$transaction([

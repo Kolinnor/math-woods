@@ -12,7 +12,7 @@ export default function ContributingPage() {
         <section className="growth-note">
           <strong>Do not wait for perfection.</strong>
           <span>
-            A clean problem, a stub concept, a source note, a partial proof, or a correction request can already help.
+            A clean problem, a stub concept, a source note, a partial solution, or a correction request can already help.
           </span>
         </section>
 
@@ -43,7 +43,7 @@ export default function ContributingPage() {
         <section>
           <h2 className="text-xl font-semibold">Prefer clarity over completeness</h2>
           <p className="mt-2">
-            A useful first version can be short. Add definitions, examples, counterexamples, proofs, and links when
+            A useful first version can be short. Add definitions, examples, counterexamples, solutions, and links when
             they are ready.
           </p>
         </section>

@@ -52,7 +52,7 @@ export default async function NewProblemPage({
         <div className="growth-note">
           <strong>Start small.</strong>
           <span>
-            Add what you know. Mark what is uncertain. Others can discuss, edit, report, or add proofs.
+            Add what you know. Mark what is uncertain. Others can discuss, edit, report, or add solutions.
           </span>
         </div>
         {playlist && (
@@ -149,7 +149,7 @@ export default async function NewProblemPage({
           <input name="conjecture" type="checkbox" />
           <span>
             <strong>Conjecture</strong>
-            <small>No proof is currently known or supplied.</small>
+            <small>No solution is currently known or supplied.</small>
           </span>
         </label>
         <ProblemRelationPicker />
@@ -175,7 +175,7 @@ export default async function NewProblemPage({
           </label>
         </fieldset>
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Initial proof (optional)</span>
+          <span className="text-sm font-medium">Initial solution (optional)</span>
           <MarkdownEditor name="proofMarkdown" initialValue="" minHeight="11rem" />
         </label>
         <p className="muted text-sm">

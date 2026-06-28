@@ -25,7 +25,7 @@ const TIP_MATCHERS = [
   ["symmetry", "symmetric", "swap", "variables", "reflection", "invariant"],
   ["induction", "recursive", "recurrence", "n+1", "base case"],
   ["representation", "geometric", "counting", "generating", "graph", "picture"],
-  ["generalize", "generalization", "shorter proof", "alternative", "extension"]
+  ["generalize", "generalization", "shorter solution", "alternative", "extension"]
 ] satisfies string[][];
 
 type TipProblem = Awaited<ReturnType<typeof loadProblems>>[number];

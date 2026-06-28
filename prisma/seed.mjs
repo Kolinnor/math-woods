@@ -444,7 +444,7 @@ async function main() {
   await prisma.tag.upsert({
     where: { slug: "conjecture" },
     update: { name: "conjecture" },
-    create: { slug: "conjecture", name: "conjecture", description: "An open problem with no known proof supplied." }
+    create: { slug: "conjecture", name: "conjecture", description: "An open problem with no known solution supplied." }
   });
 
   const simpleProblems = [

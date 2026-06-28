@@ -153,7 +153,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           <input name="conjecture" type="checkbox" defaultChecked={isConjecture} />
           <span>
             <strong>Conjecture</strong>
-            <small>No proof is currently known or supplied.</small>
+            <small>No solution is currently known or supplied.</small>
           </span>
         </label>
         <ProblemRelationPicker

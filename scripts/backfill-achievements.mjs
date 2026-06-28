@@ -30,8 +30,8 @@ const achievements = [
   },
   {
     key: "proofsmith",
-    title: "Proofsmith",
-    description: "Publish your first proof."
+    title: "Solution Smith",
+    description: "Publish your first solution."
   },
   {
     key: "cartographer",
