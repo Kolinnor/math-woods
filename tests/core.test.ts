@@ -11,6 +11,7 @@ import {
 import { slugify } from "../lib/slug.ts";
 import { extractWikiLinks, replaceWikiLinks } from "../lib/wikilinks.ts";
 import { latexPreviewRenderMode } from "../lib/latex-live-preview.ts";
+import { latexCursorTargetForArrow } from "../lib/latex-navigation.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
@@ -97,6 +98,13 @@ const centeredDoubleDollarText = "$$2x+1=3x+2$$";
 const centeredDoubleDollarRanges = findLatexRanges(centeredDoubleDollarText);
 assert.equal(centeredDoubleDollarRanges[0]?.displayMode, true);
 assert.equal(latexPreviewRenderMode(centeredDoubleDollarText, centeredDoubleDollarRanges[0]), "display");
+assert.equal(latexCursorTargetForArrow("A $x+1$ B", 2, "forward"), 3);
+assert.equal(latexCursorTargetForArrow("A $x+1$ B", 7, "backward"), 6);
+assert.equal(latexCursorTargetForArrow(centeredDoubleDollarText, 0, "forward"), 2);
+assert.equal(latexCursorTargetForArrow(centeredDoubleDollarText, centeredDoubleDollarText.length, "backward"), 11);
+assert.equal(latexCursorTargetForArrow("Let \\(x\\) and \\[y\\].", 4, "forward"), 6);
+assert.equal(latexCursorTargetForArrow("Let \\(x\\) and \\[y\\].", 9, "backward"), 7);
+assert.equal(latexCursorTargetForArrow("No math here", 0, "forward"), null);
 assert.deepEqual(
   findLatexSyntaxTokens("$$\\operatorname{Ext}^1(G, H_2)$$", findLatexRanges("$$\\operatorname{Ext}^1(G, H_2)$$")[0]).map(
     (item) => item.kind

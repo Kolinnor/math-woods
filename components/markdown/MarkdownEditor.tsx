@@ -15,6 +15,7 @@ import {
 import katex from "katex";
 import { useEffect, useRef, useState } from "react";
 import { latexPreviewRenderMode } from "@/lib/latex-live-preview";
+import { latexCursorTargetForArrow, type LatexArrowDirection } from "@/lib/latex-navigation";
 import { findLatexRanges } from "@/lib/latex-ranges";
 import { findLatexSyntaxTokens } from "@/lib/latex-syntax-highlight";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "@/lib/markdown-preview";
@@ -318,6 +319,22 @@ function revealLatexBeforeDeleting(view: EditorView, direction: "backward" | "fo
   return true;
 }
 
+function enterLatexWithArrow(view: EditorView, direction: LatexArrowDirection) {
+  const selection = view.state.selection.main;
+  if (!selection.empty) return false;
+
+  const target = latexCursorTargetForArrow(view.state.doc.toString(), selection.from, direction);
+  if (target === null) return false;
+
+  view.dispatch({
+    selection: { anchor: target },
+    effects: setPreviewFocus.of(true),
+    annotations: previewOnly,
+    scrollIntoView: true
+  });
+  return true;
+}
+
 const setPreviewFocus = StateEffect.define<boolean>();
 const previewOnly = Transaction.addToHistory.of(false);
 const previewFocusField = StateField.define<boolean>({
@@ -511,6 +528,14 @@ export function MarkdownEditor({
               {
                 key: "Delete",
                 run: (view) => revealLatexBeforeDeleting(view, "forward")
+              },
+              {
+                key: "ArrowLeft",
+                run: (view) => enterLatexWithArrow(view, "backward")
+              },
+              {
+                key: "ArrowRight",
+                run: (view) => enterLatexWithArrow(view, "forward")
               }
             ])
           ),

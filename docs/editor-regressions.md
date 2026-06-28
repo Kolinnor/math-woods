@@ -81,6 +81,27 @@ Guardrail:
 - Do not reintroduce a fixed `1ch` width for all list markers. If bullets need fixed visual sizing, split bullet and
   ordered-list styling into separate classes.
 
+## 2026-06-28 - Arrow keys skipped rendered LaTeX ranges
+
+Symptom:
+
+- Pressing Left or Right beside a rendered `$...$`, `$$...$$`, `\(...\)`, or `\[...\]` preview jumped over the whole
+  math range as if it were an atomic object.
+- This made ordinary cursor navigation feel wrong, especially for display math blocks.
+
+Root cause:
+
+- Live LaTeX previews are CodeMirror replacement decorations while the cursor is outside the math range.
+- CodeMirror's default arrow movement can move across a replacement decoration boundary without entering the hidden
+  source text.
+
+Guardrail:
+
+- Left/Right at a rendered LaTeX boundary should move the cursor just inside the source range and set preview focus so
+  the source becomes editable.
+- Once the cursor is inside the source range, native character-by-character cursor movement should take over.
+- Do not solve this by removing replacement widgets or by making LaTeX previews permanently editable text.
+
 ## Previous editor regressions to preserve
 
 These are known behavioral fixes that should not be broken when changing live preview logic:
@@ -93,6 +114,7 @@ These are known behavioral fixes that should not be broken when changing live pr
 - Pressing Backspace or Delete next to a rendered math range must not delete the whole math block at once.
 - Pressing Backspace just after the closing `$` of `$math$` should delete the final math character and reveal/edit the
   math source, rather than doing nothing.
+- Pressing Left or Right next to a rendered math range should enter the math source, not skip over the whole range.
 - Markdown headings and bullet points should preview in the editor, but their markup must remain editable when the
   cursor enters the relevant range.
 - Right-clicking selected text should open the concept-link menu without losing the selected text.
