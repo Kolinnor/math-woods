@@ -183,10 +183,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="site-footer">
           <div className="mx-auto grid max-w-6xl gap-3 px-4 py-6 text-sm md:grid-cols-[1fr_auto] md:items-center">
             <p>
-              Math Woods code is licensed under AGPL-3.0-or-later. Educational content is licensed under CC BY-NC-SA
-              4.0 unless otherwise stated. The Math Woods name, logo, domain, and visual identity are protected brand
-              assets. Some parts of Math Woods were developed with assistance from AI coding tools, under human
-              direction and review.
+              Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated. Math Woods name,
+              logo, domain, and visual identity are protected brand assets.
             </p>
             <div className="flex gap-4">
               <Link href="/about">About</Link>
