@@ -673,6 +673,7 @@ export function MarkdownEditor({
   const [linkText, setLinkText] = useState("");
   const [linkSuggestions, setLinkSuggestions] = useState<ConceptSuggestion[]>([]);
   const [linkSuggestionsLoading, setLinkSuggestionsLoading] = useState(false);
+  const [selectedLinkSuggestionQuery, setSelectedLinkSuggestionQuery] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
@@ -841,11 +842,17 @@ export function MarkdownEditor({
     if (!linkMenu) {
       setLinkSuggestions([]);
       setLinkSuggestionsLoading(false);
+      setSelectedLinkSuggestionQuery(null);
       return;
     }
 
     const query = linkTarget.trim();
     if (!query) {
+      setLinkSuggestions([]);
+      setLinkSuggestionsLoading(false);
+      return;
+    }
+    if (selectedLinkSuggestionQuery === query) {
       setLinkSuggestions([]);
       setLinkSuggestionsLoading(false);
       return;
@@ -874,7 +881,7 @@ export function MarkdownEditor({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [linkMenu, linkTarget]);
+  }, [linkMenu, linkTarget, selectedLinkSuggestionQuery]);
 
   function discardDraft() {
     const key = draftKeyRef.current;
@@ -894,11 +901,15 @@ export function MarkdownEditor({
   function closeLinkMenu() {
     setLinkMenu(null);
     setLinkSuggestions([]);
+    setSelectedLinkSuggestionQuery(null);
     viewRef.current?.focus();
   }
 
   function selectLinkSuggestion(suggestion: ConceptSuggestion) {
     setLinkTarget(suggestion.title);
+    setLinkSuggestions([]);
+    setLinkSuggestionsLoading(false);
+    setSelectedLinkSuggestionQuery(suggestion.title);
     linkTargetInputRef.current?.focus();
   }
 
@@ -919,6 +930,7 @@ export function MarkdownEditor({
     });
     setLinkMenu(null);
     setLinkSuggestions([]);
+    setSelectedLinkSuggestionQuery(null);
     view.focus();
   }
 
@@ -975,7 +987,10 @@ export function MarkdownEditor({
             <input
               ref={linkTargetInputRef}
               value={linkTarget}
-              onChange={(event) => setLinkTarget(event.target.value)}
+              onChange={(event) => {
+                setSelectedLinkSuggestionQuery(null);
+                setLinkTarget(event.target.value);
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
