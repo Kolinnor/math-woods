@@ -59,6 +59,7 @@ export async function reportPostAction(postId: number, problemSlug: string, form
 
   revalidatePath("/moderation");
   revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/discussion`);
 }
 
 export async function dismissReportAction(reportId: number) {

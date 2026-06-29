@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import {
   NotificationType,
   PostType,
@@ -782,9 +783,17 @@ export async function toggleProblemFavoriteAction(problemId: number, problemSlug
   revalidatePath("/me");
 }
 
-export async function createDiscussionPostAction(problemId: number, formData: FormData) {
+export async function createDiscussionPostAction(
+  problemId: number,
+  returnToDiscussionOrFormData: boolean | FormData,
+  maybeFormData?: FormData
+) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`post:${user.id}`, 12, 60_000);
+  const returnToDiscussion = typeof returnToDiscussionOrFormData === "boolean" ? returnToDiscussionOrFormData : false;
+  const formData =
+    typeof returnToDiscussionOrFormData === "boolean" ? maybeFormData : returnToDiscussionOrFormData;
+  if (!(formData instanceof FormData)) throw new Error("Discussion message is missing.");
   const [attempt, problem] = await Promise.all([
     prisma.problemAttempt.findUnique({
       where: {
@@ -828,6 +837,7 @@ export async function createDiscussionPostAction(problemId: number, formData: Fo
 
   revalidatePath("/problems");
   revalidatePath(`/problems/${problem.slug}`);
+  revalidatePath(`/problems/${problem.slug}/discussion`);
   if (type === PostType.HINT) {
     await checkHintAchievements(user.id);
   }
@@ -837,14 +847,23 @@ export async function createDiscussionPostAction(problemId: number, formData: Fo
     type: NotificationType.DISCUSSION_POSTED,
     title: "New discussion message",
     body: `${displayNameForUser(user)} posted in the discussion of "${problem.title}".`,
-    href: `/problems/${problem.slug}`
+    href: `/problems/${problem.slug}/discussion`
   });
-  redirect(`/problems/${problem.slug}`);
+  redirect(returnToDiscussion ? (`/problems/${problem.slug}/discussion` as Route) : `/problems/${problem.slug}`);
 }
 
-export async function updateHintAction(postId: number, problemSlug: string, formData: FormData) {
+export async function updateHintAction(
+  postId: number,
+  problemSlug: string,
+  returnToDiscussionOrFormData: boolean | FormData,
+  maybeFormData?: FormData
+) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`hint:update:${user.id}`, 30, 60_000);
+  const returnToDiscussion = typeof returnToDiscussionOrFormData === "boolean" ? returnToDiscussionOrFormData : false;
+  const formData =
+    typeof returnToDiscussionOrFormData === "boolean" ? maybeFormData : returnToDiscussionOrFormData;
+  if (!(formData instanceof FormData)) throw new Error("Hint content is missing.");
   const hint = await prisma.discussionPost.findFirst({
     where: {
       id: postId,
@@ -870,10 +889,11 @@ export async function updateHintAction(postId: number, problemSlug: string, form
   });
 
   revalidatePath(`/problems/${problemSlug}`);
-  redirect(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/discussion`);
+  redirect(returnToDiscussion ? (`/problems/${problemSlug}/discussion` as Route) : `/problems/${problemSlug}`);
 }
 
-export async function deleteHintAction(postId: number, problemSlug: string) {
+export async function deleteHintAction(postId: number, problemSlug: string, returnToDiscussion = false) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`hint:delete:${user.id}`, 30, 60_000);
   const hint = await prisma.discussionPost.findFirst({
@@ -897,10 +917,11 @@ export async function deleteHintAction(postId: number, problemSlug: string) {
   });
 
   revalidatePath(`/problems/${problemSlug}`);
-  redirect(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/discussion`);
+  redirect(returnToDiscussion ? (`/problems/${problemSlug}/discussion` as Route) : `/problems/${problemSlug}`);
 }
 
-export async function votePostAction(postId: number, problemSlug: string) {
+export async function votePostAction(postId: number, problemSlug: string, returnToDiscussion = false) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`vote:${user.id}`, 120, 60_000);
   const key = {
@@ -931,6 +952,8 @@ export async function votePostAction(postId: number, problemSlug: string) {
   }
 
   revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/discussion`);
+  if (returnToDiscussion) redirect(`/problems/${problemSlug}/discussion` as Route);
 }
 
 export async function voteProblemAction(problemId: number) {

@@ -7,23 +7,18 @@ import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
-import { HiddenHint } from "@/components/HiddenHint";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ZenModeToggle } from "@/components/ZenModeToggle";
-import { reportPostAction, reportProblemAction } from "@/lib/actions/moderation-actions";
+import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
-  createDiscussionPostAction,
-  deleteHintAction,
   createVerificationMessageAction,
   markProblemGoodAction,
   markProblemSolvedAction,
   reviewProblemVerificationAction,
   startAttemptAction,
   toggleProblemFavoriteAction,
-  updateHintAction,
-  updatePrivateNotesAction,
-  votePostAction
+  updatePrivateNotesAction
 } from "@/lib/actions/problem-actions";
 import {
   createProofAction,
@@ -35,7 +30,6 @@ import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import {
-  canEditDiscussionHint,
   canEditProblem,
   canEditSolution,
   canSetProblemQualityStatus,
@@ -72,7 +66,7 @@ export default async function ProblemPage({
         include: {
           posts: {
             where: { deletedAt: null },
-            include: { author: true },
+            select: { id: true },
             orderBy: { createdAt: "asc" }
           }
         }
@@ -107,18 +101,10 @@ export default async function ProblemPage({
     problem.origin.trim().toLowerCase() !== "unknown" ||
     Boolean(problem.originChapter || problem.originPage || problem.originNote);
 
-  const postIds = problem.thread?.posts.map((post) => post.id) ?? [];
   const proofIds = problem.proofs.map((proof) => proof.id);
   const relatedProblemIds = problem.relatedGroups.flatMap((group) =>
     group.relations.map((relation) => relation.targetProblemId)
   );
-  const postVoteGroupsPromise = postIds.length
-    ? prisma.vote.groupBy({
-        by: ["targetId"],
-        where: { targetType: "POST", targetId: { in: postIds } },
-        _count: { targetId: true }
-      })
-    : Promise.resolve([]);
   const proofVoteGroupsPromise = proofIds.length
     ? prisma.vote.groupBy({
         by: ["targetId"],
@@ -133,7 +119,6 @@ export default async function ProblemPage({
     playlists,
     ownVerificationRequests,
     pendingVerificationRequests,
-    postVoteGroups,
     proofVoteGroups,
     userVotes,
     favorite,
@@ -189,16 +174,13 @@ export default async function ProblemPage({
           orderBy: { createdAt: "asc" }
         })
       : Promise.resolve([]),
-    postVoteGroupsPromise,
     proofVoteGroupsPromise,
-    user && (postIds.length || proofIds.length)
+    user && proofIds.length
       ? prisma.vote.findMany({
           where: {
             userId: user.id,
-            OR: [
-              ...(postIds.length ? [{ targetType: TargetType.POST, targetId: { in: postIds } }] : []),
-              ...(proofIds.length ? [{ targetType: TargetType.PROOF, targetId: { in: proofIds } }] : [])
-            ]
+            targetType: TargetType.PROOF,
+            targetId: { in: proofIds }
           },
           select: { targetType: true, targetId: true }
         })
@@ -216,9 +198,7 @@ export default async function ProblemPage({
         })
       : Promise.resolve([])
   ]);
-  const postVotes = new Map(postVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const proofVotes = new Map(proofVoteGroups.map((item) => [item.targetId, item._count.targetId]));
-  const ownPostVoteIds = new Set(userVotes.filter((vote) => vote.targetType === TargetType.POST).map((vote) => vote.targetId));
   const ownProofVoteIds = new Set(userVotes.filter((vote) => vote.targetType === TargetType.PROOF).map((vote) => vote.targetId));
   const relatedSolvedIds = new Set(relatedSolvedAttempts.map((attempt) => attempt.problemId));
   const proofs = [...problem.proofs].sort(
@@ -235,6 +215,7 @@ export default async function ProblemPage({
     .filter((group) => group.relations.length > 0);
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
   const discussionVisible = Boolean(attempt || canEditCurrentProblem);
+  const discussionPostCount = problem.thread?.posts.length ?? 0;
   const revealSpoilerDetails = attempt?.status === "SOLVED" || canEditCurrentProblem;
   const showSpoilerTags = problem.spoilerTags.length > 0 && revealSpoilerDetails;
   const problemDomains = problem.domains.length
@@ -362,102 +343,6 @@ export default async function ProblemPage({
             )}
           </div>
         )}
-
-        <section className="zen-hide discussion-surface mt-8">
-          <div className="mb-3 flex items-center justify-between gap-4">
-            <h2 className="font-semibold">Discussion</h2>
-          </div>
-
-          {!user && (
-            <p className="muted">
-              <Link href="/login" className="underline">
-                Sign in
-              </Link>{" "}
-              to start this problem and reveal the discussion.
-            </p>
-          )}
-
-          {user && !attempt && !canEditCurrentProblem && <p className="muted">The discussion stays hidden until you start the problem.</p>}
-
-          {discussionVisible && (
-            <div className="grid gap-4">
-              {(problem.thread?.posts ?? []).map((post) => {
-                const canManageHint = Boolean(user && post.type === "HINT" && canEditDiscussionHint(user, post));
-
-                return (
-                  <div key={post.id} className="border-t border-line pt-4">
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                      <div className="muted text-sm">
-                        <span className="rounded border border-line px-2 py-0.5 text-xs">
-                          {post.type.toLowerCase()}
-                        </span>{" "}
-                        by{" "}
-                        <Link href={`/profile/${post.author.username}`} className="underline">
-                          {displayNameForUser(post.author)}
-                        </Link>
-                      </div>
-                      <form action={votePostAction.bind(null, post.id, problem.slug)}>
-                        <button
-                          type="submit"
-                          className={ownPostVoteIds.has(post.id) ? "secondary vote-button-active" : "secondary"}
-                          aria-pressed={ownPostVoteIds.has(post.id)}
-                          title={ownPostVoteIds.has(post.id) ? "Remove useful vote" : "Mark as useful"}
-                        >
-                          Useful {"\u00b7"} {postVotes.get(post.id) ?? 0}
-                        </button>
-                      </form>
-                    </div>
-                    {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
-                    {canManageHint && (
-                      <div className="mt-3 grid gap-3 text-sm">
-                        <details>
-                          <summary className="cursor-pointer font-medium">Edit hint</summary>
-                          <form action={updateHintAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
-                            <LazyMarkdownEditor
-                              name="bodyMarkdown"
-                              initialValue={post.bodyMarkdown}
-                              minHeight="7rem"
-                              lineNumbers={false}
-                            />
-                            <button type="submit" className="secondary">
-                              Save hint
-                            </button>
-                          </form>
-                        </details>
-                        <form action={deleteHintAction.bind(null, post.id, problem.slug)}>
-                          <button type="submit" className="secondary">
-                            Delete hint
-                          </button>
-                        </form>
-                      </div>
-                    )}
-                    <details className="mt-3 text-sm">
-                      <summary className="cursor-pointer font-medium">Report post</summary>
-                      <form action={reportPostAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
-                        <textarea name="reason" placeholder="Off-topic, spoiler, incorrect solution..." required />
-                        <button type="submit" className="secondary">
-                          Submit report
-                        </button>
-                      </form>
-                    </details>
-                  </div>
-                );
-              })}
-              {(problem.thread?.posts.length ?? 0) === 0 && <p className="muted">No messages yet.</p>}
-              <form action={createDiscussionPostAction.bind(null, problem.id)} className="grid gap-3">
-                <select name="type" defaultValue="COMMENT">
-                  <option value="COMMENT">Comment</option>
-                  <option value="HINT">Hint</option>
-                  <option value="SOLUTION">Solution</option>
-                  <option value="GENERALIZATION">Generalization</option>
-                  <option value="CORRECTION">Correction</option>
-                </select>
-                <LazyMarkdownEditor name="bodyMarkdown" minHeight="9rem" lineNumbers={false} />
-                <button type="submit">Post</button>
-              </form>
-            </div>
-          )}
-        </section>
 
         <section className="zen-hide proof-section mt-8">
           <div className="section-heading">
@@ -685,6 +570,20 @@ export default async function ProblemPage({
                 {favorite ? "Favorited" : "Add this problem to favorites"} {"\u00b7"} {pluralize(favoriteCount, "favorite")}
               </button>
             </form>
+          )}
+          <Link
+            href={{ pathname: `/problems/${problem.slug}/discussion` }}
+            className="button secondary"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MessageSquare size={17} />
+            Discussion {"\u00b7"} {pluralize(discussionPostCount, "post")}
+          </Link>
+          {!discussionVisible && (
+            <p className="muted text-xs">
+              Start the problem to reveal and join the discussion.
+            </p>
           )}
           {ownVerificationRequests.length > 0 && attempt?.status !== "SOLVED" && (
             <div className="verification-history">
