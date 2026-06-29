@@ -1,10 +1,11 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import type { Route } from "next";
 import Link from "next/link";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { DAILY_TIPS } from "@/lib/daily-tip";
+import { loadTips, type TipEntry } from "@/lib/daily-tip";
 import { domainLabel } from "@/lib/domains";
 import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
@@ -90,7 +91,7 @@ function relatedProblemsForTip(problems: TipProblem[], tipIndex: number) {
     .map(({ problem }) => problem);
 }
 
-function tipMatchesQuery(tip: (typeof DAILY_TIPS)[number], relatedProblems: TipProblem[], query: string) {
+function tipMatchesQuery(tip: TipEntry, relatedProblems: TipProblem[], query: string) {
   if (!query) return true;
 
   const haystack = [
@@ -112,15 +113,15 @@ function tipMatchesQuery(tip: (typeof DAILY_TIPS)[number], relatedProblems: TipP
 export default async function TipsPage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; updated?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
 
   const preferredLanguage = await getPreferredContentLanguage();
-  const { q = "" } = await searchParams;
+  const { q = "", updated } = await searchParams;
   const query = q.trim();
-  const problems = await loadProblems(preferredLanguage);
+  const [problems, tipRows] = await Promise.all([loadProblems(preferredLanguage), loadTips()]);
   const solvedAttempts =
     user && problems.length
       ? await prisma.problemAttempt.findMany({
@@ -129,7 +130,7 @@ export default async function TipsPage({
         })
       : [];
   const solvedIds = new Set(solvedAttempts.map((attempt) => attempt.problemId));
-  const tips = DAILY_TIPS.map((tip, index) => ({
+  const tips = tipRows.map((tip, index) => ({
     tip,
     index,
     relatedProblems: relatedProblemsForTip(problems, index)
@@ -151,6 +152,8 @@ export default async function TipsPage({
         <button type="submit">Search</button>
       </LiveSearchForm>
 
+      {updated && <p className="quality-banner mb-4">Tip updated.</p>}
+
       <p className="result-summary" role="status" aria-live="polite">
         {tips.length ? `${tips.length} tips shown` : "No tips match this search."}
       </p>
@@ -158,7 +161,12 @@ export default async function TipsPage({
       <div className="tips-grid">
         {tips.map(({ tip, index, relatedProblems }) => (
           <article key={tip.title} className="tip-card">
-            <p className="eyebrow">Tip {index + 1}</p>
+            <div className="tip-card-actions">
+              <p className="eyebrow">Tip {index + 1}</p>
+              <Link href={`/tips/${tip.id}/edit` as Route} className="button secondary">
+                Edit
+              </Link>
+            </div>
             <span className="tip-level">Level {tip.level}</span>
             <h2>{tip.title}</h2>
             <p className="tip-description">{tip.description}</p>

@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { MarkdownInline } from "@/components/MarkdownInline";
 import { getCurrentUser } from "@/lib/auth";
-import { dailyTip } from "@/lib/daily-tip";
+import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
@@ -353,7 +353,7 @@ function HomeFooter() {
 export default async function HomePage() {
   const user = await getCurrentUser();
   const preferredLanguage = await getPreferredContentLanguage();
-  const tip = dailyTip();
+  const tip = await loadDailyTip();
   const { min, max } = tipDifficultyRange(tip.level);
   const problemWhere = {
     status: "PUBLISHED" as const,

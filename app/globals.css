@@ -2693,6 +2693,18 @@ button.domain-selected:hover {
   padding: 1.2rem;
 }
 
+.tip-card-actions {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.tip-card-actions .button {
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+}
+
 .tip-card h2 {
   font-family: var(--font-serif);
   font-size: 1.55rem;

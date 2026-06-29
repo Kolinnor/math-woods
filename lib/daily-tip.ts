@@ -1,4 +1,7 @@
-export const DAILY_TIPS = [
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+
+export const DEFAULT_TIPS = [
   {
     level: 0,
     title: "Use all the hypotheses of the problem.",
@@ -97,10 +100,85 @@ export const DAILY_TIPS = [
   }
 ] as const;
 
+export type TipEntry = {
+  id: number;
+  position: number;
+  level: number;
+  title: string;
+  description: string;
+  body: string;
+};
+
+export const DAILY_TIPS = DEFAULT_TIPS;
+
+function defaultTipsWithIds(): TipEntry[] {
+  return DEFAULT_TIPS.map((tip, index) => ({
+    id: index + 1,
+    position: index,
+    ...tip
+  }));
+}
+
+function isMissingTipTable(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021";
+}
+
+export async function ensureDefaultTips() {
+  try {
+    const count = await prisma.tip.count();
+    if (count > 0) return;
+
+    await prisma.tip.createMany({
+      data: DEFAULT_TIPS.map((tip, index) => ({
+        position: index,
+        level: tip.level,
+        title: tip.title,
+        description: tip.description,
+        body: tip.body
+      })),
+      skipDuplicates: true
+    });
+  } catch (error) {
+    if (isMissingTipTable(error)) return;
+    throw error;
+  }
+}
+
+export async function loadTips(): Promise<TipEntry[]> {
+  try {
+    await ensureDefaultTips();
+    const tips = await prisma.tip.findMany({ orderBy: { position: "asc" } });
+    if (tips.length > 0) return tips;
+  } catch (error) {
+    if (!isMissingTipTable(error)) throw error;
+  }
+
+  return defaultTipsWithIds();
+}
+
+export async function loadTip(id: number) {
+  try {
+    await ensureDefaultTips();
+    return prisma.tip.findUnique({ where: { id } });
+  } catch (error) {
+    if (isMissingTipTable(error)) return null;
+    throw error;
+  }
+}
+
 export function dailyTip(date = new Date()) {
   const dayNumber = Math.floor(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000
   );
 
-  return DAILY_TIPS[dayNumber % DAILY_TIPS.length];
+  return DEFAULT_TIPS[dayNumber % DEFAULT_TIPS.length];
+}
+
+export async function loadDailyTip(date = new Date()) {
+  const tips = await loadTips();
+  const dayNumber = Math.floor(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000
+  );
+
+  return tips[dayNumber % tips.length];
 }

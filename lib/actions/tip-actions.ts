@@ -1,0 +1,45 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/auth";
+import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { prisma } from "@/lib/db";
+import { ensureDefaultTips } from "@/lib/daily-tip";
+import { canUseAdminTools } from "@/lib/permissions";
+import { assertRateLimit } from "@/lib/rate-limit";
+
+function parseTipLevel(value: FormDataEntryValue | null) {
+  const level = Number(value);
+  if (!Number.isInteger(level) || level < 0 || level > 10) {
+    throw new Error("Level must be an integer between 0 and 10.");
+  }
+  return level;
+}
+
+export async function updateTipAction(tipId: number, formData: FormData) {
+  const user = await requireUser();
+  if (!canUseAdminTools(user)) throw new Error("Only admins can edit tips.");
+  await assertRateLimit(`tip:update:${user.id}`, 30, 60_000);
+  await ensureDefaultTips();
+
+  const level = parseTipLevel(formData.get("level"));
+  const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+  const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
+  const body = requiredBoundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body");
+
+  await prisma.tip.update({
+    where: { id: tipId },
+    data: {
+      level,
+      title,
+      description,
+      body
+    }
+  });
+
+  revalidatePath("/");
+  revalidatePath("/tips");
+  revalidatePath(`/tips/${tipId}/edit`);
+  redirect(`/tips?updated=${tipId}`);
+}

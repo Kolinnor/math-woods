@@ -713,6 +713,17 @@ model Suggestion {
   @@index([status, createdAt])
 }
 
+model Tip {
+  id          Int      @id @default(autoincrement())
+  position    Int      @unique
+  level       Int      @default(0)
+  title       String
+  description String
+  body        String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Notification {
   id        Int              @id @default(autoincrement())
   userId    Int
