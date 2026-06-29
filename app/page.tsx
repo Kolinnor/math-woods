@@ -7,6 +7,7 @@ import { dailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
+import { canUseAdminTools } from "@/lib/permissions";
 import { pluralize } from "@/lib/pluralize";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
@@ -81,9 +82,11 @@ function initialsForName(name: string) {
 }
 
 function HomeNav({
-  user
+  user,
+  canSeeTips
 }: {
   user: { name: string; initials: string; username: string } | null;
+  canSeeTips: boolean;
 }) {
   return (
     <header className="home-forest-nav">
@@ -95,7 +98,7 @@ function HomeNav({
         <Link href="/problems">Problems</Link>
         <Link href="/concepts">Concepts</Link>
         <Link href="/playlists">Playlists</Link>
-        <Link href="/tips">Tips</Link>
+        {canSeeTips && <Link href="/tips">Tips</Link>}
         {!user && <Link href="/users">Users</Link>}
         {user ? (
           <Link href="/settings" title={`${user.name} / your account`} className="home-avatar">
@@ -113,10 +116,12 @@ function HomeNav({
 
 function HomeHero({
   user,
-  resume
+  resume,
+  canSeeTips
 }: {
   user: { name: string; initials: string; username: string } | null;
   resume: { title: string; slug: string } | null;
+  canSeeTips: boolean;
 }) {
   const isMember = Boolean(user);
 
@@ -131,7 +136,7 @@ function HomeHero({
         className="home-hero-image"
       />
       <div className={isMember ? "home-hero-overlay home-hero-overlay-member" : "home-hero-overlay"} />
-      <HomeNav user={user} />
+      <HomeNav user={user} canSeeTips={canSeeTips} />
       {user ? (
         <div className="home-member-hero-copy">
           <div>
@@ -406,6 +411,7 @@ export default async function HomePage() {
         username: user.username
       }
     : null;
+  const canSeeTips = Boolean(user && canUseAdminTools(user));
   const resume = resumeAttempt
     ? {
         title: resumeAttempt.problem.title,
@@ -415,7 +421,7 @@ export default async function HomePage() {
 
   return (
     <div className="home-shell">
-      <HomeHero user={homeUser} resume={resume} />
+      <HomeHero user={homeUser} resume={resume} canSeeTips={canSeeTips} />
       <main className="home-main">
         {!homeUser && <TrailBand />}
         <TipOfDay tip={tip} bodyHtml={tipBodyHtml} practice={renderedPractice} />

@@ -17,7 +17,7 @@ import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { CONTENT_LANGUAGE_COOKIE, parseContentLanguage } from "@/lib/languages";
-import { canUseModerationTools } from "@/lib/permissions";
+import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const metadata: Metadata = {
@@ -147,7 +147,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/problems">Problems</Link>
               <Link href="/concepts">Concepts</Link>
               <Link href="/playlists">Playlists</Link>
-              <Link href="/tips">Tips</Link>
+              {user && canUseAdminTools(user) && <Link href="/tips">Tips</Link>}
               <Link href={usersRoute}>Users</Link>
               <Link href="/competition">Competition</Link>
             </div>

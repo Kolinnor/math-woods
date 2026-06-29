@@ -1,10 +1,12 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
+import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { DAILY_TIPS } from "@/lib/daily-tip";
 import { domainLabel } from "@/lib/domains";
+import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
@@ -113,6 +115,8 @@ export default async function TipsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const user = await getCurrentUser();
+  if (!user || !canUseAdminTools(user)) notFound();
+
   const preferredLanguage = await getPreferredContentLanguage();
   const { q = "" } = await searchParams;
   const query = q.trim();
