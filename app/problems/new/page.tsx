@@ -154,7 +154,7 @@ export default async function NewProblemPage({
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-medium">Spoiler tags</span>
-          <input name="spoilerTags" placeholder="Vieta, induction, Cauchy-Schwarz" />
+          <input name="spoilerTags" placeholder="Trick question, induction, Cauchy-Schwarz" />
           <small className="muted">
             Hidden until a user marks the problem solved. They can still be searched from the problem browser.
           </small>

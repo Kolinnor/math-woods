@@ -174,7 +174,7 @@ export default async function TipsPage({
 
             <section className="tip-related" aria-labelledby={`tip-${index}-practice`}>
               <div className="tip-related-heading">
-                <h3 id={`tip-${index}-practice`}>Practice this trick</h3>
+                <h3 id={`tip-${index}-practice`}>Related problems</h3>
                 <span>{relatedProblems.length ? `${relatedProblems.length} suggestions` : "No suggestions yet"}</span>
               </div>
               {relatedProblems.length > 0 ? (

@@ -359,6 +359,102 @@ export default async function ProblemPage({
           </div>
         )}
 
+        <section className="zen-hide discussion-surface mt-8">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <h2 className="font-semibold">Discussion</h2>
+          </div>
+
+          {!user && (
+            <p className="muted">
+              <Link href="/login" className="underline">
+                Sign in
+              </Link>{" "}
+              to start this problem and reveal the discussion.
+            </p>
+          )}
+
+          {user && !attempt && !canEditCurrentProblem && <p className="muted">The discussion stays hidden until you start the problem.</p>}
+
+          {discussionVisible && (
+            <div className="grid gap-4">
+              {(problem.thread?.posts ?? []).map((post) => {
+                const canManageHint = Boolean(user && post.type === "HINT" && canEditDiscussionHint(user, post));
+
+                return (
+                  <div key={post.id} className="border-t border-line pt-4">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                      <div className="muted text-sm">
+                        <span className="rounded border border-line px-2 py-0.5 text-xs">
+                          {post.type.toLowerCase()}
+                        </span>{" "}
+                        by{" "}
+                        <Link href={`/profile/${post.author.username}`} className="underline">
+                          {displayNameForUser(post.author)}
+                        </Link>
+                      </div>
+                      <form action={votePostAction.bind(null, post.id, problem.slug)}>
+                        <button
+                          type="submit"
+                          className={ownPostVoteIds.has(post.id) ? "secondary vote-button-active" : "secondary"}
+                          aria-pressed={ownPostVoteIds.has(post.id)}
+                          title={ownPostVoteIds.has(post.id) ? "Remove useful vote" : "Mark as useful"}
+                        >
+                          Useful {"\u00b7"} {postVotes.get(post.id) ?? 0}
+                        </button>
+                      </form>
+                    </div>
+                    {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
+                    {canManageHint && (
+                      <div className="mt-3 grid gap-3 text-sm">
+                        <details>
+                          <summary className="cursor-pointer font-medium">Edit hint</summary>
+                          <form action={updateHintAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
+                            <LazyMarkdownEditor
+                              name="bodyMarkdown"
+                              initialValue={post.bodyMarkdown}
+                              minHeight="7rem"
+                              lineNumbers={false}
+                            />
+                            <button type="submit" className="secondary">
+                              Save hint
+                            </button>
+                          </form>
+                        </details>
+                        <form action={deleteHintAction.bind(null, post.id, problem.slug)}>
+                          <button type="submit" className="secondary">
+                            Delete hint
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                    <details className="mt-3 text-sm">
+                      <summary className="cursor-pointer font-medium">Report post</summary>
+                      <form action={reportPostAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
+                        <textarea name="reason" placeholder="Off-topic, spoiler, incorrect solution..." required />
+                        <button type="submit" className="secondary">
+                          Submit report
+                        </button>
+                      </form>
+                    </details>
+                  </div>
+                );
+              })}
+              {(problem.thread?.posts.length ?? 0) === 0 && <p className="muted">No messages yet.</p>}
+              <form action={createDiscussionPostAction.bind(null, problem.id)} className="grid gap-3">
+                <select name="type" defaultValue="COMMENT">
+                  <option value="COMMENT">Comment</option>
+                  <option value="HINT">Hint</option>
+                  <option value="SOLUTION">Solution</option>
+                  <option value="GENERALIZATION">Generalization</option>
+                  <option value="CORRECTION">Correction</option>
+                </select>
+                <LazyMarkdownEditor name="bodyMarkdown" minHeight="9rem" lineNumbers={false} />
+                <button type="submit">Post</button>
+              </form>
+            </div>
+          )}
+        </section>
+
         <section className="zen-hide proof-section mt-8">
           <div className="section-heading">
             <h2>Solutions</h2>
@@ -504,101 +600,6 @@ export default async function ProblemPage({
           </details>
         </section>
 
-        <section className="zen-hide discussion-surface mt-8">
-          <div className="mb-3 flex items-center justify-between gap-4">
-            <h2 className="font-semibold">Discussion</h2>
-          </div>
-
-          {!user && (
-            <p className="muted">
-              <Link href="/login" className="underline">
-                Sign in
-              </Link>{" "}
-              to start this problem and reveal the discussion.
-            </p>
-          )}
-
-          {user && !attempt && !canEditCurrentProblem && <p className="muted">The discussion stays hidden until you start the problem.</p>}
-
-          {discussionVisible && (
-            <div className="grid gap-4">
-              {(problem.thread?.posts ?? []).map((post) => {
-                const canManageHint = Boolean(user && post.type === "HINT" && canEditDiscussionHint(user, post));
-
-                return (
-                  <div key={post.id} className="border-t border-line pt-4">
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                      <div className="muted text-sm">
-                        <span className="rounded border border-line px-2 py-0.5 text-xs">
-                          {post.type.toLowerCase()}
-                        </span>{" "}
-                        by{" "}
-                        <Link href={`/profile/${post.author.username}`} className="underline">
-                          {displayNameForUser(post.author)}
-                        </Link>
-                      </div>
-                      <form action={votePostAction.bind(null, post.id, problem.slug)}>
-                        <button
-                          type="submit"
-                          className={ownPostVoteIds.has(post.id) ? "secondary vote-button-active" : "secondary"}
-                          aria-pressed={ownPostVoteIds.has(post.id)}
-                          title={ownPostVoteIds.has(post.id) ? "Remove useful vote" : "Mark as useful"}
-                        >
-                          Useful {"\u00b7"} {postVotes.get(post.id) ?? 0}
-                        </button>
-                      </form>
-                    </div>
-                    {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
-                    {canManageHint && (
-                      <div className="mt-3 grid gap-3 text-sm">
-                        <details>
-                          <summary className="cursor-pointer font-medium">Edit hint</summary>
-                          <form action={updateHintAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
-                            <LazyMarkdownEditor
-                              name="bodyMarkdown"
-                              initialValue={post.bodyMarkdown}
-                              minHeight="7rem"
-                              lineNumbers={false}
-                            />
-                            <button type="submit" className="secondary">
-                              Save hint
-                            </button>
-                          </form>
-                        </details>
-                        <form action={deleteHintAction.bind(null, post.id, problem.slug)}>
-                          <button type="submit" className="secondary">
-                            Delete hint
-                          </button>
-                        </form>
-                      </div>
-                    )}
-                    <details className="mt-3 text-sm">
-                      <summary className="cursor-pointer font-medium">Report post</summary>
-                      <form action={reportPostAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
-                        <textarea name="reason" placeholder="Off-topic, spoiler, incorrect solution..." required />
-                        <button type="submit" className="secondary">
-                          Submit report
-                        </button>
-                      </form>
-                    </details>
-                  </div>
-                );
-              })}
-              {(problem.thread?.posts.length ?? 0) === 0 && <p className="muted">No messages yet.</p>}
-              <form action={createDiscussionPostAction.bind(null, problem.id)} className="grid gap-3">
-                <select name="type" defaultValue="COMMENT">
-                  <option value="COMMENT">Comment</option>
-                  <option value="HINT">Hint</option>
-                  <option value="SOLUTION">Solution</option>
-                  <option value="GENERALIZATION">Generalization</option>
-                  <option value="CORRECTION">Correction</option>
-                </select>
-                <LazyMarkdownEditor name="bodyMarkdown" minHeight="9rem" lineNumbers={false} />
-                <button type="submit">Post</button>
-              </form>
-            </div>
-          )}
-        </section>
       </article>
 
       <aside className="zen-hide grid content-start gap-5">

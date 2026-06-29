@@ -71,10 +71,6 @@ function tipDifficultyRange(level: number) {
   return { min, max: Math.min(100, min + 19) };
 }
 
-function firstName(name: string) {
-  return name.trim().split(/\s+/)[0] || name;
-}
-
 function initialsForName(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
   const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
@@ -140,13 +136,12 @@ function HomeHero({
       {user ? (
         <div className="home-member-hero-copy">
           <div>
-            <p className="home-kicker">Welcome back</p>
-            <h1>Hello, {firstName(user.name)}</h1>
+            <h1>Welcome back, {user.name}</h1>
           </div>
           <div className="home-hero-actions">
             {resume && (
               <Link href={`/problems/${resume.slug}`} className="home-button home-button-light">
-                Resume / {resume.title}
+                Resume: {resume.title}
               </Link>
             )}
             <Link href="/problems?level=mine" className="home-button home-button-ghost">
@@ -156,7 +151,6 @@ function HomeHero({
         </div>
       ) : (
         <div className="home-guest-hero-copy">
-          <p className="home-kicker">A quiet place for mathematics</p>
           <h1>Math Woods is a quiet place for problem solving and studying mathematics</h1>
           <div className="home-hero-actions">
             <Link href="/problems" className="home-button home-button-accent">

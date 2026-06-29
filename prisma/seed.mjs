@@ -446,6 +446,15 @@ async function main() {
     update: { name: "conjecture" },
     create: { slug: "conjecture", name: "conjecture", description: "An open problem with no known solution supplied." }
   });
+  await prisma.tag.upsert({
+    where: { slug: "trick-question" },
+    update: { name: "Trick question" },
+    create: {
+      slug: "trick-question",
+      name: "Trick question",
+      description: "A spoiler tag for problems whose main difficulty is noticing a trap in the wording."
+    }
+  });
 
   const simpleProblems = [
     {
