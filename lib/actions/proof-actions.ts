@@ -41,6 +41,7 @@ export async function createProofAction(problemId: number, problemSlug: string, 
     body: `${displayNameForUser(user)} added a solution.`,
     href: `/problems/${problemSlug}`
   });
+  redirect(`/problems/${problemSlug}?solution=posted`);
 }
 
 export async function updateProofAction(proofId: number, problemSlug: string, formData: FormData) {

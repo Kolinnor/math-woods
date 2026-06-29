@@ -55,7 +55,7 @@ export default async function ProblemPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ verification?: string }>;
+  searchParams?: Promise<{ solution?: string; verification?: string }>;
 }) {
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
@@ -251,6 +251,10 @@ export default async function ProblemPage({
     : undefined;
   const verificationMessage =
     queryParams.verification === "incorrect" ? "This verification answer is not correct yet." : null;
+  const solutionMessage =
+    queryParams.solution === "posted"
+      ? "Solution published. It is saved with the other solutions, which stay hidden until revealed."
+      : null;
 
   return (
     <div className="problem-page grid gap-6 lg:grid-cols-[1fr_18rem]">
@@ -460,6 +464,11 @@ export default async function ProblemPage({
             <h2>Solutions</h2>
             <span>{proofs.length}</span>
           </div>
+          {solutionMessage && (
+            <p className="quality-banner mb-4" role="status">
+              {solutionMessage}
+            </p>
+          )}
           <p className="muted mb-4 text-sm">
             The most useful solution appears first. At {COMMUNITY_ACCEPTED_PROOF_VOTES} useful votes, it is marked community accepted.
           </p>
@@ -542,7 +551,13 @@ export default async function ProblemPage({
             <details className="add-proof">
               <summary>{proofs.length === 0 ? "Be the first to add your solution!" : "Add another solution"}</summary>
               <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
-                <MarkdownEditor name="bodyMarkdown" minHeight="12rem" lineNumbers={false} resetSignal={proofs.length} />
+                <MarkdownEditor
+                  name="bodyMarkdown"
+                  minHeight="12rem"
+                  lineNumbers={false}
+                  draftKey={`problem:${problem.id}:new-solution:${proofs.length}`}
+                  resetSignal={proofs.length}
+                />
                 <button type="submit">Publish solution</button>
               </form>
             </details>
