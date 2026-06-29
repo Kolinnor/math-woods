@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { LanguageField } from "@/components/LanguageField";
@@ -102,7 +103,7 @@ export default async function QuotesPage({
               <div className="quote-related">
                 {quote.relatedProblems.map(({ problem }) => (
                   <Link key={problem.id} href={`/problems/${problem.slug}`}>
-                    {problem.title}
+                    <AsyncMarkdownInline markdown={problem.title} />
                   </Link>
                 ))}
                 {quote.relatedConcepts.map(({ concept }) => (

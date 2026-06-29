@@ -1,11 +1,12 @@
 import { MathDomain } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
+import { MarkdownInline } from "@/components/MarkdownInline";
 import { getCurrentUser } from "@/lib/auth";
 import { dailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
-import { renderMarkdown } from "@/lib/markdown";
+import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
 import { pluralize } from "@/lib/pluralize";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
@@ -55,16 +56,6 @@ type HomeProblem = {
   };
 };
 
-function unwrapSingleParagraph(html: string) {
-  const trimmed = html.trim();
-  const match = trimmed.match(/^<p>([\s\S]*)<\/p>$/);
-  return match ? match[1] : trimmed;
-}
-
-async function renderInlineMarkdown(markdown: string) {
-  return unwrapSingleParagraph(await renderMarkdown(markdown));
-}
-
 async function withRenderedTitles<T extends { title: string }>(items: T[]) {
   return Promise.all(
     items.map(async (item) => ({
@@ -87,10 +78,6 @@ function initialsForName(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
   const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
   return initials || name.slice(0, 2).toUpperCase() || "MW";
-}
-
-function InlineMathText({ html }: { html: string }) {
-  return <span className="home-inline-math" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 function HomeNav({
@@ -226,7 +213,7 @@ function TipOfDay({
             <div className="home-practice-list">
               {practice.map((problem) => (
                 <Link key={problem.id} href={`/problems/${problem.slug}`}>
-                  <InlineMathText html={problem.titleHtml} />
+                  <MarkdownInline html={problem.titleHtml} />
                   <span>
                     {domainLabel(problem.domain)} / {problem.difficulty ?? "unset"}
                   </span>
@@ -251,7 +238,7 @@ function ProblemToTry({ problem }: { problem: HomeProblem | null }) {
         <Link href={`/problems/${problem.slug}`} className="home-featured-problem">
           <p>{domainLabel(problem.domain)}</p>
           <h3>
-            <InlineMathText html={problem.titleHtml} />
+            <MarkdownInline html={problem.titleHtml} />
           </h3>
           <span>
             difficulty {problem.difficulty ?? "unset"}/100 / {pluralize(problem._count?.attempts ?? 0, "attempt")} /{" "}
@@ -306,7 +293,7 @@ function RecentlyAdded({ problems }: { problems: HomeProblem[] }) {
               <div>
                 <p>{domainLabel(problem.domain)}</p>
                 <h3>
-                  <InlineMathText html={problem.titleHtml} />
+                  <MarkdownInline html={problem.titleHtml} />
                 </h3>
                 <span>
                   difficulty {problem.difficulty ?? "unset"} / by{" "}

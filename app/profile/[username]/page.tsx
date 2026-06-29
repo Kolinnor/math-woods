@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ACHIEVEMENTS } from "@/lib/achievements";
@@ -150,7 +151,7 @@ export default async function ProfilePage({
                     href={`/problems/${problem.slug}`}
                     className={problemLinkClass("panel block p-4", currentUserSolvedIds.has(problem.id))}
                   >
-                    {problem.title}
+                    <AsyncMarkdownInline markdown={problem.title} />
                   </Link>
                 ))}
                 {problems.length === 0 && <p className="muted panel p-5">No public problems yet.</p>}
@@ -181,7 +182,7 @@ export default async function ProfilePage({
                   href={`/problems/${attempt.problem.slug}`}
                   className={problemLinkClass("panel block p-4", currentUserSolvedIds.has(attempt.problemId))}
                 >
-                  {attempt.problem.title}
+                  <AsyncMarkdownInline markdown={attempt.problem.title} />
                 </Link>
               ))}
               {solved.length === 0 && <p className="muted panel p-5">No solved problems yet.</p>}
@@ -199,7 +200,7 @@ export default async function ProfilePage({
                   href={`/problems/${favorite.problem.slug}`}
                   className={problemLinkClass("panel block p-4", currentUserSolvedIds.has(favorite.problemId))}
                 >
-                  {favorite.problem.title}
+                  <AsyncMarkdownInline markdown={favorite.problem.title} />
               </Link>
             ))}
               {favorites.length === 0 && <p className="muted panel p-5">No favorite problems yet.</p>}

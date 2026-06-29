@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { getCurrentUser } from "@/lib/auth";
@@ -172,7 +173,9 @@ export default async function TipsPage({
                       href={`/problems/${problem.slug}`}
                       className={problemLinkClass("tip-problem-link block", solvedIds.has(problem.id))}
                     >
-                      <strong>{problem.title}</strong>
+                      <strong>
+                        <AsyncMarkdownInline markdown={problem.title} />
+                      </strong>
                       <span className="tip-problem-meta">
                         {domainLabel(problem.domain)} /{" "}
                         {problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set"} /{" "}

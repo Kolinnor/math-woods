@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { MarkdownInline } from "@/components/MarkdownInline";
 
 type CircuitChoice = {
   id: number;
@@ -18,7 +19,7 @@ type CircuitNode = {
   bodyHtml: string | null;
   position: number;
   isStart: boolean;
-  problem: { slug: string; title: string; difficulty: number | null } | null;
+  problem: { slug: string; title: string; titleHtml?: string; difficulty: number | null } | null;
   concept: { slug: string; title: string } | null;
   choices: CircuitChoice[];
 };
@@ -72,7 +73,13 @@ export function PlaylistCircuit({ nodes }: { nodes: CircuitNode[] }) {
       <div className="playlist-circuit-body">
         {currentNode.kind === "PROBLEM" && currentNode.problem && (
           <Link href={`/problems/${currentNode.problem.slug}`} className="circuit-target">
-            <strong>{currentNode.problem.title}</strong>
+            <strong>
+              {currentNode.problem.titleHtml ? (
+                <MarkdownInline html={currentNode.problem.titleHtml} />
+              ) : (
+                currentNode.problem.title
+              )}
+            </strong>
             {currentNode.problem.difficulty && <span>difficulty {currentNode.problem.difficulty}/100</span>}
           </Link>
         )}

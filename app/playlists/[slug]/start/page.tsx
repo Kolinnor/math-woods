@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -5,6 +6,7 @@ import { PlaylistCircuit } from "@/components/PlaylistCircuit";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { problemLinkClass } from "@/lib/problem-link";
+import { renderInlineMarkdown } from "@/lib/markdown";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +46,29 @@ export default async function StartPlaylistPage({ params }: { params: Promise<{ 
       })
     : [];
   const solvedIds = new Set(solvedAttempts.map((attempt) => attempt.problemId));
+  const circuitNodes = await Promise.all(
+    playlist.circuitNodes.map(async (node) => ({
+      id: node.id,
+      kind: node.kind,
+      title: node.title ?? node.problem?.title ?? node.concept?.title ?? "Untitled step",
+      bodyHtml: node.bodyHtml,
+      position: node.position,
+      isStart: node.isStart,
+      problem: node.problem
+        ? {
+            ...node.problem,
+            titleHtml: await renderInlineMarkdown(node.problem.title)
+          }
+        : null,
+      concept: node.concept,
+      choices: node.choices.map((choice) => ({
+        id: choice.id,
+        label: choice.label,
+        note: choice.note,
+        toNodeId: choice.toNodeId
+      }))
+    }))
+  );
 
   return (
     <div className="mx-auto grid max-w-4xl gap-6">
@@ -57,24 +82,7 @@ export default async function StartPlaylistPage({ params }: { params: Promise<{ 
       </div>
 
       {playlist.circuitNodes.length > 0 ? (
-        <PlaylistCircuit
-          nodes={playlist.circuitNodes.map((node) => ({
-            id: node.id,
-            kind: node.kind,
-            title: node.title ?? node.problem?.title ?? node.concept?.title ?? "Untitled step",
-            bodyHtml: node.bodyHtml,
-            position: node.position,
-            isStart: node.isStart,
-            problem: node.problem,
-            concept: node.concept,
-            choices: node.choices.map((choice) => ({
-              id: choice.id,
-              label: choice.label,
-              note: choice.note,
-              toNodeId: choice.toNodeId
-            }))
-          }))}
-        />
+        <PlaylistCircuit nodes={circuitNodes} />
       ) : (
         <section className="grid gap-3">
           {playlist.items.map((item) => (
@@ -86,7 +94,9 @@ export default async function StartPlaylistPage({ params }: { params: Promise<{ 
               <div className="flex gap-4">
                 <span className="muted w-8 shrink-0 text-right">{item.position}.</span>
                 <div>
-                  <h2 className="font-semibold">{item.problem.title}</h2>
+                  <h2 className="font-semibold">
+                    <AsyncMarkdownInline markdown={item.problem.title} />
+                  </h2>
                   {item.noteMarkdown && <p className="muted mt-1 text-sm">{item.noteMarkdown}</p>}
                 </div>
               </div>

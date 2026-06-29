@@ -242,6 +242,21 @@ a {
   color: inherit;
 }
 
+.markdown-inline p {
+  display: inline;
+  margin: 0;
+}
+
+.markdown-inline .katex {
+  font-size: 1em;
+}
+
+.markdown-inline .katex-display {
+  display: inline-block;
+  margin: 0 0.18em;
+  vertical-align: middle;
+}
+
 .sr-only {
   border: 0;
   clip: rect(0, 0, 0, 0);

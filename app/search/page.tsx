@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { getCurrentUser } from "@/lib/auth";
@@ -131,7 +132,9 @@ export default async function SearchPage({
                 href={`/problems/${problem.slug}`}
                 className={problemLinkClass("panel block p-4", solvedIds.has(problem.id))}
               >
-                <div className="font-medium">{problem.title}</div>
+                <div className="font-medium">
+                  <AsyncMarkdownInline markdown={problem.title} />
+                </div>
                 <div className="muted mt-1 text-xs">{domainLabel(problem.domain)}</div>
               </Link>
             ))}

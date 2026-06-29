@@ -1,5 +1,6 @@
 import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import Link from "next/link";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Heart } from "lucide-react";
 import { DomainBrowserNav } from "@/components/DomainBrowserNav";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
@@ -563,7 +564,9 @@ export default async function ProblemsPage({
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-semibold">{problem.title}</h2>
+                  <h2 className="font-semibold">
+                    <AsyncMarkdownInline markdown={problem.title} />
+                  </h2>
                   <p className="meta">
                     by {displayNameForUser(problem.author)} / {externalSolveCount} solved
                   </p>

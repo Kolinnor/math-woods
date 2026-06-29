@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { updatePrivateNotesAction } from "@/lib/actions/problem-actions";
@@ -50,7 +51,7 @@ export default async function MyWorkPage() {
                       attempt.status === "SOLVED"
                     )}
                   >
-                    {attempt.problem.title}
+                    <AsyncMarkdownInline markdown={attempt.problem.title} />
                   </Link>
                   <p className="muted text-sm">
                     {attempt.status.toLowerCase().replace("_", " ")} / discussion available

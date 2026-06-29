@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -65,7 +66,9 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
             <div className="grid gap-3">
               {quote.relatedProblems.map(({ problem }) => (
                 <Link key={problem.id} href={`/problems/${problem.slug}`} className="panel block p-4">
-                  <div className="font-medium">{problem.title}</div>
+                  <div className="font-medium">
+                    <AsyncMarkdownInline markdown={problem.title} />
+                  </div>
                   <div className="muted mt-2 flex flex-wrap gap-2 text-xs">
                     {problem.tags.map(({ tag }) => (
                       <span key={tag.id} className="tag">

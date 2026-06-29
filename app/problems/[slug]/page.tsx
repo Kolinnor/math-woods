@@ -4,6 +4,7 @@ import { TargetType } from "@prisma/client";
 import { QualityStatus } from "@prisma/client";
 import { Check, Heart, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
 import { notFound } from "next/navigation";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { HiddenHint } from "@/components/HiddenHint";
@@ -263,7 +264,9 @@ export default async function ProblemPage({
           <div className="mb-3 flex justify-end">
             <ZenModeToggle />
           </div>
-          <h1>{problem.title}</h1>
+          <h1>
+            <AsyncMarkdownInline markdown={problem.title} />
+          </h1>
           <p className="zen-meta muted mt-1">
             by{" "}
             <Link href={`/profile/${problem.author.username}`} className="underline">
@@ -471,7 +474,9 @@ export default async function ProblemPage({
                             relatedSolvedIds.has(targetProblem.id)
                           )}
                         >
-                          <strong>{targetProblem.title}</strong>
+                          <strong>
+                            <AsyncMarkdownInline markdown={targetProblem.title} />
+                          </strong>
                           <span>
                             by {displayNameForUser(targetProblem.author)}
                             {targetProblem.difficulty ? ` \u00b7 difficulty ${targetProblem.difficulty}/100` : ""}

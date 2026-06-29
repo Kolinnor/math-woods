@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
@@ -191,7 +192,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
           <div className="grid gap-2 text-sm">
             {problemBacklinks.map((problem) => (
               <Link key={`p-${problem.id}`} href={`/problems/${problem.slug}`} className="underline">
-                {problem.title}
+                <AsyncMarkdownInline markdown={problem.title} />
               </Link>
             ))}
             {conceptBacklinks.map((item) => (

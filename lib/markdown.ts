@@ -159,3 +159,11 @@ export async function renderMarkdown(markdown: string, missingSlugs = new Set<st
     allowProtocolRelative: false
   });
 }
+
+export async function renderInlineMarkdown(markdown: string, missingSlugs = new Set<string>()) {
+  const html = await renderMarkdown(markdown, missingSlugs);
+  const trimmed = html.trim();
+  const singleParagraph = trimmed.match(/^<p>([\s\S]*)<\/p>$/);
+
+  return singleParagraph ? singleParagraph[1] : trimmed;
+}

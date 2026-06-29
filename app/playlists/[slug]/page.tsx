@@ -1,3 +1,4 @@
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import type { Route } from "next";
 import { Bookmark, Pencil, Play, ThumbsUp } from "lucide-react";
@@ -111,7 +112,9 @@ export default async function PlaylistPage({ params }: { params: Promise<{ slug:
               <div className="flex gap-4">
                 <span className="muted w-8 shrink-0 text-right">{item.position}.</span>
                 <div>
-                  <h2 className="font-semibold">{item.problem.title}</h2>
+                  <h2 className="font-semibold">
+                    <AsyncMarkdownInline markdown={item.problem.title} />
+                  </h2>
                   {item.noteMarkdown && <p className="muted mt-1 text-sm">{item.noteMarkdown}</p>}
                 </div>
               </div>
