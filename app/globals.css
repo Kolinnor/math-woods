@@ -254,6 +254,7 @@ a {
 .markdown-inline .katex-display {
   display: inline-block;
   margin: 0 0.18em;
+  text-align: center;
   vertical-align: middle;
 }
 
@@ -999,6 +1000,7 @@ textarea {
 .markdown-editor .cm-latex-display-inline {
   display: inline-block;
   max-width: 100%;
+  text-align: center;
   vertical-align: middle;
   width: auto;
 }
@@ -1011,6 +1013,7 @@ textarea {
 .markdown-editor .cm-latex-display-inline .katex-display {
   display: inline-block;
   max-width: 100%;
+  text-align: center;
 }
 
 .markdown-editor .cm-latex-token {
@@ -1896,6 +1899,7 @@ button.danger:hover,
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 0.15rem;
+  text-align: center;
 }
 
 .katex .mfrac .frac-line,
