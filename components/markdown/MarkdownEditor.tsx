@@ -13,7 +13,7 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type WheelEvent } from "react";
 import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
 import {
   latexPreviewDiagnosticsForRange,
@@ -155,6 +155,22 @@ function parseSelectedWikiLink(value: string) {
     target: cleanWikiLinkTarget(target),
     label: (label ?? target).replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim()
   };
+}
+
+function nearestLinkMenuScroller(target: EventTarget | null, menu: HTMLElement) {
+  let element = target instanceof HTMLElement ? target : null;
+
+  while (element && menu.contains(element)) {
+    const style = window.getComputedStyle(element);
+    const canScrollY = /(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight;
+    const canScrollX = /(auto|scroll)/.test(style.overflowX) && element.scrollWidth > element.clientWidth;
+
+    if (canScrollY || canScrollX) return element;
+    if (element === menu) break;
+    element = element.parentElement;
+  }
+
+  return menu;
 }
 
 class LatexWidget extends WidgetType {
@@ -962,6 +978,15 @@ export function MarkdownEditor({
     view.focus();
   }
 
+  function handleLinkMenuWheel(event: WheelEvent<HTMLDivElement>) {
+    const scroller = nearestLinkMenuScroller(event.target, event.currentTarget);
+
+    event.preventDefault();
+    event.stopPropagation();
+    scroller.scrollTop += event.deltaY;
+    scroller.scrollLeft += event.deltaX;
+  }
+
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
   const cleanLinkText = linkText.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
   const hasExactSuggestion = linkSuggestions.some((suggestion) => {
@@ -987,6 +1012,8 @@ export function MarkdownEditor({
           className="markdown-link-menu"
           style={{ left: linkMenu.x, top: linkMenu.y }}
           onMouseDown={(event) => event.stopPropagation()}
+          onWheel={handleLinkMenuWheel}
+          onTouchMove={(event) => event.stopPropagation()}
         >
           <div className="markdown-link-menu-title">
             <span className="markdown-link-menu-icon" aria-hidden="true" />
