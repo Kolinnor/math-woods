@@ -119,13 +119,13 @@ function tipMatchesQuery(tip: TipEntry, relatedProblems: TipProblem[], query: st
 export default async function TipsPage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; updated?: string }>;
+  searchParams: Promise<{ q?: string; updated?: string; deleted?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
 
   const preferredLanguage = await getPreferredContentLanguage();
-  const { q = "", updated } = await searchParams;
+  const { q = "", updated, deleted } = await searchParams;
   const query = q.trim();
   const [problems, tipRows] = await Promise.all([loadProblems(preferredLanguage), loadTips()]);
   const tipIds = tipRows.map((tip) => tip.id);
@@ -188,6 +188,7 @@ export default async function TipsPage({
       </LiveSearchForm>
 
       {updated && <p className="quality-banner mb-4">Tip updated.</p>}
+      {deleted && <p className="quality-banner mb-4">Tip deleted.</p>}
 
       <p className="result-summary" role="status" aria-live="polite">
         {tips.length ? `${tips.length} tips shown` : "No tips match this search."}

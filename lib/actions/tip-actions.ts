@@ -78,3 +78,26 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   revalidatePath(`/tips/${tipId}/edit`);
   redirect(`/tips?updated=${tipId}`);
 }
+
+export async function deleteTipAction(tipId: number) {
+  const user = await requireUser();
+  if (!canUseAdminTools(user)) throw new Error("Only admins can delete tips.");
+  await assertRateLimit(`tip:delete:${user.id}`, 10, 60_000);
+  await ensureDefaultTips();
+
+  await prisma.$transaction(async (tx) => {
+    const tip = await tx.tip.findUnique({ where: { id: tipId }, select: { position: true } });
+    if (!tip) return;
+
+    const tipCount = await tx.tip.count();
+    if (tipCount <= 1) throw new Error("Cannot delete the last tip.");
+
+    await tx.tip.delete({ where: { id: tipId } });
+    await tx.$executeRaw`UPDATE "Tip" SET "position" = "position" + 10000 WHERE "position" > ${tip.position}`;
+    await tx.$executeRaw`UPDATE "Tip" SET "position" = "position" - 10001 WHERE "position" >= ${tip.position + 10001}`;
+  });
+
+  revalidatePath("/");
+  revalidatePath("/tips");
+  redirect("/tips?deleted=1");
+}

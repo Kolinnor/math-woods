@@ -1,7 +1,8 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { DeleteTipButton } from "@/components/DeleteTipButton";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { updateTipAction } from "@/lib/actions/tip-actions";
+import { deleteTipAction, updateTipAction } from "@/lib/actions/tip-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { loadTip } from "@/lib/daily-tip";
@@ -96,6 +97,16 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
         </fieldset>
         <button type="submit">Save tip</button>
       </form>
+
+      <section className="danger-zone">
+        <div>
+          <h2>Delete tip</h2>
+          <p>This removes the tip from the daily rotation and deletes its selected practice problems.</p>
+        </div>
+        <form action={deleteTipAction.bind(null, tip.id)}>
+          <DeleteTipButton title={tip.title} />
+        </form>
+      </section>
     </div>
   );
 }
