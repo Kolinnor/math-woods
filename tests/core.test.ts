@@ -16,6 +16,7 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration
 } from "../lib/latex-live-preview.ts";
+import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
 import { latexCursorTargetForArrow, latexCursorTargetForVerticalArrow } from "../lib/latex-navigation.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
@@ -113,6 +114,19 @@ const mixedDollarRanges = findLatexRanges(mixedDollarText);
 assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[0]), "inline");
 assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[1]), "display");
 assert.equal(latexPreviewUsesBlockDecoration(mixedDollarText, mixedDollarRanges[1]), false);
+assert.deepEqual(normalizeDisplayMathLineBreaks("Before $$x^2 + 1$$ after", 18), {
+  text: "Before\n\n$$x^2 + 1$$\n\nafter",
+  cursor: 19,
+  changed: true
+});
+assert.deepEqual(normalizeDisplayMathLineBreaks("Before\n$$x^2 + 1$$\nafter", 18), {
+  text: "Before\n$$x^2 + 1$$\nafter",
+  cursor: 18,
+  changed: false
+});
+const normalizedMixedDollarText = normalizeDisplayMathLineBreaks(mixedDollarText).text;
+const normalizedMixedDollarRanges = findLatexRanges(normalizedMixedDollarText);
+assert.equal(latexPreviewUsesBlockDecoration(normalizedMixedDollarText, normalizedMixedDollarRanges[1]), true);
 assert.deepEqual(
   latexPreviewDiagnosticsForRange(mixedDollarText, mixedDollarRanges[1], true, false).map((diagnostic) => diagnostic.code),
   ["display-math-inline-display-fallback"]

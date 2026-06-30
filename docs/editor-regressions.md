@@ -152,3 +152,17 @@ Guardrail:
   inline-safe representation.
 - Do not use this server-rendering rule as a reason to turn mixed-line `$$...$$` live-editor previews into CodeMirror
   block decorations; non-standalone display ranges in the editor must keep the shrink-to-fit inline-display fallback.
+
+## 2026-06-30 - Mixed-line `$$...$$` should become standalone in the editor
+
+Symptom:
+
+- The rendered Markdown path split `Before $$x^2$$ after` correctly, but the live editor still only showed a fully
+  centered block when the double-dollar range was already alone on its source line.
+
+Guardrail:
+
+- When a complete display math range is typed or pasted on a mixed line, normalize the Markdown source so the display
+  range becomes its own line, for example `Before $$x^2$$ after` becomes `Before`, `$$x^2$$`, `after`.
+- This lets the existing standalone display preview use the direct `StateField` block decoration safely.
+- Do not make mixed-line display previews use a CodeMirror block decoration before the source has been normalized.

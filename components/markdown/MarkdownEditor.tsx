@@ -15,6 +15,7 @@ import {
 import katex from "katex";
 import { useEffect, useRef, useState, type WheelEvent } from "react";
 import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
+import { normalizeDisplayMathLineBreaks } from "@/lib/latex-display-lines";
 import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
@@ -782,6 +783,18 @@ export function MarkdownEditor({
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               const nextValue = update.state.doc.toString();
+              const normalizedDisplayMath = normalizeDisplayMathLineBreaks(nextValue, update.state.selection.main.anchor);
+
+              if (normalizedDisplayMath.changed) {
+                update.view.dispatch({
+                  changes: { from: 0, to: update.state.doc.length, insert: normalizedDisplayMath.text },
+                  selection: { anchor: normalizedDisplayMath.cursor ?? normalizedDisplayMath.text.length },
+                  effects: setPreviewFocus.of(true),
+                  annotations: previewOnly
+                });
+                return;
+              }
+
               setValue(nextValue);
               setRestoredDraftAt(null);
 
