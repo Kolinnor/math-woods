@@ -11,7 +11,6 @@ import { ErrorReporter } from "@/components/ErrorReporter";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { TimeZoneReporter } from "@/components/TimeZoneReporter";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
@@ -33,7 +32,6 @@ export const metadata: Metadata = {
 const appearanceBootScript = `
 try {
   var root = document.documentElement;
-  var validThemes = { light: true, dim: true, dark: true };
   var validBackgrounds = { plain: true, green: true, paper: true, contours: true };
   var validTones = { sage: true, amber: true, blue: true, rose: true };
   var cookieValue = function (name) {
@@ -48,11 +46,6 @@ try {
       "; max-age=31536000; path=/; samesite=lax" +
       (location.protocol === "https:" ? "; secure" : "");
   };
-  var theme =
-    localStorage.getItem("math-woods-theme") ||
-    cookieValue("math-woods-theme") ||
-    localStorage.getItem("math-hills-theme") ||
-    localStorage.getItem("math-garden-theme");
   var background =
     localStorage.getItem("math-woods-background") ||
     cookieValue("math-woods-background") ||
@@ -62,18 +55,17 @@ try {
     cookieValue("math-woods-background-tone") ||
     localStorage.getItem("math-hills-background-tone");
 
-  theme = validThemes[theme] ? theme : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   background = validBackgrounds[background] ? background : "green";
   tone = validTones[tone] ? tone : "sage";
 
-  root.dataset.theme = theme;
+  root.dataset.theme = "light";
   root.dataset.background = background;
   root.dataset.backgroundTone = tone;
 
-  localStorage.setItem("math-woods-theme", theme);
+  localStorage.setItem("math-woods-theme", "light");
   localStorage.setItem("math-woods-background", background);
   localStorage.setItem("math-woods-background-tone", tone);
-  setCookie("math-woods-theme", theme);
+  setCookie("math-woods-theme", "light");
   setCookie("math-woods-background", background);
   setCookie("math-woods-background-tone", tone);
   localStorage.removeItem("math-hills-theme");
@@ -98,10 +90,6 @@ const spectral = Spectral({
   variable: "--font-serif"
 });
 
-function validTheme(value: string | undefined) {
-  return value === "light" || value === "dim" || value === "dark" ? value : undefined;
-}
-
 function validBackground(value: string | undefined) {
   return value === "plain" || value === "green" || value === "paper" || value === "contours" ? value : undefined;
 }
@@ -113,7 +101,6 @@ function validBackgroundTone(value: string | undefined) {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   const cookieStore = await cookies();
-  const initialTheme = validTheme(cookieStore.get("math-woods-theme")?.value);
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";
   const initialBackgroundTone = validBackgroundTone(cookieStore.get("math-woods-background-tone")?.value) ?? "sage";
   const initialLanguage = parseContentLanguage(cookieStore.get(CONTENT_LANGUAGE_COOKIE)?.value);
@@ -122,7 +109,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html
       lang={initialLanguage}
-      data-theme={initialTheme}
+      data-theme="light"
       data-background={initialBackground}
       data-background-tone={initialBackgroundTone}
       suppressHydrationWarning
@@ -158,7 +145,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <input name="q" aria-label="Search Math Woods" placeholder="Search" />
               </LiveSearchForm>
               {user && <NotificationsMenu userId={user.id} />}
-              <ThemeToggle />
               <details className="nav-menu">
                 <summary aria-label="Open navigation menu" title="More">
                   <Menu size={18} />
