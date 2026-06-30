@@ -180,5 +180,7 @@ Guardrail:
 
 - The editor-side display math normalizer must keep non-empty text lines separated from display math lines by a blank
   line on both sides.
+- This normalization must happen in a CodeMirror transaction filter, before the editor renders/measures the dangerous
+  intermediate state; doing it later from an update listener can leave stale one-character-wide measurements behind.
 - This source normalization is safer than forcing a block decoration into a mixed line, and it preserves the previous
   rule that display widgets come from the direct `StateField` decoration source.

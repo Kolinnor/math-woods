@@ -124,6 +124,17 @@ assert.deepEqual(normalizeDisplayMathLineBreaks("Before\n$$x^2 + 1$$\nafter", 19
   cursor: 21,
   changed: true
 });
+assert.deepEqual(
+  normalizeDisplayMathLineBreaks(
+    "Applying $f$ on both sides gives\n$$f(f(f(x)))=f(x+1)$$\nbut this is also equal to $f(x)+1$.",
+    61
+  ),
+  {
+    text: "Applying $f$ on both sides gives\n\n$$f(f(f(x)))=f(x+1)$$\n\nbut this is also equal to $f(x)+1$.",
+    cursor: 63,
+    changed: true
+  }
+);
 assert.deepEqual(normalizeDisplayMathLineBreaks("Before\n\n$$x^2 + 1$$\n\nafter", 20), {
   text: "Before\n\n$$x^2 + 1$$\n\nafter",
   cursor: 20,

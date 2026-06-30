@@ -673,6 +673,25 @@ const previewFocusEvents = EditorView.domEventHandlers({
   }
 });
 
+const displayMathLineBreakNormalizer = EditorState.transactionFilter.of((transaction) => {
+  if (!transaction.docChanged) return transaction;
+
+  const nextText = transaction.newDoc.toString();
+  const normalizedDisplayMath = normalizeDisplayMathLineBreaks(nextText, transaction.newSelection.main.anchor);
+  if (!normalizedDisplayMath.changed) return transaction;
+
+  return [
+    transaction,
+    {
+      changes: { from: 0, to: transaction.newDoc.length, insert: normalizedDisplayMath.text },
+      selection: { anchor: normalizedDisplayMath.cursor ?? normalizedDisplayMath.text.length },
+      effects: setPreviewFocus.of(true),
+      annotations: previewOnly,
+      sequential: true
+    }
+  ];
+});
+
 export function MarkdownEditor({
   name,
   initialValue = "",
@@ -748,6 +767,7 @@ export function MarkdownEditor({
           previewFocusField,
           liveMarkdownPreview,
           previewFocusEvents,
+          displayMathLineBreakNormalizer,
           EditorView.lineWrapping,
           EditorView.theme({
             "&": {
@@ -783,18 +803,6 @@ export function MarkdownEditor({
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               const nextValue = update.state.doc.toString();
-              const normalizedDisplayMath = normalizeDisplayMathLineBreaks(nextValue, update.state.selection.main.anchor);
-
-              if (normalizedDisplayMath.changed) {
-                update.view.dispatch({
-                  changes: { from: 0, to: update.state.doc.length, insert: normalizedDisplayMath.text },
-                  selection: { anchor: normalizedDisplayMath.cursor ?? normalizedDisplayMath.text.length },
-                  effects: setPreviewFocus.of(true),
-                  annotations: previewOnly
-                });
-                return;
-              }
-
               setValue(nextValue);
               setRestoredDraftAt(null);
 
