@@ -3568,15 +3568,36 @@ body:has(.problems-page-shell) .header-search input::placeholder {
   margin: 0;
 }
 
-.problems-ledger-header > span {
+.problems-ledger-sort {
+  align-items: center;
   background: #f8f4ea;
   border: 1px solid #d8d0bd;
   border-radius: 7px;
   color: #1c211b;
+  display: inline-flex;
   font-size: 0.82rem;
   font-weight: 650;
-  padding: 0.3rem 0.7rem;
+  gap: 0.35rem;
+  padding: 0.2rem 0.35rem 0.2rem 0.7rem;
   white-space: nowrap;
+}
+
+.problems-ledger-sort span {
+  color: #5a665c;
+}
+
+.problems-ledger-sort select {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  min-height: 1.9rem;
+  padding: 0 1.4rem 0 0.1rem;
+}
+
+.problems-ledger-sort select:focus {
+  box-shadow: none;
 }
 
 .problem-ledger-list {

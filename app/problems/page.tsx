@@ -7,6 +7,7 @@ import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemStatusLegend } from "@/components/ProblemStatusLegend";
+import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -46,6 +47,14 @@ const DIFFICULTY_RANGES: DifficultyRange[] = [
   { value: "40-64", label: "Advanced / Graduate (40-64)", min: 40, max: 64 },
   { value: "65-84", label: "Expert / Research-ready (65-84)", min: 65, max: 84 },
   { value: "85-100", label: "Professional mathematician (85-100)", min: 85, max: 100 }
+];
+
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest" },
+  { value: "solved", label: "Most solved" },
+  { value: "favorited", label: "Most loved" },
+  { value: "difficulty", label: "Hardest first" },
+  { value: "easiest", label: "Easiest first" }
 ];
 
 function parseProgressFilter(value: string | undefined): ProgressFilter {
@@ -560,7 +569,7 @@ export default async function ProblemsPage({
                   : `No ${contentLanguageLabel(preferredLanguage).toLowerCase()} problems match these filters.`}
               </p>
             </div>
-            <span>Sort: {sortValue === "newest" ? "Newest" : sortValue}</span>
+            <ProblemSortControl options={SORT_OPTIONS} value={sortValue} />
           </div>
 
           <ProblemStatusLegend />
