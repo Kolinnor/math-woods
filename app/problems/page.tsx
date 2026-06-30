@@ -2,8 +2,8 @@ import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Heart } from "lucide-react";
-import { DomainBrowserNav } from "@/components/DomainBrowserNav";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
+import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemStatusLegend } from "@/components/ProblemStatusLegend";
 import { getCurrentUser } from "@/lib/auth";
@@ -13,7 +13,6 @@ import {
   domainDescription,
   domainLabel,
   FLAT_DOMAIN_OPTIONS,
-  MATH_DOMAINS,
   parseDomainCode
 } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
@@ -80,6 +79,22 @@ function problemsHref(params: Record<string, number | string | string[] | undefi
 
 function valuesOf(value: SearchValue) {
   return Array.isArray(value) ? value : value ? [value] : [];
+}
+
+function difficultyColor(difficulty: number | null) {
+  if (!difficulty) return "#8a9184";
+  if (difficulty <= 19) return "#5d7a4c";
+  if (difficulty <= 39) return "#a07a2c";
+  if (difficulty <= 64) return "#b05f2c";
+  return "#8c3b22";
+}
+
+function difficultyBars(difficulty: number | null) {
+  if (!difficulty) return 0;
+  if (difficulty <= 19) return 1;
+  if (difficulty <= 39) return 2;
+  if (difficulty <= 64) return 3;
+  return 4;
 }
 
 function parseAdvancedFilters(fields: SearchValue, ops: SearchValue, values: SearchValue): ProblemFilterRow[] {
@@ -431,216 +446,249 @@ export default async function ProblemsPage({
   const selectedDomainDescription = domainValue ? domainDescription(domainValue) : null;
 
   return (
-    <div className="directory-page">
-      <div className="page-header">
-        <div>
-          <h1 className="text-2xl font-bold">Problems</h1>
-          {selectedDomainDescription && <p className="muted mt-1">{selectedDomainDescription}</p>}
-          {user ? (
-            <p className="progress-summary">
-              You solved {progressSolved} of {progressTotal} problems in {progressScope} ({progressPercent}%).
-            </p>
-          ) : (
-            <p className="progress-summary">
-              Sign in to track solved problems across {progressScope}.
-            </p>
-          )}
-        </div>
-        <Link href="/problems/new" className="button">
-          Add a problem
-        </Link>
-      </div>
-
-      <div className="filter-tabs">
-        <DomainBrowserNav domains={MATH_DOMAINS} selectedDomain={domainValue} />
-      </div>
-
-      <LiveSearchForm className="problem-search-shell mb-6">
-        <div className="problem-search-main">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Search problems</span>
-            <input name="q" defaultValue={query} placeholder='Try "polynomial", "invariant", "origin: IMO"...' />
-          </label>
-          <button type="submit">Search</button>
-        </div>
-        <div className="problem-search-filters">
-          {domainValue && <input type="hidden" name="domain" value={domainValue} />}
-          <div className="difficulty-filter">
-            <select name="difficultyRange" defaultValue={difficultyRangeSelectValue}>
-              {hasCustomDifficultyBounds && <option value="custom">Custom difficulty</option>}
-              {DIFFICULTY_RANGES.map((range) => (
-                <option key={range.value || "any"} value={range.value}>
-                  {range.label}
-                </option>
-              ))}
-            </select>
-            <div className="difficulty-filter-bounds">
-              <input
-                name="difficultyMin"
-                type="number"
-                min="1"
-                max="100"
-                defaultValue={manualDifficultyMin ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : "")}
-                placeholder="Min"
-                aria-label="Minimum difficulty"
-              />
-              <input
-                name="difficultyMax"
-                type="number"
-                min="1"
-                max="100"
-                defaultValue={manualDifficultyMax ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : "")}
-                placeholder="Max"
-                aria-label="Maximum difficulty"
-              />
-            </div>
+    <div className="problems-page-shell">
+      <section className="problems-hero">
+        <img src="/art/hero-rye.jpg" alt="Ivan Shishkin, Rye (1878)" />
+        <div className="problems-hero-overlay" />
+        <div className="problems-hero-content">
+          <div>
+            <p className="problems-hero-kicker">A field of problems</p>
+            <h1>Problems</h1>
+            {selectedDomainDescription && <p className="problems-hero-description">{selectedDomainDescription}</p>}
           </div>
-          <select name="quality" defaultValue={qualityValue ?? ""}>
-            <option value="">Any status</option>
-            <option value="NEEDS_WORK">Needs work</option>
-            <option value="UNREVIEWED">Unreviewed</option>
-            <option value="GOOD">Good</option>
-            <option value="EXCELLENT">Excellent</option>
-          </select>
-          {user && (
-            <select name="progress" defaultValue={progressValue} aria-label="Solved status">
-              <option value="unsolved">Unsolved</option>
-              <option value="solved">Solved</option>
-              <option value="all">All problems</option>
-            </select>
-          )}
-          <select name="sort" defaultValue={sortValue}>
-            <option value="newest">Newest</option>
-            <option value="solved">Most solved</option>
-            <option value="favorited">Most loved</option>
-            <option value="difficulty">Hardest first</option>
-            <option value="easiest">Easiest first</option>
-          </select>
-          <label className="checkbox-inline">
-            <input name="includeSpoilerTags" type="checkbox" value="1" defaultChecked={showSpoilerTags} />
-            <span>Include spoilers</span>
-          </label>
-        </div>
-        <ProblemFilterBuilder
-          domains={FLAT_DOMAIN_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
-          initialFilters={advancedFilters}
-          initialLogic={advancedLogic}
-          statuses={Object.values(QualityStatus).map((status) => ({ value: status, label: qualityLabel(status) }))}
-          tags={tags.map((item) => ({ value: item.slug, label: item.name }))}
-        />
-      </LiveSearchForm>
-
-      <ProblemStatusLegend />
-
-      <p className="result-summary" role="status" aria-live="polite">
-        {totalProblems
-          ? `Showing ${resultStart}-${resultEnd} of ${totalProblems} problems`
-          : `No ${contentLanguageLabel(preferredLanguage).toLowerCase()} problems match these filters.`}
-      </p>
-
-      <div className="list-surface">
-        {problems.map((problem) => {
-          const isOwnProblem = user?.id === problem.authorId;
-          const isUserFavorite = !isOwnProblem && favoriteIds.has(problem.id);
-          const externalSolveCount = problem.attempts.filter((attempt) => attempt.userId !== problem.authorId).length;
-          const externalFavoriteCount = problem.favorites.filter((favorite) => favorite.userId !== problem.authorId).length;
-          const revealSpoilerDomains = showSpoilerTags || solvedIds.has(problem.id);
-          const visibleDomainCodes = problem.domains.length
-            ? problem.domains
-                .filter((item) => revealSpoilerDomains || !item.spoiler)
-                .map((item) => item.mscCode)
-            : [problem.domain];
-          const hiddenDomainCount = revealSpoilerDomains ? 0 : problem.domains.filter((item) => item.spoiler).length;
-
-          return (
-            <Link
-              key={problem.id}
-              href={`/problems/${problem.slug}`}
-              title={isOwnProblem ? "Your problem" : isUserFavorite ? "Favorite problem" : undefined}
-              className={`${problemLinkClass(
-                "list-row block",
-                solvedIds.has(problem.id) ? "solved" : openedIds.has(problem.id) ? "opened" : null
-              )}${isOwnProblem ? " problem-own" : isUserFavorite ? " problem-favorite" : ""}`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">
-                    <AsyncMarkdownInline markdown={problem.title} />
-                  </h2>
-                  <p className="meta">
-                    by {displayNameForUser(problem.author)} / {externalSolveCount} solved
-                  </p>
-                  <p className="meta">
-                    {visibleDomainCodes.length ? visibleDomainCodes.map(domainLabel).join(" / ") : "Domain hidden"}
-                    {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? " / spoiler domain hidden" : ""} /{" "}
-                    {qualityLabel(problem.qualityStatus)}
-                  </p>
-                  {problem.tags.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {problem.tags.map(({ tag }) => (
-                        <span key={tag.id} className="tag">
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {showSpoilerTags && problem.spoilerTags.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <span className="meta">Spoiler:</span>
-                      {problem.spoilerTags.map(({ tag }) => (
-                        <span key={tag.id} className="tag spoiler-tag">
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="problem-card-stats">
-                  <span
-                    className={isUserFavorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
-                    title={isUserFavorite ? "You favorited this problem" : "Favorites"}
-                  >
-                    <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />
-                    {externalFavoriteCount}
-                  </span>
-                  <span className="meta">
-                    {problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set"}
-                  </span>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-        {problems.length === 0 && (
-          <p className="empty-state">
-            No problems match these filters.
-            {otherLanguageProblems > 0 && (
-              <>
-                <br />
-                {pluralize(otherLanguageProblems, "problem")} found in other languages.
-              </>
+          <div className="problems-hero-meta">
+            <p>
+              {progressTotal} {progressTotal === 1 ? "problem" : "problems"} · 21 domains
+            </p>
+            {user ? (
+              <p>
+                You solved {progressSolved} in {progressScope} ({progressPercent}%).
+              </p>
+            ) : (
+              <p>Sign in to track solved problems across {progressScope}.</p>
             )}
-          </p>
-        )}
-      </div>
+            <Link href="/problems/new" className="button">
+              Add a problem
+            </Link>
+          </div>
+        </div>
+      </section>
 
-      {totalPages > 1 && (
-        <nav className="pagination" aria-label="Problem pages">
-          {currentPage > 1 ? (
-            <Link href={problemsHref({ ...paginationParams, page: currentPage - 1 }) as never}>Previous</Link>
-          ) : (
-            <span aria-disabled="true">Previous</span>
+      <ProblemDomainStrip selectedDomain={domainValue} />
+
+      <div className="problems-workspace">
+        <aside className="problems-filter-panel">
+          <LiveSearchForm className="problem-filter-form">
+            <label className="problem-filter-search">
+              <span>Search problems</span>
+              <input name="q" defaultValue={query} placeholder='Try "polynomial", "IMO", "invariant"...' />
+            </label>
+            {domainValue && <input type="hidden" name="domain" value={domainValue} />}
+
+            <div className="problem-filter-section">
+              <p>Difficulty</p>
+              <div className="problem-difficulty-ramp" aria-hidden="true">
+                <span style={{ left: `${difficultyMinValue ?? 1}%` }} />
+                <span style={{ left: `${difficultyMaxValue ?? 100}%` }} />
+              </div>
+              <div className="problem-difficulty-values">
+                <span>{difficultyMinValue ?? 1} / 100</span>
+                <span>{difficultyMaxValue ?? 100} / 100</span>
+              </div>
+              <select name="difficultyRange" defaultValue={difficultyRangeSelectValue}>
+                {hasCustomDifficultyBounds && <option value="custom">Custom difficulty</option>}
+                {DIFFICULTY_RANGES.map((range) => (
+                  <option key={range.value || "any"} value={range.value}>
+                    {range.label}
+                  </option>
+                ))}
+              </select>
+              <div className="difficulty-filter-bounds">
+                <input
+                  name="difficultyMin"
+                  type="number"
+                  min="1"
+                  max="100"
+                  defaultValue={manualDifficultyMin ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : "")}
+                  placeholder="Min"
+                  aria-label="Minimum difficulty"
+                />
+                <input
+                  name="difficultyMax"
+                  type="number"
+                  min="1"
+                  max="100"
+                  defaultValue={manualDifficultyMax ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : "")}
+                  placeholder="Max"
+                  aria-label="Maximum difficulty"
+                />
+              </div>
+            </div>
+
+            <div className="problem-filter-section">
+              <p>Status</p>
+              {user && (
+                <select name="progress" defaultValue={progressValue} aria-label="Solved status">
+                  <option value="unsolved">Unsolved</option>
+                  <option value="solved">Solved</option>
+                  <option value="all">All problems</option>
+                </select>
+              )}
+              <select name="quality" defaultValue={qualityValue ?? ""}>
+                <option value="">Any quality</option>
+                <option value="NEEDS_WORK">Needs work</option>
+                <option value="UNREVIEWED">Unreviewed</option>
+                <option value="GOOD">Good</option>
+                <option value="EXCELLENT">Excellent</option>
+              </select>
+              <select name="sort" defaultValue={sortValue}>
+                <option value="newest">Newest</option>
+                <option value="solved">Most solved</option>
+                <option value="favorited">Most loved</option>
+                <option value="difficulty">Hardest first</option>
+                <option value="easiest">Easiest first</option>
+              </select>
+              <label className="checkbox-inline">
+                <input name="includeSpoilerTags" type="checkbox" value="1" defaultChecked={showSpoilerTags} />
+                <span>Include spoilers</span>
+              </label>
+            </div>
+
+            <ProblemFilterBuilder
+              domains={FLAT_DOMAIN_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
+              initialFilters={advancedFilters}
+              initialLogic={advancedLogic}
+              statuses={Object.values(QualityStatus).map((status) => ({ value: status, label: qualityLabel(status) }))}
+              tags={tags.map((item) => ({ value: item.slug, label: item.name }))}
+            />
+            <button type="submit">Apply filters</button>
+          </LiveSearchForm>
+        </aside>
+
+        <section className="problems-ledger" aria-labelledby="problems-ledger-title">
+          <div className="problems-ledger-header">
+            <div>
+              <h2 id="problems-ledger-title">Problem ledger</h2>
+              <p className="result-summary" role="status" aria-live="polite">
+                {totalProblems
+                  ? `Showing ${resultStart}-${resultEnd} of ${totalProblems} problems`
+                  : `No ${contentLanguageLabel(preferredLanguage).toLowerCase()} problems match these filters.`}
+              </p>
+            </div>
+            <span>Sort: {sortValue === "newest" ? "Newest" : sortValue}</span>
+          </div>
+
+          <ProblemStatusLegend />
+
+          <div className="problem-ledger-list">
+            {problems.map((problem) => {
+              const isOwnProblem = user?.id === problem.authorId;
+              const isUserFavorite = !isOwnProblem && favoriteIds.has(problem.id);
+              const externalSolveCount = problem.attempts.filter((attempt) => attempt.userId !== problem.authorId).length;
+              const externalFavoriteCount = problem.favorites.filter((favorite) => favorite.userId !== problem.authorId).length;
+              const revealSpoilerDomains = showSpoilerTags || solvedIds.has(problem.id);
+              const visibleDomainCodes = problem.domains.length
+                ? problem.domains
+                    .filter((item) => revealSpoilerDomains || !item.spoiler)
+                    .map((item) => item.mscCode)
+                : [problem.domain];
+              const hiddenDomainCount = revealSpoilerDomains ? 0 : problem.domains.filter((item) => item.spoiler).length;
+              const difficulty = problem.difficulty ?? null;
+              const difficultyLevel = difficultyBars(difficulty);
+              const tone = difficultyColor(difficulty);
+
+              return (
+                <Link
+                  key={problem.id}
+                  href={`/problems/${problem.slug}`}
+                  title={isOwnProblem ? "Your problem" : isUserFavorite ? "Favorite problem" : undefined}
+                  className={`${problemLinkClass(
+                    "problem-ledger-row",
+                    solvedIds.has(problem.id) ? "solved" : openedIds.has(problem.id) ? "opened" : null
+                  )}${isOwnProblem ? " problem-own" : isUserFavorite ? " problem-favorite" : ""}`}
+                >
+                  <div className="problem-ledger-difficulty" style={{ color: tone }}>
+                    <span>{difficulty ? String(difficulty).padStart(2, "0") : "--"}</span>
+                    <span className="problem-ledger-bars" aria-hidden="true">
+                      {[1, 2, 3, 4].map((level) => (
+                        <i key={level} style={{ background: level <= difficultyLevel ? tone : undefined }} />
+                      ))}
+                    </span>
+                  </div>
+                  <div className="problem-ledger-main">
+                    <h3>
+                      <AsyncMarkdownInline markdown={problem.title} />
+                    </h3>
+                    <p>
+                      {visibleDomainCodes.length ? visibleDomainCodes.map(domainLabel).join(" · ") : "Domain hidden"}
+                      {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? " · spoiler domain hidden" : ""} ·{" "}
+                      {externalSolveCount} solved · {qualityLabel(problem.qualityStatus)}
+                    </p>
+                    {problem.tags.length > 0 && (
+                      <div className="problem-ledger-tags">
+                        {problem.tags.map(({ tag }) => (
+                          <span key={tag.id} className="tag">
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {showSpoilerTags && problem.spoilerTags.length > 0 && (
+                      <div className="problem-ledger-tags">
+                        <span className="meta">Spoiler:</span>
+                        {problem.spoilerTags.map(({ tag }) => (
+                          <span key={tag.id} className="tag spoiler-tag">
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="problem-ledger-side">
+                    <span>by {displayNameForUser(problem.author)}</span>
+                    <span
+                      className={isUserFavorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
+                      title={isUserFavorite ? "You favorited this problem" : "Favorites"}
+                    >
+                      <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />
+                      {externalFavoriteCount}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+            {problems.length === 0 && (
+              <p className="empty-state">
+                No problems match these filters.
+                {otherLanguageProblems > 0 && (
+                  <>
+                    <br />
+                    {pluralize(otherLanguageProblems, "problem")} found in other languages.
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+
+          {totalPages > 1 && (
+            <nav className="pagination" aria-label="Problem pages">
+              {currentPage > 1 ? (
+                <Link href={problemsHref({ ...paginationParams, page: currentPage - 1 }) as never}>Previous</Link>
+              ) : (
+                <span aria-disabled="true">Previous</span>
+              )}
+              <span className="pagination-status">
+                Page {currentPage} of {totalPages}
+              </span>
+              {currentPage < totalPages ? (
+                <Link href={problemsHref({ ...paginationParams, page: currentPage + 1 }) as never}>Next</Link>
+              ) : (
+                <span aria-disabled="true">Next</span>
+              )}
+            </nav>
           )}
-          <span className="pagination-status">
-            Page {currentPage} of {totalPages}
-          </span>
-          {currentPage < totalPages ? (
-            <Link href={problemsHref({ ...paginationParams, page: currentPage + 1 }) as never}>Next</Link>
-          ) : (
-            <span aria-disabled="true">Next</span>
-          )}
-        </nav>
-      )}
+        </section>
+      </div>
     </div>
   );
 }
