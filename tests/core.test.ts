@@ -193,6 +193,10 @@ assert.deepEqual(latexDeleteChange(`Intro\n${mixedDollarText}`, 6, "backward"), 
 assert.deepEqual(latexDeleteChange(mixedDollarText, 0, "backward"), { from: 0, to: 0, anchor: 0 });
 assert.equal(latexDeleteChange(`Intro ${mixedDollarText}`, 6, "backward"), null);
 assert.equal(latexDeleteChange("No math here", 0, "forward"), null);
+assert.deepEqual(latexDeleteChange("\ntest $math$", 1, "backward"), { from: 0, to: 1, anchor: 0 });
+assert.deepEqual(latexDeleteChange("test\nplain $math$", 4, "forward"), { from: 4, to: 5, anchor: 4 });
+assert.deepEqual(latexDeleteChange("$$x$$\nplain", 6, "backward"), { from: 5, to: 6, anchor: 5 });
+assert.equal(latexDeleteChange("\ntest plain", 1, "backward"), null);
 assert.deepEqual(
   findLatexSyntaxTokens("$$\\operatorname{Ext}^1(G, H_2)$$", findLatexRanges("$$\\operatorname{Ext}^1(G, H_2)$$")[0]).map(
     (item) => item.kind
