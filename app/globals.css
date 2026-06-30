@@ -4253,41 +4253,6 @@ button.relation-remove-button {
   margin: 0;
 }
 
-.problem-status-legend {
-  align-items: center;
-  color: var(--muted);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 0.78rem;
-  gap: 0.65rem 1rem;
-  margin-bottom: 1rem;
-}
-
-.problem-status-legend span {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.4rem;
-}
-
-.problem-status-swatch {
-  border-radius: 2px;
-  display: inline-block;
-  height: 0.75rem;
-  width: 0.22rem;
-}
-
-.problem-status-new {
-  background: var(--problem-new);
-}
-
-.problem-status-seen {
-  background: var(--problem-opened);
-}
-
-.problem-status-solved {
-  background: var(--problem-solved);
-}
-
 .empty-state {
   color: var(--muted);
   padding: 2rem;

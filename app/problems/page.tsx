@@ -6,7 +6,6 @@ import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
-import { ProblemStatusLegend } from "@/components/ProblemStatusLegend";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -571,8 +570,6 @@ export default async function ProblemsPage({
             </div>
             <ProblemSortControl options={SORT_OPTIONS} value={sortValue} />
           </div>
-
-          <ProblemStatusLegend />
 
           <div className="problem-ledger-list">
             {problems.map((problem) => {
