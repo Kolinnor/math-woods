@@ -4,7 +4,7 @@ This is the active Math Woods project.
 
 ## Local project
 
-- Work in this directory: `C:\Users\matth\Documents\Codex\2026-06-10\j-ai-construit-un-site-math\work\math-woods-stage`
+- Work in this directory: `C:\Users\matth\Documents\Codex\math-woods\stage`
 - Do not look for a separate "math-garden" repository unless explicitly asked. Old names or older clones may exist, but this repository is the current Math Woods codebase.
 
 ## Git remotes
