@@ -41,10 +41,6 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
           <span className="text-sm font-medium">Description</span>
           <textarea name="description" maxLength={1200} required defaultValue={tip.description} />
         </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Body</span>
-          <textarea name="body" maxLength={4000} required defaultValue={tip.body} />
-        </label>
         <button type="submit">Save tip</button>
       </form>
     </div>

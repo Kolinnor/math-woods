@@ -2741,13 +2741,6 @@ button.domain-selected:hover {
   margin: 0;
 }
 
-.tip-body {
-  color: var(--muted);
-  line-height: 1.65;
-  margin: 0;
-  max-width: 52rem;
-}
-
 .tip-related {
   border-top: 1px solid var(--line);
   display: grid;

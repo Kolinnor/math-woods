@@ -97,7 +97,6 @@ function tipMatchesQuery(tip: TipEntry, relatedProblems: TipProblem[], query: st
   const haystack = [
     tip.title,
     tip.description,
-    tip.body,
     `level ${tip.level}`,
     ...relatedProblems.map((problem) => [
       problem.title,
@@ -170,7 +169,6 @@ export default async function TipsPage({
             <span className="tip-level">Level {tip.level}</span>
             <h2>{tip.title}</h2>
             <p className="tip-description">{tip.description}</p>
-            <p className="tip-body">{tip.body}</p>
 
             <section className="tip-related" aria-labelledby={`tip-${index}-practice`}>
               <div className="tip-related-heading">

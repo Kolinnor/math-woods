@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { CONTENT_LIMITS, boundedText, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { ensureDefaultTips } from "@/lib/daily-tip";
 import { canUseAdminTools } from "@/lib/permissions";
@@ -26,7 +26,7 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   const level = parseTipLevel(formData.get("level"));
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
-  const body = requiredBoundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body");
+  const body = boundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body") || description;
 
   await prisma.tip.update({
     where: { id: tipId },
