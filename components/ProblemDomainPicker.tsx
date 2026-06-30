@@ -155,7 +155,7 @@ export function ProblemDomainPicker({ domains, initialValues, initialSpoilers = 
         })}
       </div>
       <p className="muted text-xs">
-        Choose up to {MAX_PROBLEM_DOMAINS}. Click a main domain for a quick choice, or open the arrow for MSC subdomains.
+        Choose up to {MAX_PROBLEM_DOMAINS} domains.
       </p>
     </div>
   );

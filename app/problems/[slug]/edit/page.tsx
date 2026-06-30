@@ -9,7 +9,7 @@ import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
 import { deleteProblemAction, updateProblemAction } from "@/lib/actions/problem-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { MATH_DOMAINS } from "@/lib/domains";
+import { PROBLEM_DOMAINS } from "@/lib/domains";
 import { canDeleteProblem, canEditProblem, canSetProblemQualityStatus } from "@/lib/permissions";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 
@@ -83,7 +83,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <ProblemDomainPicker
-            domains={MATH_DOMAINS}
+            domains={PROBLEM_DOMAINS}
             initialValues={problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain]}
             initialSpoilers={problem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)}
           />

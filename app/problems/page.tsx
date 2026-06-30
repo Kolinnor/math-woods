@@ -12,8 +12,10 @@ import {
   domainCodeAliases,
   domainDescription,
   domainLabel,
-  FLAT_DOMAIN_OPTIONS,
-  parseDomainCode
+  FLAT_PROBLEM_DOMAIN_OPTIONS,
+  parseDomainCode,
+  PROBLEM_DOMAIN_FAMILIES,
+  PROBLEM_DOMAINS
 } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
 import { pluralize } from "@/lib/pluralize";
@@ -126,6 +128,9 @@ function parseDomainFilter(value: string) {
 }
 
 function domainWhere(domainCode: string, includeSpoilerDomains = false): Prisma.ProblemWhereInput {
+  const aliases = domainCodeAliases(domainCode);
+  const enumAliases = aliases.filter((value): value is MathDomain => Object.values(MathDomain).includes(value as MathDomain));
+
   if (Object.values(MathDomain).includes(domainCode as MathDomain)) {
     const domain = domainCode as MathDomain;
     if (includeSpoilerDomains) return { OR: [{ domain }, { domains: { some: { domain } } }] };
@@ -139,12 +144,23 @@ function domainWhere(domainCode: string, includeSpoilerDomains = false): Prisma.
   }
 
   return {
-    domains: {
-      some: {
-        mscCode: { in: domainCodeAliases(domainCode) },
-        ...(includeSpoilerDomains ? {} : { spoiler: false })
-      }
-    }
+    OR: [
+      {
+        domains: {
+          some: {
+            mscCode: { in: aliases },
+            ...(includeSpoilerDomains ? {} : { spoiler: false })
+          }
+        }
+      },
+      ...(enumAliases.length
+        ? [
+            {
+              AND: [{ domains: { none: {} } }, { domain: { in: enumAliases } }]
+            } satisfies Prisma.ProblemWhereInput
+          ]
+        : [])
+    ]
   };
 }
 
@@ -474,7 +490,7 @@ export default async function ProblemsPage({
         </div>
       </section>
 
-      <ProblemDomainStrip selectedDomain={domainValue} />
+      <ProblemDomainStrip domains={PROBLEM_DOMAINS} families={PROBLEM_DOMAIN_FAMILIES} selectedDomain={domainValue} />
 
       <div className="problems-workspace">
         <aside className="problems-filter-panel">
@@ -555,7 +571,7 @@ export default async function ProblemsPage({
             </div>
 
             <ProblemFilterBuilder
-              domains={FLAT_DOMAIN_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
+              domains={FLAT_PROBLEM_DOMAIN_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
               initialFilters={advancedFilters}
               initialLogic={advancedLogic}
               statuses={Object.values(QualityStatus).map((status) => ({ value: status, label: qualityLabel(status) }))}

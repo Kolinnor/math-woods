@@ -35,7 +35,7 @@ import {
 } from "../lib/permissions.ts";
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
 import { parseProblemDomains } from "../lib/problem-domains.ts";
-import { domainLabel, FLAT_DOMAIN_OPTIONS, parseDomainCode } from "../lib/domains.ts";
+import { domainLabel, FLAT_DOMAIN_OPTIONS, parseDomainCode, PROBLEM_DOMAINS } from "../lib/domains.ts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "../lib/markdown-preview.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
@@ -223,9 +223,13 @@ assert.equal(parseProblemDifficulty("72"), 72);
 assert.equal(parseProblemDifficulty("101"), null);
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
 assert.equal(FLAT_DOMAIN_OPTIONS.some((option) => /^\d{2}\s/.test(option.label)), false);
+assert.equal(PROBLEM_DOMAINS.length, 21);
 assert.equal(parseDomainCode("26"), "26-XX");
-assert.equal(domainLabel("26"), "Real functions");
-assert.equal(domainLabel("26-XX"), "Real functions");
+assert.equal(parseDomainCode("52-XX"), "51-XX");
+assert.equal(parseDomainCode("GEOMETRY"), "51-XX");
+assert.equal(domainLabel("26"), "Analyse réelle");
+assert.equal(domainLabel("26-XX"), "Analyse réelle");
+assert.equal(domainLabel("52-XX"), "Géométrie");
 assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
   { domain: "ARITHMETIC", mscCode: "11-XX", spoiler: false },
   { domain: "ANALYSIS", mscCode: "26-XX", spoiler: true }

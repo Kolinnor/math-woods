@@ -5,7 +5,7 @@ import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { requireVerifiedUser } from "@/lib/auth";
-import { MATH_DOMAINS } from "@/lib/domains";
+import { PROBLEM_DOMAINS } from "@/lib/domains";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
@@ -108,7 +108,7 @@ export default async function NewProblemPage({
           />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
-          <ProblemDomainPicker domains={MATH_DOMAINS} initialValues={["OTHER"]} />
+          <ProblemDomainPicker domains={PROBLEM_DOMAINS} initialValues={["OTHER"]} />
           <label className="problem-difficulty-field grid gap-2">
             <span className="text-sm font-medium">Difficulty (1–100)</span>
             <input name="difficulty" type="number" min="1" max="100" placeholder="50" />
