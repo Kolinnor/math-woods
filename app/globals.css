@@ -3116,11 +3116,61 @@ body:has(.problems-page-shell) {
   background: #e8e2d3;
 }
 
+body:has(.problems-page-shell) .site-header {
+  background: transparent;
+  border-bottom: 0;
+  color: #fff;
+  position: absolute;
+  width: 100%;
+}
+
+body:has(.problems-page-shell) .site-brand,
+body:has(.problems-page-shell) .primary-nav a {
+  color: rgb(255 255 255 / 0.9);
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.5);
+}
+
+body:has(.problems-page-shell) .site-brand-logo {
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
+}
+
+body:has(.problems-page-shell) .primary-nav a:hover {
+  background: rgb(255 255 255 / 0.14);
+  color: #fff;
+}
+
+body:has(.problems-page-shell) .language-selector,
+body:has(.problems-page-shell) .header-search,
+body:has(.problems-page-shell) .site-header .icon-button.secondary,
+body:has(.problems-page-shell) .nav-menu summary {
+  background: rgb(255 255 255 / 0.14);
+  border-color: rgb(255 255 255 / 0.22);
+  color: #fff;
+}
+
+body:has(.problems-page-shell) .language-selector:hover,
+body:has(.problems-page-shell) .language-selector:focus-within,
+body:has(.problems-page-shell) .header-search:focus-within,
+body:has(.problems-page-shell) .site-header .icon-button.secondary:hover,
+body:has(.problems-page-shell) .nav-menu[open] summary,
+body:has(.problems-page-shell) .nav-menu summary:hover {
+  background: rgb(255 255 255 / 0.22);
+  border-color: rgb(255 255 255 / 0.36);
+  color: #fff;
+}
+
+body:has(.problems-page-shell) .header-search input {
+  color: #fff;
+}
+
+body:has(.problems-page-shell) .header-search input::placeholder {
+  color: rgb(255 255 255 / 0.72);
+}
+
 .site-main:has(.problems-page-shell) {
   max-width: none;
-  padding-left: 0;
-  padding-right: 0;
-  padding-top: 0;
+  min-height: 0;
+  padding: 0;
 }
 
 .problems-page-shell {
@@ -3134,7 +3184,7 @@ body:has(.problems-page-shell) {
 .problems-hero {
   background: #14201a;
   display: flex;
-  min-height: clamp(360px, 48vw, 560px);
+  min-height: 320px;
   overflow: hidden;
   position: relative;
 }
@@ -3163,7 +3213,7 @@ body:has(.problems-page-shell) {
   margin-right: auto;
   margin-top: auto;
   max-width: 1180px;
-  padding: 2.5rem 2rem 2rem;
+  padding: 0 2rem 1.8rem;
   position: relative;
   width: 100%;
   z-index: 1;
@@ -3182,7 +3232,7 @@ body:has(.problems-page-shell) {
 .problems-hero h1 {
   color: #fff;
   font-family: var(--font-serif);
-  font-size: clamp(3.25rem, 8vw, 6.5rem);
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
   font-weight: 600;
   line-height: 1;
   margin: 0.4rem 0 0;

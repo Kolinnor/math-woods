@@ -13,9 +13,9 @@ type ProblemDomainStripProps = {
 };
 
 const SORT_LABELS: Record<SortKey, string> = {
-  family: "famille",
+  family: "theme",
   name: "A-Z",
-  diff: "difficulté",
+  diff: "difficulty",
   date: "date"
 };
 
@@ -54,16 +54,16 @@ export function ProblemDomainStrip({ domains, families, selectedDomain }: Proble
             {open && (
               <div className="problem-domain-sort-menu">
                 <button type="button" onClick={() => choose("family")}>
-                  Famille
+                  Theme
                 </button>
                 <button type="button" onClick={() => choose("name")}>
-                  Alphabétique
+                  Alphabetical
                 </button>
                 <button type="button" onClick={() => choose("diff")}>
-                  Difficulté
+                  Difficulty
                 </button>
                 <button type="button" onClick={() => choose("date")}>
-                  Date historique
+                  Historical date
                 </button>
               </div>
             )}

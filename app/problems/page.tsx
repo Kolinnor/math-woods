@@ -468,7 +468,6 @@ export default async function ProblemsPage({
         <div className="problems-hero-overlay" />
         <div className="problems-hero-content">
           <div>
-            <p className="problems-hero-kicker">A field of problems</p>
             <h1>Problems</h1>
             {selectedDomainDescription && <p className="problems-hero-description">{selectedDomainDescription}</p>}
           </div>
