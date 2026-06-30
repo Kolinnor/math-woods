@@ -5,6 +5,7 @@ import { Heart } from "lucide-react";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
+import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemStatusLegend } from "@/components/ProblemStatusLegend";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -502,42 +503,13 @@ export default async function ProblemsPage({
 
             <div className="problem-filter-section">
               <p>Difficulty</p>
-              <div className="problem-difficulty-ramp" aria-hidden="true">
-                <span style={{ left: `${difficultyMinValue ?? 1}%` }} />
-                <span style={{ left: `${difficultyMaxValue ?? 100}%` }} />
-              </div>
-              <div className="problem-difficulty-values">
-                <span>{difficultyMinValue ?? 1} / 100</span>
-                <span>{difficultyMaxValue ?? 100} / 100</span>
-              </div>
-              <select name="difficultyRange" defaultValue={difficultyRangeSelectValue}>
-                {hasCustomDifficultyBounds && <option value="custom">Custom difficulty</option>}
-                {DIFFICULTY_RANGES.map((range) => (
-                  <option key={range.value || "any"} value={range.value}>
-                    {range.label}
-                  </option>
-                ))}
-              </select>
-              <div className="difficulty-filter-bounds">
-                <input
-                  name="difficultyMin"
-                  type="number"
-                  min="1"
-                  max="100"
-                  defaultValue={manualDifficultyMin ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : "")}
-                  placeholder="Min"
-                  aria-label="Minimum difficulty"
-                />
-                <input
-                  name="difficultyMax"
-                  type="number"
-                  min="1"
-                  max="100"
-                  defaultValue={manualDifficultyMax ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : "")}
-                  placeholder="Max"
-                  aria-label="Maximum difficulty"
-                />
-              </div>
+              <ProblemDifficultyFilter
+                customBounds={hasCustomDifficultyBounds}
+                initialMax={difficultyMaxValue}
+                initialMin={difficultyMinValue}
+                ranges={DIFFICULTY_RANGES}
+                selectedRange={difficultyRangeSelectValue}
+              />
             </div>
 
             <div className="problem-filter-section">

@@ -3472,24 +3472,74 @@ body:has(.problems-page-shell) .header-search input::placeholder {
   justify-self: start;
 }
 
-.problem-difficulty-ramp {
-  background: linear-gradient(90deg, #5d7a4c, #a07a2c, #b05f2c, #8c3b22);
-  border-radius: 999px;
-  height: 6px;
-  margin: 0.2rem 0.1rem 0;
+.problem-difficulty-control {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.problem-difficulty-slider {
+  height: 24px;
+  margin: 0.1rem 0.1rem 0;
   position: relative;
 }
 
-.problem-difficulty-ramp span {
+.problem-difficulty-slider-track {
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0) 0 var(--difficulty-min), rgb(255 255 255 / 0.56) var(--difficulty-min) var(--difficulty-max), rgb(0 0 0 / 0) var(--difficulty-max) 100%),
+    linear-gradient(90deg, #5d7a4c, #a07a2c, #b05f2c, #8c3b22);
+  border-radius: 999px;
+  height: 6px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 9px;
+}
+
+.problem-difficulty-slider input[type="range"] {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  height: 24px;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.problem-difficulty-slider input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
   background: #fff;
   border: 2px solid #5f4524;
   border-radius: 999px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
-  height: 12px;
-  position: absolute;
-  top: -3px;
-  transform: translateX(-50%);
-  width: 12px;
+  cursor: grab;
+  height: 16px;
+  pointer-events: auto;
+  width: 16px;
+}
+
+.problem-difficulty-slider input[type="range"]::-moz-range-thumb {
+  background: #fff;
+  border: 2px solid #5f4524;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  cursor: grab;
+  height: 16px;
+  pointer-events: auto;
+  width: 16px;
+}
+
+.problem-difficulty-slider input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid #2f6b45;
+  outline-offset: 3px;
+}
+
+.problem-difficulty-slider input[type="range"]:focus-visible::-moz-range-thumb {
+  outline: 2px solid #2f6b45;
+  outline-offset: 3px;
 }
 
 .problem-difficulty-values {
