@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -17,6 +18,21 @@ function parseTipLevel(value: FormDataEntryValue | null) {
   return level;
 }
 
+function parseTipProblemIds(values: FormDataEntryValue[]) {
+  const seen = new Set<number>();
+  const problemIds: number[] = [];
+
+  for (const value of values) {
+    const problemId = Number(value);
+    if (!Number.isInteger(problemId) || problemId <= 0 || seen.has(problemId)) continue;
+    seen.add(problemId);
+    problemIds.push(problemId);
+    if (problemIds.length >= 8) break;
+  }
+
+  return problemIds;
+}
+
 export async function updateTipAction(tipId: number, formData: FormData) {
   const user = await requireUser();
   if (!canUseAdminTools(user)) throw new Error("Only admins can edit tips.");
@@ -27,14 +43,33 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
   const body = boundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body") || description;
+  const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
-  await prisma.tip.update({
-    where: { id: tipId },
-    data: {
-      level,
-      title,
-      description,
-      body
+  await prisma.$transaction(async (tx) => {
+    const validProblems = problemIds.length
+      ? await tx.problem.findMany({
+          where: { id: { in: problemIds }, status: "PUBLISHED", listed: true },
+          select: { id: true }
+        })
+      : [];
+    const validProblemIds = new Set(validProblems.map((problem) => problem.id));
+    const orderedProblemIds = problemIds.filter((problemId) => validProblemIds.has(problemId));
+
+    await tx.tip.update({
+      where: { id: tipId },
+      data: {
+        level,
+        title,
+        description,
+        body
+      }
+    });
+
+    await tx.$executeRaw`DELETE FROM "TipProblem" WHERE "tipId" = ${tipId}`;
+    for (const [index, problemId] of orderedProblemIds.entries()) {
+      await tx.$executeRaw(
+        Prisma.sql`INSERT INTO "TipProblem" ("tipId", "problemId", "position") VALUES (${tipId}, ${problemId}, ${index + 1})`
+      );
     }
   });
 

@@ -2741,6 +2741,57 @@ button.domain-selected:hover {
   margin: 0;
 }
 
+.tip-problem-editor {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem;
+}
+
+.tip-problem-editor legend {
+  font-weight: 750;
+  padding: 0 0.25rem;
+}
+
+.tip-problem-choice-list {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 24rem;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.tip-problem-choice {
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: auto 1fr;
+  padding: 0.7rem;
+}
+
+.tip-problem-choice:has(input:checked) {
+  background: var(--panel-muted);
+  border-color: var(--accent);
+}
+
+.tip-problem-choice input {
+  margin-top: 0.25rem;
+}
+
+.tip-problem-choice span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.tip-problem-choice small {
+  color: var(--muted);
+}
+
 .tip-related {
   border-top: 1px solid var(--line);
   display: grid;

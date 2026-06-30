@@ -254,6 +254,7 @@ model Problem {
   relatedGroups        ProblemRelationGroup[]       @relation("ProblemRelationSource")
   incomingRelations    ProblemRelation[]            @relation("ProblemRelationTarget")
   verificationRequests ProblemVerificationRequest[]
+  tipLinks             TipProblem[]
 
   @@unique([translationGroupId, language])
   @@index([status, createdAt])
@@ -722,6 +723,19 @@ model Tip {
   body        String   @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  problems    TipProblem[]
+}
+
+model TipProblem {
+  tipId     Int
+  problemId Int
+  position  Int     @default(0)
+  tip       Tip     @relation(fields: [tipId], references: [id], onDelete: Cascade)
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([tipId, problemId])
+  @@index([tipId, position])
+  @@index([problemId])
 }
 
 model Notification {

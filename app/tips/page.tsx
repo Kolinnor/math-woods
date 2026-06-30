@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import type { Route } from "next";
 import Link from "next/link";
@@ -33,6 +34,12 @@ const TIP_MATCHERS = [
 ] satisfies string[][];
 
 type TipProblem = Awaited<ReturnType<typeof loadProblems>>[number];
+
+type TipProblemLink = {
+  tipId: number;
+  position: number;
+  problemId: number;
+};
 
 async function loadProblems(language: string) {
   return prisma.problem.findMany({
@@ -121,6 +128,35 @@ export default async function TipsPage({
   const { q = "", updated } = await searchParams;
   const query = q.trim();
   const [problems, tipRows] = await Promise.all([loadProblems(preferredLanguage), loadTips()]);
+  const tipIds = tipRows.map((tip) => tip.id);
+  const tipProblemLinks = tipIds.length
+    ? await prisma.$queryRaw<TipProblemLink[]>`
+        SELECT "tipId", "problemId", "position"
+        FROM "TipProblem"
+        WHERE "tipId" IN (${Prisma.join(tipIds)})
+        ORDER BY "tipId" ASC, "position" ASC
+      `
+    : [];
+  const linkedProblemIds = [...new Set(tipProblemLinks.map((link) => link.problemId))];
+  const linkedProblems = linkedProblemIds.length
+    ? await prisma.problem.findMany({
+        where: { id: { in: linkedProblemIds }, status: "PUBLISHED", listed: true },
+        include: {
+          tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
+          favorites: { select: { userId: true } },
+          _count: { select: { attempts: true, favorites: true } }
+        }
+      })
+    : [];
+  const linkedProblemsById = new Map(linkedProblems.map((problem) => [problem.id, problem]));
+  const tipProblemsByTipId = new Map<number, TipProblem[]>();
+  for (const link of tipProblemLinks) {
+    const problem = linkedProblemsById.get(link.problemId);
+    if (!problem) continue;
+    const current = tipProblemsByTipId.get(link.tipId) ?? [];
+    current.push(problem);
+    tipProblemsByTipId.set(link.tipId, current);
+  }
   const solvedAttempts =
     user && problems.length
       ? await prisma.problemAttempt.findMany({
@@ -132,7 +168,7 @@ export default async function TipsPage({
   const tips = tipRows.map((tip, index) => ({
     tip,
     index,
-    relatedProblems: relatedProblemsForTip(problems, index)
+    relatedProblems: tipProblemsByTipId.get(tip.id) ?? relatedProblemsForTip(problems, index)
   })).filter(({ tip, relatedProblems }) => tipMatchesQuery(tip, relatedProblems, query));
 
   return (
@@ -172,7 +208,7 @@ export default async function TipsPage({
 
             <section className="tip-related" aria-labelledby={`tip-${index}-practice`}>
               <div className="tip-related-heading">
-                <h3 id={`tip-${index}-practice`}>Related problems</h3>
+                <h3 id={`tip-${index}-practice`}>Try this on the following problems</h3>
                 <span>{relatedProblems.length ? `${relatedProblems.length} suggestions` : "No suggestions yet"}</span>
               </div>
               {relatedProblems.length > 0 ? (
