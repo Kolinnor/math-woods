@@ -352,6 +352,13 @@ function selectionOverlapsRange(state: EditorState, from: number, to: number) {
   });
 }
 
+function selectionLineContainsRange(state: EditorState, from: number, to: number) {
+  return state.selection.ranges.some((range) => {
+    const line = state.doc.lineAt(Math.min(range.from, state.doc.length));
+    return from >= line.from && to <= line.to;
+  });
+}
+
 function latexOpeningDelimiterLength(text: string, position: number) {
   return text.startsWith("$$", position) || text.startsWith("\\(", position) || text.startsWith("\\[", position) ? 2 : 1;
 }
@@ -414,6 +421,23 @@ const previewFocusField = StateField.define<boolean>({
       if (effect.is(setPreviewFocus)) return effect.value;
     }
     return value;
+  }
+});
+
+const suppressLatexPreviewOnJoinedLine = StateField.define<boolean>({
+  create: () => false,
+  update(_value, transaction) {
+    if (!transaction.docChanged) return false;
+
+    let removedLineBreak = false;
+    transaction.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+      const deleted = transaction.startState.doc.sliceString(fromA, toA);
+      if (deleted.includes("\n") && !inserted.toString().includes("\n")) {
+        removedLineBreak = true;
+      }
+    });
+
+    return removedLineBreak;
   }
 });
 
@@ -539,6 +563,7 @@ function buildLivePreviewDecorations(state: EditorState) {
   const latexRanges = findLatexRanges(text);
   const wikiLinks = findWikiLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
+  const suppressJoinedLinePreview = state.field(suppressLatexPreviewOnJoinedLine);
   const decorations = latexRanges.flatMap((range) => {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
@@ -556,13 +581,17 @@ function buildLivePreviewDecorations(state: EditorState) {
       latexDiagnosticSignature(diagnostics),
       diagnostics
     );
+    const suppressPreview =
+      suppressJoinedLinePreview &&
+      selectionLineContainsRange(state, range.from, range.to) &&
+      !selectionOverlapsRange(state, range.from, range.to);
 
-    if (selectionOverlapsRange(state, range.from, range.to)) {
+    if (selectionOverlapsRange(state, range.from, range.to) || suppressPreview) {
       const activeDecorations = findLatexSyntaxTokens(text, range).map((token) =>
         Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
       );
 
-      if (renderDisplayMode) {
+      if (renderDisplayMode && !suppressPreview) {
         activeDecorations.push(
           Decoration.widget({
             widget,
@@ -685,16 +714,11 @@ const displayMathLineBreakNormalizer = EditorState.transactionFilter.of((transac
   const normalizedDisplayMath = normalizeDisplayMathLineBreaks(nextText, transaction.newSelection.main.anchor);
   if (!normalizedDisplayMath.changed) return transaction;
 
-  return [
-    transaction,
-    {
-      changes: { from: 0, to: transaction.newDoc.length, insert: normalizedDisplayMath.text },
-      selection: { anchor: normalizedDisplayMath.cursor ?? normalizedDisplayMath.text.length },
-      effects: setPreviewFocus.of(true),
-      annotations: previewOnly,
-      sequential: true
-    }
-  ];
+  return {
+    changes: { from: 0, to: transaction.startState.doc.length, insert: normalizedDisplayMath.text },
+    selection: { anchor: normalizedDisplayMath.cursor ?? normalizedDisplayMath.text.length },
+    effects: setPreviewFocus.of(true)
+  };
 });
 
 export function MarkdownEditor({
@@ -770,6 +794,7 @@ export function MarkdownEditor({
             ])
           ),
           previewFocusField,
+          suppressLatexPreviewOnJoinedLine,
           liveMarkdownPreview,
           previewFocusEvents,
           displayMathLineBreakNormalizer,
