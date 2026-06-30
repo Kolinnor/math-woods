@@ -496,7 +496,7 @@ export default async function ProblemsPage({
           <LiveSearchForm className="problem-filter-form">
             <label className="problem-filter-search">
               <span>Search problems</span>
-              <input name="q" defaultValue={query} placeholder='Try "polynomial", "IMO", "invariant"...' />
+              <input name="q" defaultValue={query} />
             </label>
             {domainValue && <input type="hidden" name="domain" value={domainValue} />}
 
