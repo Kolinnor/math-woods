@@ -460,7 +460,6 @@ export default async function ProblemsPage({
   const resultEnd = Math.min(currentPage * PROBLEMS_PER_PAGE, totalProblems);
   const progressPercent = progressTotal ? Math.round((progressSolved / progressTotal) * 100) : 0;
   const progressScope = domainValue ? domainLabel(domainValue) : "all domains";
-  const selectedDomainDescription = domainValue ? domainDescription(domainValue) : null;
 
   return (
     <div className="problems-page-shell">
@@ -470,7 +469,6 @@ export default async function ProblemsPage({
         <div className="problems-hero-content">
           <div>
             <h1>Problems</h1>
-            {selectedDomainDescription && <p className="problems-hero-description">{selectedDomainDescription}</p>}
           </div>
           <div className="problems-hero-meta">
             <p>
