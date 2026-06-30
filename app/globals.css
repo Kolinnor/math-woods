@@ -3630,12 +3630,6 @@ body:has(.problems-page-shell) .header-search input::placeholder {
   margin-bottom: 0.75rem;
 }
 
-.problems-ledger-header h2 {
-  font-size: 0.96rem;
-  font-weight: 750;
-  margin: 0;
-}
-
 .problems-ledger-sort {
   align-items: center;
   background: #f8f4ea;

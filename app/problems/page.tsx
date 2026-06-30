@@ -558,10 +558,9 @@ export default async function ProblemsPage({
           </LiveSearchForm>
         </aside>
 
-        <section className="problems-ledger" aria-labelledby="problems-ledger-title">
+        <section className="problems-ledger" aria-label="Problems">
           <div className="problems-ledger-header">
             <div>
-              <h2 id="problems-ledger-title">Problem ledger</h2>
               <p className="result-summary" role="status" aria-live="polite">
                 {totalProblems
                   ? `Showing ${resultStart}-${resultEnd} of ${totalProblems} problems`
