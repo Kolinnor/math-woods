@@ -121,25 +121,6 @@ export function ProblemDifficultyFilter({
             </option>
           ))}
         </select>
-
-        <div className="difficulty-filter-bounds">
-          <input
-            aria-label="Minimum difficulty"
-            max={MAX_DIFFICULTY}
-            min={MIN_DIFFICULTY}
-            onChange={(event) => chooseMin(Number(event.target.value))}
-            type="number"
-            value={minValue}
-          />
-          <input
-            aria-label="Maximum difficulty"
-            max={MAX_DIFFICULTY}
-            min={MIN_DIFFICULTY}
-            onChange={(event) => chooseMax(Number(event.target.value))}
-            type="number"
-            value={maxValue}
-          />
-        </div>
       </div>
     </>
   );
