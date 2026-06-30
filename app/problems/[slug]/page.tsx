@@ -22,7 +22,6 @@ import {
 } from "@/lib/actions/problem-actions";
 import {
   createProofAction,
-  createProofCommentAction,
   voteProofAction
 } from "@/lib/actions/proof-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -73,11 +72,7 @@ export default async function ProblemPage({
       },
       proofs: {
         include: {
-          author: true,
-          comments: {
-            include: { author: true },
-            orderBy: { createdAt: "asc" }
-          }
+          author: true
         },
         orderBy: { createdAt: "asc" }
       },
@@ -406,26 +401,6 @@ export default async function ProblemPage({
                         </div>
                       </header>
                       <MarkdownBlock html={proof.bodyHtml} />
-                      <details className="proof-discussion">
-                        <summary>
-                          <MessageSquare size={15} />
-                          Discuss solution {"\u00b7"} {proof.comments.length}
-                        </summary>
-                        <div className="grid gap-3 pt-3">
-                          {proof.comments.map((comment) => (
-                            <div key={comment.id} className="proof-comment">
-                              <p className="meta">{displayNameForUser(comment.author)}</p>
-                              <MarkdownBlock html={comment.bodyHtml} />
-                            </div>
-                          ))}
-                          {user && (
-                            <form action={createProofCommentAction.bind(null, proof.id, problem.slug)} className="grid gap-2">
-                              <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
-                              <button type="submit" className="secondary">Add comment</button>
-                            </form>
-                          )}
-                        </div>
-                      </details>
                     </article>
                   );
                 })}
@@ -571,20 +546,6 @@ export default async function ProblemPage({
               </button>
             </form>
           )}
-          <Link
-            href={{ pathname: `/problems/${problem.slug}/discussion` }}
-            className="button secondary"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <MessageSquare size={17} />
-            Discussion {"\u00b7"} {pluralize(discussionPostCount, "post")}
-          </Link>
-          {!discussionVisible && (
-            <p className="muted text-xs">
-              Start the problem to reveal and join the discussion.
-            </p>
-          )}
           {ownVerificationRequests.length > 0 && attempt?.status !== "SOLVED" && (
             <div className="verification-history">
               {ownVerificationRequests.map((request) => (
@@ -622,6 +583,20 @@ export default async function ProblemPage({
           <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
             Edit
           </Link>
+          <Link
+            href={{ pathname: `/problems/${problem.slug}/discussion` }}
+            className="button secondary"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MessageSquare size={17} />
+            Discussions {"\u00b7"} {pluralize(discussionPostCount, "post")}
+          </Link>
+          {!discussionVisible && (
+            <p className="muted text-xs">
+              Start the problem to reveal and join the discussion.
+            </p>
+          )}
           <details className="text-sm">
             <summary className="cursor-pointer font-medium">Report</summary>
             <form action={reportProblemAction.bind(null, problem.id)} className="mt-3 grid gap-2">
