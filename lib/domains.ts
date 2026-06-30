@@ -143,12 +143,12 @@ export type ProblemDomainOption = DomainOption & {
 };
 
 export const PROBLEM_DOMAIN_FAMILIES: Record<ProblemDomainFamily, { label: string; color: string; order: number }> = {
-  found: { label: "Fondements & algèbre", color: "#3f6b45", order: 0 },
-  geom: { label: "Géométrie & topologie", color: "#a87f2e", order: 1 },
-  ana: { label: "Analyse", color: "#2f6f6a", order: 2 },
-  prob: { label: "Probabilités & discret", color: "#3d5f7a", order: 3 },
-  app: { label: "Maths appliquées", color: "#a85f33", order: 4 },
-  other: { label: "Autres", color: "#1f1f1f", order: 5 }
+  found: { label: "Foundations & algebra", color: "#3f6b45", order: 0 },
+  geom: { label: "Geometry & topology", color: "#a87f2e", order: 1 },
+  ana: { label: "Analysis", color: "#2f6f6a", order: 2 },
+  prob: { label: "Probability & discrete math", color: "#3d5f7a", order: 3 },
+  app: { label: "Applied mathematics", color: "#a85f33", order: 4 },
+  other: { label: "Other", color: "#1f1f1f", order: 5 }
 };
 
 function problemDomain(
@@ -165,27 +165,27 @@ function problemDomain(
 }
 
 export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
-  problemDomain(MathDomain.LOGIC, "Logique", MathDomain.LOGIC, "∴", "found", 2, 1847, ["03", "03-XX"]),
-  problemDomain("18-XX", "Catégories", MathDomain.ALGEBRA, "→", "found", 4, 1945, ["18"]),
-  problemDomain(MathDomain.ALGEBRA, "Algèbre", MathDomain.ALGEBRA, "x", "found", 2, 820, ["06", "06-XX", "08", "08-XX", "12", "12-XX", "13", "13-XX", "16", "16-XX", "17", "17-XX", "19", "19-XX", "22", "22-XX"]),
-  problemDomain("15-XX", "Algèbre linéaire", MathDomain.ALGEBRA, "⊕", "found", 2, 1850, ["15"]),
-  problemDomain("11-XX", "Théorie des nombres", MathDomain.ARITHMETIC, "ℤ", "found", 3, -300, ["11", MathDomain.ARITHMETIC]),
-  problemDomain("20-XX", "Théorie des représentations", MathDomain.ALGEBRA, "ρ", "found", 4, 1896, ["20"]),
-  problemDomain("14-XX", "Géométrie algébrique", MathDomain.ALGEBRA, "⊙", "geom", 4, 1900, ["14"]),
-  problemDomain("51-XX", "Géométrie", MathDomain.GEOMETRY, "△", "geom", 2, -300, [MathDomain.GEOMETRY, "51", "52", "52-XX"]),
-  problemDomain("53-XX", "Géométrie différentielle", MathDomain.GEOMETRY, "∂", "geom", 4, 1827, ["53", "58", "58-XX"]),
-  problemDomain("54-XX", "Topologie", MathDomain.TOPOLOGY, "∞", "geom", 3, 1895, [MathDomain.TOPOLOGY, "54", "57", "57-XX"]),
-  problemDomain("55-XX", "Topologie algébrique", MathDomain.TOPOLOGY, "π", "geom", 4, 1900, ["55"]),
-  problemDomain("26-XX", "Analyse réelle", MathDomain.ANALYSIS, "ℝ", "ana", 3, 1700, ["26", MathDomain.ANALYSIS, "28", "28-XX", "40", "40-XX"]),
-  problemDomain("30-XX", "Analyse complexe", MathDomain.ANALYSIS, "ℂ", "ana", 3, 1825, ["30", "31", "31-XX", "32", "32-XX"]),
-  problemDomain("46-XX", "Analyse fonctionnelle", MathDomain.ANALYSIS, "ƒ", "ana", 4, 1900, ["46", "47", "47-XX"]),
-  problemDomain("34-XX", "Équations différentielles", MathDomain.ANALYSIS, "∇", "ana", 3, 1690, ["34", "35", "35-XX", "37", "37-XX", "39", "39-XX"]),
-  problemDomain(MathDomain.PROBABILITY, "Probabilités et statistiques", MathDomain.PROBABILITY, "ℙ", "prob", 2, 1654, ["60", "60-XX", "62", "62-XX"]),
-  problemDomain("05-XX", "Combinatoire", MathDomain.COMBINATORICS, "∑", "prob", 2, 1666, ["05"]),
-  problemDomain(MathDomain.COMBINATORICS, "Graphes et discret", MathDomain.COMBINATORICS, "◇", "prob", 2, 1736, ["68", "68-XX", "90", "90-XX", "94", "94-XX"]),
-  problemDomain("65-XX", "Calcul scientifique", MathDomain.OTHER, "≈", "app", 3, 1947, ["65"]),
-  problemDomain("81-XX", "Physique mathématique", MathDomain.OTHER, "Ψ", "app", 3, 1687, ["70", "70-XX", "74", "74-XX", "76", "76-XX", "78", "78-XX", "80", "80-XX", "81", "82", "82-XX", "83", "83-XX"]),
-  problemDomain(MathDomain.OTHER, "Autres", MathDomain.OTHER, "⋯", "other", 1, 9999, ["00", "00-XX", "01", "01-XX", "33", "33-XX", "41", "41-XX", "42", "42-XX", "43", "43-XX", "44", "44-XX", "45", "45-XX", "49", "49-XX", "85", "85-XX", "86", "86-XX", "91", "91-XX", "92", "92-XX", "93", "93-XX", "97", "97-XX"])
+  problemDomain(MathDomain.LOGIC, "Logic", MathDomain.LOGIC, "∴", "found", 2, 1847, ["03", "03-XX"]),
+  problemDomain("18-XX", "Category theory", MathDomain.ALGEBRA, "→", "found", 4, 1945, ["18"]),
+  problemDomain(MathDomain.ALGEBRA, "Algebra", MathDomain.ALGEBRA, "x", "found", 2, 820, ["06", "06-XX", "08", "08-XX", "12", "12-XX", "13", "13-XX", "16", "16-XX", "17", "17-XX", "19", "19-XX", "22", "22-XX"]),
+  problemDomain("15-XX", "Linear algebra", MathDomain.ALGEBRA, "⊕", "found", 2, 1850, ["15"]),
+  problemDomain("11-XX", "Number theory", MathDomain.ARITHMETIC, "ℤ", "found", 3, -300, ["11", MathDomain.ARITHMETIC]),
+  problemDomain("20-XX", "Representation theory", MathDomain.ALGEBRA, "ρ", "found", 4, 1896, ["20"]),
+  problemDomain("14-XX", "Algebraic geometry", MathDomain.ALGEBRA, "⊙", "geom", 4, 1900, ["14"]),
+  problemDomain("51-XX", "Geometry", MathDomain.GEOMETRY, "△", "geom", 2, -300, [MathDomain.GEOMETRY, "51", "52", "52-XX"]),
+  problemDomain("53-XX", "Differential geometry", MathDomain.GEOMETRY, "∂", "geom", 4, 1827, ["53", "58", "58-XX"]),
+  problemDomain("54-XX", "General topology", MathDomain.TOPOLOGY, "∞", "geom", 3, 1895, [MathDomain.TOPOLOGY, "54", "57", "57-XX"]),
+  problemDomain("55-XX", "Algebraic topology", MathDomain.TOPOLOGY, "π", "geom", 4, 1900, ["55"]),
+  problemDomain("26-XX", "Real analysis", MathDomain.ANALYSIS, "ℝ", "ana", 3, 1700, ["26", MathDomain.ANALYSIS, "28", "28-XX", "40", "40-XX"]),
+  problemDomain("30-XX", "Complex analysis", MathDomain.ANALYSIS, "ℂ", "ana", 3, 1825, ["30", "31", "31-XX", "32", "32-XX"]),
+  problemDomain("46-XX", "Functional analysis", MathDomain.ANALYSIS, "ƒ", "ana", 4, 1900, ["46", "47", "47-XX"]),
+  problemDomain("34-XX", "Differential equations", MathDomain.ANALYSIS, "∇", "ana", 3, 1690, ["34", "35", "35-XX", "37", "37-XX", "39", "39-XX"]),
+  problemDomain(MathDomain.PROBABILITY, "Probability and statistics", MathDomain.PROBABILITY, "ℙ", "prob", 2, 1654, ["60", "60-XX", "62", "62-XX"]),
+  problemDomain("05-XX", "Combinatorics", MathDomain.COMBINATORICS, "∑", "prob", 2, 1666, ["05"]),
+  problemDomain(MathDomain.COMBINATORICS, "Graphs and discrete math", MathDomain.COMBINATORICS, "◇", "prob", 2, 1736, ["68", "68-XX", "90", "90-XX", "94", "94-XX"]),
+  problemDomain("65-XX", "Scientific computing", MathDomain.OTHER, "≈", "app", 3, 1947, ["65"]),
+  problemDomain("81-XX", "Mathematical physics", MathDomain.OTHER, "Ψ", "app", 3, 1687, ["70", "70-XX", "74", "74-XX", "76", "76-XX", "78", "78-XX", "80", "80-XX", "81", "82", "82-XX", "83", "83-XX"]),
+  problemDomain(MathDomain.OTHER, "Other", MathDomain.OTHER, "⋯", "other", 1, 9999, ["00", "00-XX", "01", "01-XX", "33", "33-XX", "41", "41-XX", "42", "42-XX", "43", "43-XX", "44", "44-XX", "45", "45-XX", "49", "49-XX", "85", "85-XX", "86", "86-XX", "91", "91-XX", "92", "92-XX", "93", "93-XX", "97", "97-XX"])
 ];
 
 export const FLAT_PROBLEM_DOMAIN_OPTIONS = PROBLEM_DOMAINS;

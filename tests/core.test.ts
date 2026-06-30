@@ -227,9 +227,9 @@ assert.equal(PROBLEM_DOMAINS.length, 21);
 assert.equal(parseDomainCode("26"), "26-XX");
 assert.equal(parseDomainCode("52-XX"), "51-XX");
 assert.equal(parseDomainCode("GEOMETRY"), "51-XX");
-assert.equal(domainLabel("26"), "Analyse réelle");
-assert.equal(domainLabel("26-XX"), "Analyse réelle");
-assert.equal(domainLabel("52-XX"), "Géométrie");
+assert.equal(domainLabel("26"), "Real analysis");
+assert.equal(domainLabel("26-XX"), "Real analysis");
+assert.equal(domainLabel("52-XX"), "Geometry");
 assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
   { domain: "ARITHMETIC", mscCode: "11-XX", spoiler: false },
   { domain: "ANALYSIS", mscCode: "26-XX", spoiler: true }

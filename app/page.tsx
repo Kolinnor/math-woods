@@ -36,7 +36,7 @@ const homeDomains = [
   { label: "Geometry", domain: MathDomain.GEOMETRY },
   { label: "Combinatorics", domain: MathDomain.COMBINATORICS },
   { label: "Probability", domain: MathDomain.PROBABILITY },
-  { label: "Topology", domain: MathDomain.TOPOLOGY },
+  { label: "General topology", domain: MathDomain.TOPOLOGY },
   { label: "More...", href: "/problems" }
 ] as const;
 
