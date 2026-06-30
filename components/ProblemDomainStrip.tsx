@@ -46,7 +46,9 @@ export function ProblemDomainStrip({ domains, families, selectedDomain }: Proble
       <div className="problem-domain-strip-header">
         <h2 id="problem-domain-strip-title">Browse by domain</h2>
         <div className="problem-domain-strip-actions">
-          <Link href="/problems">all 21 domains</Link>
+          <Link href="/problems" scroll={false}>
+            all 21 domains
+          </Link>
           <div className="problem-domain-sort">
             <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
               by {SORT_LABELS[sort]} <span aria-hidden="true">▾</span>
@@ -79,6 +81,7 @@ export function ProblemDomainStrip({ domains, families, selectedDomain }: Proble
               key={domain.value}
               href={`/problems?domain=${domain.value}` as never}
               className={active ? "problem-domain-tile active" : "problem-domain-tile"}
+              scroll={false}
             >
               <span className="problem-domain-glyph" style={{ backgroundColor: families[domain.family].color }}>
                 {domain.glyph}
