@@ -119,9 +119,14 @@ assert.deepEqual(normalizeDisplayMathLineBreaks("Before $$x^2 + 1$$ after", 18),
   cursor: 19,
   changed: true
 });
-assert.deepEqual(normalizeDisplayMathLineBreaks("Before\n$$x^2 + 1$$\nafter", 18), {
-  text: "Before\n$$x^2 + 1$$\nafter",
-  cursor: 18,
+assert.deepEqual(normalizeDisplayMathLineBreaks("Before\n$$x^2 + 1$$\nafter", 19), {
+  text: "Before\n\n$$x^2 + 1$$\n\nafter",
+  cursor: 21,
+  changed: true
+});
+assert.deepEqual(normalizeDisplayMathLineBreaks("Before\n\n$$x^2 + 1$$\n\nafter", 20), {
+  text: "Before\n\n$$x^2 + 1$$\n\nafter",
+  cursor: 20,
   changed: false
 });
 const normalizedMixedDollarText = normalizeDisplayMathLineBreaks(mixedDollarText).text;

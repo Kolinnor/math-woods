@@ -166,3 +166,19 @@ Guardrail:
   range becomes its own line, for example `Before $$x^2$$ after` becomes `Before`, `$$x^2$$`, `after`.
 - This lets the existing standalone display preview use the direct `StateField` block decoration safely.
 - Do not make mixed-line display previews use a CodeMirror block decoration before the source has been normalized.
+
+## 2026-06-30 - Keep blank lines around display math in the editor
+
+Symptom:
+
+- Deleting the blank line immediately after a rendered `$$...$$` block could make the next paragraph collapse into a
+  one-character-wide column.
+- The raw source still had the display math on its own line, but the following text touched it directly as
+  `$$...$$\ntext`, which could destabilize CodeMirror line measurement around the block preview.
+
+Guardrail:
+
+- The editor-side display math normalizer must keep non-empty text lines separated from display math lines by a blank
+  line on both sides.
+- This source normalization is safer than forcing a block decoration into a mixed line, and it preserves the previous
+  rule that display widgets come from the direct `StateField` decoration source.

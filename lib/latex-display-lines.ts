@@ -51,12 +51,38 @@ export function normalizeDisplayMathLineBreaks(text: string, cursor: number | nu
     const math = output.slice(range.from, range.to);
     const after = output.slice(range.to, lineEnd);
 
-    if (before.trim() === "" && after.trim() === "") continue;
-
     const parts: string[] = [];
     const beforeTrimmed = before.trimEnd();
     const afterTrimmed = after.trimStart();
     const suffixTrimmedLength = after.length - afterTrimmed.length;
+    const isStandaloneLine = before.trim() === "" && after.trim() === "";
+
+    if (isStandaloneLine) {
+      const needsBlankBefore = lineStart > 1 && output[lineStart - 2] !== "\n";
+      const needsBlankAfter = lineEnd + 1 < output.length && output[lineEnd + 1] !== "\n";
+
+      if (!needsBlankBefore && !needsBlankAfter) continue;
+
+      const replacement = `${needsBlankBefore ? "\n" : ""}${math}${needsBlankAfter ? "\n" : ""}`;
+      const mathOffset = needsBlankBefore ? 1 : 0;
+
+      if (mappedCursor !== null) {
+        mappedCursor = mapPositionThroughLineReplacement(
+          mappedCursor,
+          lineStart,
+          lineEnd,
+          range.from,
+          range.to,
+          replacement,
+          mathOffset,
+          null,
+          0
+        );
+      }
+
+      output = `${output.slice(0, lineStart)}${replacement}${output.slice(lineEnd)}`;
+      continue;
+    }
 
     if (beforeTrimmed) parts.push(beforeTrimmed);
     const mathOffset = parts.join("\n\n").length + (parts.length ? 2 : 0);
