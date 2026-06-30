@@ -339,6 +339,57 @@ export default async function ProblemPage({
           </div>
         )}
 
+        <section className="zen-hide related-problems-section mt-8">
+          <details>
+            <summary>
+              <span>Show related problems</span>
+              <span>{visibleRelatedGroups.reduce((count, group) => count + group.relations.length, 0)}</span>
+            </summary>
+            <div className="grid gap-5 pt-4">
+              {visibleRelatedGroups.length > 0 ? (
+                visibleRelatedGroups.map((group) => (
+                  <div key={group.id} className="related-problem-group">
+                    <h2>{group.title}</h2>
+                    <div className="grid gap-2">
+                      {group.relations.map(({ id, targetProblem }) => (
+                        <Link
+                          key={id}
+                          href={`/problems/${targetProblem.slug}`}
+                          className={problemLinkClass(
+                            "related-problem-link block",
+                            relatedSolvedIds.has(targetProblem.id)
+                          )}
+                        >
+                          <strong>
+                            <AsyncMarkdownInline markdown={targetProblem.title} />
+                          </strong>
+                          <span>
+                            by {displayNameForUser(targetProblem.author)}
+                            {targetProblem.difficulty ? ` \u00b7 difficulty ${targetProblem.difficulty}/100` : ""}
+                            {!targetProblem.listed ? " \u00b7 unlisted" : ""}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="muted">No related problems yet.</p>
+              )}
+              {canEditCurrentProblem && (
+                <div className="related-problem-actions">
+                  <Link href={`/problems/new?parent=${problem.slug}&listed=0&language=${problem.language}`} className="button">
+                    Create problem specific to this one
+                  </Link>
+                  <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
+                    Edit related problems
+                  </Link>
+                </div>
+              )}
+            </div>
+          </details>
+        </section>
+
         <section className="zen-hide proof-section mt-8">
           <div className="section-heading">
             <h2>Solutions</h2>
@@ -422,57 +473,6 @@ export default async function ProblemPage({
               </form>
             </details>
           )}
-        </section>
-
-        <section className="zen-hide related-problems-section mt-8">
-          <details>
-            <summary>
-              <span>Show related problems</span>
-              <span>{visibleRelatedGroups.reduce((count, group) => count + group.relations.length, 0)}</span>
-            </summary>
-            <div className="grid gap-5 pt-4">
-              {visibleRelatedGroups.length > 0 ? (
-                visibleRelatedGroups.map((group) => (
-                  <div key={group.id} className="related-problem-group">
-                    <h2>{group.title}</h2>
-                    <div className="grid gap-2">
-                      {group.relations.map(({ id, targetProblem }) => (
-                        <Link
-                          key={id}
-                          href={`/problems/${targetProblem.slug}`}
-                          className={problemLinkClass(
-                            "related-problem-link block",
-                            relatedSolvedIds.has(targetProblem.id)
-                          )}
-                        >
-                          <strong>
-                            <AsyncMarkdownInline markdown={targetProblem.title} />
-                          </strong>
-                          <span>
-                            by {displayNameForUser(targetProblem.author)}
-                            {targetProblem.difficulty ? ` \u00b7 difficulty ${targetProblem.difficulty}/100` : ""}
-                            {!targetProblem.listed ? " \u00b7 unlisted" : ""}
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="muted">No related problems yet.</p>
-              )}
-              {canEditCurrentProblem && (
-                <div className="related-problem-actions">
-                  <Link href={`/problems/new?parent=${problem.slug}&listed=0&language=${problem.language}`} className="button">
-                    Create problem specific to this one
-                  </Link>
-                  <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
-                    Edit related problems
-                  </Link>
-                </div>
-              )}
-            </div>
-          </details>
         </section>
 
       </article>
