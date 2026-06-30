@@ -20,6 +20,7 @@ import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
+  rangeIsStandaloneLine,
   type LatexPreviewDiagnostic
 } from "@/lib/latex-live-preview";
 import {
@@ -179,6 +180,7 @@ class LatexWidget extends WidgetType {
     readonly formula: string,
     readonly renderDisplayMode: boolean,
     readonly useBlockLayout: boolean,
+    readonly visualBlockLayout: boolean,
     readonly from: number,
     readonly editOffset: number,
     readonly diagnosticSignature: string,
@@ -192,6 +194,7 @@ class LatexWidget extends WidgetType {
       other.formula === this.formula &&
       other.renderDisplayMode === this.renderDisplayMode &&
       other.useBlockLayout === this.useBlockLayout &&
+      other.visualBlockLayout === this.visualBlockLayout &&
       other.from === this.from &&
       other.editOffset === this.editOffset &&
       other.diagnosticSignature === this.diagnosticSignature
@@ -201,10 +204,10 @@ class LatexWidget extends WidgetType {
   toDOM(view: EditorView) {
     const element = document.createElement(this.useBlockLayout ? "div" : "span");
     element.className = this.renderDisplayMode
-      ? `cm-latex-preview cm-latex-display${this.useBlockLayout ? "" : " cm-latex-display-inline"}`
+      ? `cm-latex-preview cm-latex-display${this.visualBlockLayout ? "" : " cm-latex-display-inline"}`
       : "cm-latex-preview cm-latex-inline";
     element.dataset.latexFrom = String(this.from);
-    element.dataset.latexLayout = this.useBlockLayout ? "block-display" : this.renderDisplayMode ? "inline-display" : "inline";
+    element.dataset.latexLayout = this.visualBlockLayout ? "visual-block-display" : this.renderDisplayMode ? "inline-display" : "inline";
     element.title = "Click to edit";
     element.setAttribute("aria-label", `LaTeX: ${this.formula}`);
     katex.render(this.formula, element, {
@@ -540,12 +543,14 @@ function buildLivePreviewDecorations(state: EditorState) {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
     const useBlockLayout = renderDisplayMode && latexPreviewUsesBlockDecoration(text, range);
+    const visualBlockLayout = renderDisplayMode && rangeIsStandaloneLine(text, range.from, range.to);
     const diagnostics = latexPreviewDiagnosticsForRange(text, range, renderDisplayMode, useBlockLayout);
     reportLatexPreviewDiagnostics(diagnostics);
     const widget = new LatexWidget(
       range.formula,
       renderDisplayMode,
       useBlockLayout,
+      visualBlockLayout,
       range.from,
       latexOpeningDelimiterLength(text, range.from),
       latexDiagnosticSignature(diagnostics),

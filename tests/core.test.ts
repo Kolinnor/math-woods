@@ -115,14 +115,14 @@ assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[0]), "inl
 assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[1]), "display");
 assert.equal(latexPreviewUsesBlockDecoration(mixedDollarText, mixedDollarRanges[1]), false);
 assert.deepEqual(normalizeDisplayMathLineBreaks("Before $$x^2 + 1$$ after", 18), {
-  text: "Before\n\n$$x^2 + 1$$\n\nafter",
-  cursor: 19,
+  text: "Before\n$$x^2 + 1$$\nafter",
+  cursor: 18,
   changed: true
 });
 assert.deepEqual(normalizeDisplayMathLineBreaks("Before\n$$x^2 + 1$$\nafter", 19), {
-  text: "Before\n\n$$x^2 + 1$$\n\nafter",
-  cursor: 21,
-  changed: true
+  text: "Before\n$$x^2 + 1$$\nafter",
+  cursor: 19,
+  changed: false
 });
 assert.deepEqual(
   normalizeDisplayMathLineBreaks(
@@ -130,19 +130,14 @@ assert.deepEqual(
     61
   ),
   {
-    text: "Applying $f$ on both sides gives\n\n$$f(f(f(x)))=f(x+1)$$\n\nbut this is also equal to $f(x)+1$.",
-    cursor: 63,
-    changed: true
+    text: "Applying $f$ on both sides gives\n$$f(f(f(x)))=f(x+1)$$\nbut this is also equal to $f(x)+1$.",
+    cursor: 61,
+    changed: false
   }
 );
-assert.deepEqual(normalizeDisplayMathLineBreaks("Before\n\n$$x^2 + 1$$\n\nafter", 20), {
-  text: "Before\n\n$$x^2 + 1$$\n\nafter",
-  cursor: 20,
-  changed: false
-});
 const normalizedMixedDollarText = normalizeDisplayMathLineBreaks(mixedDollarText).text;
 const normalizedMixedDollarRanges = findLatexRanges(normalizedMixedDollarText);
-assert.equal(latexPreviewUsesBlockDecoration(normalizedMixedDollarText, normalizedMixedDollarRanges[1]), true);
+assert.equal(latexPreviewUsesBlockDecoration(normalizedMixedDollarText, normalizedMixedDollarRanges[1]), false);
 assert.deepEqual(
   latexPreviewDiagnosticsForRange(mixedDollarText, mixedDollarRanges[1], true, false).map((diagnostic) => diagnostic.code),
   ["display-math-inline-display-fallback"]
@@ -154,13 +149,13 @@ assert.deepEqual(
 const standaloneDoubleDollarText = "$$x^2 + 1$$\nnext";
 const standaloneDoubleDollarRanges = findLatexRanges(standaloneDoubleDollarText);
 assert.equal(latexPreviewRenderMode(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), "display");
-assert.equal(latexPreviewUsesBlockDecoration(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), true);
-assert.deepEqual(latexPreviewDiagnosticsForRange(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0], true, true), []);
+assert.equal(latexPreviewUsesBlockDecoration(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), false);
+assert.deepEqual(latexPreviewDiagnosticsForRange(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0], true, false), []);
 const centeredDoubleDollarText = "$$2x+1=3x+2$$";
 const centeredDoubleDollarRanges = findLatexRanges(centeredDoubleDollarText);
 assert.equal(centeredDoubleDollarRanges[0]?.displayMode, true);
 assert.equal(latexPreviewRenderMode(centeredDoubleDollarText, centeredDoubleDollarRanges[0]), "display");
-assert.equal(latexPreviewUsesBlockDecoration(centeredDoubleDollarText, centeredDoubleDollarRanges[0]), true);
+assert.equal(latexPreviewUsesBlockDecoration(centeredDoubleDollarText, centeredDoubleDollarRanges[0]), false);
 assert.equal(latexCursorTargetForArrow("A $x+1$ B", 2, "forward"), 3);
 assert.equal(latexCursorTargetForArrow("A $x+1$ B", 7, "backward"), 6);
 assert.equal(latexCursorTargetForArrow(centeredDoubleDollarText, 0, "forward"), 2);

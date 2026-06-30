@@ -60,15 +60,16 @@ Guardrail:
 - Do not skip non-standalone `$$...$$` ranges.
 - Double-dollar ranges should render as block/display KaTeX even when they appear after other text on the same line,
   matching Obsidian-style editing.
-- Only display ranges that are standalone on their line should use CodeMirror `block: true` decorations.
+- Do not use CodeMirror `block: true` decorations for live display math previews; even standalone display replacements
+  can destabilize line measurement when nearby text is edited.
 - Non-standalone `$$...$$` ranges should use an inline replacement widget styled as a shrink-to-fit display preview.
   Using a CodeMirror block decoration or a 100%-wide inline widget in the middle of a line can collapse measurement and
   stack surrounding text one character per visual line.
 - In development, mixed-line display previews should publish diagnostics to `window.__mathWoodsEditorDiagnostics`.
   Static diagnostics record why a range used the inline-display fallback; DOM diagnostics warn if the mounted widget
   drifts away from the expected shrink-to-fit CSS or becomes nearly as wide as its CodeMirror line.
-- Display math widgets that use CodeMirror `block: true` must still come from the direct
-  `EditorView.decorations.from(...)` `StateField`, not from plugin-provided decorations.
+- Display math widgets must still come from the direct `EditorView.decorations.from(...)` `StateField`, not from
+  plugin-provided decorations.
 
 ## 2026-06-28 - Ordered list markers wrapped as `1` then `)`
 
@@ -164,23 +165,23 @@ Guardrail:
 
 - When a complete display math range is typed or pasted on a mixed line, normalize the Markdown source so the display
   range becomes its own line, for example `Before $$x^2$$ after` becomes `Before`, `$$x^2$$`, `after`.
-- This lets the existing standalone display preview use the direct `StateField` block decoration safely.
+- This lets the standalone display preview use the same source-line shape as rendered Markdown without adding blank
+  lines or relying on CodeMirror `block: true` decorations.
 - Do not make mixed-line display previews use a CodeMirror block decoration before the source has been normalized.
 
-## 2026-06-30 - Keep blank lines around display math in the editor
+## 2026-06-30 - Avoid block decorations for display math in the editor
 
 Symptom:
 
-- Deleting the blank line immediately after a rendered `$$...$$` block could make the next paragraph collapse into a
-  one-character-wide column.
-- The raw source still had the display math on its own line, but the following text touched it directly as
-  `$$...$$\ntext`, which could destabilize CodeMirror line measurement around the block preview.
+- Deleting near a rendered `$$...$$` block could make the next paragraph collapse into a one-character-wide column.
+- A temporary attempt to force blank lines around display math avoided some adjacency cases but introduced a new bug:
+  after typing `$$0=0$$`, moving to the next line, and typing a character, the character appeared on the third line.
 
 Guardrail:
 
-- The editor-side display math normalizer must keep non-empty text lines separated from display math lines by a blank
-  line on both sides.
+- The editor-side display math normalizer may put mixed-line `$$...$$` ranges on their own source line, but it must not
+  add physical blank lines around display math.
 - This normalization must happen in a CodeMirror transaction filter, before the editor renders/measures the dangerous
   intermediate state; doing it later from an update listener can leave stale one-character-wide measurements behind.
-- This source normalization is safer than forcing a block decoration into a mixed line, and it preserves the previous
-  rule that display widgets come from the direct `StateField` decoration source.
+- Display math previews should be visually block-like through the widget's CSS, but they must not use CodeMirror
+  `block: true` replacement decorations.

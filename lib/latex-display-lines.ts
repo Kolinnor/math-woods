@@ -57,40 +57,15 @@ export function normalizeDisplayMathLineBreaks(text: string, cursor: number | nu
     const suffixTrimmedLength = after.length - afterTrimmed.length;
     const isStandaloneLine = before.trim() === "" && after.trim() === "";
 
-    if (isStandaloneLine) {
-      const needsBlankBefore = lineStart > 1 && output[lineStart - 2] !== "\n";
-      const needsBlankAfter = lineEnd + 1 < output.length && output[lineEnd + 1] !== "\n";
-
-      if (!needsBlankBefore && !needsBlankAfter) continue;
-
-      const replacement = `${needsBlankBefore ? "\n" : ""}${math}${needsBlankAfter ? "\n" : ""}`;
-      const mathOffset = needsBlankBefore ? 1 : 0;
-
-      if (mappedCursor !== null) {
-        mappedCursor = mapPositionThroughLineReplacement(
-          mappedCursor,
-          lineStart,
-          lineEnd,
-          range.from,
-          range.to,
-          replacement,
-          mathOffset,
-          null,
-          0
-        );
-      }
-
-      output = `${output.slice(0, lineStart)}${replacement}${output.slice(lineEnd)}`;
-      continue;
-    }
+    if (isStandaloneLine) continue;
 
     if (beforeTrimmed) parts.push(beforeTrimmed);
-    const mathOffset = parts.join("\n\n").length + (parts.length ? 2 : 0);
+    const mathOffset = parts.join("\n").length + (parts.length ? 1 : 0);
     parts.push(math);
-    const afterOffset = afterTrimmed ? parts.join("\n\n").length + 2 : null;
+    const afterOffset = afterTrimmed ? parts.join("\n").length + 1 : null;
     if (afterTrimmed) parts.push(afterTrimmed);
 
-    const replacement = parts.join("\n\n");
+    const replacement = parts.join("\n");
 
     if (mappedCursor !== null) {
       mappedCursor = mapPositionThroughLineReplacement(

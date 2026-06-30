@@ -47,7 +47,9 @@ export function latexPreviewRenderMode(_text: string, range: LatexRange): LatexP
 }
 
 export function latexPreviewUsesBlockDecoration(text: string, range: LatexRange) {
-  return range.displayMode && rangeIsStandaloneLine(text, range.from, range.to);
+  void text;
+  void range;
+  return false;
 }
 
 export function latexPreviewLayoutKind(renderDisplayMode: boolean, useBlockLayout: boolean): LatexPreviewLayoutKind {

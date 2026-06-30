@@ -994,7 +994,8 @@ textarea {
   overflow-x: auto;
   padding: 0.55rem 0;
   text-align: center;
-  width: 100%;
+  max-width: 100%;
+  width: auto;
 }
 
 .markdown-editor .cm-latex-display-inline {
