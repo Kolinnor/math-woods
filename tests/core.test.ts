@@ -19,7 +19,7 @@ import {
 import { latexCursorTargetForArrow, latexCursorTargetForVerticalArrow } from "../lib/latex-navigation.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
-import { renderMarkdown } from "../lib/markdown.ts";
+import { renderInlineMarkdown, renderMarkdown } from "../lib/markdown.ts";
 import {
   assignableRolesFor,
   canAssignRole,
@@ -255,6 +255,14 @@ assert.equal(renderedLatex.includes("<em>{n\\geq 0}</annotation>"), false);
 const renderedBackslashLatex = await renderMarkdown("Let \\(x^2\\) and \\[y=x+1\\].");
 assert.equal(renderedBackslashLatex.includes("x^2"), true);
 assert.equal(renderedBackslashLatex.includes("y=x+1"), true);
+
+const renderedMixedDisplayLatex = await renderMarkdown("Before $$x^2 + 1$$ after");
+assert.match(renderedMixedDisplayLatex, /<p>Before\s*<\/p>\s*<p><span class="katex-display"/);
+assert.match(renderedMixedDisplayLatex, /<\/span><\/p>\s*<p>\s*after<\/p>/);
+assert.equal(/<p>Before\s*<span class="katex-display"/.test(renderedMixedDisplayLatex), false);
+
+const renderedInlineDisplayLatex = await renderInlineMarkdown("Title $$x^2 + 1$$");
+assert.match(renderedInlineDisplayLatex, /^Title <span class="katex-display"/);
 
 const renderedLatexList = await renderMarkdown(String.raw`\begin{itemize}
 \item Either $z$ is a complex eigenvalue.

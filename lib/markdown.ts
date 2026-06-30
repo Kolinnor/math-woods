@@ -14,7 +14,21 @@ function externalLinkAttributes(href: string | undefined): Record<string, string
   };
 }
 
-function protectLatex(input: string) {
+function latexTokenMarkdown(input: string, range: ReturnType<typeof findLatexRanges>[number], token: string) {
+  if (!range.displayMode) return token;
+
+  const lineStart = input.lastIndexOf("\n", Math.max(0, range.from - 1)) + 1;
+  const nextBreak = input.indexOf("\n", range.to);
+  const lineEnd = nextBreak === -1 ? input.length : nextBreak;
+  const beforeOnLine = input.slice(lineStart, range.from);
+  const afterOnLine = input.slice(range.to, lineEnd);
+  const leadingBreak = beforeOnLine.trim() === "" ? "" : "\n\n";
+  const trailingBreak = afterOnLine.trim() === "" ? "" : "\n\n";
+
+  return `${leadingBreak}${token}${trailingBreak}`;
+}
+
+function protectLatex(input: string, blockDisplayMath = true) {
   const replacements = new Map<string, string>();
   const ranges = findLatexRanges(input);
   let output = input;
@@ -29,7 +43,8 @@ function protectLatex(input: string) {
         throwOnError: false
       })
     );
-    output = `${output.slice(0, range.from)}${token}${output.slice(range.to)}`;
+    const markdownToken = blockDisplayMath ? latexTokenMarkdown(input, range, token) : token;
+    output = `${output.slice(0, range.from)}${markdownToken}${output.slice(range.to)}`;
   }
 
   return { markdown: output, replacements };
@@ -68,9 +83,9 @@ function normalizeLatexLists(markdown: string) {
   );
 }
 
-export async function renderMarkdown(markdown: string, missingSlugs = new Set<string>()) {
+export async function renderMarkdown(markdown: string, missingSlugs = new Set<string>(), blockDisplayMath = true) {
   const normalizedMarkdown = normalizeLatexLists(markdown);
-  const { markdown: withLatexTokens, replacements } = protectLatex(normalizedMarkdown);
+  const { markdown: withLatexTokens, replacements } = protectLatex(normalizedMarkdown, blockDisplayMath);
   const withWikiLinks = replaceWikiLinks(
     withLatexTokens,
     (link) => `/concepts/${link.targetSlug}`,
@@ -161,7 +176,7 @@ export async function renderMarkdown(markdown: string, missingSlugs = new Set<st
 }
 
 export async function renderInlineMarkdown(markdown: string, missingSlugs = new Set<string>()) {
-  const html = await renderMarkdown(markdown, missingSlugs);
+  const html = await renderMarkdown(markdown, missingSlugs, false);
   const trimmed = html.trim();
   const singleParagraph = trimmed.match(/^<p>([\s\S]*)<\/p>$/);
 

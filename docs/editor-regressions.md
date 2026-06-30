@@ -134,3 +134,21 @@ These are known behavioral fixes that should not be broken when changing live pr
 - Markdown headings and bullet points should preview in the editor, but their markup must remain editable when the
   cursor enters the relevant range.
 - Right-clicking selected text should open the concept-link menu without losing the selected text.
+
+## 2026-06-30 - Markdown display math should render on its own centered line
+
+Symptom:
+
+- In rendered Markdown, text like `Before $$x^2$$ after` could keep the display equation inside the same paragraph
+  flow even though double-dollar math is meant to read as a centered display equation.
+- A previous fix only centered KaTeX display text with CSS; it did not force mixed-line `$$...$$` ranges onto their own
+  rendered line.
+
+Guardrail:
+
+- Server-side Markdown rendering may split display math tokens onto standalone Markdown lines before `marked` parses the
+  document.
+- Do not apply that block splitting to `renderInlineMarkdown`, because problem titles and compact labels still need an
+  inline-safe representation.
+- Do not use this server-rendering rule as a reason to turn mixed-line `$$...$$` live-editor previews into CodeMirror
+  block decorations; non-standalone display ranges in the editor must keep the shrink-to-fit inline-display fallback.
