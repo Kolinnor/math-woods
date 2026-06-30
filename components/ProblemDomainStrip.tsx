@@ -44,11 +44,13 @@ export function ProblemDomainStrip({ domains, families, selectedDomain }: Proble
   return (
     <section className="problem-domain-strip" aria-labelledby="problem-domain-strip-title">
       <div className="problem-domain-strip-header">
-        <h2 id="problem-domain-strip-title">Browse by domain</h2>
-        <div className="problem-domain-strip-actions">
+        <div className="problem-domain-strip-title-row">
+          <h2 id="problem-domain-strip-title">Browse by domain</h2>
           <Link href="/problems" scroll={false}>
-            all 21 domains
+            all domains
           </Link>
+        </div>
+        <div className="problem-domain-strip-actions">
           <div className="problem-domain-sort">
             <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
               by {SORT_LABELS[sort]} <span aria-hidden="true">▾</span>

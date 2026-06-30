@@ -3327,11 +3327,28 @@ body:has(.problems-page-shell) .header-search input::placeholder {
   margin-bottom: 0.85rem;
 }
 
+.problem-domain-strip-title-row {
+  align-items: baseline;
+  display: flex;
+  gap: 0.65rem;
+}
+
 .problem-domain-strip-header h2 {
   font-size: 0.96rem;
   font-weight: 750;
   margin: 0;
   white-space: nowrap;
+}
+
+.problem-domain-strip-title-row a {
+  color: #5a665c;
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.problem-domain-strip-title-row a:hover {
+  color: #1c211b;
 }
 
 .problem-domain-strip-actions {
