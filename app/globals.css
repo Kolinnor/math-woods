@@ -3484,15 +3484,22 @@ body:has(.problems-page-shell) .header-search input::placeholder {
 }
 
 .problem-difficulty-slider-track {
-  background:
-    linear-gradient(90deg, rgb(0 0 0 / 0) 0 var(--difficulty-min), rgb(255 255 255 / 0.56) var(--difficulty-min) var(--difficulty-max), rgb(0 0 0 / 0) var(--difficulty-max) 100%),
-    linear-gradient(90deg, #5d7a4c, #a07a2c, #b05f2c, #8c3b22);
+  background: #d8d0bd;
   border-radius: 999px;
   height: 6px;
   left: 0;
+  overflow: hidden;
   position: absolute;
   right: 0;
   top: 9px;
+}
+
+.problem-difficulty-slider-track::before {
+  background: linear-gradient(90deg, #5d7a4c 0%, #a07a2c 39%, #b05f2c 64%, #8c3b22 100%);
+  clip-path: inset(0 calc(100% - var(--difficulty-max)) 0 var(--difficulty-min) round 999px);
+  content: "";
+  inset: 0;
+  position: absolute;
 }
 
 .problem-difficulty-slider input[type="range"] {
