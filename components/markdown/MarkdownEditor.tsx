@@ -39,6 +39,7 @@ import {
 } from "@/lib/markdown-shortcuts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
+import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
 const LINK_MENU_VIEWPORT_MARGIN = 12;
@@ -147,19 +148,6 @@ function formatDraftTime(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
-function cleanWikiLinkTarget(value: string) {
-  return value.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function wikiLinkMarkup(target: string, label: string) {
-  const cleanTarget = cleanWikiLinkTarget(target || label);
-  const cleanLabel = label.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
-
-  if (!cleanTarget) return cleanLabel;
-  if (!cleanLabel || cleanLabel.toLowerCase() === cleanTarget.toLowerCase()) return `[[${cleanTarget}]]`;
-  return `[[${cleanTarget}|${cleanLabel}]]`;
-}
-
 function parseSelectedWikiLink(value: string) {
   const match = value.match(/^\[\[([^\]\n]+)\]\]$/);
   if (!match) return null;
@@ -167,7 +155,7 @@ function parseSelectedWikiLink(value: string) {
   const [target, label] = match[1].split("|", 2);
   return {
     target: cleanWikiLinkTarget(target),
-    label: (label ?? target).replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim()
+    label: cleanWikiLinkLabel(label ?? target)
   };
 }
 
@@ -1170,7 +1158,7 @@ export function MarkdownEditor({
     const view = viewRef.current;
     if (!view || !linkMenu) return;
 
-    const insert = wikiLinkMarkup(linkTarget, linkText);
+    const insert = wikiLinkMarkup(linkTarget, linkText || linkMenu.selectedText);
     view.dispatch({
       changes: {
         from: linkMenu.from,
@@ -1197,7 +1185,7 @@ export function MarkdownEditor({
   }
 
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
-  const cleanLinkText = linkText.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
+  const cleanLinkText = cleanWikiLinkLabel(linkText || linkMenu?.selectedText || "");
   const hasExactSuggestion = linkSuggestions.some((suggestion) => {
     const target = cleanLinkTarget.toLowerCase();
     const aliases = suggestion.aliases.map((alias) => alias.toLowerCase());

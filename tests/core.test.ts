@@ -10,7 +10,7 @@ import {
 } from "../lib/frontmatter.ts";
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
-import { extractWikiLinks, replaceWikiLinks } from "../lib/wikilinks.ts";
+import { extractWikiLinks, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
@@ -75,6 +75,8 @@ assert.equal(
   html,
   'A lire: <a class="wiki-link missing" href="/concepts/racine-primitive">racines primitives</a>.'
 );
+assert.equal(wikiLinkMarkup("Category", "this is a category"), "[[Category|this is a category]]");
+assert.equal(wikiLinkMarkup("Category", "Category"), "[[Category|Category]]");
 
 const start = new Date("2026-06-04T10:00:00.000Z");
 const unlock = unlockDate(start);

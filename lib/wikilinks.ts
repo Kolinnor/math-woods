@@ -10,6 +10,23 @@ export type WikiLink = {
 
 const wikiLinkPattern = /\[\[([^\]\n]+)\]\]/g;
 
+export function cleanWikiLinkTarget(value: string) {
+  return value.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export function cleanWikiLinkLabel(value: string) {
+  return value.replace(/[\[\]\n\r|]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export function wikiLinkMarkup(target: string, label: string) {
+  const cleanTarget = cleanWikiLinkTarget(target || label);
+  const cleanLabel = cleanWikiLinkLabel(label || target);
+
+  if (!cleanTarget) return cleanLabel;
+  if (!cleanLabel) return `[[${cleanTarget}|${cleanTarget}]]`;
+  return `[[${cleanTarget}|${cleanLabel}]]`;
+}
+
 function parseWikiLink(raw: string, inner: string): WikiLink | null {
   const [targetPart, labelPart] = inner.split("|", 2);
   const target = targetPart.trim();
