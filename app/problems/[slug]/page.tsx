@@ -698,17 +698,18 @@ export default async function ProblemPage({
           </div>
         </section>
 
-        <section className="sidebar-section">
-          <h2 className="mb-3 font-semibold">Playlists</h2>
-          <div className="grid gap-2 text-sm">
-            {playlists.map((item) => (
-              <Link key={item.id} href={`/playlists/${item.playlist.slug}`} className="underline">
-                {item.playlist.title}
-              </Link>
-            ))}
-            {playlists.length === 0 && <p className="muted">Not in a playlist yet.</p>}
-          </div>
-        </section>
+        {playlists.length > 0 && (
+          <section className="sidebar-section">
+            <h2 className="mb-3 font-semibold">Playlists</h2>
+            <div className="grid gap-2 text-sm">
+              {playlists.map((item) => (
+                <Link key={item.id} href={`/playlists/${item.playlist.slug}`} className="underline">
+                  {item.playlist.title}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </aside>
     </div>
   );
