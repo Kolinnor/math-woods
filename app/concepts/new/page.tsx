@@ -66,7 +66,7 @@ export default async function NewConceptPage({
         <div className="grid gap-4 sm:grid-cols-2">
           <ProblemDomainPicker
             domains={PROBLEM_DOMAINS}
-            helpText="Choose one Math Woods domain."
+            helpText={null}
             initialValues={["OTHER"]}
             inputName="domain"
             label="Domain"

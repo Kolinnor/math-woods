@@ -13,7 +13,7 @@ type ProblemDomainPickerProps = {
   label?: string;
   maxDomains?: number;
   showSpoilerToggle?: boolean;
-  helpText?: string;
+  helpText?: string | null;
 };
 
 function findOption(domains: DomainOption[], value: string) {
@@ -170,7 +170,7 @@ export function ProblemDomainPicker({
           );
         })}
       </div>
-      <p className="muted text-xs">{helpText ?? `Choose up to ${maxDomains} domains.`}</p>
+      {helpText !== null && <p className="muted text-xs">{helpText ?? `Choose up to ${maxDomains} domains.`}</p>}
     </div>
   );
 }
