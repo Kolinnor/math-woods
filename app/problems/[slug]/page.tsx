@@ -43,6 +43,28 @@ import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
+const heroArt = [
+  { src: "/art/hero-rye.jpg", alt: "Ivan Shishkin, Rye" },
+  { src: "/art/brook-in-the-forest.jpg", alt: "Ivan Shishkin, Brook in the Forest" },
+  { src: "/art/pine-forest.jpg", alt: "Ivan Shishkin, Pine Forest" }
+] as const;
+
+function difficultyColor(difficulty: number | null) {
+  if (!difficulty) return "#8a9184";
+  if (difficulty <= 19) return "#5d7a4c";
+  if (difficulty <= 39) return "#a07a2c";
+  if (difficulty <= 64) return "#b05f2c";
+  return "#8c3b22";
+}
+
+function difficultyBars(difficulty: number | null) {
+  if (!difficulty) return 0;
+  if (difficulty <= 19) return 1;
+  if (difficulty <= 39) return 2;
+  if (difficulty <= 64) return 3;
+  return 4;
+}
+
 export default async function ProblemPage({
   params,
   searchParams
@@ -231,59 +253,64 @@ export default async function ProblemPage({
     queryParams.solution === "posted"
       ? "Solution published. It is saved with the other solutions, which stay hidden until revealed."
       : null;
+  const heroImage = heroArt[problem.id % heroArt.length];
+  const difficultyTone = difficultyColor(problem.difficulty ?? null);
+  const difficultyLevel = difficultyBars(problem.difficulty ?? null);
 
   return (
-    <div className="problem-page grid gap-6 lg:grid-cols-[1fr_18rem]">
-      <article>
+    <div className="problem-detail-shell">
+      <section className="problem-hero">
+        <img src={heroImage.src} alt={heroImage.alt} />
+        <div className="problem-hero-overlay" />
+        <div className="problem-hero-inner">
+          <div>
+            <p className="problem-hero-kicker">
+              {problemDomains.length ? problemDomains.map(domainLabel).join(" / ") : "Domain hidden until solved"}
+              {problem.difficulty ? ` / difficulty ${problem.difficulty}/100` : ""}
+            </p>
+            <h1>
+              <AsyncMarkdownInline markdown={problem.title} />
+            </h1>
+            <p className="problem-hero-byline">
+              by <Link href={`/profile/${problem.author.username}`}>{displayNameForUser(problem.author)}</Link>
+            </p>
+          </div>
+          <div className="problem-hero-meta">
+            <p>{qualityLabel(problem.qualityStatus)}</p>
+            {hiddenDomainCount > 0 && problemDomains.length > 0 && <p>spoiler domain hidden until solved</p>}
+            {!problem.listed && <p>Playlist-specific / unlisted</p>}
+          </div>
+        </div>
+      </section>
+
+      <div className="problem-detail-body">
+        <article className="problem-detail-article">
+          <div className="problem-detail-tools zen-hide">
+            <ZenModeToggle />
+          </div>
         {verificationMessage && (
           <p className="quality-banner quality-needs-work mb-4" role="status">
             {verificationMessage}
           </p>
         )}
-        <div className="reading-header mb-5">
-          <div className="mb-3 flex justify-end">
-            <ZenModeToggle />
-          </div>
-          <h1>
-            <AsyncMarkdownInline markdown={problem.title} />
-          </h1>
-          <p className="zen-meta muted mt-1">
-            by{" "}
-            <Link href={`/profile/${problem.author.username}`} className="underline">
-              {displayNameForUser(problem.author)}
-            </Link>
-            {problem.difficulty ? ` \u00b7 difficulty ${problem.difficulty}/100` : ""}
-          </p>
-          <p className="zen-meta muted mt-1 text-sm">
-            {problemDomains.length ? problemDomains.map(domainLabel).join(" / ") : "Domain hidden until solved"}
-            {hiddenDomainCount > 0 && problemDomains.length > 0 ? " / spoiler domain hidden until solved" : ""}
-          </p>
+
           <ContentTranslations
             currentLanguage={problem.language}
             hrefPrefix="/problems"
             translations={translations}
             createHref={addTranslationHref}
           />
-          {!problem.listed && (
-            <p className="zen-meta muted mt-1 text-sm">
-              Playlist-specific: this problem is not listed in the public problem index.
-            </p>
-          )}
           {problem.tags.length > 0 && (
-            <div className="zen-meta mt-3 flex flex-wrap gap-2">
+            <div className="problem-detail-tags zen-meta">
               {problem.tags.map(({ tag }) => (
-                <Link
-                  key={tag.id}
-                  href={`/problems?tag=${tag.slug}`}
-                  className="tag"
-                >
+                <Link key={tag.id} href={`/problems?tag=${tag.slug}`} className="tag">
                   {tag.name}
                 </Link>
               ))}
             </div>
           )}
           {showSpoilerTags && (
-            <div className="zen-meta mt-3 flex flex-wrap gap-2">
+            <div className="problem-detail-tags zen-meta">
               <span className="meta">Spoiler tags:</span>
               {problem.spoilerTags.map(({ tag }) => (
                 <Link
@@ -296,7 +323,6 @@ export default async function ProblemPage({
               ))}
             </div>
           )}
-        </div>
 
         {(problem.qualityStatus === "UNREVIEWED" || problem.qualityStatus === "NEEDS_WORK") && (
           <div
@@ -477,7 +503,20 @@ export default async function ProblemPage({
 
       </article>
 
-      <aside className="zen-hide grid content-start gap-5">
+        <aside className="problem-rail zen-hide">
+          <div className="problem-difficulty-tile">
+            <p>Difficulty</p>
+            <p className="problem-difficulty-value" style={{ color: difficultyTone }}>
+              {problem.difficulty ?? "--"}
+              <span>/100</span>
+            </p>
+            <span className="problem-difficulty-bars" aria-hidden="true">
+              {[1, 2, 3, 4].map((level) => (
+                <i key={level} style={{ background: level <= difficultyLevel ? difficultyTone : undefined }} />
+              ))}
+            </span>
+          </div>
+
         <section className="action-surface">
           {user && attempt?.status !== "SOLVED" && (
             attempt ? (
@@ -711,6 +750,7 @@ export default async function ProblemPage({
           </section>
         )}
       </aside>
+      </div>
     </div>
   );
 }
