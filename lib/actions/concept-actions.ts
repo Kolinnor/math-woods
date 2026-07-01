@@ -20,6 +20,10 @@ async function renderMarkdownContent(markdown: string) {
   return renderMarkdown(markdown);
 }
 
+function duplicateConceptTitleError() {
+  return new Error("A concept card already exists with this title.");
+}
+
 export async function createConceptAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`concept:create:${user.id}`, 5, 60_000);
@@ -35,6 +39,15 @@ export async function createConceptAction(formData: FormData) {
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const concept = await prisma.$transaction(async (tx) => {
+    const existingTitle = await tx.concept.findFirst({
+      where: {
+        language,
+        title: { equals: title, mode: "insensitive" }
+      },
+      select: { id: true }
+    });
+    if (existingTitle) throw duplicateConceptTitleError();
+
     if (translationGroupId) {
       const existingTranslation = await tx.concept.findFirst({
         where: { translationGroupId, language },
@@ -84,7 +97,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   await assertRateLimit(`concept:update:${user.id}`, 20, 60_000);
   const existingConcept = await prisma.concept.findUnique({
     where: { id: conceptId },
-    select: { createdById: true }
+    select: { createdById: true, language: true, title: true }
   });
   if (!existingConcept) throw new Error("Concept not found.");
   if (!canEditConcept(user, existingConcept)) {
@@ -104,6 +117,20 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   const concept = await prisma.$transaction(async (tx) => {
+    const titleOrLanguageChanged =
+      title.toLowerCase() !== existingConcept.title.toLowerCase() || language !== existingConcept.language;
+    if (titleOrLanguageChanged) {
+      const existingTitle = await tx.concept.findFirst({
+        where: {
+          id: { not: conceptId },
+          language,
+          title: { equals: title, mode: "insensitive" }
+        },
+        select: { id: true }
+      });
+      if (existingTitle) throw duplicateConceptTitleError();
+    }
+
     const updated = await tx.concept.update({
       where: { id: conceptId },
       data: {
