@@ -51,7 +51,7 @@ const DIFFICULTY_RANGES: DifficultyRange[] = [
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
   { value: "solved", label: "Most solved" },
-  { value: "favorited", label: "Most loved" },
+  { value: "favorited", label: "Most favorited" },
   { value: "difficulty", label: "Hardest first" },
   { value: "easiest", label: "Easiest first" }
 ];
