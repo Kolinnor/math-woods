@@ -534,13 +534,7 @@ export default async function ProblemsPage({
                 <option value="GOOD">Good</option>
                 <option value="EXCELLENT">Excellent</option>
               </select>
-              <select name="sort" defaultValue={sortValue}>
-                <option value="newest">Newest</option>
-                <option value="solved">Most solved</option>
-                <option value="favorited">Most loved</option>
-                <option value="difficulty">Hardest first</option>
-                <option value="easiest">Easiest first</option>
-              </select>
+              {sortValue !== "newest" && <input type="hidden" name="sort" value={sortValue} />}
               <label className="checkbox-inline">
                 <input name="includeSpoilerTags" type="checkbox" value="1" defaultChecked={showSpoilerTags} />
                 <span>Include spoilers</span>
