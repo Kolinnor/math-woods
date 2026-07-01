@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { frontmatter, markdownResponse } from "@/lib/export-markdown";
 import { prisma } from "@/lib/db";
+import { domainLabel } from "@/lib/domains";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -22,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       slug: concept.slug,
       language: concept.language,
       translationGroupId: concept.translationGroupId,
-      domain: concept.domain.toLowerCase(),
+      domain: domainLabel(concept.domain),
       status: concept.status.toLowerCase(),
       aliases: concept.aliases.map((alias) => alias.alias),
       lastEditedBy: concept.lastEditedBy?.username

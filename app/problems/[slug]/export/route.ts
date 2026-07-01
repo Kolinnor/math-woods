@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { frontmatter, markdownResponse } from "@/lib/export-markdown";
 import { prisma } from "@/lib/db";
+import { domainLabel } from "@/lib/domains";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -25,8 +26,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       language: problem.language,
       translationGroupId: problem.translationGroupId,
       author: problem.author.username,
-      domains: problem.domains.length ? problem.domains.map((domain) => domain.mscCode) : [problem.domain],
-      spoilerDomains: problem.domains.filter((domain) => domain.spoiler).map((domain) => domain.mscCode),
+      domains: problem.domains.length ? problem.domains.map((domain) => domainLabel(domain.mscCode)) : [domainLabel(problem.domain)],
+      spoilerDomains: problem.domains.filter((domain) => domain.spoiler).map((domain) => domainLabel(domain.mscCode)),
       tags: problem.tags.map(({ tag }) => tag.name),
       spoilerTags: problem.spoilerTags.map(({ tag }) => tag.name),
       difficulty: problem.difficulty,

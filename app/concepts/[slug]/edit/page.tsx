@@ -2,10 +2,11 @@ import { notFound } from "next/navigation";
 import { ConceptStatus } from "@prisma/client";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { updateConceptAction } from "@/lib/actions/concept-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { MATH_DOMAINS } from "@/lib/domains";
+import { PROBLEM_DOMAINS } from "@/lib/domains";
 import { canEditConcept, canSetConceptStatus } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -49,16 +50,15 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           help="Changing this moves the page to another language inside the same translation group."
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Domain</span>
-            <select name="domain" defaultValue={concept.domain}>
-              {MATH_DOMAINS.map((domain) => (
-                <option key={domain.value} value={domain.value}>
-                  {domain.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ProblemDomainPicker
+            domains={PROBLEM_DOMAINS}
+            helpText="Choose one Math Woods domain."
+            initialValues={[concept.domain]}
+            inputName="domain"
+            label="Domain"
+            maxDomains={1}
+            showSpoilerToggle={false}
+          />
           <label className="grid gap-2">
             <span className="text-sm font-medium">Aliases</span>
             <input name="aliases" defaultValue={concept.aliases.map((alias) => alias.alias).join(", ")} />

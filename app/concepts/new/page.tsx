@@ -1,11 +1,12 @@
 import { createConceptAction } from "@/lib/actions/concept-actions";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
-import { MATH_DOMAINS } from "@/lib/domains";
+import { PROBLEM_DOMAINS } from "@/lib/domains";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
@@ -63,16 +64,15 @@ export default async function NewConceptPage({
           help="Each translation is its own page. Missing translations are not shown as existing pages."
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Domain</span>
-            <select name="domain" defaultValue="OTHER">
-              {MATH_DOMAINS.map((domain) => (
-                <option key={domain.value} value={domain.value}>
-                  {domain.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ProblemDomainPicker
+            domains={PROBLEM_DOMAINS}
+            helpText="Choose one Math Woods domain."
+            initialValues={["OTHER"]}
+            inputName="domain"
+            label="Domain"
+            maxDomains={1}
+            showSpoilerToggle={false}
+          />
           <label className="grid gap-2">
             <span className="text-sm font-medium">Aliases</span>
             <input name="aliases" placeholder="Vieta's formulas, Viète relations" />

@@ -30,13 +30,13 @@ const recentImages = [
 ] as const;
 
 const homeDomains = [
-  { label: "Algebra", domain: MathDomain.ALGEBRA },
-  { label: "Analysis", domain: MathDomain.ANALYSIS },
-  { label: "Number theory", domain: MathDomain.ARITHMETIC },
-  { label: "Geometry", domain: MathDomain.GEOMETRY },
-  { label: "Combinatorics", domain: MathDomain.COMBINATORICS },
-  { label: "Probability", domain: MathDomain.PROBABILITY },
-  { label: "General topology", domain: MathDomain.TOPOLOGY },
+  { label: "Algebra", domain: "algebra" },
+  { label: "Real analysis", domain: "real-analysis" },
+  { label: "Number theory", domain: "number-theory" },
+  { label: "Geometry", domain: "geometry" },
+  { label: "Combinatorics", domain: "combinatorics" },
+  { label: "Probability and statistics", domain: "probability-statistics" },
+  { label: "General topology", domain: "general-topology" },
   { label: "More...", href: "/problems" }
 ] as const;
 

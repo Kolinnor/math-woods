@@ -2,7 +2,7 @@ import { ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import Link from "next/link";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { prisma } from "@/lib/db";
-import { domainLabel, MATH_DOMAINS } from "@/lib/domains";
+import { coarseDomainForCode, domainCodeAliases, domainLabel, parseDomainCode, PROBLEM_DOMAINS } from "@/lib/domains";
 import { missingConcepts } from "@/lib/internal-links";
 import { contentLanguageLabel } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -25,7 +25,15 @@ export default async function ConceptsPage({
   const preferredLanguage = await getPreferredContentLanguage();
   const { q = "", domain = "", status = "" } = await searchParams;
   const query = q.trim();
-  const domainValue = Object.values(MathDomain).includes(domain as MathDomain) ? (domain as MathDomain) : undefined;
+  const domainValue = domain ? parseDomainCode(domain) : undefined;
+  const domainFilterValues = domainValue
+    ? [
+        coarseDomainForCode(domainValue),
+        ...domainCodeAliases(domainValue).filter((value): value is MathDomain =>
+          Object.values(MathDomain).includes(value as MathDomain)
+        )
+      ]
+    : [];
   const statusValue = Object.values(ConceptStatus).includes(status as ConceptStatus)
     ? (status as ConceptStatus)
     : undefined;
@@ -40,7 +48,7 @@ export default async function ConceptsPage({
           ]
         }
       : {}),
-    ...(domainValue ? { domain: domainValue } : {}),
+    ...(domainValue ? { domain: { in: [...new Set(domainFilterValues)] } } : {}),
     ...(statusValue ? { status: statusValue } : {})
   };
 
@@ -90,7 +98,7 @@ export default async function ConceptsPage({
           <input name="q" defaultValue={query} placeholder="Search titles, content, or aliases" />
           <select name="domain" defaultValue={domainValue ?? ""}>
             <option value="">Any domain</option>
-            {MATH_DOMAINS.map((item) => (
+            {PROBLEM_DOMAINS.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>

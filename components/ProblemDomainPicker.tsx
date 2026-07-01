@@ -9,6 +9,11 @@ type ProblemDomainPickerProps = {
   domains: DomainOption[];
   initialValues: string[];
   initialSpoilers?: string[];
+  inputName?: string;
+  label?: string;
+  maxDomains?: number;
+  showSpoilerToggle?: boolean;
+  helpText?: string;
 };
 
 function findOption(domains: DomainOption[], value: string) {
@@ -18,9 +23,18 @@ function findOption(domains: DomainOption[], value: string) {
     .find((domain) => domain.value.toUpperCase() === normalized || domain.aliases?.some((alias) => alias.toUpperCase() === normalized));
 }
 
-export function ProblemDomainPicker({ domains, initialValues, initialSpoilers = [] }: ProblemDomainPickerProps) {
+export function ProblemDomainPicker({
+  domains,
+  initialValues,
+  initialSpoilers = [],
+  inputName = "domains",
+  label = "Domains",
+  maxDomains = MAX_PROBLEM_DOMAINS,
+  showSpoilerToggle = true,
+  helpText
+}: ProblemDomainPickerProps) {
   const initial = initialValues.length
-    ? initialValues.map((value) => findOption(domains, value)?.value ?? value).slice(0, MAX_PROBLEM_DOMAINS)
+    ? initialValues.map((value) => findOption(domains, value)?.value ?? value).slice(0, maxDomains)
     : [domains[0]?.value];
   const [values, setValues] = useState(initial.filter(Boolean));
   const [spoilers, setSpoilers] = useState(() => new Set(initialSpoilers.map((value) => findOption(domains, value)?.value ?? value)));
@@ -40,7 +54,7 @@ export function ProblemDomainPicker({ domains, initialValues, initialSpoilers = 
     const used = new Set(values);
     const fallback = domains.flatMap((domain) => [domain, ...(domain.children ?? [])]).find((domain) => !used.has(domain.value));
     if (!fallback) return;
-    setValues((current) => [...current, fallback.value].slice(0, MAX_PROBLEM_DOMAINS));
+    setValues((current) => [...current, fallback.value].slice(0, maxDomains));
   }
 
   function removeDomain(index: number) {
@@ -68,8 +82,8 @@ export function ProblemDomainPicker({ domains, initialValues, initialSpoilers = 
   return (
     <div className="domain-picker">
       <div className="domain-picker-header">
-        <span className="text-sm font-medium">Domains</span>
-        {values.length < MAX_PROBLEM_DOMAINS && (
+        <span className="text-sm font-medium">{label}</span>
+        {values.length < maxDomains && (
           <button type="button" className="secondary domain-add-button" onClick={addDomain}>
             + domain
           </button>
@@ -81,7 +95,7 @@ export function ProblemDomainPicker({ domains, initialValues, initialSpoilers = 
 
           return (
             <div key={`${index}-${value}`} className="domain-picker-row">
-              <input type="hidden" name="domains" value={value} />
+              <input type="hidden" name={inputName} value={value} />
               <div className="domain-choice-panel">
                 <div className="domain-choice-current">
                   <span>{selected?.label ?? "Other"}</span>
@@ -96,16 +110,18 @@ export function ProblemDomainPicker({ domains, initialValues, initialSpoilers = 
                     </button>
                   )}
                 </div>
-                <label className="domain-spoiler-toggle">
-                  <input
-                    name="domainSpoilers"
-                    type="checkbox"
-                    value={value}
-                    checked={spoilers.has(value)}
-                    onChange={(event) => toggleSpoiler(value, event.target.checked)}
-                  />
-                  <span>Hide this domain until solved</span>
-                </label>
+                {showSpoilerToggle && (
+                  <label className="domain-spoiler-toggle">
+                    <input
+                      name="domainSpoilers"
+                      type="checkbox"
+                      value={value}
+                      checked={spoilers.has(value)}
+                      onChange={(event) => toggleSpoiler(value, event.target.checked)}
+                    />
+                    <span>Hide this domain until solved</span>
+                  </label>
+                )}
                 <div className="domain-choice-grid">
                   {domains.map((domain) => {
                     const isExpanded = expanded === `${index}:${domain.value}`;
@@ -154,9 +170,7 @@ export function ProblemDomainPicker({ domains, initialValues, initialSpoilers = 
           );
         })}
       </div>
-      <p className="muted text-xs">
-        Choose up to {MAX_PROBLEM_DOMAINS} domains.
-      </p>
+      <p className="muted text-xs">{helpText ?? `Choose up to ${maxDomains} domains.`}</p>
     </div>
   );
 }

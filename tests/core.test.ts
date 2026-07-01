@@ -224,15 +224,16 @@ assert.equal(parseProblemDifficulty("101"), null);
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
 assert.equal(FLAT_DOMAIN_OPTIONS.some((option) => /^\d{2}\s/.test(option.label)), false);
 assert.equal(PROBLEM_DOMAINS.length, 21);
-assert.equal(parseDomainCode("26"), "26-XX");
-assert.equal(parseDomainCode("52-XX"), "51-XX");
-assert.equal(parseDomainCode("GEOMETRY"), "51-XX");
+assert.equal(PROBLEM_DOMAINS.some((option) => /^\d{2}-XX$/.test(option.value)), false);
+assert.equal(parseDomainCode("26"), "real-analysis");
+assert.equal(parseDomainCode("52-XX"), "geometry");
+assert.equal(parseDomainCode("GEOMETRY"), "geometry");
 assert.equal(domainLabel("26"), "Real analysis");
 assert.equal(domainLabel("26-XX"), "Real analysis");
 assert.equal(domainLabel("52-XX"), "Geometry");
 assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
-  { domain: "ARITHMETIC", mscCode: "11-XX", spoiler: false },
-  { domain: "ANALYSIS", mscCode: "26-XX", spoiler: true }
+  { domain: "ARITHMETIC", mscCode: "number-theory", spoiler: false },
+  { domain: "ANALYSIS", mscCode: "real-analysis", spoiler: true }
 ]);
 assert.equal(tagsWithConjecture("algebra, conjecture", null), "algebra");
 assert.equal(tagsWithConjecture("algebra", "on"), "algebra, conjecture");
