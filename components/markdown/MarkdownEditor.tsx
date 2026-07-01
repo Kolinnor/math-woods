@@ -13,7 +13,7 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
-import { useEffect, useRef, useState, type WheelEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
 import { normalizeDisplayMathLineBreaks } from "@/lib/latex-display-lines";
 import {
@@ -35,6 +35,7 @@ import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "@/lib/ma
 import { overlapsRanges } from "@/lib/markdown-ranges";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
+const LINK_MENU_VIEWPORT_MARGIN = 12;
 
 type LatexWidgetLayoutDiagnostic = {
   code: "inline-display-widget-measured-wide" | "inline-display-widget-style-drift";
@@ -72,6 +73,11 @@ type LinkMenuState = {
   from: number;
   to: number;
   selectedText: string;
+};
+
+type LinkMenuPosition = {
+  left: number;
+  top: number;
 };
 
 type ConceptSuggestion = {
@@ -173,6 +179,24 @@ function nearestLinkMenuScroller(target: EventTarget | null, menu: HTMLElement) 
   }
 
   return menu;
+}
+
+function clampLinkMenuPosition(anchorX: number, anchorY: number, menu: HTMLElement): LinkMenuPosition {
+  const viewport = window.visualViewport;
+  const viewportLeft = viewport?.offsetLeft ?? 0;
+  const viewportTop = viewport?.offsetTop ?? 0;
+  const viewportWidth = viewport?.width ?? window.innerWidth;
+  const viewportHeight = viewport?.height ?? window.innerHeight;
+  const rect = menu.getBoundingClientRect();
+  const minLeft = viewportLeft + LINK_MENU_VIEWPORT_MARGIN;
+  const minTop = viewportTop + LINK_MENU_VIEWPORT_MARGIN;
+  const maxLeft = Math.max(minLeft, viewportLeft + viewportWidth - rect.width - LINK_MENU_VIEWPORT_MARGIN);
+  const maxTop = Math.max(minTop, viewportTop + viewportHeight - rect.height - LINK_MENU_VIEWPORT_MARGIN);
+
+  return {
+    left: Math.min(Math.max(anchorX, minLeft), maxLeft),
+    top: Math.min(Math.max(anchorY, minTop), maxTop)
+  };
 }
 
 class LatexWidget extends WidgetType {
@@ -733,10 +757,12 @@ export function MarkdownEditor({
   const viewRef = useRef<EditorView | null>(null);
   const draftKeyRef = useRef<string | null>(null);
   const resetSignalRef = useRef(resetSignal);
+  const linkMenuRef = useRef<HTMLDivElement | null>(null);
   const linkTargetInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState(initialValue);
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
   const [linkMenu, setLinkMenu] = useState<LinkMenuState | null>(null);
+  const [linkMenuPosition, setLinkMenuPosition] = useState<LinkMenuPosition | null>(null);
   const [linkTarget, setLinkTarget] = useState("");
   const [linkText, setLinkText] = useState("");
   const [linkSuggestions, setLinkSuggestions] = useState<ConceptSuggestion[]>([]);
@@ -908,6 +934,34 @@ export function MarkdownEditor({
     window.requestAnimationFrame(() => linkTargetInputRef.current?.focus());
   }, [linkMenu]);
 
+  useLayoutEffect(() => {
+    if (!linkMenu) {
+      setLinkMenuPosition(null);
+      return;
+    }
+
+    const menu = linkMenuRef.current;
+    if (!menu) return;
+
+    const updatePosition = () => {
+      const nextPosition = clampLinkMenuPosition(linkMenu.x, linkMenu.y, menu);
+      setLinkMenuPosition((currentPosition) =>
+        currentPosition?.left === nextPosition.left && currentPosition.top === nextPosition.top ? currentPosition : nextPosition
+      );
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
+    };
+  }, [linkMenu, linkSuggestions.length, linkSuggestionsLoading, linkTarget]);
+
   useEffect(() => {
     if (resetSignalRef.current === resetSignal) return;
     resetSignalRef.current = resetSignal;
@@ -1060,8 +1114,9 @@ export function MarkdownEditor({
       <div ref={hostRef} className="markdown-editor-host" />
       {linkMenu && (
         <div
+          ref={linkMenuRef}
           className="markdown-link-menu"
-          style={{ left: linkMenu.x, top: linkMenu.y }}
+          style={{ left: linkMenuPosition?.left ?? linkMenu.x, top: linkMenuPosition?.top ?? linkMenu.y }}
           onMouseDown={(event) => event.stopPropagation()}
           onWheel={handleLinkMenuWheel}
           onTouchMove={(event) => event.stopPropagation()}
