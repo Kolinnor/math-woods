@@ -822,6 +822,13 @@ model LatexPreference {
   customShorthand          Boolean  @default(true)
   tabCompletesShorthand    Boolean  @default(false)
   customCommands           String   @db.Text
+  markdownHeadingShortcuts Boolean  @default(true)
+  markdownHeading1Shortcut String   @default("Shift+1")
+  markdownHeading2Shortcut String   @default("Shift+2")
+  markdownHeading3Shortcut String   @default("Shift+3")
+  markdownHeading4Shortcut String   @default("Shift+4")
+  markdownHeading5Shortcut String   @default("Shift+5")
+  markdownHeading6Shortcut String   @default("Shift+6")
   updatedAt                DateTime @updatedAt
   user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -244,6 +244,26 @@ const latexTextOptions: Array<{
   }
 ];
 
+const markdownHeadingShortcutOptions: Array<{
+  name: keyof Pick<
+    LatexPreferenceValues,
+    | "markdownHeading1Shortcut"
+    | "markdownHeading2Shortcut"
+    | "markdownHeading3Shortcut"
+    | "markdownHeading4Shortcut"
+    | "markdownHeading5Shortcut"
+    | "markdownHeading6Shortcut"
+  >;
+  title: string;
+}> = [
+  { name: "markdownHeading1Shortcut", title: "Heading 1" },
+  { name: "markdownHeading2Shortcut", title: "Heading 2" },
+  { name: "markdownHeading3Shortcut", title: "Heading 3" },
+  { name: "markdownHeading4Shortcut", title: "Heading 4" },
+  { name: "markdownHeading5Shortcut", title: "Heading 5" },
+  { name: "markdownHeading6Shortcut", title: "Heading 6" }
+];
+
 export default async function SettingsPage({
   searchParams
 }: {
@@ -312,12 +332,12 @@ export default async function SettingsPage({
       )}
       {params.updated === "latex" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          LaTeX preferences updated.
+          Editor preferences updated.
         </p>
       )}
       {params.updated === "latex-reset" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          LaTeX preferences reset to default.
+          Editor preferences reset to default.
         </p>
       )}
       {params.deleteAccount === "confirm" && (
@@ -364,7 +384,7 @@ export default async function SettingsPage({
           Notifications
         </Link>
         <Link href="/settings?tab=latex" className={tab === "latex" ? "active" : ""}>
-          Latex
+          Editor
         </Link>
         {canManageRoles && (
           <Link href="/settings?tab=admin" className={tab === "admin" ? "active" : ""}>
@@ -497,14 +517,42 @@ export default async function SettingsPage({
       {tab === "latex" && (
         <section className="panel p-5">
           <div className="mb-5">
-            <h2 className="text-lg font-semibold">Latex</h2>
+            <h2 className="text-lg font-semibold">Editor</h2>
             <p className="muted text-sm">
-              Customize the LaTeX writing helpers used by Math Woods editors. Some options are saved now and will be
-              wired into richer editor behavior progressively.
+              Customize the Markdown and LaTeX writing helpers used by Math Woods editors.
             </p>
           </div>
 
           <form action={updateLatexPreferencesAction} className="latex-settings-form">
+            <div className="latex-settings-section">
+              <div>
+                <h3>Markdown shortcuts</h3>
+                <p>Choose keyboard shortcuts for turning the current line or selection into Markdown headings.</p>
+              </div>
+              <label className="checkbox-field latex-setting-card">
+                <input
+                  name="markdownHeadingShortcuts"
+                  type="checkbox"
+                  defaultChecked={Boolean(latexPreferences.markdownHeadingShortcuts)}
+                />
+                <span>
+                  <strong>Enable heading shortcuts</strong>
+                  <small>Use shortcuts such as Shift+1 through Shift+6 to write # through ###### headings.</small>
+                </span>
+              </label>
+              <div className="latex-text-grid">
+                {markdownHeadingShortcutOptions.map((option) => (
+                  <label key={option.name} className="latex-text-field">
+                    <span>
+                      <strong>{option.title}</strong>
+                      <small>Examples: Shift+1, Ctrl+Alt+1, Meta+1.</small>
+                    </span>
+                    <input name={option.name} defaultValue={String(latexPreferences[option.name])} />
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {latexToggleSections.map((section) => (
               <div key={section.title} className="latex-settings-section">
                 <div>
@@ -560,16 +608,16 @@ export default async function SettingsPage({
             </div>
 
             <div className="settings-actions">
-              <button type="submit">Save Latex settings</button>
+              <button type="submit">Save editor settings</button>
             </div>
           </form>
 
           <form action={resetLatexPreferencesAction} className="danger-zone mt-5">
             <div>
-              <h2>Reset Latex settings</h2>
-              <p>Restore Math Woods defaults for every Latex helper and custom command.</p>
+              <h2>Reset editor settings</h2>
+              <p>Restore Math Woods defaults for every Markdown shortcut, Latex helper, and custom command.</p>
             </div>
-            <ConfirmSubmitButton className="danger" message="Are you sure you want to reset your Latex settings?">
+            <ConfirmSubmitButton className="danger" message="Are you sure you want to reset your editor settings?">
               Reset to default
             </ConfirmSubmitButton>
           </form>

@@ -1,3 +1,5 @@
+import { DEFAULT_MARKDOWN_HEADING_SHORTCUTS, sanitizeShortcut } from "@/lib/markdown-shortcuts";
+
 export const DEFAULT_LATEX_CUSTOM_COMMANDS = `% One shortcut per line: trigger => replacement
 RR => \\mathbb{R}
 NN => \\mathbb{N}
@@ -33,7 +35,8 @@ export const DEFAULT_LATEX_PREFERENCES = {
   greekMathMode: true,
   customShorthand: true,
   tabCompletesShorthand: false,
-  customCommands: DEFAULT_LATEX_CUSTOM_COMMANDS
+  customCommands: DEFAULT_LATEX_CUSTOM_COMMANDS,
+  ...DEFAULT_MARKDOWN_HEADING_SHORTCUTS
 };
 
 export type LatexPreferenceValues = typeof DEFAULT_LATEX_PREFERENCES;
@@ -57,7 +60,8 @@ const booleanPreferenceKeys = [
   "matrixShortcut",
   "greekMathMode",
   "customShorthand",
-  "tabCompletesShorthand"
+  "tabCompletesShorthand",
+  "markdownHeadingShortcuts"
 ] as const;
 
 function cleanTextField(value: FormDataEntryValue | null, fallback: string, maxLength: number) {
@@ -86,6 +90,12 @@ export function parseLatexPreferenceForm(formData: FormData): LatexPreferenceVal
   parsed.autoAlignSymbols = cleanTextField(formData.get("autoAlignSymbols"), DEFAULT_LATEX_PREFERENCES.autoAlignSymbols, 200);
   parsed.matrixEnvironment = cleanTextField(formData.get("matrixEnvironment"), "pmatrix", 40);
   parsed.customCommands = cleanTextField(formData.get("customCommands"), DEFAULT_LATEX_CUSTOM_COMMANDS, 5000);
+  parsed.markdownHeading1Shortcut = sanitizeShortcut(formData.get("markdownHeading1Shortcut"), DEFAULT_LATEX_PREFERENCES.markdownHeading1Shortcut);
+  parsed.markdownHeading2Shortcut = sanitizeShortcut(formData.get("markdownHeading2Shortcut"), DEFAULT_LATEX_PREFERENCES.markdownHeading2Shortcut);
+  parsed.markdownHeading3Shortcut = sanitizeShortcut(formData.get("markdownHeading3Shortcut"), DEFAULT_LATEX_PREFERENCES.markdownHeading3Shortcut);
+  parsed.markdownHeading4Shortcut = sanitizeShortcut(formData.get("markdownHeading4Shortcut"), DEFAULT_LATEX_PREFERENCES.markdownHeading4Shortcut);
+  parsed.markdownHeading5Shortcut = sanitizeShortcut(formData.get("markdownHeading5Shortcut"), DEFAULT_LATEX_PREFERENCES.markdownHeading5Shortcut);
+  parsed.markdownHeading6Shortcut = sanitizeShortcut(formData.get("markdownHeading6Shortcut"), DEFAULT_LATEX_PREFERENCES.markdownHeading6Shortcut);
 
   return parsed;
 }

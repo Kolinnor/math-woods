@@ -3,7 +3,7 @@
 import { history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxTree } from "@codemirror/language";
-import { EditorState, Prec, StateEffect, StateField, Transaction } from "@codemirror/state";
+import { Compartment, EditorState, Prec, StateEffect, StateField, Transaction } from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
@@ -31,6 +31,12 @@ import {
 } from "@/lib/latex-navigation";
 import { findLatexRanges } from "@/lib/latex-ranges";
 import { findLatexSyntaxTokens } from "@/lib/latex-syntax-highlight";
+import {
+  DEFAULT_MARKDOWN_HEADING_SHORTCUTS,
+  markdownHeadingLevelForEvent,
+  markdownHeadingLineText,
+  type MarkdownHeadingShortcuts
+} from "@/lib/markdown-shortcuts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 
@@ -436,6 +442,77 @@ function enterLatexWithVerticalArrow(view: EditorView, direction: LatexVerticalA
   return true;
 }
 
+function setMarkdownHeadingLevel(view: EditorView, level: number) {
+  const changes: Array<{ from: number; to: number; insert: string }> = [];
+  const seenLines = new Set<number>();
+
+  for (const range of view.state.selection.ranges) {
+    const from = Math.min(range.from, range.to);
+    const to = range.empty ? from : Math.max(from, Math.max(range.from, range.to) - 1);
+    const startLine = view.state.doc.lineAt(from);
+    const endLine = view.state.doc.lineAt(to);
+
+    for (let lineNumber = startLine.number; lineNumber <= endLine.number; lineNumber += 1) {
+      if (seenLines.has(lineNumber)) continue;
+      seenLines.add(lineNumber);
+
+      const line = view.state.doc.line(lineNumber);
+      const nextText = markdownHeadingLineText(line.text, level);
+      if (nextText !== line.text) {
+        changes.push({ from: line.from, to: line.to, insert: nextText });
+      }
+    }
+  }
+
+  if (changes.length) {
+    view.dispatch({
+      changes,
+      effects: setPreviewFocus.of(true),
+      scrollIntoView: true
+    });
+  }
+
+  return true;
+}
+
+function markdownShortcutExtension(shortcuts: MarkdownHeadingShortcuts) {
+  return EditorView.domEventHandlers({
+    keydown(event, view) {
+      if (event.isComposing) return false;
+
+      const level = markdownHeadingLevelForEvent(event, shortcuts);
+      if (level === null) return false;
+
+      event.preventDefault();
+      return setMarkdownHeadingLevel(view, level);
+    }
+  });
+}
+
+function markdownShortcutsFromApi(data: unknown): MarkdownHeadingShortcuts {
+  if (!data || typeof data !== "object") return DEFAULT_MARKDOWN_HEADING_SHORTCUTS;
+  const raw = data as Partial<Record<keyof MarkdownHeadingShortcuts, unknown>>;
+
+  return {
+    markdownHeadingShortcuts:
+      typeof raw.markdownHeadingShortcuts === "boolean"
+        ? raw.markdownHeadingShortcuts
+        : DEFAULT_MARKDOWN_HEADING_SHORTCUTS.markdownHeadingShortcuts,
+    markdownHeading1Shortcut:
+      typeof raw.markdownHeading1Shortcut === "string" ? raw.markdownHeading1Shortcut : DEFAULT_MARKDOWN_HEADING_SHORTCUTS.markdownHeading1Shortcut,
+    markdownHeading2Shortcut:
+      typeof raw.markdownHeading2Shortcut === "string" ? raw.markdownHeading2Shortcut : DEFAULT_MARKDOWN_HEADING_SHORTCUTS.markdownHeading2Shortcut,
+    markdownHeading3Shortcut:
+      typeof raw.markdownHeading3Shortcut === "string" ? raw.markdownHeading3Shortcut : DEFAULT_MARKDOWN_HEADING_SHORTCUTS.markdownHeading3Shortcut,
+    markdownHeading4Shortcut:
+      typeof raw.markdownHeading4Shortcut === "string" ? raw.markdownHeading4Shortcut : DEFAULT_MARKDOWN_HEADING_SHORTCUTS.markdownHeading4Shortcut,
+    markdownHeading5Shortcut:
+      typeof raw.markdownHeading5Shortcut === "string" ? raw.markdownHeading5Shortcut : DEFAULT_MARKDOWN_HEADING_SHORTCUTS.markdownHeading5Shortcut,
+    markdownHeading6Shortcut:
+      typeof raw.markdownHeading6Shortcut === "string" ? raw.markdownHeading6Shortcut : DEFAULT_MARKDOWN_HEADING_SHORTCUTS.markdownHeading6Shortcut
+  };
+}
+
 const setPreviewFocus = StateEffect.define<boolean>();
 const previewOnly = Transaction.addToHistory.of(false);
 const previewFocusField = StateField.define<boolean>({
@@ -757,6 +834,7 @@ export function MarkdownEditor({
   const viewRef = useRef<EditorView | null>(null);
   const draftKeyRef = useRef<string | null>(null);
   const resetSignalRef = useRef(resetSignal);
+  const markdownShortcutCompartmentRef = useRef(new Compartment());
   const linkMenuRef = useRef<HTMLDivElement | null>(null);
   const linkTargetInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState(initialValue);
@@ -824,6 +902,7 @@ export function MarkdownEditor({
           liveMarkdownPreview,
           previewFocusEvents,
           displayMathLineBreakNormalizer,
+          markdownShortcutCompartmentRef.current.of(markdownShortcutExtension(DEFAULT_MARKDOWN_HEADING_SHORTCUTS)),
           EditorView.lineWrapping,
           EditorView.theme({
             "&": {
@@ -933,6 +1012,31 @@ export function MarkdownEditor({
     if (!linkMenu) return;
     window.requestAnimationFrame(() => linkTargetInputRef.current?.focus());
   }, [linkMenu]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/editor-preferences", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const view = viewRef.current;
+        if (!view) return;
+
+        const shortcuts = markdownShortcutsFromApi(data);
+        view.dispatch({
+          effects: markdownShortcutCompartmentRef.current.reconfigure(markdownShortcutExtension(shortcuts)),
+          annotations: previewOnly
+        });
+      })
+      .catch(() => {
+        // Defaults stay active if preferences are unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (!linkMenu) {

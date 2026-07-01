@@ -36,6 +36,12 @@ import {
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
 import { parseProblemDomains } from "../lib/problem-domains.ts";
 import { domainLabel, FLAT_DOMAIN_OPTIONS, parseDomainCode, PROBLEM_DOMAINS } from "../lib/domains.ts";
+import {
+  DEFAULT_MARKDOWN_HEADING_SHORTCUTS,
+  keyboardEventMatchesShortcut,
+  markdownHeadingLevelForEvent,
+  markdownHeadingLineText
+} from "../lib/markdown-shortcuts.ts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "../lib/markdown-preview.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
@@ -282,6 +288,22 @@ assert.equal(canDeletePlaylist({ id: 1, role: Role.ADMIN }, { authorId: 2 }), tr
 assert.equal(headingLevel("ATXHeading3"), 3);
 assert.equal(headingLevel("Paragraph"), null);
 assert.equal(markdownPreviewClass("StrongEmphasis"), "cm-md-strong");
+assert.equal(markdownHeadingLineText("Existing title", 4), "#### Existing title");
+assert.equal(markdownHeadingLineText("## Existing title", 4), "#### Existing title");
+assert.equal(
+  keyboardEventMatchesShortcut(
+    { altKey: false, ctrlKey: false, metaKey: false, shiftKey: true, code: "Digit4", key: "$" },
+    "Shift+4"
+  ),
+  true
+);
+assert.equal(
+  markdownHeadingLevelForEvent(
+    { altKey: false, ctrlKey: false, metaKey: false, shiftKey: true, code: "Digit6", key: "6" },
+    DEFAULT_MARKDOWN_HEADING_SHORTCUTS
+  ),
+  6
+);
 assert.deepEqual(findWikiLinkRanges("See [[polynomial]] and [[vieta-relations|Vieta]]."), [
   { from: 4, to: 18, label: "polynomial" },
   { from: 23, to: 48, label: "Vieta" }
