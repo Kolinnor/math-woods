@@ -12,6 +12,12 @@ import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { extractWikiLinks, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import {
+  buildImageObjectKey,
+  createPresignedImageUpload,
+  validateImageUploadInput,
+  type ImageStorageConfig
+} from "../lib/image-storage.ts";
+import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration
@@ -377,5 +383,44 @@ assert.equal(renderedProtocolRelativeLink.includes('href="//example.com/path"'),
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");
+
+const imageKeyDate = new Date("2026-07-01T12:00:00.000Z");
+assert.equal(
+  buildImageObjectKey({
+    userId: 7,
+    filename: "Jolie equation finale.png",
+    contentType: "image/webp",
+    now: imageKeyDate,
+    randomSuffix: "abc123"
+  }),
+  `uploads/2026/07/user-7/${imageKeyDate.getTime()}-abc123-jolie-equation-finale.webp`
+);
+assert.deepEqual(validateImageUploadInput({ filename: "diagram.png", contentType: "image/png", sizeBytes: 42 }), {
+  filename: "diagram.png",
+  contentType: "image/png",
+  sizeBytes: 42
+});
+assert.throws(() => validateImageUploadInput({ filename: "diagram.svg", contentType: "image/svg+xml", sizeBytes: 42 }));
+
+const testImageStorageConfig: ImageStorageConfig = {
+  endpoint: new URL("https://s3.example.test"),
+  region: "dc-test",
+  bucket: "mathwoods-images",
+  accessKeyId: "access-key",
+  secretAccessKey: "secret-key",
+  publicBaseUrl: new URL("https://images.mathwoods.org"),
+  pathStyle: true
+};
+const presignedUpload = createPresignedImageUpload(
+  testImageStorageConfig,
+  "uploads/2026/07/user-7/example.webp",
+  "image/webp",
+  imageKeyDate
+);
+assert.equal(presignedUpload.method, "PUT");
+assert.equal(presignedUpload.headers["Cache-Control"], "public, max-age=31536000, immutable");
+assert.equal(presignedUpload.publicUrl, "https://images.mathwoods.org/uploads/2026/07/user-7/example.webp");
+assert.match(presignedUpload.url, /^https:\/\/s3\.example\.test\/mathwoods-images\/uploads\/2026\/07\/user-7\/example\.webp\?/);
+assert.match(presignedUpload.url, /X-Amz-Signature=/);
 
 console.log("core tests ok");
