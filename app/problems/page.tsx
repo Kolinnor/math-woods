@@ -555,11 +555,11 @@ export default async function ProblemsPage({
         <section className="problems-ledger" aria-label="Problems">
           <div className="problems-ledger-header">
             <div>
-              <p className="result-summary" role="status" aria-live="polite">
-                {totalProblems
-                  ? `Showing ${resultStart}-${resultEnd} of ${totalProblems} problems`
-                  : `No ${contentLanguageLabel(preferredLanguage).toLowerCase()} problems match these filters.`}
-              </p>
+              {totalProblems > 0 && (
+                <p className="result-summary" role="status" aria-live="polite">
+                  Showing {resultStart}-{resultEnd} of {totalProblems} problems
+                </p>
+              )}
             </div>
             <ProblemSortControl options={SORT_OPTIONS} value={sortValue} />
           </div>
