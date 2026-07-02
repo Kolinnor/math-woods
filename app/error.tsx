@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { reportClientError } from "@/components/ErrorReporter";
+import { chunkLoadErrorSignature, isChunkLoadError } from "@/lib/chunk-load-error";
 
 export default function AppError({
   error,
@@ -11,6 +12,15 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
+    if (isChunkLoadError(error)) {
+      const reloadKey = `math-woods:chunk-reload:${window.location.pathname}:${chunkLoadErrorSignature(error)}`;
+      if (sessionStorage.getItem(reloadKey) !== "1") {
+        sessionStorage.setItem(reloadKey, "1");
+        window.location.reload();
+        return;
+      }
+    }
+
     reportClientError({
       message: error.message || "Application error",
       stack: error.stack,

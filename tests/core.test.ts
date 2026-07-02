@@ -17,6 +17,7 @@ import {
   validateImageUploadInput,
   type ImageStorageConfig
 } from "../lib/image-storage.ts";
+import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
@@ -388,6 +389,17 @@ assert.equal(renderedProtocolRelativeLink.includes('href="//example.com/path"'),
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");
+
+const staleChunkError = new Error(
+  "Loading chunk 7330 failed. (error: https://mathwoods.org/_next/static/chunks/d3ac728e-652fe3530429dda0.js)"
+);
+staleChunkError.name = "ChunkLoadError";
+assert.equal(isChunkLoadError(staleChunkError), true);
+assert.equal(
+  chunkLoadErrorSignature(staleChunkError),
+  "https://mathwoods.org/_next/static/chunks/d3ac728e-652fe3530429dda0.js"
+);
+assert.equal(isChunkLoadError(new Error("Ordinary render failure")), false);
 
 const imageKeyDate = new Date("2026-07-01T12:00:00.000Z");
 assert.equal(
