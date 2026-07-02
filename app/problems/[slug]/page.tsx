@@ -260,10 +260,6 @@ export default async function ProblemPage({
         <div className="problem-hero-overlay" />
         <div className="problem-hero-inner">
           <div>
-            <p className="problem-hero-kicker">
-              {problemDomains.length ? problemDomains.map(domainLabel).join(" / ") : "Domain hidden until solved"}
-              {problem.difficulty ? ` / difficulty ${problem.difficulty}/100` : ""}
-            </p>
             <h1>
               <AsyncMarkdownInline markdown={problem.title} />
             </h1>
