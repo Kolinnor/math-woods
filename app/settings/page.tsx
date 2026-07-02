@@ -79,6 +79,21 @@ const notificationOptions = [
     type: NotificationType.SITE_ERROR_REPORTED,
     title: "A site error was reported",
     description: "For admins: when a user hits a client or application error."
+  },
+  {
+    type: NotificationType.USER_REGISTERED,
+    title: "A user created an account",
+    description: "For admins: when a non-admin user joins Math Woods."
+  },
+  {
+    type: NotificationType.PROBLEM_CREATED,
+    title: "A problem was created",
+    description: "For admins: when a non-admin user creates a problem."
+  },
+  {
+    type: NotificationType.CONCEPT_CREATED,
+    title: "A concept was created",
+    description: "For admins: when a non-admin user creates a concept."
   }
 ] as const;
 

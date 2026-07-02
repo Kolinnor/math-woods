@@ -26,7 +26,7 @@ import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { syncInternalLinks } from "@/lib/internal-links";
-import { createNotification, notifyProblemAuthor } from "@/lib/notifications";
+import { createNotification, notifyAdminsOfContributorCreation, notifyProblemAuthor } from "@/lib/notifications";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { linkSpecificProblem, syncProblemRelationGroups } from "@/lib/problem-relations";
@@ -199,6 +199,13 @@ export async function createProblemAction(formData: FormData) {
   });
 
   revalidatePath("/");
+  await notifyAdminsOfContributorCreation({
+    actor: user,
+    type: NotificationType.PROBLEM_CREATED,
+    title: "New problem created",
+    body: `${displayNameForUser(user)} created "${problem.title}".`,
+    href: `/problems/${problem.slug}`
+  });
   if (proofMarkdown) {
     await checkProofAchievements(user.id);
   }

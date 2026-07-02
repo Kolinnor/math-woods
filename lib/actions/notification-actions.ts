@@ -17,7 +17,10 @@ const configurableNotificationTypes = [
   NotificationType.VERIFICATION_MESSAGE,
   NotificationType.VERIFICATION_APPROVED,
   NotificationType.VERIFICATION_REJECTED,
-  NotificationType.SITE_ERROR_REPORTED
+  NotificationType.SITE_ERROR_REPORTED,
+  NotificationType.USER_REGISTERED,
+  NotificationType.PROBLEM_CREATED,
+  NotificationType.CONCEPT_CREATED
 ] as const;
 
 export async function markAllNotificationsReadAction() {

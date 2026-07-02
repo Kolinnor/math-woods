@@ -2,11 +2,13 @@ import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypt
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { parseMathLevel } from "@/lib/math-levels";
+import { notifyAdminsOfContributorCreation } from "@/lib/notifications";
 import { canUseModerationTools, canUseOwnerTools } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
-import { normalizeDisplayName } from "@/lib/user-display";
+import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
 
 const SESSION_COOKIE = "math_woods_session";
 const LEGACY_SESSION_COOKIES = ["math_hills_session", "math_garden_session"];
@@ -140,6 +142,13 @@ export async function registerUser(
   });
 
   await createSession(user.id);
+  await notifyAdminsOfContributorCreation({
+    actor: user,
+    type: NotificationType.USER_REGISTERED,
+    title: "New account created",
+    body: `${displayNameForUser(user)} joined Math Woods.`,
+    href: `/profile/${user.username}`
+  });
   return user;
 }
 

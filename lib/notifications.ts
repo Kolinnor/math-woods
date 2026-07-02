@@ -1,11 +1,28 @@
-import { NotificationType } from "@prisma/client";
+import { NotificationType, Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { shouldNotifyAdminsOfContributorCreation } from "@/lib/admin-creation-notifications";
 import { prisma } from "@/lib/db";
 
 type NotificationInput = {
   userId: number;
   actorId?: number | null;
   type: NotificationType;
+  title: string;
+  body: string;
+  href: string;
+};
+
+type AdminCreationNotificationType =
+  | typeof NotificationType.USER_REGISTERED
+  | typeof NotificationType.PROBLEM_CREATED
+  | typeof NotificationType.CONCEPT_CREATED;
+
+type AdminCreationNotificationInput = {
+  actor: {
+    id: number;
+    role: Role;
+  };
+  type: AdminCreationNotificationType;
   title: string;
   body: string;
   href: string;
@@ -71,4 +88,26 @@ export async function notifyProblemAuthor({
     body,
     href
   });
+}
+
+export async function notifyAdminsOfContributorCreation(input: AdminCreationNotificationInput) {
+  if (!shouldNotifyAdminsOfContributorCreation(input.actor.role)) return [];
+
+  const admins = await prisma.user.findMany({
+    where: { role: { in: [Role.ADMIN, Role.OWNER] } },
+    select: { id: true }
+  });
+
+  return Promise.all(
+    admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        actorId: input.actor.id,
+        type: input.type,
+        title: input.title,
+        body: input.body,
+        href: input.href
+      })
+    )
+  );
 }

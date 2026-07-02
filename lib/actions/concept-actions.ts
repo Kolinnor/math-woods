@@ -1,12 +1,13 @@
 "use server";
 
-import { ConceptStatus, SourceType } from "@prisma/client";
+import { ConceptStatus, NotificationType, SourceType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
+import { notifyAdminsOfContributorCreation } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { parseMathDomain } from "@/lib/domains";
 import { refreshLinksForConcept, syncInternalLinks } from "@/lib/internal-links";
@@ -14,6 +15,7 @@ import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { canEditConcept, canRollbackConcept, canSetConceptStatus } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { uniqueSlug } from "@/lib/unique-slug";
+import { displayNameForUser } from "@/lib/user-display";
 
 async function renderMarkdownContent(markdown: string) {
   const { renderMarkdown } = await import("@/lib/markdown");
@@ -88,6 +90,13 @@ export async function createConceptAction(formData: FormData) {
 
   await refreshLinksForConcept(concept.slug);
   revalidatePath("/");
+  await notifyAdminsOfContributorCreation({
+    actor: user,
+    type: NotificationType.CONCEPT_CREATED,
+    title: "New concept created",
+    body: `${displayNameForUser(user)} created "${concept.title}".`,
+    href: `/concepts/${concept.slug}`
+  });
   await checkConceptAchievements(user.id);
   redirect(`/concepts/${concept.slug}`);
 }
