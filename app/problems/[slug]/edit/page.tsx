@@ -77,10 +77,10 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           defaultValue={problem.language}
           help="Changing this moves the page to another language inside the same translation group."
         />
-        <label className="grid gap-2">
+        <div className="grid gap-2">
           <span className="text-sm font-medium">Statement</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={problem.bodyMarkdown} />
-        </label>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <ProblemDomainPicker
             domains={PROBLEM_DOMAINS}

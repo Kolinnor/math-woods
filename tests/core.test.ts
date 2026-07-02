@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ConceptStatus, QualityStatus, Role } from "@prisma/client";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import {
@@ -386,6 +388,22 @@ assert.equal(renderedExternalLink.includes('target="_blank"'), true);
 
 const renderedProtocolRelativeLink = await renderMarkdown("[external](//example.com/path)");
 assert.equal(renderedProtocolRelativeLink.includes('href="//example.com/path"'), false);
+
+function tsxFiles(root: string): string[] {
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) return tsxFiles(path);
+    return entry.isFile() && path.endsWith(".tsx") ? [path] : [];
+  });
+}
+
+const labelsWrappingMarkdownEditor = tsxFiles("app").flatMap((path) => {
+  const source = readFileSync(path, "utf-8");
+  return [...source.matchAll(/<label\b[\s\S]*?<\/label>/g)]
+    .filter((match) => /MarkdownEditor|LazyMarkdownEditor/.test(match[0]))
+    .map(() => path);
+});
+assert.deepEqual(labelsWrappingMarkdownEditor, []);
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");

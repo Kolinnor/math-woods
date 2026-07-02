@@ -219,10 +219,10 @@ export default async function EditPlaylistPage({
                 <span className="text-sm font-medium">Title override</span>
                 <input name="title" placeholder="Optional, unless this is a note" />
               </label>
-              <label className="grid gap-2">
+              <div className="grid gap-2">
                 <span className="text-sm font-medium">Step note</span>
                 <LazyMarkdownEditor name="bodyMarkdown" minHeight="8rem" lineNumbers={false} />
-              </label>
+              </div>
               <label className="checkbox-field">
                 <input name="isStart" type="checkbox" />
                 <span>

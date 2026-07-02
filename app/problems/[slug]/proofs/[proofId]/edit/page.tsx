@@ -50,10 +50,10 @@ export default async function EditProofPage({
       </div>
 
       <form action={updateProofAction.bind(null, proof.id, proof.problem.slug)} className="panel grid gap-4 p-5">
-        <label className="grid gap-2">
+        <div className="grid gap-2">
           <span className="text-sm font-medium">Solution</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={proof.bodyMarkdown} minHeight="18rem" />
-        </label>
+        </div>
         <div className="flex flex-wrap gap-2">
           <button type="submit">Save solution</button>
           <Link href={`/problems/${proof.problem.slug}`} className="button secondary">

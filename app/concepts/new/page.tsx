@@ -78,14 +78,14 @@ export default async function NewConceptPage({
             <input name="aliases" placeholder="Vieta's formulas, Viète relations" />
           </label>
         </div>
-        <label className="grid gap-2">
+        <div className="grid gap-2">
           <span className="text-sm font-medium">Content</span>
           <MarkdownEditor
             name="bodyMarkdown"
             initialValue={defaultContent}
             draftKey={`concept:new:${draftSession}:body`}
           />
-        </label>
+        </div>
         <label className="grid gap-2">
           <span className="text-sm font-medium">References</span>
           <textarea

@@ -64,10 +64,10 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
             <input name="aliases" defaultValue={concept.aliases.map((alias) => alias.alias).join(", ")} />
           </label>
         </div>
-        <label className="grid gap-2">
+        <div className="grid gap-2">
           <span className="text-sm font-medium">Content</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={concept.bodyMarkdown} />
-        </label>
+        </div>
         <label className="grid gap-2">
           <span className="text-sm font-medium">References</span>
           <textarea

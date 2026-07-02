@@ -58,10 +58,10 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
 
       {user ? (
         <form action={createConceptTalkPostAction.bind(null, concept.id, concept.slug)} className="panel mt-6 grid gap-3 p-5">
-          <label className="grid gap-2">
+          <div className="grid gap-2">
             <span className="text-sm font-medium">Add to the discussion</span>
             <LazyMarkdownEditor name="bodyMarkdown" minHeight="9rem" lineNumbers={false} />
-          </label>
+          </div>
           <button type="submit">Post</button>
         </form>
       ) : (

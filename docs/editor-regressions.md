@@ -136,6 +136,27 @@ These are known behavioral fixes that should not be broken when changing live pr
   cursor enters the relevant range.
 - Right-clicking selected text should open the concept-link menu without losing the selected text.
 
+## 2026-07-02 - MarkdownEditor must not be wrapped in a label
+
+Symptom:
+
+- Clicking anywhere inside the Markdown editor, or even moving over the editor area in some browser states, behaved as
+  though the toolbar Image button had been clicked.
+- This made concept/problem definitions impossible to edit because the browser kept activating the hidden file input.
+
+Root cause:
+
+- Several forms wrapped `<MarkdownEditor />` or `<LazyMarkdownEditor />` in a `<label>`.
+- After image uploads were added, the editor contained a hidden `<input type="file">`; a label activates labelable
+  controls inside it, so the whole editor area became a file-upload trigger.
+
+Guardrail:
+
+- Do not wrap `MarkdownEditor` or `LazyMarkdownEditor` in `<label>`. Use a neutral wrapper such as
+  `<div className="grid gap-2">` plus a visual `<span className="text-sm font-medium">...</span>`.
+- If the editor needs an accessible label in the future, pass an explicit prop and use `aria-labelledby`/`aria-label`
+  on the editor host rather than an enclosing HTML label.
+
 ## 2026-06-30 - Markdown display math should render on its own centered line
 
 Symptom:

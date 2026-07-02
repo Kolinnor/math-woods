@@ -99,14 +99,14 @@ export default async function NewProblemPage({
           defaultValue={initialLanguage}
           help="Each translation is its own page. If English has not been written, there is no English version yet."
         />
-        <label className="grid gap-2">
+        <div className="grid gap-2">
           <span className="text-sm font-medium">Statement</span>
           <MarkdownEditor
             name="bodyMarkdown"
             initialValue={defaultStatement}
             draftKey={`problem:new:${draftSession}:statement`}
           />
-        </label>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <ProblemDomainPicker domains={PROBLEM_DOMAINS} initialValues={["OTHER"]} />
           <label className="problem-difficulty-field grid gap-2">
@@ -188,7 +188,7 @@ export default async function NewProblemPage({
             <input name="verificationAnswer" placeholder="Used only for short answer check" />
           </label>
         </fieldset>
-        <label className="grid gap-2">
+        <div className="grid gap-2">
           <span className="text-sm font-medium">Initial solution (optional)</span>
           <MarkdownEditor
             name="proofMarkdown"
@@ -196,7 +196,7 @@ export default async function NewProblemPage({
             minHeight="11rem"
             draftKey={`problem:new:${draftSession}:initial-solution`}
           />
-        </label>
+        </div>
         <p className="muted text-sm">
           Make sure you can share this wording.{" "}
           <a href="/about#creating-problems" className="help-link" aria-label="Read problem creation guidance">

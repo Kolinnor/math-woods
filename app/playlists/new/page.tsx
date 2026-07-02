@@ -25,14 +25,14 @@ export default async function NewPlaylistPage({
           <input name="title" required placeholder="Polynomial roots: a progressive path" />
         </label>
         <LanguageField defaultValue={preferredLanguage} />
-        <label className="grid gap-2">
+        <div className="grid gap-2">
           <span className="text-sm font-medium">Description</span>
           <MarkdownEditor
             name="descriptionMarkdown"
             initialValue={"Goal, prerequisites, recommended order.\n\nSee also [[polynomial]]."}
             draftKey={`playlist:new:${draftSession}:description`}
           />
-        </label>
+        </div>
         <button type="submit">Create</button>
       </form>
     </div>

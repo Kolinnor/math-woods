@@ -155,10 +155,10 @@ export default async function QuotesPage({
               <span className="text-sm font-medium">Related concept slugs</span>
               <input name="conceptSlugs" placeholder="polynomial vieta-relations" />
             </label>
-            <label className="grid gap-2">
+            <div className="grid gap-2">
               <span className="text-sm font-medium">Optional note</span>
               <MarkdownEditor name="noteMarkdown" initialValue="" minHeight="8rem" lineNumbers={false} />
-            </label>
+            </div>
             <button type="submit">Add quote</button>
           </form>
         ) : user ? (
