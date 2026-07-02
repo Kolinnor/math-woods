@@ -66,11 +66,6 @@ async function withRenderedTitles<T extends { title: string }>(items: T[]) {
   );
 }
 
-function tipDifficultyRange(level: number) {
-  const min = Math.max(1, level * 20 + 1);
-  return { min, max: Math.min(100, min + 19) };
-}
-
 function initialsForName(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
   const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
@@ -193,7 +188,7 @@ function TipOfDay({
   bodyHtml,
   practice
 }: {
-  tip: { level: number; title: string };
+  tip: { title: string };
   bodyHtml: string;
   practice: HomeProblem[];
 }) {
@@ -203,7 +198,7 @@ function TipOfDay({
         <Image src="/art/oak-grove.jpg" alt="Ivan Shishkin, Oak Grove" fill sizes="(max-width: 760px) 100vw, 300px" />
       </div>
       <div className="home-tip-copy">
-        <p className="home-section-kicker">Tip of the day / level {tip.level}</p>
+        <p className="home-section-kicker">Tip of the day</p>
         <h2>{tip.title}</h2>
         <div className="home-tip-body prose-math" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
         {practice.length > 0 && (
@@ -348,14 +343,13 @@ export default async function HomePage() {
   const user = await getCurrentUser();
   const preferredLanguage = await getPreferredContentLanguage();
   const tip = await loadDailyTip();
-  const { min, max } = tipDifficultyRange(tip.level);
   const problemWhere = {
     status: "PUBLISHED" as const,
     listed: true,
     language: preferredLanguage
   };
 
-  const [problemRows, practiceRows, resumeAttempt, tipBodyHtml] = await Promise.all([
+  const [problemRows, practiceLinks, resumeAttempt, tipBodyHtml] = await Promise.all([
     prisma.problem.findMany({
       where: problemWhere,
       orderBy: { createdAt: "desc" },
@@ -365,19 +359,23 @@ export default async function HomePage() {
         _count: { select: { attempts: true, favorites: true } }
       }
     }),
-    prisma.problem.findMany({
+    prisma.tipProblem.findMany({
       where: {
-        ...problemWhere,
-        difficulty: { gte: min, lte: max }
+        tipId: tip.id,
+        problem: problemWhere
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { position: "asc" },
       take: 3,
       select: {
-        id: true,
-        slug: true,
-        title: true,
-        domain: true,
-        difficulty: true
+        problem: {
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            domain: true,
+            difficulty: true
+          }
+        }
       }
     }),
     user
@@ -395,6 +393,7 @@ export default async function HomePage() {
   ]);
 
   const renderedProblems = await withRenderedTitles(problemRows);
+  const practiceRows = practiceLinks.map((link) => link.problem);
   const renderedPractice = await withRenderedTitles(practiceRows.length > 0 ? practiceRows : problemRows.slice(0, 3));
   const featured = renderedProblems[0] ?? null;
   const recent = renderedProblems.slice(1, 4);
