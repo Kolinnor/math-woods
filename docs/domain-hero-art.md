@@ -3,12 +3,12 @@
 Problem detail heroes are served from Infomaniak Object Storage under:
 
 ```text
-https://s3.pub2.infomaniak.cloud/object/v1/AUTH_7cc517879b0040959f7d12abb1f0e72d/mathwoods-images/site-art-wide/
+https://s3.pub2.infomaniak.cloud/object/v1/AUTH_7cc517879b0040959f7d12abb1f0e72d/mathwoods-images/site-art/
 ```
 
-The active problem hero images are the panoramic `site-art-wide/{domain}.webp` versions. They are 3200x800 WebP files, with the full artwork centered over a blurred extension of the same painting so the hero can be as zoomed-out as possible without distortion. They were converted from public-domain Ivan Shishkin works available on Wikimedia Commons.
+The active problem hero images are the `site-art/{domain}.webp` versions. They are 1800x1012 WebP crops rendered with CSS `object-fit: cover`, so the hero is filled by the real painting instead of a blurred panoramic extension.
 
-Earlier 1800x1012 crops are kept under `site-art/{domain}.webp` for cache stability and possible rollback.
+The panoramic `site-art-wide/{domain}.webp` files are kept for rollback only. They fill a 3200x800 frame with blurred extensions, which can look artificial on wide desktop heroes.
 
 Images should be uploaded with:
 
