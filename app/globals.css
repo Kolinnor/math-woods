@@ -993,6 +993,16 @@ button.markdown-editor-tool-button:disabled svg {
   animation: markdown-editor-spin 850ms linear infinite;
 }
 
+.markdown-editor-file-input {
+  display: none !important;
+  height: 0;
+  inset: auto;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 0;
+}
+
 .markdown-editor-toolbar-status {
   color: var(--muted);
   flex: 1 1 auto;

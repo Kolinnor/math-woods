@@ -1302,8 +1302,11 @@ export function MarkdownEditor({
         <input
           ref={imageInputRef}
           type="file"
+          className="markdown-editor-file-input"
           accept={IMAGE_UPLOAD_ACCEPT}
+          aria-hidden="true"
           hidden
+          tabIndex={-1}
           onChange={(event) => {
             const file = event.target.files?.[0] ?? null;
             event.target.value = "";
