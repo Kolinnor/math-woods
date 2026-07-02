@@ -81,7 +81,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           <span className="text-sm font-medium">Statement</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={problem.bodyMarkdown} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <ProblemDomainPicker
             domains={PROBLEM_DOMAINS}
             initialValues={problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain]}

@@ -49,7 +49,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           defaultValue={concept.language}
           help="Changing this moves the page to another language inside the same translation group."
         />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <ProblemDomainPicker
             domains={PROBLEM_DOMAINS}
             helpText="Choose one Math Woods domain."

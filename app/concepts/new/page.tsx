@@ -63,7 +63,7 @@ export default async function NewConceptPage({
           defaultValue={initialLanguage}
           help="Each translation is its own page. Missing translations are not shown as existing pages."
         />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <ProblemDomainPicker
             domains={PROBLEM_DOMAINS}
             helpText={null}

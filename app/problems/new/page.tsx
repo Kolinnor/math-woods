@@ -107,7 +107,7 @@ export default async function NewProblemPage({
             draftKey={`problem:new:${draftSession}:statement`}
           />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <ProblemDomainPicker domains={PROBLEM_DOMAINS} initialValues={["OTHER"]} />
           <label className="problem-difficulty-field grid gap-2">
             <span className="text-sm font-medium">Difficulty (1–100)</span>

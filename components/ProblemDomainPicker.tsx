@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import type { DomainOption } from "@/lib/domains";
+import type { DomainOption, ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
 
 const MAX_PROBLEM_DOMAINS = 3;
+const DOMAIN_FAMILY_COLORS: Record<ProblemDomainFamily, string> = {
+  found: "#3f6b45",
+  geom: "#a87f2e",
+  ana: "#2f6f6a",
+  prob: "#3d5f7a",
+  app: "#a85f33",
+  other: "#1f1f1f"
+};
 
 type ProblemDomainPickerProps = {
   domains: DomainOption[];
@@ -15,6 +23,10 @@ type ProblemDomainPickerProps = {
   showSpoilerToggle?: boolean;
   helpText?: string | null;
 };
+
+function isProblemDomainOption(domain: DomainOption): domain is ProblemDomainOption {
+  return "glyph" in domain && "family" in domain;
+}
 
 function findOption(domains: DomainOption[], value: string) {
   const normalized = value.trim().toUpperCase();
@@ -38,33 +50,34 @@ export function ProblemDomainPicker({
     : [domains[0]?.value];
   const [values, setValues] = useState(initial.filter(Boolean));
   const [spoilers, setSpoilers] = useState(() => new Set(initialSpoilers.map((value) => findOption(domains, value)?.value ?? value)));
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const selectedOptions = values.map((value) => findOption(domains, value)).filter(Boolean) as DomainOption[];
+  const selectedSet = new Set(values);
 
-  function updateValue(index: number, value: string) {
-    const previous = values[index];
+  function pruneSpoilers(nextValues: string[]) {
     setSpoilers((current) => {
+      const allowed = new Set(nextValues);
       const next = new Set(current);
-      if (next.delete(previous)) next.add(value);
+      for (const value of next) {
+        if (!allowed.has(value)) next.delete(value);
+      }
       return next;
     });
-    setValues((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
   }
 
-  function addDomain() {
-    const used = new Set(values);
-    const fallback = domains.flatMap((domain) => [domain, ...(domain.children ?? [])]).find((domain) => !used.has(domain.value));
-    if (!fallback) return;
-    setValues((current) => [...current, fallback.value].slice(0, maxDomains));
-  }
-
-  function removeDomain(index: number) {
-    const removed = values[index];
-    setSpoilers((current) => {
-      const next = new Set(current);
-      next.delete(removed);
+  function selectDomain(value: string) {
+    setValues((current) => {
+      let next: string[];
+      if (maxDomains === 1) {
+        next = [value];
+      } else if (current.includes(value)) {
+        next = current.length > 1 ? current.filter((item) => item !== value) : current;
+      } else {
+        const withoutDefaultOther = current.length === 1 && current[0] === "other" && value !== "other" ? [] : current;
+        next = [...withoutDefaultOther, value].slice(0, maxDomains);
+      }
+      pruneSpoilers(next);
       return next;
     });
-    setValues((current) => current.filter((_, itemIndex) => itemIndex !== index));
   }
 
   function toggleSpoiler(value: string, checked: boolean) {
@@ -83,93 +96,48 @@ export function ProblemDomainPicker({
     <div className="domain-picker">
       <div className="domain-picker-header">
         <span className="text-sm font-medium">{label}</span>
-        {values.length < maxDomains && (
-          <button type="button" className="secondary domain-add-button" onClick={addDomain}>
-            + domain
-          </button>
-        )}
+        {maxDomains > 1 && <span className="domain-picker-count">{values.length}/{maxDomains}</span>}
       </div>
-      <div className="domain-picker-list">
-        {values.map((value, index) => {
-          const selected = findOption(domains, value);
-
+      {values.map((value) => (
+        <input key={value} type="hidden" name={inputName} value={value} />
+      ))}
+      <div className="domain-picker-grid">
+        {domains.map((domain) => {
+          const selected = selectedSet.has(domain.value);
+          const color = isProblemDomainOption(domain) ? DOMAIN_FAMILY_COLORS[domain.family] : undefined;
+          const glyph = isProblemDomainOption(domain) ? domain.glyph : domain.label.charAt(0);
           return (
-            <div key={`${index}-${value}`} className="domain-picker-row">
-              <input type="hidden" name={inputName} value={value} />
-              <div className="domain-choice-panel">
-                <div className="domain-choice-current">
-                  <span>{selected?.label ?? "Other"}</span>
-                  {values.length > 1 && (
-                    <button
-                      type="button"
-                      className="secondary domain-remove-button"
-                      aria-label="Remove this domain"
-                      onClick={() => removeDomain(index)}
-                    >
-                      <span aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
-                {showSpoilerToggle && (
-                  <label className="domain-spoiler-toggle">
-                    <input
-                      name="domainSpoilers"
-                      type="checkbox"
-                      value={value}
-                      checked={spoilers.has(value)}
-                      onChange={(event) => toggleSpoiler(value, event.target.checked)}
-                    />
-                    <span>Hide this domain until solved</span>
-                  </label>
-                )}
-                <div className="domain-choice-grid">
-                  {domains.map((domain) => {
-                    const isExpanded = expanded === `${index}:${domain.value}`;
-                    const hasChildren = Boolean(domain.children?.length);
-
-                    return (
-                      <div key={domain.value} className="domain-choice">
-                        <button
-                          type="button"
-                          className={value === domain.value ? "domain-main-button domain-selected" : "domain-main-button"}
-                          onClick={() => updateValue(index, domain.value)}
-                        >
-                          {domain.label}
-                        </button>
-                        {hasChildren && (
-                          <button
-                            type="button"
-                            className="domain-expand-button"
-                            aria-expanded={isExpanded}
-                            aria-label={`Show ${domain.label} subdomains`}
-                            onClick={() => setExpanded(isExpanded ? null : `${index}:${domain.value}`)}
-                          >
-                            {isExpanded ? "^" : "v"}
-                          </button>
-                        )}
-                        {isExpanded && (
-                          <div className="domain-subchoices">
-                            {domain.children!.map((child) => (
-                              <button
-                                key={child.value}
-                                type="button"
-                                className={value === child.value ? "domain-subchoice domain-selected" : "domain-subchoice"}
-                                onClick={() => updateValue(index, child.value)}
-                              >
-                                {child.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            <button
+              key={domain.value}
+              type="button"
+              className={selected ? "domain-picker-tile selected" : "domain-picker-tile"}
+              aria-pressed={selected}
+              onClick={() => selectDomain(domain.value)}
+            >
+              <span className="domain-picker-glyph" style={color ? { backgroundColor: color } : undefined}>
+                {glyph}
+              </span>
+              <span>{domain.label}</span>
+            </button>
           );
         })}
       </div>
+      {showSpoilerToggle && selectedOptions.length > 0 && (
+        <div className="domain-spoiler-grid">
+          {selectedOptions.map((selected) => (
+            <label key={selected.value} className="domain-spoiler-toggle">
+              <input
+                name="domainSpoilers"
+                type="checkbox"
+                value={selected.value}
+                checked={spoilers.has(selected.value)}
+                onChange={(event) => toggleSpoiler(selected.value, event.target.checked)}
+              />
+              <span>{selected.label} hidden until solved</span>
+            </label>
+          ))}
+        </div>
+      )}
       {helpText !== null && <p className="muted text-xs">{helpText ?? `Choose up to ${maxDomains} domains.`}</p>}
     </div>
   );
