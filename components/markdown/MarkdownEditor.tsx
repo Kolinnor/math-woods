@@ -13,6 +13,7 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
+import { ImageIcon, Loader2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
 import { normalizeDisplayMathLineBreaks } from "@/lib/latex-display-lines";
@@ -43,6 +44,7 @@ import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/w
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
 const LINK_MENU_VIEWPORT_MARGIN = 12;
+const IMAGE_UPLOAD_ACCEPT = "image/avif,image/jpeg,image/png,image/webp";
 
 type LatexWidgetLayoutDiagnostic = {
   code: "inline-display-widget-measured-wide" | "inline-display-widget-style-drift";
@@ -91,6 +93,15 @@ type ConceptSuggestion = {
   title: string;
   slug: string;
   aliases: string[];
+};
+
+type ImageUploadResponse = {
+  ok: boolean;
+  error?: string;
+  image?: {
+    key: string;
+    publicUrl: string;
+  };
 };
 
 type MarkdownEditorProps = {
@@ -501,6 +512,37 @@ function markdownShortcutsFromApi(data: unknown): MarkdownHeadingShortcuts {
   };
 }
 
+function imageAltText(filename: string, selectedText: string) {
+  const selected = selectedText.replace(/\s+/g, " ").trim();
+  if (selected && selected.length <= 120) return selected.replace(/[\[\]]/g, "");
+
+  const fallback = filename
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (fallback || "Uploaded image").replace(/[\[\]]/g, "");
+}
+
+function markdownImage(url: string, alt: string) {
+  return `![${alt}](${url})`;
+}
+
+function imageInsertText(view: EditorView, imageMarkdown: string) {
+  const selection = view.state.selection.main;
+  const line = view.state.doc.lineAt(selection.from);
+  const before = view.state.doc.sliceString(line.from, selection.from);
+  const after = view.state.doc.sliceString(selection.to, line.to);
+  const prefix = before.trim() ? "\n\n" : "";
+  const suffix = after.trim() ? "\n\n" : "";
+
+  return {
+    from: selection.from,
+    to: selection.to,
+    insert: `${prefix}${imageMarkdown}${suffix}`
+  };
+}
+
 const setPreviewFocus = StateEffect.define<boolean>();
 const previewOnly = Transaction.addToHistory.of(false);
 const previewFocusField = StateField.define<boolean>({
@@ -820,6 +862,7 @@ export function MarkdownEditor({
 }: MarkdownEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const draftKeyRef = useRef<string | null>(null);
   const resetSignalRef = useRef(resetSignal);
   const markdownShortcutCompartmentRef = useRef(new Compartment());
@@ -834,6 +877,8 @@ export function MarkdownEditor({
   const [linkSuggestions, setLinkSuggestions] = useState<ConceptSuggestion[]>([]);
   const [linkSuggestionsLoading, setLinkSuggestionsLoading] = useState(false);
   const [selectedLinkSuggestionQuery, setSelectedLinkSuggestionQuery] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadMessage, setImageUploadMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
@@ -1184,6 +1229,51 @@ export function MarkdownEditor({
     scroller.scrollLeft += event.deltaX;
   }
 
+  async function uploadImage(file: File) {
+    const view = viewRef.current;
+    if (!view || imageUploading) return;
+
+    const selection = view.state.selection.main;
+    const selectedText = selection.empty ? "" : view.state.doc.sliceString(selection.from, selection.to);
+    const body = new FormData();
+    body.set("image", file);
+
+    setImageUploading(true);
+    setImageUploadMessage(null);
+
+    try {
+      const response = await fetch("/api/images/upload", {
+        method: "POST",
+        body
+      });
+      const data = (await response.json().catch(() => null)) as ImageUploadResponse | null;
+
+      if (!response.ok || !data?.ok || !data.image?.publicUrl) {
+        throw new Error(data?.error || "Image upload failed.");
+      }
+
+      const insert = imageInsertText(view, markdownImage(data.image.publicUrl, imageAltText(file.name, selectedText)));
+      view.dispatch({
+        changes: insert,
+        selection: { anchor: insert.from + insert.insert.length },
+        effects: setPreviewFocus.of(true),
+        scrollIntoView: true
+      });
+      view.focus();
+      setImageUploadMessage("Image inserted.");
+      window.setTimeout(() => setImageUploadMessage(null), 2400);
+    } catch (error) {
+      setImageUploadMessage(error instanceof Error ? error.message : "Image upload failed.");
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
+  function chooseImageFile() {
+    setImageUploadMessage(null);
+    imageInputRef.current?.click();
+  }
+
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
   const cleanLinkText = cleanWikiLinkLabel(linkText || linkMenu?.selectedText || "");
   const hasExactSuggestion = linkSuggestions.some((suggestion) => {
@@ -1203,6 +1293,24 @@ export function MarkdownEditor({
           </button>
         </div>
       )}
+      <div className="markdown-editor-toolbar" aria-label="Editor tools">
+        <button type="button" className="secondary markdown-editor-tool-button" onClick={chooseImageFile} disabled={imageUploading}>
+          {imageUploading ? <Loader2 size={16} aria-hidden="true" /> : <ImageIcon size={16} aria-hidden="true" />}
+          <span>{imageUploading ? "Uploading" : "Image"}</span>
+        </button>
+        {imageUploadMessage && <span className="markdown-editor-toolbar-status">{imageUploadMessage}</span>}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept={IMAGE_UPLOAD_ACCEPT}
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0] ?? null;
+            event.target.value = "";
+            if (file) void uploadImage(file);
+          }}
+        />
+      </div>
       <div ref={hostRef} className="markdown-editor-host" />
       {linkMenu && (
         <div

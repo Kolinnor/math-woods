@@ -968,6 +968,45 @@ textarea {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.markdown-editor-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: space-between;
+  margin-bottom: 0.55rem;
+}
+
+button.markdown-editor-tool-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  min-height: 2.1rem;
+  padding: 0.4rem 0.65rem;
+}
+
+button.markdown-editor-tool-button svg {
+  flex: 0 0 auto;
+}
+
+button.markdown-editor-tool-button:disabled svg {
+  animation: markdown-editor-spin 850ms linear infinite;
+}
+
+.markdown-editor-toolbar-status {
+  color: var(--muted);
+  flex: 1 1 auto;
+  font-size: 0.82rem;
+  min-width: 8rem;
+  text-align: right;
+}
+
+@keyframes markdown-editor-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .markdown-editor .cm-editor,
 .markdown-editor .cm-scroller {
   border-radius: 5px;

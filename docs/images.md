@@ -27,7 +27,16 @@ IMAGE_UPLOAD_MAX_BYTES=5242880
 
 ## Upload flow
 
-Authenticated verified contributors call:
+The editor uses the same-origin upload endpoint so browser CORS settings on the bucket are not required:
+
+```http
+POST /api/images/upload
+Content-Type: multipart/form-data
+```
+
+The form field must be named `image`. Authenticated verified contributors can upload AVIF, JPEG, PNG, and WebP images up to the configured size limit.
+
+The lower-level signed upload endpoint is still available for future direct-to-object-storage clients. Authenticated verified contributors call:
 
 ```http
 POST /api/images/presign
