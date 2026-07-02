@@ -54,6 +54,7 @@ import {
 } from "../lib/markdown-shortcuts.ts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "../lib/markdown-preview.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
+import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
 import { parseTagInput } from "../lib/tags.ts";
@@ -277,6 +278,10 @@ assert.equal(shouldNotifyAdminsOfContributorCreation(Role.USER), true);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.MODERATOR), true);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.ADMIN), false);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.OWNER), false);
+assert.deepEqual(
+  problemEditNotificationRecipientIds({ authorId: 1, participantIds: [1, 2, 2, 3], actorId: 2 }),
+  [1, 3]
+);
 assert.deepEqual(assignableRolesFor(Role.ADMIN), [Role.USER, Role.MODERATOR]);
 assert.deepEqual(assignableRolesFor(Role.OWNER), [Role.USER, Role.MODERATOR, Role.ADMIN]);
 assert.equal(

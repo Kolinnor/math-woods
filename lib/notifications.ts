@@ -2,6 +2,7 @@ import { NotificationType, Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { shouldNotifyAdminsOfContributorCreation } from "@/lib/admin-creation-notifications";
 import { prisma } from "@/lib/db";
+import { problemEditNotificationRecipientIds } from "@/lib/problem-edit-notifications";
 
 type NotificationInput = {
   userId: number;
@@ -88,6 +89,56 @@ export async function notifyProblemAuthor({
     body,
     href
   });
+}
+
+export async function notifyProblemEditSubscribers({
+  problemId,
+  actorId,
+  title,
+  body,
+  href
+}: {
+  problemId: number;
+  actorId: number;
+  title: string;
+  body: string;
+  href: string;
+}) {
+  const [problem, participants] = await Promise.all([
+    prisma.problem.findUnique({
+      where: { id: problemId },
+      select: { authorId: true }
+    }),
+    prisma.discussionPost.findMany({
+      where: {
+        deletedAt: null,
+        thread: { problemId }
+      },
+      distinct: ["authorId"],
+      select: { authorId: true }
+    })
+  ]);
+
+  if (!problem) return [];
+
+  const recipientIds = problemEditNotificationRecipientIds({
+    authorId: problem.authorId,
+    participantIds: participants.map((participant) => participant.authorId),
+    actorId
+  });
+
+  return Promise.all(
+    recipientIds.map((userId) =>
+      createNotification({
+        userId,
+        actorId,
+        type: NotificationType.PROBLEM_EDITED,
+        title,
+        body,
+        href
+      })
+    )
+  );
 }
 
 export async function notifyAdminsOfContributorCreation(input: AdminCreationNotificationInput) {

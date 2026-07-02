@@ -26,7 +26,12 @@ import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { syncInternalLinks } from "@/lib/internal-links";
-import { createNotification, notifyAdminsOfContributorCreation, notifyProblemAuthor } from "@/lib/notifications";
+import {
+  createNotification,
+  notifyAdminsOfContributorCreation,
+  notifyProblemAuthor,
+  notifyProblemEditSubscribers
+} from "@/lib/notifications";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { linkSpecificProblem, syncProblemRelationGroups } from "@/lib/problem-relations";
@@ -306,16 +311,13 @@ export async function updateProblemAction(problemId: number, formData: FormData)
 
   revalidatePath("/");
   revalidatePath(`/problems/${problem.slug}`);
-  if (previous.authorId !== user.id) {
-    await createNotification({
-      userId: previous.authorId,
-      actorId: user.id,
-      type: NotificationType.PROBLEM_EDITED,
-      title: "Your problem was edited",
-      body: `${displayNameForUser(user)} edited "${previous.title}".`,
-      href: `/problems/${problem.slug}`
-    });
-  }
+  await notifyProblemEditSubscribers({
+    problemId,
+    actorId: user.id,
+    title: "Problem edited",
+    body: `${displayNameForUser(user)} edited "${previous.title}".`,
+    href: `/problems/${problem.slug}`
+  });
   redirect(`/problems/${problem.slug}`);
 }
 
