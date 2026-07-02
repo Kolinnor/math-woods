@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import { reportClientError } from "@/components/ErrorReporter";
 import { chunkLoadErrorSignature, isChunkLoadError } from "@/lib/chunk-load-error";
@@ -30,15 +31,21 @@ export default function AppError({
   }, [error]);
 
   return (
-    <div className="mx-auto grid max-w-2xl gap-4">
-      <section className="panel p-5">
-        <h1 className="text-xl font-semibold">Something went wrong.</h1>
-        <p className="muted mt-2">
-          The error has been reported to the Math Woods maintainers. You can try again without losing the page.
+    <div className="error-page-shell mx-auto grid max-w-2xl gap-4">
+      <section className="panel error-page-panel">
+        <p className="error-page-kicker">Math Woods</p>
+        <h1>You got lost in the forest.</h1>
+        <p className="muted">
+          A branch snapped somewhere in the application. The error has been reported, and you can try the path again.
         </p>
-        <button type="button" className="mt-4" onClick={reset}>
-          Try again
-        </button>
+        <div className="error-page-actions">
+          <button type="button" onClick={reset}>
+            Try again
+          </button>
+          <Link href="/" className="button secondary">
+            Back home
+          </Link>
+        </div>
       </section>
     </div>
   );

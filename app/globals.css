@@ -1011,6 +1011,57 @@ button.markdown-editor-tool-button:disabled svg {
   text-align: right;
 }
 
+.error-page-shell {
+  min-height: min(62vh, 34rem);
+  place-items: center;
+}
+
+.error-page-panel {
+  display: grid;
+  gap: 0.85rem;
+  overflow: hidden;
+  padding: 2rem;
+  position: relative;
+}
+
+.error-page-panel::before {
+  background:
+    linear-gradient(135deg, rgb(77 111 78 / 0.18), transparent 48%),
+    radial-gradient(circle at top right, rgb(166 126 47 / 0.18), transparent 42%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.error-page-panel > * {
+  position: relative;
+}
+
+.error-page-kicker {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 760;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.error-page-panel h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 650;
+  line-height: 1;
+  margin: 0;
+}
+
+.error-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
 @keyframes markdown-editor-spin {
   to {
     transform: rotate(360deg);
