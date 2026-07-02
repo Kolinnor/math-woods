@@ -543,6 +543,22 @@ function imageInsertText(view: EditorView, imageMarkdown: string) {
   };
 }
 
+function clipboardImageFile(data: DataTransfer | null) {
+  if (!data) return null;
+
+  for (const item of Array.from(data.items)) {
+    if (item.kind !== "file" || !item.type.startsWith("image/")) continue;
+    const file = item.getAsFile();
+    if (file) return file;
+  }
+
+  for (const file of Array.from(data.files)) {
+    if (file.type.startsWith("image/")) return file;
+  }
+
+  return null;
+}
+
 const setPreviewFocus = StateEffect.define<boolean>();
 const previewOnly = Transaction.addToHistory.of(false);
 const previewFocusField = StateField.define<boolean>({
@@ -863,6 +879,7 @@ export function MarkdownEditor({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const imageUploadingRef = useRef(false);
   const draftKeyRef = useRef<string | null>(null);
   const resetSignalRef = useRef(resetSignal);
   const markdownShortcutCompartmentRef = useRef(new Compartment());
@@ -935,6 +952,16 @@ export function MarkdownEditor({
           liveMarkdownPreview,
           previewFocusEvents,
           displayMathLineBreakNormalizer,
+          EditorView.domEventHandlers({
+            paste: (event) => {
+              const file = clipboardImageFile(event.clipboardData);
+              if (!file) return false;
+
+              event.preventDefault();
+              void uploadImage(file);
+              return true;
+            }
+          }),
           markdownShortcutCompartmentRef.current.of(markdownShortcutExtension(DEFAULT_MARKDOWN_HEADING_SHORTCUTS)),
           EditorView.lineWrapping,
           EditorView.theme({
@@ -1231,13 +1258,18 @@ export function MarkdownEditor({
 
   async function uploadImage(file: File) {
     const view = viewRef.current;
-    if (!view || imageUploading) return;
+    if (!view) return;
+    if (imageUploadingRef.current) {
+      setImageUploadMessage("Wait for the current image upload to finish.");
+      return;
+    }
 
     const selection = view.state.selection.main;
     const selectedText = selection.empty ? "" : view.state.doc.sliceString(selection.from, selection.to);
     const body = new FormData();
     body.set("image", file);
 
+    imageUploadingRef.current = true;
     setImageUploading(true);
     setImageUploadMessage(null);
 
@@ -1265,6 +1297,7 @@ export function MarkdownEditor({
     } catch (error) {
       setImageUploadMessage(error instanceof Error ? error.message : "Image upload failed.");
     } finally {
+      imageUploadingRef.current = false;
       setImageUploading(false);
     }
   }
@@ -1294,8 +1327,14 @@ export function MarkdownEditor({
         </div>
       )}
       <div className="markdown-editor-toolbar" aria-label="Editor tools">
-        <button type="button" className="secondary markdown-editor-tool-button" onClick={chooseImageFile} disabled={imageUploading}>
-          {imageUploading ? <Loader2 size={16} aria-hidden="true" /> : <ImageIcon size={16} aria-hidden="true" />}
+        <button
+          type="button"
+          className="secondary markdown-editor-tool-button"
+          onClick={chooseImageFile}
+          disabled={imageUploading}
+          title="Insert image"
+        >
+          {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
           <span>{imageUploading ? "Uploading" : "Image"}</span>
         </button>
         {imageUploadMessage && <span className="markdown-editor-toolbar-status">{imageUploadMessage}</span>}
