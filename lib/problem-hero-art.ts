@@ -1,7 +1,7 @@
 import { findDomainOption } from "./domains.ts";
 
 const IMAGE_BASE =
-  "https://s3.pub2.infomaniak.cloud/object/v1/AUTH_7cc517879b0040959f7d12abb1f0e72d/mathwoods-images/site-art";
+  "https://s3.pub2.infomaniak.cloud/object/v1/AUTH_7cc517879b0040959f7d12abb1f0e72d/mathwoods-images/site-art-wide";
 
 export type ProblemHeroArt = {
   src: string;
