@@ -62,3 +62,7 @@ Cache-Control: public, max-age=31536000, immutable
 ```
 
 Object keys include a random suffix, so replacing an image should create a new URL rather than mutating an existing object. This keeps browser and CDN caching cheap and predictable.
+
+## Site art
+
+Static site artwork, such as the problem domain hero images, is also stored in the same bucket but under stable keys like `site-art/{domain}.webp`. See [domain-hero-art.md](domain-hero-art.md) for the domain mapping and source notes.

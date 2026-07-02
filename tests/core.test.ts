@@ -41,6 +41,7 @@ import {
 } from "../lib/permissions.ts";
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
 import { parseProblemDomains } from "../lib/problem-domains.ts";
+import { heroArtForProblemDomain, PROBLEM_DOMAIN_HERO_ART } from "../lib/problem-hero-art.ts";
 import { domainLabel, FLAT_DOMAIN_OPTIONS, parseDomainCode, PROBLEM_DOMAINS } from "../lib/domains.ts";
 import {
   DEFAULT_MARKDOWN_HEADING_SHORTCUTS,
@@ -239,12 +240,16 @@ assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.val
 assert.equal(FLAT_DOMAIN_OPTIONS.some((option) => /^\d{2}\s/.test(option.label)), false);
 assert.equal(PROBLEM_DOMAINS.length, 21);
 assert.equal(PROBLEM_DOMAINS.some((option) => /^\d{2}-XX$/.test(option.value)), false);
+assert.equal(Object.keys(PROBLEM_DOMAIN_HERO_ART).length, PROBLEM_DOMAINS.length);
 assert.equal(parseDomainCode("26"), "real-analysis");
 assert.equal(parseDomainCode("52-XX"), "geometry");
 assert.equal(parseDomainCode("GEOMETRY"), "geometry");
 assert.equal(domainLabel("26"), "Real analysis");
 assert.equal(domainLabel("26-XX"), "Real analysis");
 assert.equal(domainLabel("52-XX"), "Geometry");
+assert.equal(heroArtForProblemDomain("60-XX").painting, "At the Edge of the Pine Forest");
+assert.equal(heroArtForProblemDomain("46").painting, "Branches. A Study");
+assert.equal(heroArtForProblemDomain(undefined), PROBLEM_DOMAIN_HERO_ART.other);
 assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
   { domain: "ARITHMETIC", mscCode: "number-theory", spoiler: false },
   { domain: "ANALYSIS", mscCode: "real-analysis", spoiler: true }

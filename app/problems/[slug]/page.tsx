@@ -35,6 +35,7 @@ import {
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { pluralize } from "@/lib/pluralize";
+import { heroArtForProblemDomain } from "@/lib/problem-hero-art";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { qualityLabel } from "@/lib/quality";
@@ -42,12 +43,6 @@ import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
-
-const heroArt = [
-  { src: "/art/hero-rye.jpg", alt: "Ivan Shishkin, Rye" },
-  { src: "/art/brook-in-the-forest.jpg", alt: "Ivan Shishkin, Brook in the Forest" },
-  { src: "/art/pine-forest.jpg", alt: "Ivan Shishkin, Pine Forest" }
-] as const;
 
 function difficultyColor(difficulty: number | null) {
   if (!difficulty) return "#8a9184";
@@ -253,7 +248,8 @@ export default async function ProblemPage({
     queryParams.solution === "posted"
       ? "Solution published. It is saved with the other solutions, which stay hidden until revealed."
       : null;
-  const heroImage = heroArt[problem.id % heroArt.length];
+  const heroDomain = problemDomains[0] ?? (problem.domains.length ? "other" : problem.domain);
+  const heroImage = heroArtForProblemDomain(heroDomain);
   const difficultyTone = difficultyColor(problem.difficulty ?? null);
   const difficultyLevel = difficultyBars(problem.difficulty ?? null);
 
