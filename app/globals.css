@@ -6187,7 +6187,7 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
   background: #14201a;
   display: flex;
   flex-direction: column;
-  min-height: 320px;
+  min-height: clamp(340px, 38vh, 440px);
   overflow: hidden;
   position: relative;
 }
