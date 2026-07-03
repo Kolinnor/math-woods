@@ -224,10 +224,11 @@ export default async function ProblemPage({
       relations: group.relations.filter((relation) => relation.targetProblem.status !== "ARCHIVED")
     }))
     .filter((group) => group.relations.length > 0);
+  const isProblemAuthor = Boolean(user && problem.authorId === user.id);
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
   const discussionVisible = Boolean(attempt || canEditCurrentProblem);
   const discussionPostCount = problem.thread?.posts.length ?? 0;
-  const revealSpoilerDetails = attempt?.status === "SOLVED" || canEditCurrentProblem;
+  const revealSpoilerDetails = attempt?.status === "SOLVED" || isProblemAuthor;
   const showSpoilerTags = problem.spoilerTags.length > 0 && revealSpoilerDetails;
   const problemDomains = problem.domains.length
     ? problem.domains.filter((item) => revealSpoilerDetails || !item.spoiler).map((item) => item.mscCode)
