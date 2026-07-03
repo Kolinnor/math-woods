@@ -99,6 +99,18 @@ export async function deleteProofAction(proofId: number, problemSlug: string) {
 export async function voteProofAction(proofId: number, problemSlug: string) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`vote:${user.id}`, 120, 60_000);
+  const proof = await prisma.problemProof.findUnique({
+    where: { id: proofId },
+    select: { authorId: true, problem: { select: { slug: true } } }
+  });
+  if (!proof || proof.problem.slug !== problemSlug) {
+    throw new Error("Solution not found.");
+  }
+  if (proof.authorId === user.id) {
+    revalidatePath(`/problems/${problemSlug}`);
+    return;
+  }
+
   const key = {
     userId: user.id,
     targetType: TargetType.PROOF,

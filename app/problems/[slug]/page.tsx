@@ -436,6 +436,7 @@ export default async function ProblemPage({
                   const userVotedProof = ownProofVoteIds.has(proof.id);
                   const accepted = proof.id === acceptedProofId;
                   const canEditProof = Boolean(user && canEditSolution(user, proof));
+                  const isOwnProof = user?.id === proof.authorId;
                   return (
                     <article key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
                       <header className="proof-header">
@@ -457,8 +458,15 @@ export default async function ProblemPage({
                               <button
                                 type="submit"
                                 className={userVotedProof ? "secondary vote-button-active" : "secondary"}
+                                disabled={isOwnProof}
                                 aria-pressed={userVotedProof}
-                                title={userVotedProof ? "Remove useful vote" : "Mark as useful"}
+                                title={
+                                  isOwnProof
+                                    ? "You cannot vote for your own solution"
+                                    : userVotedProof
+                                      ? "Remove useful vote"
+                                      : "Mark as useful"
+                                }
                               >
                                 <ThumbsUp size={16} />
                                 {votes}
