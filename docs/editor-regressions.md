@@ -206,3 +206,24 @@ Guardrail:
   intermediate state; doing it later from an update listener can leave stale one-character-wide measurements behind.
 - Display math previews should be visually block-like through the widget's CSS, but they must not use CodeMirror
   `block: true` replacement decorations.
+
+## 2026-07-03 - Multi-line deletion near LaTeX should suppress all previews briefly
+
+Symptom:
+
+- Selecting multiple visual/logical lines near inline LaTeX such as `$P'$`, then deleting the selection, could recreate
+  the one-character-per-line layout collapse below the edit.
+- The issue was easier to trigger in longer editor content than in short isolated snippets.
+
+Root cause:
+
+- The existing newline-deletion guard only suppressed LaTeX replacement previews on the cursor's joined line.
+- During a multi-line deletion, CodeMirror can still measure nearby lower LaTeX replacement widgets while the document
+  height and line wrapping are being recomputed.
+
+Guardrail:
+
+- When a transaction removes a newline, temporarily render all LaTeX ranges as raw source/highlighted tokens instead of
+  replacement previews, not only ranges on the cursor line.
+- This suppression should last only for that post-deletion editor state; previews may return on the next ordinary
+  edit/focus transaction.

@@ -393,13 +393,6 @@ function selectionOverlapsRange(state: EditorState, from: number, to: number) {
   });
 }
 
-function selectionLineContainsRange(state: EditorState, from: number, to: number) {
-  return state.selection.ranges.some((range) => {
-    const line = state.doc.lineAt(Math.min(range.from, state.doc.length));
-    return from >= line.from && to <= line.to;
-  });
-}
-
 function latexOpeningDelimiterLength(text: string, position: number) {
   return text.startsWith("$$", position) || text.startsWith("\\(", position) || text.startsWith("\\[", position) ? 2 : 1;
 }
@@ -796,7 +789,6 @@ function buildLivePreviewDecorations(state: EditorState) {
     );
     const suppressPreview =
       suppressJoinedLinePreview &&
-      selectionLineContainsRange(state, range.from, range.to) &&
       !selectionOverlapsRange(state, range.from, range.to);
 
     if (selectionOverlapsRange(state, range.from, range.to) || suppressPreview) {
