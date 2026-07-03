@@ -3447,7 +3447,8 @@ body:has(.problems-page-shell) {
   background: #e8e2d3;
 }
 
-body:has(.problems-page-shell) .site-header {
+body:has(.problems-page-shell) .site-header,
+body:has(.home-shell) .site-header {
   background: transparent;
   border-bottom: 0;
   color: #fff;
@@ -3456,45 +3457,61 @@ body:has(.problems-page-shell) .site-header {
 }
 
 body:has(.problems-page-shell) .site-brand,
-body:has(.problems-page-shell) .primary-nav a {
+body:has(.home-shell) .site-brand,
+body:has(.problems-page-shell) .primary-nav a,
+body:has(.home-shell) .primary-nav a {
   color: rgb(255 255 255 / 0.9);
   text-shadow: 0 1px 10px rgb(0 0 0 / 0.5);
 }
 
-body:has(.problems-page-shell) .site-brand-logo {
+body:has(.problems-page-shell) .site-brand-logo,
+body:has(.home-shell) .site-brand-logo {
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
 }
 
-body:has(.problems-page-shell) .primary-nav a:hover {
+body:has(.problems-page-shell) .primary-nav a:hover,
+body:has(.home-shell) .primary-nav a:hover {
   background: rgb(255 255 255 / 0.14);
   color: #fff;
 }
 
 body:has(.problems-page-shell) .language-selector,
+body:has(.home-shell) .language-selector,
 body:has(.problems-page-shell) .header-search,
+body:has(.home-shell) .header-search,
 body:has(.problems-page-shell) .site-header .icon-button.secondary,
-body:has(.problems-page-shell) .nav-menu summary {
+body:has(.home-shell) .site-header .icon-button.secondary,
+body:has(.problems-page-shell) .nav-menu summary,
+body:has(.home-shell) .nav-menu summary {
   background: rgb(255 255 255 / 0.14);
   border-color: rgb(255 255 255 / 0.22);
   color: #fff;
 }
 
 body:has(.problems-page-shell) .language-selector:hover,
+body:has(.home-shell) .language-selector:hover,
 body:has(.problems-page-shell) .language-selector:focus-within,
+body:has(.home-shell) .language-selector:focus-within,
 body:has(.problems-page-shell) .header-search:focus-within,
+body:has(.home-shell) .header-search:focus-within,
 body:has(.problems-page-shell) .site-header .icon-button.secondary:hover,
+body:has(.home-shell) .site-header .icon-button.secondary:hover,
 body:has(.problems-page-shell) .nav-menu[open] summary,
-body:has(.problems-page-shell) .nav-menu summary:hover {
+body:has(.home-shell) .nav-menu[open] summary,
+body:has(.problems-page-shell) .nav-menu summary:hover,
+body:has(.home-shell) .nav-menu summary:hover {
   background: rgb(255 255 255 / 0.22);
   border-color: rgb(255 255 255 / 0.36);
   color: #fff;
 }
 
-body:has(.problems-page-shell) .header-search input {
+body:has(.problems-page-shell) .header-search input,
+body:has(.home-shell) .header-search input {
   color: #fff;
 }
 
-body:has(.problems-page-shell) .header-search input::placeholder {
+body:has(.problems-page-shell) .header-search input::placeholder,
+body:has(.home-shell) .header-search input::placeholder {
   color: rgb(255 255 255 / 0.72);
 }
 
