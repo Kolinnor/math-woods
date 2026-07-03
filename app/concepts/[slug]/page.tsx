@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ContentTranslations } from "@/components/ContentTranslations";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { toggleConceptWatchAction } from "@/lib/actions/concept-community-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
@@ -91,14 +92,27 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
   ]);
 
   return (
+    <ForestPageLayout
+      title={concept.title}
+      eyebrow="Concept"
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description={
+        <>
+          {domainLabel(concept.domain)} / {concept.status.toLowerCase()}
+          {concept.lastEditedBy ? ` / edited by ${displayNameForUser(concept.lastEditedBy)}` : ""}
+        </>
+      }
+      meta={
+        <>
+          <p>{concept._count.watchers} watchers</p>
+          <p>{concept._count.talkPosts} talk posts</p>
+        </>
+      }
+    >
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
         <div className="reading-header mb-5">
-          <h1>{concept.title}</h1>
-          <p className="muted mt-1">
-            {domainLabel(concept.domain)} · {concept.status.toLowerCase()}
-            {concept.lastEditedBy ? ` · edited by ${displayNameForUser(concept.lastEditedBy)}` : ""}
-          </p>
           <ContentTranslations
             currentLanguage={concept.language}
             hrefPrefix="/concepts"
@@ -221,5 +235,6 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
         </section>
       </aside>
     </div>
+    </ForestPageLayout>
   );
 }

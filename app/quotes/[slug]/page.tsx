@@ -1,6 +1,7 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { prisma } from "@/lib/db";
 import { displayNameForUser } from "@/lib/user-display";
@@ -37,17 +38,21 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
   if (!quote) notFound();
 
   return (
+    <ForestPageLayout
+      title={quote.attributedTo ?? "Unattributed"}
+      eyebrow="Quote"
+      heroImage="/art/pine-forest.jpg"
+      heroAlt="Ivan Shishkin, Pine Forest"
+      description={`added by ${quote.contributor ? displayNameForUser(quote.contributor) : "former user"} on ${quote.createdAt.toLocaleDateString("en-US")}`}
+      meta={
+        <>
+          <p>{quote.relatedProblems.length} related problems</p>
+          <p>{quote.relatedConcepts.length} related concepts</p>
+        </>
+      }
+    >
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
-        <div className="reading-header mb-5">
-          <p className="eyebrow">Quote</p>
-          <h1>{quote.attributedTo ?? "Unattributed"}</h1>
-          <p className="muted mt-1">
-            added by {quote.contributor ? displayNameForUser(quote.contributor) : "former user"} on{" "}
-            {quote.createdAt.toLocaleDateString("en-US")}
-          </p>
-        </div>
-
         <section className="quote-reading">
           <blockquote>“{quote.text}”</blockquote>
           {quote.attributedTo && <p>— {quote.attributedTo}</p>}
@@ -116,5 +121,6 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
         </section>
       </aside>
     </div>
+    </ForestPageLayout>
   );
 }

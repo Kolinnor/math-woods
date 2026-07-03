@@ -1,4 +1,5 @@
 import { DeleteTipButton } from "@/components/DeleteTipButton";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { TipProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -54,15 +55,19 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
     }));
 
   return (
-    <div className="mx-auto grid max-w-3xl gap-6">
-      <div>
+    <ForestPageLayout
+      title="Edit tip"
+      eyebrow={`Tip ${tip.position + 1}`}
+      heroImage="/art/oak-grove.jpg"
+      heroAlt="Ivan Shishkin, Oak Grove"
+      description={tip.title}
+      workspaceClassName="forest-page-workspace-narrow"
+      actions={
         <Link href="/tips" className="button secondary">
           Back to tips
         </Link>
-        <h1 className="mt-4 text-2xl font-bold">Edit tip</h1>
-        <p className="muted mt-1">Tip {tip.position + 1}</p>
-      </div>
-
+      }
+    >
       <form action={updateTipAction.bind(null, tip.id)} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
@@ -93,6 +98,6 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
           <DeleteTipButton title={tip.title} />
         </form>
       </section>
-    </div>
+    </ForestPageLayout>
   );
 }

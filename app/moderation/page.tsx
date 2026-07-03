@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { markErrorReportReviewedAction } from "@/lib/actions/error-report-actions";
 import {
   dismissReportAction,
@@ -68,12 +69,19 @@ export default async function ModerationPage() {
   const postById = new Map(posts.map((post) => [post.id, post]));
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Moderation</h1>
-        <p className="muted mt-1">Recent reports, light-touch triage, and content hiding when needed.</p>
-      </div>
-
+    <ForestPageLayout
+      title="Moderation"
+      eyebrow="Careful triage"
+      heroImage="/art/oak-grove.jpg"
+      heroAlt="Ivan Shishkin, Oak Grove"
+      description="Recent reports, light-touch triage, and content hiding when needed."
+      meta={
+        <>
+          <p>{reports.length} reports</p>
+          <p>{errorReports.length} site errors</p>
+        </>
+      }
+    >
       <section className="mb-8">
         <h2 className="mb-3 font-semibold">Site errors</h2>
         <div className="grid gap-3">
@@ -243,6 +251,6 @@ export default async function ModerationPage() {
 
         {reports.length === 0 && <p className="muted panel p-5">No reports.</p>}
       </div>
-    </div>
+    </ForestPageLayout>
   );
 }

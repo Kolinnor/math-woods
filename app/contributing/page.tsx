@@ -1,5 +1,6 @@
 import { ContributionRequestStatus } from "@prisma/client";
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import {
   claimContributionRequestAction,
   completeContributionRequestAction,
@@ -48,12 +49,14 @@ export default async function ContributingPage({
   const allRequests = [...activeRequests, ...completedRequests];
 
   return (
-    <article className="mx-auto max-w-3xl">
-      <h1 className="text-3xl font-bold">Contribution guidelines</h1>
-      <p className="muted mt-2">
-        Math Woods should feel like an old map being filled in: rough paths, missing clearings, margin notes, better routes.
-      </p>
-
+    <ForestPageLayout
+      title="Contribution guidelines"
+      eyebrow="Contributing"
+      heroImage="/art/oak-grove.jpg"
+      heroAlt="Ivan Shishkin, Oak Grove"
+      description="Math Woods should feel like an old map being filled in: rough paths, missing clearings, margin notes, better routes."
+      meta={<p>{allRequests.length} open or recent requests</p>}
+    >
       <div className="mt-8 grid gap-7">
         <section className="growth-note">
           <strong>Do not wait for perfection.</strong>
@@ -186,6 +189,6 @@ export default async function ContributingPage({
           Recent changes
         </Link>
       </div>
-    </article>
+    </ForestPageLayout>
   );
 }

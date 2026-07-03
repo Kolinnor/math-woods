@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EmailVerificationSuccessSync } from "@/components/EmailVerificationBanner";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { verifyEmailToken } from "@/lib/email-verification";
@@ -17,12 +18,18 @@ export default async function VerifyEmailPage({
   const canResend = Boolean(user && !user.emailVerifiedAt);
 
   return (
-    <div className="mx-auto max-w-xl">
+    <ForestPageLayout
+      title={result.ok ? "Email verified" : "Verification link expired"}
+      eyebrow="Account"
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description="Email verification keeps contributions accountable without making the site heavy."
+      workspaceClassName="forest-page-workspace-narrow"
+    >
       <section className="panel grid gap-4 p-6">
         {result.ok ? (
           <>
             <EmailVerificationSuccessSync userId={result.userId!} />
-            <h1 className="text-2xl font-bold">Email verified</h1>
             <p>Your email is verified. You can now contribute to Math Woods.</p>
             <Link href="/" className="button">
               Continue
@@ -30,7 +37,6 @@ export default async function VerifyEmailPage({
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold">Verification link expired</h1>
             <p className="muted">
               This email verification link is missing, invalid, or expired.
             </p>
@@ -48,6 +54,6 @@ export default async function VerifyEmailPage({
           </>
         )}
       </section>
-    </div>
+    </ForestPageLayout>
   );
 }

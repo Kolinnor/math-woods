@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { createSuggestionAction } from "@/lib/actions/suggestion-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -22,12 +23,14 @@ export default async function SuggestionsPage({
   });
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-7">
-      <div>
-        <h1 className="text-2xl font-bold">Suggestion box</h1>
-        <p className="muted mt-1">Small ideas, rough edges, and useful directions for Math Woods.</p>
-      </div>
-
+    <ForestPageLayout
+      title="Suggestion box"
+      eyebrow="Care notes"
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description="Small ideas, rough edges, and useful directions for Math Woods."
+      meta={<p>{suggestions.length} recent suggestions</p>}
+    >
       {submitted && <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">Suggestion sent.</p>}
 
       {canContribute ? (
@@ -77,6 +80,6 @@ export default async function SuggestionsPage({
           {suggestions.length === 0 && <p className="muted panel p-5">No suggestions yet.</p>}
         </div>
       </section>
-    </div>
+    </ForestPageLayout>
   );
 }

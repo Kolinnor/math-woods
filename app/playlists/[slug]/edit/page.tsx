@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { DeletePlaylistButton } from "@/components/DeletePlaylistButton";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { PlaylistCircuit } from "@/components/PlaylistCircuit";
@@ -104,16 +105,19 @@ export default async function EditPlaylistPage({
   }));
 
   return (
-    <div className="grid gap-6">
-      <div>
+    <ForestPageLayout
+      title={`Edit ${playlist.title}`}
+      eyebrow="Playlist"
+      heroImage="/art/rye.jpg"
+      heroAlt="Ivan Shishkin, Rye"
+      description="Manage the playlist circuit and reusable entries."
+      actions={
         <Link href={`/playlists/${playlist.slug}`} className="button secondary inline-flex items-center gap-2">
           <ArrowLeft size={16} />
           Back to playlist
         </Link>
-        <h1 className="mt-4 text-3xl font-bold">Edit {playlist.title}</h1>
-        <p className="muted mt-1">Manage the playlist circuit and reusable entries.</p>
-      </div>
-
+      }
+    >
       {circuitNodes.length > 0 && <PlaylistCircuit nodes={circuitNodes} />}
 
       <section className="playlist-builder">
@@ -286,6 +290,6 @@ export default async function EditPlaylistPage({
           </form>
         </section>
       )}
-    </div>
+    </ForestPageLayout>
   );
 }

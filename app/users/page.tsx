@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { roleLabel } from "@/lib/roles";
 import { getReputationLeaderboard, type UserReputationSummary } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
@@ -72,13 +73,19 @@ export default async function UsersPage({
   const users = sortUsers(await getReputationLeaderboard(), mode);
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-7">
-      <div className="page-header">
-        <div>
-          <h1 className="text-2xl font-bold">Users</h1>
-        </div>
-      </div>
-
+    <ForestPageLayout
+      title="Users"
+      eyebrow="Community"
+      heroImage="/art/brook-in-the-forest.jpg"
+      heroAlt="Ivan Shishkin, Brook in the Forest"
+      description="A quiet leaderboard for contributors, solvers, and problem writers."
+      meta={
+        <>
+          <p>{users.length} members</p>
+          <p>{selectedOption.label}</p>
+        </>
+      }
+    >
       <section className="panel p-5">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -118,6 +125,6 @@ export default async function UsersPage({
           {users.length === 0 && <p className="empty-state">No problem contributors yet.</p>}
         </div>
       </section>
-    </div>
+    </ForestPageLayout>
   );
 }

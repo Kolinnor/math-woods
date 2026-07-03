@@ -1,6 +1,7 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -105,21 +106,23 @@ export default async function ProfilePage({
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
 
   return (
+    <ForestPageLayout
+      title={displayNameForUser(user)}
+      eyebrow="Profile"
+      heroImage="/art/brook-in-the-forest.jpg"
+      heroAlt="Ivan Shishkin, Brook in the Forest"
+      description={`${mathLevelLabel(user.mathLevel)} / reputation ${reputation}`}
+      meta={<p>{user.role.toLowerCase()}</p>}
+      actions={
+        isSelf && (
+          <Link href={`/profile/${user.username}/edit`} className="button secondary">
+            Edit profile
+          </Link>
+        )
+      }
+    >
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">{displayNameForUser(user)}</h1>
-            <p className="muted mt-1">{user.role.toLowerCase()} / reputation {reputation}</p>
-            <p className="muted mt-1 text-sm">{mathLevelLabel(user.mathLevel)}</p>
-          </div>
-          {isSelf && (
-            <Link href={`/profile/${user.username}/edit`} className="button secondary">
-              Edit profile
-            </Link>
-          )}
-        </div>
-
         <nav className="mb-6 flex flex-wrap gap-2 text-sm">
           <Link href={`/profile/${user.username}`} className="rounded border border-line px-3 py-2">
             Overview
@@ -278,5 +281,6 @@ export default async function ProfilePage({
         </section>
       </aside>
     </div>
+    </ForestPageLayout>
   );
 }

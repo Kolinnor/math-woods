@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { createConceptTalkPostAction } from "@/lib/actions/concept-community-actions";
@@ -25,17 +26,20 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
   if (!concept) notFound();
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="muted text-sm">Editorial discussion</p>
-          <h1 className="text-2xl font-bold">{concept.title}</h1>
-        </div>
+    <ForestPageLayout
+      title={concept.title}
+      eyebrow="Editorial discussion"
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description="Discuss scope, sources, ambiguity, notation, and proposed improvements."
+      workspaceClassName="forest-page-workspace-narrow"
+      meta={<p>{concept.talkPosts.length} posts</p>}
+      actions={
         <Link href={`/concepts/${concept.slug}`} className="button secondary">
           Article
         </Link>
-      </div>
-
+      }
+    >
       <p className="muted mb-6">
         Use this page to discuss scope, sources, ambiguity, notation, and proposed improvements. Mathematical problem
         solving belongs on problem discussions.
@@ -72,6 +76,6 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
           to join the editorial discussion.
         </p>
       )}
-    </div>
+    </ForestPageLayout>
   );
 }

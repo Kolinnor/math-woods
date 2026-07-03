@@ -1,17 +1,21 @@
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 
 export default function CompetitionPage() {
   return (
-    <div className="mx-auto max-w-3xl py-12">
-      <p className="muted mb-2 text-sm uppercase">Work in progress</p>
-      <h1 className="text-3xl font-bold">Competition</h1>
-      <p className="muted mt-3 max-w-2xl">
-        A future place for time-boxed problem sets and community events. For now, the problems library is the best
-        place to practice.
+    <ForestPageLayout
+      title="Competition"
+      eyebrow="Work in progress"
+      heroImage="/art/pine-forest.jpg"
+      heroAlt="Ivan Shishkin, Pine Forest"
+      description="A future place for time-boxed problem sets and community events."
+    >
+      <p className="panel p-5">
+        For now, the problems library is the best place to practice.
       </p>
       <Link href="/problems" className="button mt-6">
         Browse problems
       </Link>
-    </div>
+    </ForestPageLayout>
   );
 }

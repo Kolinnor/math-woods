@@ -1,3 +1,4 @@
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { importMarkdownAction } from "@/lib/actions/import-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 
@@ -7,12 +8,14 @@ export default async function ImportPage() {
   await requireVerifiedUser();
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-2xl font-bold">Import Markdown</h1>
-      <p className="muted mb-5">
-        Paste an Obsidian-style Markdown note with optional frontmatter. Wikilinks and LaTeX are preserved.
-      </p>
-
+    <ForestPageLayout
+      title="Import Markdown"
+      eyebrow="Data tools"
+      heroImage="/art/pine-forest.jpg"
+      heroAlt="Ivan Shishkin, Pine Forest"
+      description="Paste an Obsidian-style Markdown note with optional frontmatter. Wikilinks and LaTeX are preserved."
+      workspaceClassName="forest-page-workspace-narrow"
+    >
       <form action={importMarkdownAction} className="panel grid gap-4 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2">
@@ -39,6 +42,6 @@ export default async function ImportPage() {
 
         <button type="submit">Import</button>
       </form>
-    </div>
+    </ForestPageLayout>
   );
 }

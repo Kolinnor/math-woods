@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { displayNameForUser } from "@/lib/user-display";
@@ -22,12 +23,19 @@ export default async function WatchlistPage() {
   const conceptsById = new Map(watched.map((item) => [item.conceptId, item.concept]));
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Watchlist</h1>
-        <p className="muted mt-1">Recent edits to concepts you follow.</p>
-      </div>
-
+    <ForestPageLayout
+      title="Watchlist"
+      eyebrow="Followed concepts"
+      heroImage="/art/brook-in-the-forest.jpg"
+      heroAlt="Ivan Shishkin, Brook in the Forest"
+      description="Recent edits to concepts you follow."
+      meta={
+        <>
+          <p>{watched.length} watched concepts</p>
+          <p>{revisions.length} recent edits</p>
+        </>
+      }
+    >
       <div className="grid gap-3">
         {revisions.map((revision) => {
           const concept = conceptsById.get(revision.pageId);
@@ -51,6 +59,6 @@ export default async function WatchlistPage() {
           <p className="muted panel p-5">Watch a concept to see its future edits here.</p>
         )}
       </div>
-    </div>
+    </ForestPageLayout>
   );
 }

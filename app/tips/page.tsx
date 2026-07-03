@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import type { Route } from "next";
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -97,13 +98,19 @@ export default async function TipsPage({
   })).filter(({ tip, relatedProblems }) => tipMatchesQuery(tip, relatedProblems, query));
 
   return (
-    <div className="directory-page">
-      <div className="page-header">
-        <div>
-          <h1 className="text-2xl font-bold">Tips</h1>
-        </div>
-      </div>
-
+    <ForestPageLayout
+      title="Tips"
+      eyebrow="Admin library"
+      heroImage="/art/oak-grove.jpg"
+      heroAlt="Ivan Shishkin, Oak Grove"
+      description="A compact library of problem-solving prompts and practice links."
+      meta={
+        <>
+          <p>{tips.length ? `${tips.length} tips shown` : "No tips match this search."}</p>
+          <p>Visible to admins</p>
+        </>
+      }
+    >
       <LiveSearchForm className="tip-search mb-6">
         <label className="grid gap-2">
           <span className="text-sm font-medium">Search tips</span>
@@ -172,6 +179,6 @@ export default async function TipsPage({
           </article>
         ))}
       </div>
-    </div>
+    </ForestPageLayout>
   );
 }

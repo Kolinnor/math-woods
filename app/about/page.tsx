@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { getCurrentUser } from "@/lib/auth";
 import { loadRenderedFaqSections } from "@/lib/faq";
@@ -23,7 +24,20 @@ export default async function AboutPage() {
   const canEditFaq = Boolean(user && canUseAdminTools(user));
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <ForestPageLayout
+      title="About"
+      eyebrow="Math Woods"
+      heroImage="/art/morning-in-a-pine-forest.jpg"
+      heroAlt="Ivan Shishkin, Morning in a Pine Forest"
+      description="A free, ad-free place for studying mathematics carefully and kindly."
+      actions={
+        canEditFaq && (
+          <Link href={"/about/faq/edit" as Route} className="button secondary">
+            Edit FAQ
+          </Link>
+        )
+      }
+    >
       <section className="about-promise">
         <p className="about-eyebrow">Math Woods' first promise</p>
         <h1>Free forever. No ads.</h1>
@@ -53,14 +67,6 @@ export default async function AboutPage() {
         </p>
       </section>
 
-      {canEditFaq && (
-        <div className="faq-admin-bar">
-          <Link href={"/about/faq/edit" as Route} className="button secondary">
-            Edit FAQ
-          </Link>
-        </div>
-      )}
-
       {faqSections.map((section) => (
         <section key={section.id ?? `${section.position}-${section.title}`} className="about-section" id={section.anchorId || undefined}>
           <h2>{section.title}</h2>
@@ -84,6 +90,6 @@ export default async function AboutPage() {
           </Link>
         </div>
       </section>
-    </div>
+    </ForestPageLayout>
   );
 }

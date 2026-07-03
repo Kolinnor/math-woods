@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import {
   createFaqItemAction,
   createFaqSectionAction,
@@ -27,17 +28,19 @@ export default async function EditFaqPage({
   const sections = await loadEditableFaqSections();
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6">
-      <div>
+    <ForestPageLayout
+      title="Edit FAQ"
+      eyebrow="Admin"
+      heroImage="/art/morning-in-a-pine-forest.jpg"
+      heroAlt="Ivan Shishkin, Morning in a Pine Forest"
+      description="Answers use Markdown. Changes appear on the public FAQ immediately after saving."
+      actions={
         <Link href="/about" className="button secondary">
           Back to FAQ
         </Link>
-        <h1 className="mt-4 text-2xl font-bold">Edit FAQ</h1>
-        <p className="muted mt-1">
-          Answers use Markdown. Changes appear on the public FAQ immediately after saving.
-        </p>
-        {updated && <p className="success-banner mt-4">FAQ updated.</p>}
-      </div>
+      }
+    >
+      {updated && <p className="success-banner mt-4">FAQ updated.</p>}
 
       <div className="grid gap-6">
         {sections.map((section) => (
@@ -138,6 +141,6 @@ export default async function EditFaqPage({
         </label>
         <button type="submit">Add section</button>
       </form>
-    </div>
+    </ForestPageLayout>
   );
 }

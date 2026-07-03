@@ -1,3 +1,4 @@
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { loginAction, registerAction } from "@/lib/actions/auth-actions";
 import { MATH_LEVEL_HELP_TEXT, MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/user-display";
@@ -25,7 +26,14 @@ export default async function LoginPage({
   const registerError = registerErrorMessage(params.registerError);
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
+    <ForestPageLayout
+      title="Sign in"
+      eyebrow="Account"
+      heroImage="/art/brook-in-the-forest.jpg"
+      heroAlt="Ivan Shishkin, Brook in the Forest"
+      description="Use an account to solve, discuss, save, and contribute."
+    >
+    <div className="grid gap-6 md:grid-cols-2">
       <section>
         <h1 className="mb-2 text-2xl font-bold">Sign in</h1>
         <p className="muted mb-5">Use your username or email.</p>
@@ -88,5 +96,6 @@ export default async function LoginPage({
         </form>
       </section>
     </div>
+    </ForestPageLayout>
   );
 }

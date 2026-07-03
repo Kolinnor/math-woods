@@ -2,6 +2,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { PlaylistCircuit } from "@/components/PlaylistCircuit";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -71,16 +72,20 @@ export default async function StartPlaylistPage({ params }: { params: Promise<{ 
   );
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-6">
-      <div>
+    <ForestPageLayout
+      title={playlist.title}
+      eyebrow="Playlist route"
+      heroImage="/art/rye.jpg"
+      heroAlt="Ivan Shishkin, Rye"
+      description={`playlist by ${displayNameForUser(playlist.author)}`}
+      workspaceClassName="forest-page-workspace-narrow"
+      actions={
         <Link href={`/playlists/${playlist.slug}`} className="button secondary inline-flex items-center gap-2">
           <ArrowLeft size={16} />
           Back to playlist
         </Link>
-        <h1 className="mt-4 text-3xl font-bold">{playlist.title}</h1>
-        <p className="muted mt-1">playlist by {displayNameForUser(playlist.author)}</p>
-      </div>
-
+      }
+    >
       {playlist.circuitNodes.length > 0 ? (
         <PlaylistCircuit nodes={circuitNodes} />
       ) : (
@@ -105,6 +110,6 @@ export default async function StartPlaylistPage({ params }: { params: Promise<{ 
           {playlist.items.length === 0 && <p className="muted panel p-5">No problems in this playlist yet.</p>}
         </section>
       )}
-    </div>
+    </ForestPageLayout>
   );
 }

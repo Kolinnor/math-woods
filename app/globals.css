@@ -3443,12 +3443,14 @@ button.domain-browser-expand:disabled {
   margin: 0.55rem 0 0;
 }
 
-body:has(.problems-page-shell) {
+body:has(.problems-page-shell),
+body:has(.forest-page-shell) {
   background: #e8e2d3;
 }
 
 body:has(.problems-page-shell) .site-header,
-body:has(.home-shell) .site-header {
+body:has(.home-shell) .site-header,
+body:has(.forest-page-shell) .site-header {
   background: transparent;
   border-bottom: 0;
   color: #fff;
@@ -3458,31 +3460,39 @@ body:has(.home-shell) .site-header {
 
 body:has(.problems-page-shell) .site-brand,
 body:has(.home-shell) .site-brand,
+body:has(.forest-page-shell) .site-brand,
 body:has(.problems-page-shell) .primary-nav a,
-body:has(.home-shell) .primary-nav a {
+body:has(.home-shell) .primary-nav a,
+body:has(.forest-page-shell) .primary-nav a {
   color: rgb(255 255 255 / 0.9);
   text-shadow: 0 1px 10px rgb(0 0 0 / 0.5);
 }
 
 body:has(.problems-page-shell) .site-brand-logo,
-body:has(.home-shell) .site-brand-logo {
+body:has(.home-shell) .site-brand-logo,
+body:has(.forest-page-shell) .site-brand-logo {
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
 }
 
 body:has(.problems-page-shell) .primary-nav a:hover,
-body:has(.home-shell) .primary-nav a:hover {
+body:has(.home-shell) .primary-nav a:hover,
+body:has(.forest-page-shell) .primary-nav a:hover {
   background: rgb(255 255 255 / 0.14);
   color: #fff;
 }
 
 body:has(.problems-page-shell) .language-selector,
 body:has(.home-shell) .language-selector,
+body:has(.forest-page-shell) .language-selector,
 body:has(.problems-page-shell) .header-search,
 body:has(.home-shell) .header-search,
+body:has(.forest-page-shell) .header-search,
 body:has(.problems-page-shell) .site-header .icon-button.secondary,
 body:has(.home-shell) .site-header .icon-button.secondary,
+body:has(.forest-page-shell) .site-header .icon-button.secondary,
 body:has(.problems-page-shell) .nav-menu summary,
-body:has(.home-shell) .nav-menu summary {
+body:has(.home-shell) .nav-menu summary,
+body:has(.forest-page-shell) .nav-menu summary {
   background: rgb(255 255 255 / 0.14);
   border-color: rgb(255 255 255 / 0.22);
   color: #fff;
@@ -3490,37 +3500,47 @@ body:has(.home-shell) .nav-menu summary {
 
 body:has(.problems-page-shell) .language-selector:hover,
 body:has(.home-shell) .language-selector:hover,
+body:has(.forest-page-shell) .language-selector:hover,
 body:has(.problems-page-shell) .language-selector:focus-within,
 body:has(.home-shell) .language-selector:focus-within,
+body:has(.forest-page-shell) .language-selector:focus-within,
 body:has(.problems-page-shell) .header-search:focus-within,
 body:has(.home-shell) .header-search:focus-within,
+body:has(.forest-page-shell) .header-search:focus-within,
 body:has(.problems-page-shell) .site-header .icon-button.secondary:hover,
 body:has(.home-shell) .site-header .icon-button.secondary:hover,
+body:has(.forest-page-shell) .site-header .icon-button.secondary:hover,
 body:has(.problems-page-shell) .nav-menu[open] summary,
 body:has(.home-shell) .nav-menu[open] summary,
+body:has(.forest-page-shell) .nav-menu[open] summary,
 body:has(.problems-page-shell) .nav-menu summary:hover,
-body:has(.home-shell) .nav-menu summary:hover {
+body:has(.home-shell) .nav-menu summary:hover,
+body:has(.forest-page-shell) .nav-menu summary:hover {
   background: rgb(255 255 255 / 0.22);
   border-color: rgb(255 255 255 / 0.36);
   color: #fff;
 }
 
 body:has(.problems-page-shell) .header-search input,
-body:has(.home-shell) .header-search input {
+body:has(.home-shell) .header-search input,
+body:has(.forest-page-shell) .header-search input {
   color: #fff;
 }
 
 body:has(.problems-page-shell) .header-search input::placeholder,
-body:has(.home-shell) .header-search input::placeholder {
+body:has(.home-shell) .header-search input::placeholder,
+body:has(.forest-page-shell) .header-search input::placeholder {
   color: rgb(255 255 255 / 0.72);
 }
 
-.site-main:has(.problems-page-shell) {
+.site-main:has(.problems-page-shell),
+.site-main:has(.forest-page-shell) {
   max-width: none;
   min-height: 0;
   padding: 0;
 }
 
+.forest-page-shell,
 .problems-page-shell {
   background: #e8e2d3;
   color: #1c211b;
@@ -3529,6 +3549,7 @@ body:has(.home-shell) .header-search input::placeholder {
   width: 100%;
 }
 
+.forest-page-hero,
 .problems-hero {
   background: #14201a;
   display: flex;
@@ -3537,6 +3558,11 @@ body:has(.home-shell) .header-search input::placeholder {
   position: relative;
 }
 
+.forest-page-hero {
+  min-height: 285px;
+}
+
+.forest-page-hero img,
 .problems-hero img {
   height: 100%;
   inset: 0;
@@ -3546,12 +3572,18 @@ body:has(.home-shell) .header-search input::placeholder {
   width: 100%;
 }
 
+.forest-page-hero img {
+  object-position: center 56%;
+}
+
+.forest-page-hero-overlay,
 .problems-hero-overlay {
   background: linear-gradient(180deg, rgb(20 28 18 / 0.6) 0%, rgb(20 28 18 / 0.32) 42%, rgb(20 28 18 / 0.84) 100%);
   inset: 0;
   position: absolute;
 }
 
+.forest-page-hero-content,
 .problems-hero-content {
   align-items: flex-end;
   display: flex;
@@ -3567,6 +3599,11 @@ body:has(.home-shell) .header-search input::placeholder {
   z-index: 1;
 }
 
+.forest-page-hero-content {
+  padding-bottom: 1.65rem;
+}
+
+.forest-page-hero-kicker,
 .problems-hero-kicker {
   color: #cfe3c4;
   font-size: 0.72rem;
@@ -3577,6 +3614,7 @@ body:has(.home-shell) .header-search input::placeholder {
   text-transform: uppercase;
 }
 
+.forest-page-hero h1,
 .problems-hero h1 {
   color: #fff;
   font-family: var(--font-serif);
@@ -3587,6 +3625,7 @@ body:has(.home-shell) .header-search input::placeholder {
   text-shadow: 0 2px 22px rgb(0 0 0 / 0.55);
 }
 
+.forest-page-hero-description,
 .problems-hero-description {
   color: rgb(255 255 255 / 0.8);
   max-width: 44rem;
@@ -3594,6 +3633,7 @@ body:has(.home-shell) .header-search input::placeholder {
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
 }
 
+.forest-page-hero-meta,
 .problems-hero-meta {
   align-items: flex-end;
   color: rgb(255 255 255 / 0.78);
@@ -3606,13 +3646,131 @@ body:has(.home-shell) .header-search input::placeholder {
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
 }
 
+.forest-page-hero-meta p,
 .problems-hero-meta p {
   margin: 0;
+}
+
+.forest-page-hero-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.7rem;
+  text-shadow: none;
+}
+
+.forest-page-hero-actions .button,
+.forest-page-hero-actions button {
+  text-shadow: none;
 }
 
 .problems-hero-meta .button {
   margin-top: 0.6rem;
   text-shadow: none;
+}
+
+.forest-page-workspace {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1180px;
+  padding: 1.6rem 1.6rem 3.2rem;
+  width: 100%;
+}
+
+.forest-page-workspace-narrow {
+  max-width: 860px;
+}
+
+.forest-page-workspace-with-sidebar {
+  align-items: start;
+  border-top: 1px solid #d8d0bd;
+  display: grid;
+  gap: 1.4rem;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  margin-top: 1.2rem;
+  padding-top: 1.4rem;
+}
+
+.forest-page-primary {
+  min-width: 0;
+}
+
+.forest-page-sidebar {
+  background: #f8f4ea;
+  border: 1px solid #d8d0bd;
+  border-radius: 8px;
+  box-shadow: none;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.forest-page-shell .page-header {
+  border-color: #d8d0bd;
+}
+
+.forest-page-shell .filter-bar,
+.forest-page-shell .list-surface,
+.forest-page-shell .panel,
+.forest-page-shell .quote-card,
+.forest-page-shell .quote-form,
+.forest-page-shell .tip-card,
+.forest-page-shell .tip-search,
+.forest-page-shell .quote-search,
+.forest-page-shell .users-list {
+  background: #f8f4ea;
+  border-color: #d8d0bd;
+  box-shadow: none;
+}
+
+.forest-page-shell .list-row,
+.forest-page-shell .users-row {
+  border-color: #d8d0bd;
+}
+
+.forest-page-shell .list-row:hover,
+.forest-page-shell .users-row:hover,
+.forest-page-shell .quote-card:hover,
+.forest-page-shell .tip-card:hover {
+  background: rgb(248 244 234 / 0.72);
+}
+
+.forest-page-shell .empty-state {
+  background: #f8f4ea;
+  border-color: #d8d0bd;
+  color: #5a665c;
+}
+
+@media (max-width: 900px) {
+  .forest-page-hero {
+    min-height: 340px;
+  }
+
+  .forest-page-hero-content {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 0 1.4rem 1.6rem;
+  }
+
+  .forest-page-hero-meta {
+    align-items: flex-start;
+    justify-items: start;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .forest-page-hero-actions {
+    justify-content: flex-start;
+  }
+
+  .forest-page-workspace,
+  .forest-page-workspace-with-sidebar {
+    grid-template-columns: 1fr;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 .problem-domain-strip {

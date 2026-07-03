@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { Bookmark, Pencil, Play, ThumbsUp } from "lucide-react";
 import { notFound } from "next/navigation";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import {
   togglePlaylistFollowAction,
@@ -64,27 +65,35 @@ export default async function PlaylistPage({ params }: { params: Promise<{ slug:
   const editHref = `/playlists/${playlist.slug}/edit` as Route;
 
   return (
+    <ForestPageLayout
+      title={playlist.title}
+      eyebrow="Playlist"
+      heroImage="/art/rye.jpg"
+      heroAlt="Ivan Shishkin, Rye"
+      description={`playlist by ${displayNameForUser(playlist.author)}`}
+      meta={
+        <>
+          <p>{playlist.items.length} problems</p>
+          <p>{followerCount} followers</p>
+        </>
+      }
+      actions={
+        <>
+          <Link href={startHref} className="button">
+            <Play size={17} />
+            Start playlist
+          </Link>
+          {isEditor && (
+            <Link href={editHref} className="button secondary">
+              <Pencil size={17} />
+              Edit
+            </Link>
+          )}
+        </>
+      }
+    >
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">{playlist.title}</h1>
-            <p className="muted mt-1">playlist by {displayNameForUser(playlist.author)}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href={startHref} className="button">
-              <Play size={17} />
-              Start playlist
-            </Link>
-            {isEditor && (
-              <Link href={editHref} className="button secondary">
-                <Pencil size={17} />
-                Edit
-              </Link>
-            )}
-          </div>
-        </div>
-
         <section className="panel p-6">
           <MarkdownBlock html={playlist.descriptionHtml} />
         </section>
@@ -154,5 +163,6 @@ export default async function PlaylistPage({ params }: { params: Promise<{ slug:
         </section>
       </aside>
     </div>
+    </ForestPageLayout>
   );
 }

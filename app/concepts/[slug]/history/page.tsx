@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { rollbackConceptRevisionAction } from "@/lib/actions/concept-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -22,17 +23,20 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
   });
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Concept history</h1>
-          <p className="muted mt-1">{concept.title}</p>
-        </div>
+    <ForestPageLayout
+      title="Concept history"
+      eyebrow={concept.title}
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description="A revision trail for this concept page."
+      workspaceClassName="forest-page-workspace-narrow"
+      meta={<p>{revisions.length} revisions</p>}
+      actions={
         <Link href={`/concepts/${concept.slug}`} className="button secondary">
           Back
         </Link>
-      </div>
-
+      }
+    >
       <div className="grid gap-3">
         {revisions.map((revision) => (
           <section key={revision.id} className="panel p-4">
@@ -57,6 +61,6 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
           </section>
         ))}
       </div>
-    </div>
+    </ForestPageLayout>
   );
 }

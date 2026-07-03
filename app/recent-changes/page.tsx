@@ -1,5 +1,6 @@
 import type { Route } from "next";
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { prisma } from "@/lib/db";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -21,13 +22,15 @@ export default async function RecentChangesPage() {
   const problemsById = new Map(problems.map((item) => [item.id, item]));
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Recent changes</h1>
-        <p className="muted mt-1">A transparent log of recent article and problem edits.</p>
-      </div>
-
-      <div className="grid gap-2">
+    <ForestPageLayout
+      title="Recent changes"
+      eyebrow="Revision trail"
+      heroImage="/art/rye.jpg"
+      heroAlt="Ivan Shishkin, Rye"
+      description="A transparent log of recent article and problem edits."
+      meta={<p>{revisions.length} latest revisions</p>}
+    >
+      <div className="list-surface">
         {revisions.map((revision) => {
           const page =
             revision.pageType === "CONCEPT" ? conceptsById.get(revision.pageId) : problemsById.get(revision.pageId);
@@ -36,7 +39,7 @@ export default async function RecentChangesPage() {
             (revision.pageType === "CONCEPT" ? `/concepts/${page.slug}` : `/problems/${page.slug}`) as Route;
 
           return (
-            <article key={revision.id} className="border-b border-line py-3">
+            <article key={revision.id} className="list-row">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <span className="muted mr-2 text-xs uppercase">{revision.pageType.toLowerCase()}</span>
@@ -54,6 +57,6 @@ export default async function RecentChangesPage() {
           );
         })}
       </div>
-    </div>
+    </ForestPageLayout>
   );
 }

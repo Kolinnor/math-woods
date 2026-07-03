@@ -1,12 +1,14 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Prisma } from "@prisma/client";
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { createQuoteAction } from "@/lib/actions/quote-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { contentLanguageLabel } from "@/lib/languages";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
@@ -60,68 +62,20 @@ export default async function QuotesPage({
   const { quotes, unavailable } = await findQuotes(where);
 
   return (
-    <div className="directory-page grid gap-8 lg:grid-cols-[1fr_22rem]">
-      <section>
-        <div className="page-header">
-          <div>
-            <h1 className="text-2xl font-bold">Quotes</h1>
-            <p className="muted mt-1">Short passages, source notes, and nearby pages.</p>
-          </div>
-        </div>
-
-        <LiveSearchForm className="quote-search mb-6">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Search quotes</span>
-            <input name="q" defaultValue={query} placeholder="Search text, attribution, or provenance" />
-          </label>
-          <button type="submit">Search</button>
-        </LiveSearchForm>
-
-        {unavailable && (
-          <p className="quality-banner quality-needs-work mb-4">
-            The quotes table is missing. Run the latest database migration.
-          </p>
-        )}
-
-        <div className="quote-list">
-          {quotes.map((quote) => (
-            <article key={quote.id} className="quote-card">
-              <Link href={`/quotes/${quote.slug}`} className="quote-text">
-                "{quote.text}"
-              </Link>
-              <div className="quote-meta-row">
-                <span>{quote.attributedTo ? `Attributed to ${quote.attributedTo}` : "No attribution recorded"}</span>
-                <span>added by {quote.contributor ? displayNameForUser(quote.contributor) : "former user"}</span>
-              </div>
-              <details className="quote-provenance">
-                <summary>
-                  <span>Provenance</span>
-                  <strong>{quote.provenance}</strong>
-                </summary>
-                <p>{quote.provenanceDetails || "No further provenance details are known yet."}</p>
-              </details>
-              <div className="quote-related">
-                {quote.relatedProblems.map(({ problem }) => (
-                  <Link key={problem.id} href={`/problems/${problem.slug}`}>
-                    <AsyncMarkdownInline markdown={problem.title} />
-                  </Link>
-                ))}
-                {quote.relatedConcepts.map(({ concept }) => (
-                  <Link key={concept.id} href={`/concepts/${concept.slug}`}>
-                    {concept.title}
-                  </Link>
-                ))}
-                {quote._count.relatedProblems + quote._count.relatedConcepts === 0 && (
-                  <span className="muted">No related pages yet.</span>
-                )}
-              </div>
-            </article>
-          ))}
-          {quotes.length === 0 && <p className="empty-state">No quotes match this search.</p>}
-        </div>
-      </section>
-
-      <aside className="sidebar-section content-start">
+    <ForestPageLayout
+      title="Quotes"
+      eyebrow="Source notes"
+      heroImage="/art/pine-forest.jpg"
+      heroAlt="Ivan Shishkin, Pine Forest"
+      description="Short passages, source notes, and nearby pages."
+      meta={
+        <>
+          <p>{quotes.length} quotes shown</p>
+          <p>{contentLanguageLabel(preferredLanguage)}</p>
+        </>
+      }
+      sidebar={
+        <>
         <h2 className="mb-3 font-semibold">Add a quote</h2>
         {canContribute ? (
           <form action={createQuoteAction} className="quote-form">
@@ -176,7 +130,59 @@ export default async function QuotesPage({
             to add a quote.
           </p>
         )}
-      </aside>
-    </div>
+        </>
+      }
+    >
+      <LiveSearchForm className="quote-search mb-6">
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Search quotes</span>
+          <input name="q" defaultValue={query} placeholder="Search text, attribution, or provenance" />
+        </label>
+        <button type="submit">Search</button>
+      </LiveSearchForm>
+
+      {unavailable && (
+        <p className="quality-banner quality-needs-work mb-4">
+          The quotes table is missing. Run the latest database migration.
+        </p>
+      )}
+
+      <div className="quote-list">
+        {quotes.map((quote) => (
+          <article key={quote.id} className="quote-card">
+            <Link href={`/quotes/${quote.slug}`} className="quote-text">
+              "{quote.text}"
+            </Link>
+            <div className="quote-meta-row">
+              <span>{quote.attributedTo ? `Attributed to ${quote.attributedTo}` : "No attribution recorded"}</span>
+              <span>added by {quote.contributor ? displayNameForUser(quote.contributor) : "former user"}</span>
+            </div>
+            <details className="quote-provenance">
+              <summary>
+                <span>Provenance</span>
+                <strong>{quote.provenance}</strong>
+              </summary>
+              <p>{quote.provenanceDetails || "No further provenance details are known yet."}</p>
+            </details>
+            <div className="quote-related">
+              {quote.relatedProblems.map(({ problem }) => (
+                <Link key={problem.id} href={`/problems/${problem.slug}`}>
+                  <AsyncMarkdownInline markdown={problem.title} />
+                </Link>
+              ))}
+              {quote.relatedConcepts.map(({ concept }) => (
+                <Link key={concept.id} href={`/concepts/${concept.slug}`}>
+                  {concept.title}
+                </Link>
+              ))}
+              {quote._count.relatedProblems + quote._count.relatedConcepts === 0 && (
+                <span className="muted">No related pages yet.</span>
+              )}
+            </div>
+          </article>
+        ))}
+        {quotes.length === 0 && <p className="empty-state">No quotes match this search.</p>}
+      </div>
+    </ForestPageLayout>
   );
 }

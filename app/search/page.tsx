@@ -1,5 +1,6 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -91,9 +92,23 @@ export default async function SearchPage({
   const total = concepts.length + problems.length + playlists.length + quotes.length;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <ForestPageLayout
+      title="Search"
+      eyebrow="Find your way"
+      heroImage="/art/brook-in-the-forest.jpg"
+      heroAlt="Ivan Shishkin, Brook in the Forest"
+      description="Search across concepts, problems, playlists, and quotes."
+      meta={
+        query ? (
+          <p>
+            {total} {contentLanguageLabel(preferredLanguage).toLowerCase()} results
+          </p>
+        ) : (
+          <p>Enter a term to begin</p>
+        )
+      }
+    >
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Search</h1>
         <LiveSearchForm className="mt-4 flex gap-2">
           <input name="q" defaultValue={query} placeholder="Search Math Woods" autoFocus />
           <button type="submit">Search</button>
@@ -170,6 +185,6 @@ export default async function SearchPage({
           No results. Try another term, or create a missing concept from the Concepts page.
         </p>
       )}
-    </div>
+    </ForestPageLayout>
   );
 }

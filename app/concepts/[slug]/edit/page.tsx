@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ConceptStatus } from "@prisma/client";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -36,10 +37,14 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
       canSetControversialStatus);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-2xl font-bold">Edit concept</h1>
-      <p className="muted mb-5">Changes create a revision and refresh outgoing links automatically.</p>
-
+    <ForestPageLayout
+      title="Edit concept"
+      eyebrow={concept.title}
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description="Changes create a revision and refresh outgoing links automatically."
+      workspaceClassName="forest-page-workspace-narrow"
+    >
       <form action={updateConceptAction.bind(null, concept.id)} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
@@ -95,6 +100,6 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
         </label>
         <button type="submit">Save changes</button>
       </form>
-    </div>
+    </ForestPageLayout>
   );
 }

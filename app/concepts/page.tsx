@@ -2,6 +2,7 @@ import { ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import type { Route } from "next";
 import Link from "next/link";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { prisma } from "@/lib/db";
@@ -75,85 +76,48 @@ export default async function ConceptsPage({
   ]);
 
   return (
-    <div className="directory-page grid gap-8 lg:grid-cols-[1fr_18rem]">
-      <section>
-        <div className="page-header">
-          <div>
-            <h1 className="text-2xl font-bold">Concepts</h1>
-            <p className="muted mt-1">
-              A linked, sourced, collaboratively maintained mathematics encyclopedia in {contentLanguageLabel(preferredLanguage)}.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/contributing" className="button secondary">
-              Guidelines
-            </Link>
-            <Link href="/concepts/random" className="button secondary">
-              Random
-            </Link>
-            <Link href="/recent-changes" className="button secondary">
-              Recent changes
-            </Link>
-            <Link href="/watchlist" className="button secondary">
-              Watchlist
-            </Link>
-            <Link href="/concepts/new" className="button">
-              New
-            </Link>
-            <ContributionRequestDialog
-              action={createContributionRequestAction.bind(null, "CONCEPT", "/concepts")}
-              buttonLabel="Request a concept"
-              title="Request a concept"
-              description="Tell contributors which mathematical notion should get a concept page."
-              placeholder="Describe the concept page you would like: the notion, examples, related results, references, or level of detail you have in mind."
-            />
-          </div>
-        </div>
-
-        <LiveSearchForm className="filter-bar mb-6 grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem_auto]">
-          <input name="q" defaultValue={query} placeholder="Search titles, content, or aliases" />
-          <select name="domain" defaultValue={domainValue ?? ""}>
-            <option value="">Any domain</option>
-            {PROBLEM_DOMAINS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <select name="status" defaultValue={statusValue ?? ""}>
-            <option value="">Any status</option>
-            <option value="STUB">Stub</option>
-            <option value="USABLE">Usable</option>
-            <option value="REVIEWED">Reviewed</option>
-            <option value="EXCELLENT">Excellent</option>
-            <option value="CONTROVERSIAL">Controversial</option>
-          </select>
-          <button type="submit">Search</button>
-        </LiveSearchForm>
-
-        <div className="list-surface">
-          {concepts.map((concept) => (
-            <Link key={concept.id} href={`/concepts/${concept.slug}`} className="list-row block">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">{concept.title}</h2>
-                  <p className="meta">
-                    {domainLabel(concept.domain)} / {concept.status.toLowerCase()} / {concept._count.references}{" "}
-                    sources / {concept._count.talkPosts} talk posts
-                  </p>
-                  {concept.aliases.length > 0 && (
-                    <p className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</p>
-                  )}
-                </div>
-                <span className="meta">updated {concept.updatedAt.toLocaleDateString("en-US")}</span>
-              </div>
-            </Link>
-          ))}
-          {concepts.length === 0 && <p className="empty-state">No concepts match these filters.</p>}
-        </div>
-      </section>
-
-      <aside className="sidebar-section content-start">
+    <ForestPageLayout
+      title="Concepts"
+      eyebrow="Encyclopedia"
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description={
+        <>A linked, sourced, collaboratively maintained mathematics encyclopedia in {contentLanguageLabel(preferredLanguage)}.</>
+      }
+      meta={
+        <>
+          <p>{concepts.length} concepts shown</p>
+          <p>{missing.length} linked gaps</p>
+        </>
+      }
+      actions={
+        <>
+          <Link href="/contributing" className="button secondary">
+            Guidelines
+          </Link>
+          <Link href="/concepts/random" className="button secondary">
+            Random
+          </Link>
+          <Link href="/recent-changes" className="button secondary">
+            Recent changes
+          </Link>
+          <Link href="/watchlist" className="button secondary">
+            Watchlist
+          </Link>
+          <Link href="/concepts/new" className="button">
+            New
+          </Link>
+          <ContributionRequestDialog
+            action={createContributionRequestAction.bind(null, "CONCEPT", "/concepts")}
+            buttonLabel="Request a concept"
+            title="Request a concept"
+            description="Tell contributors which mathematical notion should get a concept page."
+            placeholder="Describe the concept page you would like: the notion, examples, related results, references, or level of detail you have in mind."
+          />
+        </>
+      }
+      sidebar={
+        <>
         <h2 className="mb-3 font-semibold">Missing concepts</h2>
         <p className="muted mb-4 text-sm">Frequently linked gaps are good places to contribute.</p>
         <div className="grid gap-2">
@@ -187,7 +151,50 @@ export default async function ConceptsPage({
           })}
           {missing.length === 0 && <p className="muted text-sm">No missing concepts.</p>}
         </div>
-      </aside>
-    </div>
+        </>
+      }
+    >
+      <LiveSearchForm className="filter-bar mb-6 grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem_auto]">
+        <input name="q" defaultValue={query} placeholder="Search titles, content, or aliases" />
+        <select name="domain" defaultValue={domainValue ?? ""}>
+          <option value="">Any domain</option>
+          {PROBLEM_DOMAINS.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        <select name="status" defaultValue={statusValue ?? ""}>
+          <option value="">Any status</option>
+          <option value="STUB">Stub</option>
+          <option value="USABLE">Usable</option>
+          <option value="REVIEWED">Reviewed</option>
+          <option value="EXCELLENT">Excellent</option>
+          <option value="CONTROVERSIAL">Controversial</option>
+        </select>
+        <button type="submit">Search</button>
+      </LiveSearchForm>
+
+      <div className="list-surface">
+        {concepts.map((concept) => (
+          <Link key={concept.id} href={`/concepts/${concept.slug}`} className="list-row block">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">{concept.title}</h2>
+                <p className="meta">
+                  {domainLabel(concept.domain)} / {concept.status.toLowerCase()} / {concept._count.references} sources /{" "}
+                  {concept._count.talkPosts} talk posts
+                </p>
+                {concept.aliases.length > 0 && (
+                  <p className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</p>
+                )}
+              </div>
+              <span className="meta">updated {concept.updatedAt.toLocaleDateString("en-US")}</span>
+            </div>
+          </Link>
+        ))}
+        {concepts.length === 0 && <p className="empty-state">No concepts match these filters.</p>}
+      </div>
+    </ForestPageLayout>
   );
 }

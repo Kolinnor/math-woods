@@ -1,4 +1,5 @@
 import { createConceptAction } from "@/lib/actions/concept-actions";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -32,13 +33,16 @@ export default async function NewConceptPage({
     "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to [[polynomial]].";
 
   return (
-    <div className={sourceConcept ? "translation-compose-page" : "mx-auto max-w-3xl"}>
+    <ForestPageLayout
+      title="New concept"
+      eyebrow={sourceConcept ? "Translation" : "Concept"}
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description="A stub can be useful: name the idea, add a link, cite one source."
+      workspaceClassName={sourceConcept ? undefined : "forest-page-workspace-narrow"}
+    >
+    <div className={sourceConcept ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
-        <h1 className="mb-2 text-2xl font-bold">New concept</h1>
-        <p className="muted mb-5">
-          A stub can be useful: name the idea, add a link, cite one source.
-        </p>
-
         <form action={createConceptAction} className="panel grid gap-4 p-5">
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
         <div className="growth-note">
@@ -104,5 +108,6 @@ export default async function NewConceptPage({
         />
       )}
     </div>
+    </ForestPageLayout>
   );
 }

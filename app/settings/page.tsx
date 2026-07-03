@@ -1,6 +1,7 @@
 import { NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { BackgroundStylePicker } from "@/components/BackgroundStylePicker";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import {
   changePasswordAction,
   deleteAccountAction,
@@ -324,12 +325,14 @@ export default async function SettingsPage({
     : [];
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="muted mt-1">Appearance, account security, and active sessions for {displayNameForUser(user)}.</p>
-      </div>
-
+    <ForestPageLayout
+      title="Settings"
+      eyebrow="Account"
+      heroImage="/art/birch-grove.jpg"
+      heroAlt="Ivan Shishkin, Birch Grove"
+      description={`Appearance, account security, and active sessions for ${displayNameForUser(user)}.`}
+      workspaceClassName="forest-page-workspace-narrow"
+    >
       {params.updated === "password" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
           Password updated. Other sessions were revoked.
@@ -688,6 +691,6 @@ export default async function SettingsPage({
           </div>
         </section>
       )}
-    </div>
+    </ForestPageLayout>
   );
 }

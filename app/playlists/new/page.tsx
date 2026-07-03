@@ -1,4 +1,5 @@
 import { createPlaylistAction } from "@/lib/actions/playlist-actions";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { requireVerifiedUser } from "@/lib/auth";
@@ -15,10 +16,14 @@ export default async function NewPlaylistPage({
   const preferredLanguage = await getPreferredContentLanguage();
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="mb-2 text-2xl font-bold">New playlist</h1>
-      <p className="muted mb-5">A sequence of problems with a guiding thread.</p>
-
+    <ForestPageLayout
+      title="New playlist"
+      eyebrow="Learning path"
+      heroImage="/art/rye.jpg"
+      heroAlt="Ivan Shishkin, Rye"
+      description="A sequence of problems with a guiding thread."
+      workspaceClassName="forest-page-workspace-narrow"
+    >
       <form action={createPlaylistAction} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
@@ -35,6 +40,6 @@ export default async function NewPlaylistPage({
         </div>
         <button type="submit">Create</button>
       </form>
-    </div>
+    </ForestPageLayout>
   );
 }

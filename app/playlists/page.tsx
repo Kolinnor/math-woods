@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { prisma } from "@/lib/db";
 import { contentLanguageLabel } from "@/lib/languages";
 import { pluralize } from "@/lib/pluralize";
@@ -20,19 +21,24 @@ export default async function PlaylistsPage() {
   });
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Playlists</h1>
-          <p className="muted mt-1">
-            Ordered paths for learning through {contentLanguageLabel(preferredLanguage).toLowerCase()} problems.
-          </p>
-        </div>
+    <ForestPageLayout
+      title="Playlists"
+      eyebrow="Learning paths"
+      heroImage="/art/rye.jpg"
+      heroAlt="Ivan Shishkin, Rye"
+      description={`Ordered paths for learning through ${contentLanguageLabel(preferredLanguage).toLowerCase()} problems.`}
+      meta={
+        <>
+          <p>{pluralize(playlists.length, "playlist")}</p>
+          <p>{contentLanguageLabel(preferredLanguage)}</p>
+        </>
+      }
+      actions={
         <Link href="/playlists/new" className="button">
           New
         </Link>
-      </div>
-
+      }
+    >
       <div className="grid gap-3">
         {playlists.map((playlist) => (
           <Link key={playlist.id} href={`/playlists/${playlist.slug}`} className="panel block p-4">
@@ -49,6 +55,6 @@ export default async function PlaylistsPage() {
         ))}
         {playlists.length === 0 && <p className="muted panel p-5">No playlists yet.</p>}
       </div>
-    </div>
+    </ForestPageLayout>
   );
 }
