@@ -427,7 +427,7 @@ export default async function ProblemPage({
             <details className="proof-reveal-gate">
               <summary>
                 <span>Reveal solutions</span>
-                <small>Are you sure? This will show solutions.</small>
+                <small>Are you sure? Give it a try first.</small>
               </summary>
               <div className="grid gap-4 pt-4">
                 {proofs.map((proof) => {
