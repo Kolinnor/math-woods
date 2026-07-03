@@ -2,6 +2,19 @@ import { Prisma, SourceType, TargetType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { extractWikiLinks } from "@/lib/wikilinks";
 
+export type MissingConceptSource = {
+  href: string;
+  label: string | null;
+  sourceType: SourceType;
+  title: string;
+};
+
+export type MissingConcept = {
+  count: number;
+  slug: string;
+  sources: MissingConceptSource[];
+};
+
 export async function syncInternalLinks(
   sourceType: SourceType,
   sourceId: number,
@@ -62,7 +75,7 @@ export async function refreshLinksForConcept(slug: string) {
   }
 }
 
-export async function missingConcepts(limit = 20) {
+export async function missingConcepts(limit = 20, sourcesPerConcept = 4): Promise<MissingConcept[]> {
   const grouped = await prisma.internalLink.groupBy({
     by: ["targetSlug"],
     where: { exists: false },
@@ -71,8 +84,68 @@ export async function missingConcepts(limit = 20) {
     take: limit
   });
 
+  const slugs = grouped.map((item) => item.targetSlug);
+  if (slugs.length === 0) return [];
+
+  const links = await prisma.internalLink.findMany({
+    where: {
+      exists: false,
+      targetSlug: { in: slugs },
+      sourceType: { in: [SourceType.PROBLEM, SourceType.CONCEPT] }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+  const problemIds = [...new Set(links.filter((link) => link.sourceType === SourceType.PROBLEM).map((link) => link.sourceId))];
+  const conceptIds = [...new Set(links.filter((link) => link.sourceType === SourceType.CONCEPT).map((link) => link.sourceId))];
+  const [problems, concepts] = await Promise.all([
+    problemIds.length
+      ? prisma.problem.findMany({
+          where: { id: { in: problemIds }, status: { not: "ARCHIVED" } },
+          select: { id: true, slug: true, title: true }
+        })
+      : Promise.resolve([]),
+    conceptIds.length
+      ? prisma.concept.findMany({
+          where: { id: { in: conceptIds } },
+          select: { id: true, slug: true, title: true }
+        })
+      : Promise.resolve([])
+  ]);
+  const problemById = new Map(problems.map((problem) => [problem.id, problem]));
+  const conceptById = new Map(concepts.map((concept) => [concept.id, concept]));
+  const sourcesBySlug = new Map<string, MissingConceptSource[]>();
+  const seenSourcesBySlug = new Map<string, Set<string>>();
+
+  for (const link of links) {
+    const source =
+      link.sourceType === SourceType.PROBLEM
+        ? problemById.get(link.sourceId)
+        : link.sourceType === SourceType.CONCEPT
+          ? conceptById.get(link.sourceId)
+          : null;
+    if (!source) continue;
+
+    const seenKey = `${link.sourceType}:${link.sourceId}`;
+    const seen = seenSourcesBySlug.get(link.targetSlug) ?? new Set<string>();
+    if (seen.has(seenKey)) continue;
+
+    const currentSources = sourcesBySlug.get(link.targetSlug) ?? [];
+    if (currentSources.length >= sourcesPerConcept) continue;
+
+    seen.add(seenKey);
+    seenSourcesBySlug.set(link.targetSlug, seen);
+    currentSources.push({
+      href: link.sourceType === SourceType.PROBLEM ? `/problems/${source.slug}` : `/concepts/${source.slug}`,
+      label: link.label,
+      sourceType: link.sourceType,
+      title: source.title
+    });
+    sourcesBySlug.set(link.targetSlug, currentSources);
+  }
+
   return grouped.map((item) => ({
     slug: item.targetSlug,
-    count: item._count.targetSlug
+    count: item._count.targetSlug,
+    sources: sourcesBySlug.get(item.targetSlug) ?? []
   }));
 }

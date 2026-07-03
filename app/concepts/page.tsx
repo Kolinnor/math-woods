@@ -1,4 +1,5 @@
 import { ConceptStatus, MathDomain, Prisma } from "@prisma/client";
+import type { Route } from "next";
 import Link from "next/link";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
@@ -17,6 +18,12 @@ function conceptTitleFromSlug(slug: string) {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function sourceTypeLabel(sourceType: "PROBLEM" | "CONCEPT" | "PLAYLIST") {
+  if (sourceType === "PROBLEM") return "Problem";
+  if (sourceType === "CONCEPT") return "Concept";
+  return "Playlist";
 }
 
 export default async function ConceptsPage({
@@ -152,13 +159,31 @@ export default async function ConceptsPage({
         <div className="grid gap-2">
           {missing.map((item) => {
             const title = conceptTitleFromSlug(item.slug);
+            const hiddenSourceCount = Math.max(0, item.count - item.sources.length);
 
             return (
-            <Link key={item.slug} href={`/concepts/new?title=${encodeURIComponent(title)}`} className="flex justify-between gap-3">
-              <span className="wiki-link missing">{title}</span>
-              <span className="muted text-sm">{item.count}</span>
-            </Link>
-          );
+              <div key={item.slug} className="missing-concept-card">
+                <Link href={`/concepts/new?title=${encodeURIComponent(title)}`} className="missing-concept-main">
+                  <span className="wiki-link missing">{title}</span>
+                  <span className="muted text-sm">{item.count}</span>
+                </Link>
+                {item.sources.length > 0 && (
+                  <details className="missing-concept-sources">
+                    <summary>Cited in {item.count}</summary>
+                    <div>
+                      {item.sources.map((source) => (
+                        <Link key={`${source.sourceType}-${source.href}`} href={source.href as Route}>
+                          <span>{sourceTypeLabel(source.sourceType)}</span>
+                          <strong>{source.title}</strong>
+                          {source.label && <small>as "{source.label}"</small>}
+                        </Link>
+                      ))}
+                      {hiddenSourceCount > 0 && <p className="muted text-xs">+ {hiddenSourceCount} more citation(s)</p>}
+                    </div>
+                  </details>
+                )}
+              </div>
+            );
           })}
           {missing.length === 0 && <p className="muted text-sm">No missing concepts.</p>}
         </div>

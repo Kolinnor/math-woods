@@ -1012,6 +1012,56 @@ a {
   gap: 0.55rem;
 }
 
+.missing-concept-card {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.25rem 0 0.65rem;
+}
+
+.missing-concept-card:last-child {
+  border-bottom: 0;
+}
+
+.missing-concept-main {
+  align-items: baseline;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.missing-concept-sources {
+  font-size: 0.83rem;
+}
+
+.missing-concept-sources summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.missing-concept-sources > div {
+  display: grid;
+  gap: 0.4rem;
+  padding-top: 0.45rem;
+}
+
+.missing-concept-sources a {
+  display: grid;
+  gap: 0.08rem;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.missing-concept-sources a span,
+.missing-concept-sources a small {
+  color: var(--muted);
+}
+
+.missing-concept-sources a strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
 .about-links {
   align-items: center;
   display: flex;
