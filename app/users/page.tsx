@@ -77,7 +77,7 @@ export default async function UsersPage({
       title="Users"
       eyebrow="Community"
       heroImage="/art/users-forest.webp"
-      heroAlt="Ivan Shishkin, Forest Landscape with Herons"
+      heroAlt="Ivan Shishkin, The Forest Clearing"
       description="A quiet leaderboard for contributors, solvers, and problem writers."
       meta={
         <>

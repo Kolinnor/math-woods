@@ -19,8 +19,8 @@ export default async function NewPlaylistPage({
     <ForestPageLayout
       title="New playlist"
       eyebrow="Learning path"
-      heroImage="/art/rye.jpg"
-      heroAlt="Ivan Shishkin, Rye"
+      heroImage="/art/playlists-forest-lodge.webp"
+      heroAlt="Ivan Shishkin, Forest Lodge"
       description="A sequence of problems with a guiding thread."
       workspaceClassName="forest-page-workspace-narrow"
     >

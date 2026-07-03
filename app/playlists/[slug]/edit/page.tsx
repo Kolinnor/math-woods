@@ -108,8 +108,8 @@ export default async function EditPlaylistPage({
     <ForestPageLayout
       title={`Edit ${playlist.title}`}
       eyebrow="Playlist"
-      heroImage="/art/rye.jpg"
-      heroAlt="Ivan Shishkin, Rye"
+      heroImage="/art/playlists-forest-lodge.webp"
+      heroAlt="Ivan Shishkin, Forest Lodge"
       description="Manage the playlist circuit and reusable entries."
       actions={
         <Link href={`/playlists/${playlist.slug}`} className="button secondary inline-flex items-center gap-2">

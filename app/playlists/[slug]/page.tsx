@@ -68,8 +68,8 @@ export default async function PlaylistPage({ params }: { params: Promise<{ slug:
     <ForestPageLayout
       title={playlist.title}
       eyebrow="Playlist"
-      heroImage="/art/rye.jpg"
-      heroAlt="Ivan Shishkin, Rye"
+      heroImage="/art/playlists-forest-lodge.webp"
+      heroAlt="Ivan Shishkin, Forest Lodge"
       description={`playlist by ${displayNameForUser(playlist.author)}`}
       meta={
         <>

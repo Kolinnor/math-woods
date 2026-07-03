@@ -24,8 +24,8 @@ export default async function PlaylistsPage() {
     <ForestPageLayout
       title="Playlists"
       eyebrow="Learning paths"
-      heroImage="/art/rye.jpg"
-      heroAlt="Ivan Shishkin, Rye"
+      heroImage="/art/playlists-forest-lodge.webp"
+      heroAlt="Ivan Shishkin, Forest Lodge"
       description={`Ordered paths for learning through ${contentLanguageLabel(preferredLanguage).toLowerCase()} problems.`}
       meta={
         <>

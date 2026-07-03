@@ -75,8 +75,8 @@ export default async function StartPlaylistPage({ params }: { params: Promise<{ 
     <ForestPageLayout
       title={playlist.title}
       eyebrow="Playlist route"
-      heroImage="/art/rye.jpg"
-      heroAlt="Ivan Shishkin, Rye"
+      heroImage="/art/playlists-forest-lodge.webp"
+      heroAlt="Ivan Shishkin, Forest Lodge"
       description={`playlist by ${displayNameForUser(playlist.author)}`}
       workspaceClassName="forest-page-workspace-narrow"
       actions={
