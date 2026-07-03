@@ -34,6 +34,7 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
   const body = boundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body") || description;
+  const showInMainMenu = formData.get("showInMainMenu") === "on";
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
   await prisma.$transaction(async (tx) => {
@@ -51,7 +52,8 @@ export async function updateTipAction(tipId: number, formData: FormData) {
       data: {
         title,
         description,
-        body
+        body,
+        showInMainMenu
       }
     });
 

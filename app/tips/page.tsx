@@ -128,6 +128,7 @@ export default async function TipsPage({
                 Edit
               </Link>
             </div>
+            {tip.showInMainMenu && <span className="tip-main-menu-badge">Main menu</span>}
             <h2>{tip.title}</h2>
             <p className="tip-description">{tip.description}</p>
 

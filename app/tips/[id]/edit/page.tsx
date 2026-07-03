@@ -72,6 +72,10 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
           <span className="text-sm font-medium">Description</span>
           <textarea name="description" maxLength={1200} required defaultValue={tip.description} />
         </label>
+        <label className="checkbox-inline">
+          <input name="showInMainMenu" type="checkbox" defaultChecked={tip.showInMainMenu} />
+          <span>This can appear in the main menu</span>
+        </label>
         <fieldset className="tip-problem-editor">
           <legend>Try this on the following problems</legend>
           <p className="muted text-sm">Choose up to 8 problems.</p>

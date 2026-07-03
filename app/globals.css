@@ -2772,6 +2772,17 @@ button.domain-picker-tile > span:last-child {
   margin: 0;
 }
 
+.tip-main-menu-badge {
+  background: var(--accent-soft);
+  border: 1px solid rgba(74, 124, 89, 0.25);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  font-weight: 750;
+  justify-self: start;
+  padding: 0.15rem 0.55rem;
+}
+
 .tip-problem-editor {
   border: 1px solid var(--line);
   border-radius: 7px;

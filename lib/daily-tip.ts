@@ -87,6 +87,7 @@ export const DEFAULT_TIPS = [
 export type TipEntry = {
   id: number;
   position: number;
+  showInMainMenu: boolean;
   title: string;
   description: string;
   body: string;
@@ -98,6 +99,7 @@ function defaultTipsWithIds(): TipEntry[] {
   return DEFAULT_TIPS.map((tip, index) => ({
     id: index + 1,
     position: index,
+    showInMainMenu: false,
     ...tip
   }));
 }
@@ -114,6 +116,7 @@ export async function ensureDefaultTips() {
     await prisma.tip.createMany({
       data: DEFAULT_TIPS.map((tip, index) => ({
         position: index,
+        showInMainMenu: false,
         title: tip.title,
         description: tip.description,
         body: tip.body
@@ -158,9 +161,11 @@ export function dailyTip(date = new Date()) {
 
 export async function loadDailyTip(date = new Date()) {
   const tips = await loadTips();
+  const mainMenuTips = tips.filter((tip) => tip.showInMainMenu);
+  if (mainMenuTips.length === 0) return null;
   const dayNumber = Math.floor(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000
   );
 
-  return tips[dayNumber % tips.length];
+  return mainMenuTips[dayNumber % mainMenuTips.length];
 }

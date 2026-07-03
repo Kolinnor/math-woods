@@ -719,14 +719,15 @@ model Suggestion {
 }
 
 model Tip {
-  id          Int      @id @default(autoincrement())
-  position    Int      @unique
-  title       String
-  description String
-  body        String   @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  problems    TipProblem[]
+  id             Int          @id @default(autoincrement())
+  position       Int          @unique
+  title          String
+  description    String
+  body           String       @db.Text
+  showInMainMenu Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  problems       TipProblem[]
 }
 
 model TipProblem {
