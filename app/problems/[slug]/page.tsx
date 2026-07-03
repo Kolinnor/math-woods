@@ -17,8 +17,7 @@ import {
   markProblemSolvedAction,
   reviewProblemVerificationAction,
   startAttemptAction,
-  toggleProblemFavoriteAction,
-  updatePrivateNotesAction
+  toggleProblemFavoriteAction
 } from "@/lib/actions/problem-actions";
 import {
   createProofAction,
@@ -695,29 +694,6 @@ export default async function ProblemPage({
                 </div>
               ))}
             </div>
-          </section>
-        )}
-
-        {attempt && (
-          <section className="sidebar-section">
-            <h2 className="mb-3 font-semibold">Private notes</h2>
-            <form action={updatePrivateNotesAction.bind(null, problem.id)} className="grid gap-3">
-              <select name="status" defaultValue={attempt.status}>
-                <option value="STARTED">Started</option>
-                <option value="BLOCKED">Blocked</option>
-                {problem.verificationMode === ProblemVerificationMode.NONE && <option value="SOLVED">Solved</option>}
-                <option value="REVIEW_LATER">Review later</option>
-              </select>
-              <LazyMarkdownEditor
-                name="privateNotesMarkdown"
-                initialValue={attempt.privateNotesMarkdown ?? ""}
-                minHeight="9rem"
-                lineNumbers={false}
-              />
-              <button type="submit" className="secondary">
-                Save
-              </button>
-            </form>
           </section>
         )}
 

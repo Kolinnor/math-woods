@@ -117,7 +117,7 @@ export default function AboutPage() {
         <Faq question="Can users export their work?">
           <p>
             Yes. Public content and personal work should remain portable through Markdown and other simple formats.
-            Private notes are not public encyclopedia content and should never be included in public exports or datasets.
+            Personal account data is not public encyclopedia content and should never be included in public exports or datasets.
           </p>
         </Faq>
       </section>

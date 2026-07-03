@@ -49,7 +49,7 @@ export function DeleteAccountDialog({ accountName, action }: DeleteAccountDialog
             </button>
             <h2 id="account-delete-title">Delete account</h2>
             <p>
-              This removes your login, email, private notes, votes, favorites, and sessions. Public content stays under
+              This removes your login, email, votes, favorites, and sessions. Public content stays under
               a deleted account.
             </p>
             <form action={action} className="account-delete-form">

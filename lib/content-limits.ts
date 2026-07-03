@@ -4,7 +4,6 @@ export const CONTENT_LIMITS = {
   mediumText: 1200,
   longNote: 4000,
   markdown: 60000,
-  privateNotes: 20000,
   discussionPost: 10000,
   importMarkdown: 100000,
   tagList: 1000,

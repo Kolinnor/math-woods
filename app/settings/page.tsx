@@ -499,7 +499,7 @@ export default async function SettingsPage({
             <div>
               <h2>Delete account</h2>
               <p>
-                This removes your login, email, private notes, votes, favorites, and sessions. Public content stays
+                This removes your login, email, votes, favorites, and sessions. Public content stays
                 under a deleted account.
               </p>
             </div>
