@@ -6379,9 +6379,14 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
 
 .problem-rail {
   align-content: start;
+  align-self: start;
   display: grid;
   gap: 1.3rem;
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
+  overscroll-behavior: contain;
   position: sticky;
+  scrollbar-gutter: stable;
   top: 5rem;
 }
 
@@ -6435,7 +6440,10 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
   }
 
   .problem-rail {
+    max-height: none;
+    overflow: visible;
     position: static;
+    scrollbar-gutter: auto;
   }
 }
 
