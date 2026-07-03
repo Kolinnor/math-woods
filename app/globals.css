@@ -1430,6 +1430,10 @@ button.markdown-editor-tool-button:disabled svg {
   color: var(--accent-strong);
 }
 
+.problem-detail-article .translation-links {
+  margin-bottom: 1rem;
+}
+
 .translation-compose-page {
   display: grid;
   gap: 1.25rem;
