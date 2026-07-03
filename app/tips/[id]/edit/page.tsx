@@ -74,7 +74,7 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
         </label>
         <fieldset className="tip-problem-editor">
           <legend>Try this on the following problems</legend>
-          <p className="muted text-sm">Choose up to 8 problems. If none are selected, the Tips page keeps using automatic suggestions.</p>
+          <p className="muted text-sm">Choose up to 8 problems.</p>
           <div className="tip-problem-choice-list">
             {problemOptions.map((problem) => (
               <label key={problem.id} className="tip-problem-choice">

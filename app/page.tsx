@@ -398,7 +398,7 @@ export default async function HomePage() {
 
   const renderedProblems = await withRenderedTitles(problemRows);
   const practiceRows = practiceLinks.map((link) => link.problem);
-  const renderedPractice = tip ? await withRenderedTitles(practiceRows.length > 0 ? practiceRows : problemRows.slice(0, 3)) : [];
+  const renderedPractice = tip ? await withRenderedTitles(practiceRows) : [];
   const featured = renderedProblems[0] ?? null;
   const recent = renderedProblems.slice(1, 4);
   const homeUser = user
@@ -421,7 +421,7 @@ export default async function HomePage() {
       <HomeHero user={homeUser} resume={resume} canSeeTips={canSeeTips} />
       <main className="home-main">
         {!homeUser && <TrailBand />}
-        {homeUser && tip && <TipOfDay tip={tip} bodyHtml={tipBodyHtml} practice={renderedPractice} />}
+        {homeUser && tip && renderedPractice.length > 0 && <TipOfDay tip={tip} bodyHtml={tipBodyHtml} practice={renderedPractice} />}
         <section className="home-duo-grid">
           <ProblemToTry problem={featured} />
           <DomainGrid />

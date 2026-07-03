@@ -10,93 +10,21 @@ import { loadTips, type TipEntry } from "@/lib/daily-tip";
 import { domainLabel } from "@/lib/domains";
 import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
-import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
 
-const TIP_MATCHERS = [
-  ["hypothesis", "hypotheses", "assumption", "condition", "given", "nonzero", "positive"],
-  ["simpler", "small cases", "case", "example", "n=1", "warm-up", "toy"],
-  ["backwards", "work backwards", "conclusion", "goal", "equivalent", "from the end"],
-  ["small cases", "case", "example", "n=1", "base case", "counterexample"],
-  ["invariant", "parity", "coloring", "does not change", "modulo", "congruence"],
-  ["geometry", "auxiliary", "triangle", "circle", "cyclic", "similar", "angle"],
-  ["contrapositive", "not", "implies", "if and only if", "negation"],
-  ["unique", "uniqueness", "exists", "existence", "construct"],
-  ["inequality", "equality", "minimum", "maximum", "bound", "extremal"],
-  ["notation", "structure", "sequence", "recurrence", "symmetry", "polynomial", "matrix"],
-  ["counterexample", "hypothesis", "false", "necessary", "condition"],
-  ["divides", "divisibility", "integer", "modulo", "congruence", "multiple"],
-  ["symmetry", "symmetric", "swap", "variables", "reflection", "invariant"],
-  ["induction", "recursive", "recurrence", "n+1", "base case"],
-  ["representation", "geometric", "counting", "generating", "graph", "picture"],
-  ["generalize", "generalization", "shorter solution", "alternative", "extension"]
-] satisfies string[][];
-
-type TipProblem = Awaited<ReturnType<typeof loadProblems>>[number];
+type TipProblem = Prisma.ProblemGetPayload<{
+  include: {
+    tags: { include: { tag: true } };
+    _count: { select: { attempts: true } };
+  };
+}>;
 
 type TipProblemLink = {
   tipId: number;
   position: number;
   problemId: number;
 };
-
-async function loadProblems(language: string) {
-  return prisma.problem.findMany({
-    where: { status: "PUBLISHED", listed: true, language },
-    orderBy: [{ updatedAt: "desc" }],
-    take: 180,
-    include: {
-      tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
-      favorites: { select: { userId: true } },
-      _count: { select: { attempts: true, favorites: true } }
-    }
-  });
-}
-
-function includesPhrase(text: string, phrase: string) {
-  return text.includes(phrase.toLowerCase());
-}
-
-function problemScore(problem: TipProblem, phrases: readonly string[]) {
-  const title = problem.title.toLowerCase();
-  const body = problem.bodyMarkdown.toLowerCase();
-  const origin = problem.origin.toLowerCase();
-  const tagText = problem.tags.map(({ tag }) => `${tag.name} ${tag.slug}`.toLowerCase()).join(" ");
-  let score = 0;
-
-  for (const phrase of phrases) {
-    if (includesPhrase(title, phrase)) score += 6;
-    if (includesPhrase(tagText, phrase)) score += 5;
-    if (includesPhrase(origin, phrase)) score += 2;
-    if (includesPhrase(body, phrase)) score += 1;
-  }
-
-  return score;
-}
-
-function externalFavoriteCount(problem: TipProblem) {
-  return problem.favorites.filter((favorite) => favorite.userId !== problem.authorId).length;
-}
-
-function relatedProblemsForTip(problems: TipProblem[], tipIndex: number) {
-  const phrases = TIP_MATCHERS[tipIndex] ?? [];
-
-  return problems
-    .map((problem) => ({ problem, score: problemScore(problem, phrases) }))
-    .filter(({ score }) => score > 0)
-    .sort((left, right) => {
-      if (right.score !== left.score) return right.score - left.score;
-      return (
-        right.problem._count.attempts +
-        externalFavoriteCount(right.problem) -
-        left.problem._count.attempts -
-        externalFavoriteCount(left.problem)
-      );
-    })
-    .slice(0, 5)
-    .map(({ problem }) => problem);
-}
 
 function tipMatchesQuery(tip: TipEntry, relatedProblems: TipProblem[], query: string) {
   if (!query) return true;
@@ -123,10 +51,9 @@ export default async function TipsPage({
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
 
-  const preferredLanguage = await getPreferredContentLanguage();
   const { q = "", updated, deleted } = await searchParams;
   const query = q.trim();
-  const [problems, tipRows] = await Promise.all([loadProblems(preferredLanguage), loadTips()]);
+  const tipRows = await loadTips();
   const tipIds = tipRows.map((tip) => tip.id);
   const tipProblemLinks = tipIds.length
     ? await prisma.$queryRaw<TipProblemLink[]>`
@@ -142,8 +69,7 @@ export default async function TipsPage({
         where: { id: { in: linkedProblemIds }, status: "PUBLISHED", listed: true },
         include: {
           tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
-          favorites: { select: { userId: true } },
-          _count: { select: { attempts: true, favorites: true } }
+          _count: { select: { attempts: true } }
         }
       })
     : [];
@@ -157,9 +83,9 @@ export default async function TipsPage({
     tipProblemsByTipId.set(link.tipId, current);
   }
   const solvedAttempts =
-    user && problems.length
+    user && linkedProblemIds.length
       ? await prisma.problemAttempt.findMany({
-          where: { userId: user.id, status: "SOLVED", problemId: { in: problems.map((problem) => problem.id) } },
+          where: { userId: user.id, status: "SOLVED", problemId: { in: linkedProblemIds } },
           select: { problemId: true }
         })
       : [];
@@ -167,7 +93,7 @@ export default async function TipsPage({
   const tips = tipRows.map((tip, index) => ({
     tip,
     index,
-    relatedProblems: tipProblemsByTipId.get(tip.id) ?? relatedProblemsForTip(problems, index)
+    relatedProblems: tipProblemsByTipId.get(tip.id) ?? []
   })).filter(({ tip, relatedProblems }) => tipMatchesQuery(tip, relatedProblems, query));
 
   return (
@@ -208,7 +134,7 @@ export default async function TipsPage({
             <section className="tip-related" aria-labelledby={`tip-${index}-practice`}>
               <div className="tip-related-heading">
                 <h3 id={`tip-${index}-practice`}>Try this on the following problems</h3>
-                <span>{relatedProblems.length ? `${relatedProblems.length} suggestions` : "No suggestions yet"}</span>
+                <span>{relatedProblems.length ? `${relatedProblems.length} selected` : "None selected"}</span>
               </div>
               {relatedProblems.length > 0 ? (
                 <div className="tip-problem-list">
@@ -239,7 +165,7 @@ export default async function TipsPage({
                   ))}
                 </div>
               ) : (
-                <p className="muted text-sm">No obvious matching problems yet. Future tags will make this smarter.</p>
+                <p className="muted text-sm">No practice problems selected yet.</p>
               )}
             </section>
           </article>
