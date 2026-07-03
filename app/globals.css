@@ -2785,41 +2785,114 @@ button.domain-picker-tile > span:last-child {
   padding: 0 0.25rem;
 }
 
-.tip-problem-choice-list {
+.tip-problem-picker {
   display: grid;
   gap: 0.5rem;
-  max-height: 24rem;
-  overflow: auto;
-  padding-right: 0.25rem;
 }
 
-.tip-problem-choice {
+.tip-selected-problem-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.tip-selected-problem {
   align-items: flex-start;
   border: 1px solid var(--line);
   border-radius: 7px;
-  cursor: pointer;
   display: grid;
   gap: 0.65rem;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 1fr auto;
   padding: 0.7rem;
 }
 
-.tip-problem-choice:has(input:checked) {
+.tip-selected-problem {
   background: var(--panel-muted);
   border-color: var(--accent);
 }
 
-.tip-problem-choice input {
-  margin-top: 0.25rem;
-}
-
-.tip-problem-choice span {
+.tip-selected-problem div {
   display: grid;
   gap: 0.2rem;
 }
 
-.tip-problem-choice small {
+.tip-selected-problem span {
   color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.tip-remove-problem {
+  align-items: center;
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  padding: 0;
+  width: 2rem;
+}
+
+.tip-problem-search-input {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: auto 1fr;
+  padding: 0 0.65rem;
+}
+
+.tip-problem-search-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.13);
+}
+
+.tip-problem-search-input input {
+  border: 0;
+  box-shadow: none;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.tip-problem-search-input input:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.tip-problem-suggestion-menu {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.tip-problem-suggestion-menu > p {
+  margin: 0;
+  padding: 0.75rem;
+}
+
+.tip-problem-suggestion-menu button {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--ink);
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.tip-problem-suggestion-menu button:last-child {
+  border-bottom: 0;
+}
+
+.tip-problem-suggestion-menu button:hover {
+  background: var(--panel-muted);
+}
+
+.tip-problem-suggestion-menu span {
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .tip-related {

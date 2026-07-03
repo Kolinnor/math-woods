@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { domainLabel } from "@/lib/domains";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim().slice(0, 80) ?? "";
   const excludeSlug = url.searchParams.get("exclude")?.trim() ?? "";
+  const listedOnly = url.searchParams.get("listed") === "1";
 
   if (query.length < 2) {
     return NextResponse.json({ problems: [] });
@@ -16,7 +18,8 @@ export async function GET(request: Request) {
   const language = await getPreferredContentLanguage();
   const problems = await prisma.problem.findMany({
     where: {
-      status: { not: "ARCHIVED" },
+      status: listedOnly ? "PUBLISHED" : { not: "ARCHIVED" },
+      listed: listedOnly ? true : undefined,
       slug: excludeSlug ? { not: excludeSlug } : undefined,
       OR: [
         {
@@ -31,8 +34,10 @@ export async function GET(request: Request) {
       ]
     },
     select: {
+      id: true,
       title: true,
       slug: true,
+      domain: true,
       difficulty: true,
       listed: true,
       language: true
@@ -43,8 +48,10 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     problems: problems.map((problem) => ({
+      id: problem.id,
       title: problem.title,
       slug: problem.slug,
+      domainLabel: domainLabel(problem.domain),
       difficulty: problem.difficulty,
       listed: problem.listed,
       language: problem.language

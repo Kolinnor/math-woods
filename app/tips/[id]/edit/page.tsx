@@ -1,5 +1,5 @@
-import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DeleteTipButton } from "@/components/DeleteTipButton";
+import { TipProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deleteTipAction, updateTipAction } from "@/lib/actions/tip-actions";
@@ -8,7 +8,6 @@ import { prisma } from "@/lib/db";
 import { loadTip } from "@/lib/daily-tip";
 import { domainLabel } from "@/lib/domains";
 import { canUseAdminTools } from "@/lib/permissions";
-import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
 
@@ -28,30 +27,31 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
 
   const tip = await loadTip(tipId);
   if (!tip) notFound();
-  const preferredLanguage = await getPreferredContentLanguage();
   const tipProblems = await prisma.$queryRaw<TipProblemRow[]>`SELECT "tipId", "problemId", "position" FROM "TipProblem" WHERE "tipId" = ${tipId} ORDER BY "position" ASC`;
   const selectedProblemIds = new Set(tipProblems.map((link) => link.problemId));
-  const [selectedProblems, recentProblems] = await Promise.all([
-    selectedProblemIds.size
-      ? prisma.problem.findMany({
-          where: { id: { in: [...selectedProblemIds] } },
-          orderBy: [{ updatedAt: "desc" }]
-        })
-      : Promise.resolve([]),
-    prisma.problem.findMany({
-      where: { status: "PUBLISHED", listed: true, language: preferredLanguage },
-      orderBy: [{ updatedAt: "desc" }],
-      take: 220
-    })
-  ]);
-  const problemOptions = [...new Map([...selectedProblems, ...recentProblems].map((problem) => [problem.id, problem])).values()].sort(
-    (left, right) => {
-      const leftSelected = selectedProblemIds.has(left.id);
-      const rightSelected = selectedProblemIds.has(right.id);
-      if (leftSelected !== rightSelected) return leftSelected ? -1 : 1;
-      return right.updatedAt.getTime() - left.updatedAt.getTime();
-    }
-  );
+  const selectedProblems = selectedProblemIds.size
+    ? await prisma.problem.findMany({
+        where: { id: { in: [...selectedProblemIds] } },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          domain: true,
+          difficulty: true
+        }
+      })
+    : [];
+  const selectedProblemsById = new Map(selectedProblems.map((problem) => [problem.id, problem]));
+  const initialProblems: TipPickerProblem[] = tipProblems
+    .map((link) => selectedProblemsById.get(link.problemId))
+    .filter((problem): problem is NonNullable<typeof problem> => Boolean(problem))
+    .map((problem) => ({
+      id: problem.id,
+      title: problem.title,
+      slug: problem.slug,
+      domainLabel: domainLabel(problem.domain),
+      difficulty: problem.difficulty
+    }));
 
   return (
     <div className="mx-auto grid max-w-3xl gap-6">
@@ -75,21 +75,7 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
         <fieldset className="tip-problem-editor">
           <legend>Try this on the following problems</legend>
           <p className="muted text-sm">Choose up to 8 problems.</p>
-          <div className="tip-problem-choice-list">
-            {problemOptions.map((problem) => (
-              <label key={problem.id} className="tip-problem-choice">
-                <input name="problemIds" type="checkbox" value={problem.id} defaultChecked={selectedProblemIds.has(problem.id)} />
-                <span>
-                  <strong>
-                    <AsyncMarkdownInline markdown={problem.title} />
-                  </strong>
-                  <small>
-                    {domainLabel(problem.domain)} / {problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set"}
-                  </small>
-                </span>
-              </label>
-            ))}
-          </div>
+          <TipProblemPicker initialProblems={initialProblems} />
         </fieldset>
         <button type="submit">Save tip</button>
       </form>
