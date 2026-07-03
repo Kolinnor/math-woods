@@ -178,6 +178,7 @@ model User {
   sessions                     Session[]
   emailVerificationTokens      EmailVerificationToken[]
   favorites                    ProblemFavorite[]
+  problemHints                 ProblemHint[]
   proofs                       ProblemProof[]
   proofComments                ProofComment[]
   suggestions                  Suggestion[]
@@ -252,6 +253,7 @@ model Problem {
   spoilerTags          ProblemSpoilerTag[]
   domains              ProblemDomain[]
   favorites            ProblemFavorite[]
+  hints                ProblemHint[]
   proofs               ProblemProof[]
   circuitNodes         PlaylistNode[]
   quoteLinks           QuoteProblem[]
@@ -435,6 +437,22 @@ model ProblemFavorite {
 
   @@id([userId, problemId])
   @@index([problemId])
+}
+
+model ProblemHint {
+  id           Int      @id @default(autoincrement())
+  problemId    Int
+  authorId     Int?
+  position     Int      @default(0)
+  bodyMarkdown String
+  bodyHtml     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  problem      Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  author       User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([problemId, position])
+  @@index([authorId])
 }
 
 model ProblemProof {

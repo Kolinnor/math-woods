@@ -6,11 +6,17 @@ import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
-import { deleteProblemAction, updateProblemAction } from "@/lib/actions/problem-actions";
+import {
+  createProblemHintAction,
+  deleteProblemAction,
+  deleteProblemHintAction,
+  updateProblemAction,
+  updateProblemHintAction
+} from "@/lib/actions/problem-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS } from "@/lib/domains";
-import { canDeleteProblem, canEditProblem, canSetProblemQualityStatus } from "@/lib/permissions";
+import { canDeleteProblem, canEditProblem, canSetProblemQualityStatus, canUseAdminTools } from "@/lib/permissions";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +30,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
       tags: { include: { tag: true } },
       spoilerTags: { include: { tag: true } },
       domains: { orderBy: { position: "asc" } },
+      hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
       relatedGroups: {
         include: {
           relations: {
@@ -44,6 +51,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
   const canEditArchivedProblem = canEditProblem(user, problem);
   const canDeleteCurrentProblem = canDeleteProblem(user, problem);
+  const canManageProblemHints = canUseAdminTools(user);
   const canSetCurrentQualityStatus = canSetProblemQualityStatus(user.role, problem.qualityStatus);
   const canSetUnreviewedStatus = canSetProblemQualityStatus(user.role, QualityStatus.UNREVIEWED);
   const canSetNeedsWorkStatus = canSetProblemQualityStatus(user.role, QualityStatus.NEEDS_WORK);
@@ -205,6 +213,63 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
         </label>
         <button type="submit">Save changes</button>
       </form>
+
+      {canManageProblemHints && (
+        <section className="problem-hint-admin panel mt-6 grid gap-5 p-5">
+          <div>
+            <h2 className="text-lg font-semibold">Hints before solutions</h2>
+            <p className="muted text-sm">These hints are hidden by default on the problem page and appear before the solutions.</p>
+          </div>
+
+          {problem.hints.length > 0 && (
+            <div className="grid gap-4">
+              {problem.hints.map((hint, index) => (
+                <article key={hint.id} className="problem-hint-admin-card">
+                  <form action={updateProblemHintAction.bind(null, hint.id, problem.slug)} className="grid gap-3">
+                    <div className="flex flex-wrap items-end gap-3">
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Hint {index + 1} order</span>
+                        <input name="position" type="number" defaultValue={hint.position} />
+                      </label>
+                    </div>
+                    <div className="grid gap-2">
+                      <span className="text-sm font-medium">Hint Markdown</span>
+                      <MarkdownEditor
+                        name="bodyMarkdown"
+                        initialValue={hint.bodyMarkdown}
+                        minHeight="8rem"
+                        draftKey={`problem:${problem.id}:hint:${hint.id}`}
+                      />
+                    </div>
+                    <button type="submit">Save hint</button>
+                  </form>
+                  <form action={deleteProblemHintAction.bind(null, hint.id, problem.slug)}>
+                    <button type="submit" className="danger">
+                      Delete hint
+                    </button>
+                  </form>
+                </article>
+              ))}
+            </div>
+          )}
+
+          <form action={createProblemHintAction.bind(null, problem.id, problem.slug)} className="problem-hint-admin-card grid gap-3">
+            <h3 className="font-semibold">Add hint</h3>
+            <div className="grid gap-2">
+              <span className="text-sm font-medium">Hint Markdown</span>
+              <MarkdownEditor
+                name="bodyMarkdown"
+                minHeight="8rem"
+                draftKey={`problem:${problem.id}:new-hint:${problem.hints.length}`}
+                resetSignal={problem.hints.length}
+              />
+            </div>
+            <button type="submit" className="secondary">
+              Add hint
+            </button>
+          </form>
+        </section>
+      )}
 
       {canDeleteCurrentProblem && (
         <section className="danger-zone mt-6">

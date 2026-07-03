@@ -9,6 +9,7 @@ import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { ProblemHintReveal } from "@/components/ProblemHintReveal";
 import { ZenModeToggle } from "@/components/ZenModeToggle";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
@@ -77,6 +78,7 @@ export default async function ProblemPage({
       domains: { orderBy: { position: "asc" } },
       tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
+      hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
       thread: {
         include: {
           posts: {
@@ -423,6 +425,13 @@ export default async function ProblemPage({
           </p>
           {isConjecture && proofs.length === 0 && (
             <p className="quality-banner quality-stub">This problem is marked as a conjecture. No solution is known here yet.</p>
+          )}
+          {problem.hints.length > 0 && (
+            <div className="problem-hints">
+              {problem.hints.map((hint, index) => (
+                <ProblemHintReveal key={hint.id} html={hint.bodyHtml} index={index + 1} />
+              ))}
+            </div>
           )}
           {proofs.length > 0 && (
             <details className="proof-reveal-gate">

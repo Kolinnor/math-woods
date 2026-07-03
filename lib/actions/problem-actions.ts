@@ -51,7 +51,8 @@ import {
   canJoinVerificationDiscussion,
   canReviewProblemVerification,
   canRollbackProblem,
-  canSetProblemQualityStatus
+  canSetProblemQualityStatus,
+  canUseAdminTools
 } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
 import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
@@ -61,6 +62,69 @@ import { displayNameForUser } from "@/lib/user-display";
 async function renderMarkdownContent(markdown: string) {
   const { renderMarkdown } = await import("@/lib/markdown");
   return renderMarkdown(markdown);
+}
+
+function intField(value: FormDataEntryValue | null, fallback: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : fallback;
+}
+
+async function requireProblemHintAdmin() {
+  const user = await requireVerifiedUser();
+  if (!canUseAdminTools(user)) throw new Error("Only admins can edit problem hints.");
+  await assertRateLimit(`problem-hint:${user.id}`, 60, 60_000);
+  return user;
+}
+
+export async function createProblemHintAction(problemId: number, problemSlug: string, formData: FormData) {
+  const user = await requireProblemHintAdmin();
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
+  const lastHint = await prisma.problemHint.findFirst({
+    where: { problemId },
+    orderBy: { position: "desc" },
+    select: { position: true }
+  });
+
+  await prisma.problemHint.create({
+    data: {
+      problemId,
+      authorId: user.id,
+      bodyMarkdown,
+      bodyHtml: await renderMarkdownContent(bodyMarkdown),
+      position: intField(formData.get("position"), (lastHint?.position ?? -1) + 1)
+    }
+  });
+
+  revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/edit`);
+  redirect(`/problems/${problemSlug}/edit?hints=created` as Route);
+}
+
+export async function updateProblemHintAction(hintId: number, problemSlug: string, formData: FormData) {
+  await requireProblemHintAdmin();
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
+
+  await prisma.problemHint.update({
+    where: { id: hintId },
+    data: {
+      bodyMarkdown,
+      bodyHtml: await renderMarkdownContent(bodyMarkdown),
+      position: intField(formData.get("position"), 0)
+    }
+  });
+
+  revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/edit`);
+  redirect(`/problems/${problemSlug}/edit?hints=updated` as Route);
+}
+
+export async function deleteProblemHintAction(hintId: number, problemSlug: string) {
+  await requireProblemHintAdmin();
+  await prisma.problemHint.delete({ where: { id: hintId } });
+
+  revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/edit`);
+  redirect(`/problems/${problemSlug}/edit?hints=deleted` as Route);
 }
 
 export async function createProblemAction(formData: FormData) {
