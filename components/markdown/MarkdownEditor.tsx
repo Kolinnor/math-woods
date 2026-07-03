@@ -15,8 +15,20 @@ import {
 import katex from "katex";
 import { ImageIcon, Loader2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
+import {
+  DEFAULT_LATEX_PREFERENCES,
+  type LatexPreferenceValues
+} from "@/lib/latex-preferences";
 import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
 import { normalizeDisplayMathLineBreaks } from "@/lib/latex-display-lines";
+import {
+  latexEditorPreferencesFromApi,
+  latexKeyboardShortcut,
+  latexShiftEnterShortcut,
+  latexTabShortcut,
+  latexTextInputShortcut,
+  type LatexEditorShortcutResult
+} from "@/lib/latex-editor-shortcuts";
 import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
@@ -488,6 +500,60 @@ function markdownShortcutExtension(shortcuts: MarkdownHeadingShortcuts) {
   });
 }
 
+function dispatchLatexShortcutResult(view: EditorView, result: LatexEditorShortcutResult) {
+  view.dispatch({
+    changes: result.changes,
+    selection: typeof result.anchor === "number" ? { anchor: result.anchor } : undefined,
+    effects: setPreviewFocus.of(true),
+    scrollIntoView: true
+  });
+}
+
+function latexShortcutExtension(preferences: LatexPreferenceValues) {
+  return [
+    EditorView.inputHandler.of((view, from, to, text) => {
+      const result = latexTextInputShortcut(view.state.doc.toString(), from, to, text, preferences);
+      if (!result) return false;
+
+      dispatchLatexShortcutResult(view, result);
+      return true;
+    }),
+    EditorView.domEventHandlers({
+      keydown(event, view) {
+        if (event.isComposing) return false;
+
+        const selection = view.state.selection.main;
+        const source = view.state.doc.toString();
+
+        if (event.key === "Tab") {
+          const result = selection.empty ? latexTabShortcut(source, selection.from, preferences) : null;
+          if (!result) return false;
+
+          event.preventDefault();
+          dispatchLatexShortcutResult(view, result);
+          return true;
+        }
+
+        if (event.key === "Enter" && event.shiftKey && selection.empty) {
+          const result = latexShiftEnterShortcut(source, selection.from, preferences);
+          if (!result) return false;
+
+          event.preventDefault();
+          dispatchLatexShortcutResult(view, result);
+          return true;
+        }
+
+        const result = latexKeyboardShortcut(source, selection.from, selection.to, event, preferences);
+        if (!result) return false;
+
+        event.preventDefault();
+        dispatchLatexShortcutResult(view, result);
+        return true;
+      }
+    })
+  ];
+}
+
 function markdownShortcutsFromApi(data: unknown): MarkdownHeadingShortcuts {
   if (!data || typeof data !== "object") return DEFAULT_MARKDOWN_HEADING_SHORTCUTS;
   const raw = data as Partial<Record<keyof MarkdownHeadingShortcuts, unknown>>;
@@ -883,6 +949,7 @@ export function MarkdownEditor({
   const draftKeyRef = useRef<string | null>(null);
   const resetSignalRef = useRef(resetSignal);
   const markdownShortcutCompartmentRef = useRef(new Compartment());
+  const latexShortcutCompartmentRef = useRef(new Compartment());
   const linkMenuRef = useRef<HTMLDivElement | null>(null);
   const linkTargetInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState(initialValue);
@@ -963,6 +1030,7 @@ export function MarkdownEditor({
             }
           }),
           markdownShortcutCompartmentRef.current.of(markdownShortcutExtension(DEFAULT_MARKDOWN_HEADING_SHORTCUTS)),
+          latexShortcutCompartmentRef.current.of(latexShortcutExtension(DEFAULT_LATEX_PREFERENCES)),
           EditorView.lineWrapping,
           EditorView.theme({
             "&": {
@@ -1084,8 +1152,12 @@ export function MarkdownEditor({
         if (!view) return;
 
         const shortcuts = markdownShortcutsFromApi(data);
+        const latexPreferences = latexEditorPreferencesFromApi(data);
         view.dispatch({
-          effects: markdownShortcutCompartmentRef.current.reconfigure(markdownShortcutExtension(shortcuts)),
+          effects: [
+            markdownShortcutCompartmentRef.current.reconfigure(markdownShortcutExtension(shortcuts)),
+            latexShortcutCompartmentRef.current.reconfigure(latexShortcutExtension(latexPreferences))
+          ],
           annotations: previewOnly
         });
       })

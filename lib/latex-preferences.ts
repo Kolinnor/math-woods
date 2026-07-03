@@ -1,4 +1,4 @@
-import { DEFAULT_MARKDOWN_HEADING_SHORTCUTS, sanitizeShortcut } from "@/lib/markdown-shortcuts";
+import { DEFAULT_MARKDOWN_HEADING_SHORTCUTS, sanitizeShortcut } from "./markdown-shortcuts.ts";
 
 export const DEFAULT_LATEX_CUSTOM_COMMANDS = `% One shortcut per line: trigger => replacement
 RR => \\mathbb{R}

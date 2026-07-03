@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { mergeLatexPreferences } from "@/lib/latex-preferences";
+import { DEFAULT_LATEX_PREFERENCES, mergeLatexPreferences, type LatexPreferenceValues } from "@/lib/latex-preferences";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +13,12 @@ export async function GET() {
       })
     : null;
   const preferences = mergeLatexPreferences(savedPreferences);
+  const payload = Object.fromEntries(
+    Object.keys(DEFAULT_LATEX_PREFERENCES).map((key) => [
+      key,
+      preferences[key as keyof LatexPreferenceValues]
+    ])
+  );
 
-  return NextResponse.json({
-    markdownHeadingShortcuts: preferences.markdownHeadingShortcuts,
-    markdownHeading1Shortcut: preferences.markdownHeading1Shortcut,
-    markdownHeading2Shortcut: preferences.markdownHeading2Shortcut,
-    markdownHeading3Shortcut: preferences.markdownHeading3Shortcut,
-    markdownHeading4Shortcut: preferences.markdownHeading4Shortcut,
-    markdownHeading5Shortcut: preferences.markdownHeading5Shortcut,
-    markdownHeading6Shortcut: preferences.markdownHeading6Shortcut
-  });
+  return NextResponse.json(payload);
 }

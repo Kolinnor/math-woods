@@ -26,6 +26,19 @@ import {
   latexPreviewUsesBlockDecoration
 } from "../lib/latex-live-preview.ts";
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
+import {
+  latexAlignShortcut,
+  latexDisplayMathShortcut,
+  latexEditorPreferencesFromApi,
+  latexInlineMathShortcut,
+  latexKeyboardShortcut,
+  latexMatrixShortcut,
+  latexShiftEnterShortcut,
+  latexTabShortcut,
+  latexTextInputShortcut,
+  parseLatexCustomCommands
+} from "../lib/latex-editor-shortcuts.ts";
+import { DEFAULT_LATEX_PREFERENCES } from "../lib/latex-preferences.ts";
 import { latexCursorTargetForArrow, latexCursorTargetForVerticalArrow } from "../lib/latex-navigation.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
@@ -329,6 +342,76 @@ assert.equal(
     DEFAULT_MARKDOWN_HEADING_SHORTCUTS
   ),
   6
+);
+assert.equal(latexEditorPreferencesFromApi({ autocloseDollars: false }).autocloseDollars, false);
+assert.deepEqual(parseLatexCustomCommands("RR => \\mathbb{R}\n% ignored\nbad line"), [
+  { trigger: "RR", replacement: "\\mathbb{R}" }
+]);
+assert.deepEqual(latexTextInputShortcut("Let ", 4, 4, "$", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 4, to: 4, insert: "$$" },
+  anchor: 5
+});
+assert.deepEqual(latexTextInputShortcut("Let x", 4, 5, "$", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 4, to: 5, insert: "$x$" },
+  anchor: 7
+});
+assert.deepEqual(latexTextInputShortcut("$", 1, 1, "$", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 1, to: 1, insert: "$$" },
+  anchor: 2
+});
+assert.deepEqual(latexTextInputShortcut("`code ", 6, 6, "$", DEFAULT_LATEX_PREFERENCES), null);
+assert.deepEqual(latexTextInputShortcut("$x$", 2, 2, "^", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 2, to: 2, insert: "^{}" },
+  anchor: 4
+});
+assert.deepEqual(latexTextInputShortcut("$12$", 3, 3, "/", { ...DEFAULT_LATEX_PREFERENCES, slashFractions: true }), {
+  changes: { from: 1, to: 3, insert: "\\frac{12}{}" },
+  anchor: 11
+});
+assert.deepEqual(latexTextInputShortcut("$\\sum$", 5, 5, " ", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 1, to: 5, insert: "\\sum\\limits " },
+  anchor: 13
+});
+assert.deepEqual(latexTextInputShortcut("\\alpha", 6, 6, " ", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 0, to: 6, insert: "$\\alpha$ " },
+  anchor: 9
+});
+assert.deepEqual(latexTabShortcut("$RR$", 3, { ...DEFAULT_LATEX_PREFERENCES, tabCompletesShorthand: true }), {
+  changes: { from: 1, to: 3, insert: "\\mathbb{R}" },
+  anchor: 11
+});
+assert.deepEqual(latexInlineMathShortcut("abc", 1, 2, DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 1, to: 2, insert: "$b$" },
+  anchor: 4
+});
+assert.deepEqual(latexDisplayMathShortcut("abc", 1, 2, DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 1, to: 2, insert: "\n\n$$\nb\n$$\n\n" },
+  anchor: 10
+});
+assert.deepEqual(latexAlignShortcut("x=1\ny>2", 0, 7, DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 0, to: 7, insert: "$$\n\\begin{align*}\nx&=1 \\\\\ny&>2\n\\end{align*}\n$$" },
+  anchor: 30
+});
+assert.deepEqual(latexMatrixShortcut("", 0, 0, { ...DEFAULT_LATEX_PREFERENCES, matrixEnvironment: "bmatrix" }), {
+  changes: { from: 0, to: 0, insert: "$$\n\\begin{bmatrix}\n \n\\end{bmatrix}\n$$" },
+  anchor: 19
+});
+assert.deepEqual(
+  latexShiftEnterShortcut("$$\n\\begin{align*}\n& x=1\n\\end{align*}\n$$", 23, {
+    ...DEFAULT_LATEX_PREFERENCES,
+    shiftEnterLineBreaks: true
+  }),
+  {
+    changes: { from: 23, to: 23, insert: " \\\\\n& " },
+    anchor: 29
+  }
+);
+assert.deepEqual(
+  latexKeyboardShortcut("abc", 1, 2, { altKey: false, ctrlKey: true, metaKey: false, shiftKey: false, key: "m" }, DEFAULT_LATEX_PREFERENCES),
+  {
+    changes: { from: 1, to: 2, insert: "$b$" },
+    anchor: 4
+  }
 );
 assert.deepEqual(findWikiLinkRanges("See [[polynomial]] and [[vieta-relations|Vieta]]."), [
   { from: 4, to: 18, label: "polynomial" },
