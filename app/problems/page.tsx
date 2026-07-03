@@ -548,7 +548,6 @@ export default async function ProblemsPage({
               statuses={Object.values(QualityStatus).map((status) => ({ value: status, label: qualityLabel(status) }))}
               tags={tags.map((item) => ({ value: item.slug, label: item.name }))}
             />
-            <button type="submit">Apply filters</button>
           </LiveSearchForm>
         </aside>
 

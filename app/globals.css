@@ -3618,10 +3618,6 @@ body:has(.problems-page-shell) .header-search input::placeholder {
   color: #1c211b;
 }
 
-.problem-filter-form button[type="submit"] {
-  justify-self: stretch;
-}
-
 .problem-filter-form .advanced-filter-header,
 .problem-filter-form .advanced-filter-row {
   align-items: stretch;
@@ -6114,8 +6110,7 @@ body:has(.home-shell) > .site-footer {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .problem-filter-form .advanced-filter-builder,
-  .problem-filter-form button[type="submit"] {
+  .problem-filter-form .advanced-filter-builder {
     grid-column: 1 / -1;
   }
 }
