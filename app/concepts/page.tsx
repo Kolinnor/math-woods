@@ -1,6 +1,8 @@
 import { ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import Link from "next/link";
+import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
+import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { prisma } from "@/lib/db";
 import { coarseDomainForCode, domainCodeAliases, domainLabel, parseDomainCode, PROBLEM_DOMAINS } from "@/lib/domains";
 import { missingConcepts } from "@/lib/internal-links";
@@ -91,6 +93,13 @@ export default async function ConceptsPage({
             <Link href="/concepts/new" className="button">
               New
             </Link>
+            <ContributionRequestDialog
+              action={createContributionRequestAction.bind(null, "CONCEPT", "/concepts")}
+              buttonLabel="Request a concept"
+              title="Request a concept"
+              description="Tell contributors which mathematical notion should get a concept page."
+              placeholder="Describe the concept page you would like: the notion, examples, related results, references, or level of detail you have in mind."
+            />
           </div>
         </div>
 

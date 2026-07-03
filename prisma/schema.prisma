@@ -113,6 +113,17 @@ enum SuggestionStatus {
   CLOSED
 }
 
+enum ContributionRequestKind {
+  PROBLEM
+  CONCEPT
+}
+
+enum ContributionRequestStatus {
+  OPEN
+  CLAIMED
+  COMPLETED
+}
+
 enum NotificationType {
   PROBLEM_SOLVED
   PROBLEM_EDITED
@@ -193,6 +204,8 @@ model User {
   verificationRequests         ProblemVerificationRequest[] @relation("ProblemVerificationRequester")
   reviewedVerificationRequests ProblemVerificationRequest[] @relation("ProblemVerificationReviewer")
   verificationMessages         ProblemVerificationMessage[]
+  contributionRequestsCreated  ContributionRequest[]        @relation("ContributionRequestRequester")
+  contributionRequestsClaimed  ContributionRequest[]        @relation("ContributionRequestClaimedBy")
 }
 
 model EmailVerificationToken {
@@ -734,6 +747,24 @@ model Suggestion {
   author    User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
+}
+
+model ContributionRequest {
+  id          Int                       @id @default(autoincrement())
+  kind        ContributionRequestKind
+  status      ContributionRequestStatus @default(OPEN)
+  body        String                    @db.Text
+  requesterId Int?
+  claimedById Int?
+  completedAt DateTime?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  requester   User?                     @relation("ContributionRequestRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  claimedBy   User?                     @relation("ContributionRequestClaimedBy", fields: [claimedById], references: [id], onDelete: SetNull)
+
+  @@index([kind, status, createdAt])
+  @@index([requesterId])
+  @@index([claimedById])
 }
 
 model FaqSection {

@@ -944,6 +944,74 @@ a {
   margin: 0;
 }
 
+.contribution-request-dialog {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  max-width: min(34rem, calc(100vw - 2rem));
+  padding: 1rem;
+  width: 100%;
+}
+
+.contribution-request-dialog::backdrop {
+  background: color-mix(in srgb, #111 42%, transparent);
+}
+
+.contribution-request-dialog-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.contribution-request-dialog h2 {
+  font-size: 1.15rem;
+  font-weight: 750;
+  margin: 0;
+}
+
+.contribution-request-dialog p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 0.25rem 0 0;
+}
+
+.contribution-request-dialog textarea {
+  min-height: 10rem;
+}
+
+.contribution-requests {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.contribution-request-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.contribution-request-card-main {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.contribution-request-card-main p {
+  margin: 0;
+}
+
+.contribution-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .about-links {
   align-items: center;
   display: flex;

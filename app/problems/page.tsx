@@ -1,6 +1,7 @@
 import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { Heart, House } from "lucide-react";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
@@ -8,6 +9,7 @@ import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/Proble
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { getCurrentUser } from "@/lib/auth";
+import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { prisma } from "@/lib/db";
 import {
   domainCodeAliases,
@@ -489,9 +491,18 @@ export default async function ProblemsPage({
             ) : (
               <p>Sign in to track solved problems across {progressScope}.</p>
             )}
-            <Link href="/problems/new" className="button">
-              Add a problem
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/problems/new" className="button">
+                Add a problem
+              </Link>
+              <ContributionRequestDialog
+                action={createContributionRequestAction.bind(null, "PROBLEM", "/problems")}
+                buttonLabel="Request a problem"
+                title="Request a problem"
+                description="Tell contributors what kind of problem you would like to see."
+                placeholder="Describe the kind of problem you would like: the notion, theorem, technique, examples, or difficulty range you have in mind."
+              />
+            </div>
           </div>
         </div>
       </section>
