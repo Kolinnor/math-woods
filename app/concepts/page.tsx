@@ -78,7 +78,6 @@ export default async function ConceptsPage({
   return (
     <ForestPageLayout
       title="Concepts"
-      eyebrow="Encyclopedia"
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       description={
