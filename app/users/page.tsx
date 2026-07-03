@@ -76,8 +76,8 @@ export default async function UsersPage({
     <ForestPageLayout
       title="Users"
       eyebrow="Community"
-      heroImage="/art/brook-in-the-forest.jpg"
-      heroAlt="Ivan Shishkin, Brook in the Forest"
+      heroImage="/art/users-forest.webp"
+      heroAlt="Ivan Shishkin, Forest Landscape with Herons"
       description="A quiet leaderboard for contributors, solvers, and problem writers."
       meta={
         <>
