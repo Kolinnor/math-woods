@@ -136,7 +136,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/playlists">Playlists</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">Tips</Link>}
               <Link href={usersRoute}>Users</Link>
-              <Link href="/competition">Competition</Link>
             </div>
             <div className="nav-tools">
               <LanguageSelector initialLanguage={initialLanguage} />

@@ -10,7 +10,6 @@ import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemHintReveal } from "@/components/ProblemHintReveal";
-import { ZenModeToggle } from "@/components/ZenModeToggle";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
   createVerificationMessageAction,
@@ -279,9 +278,6 @@ export default async function ProblemPage({
 
       <div className="problem-detail-body">
         <article className="problem-detail-article">
-          <div className="problem-detail-tools zen-hide">
-            <ZenModeToggle />
-          </div>
         {verificationMessage && (
           <p className="quality-banner quality-needs-work mb-4" role="status">
             {verificationMessage}
@@ -707,21 +703,22 @@ export default async function ProblemPage({
           </section>
         )}
 
-        <section className="sidebar-section">
-          <h2 className="mb-3 font-semibold">Linked concepts</h2>
-          <div className="grid gap-2 text-sm">
-            {links.map((link) => (
-              <Link
-                key={link.id}
-                href={link.exists ? `/concepts/${link.targetSlug}` : `/concepts/new?title=${link.targetSlug}`}
-                className={link.exists ? "wiki-link" : "wiki-link missing"}
-              >
-                {link.label ?? link.targetSlug}
-              </Link>
-            ))}
-            {links.length === 0 && <p className="muted">No wikilinks.</p>}
-          </div>
-        </section>
+        {links.length > 0 && (
+          <section className="sidebar-section">
+            <h2 className="mb-3 font-semibold">Linked concepts</h2>
+            <div className="grid gap-2 text-sm">
+              {links.map((link) => (
+                <Link
+                  key={link.id}
+                  href={link.exists ? `/concepts/${link.targetSlug}` : `/concepts/new?title=${link.targetSlug}`}
+                  className={link.exists ? "wiki-link" : "wiki-link missing"}
+                >
+                  {link.label ?? link.targetSlug}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {playlists.length > 0 && (
           <section className="sidebar-section">

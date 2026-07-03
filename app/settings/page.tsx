@@ -1,6 +1,5 @@
 import { NotificationType } from "@prisma/client";
 import Link from "next/link";
-import { BackgroundStylePicker } from "@/components/BackgroundStylePicker";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import {
   changePasswordAction,
@@ -418,10 +417,6 @@ export default async function SettingsPage({
 
       {tab === "account" && (
         <>
-          <section className="panel p-5">
-            <BackgroundStylePicker />
-          </section>
-
           <section className="panel p-5">
             <h2 className="mb-2 text-lg font-semibold">Email verification</h2>
             {user.emailVerifiedAt ? (

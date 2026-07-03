@@ -149,6 +149,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
           <MarkdownBlock html={concept.bodyHtml} />
         </section>
 
+        {concept.references.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-3 text-lg font-semibold">References</h2>
           <ol className="grid list-decimal gap-3 pl-6 text-sm">
@@ -165,10 +166,8 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
               </li>
             ))}
           </ol>
-          {concept.references.length === 0 && (
-            <p className="empty-state">No references yet. Add reliable sources when editing this article.</p>
-          )}
         </section>
+        )}
       </article>
 
       <aside className="grid content-start gap-5">
@@ -201,6 +200,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
           </details>
         </section>
 
+        {problemBacklinks.length + conceptBacklinks.length > 0 && (
         <section className="sidebar-section">
           <h2 className="mb-3 font-semibold">Backlinks</h2>
           <div className="grid gap-2 text-sm">
@@ -214,10 +214,11 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
                 {item.title}
               </Link>
             ))}
-            {problemBacklinks.length + conceptBacklinks.length === 0 && <p className="muted">No backlinks.</p>}
           </div>
         </section>
+        )}
 
+        {outgoingLinks.length > 0 && (
         <section className="sidebar-section">
           <h2 className="mb-3 font-semibold">Outgoing links</h2>
           <div className="grid gap-2 text-sm">
@@ -230,9 +231,9 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
                 {link.label ?? link.targetSlug}
               </Link>
             ))}
-            {outgoingLinks.length === 0 && <p className="muted">No outgoing links.</p>}
           </div>
         </section>
+        )}
       </aside>
     </div>
     </ForestPageLayout>

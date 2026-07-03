@@ -29,10 +29,10 @@ published site remains a human responsibility.
 - Problem search and filtering by tag or difficulty.
 - Problem domains with category browsing and filtering.
 - Expandable problem provenance with approximate origin, chapter, page, and historical notes.
-- Dark theme and a focused zen mode for problem statements.
+- Light forest theme for problem statements.
 - Solved problems and favorite problems on user profiles.
 - Playlist following with personal solved progress.
-- Public suggestion box and a Competition placeholder.
+- Public suggestion box.
 - Large About/FAQ policy covering free access, advertising, open source, AI, licensing, attribution, and responsible reformulation.
 - Problem tags.
 - Problem and concept editing with revision history.

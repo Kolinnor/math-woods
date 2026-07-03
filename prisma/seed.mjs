@@ -754,7 +754,7 @@ async function main() {
       data: {
         authorId: curator.id,
         title: "Keyboard shortcuts for problem pages",
-        body: "A small shortcut to toggle zen mode would be useful later."
+        body: "Small shortcuts to jump between the statement, hints, solutions, and discussion would be useful later."
       }
     });
   }
