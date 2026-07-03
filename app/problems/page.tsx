@@ -1,7 +1,7 @@
 import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
-import { Heart } from "lucide-react";
+import { Heart, House } from "lucide-react";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
@@ -630,10 +630,16 @@ export default async function ProblemsPage({
                   <div className="problem-ledger-side">
                     <span>by {displayNameForUser(problem.author)}</span>
                     <span
-                      className={isUserFavorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
-                      title={isUserFavorite ? "You favorited this problem" : "Favorites"}
+                      className={
+                        isOwnProblem
+                          ? "problem-favorite-count problem-own-count"
+                          : isUserFavorite
+                            ? "problem-favorite-count problem-favorite-count-own"
+                            : "problem-favorite-count"
+                      }
+                      title={isOwnProblem ? "Your problem" : isUserFavorite ? "You favorited this problem" : "Favorites"}
                     >
-                      <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />
+                      {isOwnProblem ? <House size={15} /> : <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />}
                       {externalFavoriteCount}
                     </span>
                   </div>

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { QualityStatus } from "@prisma/client";
-import { Check, Heart, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
+import { Check, Heart, House, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
@@ -569,7 +569,7 @@ export default async function ProblemPage({
           )}
           {isOwnProblem ? (
             <div className="own-problem-favorite-note">
-              <span className="problem-own-dot" aria-hidden="true" />
+              <House size={17} aria-hidden="true" />
               Your problem {"\u00b7"} {pluralize(favoriteCount, "favorite")}
             </div>
           ) : (

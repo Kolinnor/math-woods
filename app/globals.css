@@ -1741,12 +1741,9 @@ button.vote-button-active:hover {
   padding: 0.6rem 0.9rem;
 }
 
-.problem-own-dot {
-  background: #dc2626;
-  clip-path: polygon(50% 0%, 100% 38%, 85% 38%, 85% 100%, 62% 100%, 62% 67%, 38% 67%, 38% 100%, 15% 100%, 15% 38%, 0% 38%);
-  display: inline-block;
-  height: 1rem;
-  width: 1rem;
+.own-problem-favorite-note svg {
+  color: #dc2626;
+  flex: 0 0 auto;
 }
 
 button.danger,
@@ -4022,6 +4019,16 @@ body:has(.problems-page-shell) .header-search input::placeholder {
 
 .problem-favorite-count-own svg {
   color: currentColor;
+}
+
+.problem-own-count {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.problem-own-count svg {
+  color: #dc2626;
 }
 
 .problem-link.block {
