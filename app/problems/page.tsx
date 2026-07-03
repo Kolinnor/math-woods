@@ -640,17 +640,16 @@ export default async function ProblemsPage({
                   </div>
                   <div className="problem-ledger-side">
                     <span>by {displayNameForUser(problem.author)}</span>
+                    {isOwnProblem && (
+                      <span className="problem-favorite-count problem-own-count" title="Your problem">
+                        <House size={15} />
+                      </span>
+                    )}
                     <span
-                      className={
-                        isOwnProblem
-                          ? "problem-favorite-count problem-own-count"
-                          : isUserFavorite
-                            ? "problem-favorite-count problem-favorite-count-own"
-                            : "problem-favorite-count"
-                      }
-                      title={isOwnProblem ? "Your problem" : isUserFavorite ? "You favorited this problem" : "Favorites"}
+                      className={isUserFavorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
+                      title={isUserFavorite ? "You favorited this problem" : "Favorites"}
                     >
-                      {isOwnProblem ? <House size={15} /> : <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />}
+                      <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />
                       {externalFavoriteCount}
                     </span>
                   </div>
