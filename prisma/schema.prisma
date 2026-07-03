@@ -718,6 +718,31 @@ model Suggestion {
   @@index([status, createdAt])
 }
 
+model FaqSection {
+  id        Int       @id @default(autoincrement())
+  position  Int       @default(0)
+  title     String
+  anchorId  String    @default("")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  items     FaqItem[]
+
+  @@index([position])
+}
+
+model FaqItem {
+  id             Int        @id @default(autoincrement())
+  sectionId      Int
+  position       Int        @default(0)
+  question       String
+  answerMarkdown String     @db.Text
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  section        FaqSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId, position])
+}
+
 model Tip {
   id             Int          @id @default(autoincrement())
   position       Int          @unique

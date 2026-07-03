@@ -895,6 +895,55 @@ a {
   text-decoration: underline;
 }
 
+.faq-admin-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 1.25rem 0 0;
+}
+
+.faq-editor-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 1.2rem;
+  padding: 1.1rem;
+}
+
+.faq-editor-section-form,
+.faq-editor-item-header {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, 0.32fr) minmax(5rem, 0.14fr);
+}
+
+.faq-editor-items {
+  display: grid;
+  gap: 1rem;
+}
+
+.faq-editor-item,
+.faq-editor-new-item {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+}
+
+.faq-editor-item textarea,
+.faq-editor-new-item textarea {
+  min-height: 8rem;
+}
+
+.faq-editor-new-item h3 {
+  font-size: 1rem;
+  font-weight: 750;
+  margin: 0;
+}
+
 .about-links {
   align-items: center;
   display: flex;
@@ -1608,6 +1657,11 @@ select:focus {
 }
 
 @media (max-width: 680px) {
+  .faq-editor-section-form,
+  .faq-editor-item-header {
+    grid-template-columns: 1fr;
+  }
+
   .latex-text-field {
     grid-template-columns: 1fr;
   }
