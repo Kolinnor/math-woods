@@ -155,7 +155,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/suggestions">Suggestions</Link>
                   <Link href="/about">About</Link>
                   {user && <div className="nav-menu-divider" />}
-                  {user && <Link href="/me">My work</Link>}
                   {user && <Link href={`/profile/${user.username}`}>{displayNameForUser(user)}</Link>}
                   {user && <Link href="/settings">Settings</Link>}
                   {user && canUseModerationTools(user) && <Link href="/moderation">Moderation</Link>}
