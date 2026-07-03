@@ -342,14 +342,13 @@ function HomeFooter() {
 export default async function HomePage() {
   const user = await getCurrentUser();
   const preferredLanguage = await getPreferredContentLanguage();
-  const tip = await loadDailyTip();
   const problemWhere = {
     status: "PUBLISHED" as const,
     listed: true,
     language: preferredLanguage
   };
 
-  const [problemRows, practiceLinks, resumeAttempt, tipBodyHtml] = await Promise.all([
+  const [problemRows, resumeAttempt, tip] = await Promise.all([
     prisma.problem.findMany({
       where: problemWhere,
       orderBy: { createdAt: "desc" },
@@ -357,25 +356,6 @@ export default async function HomePage() {
       include: {
         author: { select: { username: true, displayName: true } },
         _count: { select: { attempts: true, favorites: true } }
-      }
-    }),
-    prisma.tipProblem.findMany({
-      where: {
-        tipId: tip.id,
-        problem: problemWhere
-      },
-      orderBy: { position: "asc" },
-      take: 3,
-      select: {
-        problem: {
-          select: {
-            id: true,
-            slug: true,
-            title: true,
-            domain: true,
-            difficulty: true
-          }
-        }
       }
     }),
     user
@@ -389,12 +369,36 @@ export default async function HomePage() {
           include: { problem: { select: { slug: true, title: true } } }
         })
       : null,
-    renderMarkdown(tip.body)
+    user ? loadDailyTip() : null
   ]);
+  const [practiceLinks, tipBodyHtml] = tip
+    ? await Promise.all([
+        prisma.tipProblem.findMany({
+          where: {
+            tipId: tip.id,
+            problem: problemWhere
+          },
+          orderBy: { position: "asc" },
+          take: 3,
+          select: {
+            problem: {
+              select: {
+                id: true,
+                slug: true,
+                title: true,
+                domain: true,
+                difficulty: true
+              }
+            }
+          }
+        }),
+        renderMarkdown(tip.body)
+      ])
+    : [[], ""];
 
   const renderedProblems = await withRenderedTitles(problemRows);
   const practiceRows = practiceLinks.map((link) => link.problem);
-  const renderedPractice = await withRenderedTitles(practiceRows.length > 0 ? practiceRows : problemRows.slice(0, 3));
+  const renderedPractice = tip ? await withRenderedTitles(practiceRows.length > 0 ? practiceRows : problemRows.slice(0, 3)) : [];
   const featured = renderedProblems[0] ?? null;
   const recent = renderedProblems.slice(1, 4);
   const homeUser = user
@@ -417,7 +421,7 @@ export default async function HomePage() {
       <HomeHero user={homeUser} resume={resume} canSeeTips={canSeeTips} />
       <main className="home-main">
         {!homeUser && <TrailBand />}
-        <TipOfDay tip={tip} bodyHtml={tipBodyHtml} practice={renderedPractice} />
+        {homeUser && tip && <TipOfDay tip={tip} bodyHtml={tipBodyHtml} practice={renderedPractice} />}
         <section className="home-duo-grid">
           <ProblemToTry problem={featured} />
           <DomainGrid />
