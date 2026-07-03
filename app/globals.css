@@ -5355,7 +5355,6 @@ body:has(.home-shell) {
   background: #e8e2d3;
 }
 
-body:has(.home-shell) .site-header,
 body:has(.home-shell) > .site-footer {
   display: none;
 }
@@ -5433,77 +5432,6 @@ body:has(.home-shell) > .site-footer {
       rgba(12, 20, 14, 0.2) 40%,
       rgba(12, 20, 14, 0.78) 100%
     );
-}
-
-.home-forest-nav {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  padding: 1.5rem 3rem;
-  position: relative;
-  z-index: 2;
-}
-
-.home-brand {
-  align-items: center;
-  display: flex;
-  gap: 0.6rem;
-}
-
-.home-brand img {
-  border-radius: 7px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-  display: block;
-  height: 2rem;
-  width: 2rem;
-}
-
-.home-brand span {
-  color: #fff;
-  font-family: var(--font-serif);
-  font-size: 1.4rem;
-  font-weight: 600;
-  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.5);
-}
-
-.home-nav-links {
-  align-items: center;
-  color: rgba(255, 255, 255, 0.85);
-  display: flex;
-  font-size: 0.82rem;
-  font-weight: 600;
-  gap: 1.5rem;
-  letter-spacing: 0.08em;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
-  text-transform: uppercase;
-}
-
-.home-nav-links a:hover {
-  color: #fff;
-}
-
-.home-login-link {
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 999px;
-  color: #fff;
-  padding: 0.42rem 1.05rem;
-  white-space: nowrap;
-}
-
-.home-avatar {
-  align-items: center;
-  background: var(--accent);
-  border: 1.5px solid rgba(255, 255, 255, 0.65);
-  border-radius: 999px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-  color: #fff;
-  display: flex;
-  font-size: 0.82rem;
-  font-weight: 700;
-  height: 2.1rem;
-  justify-content: center;
-  letter-spacing: 0;
-  width: 2.1rem;
 }
 
 .home-guest-hero-copy,
@@ -5986,18 +5914,6 @@ body:has(.home-shell) > .site-footer {
 }
 
 @media (max-width: 900px) {
-  .home-forest-nav {
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1.1rem 1.25rem;
-  }
-
-  .home-nav-links {
-    flex-wrap: wrap;
-    gap: 0.75rem 1rem;
-    justify-content: flex-end;
-  }
-
   .home-guest-hero-copy {
     padding: 0 1.5rem 2.4rem;
   }
@@ -6046,14 +5962,6 @@ body:has(.home-shell) > .site-footer {
 
   .home-hero-member {
     min-height: 360px;
-  }
-
-  .home-forest-nav {
-    display: grid;
-  }
-
-  .home-nav-links {
-    justify-content: flex-start;
   }
 
   .home-guest-hero-copy h1 {

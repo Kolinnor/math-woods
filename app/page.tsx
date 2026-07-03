@@ -7,7 +7,6 @@ import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
-import { canUseAdminTools } from "@/lib/permissions";
 import { pluralize } from "@/lib/pluralize";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
@@ -66,53 +65,12 @@ async function withRenderedTitles<T extends { title: string }>(items: T[]) {
   );
 }
 
-function initialsForName(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
-  return initials || name.slice(0, 2).toUpperCase() || "MW";
-}
-
-function HomeNav({
-  user,
-  canSeeTips
-}: {
-  user: { name: string; initials: string; username: string } | null;
-  canSeeTips: boolean;
-}) {
-  return (
-    <header className="home-forest-nav">
-      <Link href="/" className="home-brand" aria-label="Math Woods home">
-        <img src="/icon.svg" alt="" aria-hidden="true" />
-        <span>Math Woods</span>
-      </Link>
-      <nav className="home-nav-links" aria-label="Main navigation">
-        <Link href="/problems">Problems</Link>
-        <Link href="/concepts">Concepts</Link>
-        <Link href="/playlists">Playlists</Link>
-        {canSeeTips && <Link href="/tips">Tips</Link>}
-        {!user && <Link href="/users">Users</Link>}
-        {user ? (
-          <Link href="/settings" title={`${user.name} / your account`} className="home-avatar">
-            {user.initials}
-          </Link>
-        ) : (
-          <Link href="/login" className="home-login-link">
-            Log in
-          </Link>
-        )}
-      </nav>
-    </header>
-  );
-}
-
 function HomeHero({
   user,
-  resume,
-  canSeeTips
+  resume
 }: {
-  user: { name: string; initials: string; username: string } | null;
+  user: { name: string } | null;
   resume: { title: string; slug: string } | null;
-  canSeeTips: boolean;
 }) {
   const isMember = Boolean(user);
 
@@ -127,7 +85,6 @@ function HomeHero({
         className="home-hero-image"
       />
       <div className={isMember ? "home-hero-overlay home-hero-overlay-member" : "home-hero-overlay"} />
-      <HomeNav user={user} canSeeTips={canSeeTips} />
       {user ? (
         <div className="home-member-hero-copy">
           <div>
@@ -403,12 +360,9 @@ export default async function HomePage() {
   const recent = renderedProblems.slice(1, 4);
   const homeUser = user
     ? {
-        name: displayNameForUser(user),
-        initials: initialsForName(displayNameForUser(user)),
-        username: user.username
+        name: displayNameForUser(user)
       }
     : null;
-  const canSeeTips = Boolean(user && canUseAdminTools(user));
   const resume = resumeAttempt
     ? {
         title: resumeAttempt.problem.title,
@@ -418,7 +372,7 @@ export default async function HomePage() {
 
   return (
     <div className="home-shell">
-      <HomeHero user={homeUser} resume={resume} canSeeTips={canSeeTips} />
+      <HomeHero user={homeUser} resume={resume} />
       <main className="home-main">
         {!homeUser && <TrailBand />}
         {homeUser && tip && renderedPractice.length > 0 && <TipOfDay tip={tip} bodyHtml={tipBodyHtml} practice={renderedPractice} />}
