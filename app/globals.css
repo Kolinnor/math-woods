@@ -3401,7 +3401,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 }
 
 .forest-page-hero {
-  min-height: 285px;
+  min-height: clamp(340px, 38vh, 440px);
 }
 
 .forest-page-hero img,
