@@ -65,10 +65,6 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
 
       <form action={updateTipAction.bind(null, tip.id)} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Level</span>
-          <input name="level" type="number" min="0" max="10" required defaultValue={tip.level} />
-        </label>
-        <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
           <input name="title" maxLength={160} required defaultValue={tip.title} />
         </label>

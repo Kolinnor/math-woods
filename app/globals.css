@@ -2763,17 +2763,6 @@ button.domain-picker-tile > span:last-child {
   margin: 0;
 }
 
-.tip-level {
-  background: var(--panel-muted);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 750;
-  justify-self: start;
-  padding: 0.15rem 0.5rem;
-}
-
 .tip-description {
   color: var(--ink);
   font-size: 0.95rem;

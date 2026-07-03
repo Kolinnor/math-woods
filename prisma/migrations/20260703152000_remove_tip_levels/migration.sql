@@ -1,0 +1,1 @@
+ALTER TABLE "Tip" DROP COLUMN IF EXISTS "level";

@@ -720,7 +720,6 @@ model Suggestion {
 model Tip {
   id          Int      @id @default(autoincrement())
   position    Int      @unique
-  level       Int      @default(0)
   title       String
   description String
   body        String   @db.Text

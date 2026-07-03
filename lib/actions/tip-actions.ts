@@ -10,14 +10,6 @@ import { ensureDefaultTips } from "@/lib/daily-tip";
 import { canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 
-function parseTipLevel(value: FormDataEntryValue | null) {
-  const level = Number(value);
-  if (!Number.isInteger(level) || level < 0 || level > 10) {
-    throw new Error("Level must be an integer between 0 and 10.");
-  }
-  return level;
-}
-
 function parseTipProblemIds(values: FormDataEntryValue[]) {
   const seen = new Set<number>();
   const problemIds: number[] = [];
@@ -39,7 +31,6 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   await assertRateLimit(`tip:update:${user.id}`, 30, 60_000);
   await ensureDefaultTips();
 
-  const level = parseTipLevel(formData.get("level"));
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
   const body = boundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body") || description;
@@ -58,7 +49,6 @@ export async function updateTipAction(tipId: number, formData: FormData) {
     await tx.tip.update({
       where: { id: tipId },
       data: {
-        level,
         title,
         description,
         body
