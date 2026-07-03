@@ -28,7 +28,7 @@ import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText }
 import { syncInternalLinks } from "@/lib/internal-links";
 import {
   createNotification,
-  notifyAdminsOfContributorCreation,
+  notifyOwnerOfSiteActivity,
   notifyProblemAuthor,
   notifyProblemEditSubscribers
 } from "@/lib/notifications";
@@ -204,7 +204,7 @@ export async function createProblemAction(formData: FormData) {
   });
 
   revalidatePath("/");
-  await notifyAdminsOfContributorCreation({
+  await notifyOwnerOfSiteActivity({
     actor: user,
     type: NotificationType.PROBLEM_CREATED,
     title: "New problem created",

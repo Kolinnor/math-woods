@@ -20,7 +20,8 @@ const configurableNotificationTypes = [
   NotificationType.SITE_ERROR_REPORTED,
   NotificationType.USER_REGISTERED,
   NotificationType.PROBLEM_CREATED,
-  NotificationType.CONCEPT_CREATED
+  NotificationType.CONCEPT_CREATED,
+  NotificationType.CONCEPT_EDITED
 ] as const;
 
 export async function markAllNotificationsReadAction() {

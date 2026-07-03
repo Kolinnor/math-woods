@@ -1,8 +1,9 @@
 import { NotificationType, Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { shouldNotifyAdminsOfContributorCreation } from "@/lib/admin-creation-notifications";
 import { prisma } from "@/lib/db";
 import { problemEditNotificationRecipientIds } from "@/lib/problem-edit-notifications";
+
+const OWNER_NOTIFICATION_USERNAME = "ancient-tree";
 
 type NotificationInput = {
   userId: number;
@@ -13,17 +14,17 @@ type NotificationInput = {
   href: string;
 };
 
-type AdminCreationNotificationType =
+type OwnerActivityNotificationType =
   | typeof NotificationType.USER_REGISTERED
   | typeof NotificationType.PROBLEM_CREATED
-  | typeof NotificationType.CONCEPT_CREATED;
+  | typeof NotificationType.CONCEPT_CREATED
+  | typeof NotificationType.CONCEPT_EDITED;
 
-type AdminCreationNotificationInput = {
+type OwnerActivityNotificationInput = {
   actor: {
     id: number;
-    role: Role;
   };
-  type: AdminCreationNotificationType;
+  type: OwnerActivityNotificationType;
   title: string;
   body: string;
   href: string;
@@ -141,24 +142,23 @@ export async function notifyProblemEditSubscribers({
   );
 }
 
-export async function notifyAdminsOfContributorCreation(input: AdminCreationNotificationInput) {
-  if (!shouldNotifyAdminsOfContributorCreation(input.actor.role)) return [];
-
-  const admins = await prisma.user.findMany({
-    where: { role: { in: [Role.ADMIN, Role.OWNER] } },
+export async function notifyOwnerOfSiteActivity(input: OwnerActivityNotificationInput) {
+  const owner = await prisma.user.findFirst({
+    where: {
+      username: OWNER_NOTIFICATION_USERNAME,
+      role: Role.OWNER
+    },
     select: { id: true }
   });
 
-  return Promise.all(
-    admins.map((admin) =>
-      createNotification({
-        userId: admin.id,
-        actorId: input.actor.id,
-        type: input.type,
-        title: input.title,
-        body: input.body,
-        href: input.href
-      })
-    )
-  );
+  if (!owner) return null;
+
+  return createNotification({
+    userId: owner.id,
+    actorId: input.actor.id,
+    type: input.type,
+    title: input.title,
+    body: input.body,
+    href: input.href
+  });
 }

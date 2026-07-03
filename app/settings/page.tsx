@@ -83,17 +83,22 @@ const notificationOptions = [
   {
     type: NotificationType.USER_REGISTERED,
     title: "A user created an account",
-    description: "For admins: when a non-admin user joins Math Woods."
+    description: "For the owner: when a user joins Math Woods."
   },
   {
     type: NotificationType.PROBLEM_CREATED,
     title: "A problem was created",
-    description: "For admins: when a non-admin user creates a problem."
+    description: "For the owner: when a user creates a problem."
   },
   {
     type: NotificationType.CONCEPT_CREATED,
     title: "A concept was created",
-    description: "For admins: when a non-admin user creates a concept."
+    description: "For the owner: when a user creates a concept."
+  },
+  {
+    type: NotificationType.CONCEPT_EDITED,
+    title: "A concept was edited",
+    description: "For the owner: when a user edits or rolls back a concept."
   }
 ] as const;
 

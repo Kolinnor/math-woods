@@ -5,7 +5,7 @@ import { cache } from "react";
 import { NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { parseMathLevel } from "@/lib/math-levels";
-import { notifyAdminsOfContributorCreation } from "@/lib/notifications";
+import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { canUseModerationTools, canUseOwnerTools } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
@@ -142,7 +142,7 @@ export async function registerUser(
   });
 
   await createSession(user.id);
-  await notifyAdminsOfContributorCreation({
+  await notifyOwnerOfSiteActivity({
     actor: user,
     type: NotificationType.USER_REGISTERED,
     title: "New account created",

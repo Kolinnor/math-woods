@@ -7,7 +7,7 @@ import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { notifyAdminsOfContributorCreation } from "@/lib/notifications";
+import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { parseMathDomain } from "@/lib/domains";
 import { refreshLinksForConcept, syncInternalLinks } from "@/lib/internal-links";
@@ -90,7 +90,7 @@ export async function createConceptAction(formData: FormData) {
 
   await refreshLinksForConcept(concept.slug);
   revalidatePath("/");
-  await notifyAdminsOfContributorCreation({
+  await notifyOwnerOfSiteActivity({
     actor: user,
     type: NotificationType.CONCEPT_CREATED,
     title: "New concept created",
@@ -171,6 +171,13 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
 
   await refreshLinksForConcept(concept.slug);
   revalidatePath(`/concepts/${concept.slug}`);
+  await notifyOwnerOfSiteActivity({
+    actor: user,
+    type: NotificationType.CONCEPT_EDITED,
+    title: "Concept edited",
+    body: `${displayNameForUser(user)} edited "${concept.title}".`,
+    href: `/concepts/${concept.slug}`
+  });
   redirect(`/concepts/${concept.slug}`);
 }
 
@@ -223,5 +230,12 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
 
   await refreshLinksForConcept(concept.slug);
   revalidatePath(`/concepts/${concept.slug}`);
+  await notifyOwnerOfSiteActivity({
+    actor: user,
+    type: NotificationType.CONCEPT_EDITED,
+    title: "Concept edited",
+    body: `${displayNameForUser(user)} rolled back "${concept.title}".`,
+    href: `/concepts/${concept.slug}`
+  });
   redirect(`/concepts/${concept.slug}`);
 }

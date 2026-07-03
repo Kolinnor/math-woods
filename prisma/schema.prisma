@@ -127,6 +127,7 @@ enum NotificationType {
   USER_REGISTERED
   PROBLEM_CREATED
   CONCEPT_CREATED
+  CONCEPT_EDITED
 }
 
 enum ProblemVerificationMode {
