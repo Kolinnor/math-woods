@@ -274,6 +274,14 @@ export default function AboutPage() {
             paths branching, notes getting corrected, useful pages slowly becoming better.
           </p>
         </Faq>
+        <Faq question="How should people behave in discussions?">
+          <p>
+            This place is designed to be welcoming to everyone, especially beginners. We care about the quality of the
+            atmosphere as much as the quality of the mathematics. Rude, dismissive, or condescending behavior toward
+            other users will not be tolerated. Please also keep discussions on topic: avoid bringing in unrelated
+            subjects such as politics, and avoid jokes or remarks that may make people feel uncomfortable or excluded.
+          </p>
+        </Faq>
         <Faq question="Is it acceptable to publish unfinished material?">
           <p>
             Yes, if it is honest and useful. A problem can be marked <strong>Needs work</strong>; a concept can begin as
