@@ -63,7 +63,7 @@ export function canUseOwnerTools(userOrRole: PermissionUser | Role) {
 
 export function canManageUserRoles(userOrRole: PermissionUser | Role) {
   const role = typeof userOrRole === "string" ? userOrRole : userOrRole.role;
-  return hasAdminPrivileges(role);
+  return hasOwnerPrivileges(role);
 }
 
 export function assignableRolesFor(role: Role): readonly Role[] {

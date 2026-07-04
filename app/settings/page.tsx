@@ -1,4 +1,4 @@
-import { NotificationType } from "@prisma/client";
+import { NotificationType, Role } from "@prisma/client";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import {
@@ -6,6 +6,7 @@ import {
   deleteAccountAction,
   resendEmailVerificationAction,
   revokeOtherSessionsAction,
+  updateUserDeletedStatusAction,
   updateUserRoleAction
 } from "@/lib/actions/account-actions";
 import { resetLatexPreferencesAction, updateLatexPreferencesAction } from "@/lib/actions/latex-preference-actions";
@@ -27,6 +28,20 @@ function formatDate(date: Date) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(date);
+}
+
+type ManagedUser = {
+  id: number;
+  username: string;
+  displayName: string | null;
+  email: string | null;
+  role: Role;
+  createdAt: Date;
+  deletedAt: Date | null;
+};
+
+function isDeletedUser(user: ManagedUser) {
+  return Boolean(user.deletedAt || (user.email === null && user.username.startsWith("deleted-user-")));
 }
 
 const notificationOptions = [
@@ -287,15 +302,23 @@ const markdownHeadingShortcutOptions: Array<{
 export default async function SettingsPage({
   searchParams
 }: {
-  searchParams?: Promise<{ tab?: string; updated?: string; verify?: string; deleteAccount?: string }>;
+  searchParams?: Promise<{
+    tab?: string;
+    updated?: string;
+    verify?: string;
+    deleteAccount?: string;
+    adminUsers?: string;
+  }>;
 }) {
   const user = await requireUser();
   const currentSession = await getCurrentSession();
   const params = searchParams ? await searchParams : {};
-  const tab =
-    params.tab === "notifications" || params.tab === "admin" || params.tab === "latex" ? params.tab : "account";
-  const verifyStatus = params.verify;
   const canManageRoles = canManageUserRoles(user);
+  const requestedTab =
+    params.tab === "notifications" || params.tab === "admin" || params.tab === "latex" ? params.tab : "account";
+  const tab = requestedTab === "admin" && !canManageRoles ? "account" : requestedTab;
+  const adminUsersTab = params.adminUsers === "deleted" ? "deleted" : "active";
+  const verifyStatus = params.verify;
   const [sessions, notificationPreferences, savedLatexPreferences] = await Promise.all([
     prisma.session.findMany({
       where: {
@@ -319,9 +342,12 @@ export default async function SettingsPage({
   const roleUsers = canManageRoles
     ? await prisma.user.findMany({
         orderBy: [{ role: "desc" }, { username: "asc" }],
-        select: { id: true, username: true, displayName: true, email: true, role: true, createdAt: true }
+        select: { id: true, username: true, displayName: true, email: true, role: true, createdAt: true, deletedAt: true }
       })
     : [];
+  const activeUsers = roleUsers.filter((managedUser) => !isDeletedUser(managedUser));
+  const deletedUsers = roleUsers.filter(isDeletedUser);
+  const shownAdminUsers = adminUsersTab === "deleted" ? deletedUsers : activeUsers;
 
   return (
     <ForestPageLayout
@@ -345,6 +371,11 @@ export default async function SettingsPage({
       {params.updated === "role" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
           User role updated.
+        </p>
+      )}
+      {params.updated === "user-status" && (
+        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
+          User status updated.
         </p>
       )}
       {params.updated === "notifications" && (
@@ -646,13 +677,29 @@ export default async function SettingsPage({
         <section className="panel p-5">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">User roles</h2>
-            <p className="muted text-sm">Admins can manage trusted users. Only the owner can assign admin roles.</p>
+            <p className="muted text-sm">Only the owner can manage trusted users and deleted-user visibility.</p>
           </div>
 
+          <nav className="tab-nav mb-4" aria-label="Admin user sections">
+            <Link href="/settings?tab=admin" className={adminUsersTab === "active" ? "active" : ""}>
+              Active users ({activeUsers.length})
+            </Link>
+            <Link
+              href="/settings?tab=admin&adminUsers=deleted"
+              className={adminUsersTab === "deleted" ? "active" : ""}
+            >
+              Deleted users ({deletedUsers.length})
+            </Link>
+          </nav>
+
           <div className="grid gap-3">
-            {roleUsers.map((managedUser) => {
-              const assignableRoles = assignableRolesFor(user.role).filter((role) => canAssignRole(user, managedUser, role));
+            {shownAdminUsers.map((managedUser) => {
+              const deleted = isDeletedUser(managedUser);
+              const assignableRoles = deleted
+                ? []
+                : assignableRolesFor(user.role).filter((role) => canAssignRole(user, managedUser, role));
               const lockedRole = assignableRoles.length === 0;
+              const canMove = managedUser.id !== user.id && managedUser.role !== Role.OWNER;
 
               return (
                 <div key={managedUser.id} className="rounded-md border border-line p-3 text-sm">
@@ -661,28 +708,45 @@ export default async function SettingsPage({
                       <p className="font-medium">{displayNameForUser(managedUser)}</p>
                       <p className="muted">
                         {roleLabel(managedUser.role)} / joined {formatDate(managedUser.createdAt)}
+                        {managedUser.deletedAt && <> / deleted {formatDate(managedUser.deletedAt)}</>}
                       </p>
                     </div>
-                    {lockedRole ? (
-                      <span className="tag">{roleLabel(managedUser.role)}</span>
-                    ) : (
-                      <form action={updateUserRoleAction.bind(null, managedUser.id)} className="flex flex-wrap gap-2">
-                        <select name="role" defaultValue={managedUser.role} aria-label={`Role for ${managedUser.username}`}>
-                          {assignableRoles.map((role) => (
-                            <option key={role} value={role}>
-                              {roleLabel(role)}
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit" className="secondary">
-                          Update
-                        </button>
-                      </form>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {lockedRole ? (
+                        <span className="tag">{deleted ? "Deleted user" : roleLabel(managedUser.role)}</span>
+                      ) : (
+                        <form action={updateUserRoleAction.bind(null, managedUser.id)} className="flex flex-wrap gap-2">
+                          <select name="role" defaultValue={managedUser.role} aria-label={`Role for ${managedUser.username}`}>
+                            {assignableRoles.map((role) => (
+                              <option key={role} value={role}>
+                                {roleLabel(role)}
+                              </option>
+                            ))}
+                          </select>
+                          <button type="submit" className="secondary">
+                            Update
+                          </button>
+                        </form>
+                      )}
+                      {canMove && (
+                        <form
+                          action={updateUserDeletedStatusAction.bind(null, managedUser.id, deleted ? "active" : "deleted")}
+                        >
+                          <button type="submit" className="secondary">
+                            {deleted ? "Move to active" : "Move to deleted"}
+                          </button>
+                        </form>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })}
+            {shownAdminUsers.length === 0 && (
+              <p className="muted rounded-md border border-line p-3 text-sm">
+                {adminUsersTab === "deleted" ? "No deleted users." : "No active users."}
+              </p>
+            )}
           </div>
         </section>
       )}

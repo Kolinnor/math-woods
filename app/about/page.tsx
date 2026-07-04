@@ -26,10 +26,8 @@ export default async function AboutPage() {
   return (
     <ForestPageLayout
       title="About"
-      eyebrow="Math Woods"
       heroImage="/art/morning-in-a-pine-forest.jpg"
       heroAlt="Ivan Shishkin, Morning in a Pine Forest"
-      description="A free, ad-free place for studying mathematics carefully and kindly."
       actions={
         canEditFaq && (
           <Link href={"/about/faq/edit" as Route} className="button secondary">

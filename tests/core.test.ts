@@ -48,6 +48,7 @@ import {
   canAssignRole,
   canDeletePlaylist,
   canEditProblem,
+  canManageUserRoles,
   canSetConceptStatus,
   canSetProblemQualityStatus,
   canUseAdminTools,
@@ -324,6 +325,8 @@ assert.equal(canEditProblem({ id: 1, role: Role.MODERATOR }, { authorId: 2 }), t
 assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 1 }), true);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 2 }), false);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.ADMIN }, { authorId: 2 }), true);
+assert.equal(canManageUserRoles(Role.ADMIN), false);
+assert.equal(canManageUserRoles(Role.OWNER), true);
 assert.equal(headingLevel("ATXHeading3"), 3);
 assert.equal(headingLevel("Paragraph"), null);
 assert.equal(markdownPreviewClass("StrongEmphasis"), "cm-md-strong");

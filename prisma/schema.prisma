@@ -175,6 +175,7 @@ model User {
   role                         Role                         @default(USER)
   createdAt                    DateTime                     @default(now())
   updatedAt                    DateTime                     @updatedAt
+  deletedAt                    DateTime?
   problems                     Problem[]
   conceptsCreated              Concept[]                    @relation("ConceptCreatedBy")
   conceptsEdited               Concept[]                    @relation("ConceptLastEditedBy")

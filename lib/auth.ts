@@ -76,6 +76,11 @@ export const getCurrentSession = cache(async function getCurrentSession() {
     const now = new Date();
     if (!session || session.expiresAt <= now) continue;
 
+    if (session.user.deletedAt) {
+      await prisma.session.deleteMany({ where: { id: session.id } });
+      continue;
+    }
+
     if (now.getTime() - session.lastSeenAt.getTime() >= LAST_SEEN_UPDATE_INTERVAL_MS) {
       await prisma.session.update({
         where: { id: session.id },
@@ -156,6 +161,7 @@ export async function signInWithPassword(identifierInput: string, password: stri
   const identifier = identifierInput.trim().toLowerCase();
   const user = await prisma.user.findFirst({
     where: {
+      deletedAt: null,
       OR: [{ username: identifier }, { email: identifier }]
     }
   });
