@@ -20,8 +20,21 @@ import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://mathwoods.org"),
   title: "Math Woods",
-  description: "A free, ad-free place for math problems, linked concepts, and opt-in discussions.",
+  description: "A quiet place for people who enjoy solving mathematics problems.",
+  openGraph: {
+    title: "Math Woods",
+    description: "A quiet place for people who enjoy solving mathematics problems.",
+    url: "https://mathwoods.org",
+    siteName: "Math Woods",
+    type: "website"
+  },
+  twitter: {
+    card: "summary",
+    title: "Math Woods",
+    description: "A quiet place for people who enjoy solving mathematics problems."
+  },
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",
