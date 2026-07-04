@@ -41,30 +41,6 @@ export default async function AboutPage() {
         <h1>Free forever. No ads.</h1>
       </section>
 
-      <section className="about-principles">
-        <div>
-          <h2>Open by design</h2>
-          <p>The code, public pages, revisions, and exports should be easy to inspect and reuse.</p>
-        </div>
-        <div>
-          <h2>People remain responsible</h2>
-          <p>Tools can help. A person still has to understand, check, source, and stand behind each contribution.</p>
-        </div>
-        <div>
-          <h2>Respect the source</h2>
-          <p>Ideas travel. Wording, attribution, and permission still matter.</p>
-        </div>
-      </section>
-
-      <section className="about-credit">
-        <p className="about-eyebrow">How this site was made</p>
-        <h2>Built with Codex, under human direction.</h2>
-        <p>
-          Math Woods was coded with help from Codex, an AI coding agent by OpenAI, under human direction and review.
-          The published site remains a human responsibility.
-        </p>
-      </section>
-
       {faqSections.map((section) => (
         <section key={section.id ?? `${section.position}-${section.title}`} className="about-section" id={section.anchorId || undefined}>
           <h2>{section.title}</h2>

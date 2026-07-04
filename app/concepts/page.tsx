@@ -8,7 +8,6 @@ import { createContributionRequestAction } from "@/lib/actions/contribution-requ
 import { prisma } from "@/lib/db";
 import { coarseDomainForCode, domainCodeAliases, domainLabel, parseDomainCode, PROBLEM_DOMAINS } from "@/lib/domains";
 import { missingConcepts } from "@/lib/internal-links";
-import { contentLanguageLabel } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
@@ -80,9 +79,6 @@ export default async function ConceptsPage({
       title="Concepts"
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description={
-        <>A linked, sourced, collaboratively maintained mathematics encyclopedia in {contentLanguageLabel(preferredLanguage)}.</>
-      }
       meta={
         <>
           <p>{concepts.length} concepts shown</p>
