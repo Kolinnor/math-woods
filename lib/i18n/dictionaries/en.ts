@@ -169,7 +169,8 @@ export const en = {
     sortAriaLabel: "Sort problems",
     advancedFilters: {
       title: "Advanced filters",
-      active: (count: number) => `${count} active`,
+      activeSingular: "active",
+      activePlural: "active",
       optional: "Optional AND / OR filters",
       description: "Build a small query with AND / OR.",
       addFilter: "Add filter",

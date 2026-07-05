@@ -25,7 +25,8 @@ type ProblemFilterBuilderProps = {
 
 type AdvancedFilterLabels = {
   title: string;
-  active: (count: number) => string;
+  activeSingular: string;
+  activePlural: string;
   optional: string;
   description: string;
   addFilter: string;
@@ -43,7 +44,8 @@ type AdvancedFilterLabels = {
 
 const defaultLabels: AdvancedFilterLabels = {
   title: "Advanced filters",
-  active: (count) => `${count} active`,
+  activeSingular: "active",
+  activePlural: "active",
   optional: "Optional AND / OR filters",
   description: "Build a small query with AND / OR.",
   addFilter: "Add filter",
@@ -132,6 +134,7 @@ export function ProblemFilterBuilder({
   const [logic, setLogic] = useState(initialLogic);
   const [rows, setRows] = useState<ProblemFilterRow[]>(initialFilters);
   const activeCount = rows.filter((row) => row.value.trim()).length;
+  const activeLabel = activeCount === 1 ? labels.activeSingular : labels.activePlural;
   const fields = fieldsFor(labels);
 
   const submitSoon = () => {
@@ -161,7 +164,7 @@ export function ProblemFilterBuilder({
       <summary className="advanced-filter-summary">
         <span>
           <strong>{labels.title}</strong>
-          <small>{activeCount ? labels.active(activeCount) : labels.optional}</small>
+          <small>{activeCount ? `${activeCount} ${activeLabel}` : labels.optional}</small>
         </span>
         <ChevronDown size={17} aria-hidden="true" />
       </summary>

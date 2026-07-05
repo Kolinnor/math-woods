@@ -174,7 +174,8 @@ export const fr = {
     sortAriaLabel: "Trier les problèmes",
     advancedFilters: {
       title: "Filtres avancés",
-      active: (count: number) => `${count} actif${count > 1 ? "s" : ""}`,
+      activeSingular: "actif",
+      activePlural: "actifs",
       optional: "Filtres optionnels AND / OR",
       description: "Construis une petite requête avec AND / OR.",
       addFilter: "Ajouter un filtre",
