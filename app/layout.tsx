@@ -15,6 +15,7 @@ import { TimeZoneReporter } from "@/components/TimeZoneReporter";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { dictionaryForContentLanguage } from "@/lib/i18n/server";
 import { CONTENT_LANGUAGE_COOKIE, parseContentLanguage } from "@/lib/languages";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
@@ -117,6 +118,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";
   const initialBackgroundTone = validBackgroundTone(cookieStore.get("math-woods-background-tone")?.value) ?? "sage";
   const initialLanguage = parseContentLanguage(cookieStore.get(CONTENT_LANGUAGE_COOKIE)?.value);
+  const t = dictionaryForContentLanguage(initialLanguage);
   const needsEmailVerification = Boolean(user && !user.emailVerifiedAt && !canUseModerationTools(user));
 
   return (
@@ -139,46 +141,46 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <TimeZoneReporter />
         <header className="site-header">
           <nav className="site-nav mx-auto max-w-6xl px-4">
-            <Link href="/" className="site-brand" aria-label="Math Woods home">
+            <Link href="/" className="site-brand" aria-label={t.nav.homeAriaLabel}>
               <img src="/icon.svg" alt="" className="site-brand-logo" aria-hidden="true" />
               <span>Math Woods</span>
             </Link>
             <div className="primary-nav">
-              <Link href="/problems">Problems</Link>
-              <Link href="/concepts">Concepts</Link>
-              <Link href="/playlists">Playlists</Link>
-              {user && canUseAdminTools(user) && <Link href="/tips">Tips</Link>}
-              <Link href={usersRoute}>Users</Link>
+              <Link href="/problems">{t.nav.problems}</Link>
+              <Link href="/concepts">{t.nav.concepts}</Link>
+              <Link href="/playlists">{t.nav.playlists}</Link>
+              {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
+              <Link href={usersRoute}>{t.nav.users}</Link>
             </div>
             <div className="nav-tools">
               <LanguageSelector initialLanguage={initialLanguage} />
-              <LiveSearchForm action="/search" className="header-search">
+              <LiveSearchForm action="/search" className="header-search" updatingLabel={t.nav.updatingResults}>
                 <Search size={16} aria-hidden="true" />
-                <input name="q" aria-label="Search Math Woods" placeholder="Search" />
+                <input name="q" aria-label={t.nav.searchAriaLabel} placeholder={t.nav.searchPlaceholder} />
               </LiveSearchForm>
               {user && <NotificationsMenu userId={user.id} />}
               <details className="nav-menu">
-                <summary aria-label="Open navigation menu" title="More">
+                <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle}>
                   <Menu size={18} />
                 </summary>
                 <div className="nav-menu-popover">
-                  <Link href="/recent-changes">Recent changes</Link>
-                  <Link href="/contributing">Contributing</Link>
-                  <Link href="/suggestions">Suggestions</Link>
-                  <Link href="/about">About</Link>
+                  <Link href="/recent-changes">{t.nav.recentChanges}</Link>
+                  <Link href="/contributing">{t.nav.contributing}</Link>
+                  <Link href="/suggestions">{t.nav.suggestions}</Link>
+                  <Link href="/about">{t.nav.about}</Link>
                   {user && <div className="nav-menu-divider" />}
                   {user && <Link href={`/profile/${user.username}`}>{displayNameForUser(user)}</Link>}
-                  {user && <Link href="/settings">Settings</Link>}
-                  {user && canUseModerationTools(user) && <Link href="/moderation">Moderation</Link>}
+                  {user && <Link href="/settings">{t.nav.settings}</Link>}
+                  {user && canUseModerationTools(user) && <Link href="/moderation">{t.nav.moderation}</Link>}
                   {user ? (
                     <form action={logoutAction}>
                       <button className="nav-menu-action" type="submit">
-                        Sign out
+                        {t.nav.signOut}
                       </button>
                     </form>
                   ) : (
                     <Link href="/login" className="nav-menu-action">
-                      Sign in
+                      {t.nav.signIn}
                     </Link>
                   )}
                 </div>
@@ -193,14 +195,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="site-main mx-auto max-w-6xl px-4 py-8">{children}</main>
         <footer className="site-footer">
           <div className="mx-auto grid max-w-6xl gap-3 px-4 py-6 text-sm md:grid-cols-[1fr_auto] md:items-center">
-            <p>
-              Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated. Math Woods name,
-              logo, domain, and visual identity are protected brand assets.
-            </p>
+            <p>{t.footer.legal}</p>
             <div className="flex gap-4">
-              <Link href="/about">About</Link>
-              <Link href="/suggestions">Suggestions</Link>
-              <Link href="/contributing">Contribute</Link>
+              <Link href="/about">{t.footer.about}</Link>
+              <Link href="/suggestions">{t.footer.suggestions}</Link>
+              <Link href="/contributing">{t.footer.contribute}</Link>
             </div>
           </div>
         </footer>

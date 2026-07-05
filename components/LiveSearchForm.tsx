@@ -8,9 +8,16 @@ type LiveSearchFormProps = {
   children: ReactNode;
   className?: string;
   debounceMs?: number;
+  updatingLabel?: string;
 };
 
-export function LiveSearchForm({ action, children, className, debounceMs = 250 }: LiveSearchFormProps) {
+export function LiveSearchForm({
+  action,
+  children,
+  className,
+  debounceMs = 250,
+  updatingLabel = "Updating results"
+}: LiveSearchFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pathname = usePathname();
@@ -65,7 +72,7 @@ export function LiveSearchForm({ action, children, className, debounceMs = 250 }
     >
       {children}
       <span className="sr-only" role="status" aria-live="polite">
-        {isPending ? "Updating results" : ""}
+        {isPending ? updatingLabel : ""}
       </span>
     </form>
   );

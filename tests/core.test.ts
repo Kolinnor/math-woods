@@ -78,6 +78,7 @@ import {
   preferredTranslationForLanguage,
   translationLanguageSet
 } from "../lib/translation-routing.ts";
+import { dictionaryForContentLanguage, interfaceLocaleForContentLanguage } from "../lib/i18n/dictionary.ts";
 
 assert.equal(slugify("Relations de Viète"), "relations-de-viete");
 assert.equal(slugify("  L'espace vectoriel ! "), "lespace-vectoriel");
@@ -91,6 +92,10 @@ assert.equal(preferredTranslationForLanguage("fr", groupedTranslations, "fr"), n
 assert.equal(nextMissingTranslationLanguage("en", groupedTranslations, "fr"), "de");
 assert.equal(nextMissingTranslationLanguage("en", groupedTranslations, "it"), "it");
 assert.deepEqual([...translationLanguageSet("en", groupedTranslations)], ["en", "fr", "es"]);
+assert.equal(interfaceLocaleForContentLanguage("fr"), "fr");
+assert.equal(interfaceLocaleForContentLanguage("es"), "en");
+assert.equal(dictionaryForContentLanguage("fr").nav.problems, "Problèmes");
+assert.equal(dictionaryForContentLanguage("es").nav.problems, "Problems");
 
 const links = extractWikiLinks(
   "Voir [[relations de Viète|Viète]], [[polynôme]], puis [[polynôme]]."
