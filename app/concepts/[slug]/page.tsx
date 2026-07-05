@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MathDomain } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { Eye } from "lucide-react";
@@ -11,6 +12,8 @@ import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
+import { getTranslations } from "@/lib/i18n/server";
+import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel } from "@/lib/languages";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -20,6 +23,12 @@ import { nextMissingTranslationLanguage, preferredTranslationForLanguage } from 
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
+
+function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
+  return Object.values(MathDomain).includes(domain as MathDomain)
+    ? (t.home.domainLabels[domain as MathDomain] ?? domainLabel(domain))
+    : domainLabel(domain);
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -67,6 +76,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ConceptPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const user = await getCurrentUser();
+  const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
   const concept = await prisma.concept.findUnique({
     where: { slug },
@@ -127,6 +137,8 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     )
   ]);
   const isLanguageFallback = preferredLanguage !== concept.language;
+  const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
+  const conceptDomainLabel = translatedDomainLabel(concept.domain, t);
 
   const targetTranslationLanguage = nextMissingTranslationLanguage(concept.language, translations, preferredLanguage);
   const addTranslationHref = targetTranslationLanguage
@@ -155,19 +167,19 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
   return (
     <ForestPageLayout
       title={concept.title}
-      eyebrow="Concept"
+      eyebrow={t.conceptDetail.concept}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       description={
         <>
-          {domainLabel(concept.domain)} / {concept.status.toLowerCase()}
-          {concept.lastEditedBy ? ` / edited by ${displayNameForUser(concept.lastEditedBy)}` : ""}
+          {t.conceptDetail.statusLabel(conceptDomainLabel, conceptStatusLabel)}
+          {concept.lastEditedBy ? ` / ${t.conceptDetail.editedBy(displayNameForUser(concept.lastEditedBy))}` : ""}
         </>
       }
       meta={
         <>
-          <p>{concept._count.watchers} watchers</p>
-          <p>{concept._count.talkPosts} talk posts</p>
+          <p>{t.conceptDetail.watchers(concept._count.watchers)}</p>
+          <p>{t.conceptDetail.talkPosts(concept._count.talkPosts)}</p>
         </>
       }
     >
@@ -178,16 +190,17 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
             currentLanguage={concept.language}
             hrefPrefix="/concepts"
             translations={translations}
+            addTranslationLabel={t.translations.addTranslation}
             createHref={addTranslationHref}
           />
           {isLanguageFallback && (
             <p className="quality-banner quality-unreviewed mb-4 text-sm">
-              Showing the {contentLanguageLabel(concept.language)} version because no {contentLanguageLabel(preferredLanguage)} translation exists yet.
+              {t.translations.fallbackNotice(contentLanguageLabel(concept.language), contentLanguageLabel(preferredLanguage))}
               {addTranslationHref && (
                 <>
                   {" "}
                   <Link href={addTranslationHref as never} className="underline">
-                    Add that translation
+                    {t.translations.addThatTranslation}
                   </Link>
                   .
                 </>
@@ -196,37 +209,36 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
           )}
           {translationFreshness?.stale && (
             <p className="quality-banner quality-needs-work mb-4 text-sm">
-              This translation may be outdated. Its source page has changed since revision{" "}
-              {translationFreshness.basedOnRevisionId}.{" "}
+              {t.translations.staleNotice(translationFreshness.basedOnRevisionId)}{" "}
               <Link href={translationFreshness.sourceHref as never} className="underline">
-                Compare with {translationFreshness.sourceTitle}
+                {t.translations.compareWith(translationFreshness.sourceTitle)}
               </Link>
               .
             </p>
           )}
           {concept.aliases.length > 0 && (
-            <p className="muted mt-1 text-sm">Also known as: {concept.aliases.map((alias) => alias.alias).join(", ")}</p>
+            <p className="muted mt-1 text-sm">{t.conceptDetail.alsoKnownAs} {concept.aliases.map((alias) => alias.alias).join(", ")}</p>
           )}
         </div>
 
         <nav className="tab-nav">
-          <span>Article</span>
+          <span>{t.conceptDetail.article}</span>
           <Link href={`/concepts/${concept.slug}/talk`}>
-            Talk · {concept._count.talkPosts}
+            {t.conceptDetail.talk} · {concept._count.talkPosts}
           </Link>
           <Link href={`/concepts/${concept.slug}/history`}>
-            History
+            {t.conceptDetail.history}
           </Link>
         </nav>
 
         {concept.status === "STUB" && (
           <p className="quality-banner quality-stub mb-4">
-            This article is a stub. It needs a fuller definition, examples, and reliable references.
+            {t.conceptDetail.stubNotice}
           </p>
         )}
         {concept.status === "CONTROVERSIAL" && (
           <p className="quality-banner quality-controversial mb-4">
-            This article is marked controversial. Check the talk page and sources before relying on it.
+            {t.conceptDetail.controversialNotice}
           </p>
         )}
 
@@ -236,7 +248,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
 
         {concept.references.length > 0 && (
         <section className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold">References</h2>
+          <h2 className="mb-3 text-lg font-semibold">{t.conceptDetail.references}</h2>
           <ol className="grid list-decimal gap-3 pl-6 text-sm">
             {concept.references.map((reference) => (
               <li key={reference.id}>
@@ -261,25 +273,25 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
             <form action={toggleConceptWatchAction.bind(null, concept.id, concept.slug)}>
               <button type="submit" className="secondary w-full">
                 <Eye size={17} fill={watched ? "currentColor" : "none"} />
-                {watched ? "Watching" : "Watch"} · {concept._count.watchers}
+                {watched ? t.conceptDetail.watching : t.conceptDetail.watch} · {concept._count.watchers}
               </button>
             </form>
           )}
           <Link href={`/concepts/${concept.slug}/edit`} className="button secondary">
-            Edit
+            {t.conceptDetail.edit}
           </Link>
           <Link href={`/concepts/${concept.slug}/export`} className="button secondary">
-            Export Markdown
+            {t.conceptDetail.exportMarkdown}
           </Link>
           <Link href={`/concepts/${concept.slug}/history`} className="button secondary">
-            History
+            {t.conceptDetail.history}
           </Link>
           <details className="text-sm">
-            <summary className="cursor-pointer font-medium">Report</summary>
+            <summary className="cursor-pointer font-medium">{t.conceptDetail.report}</summary>
             <form action={reportConceptAction.bind(null, concept.id)} className="mt-3 grid gap-2">
-              <textarea name="reason" placeholder="Ambiguous definition, conflict, missing source..." required />
+              <textarea name="reason" placeholder={t.conceptDetail.reportPlaceholder} required />
               <button type="submit" className="secondary">
-                Submit
+                {t.conceptDetail.submit}
               </button>
             </form>
           </details>
@@ -287,7 +299,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
 
         {problemBacklinks.length + conceptBacklinks.length > 0 && (
         <section className="sidebar-section">
-          <h2 className="mb-3 font-semibold">Backlinks</h2>
+          <h2 className="mb-3 font-semibold">{t.conceptDetail.backlinks}</h2>
           <div className="grid gap-2 text-sm">
             {problemBacklinks.map((problem) => (
               <Link key={`p-${problem.id}`} href={`/problems/${problem.slug}`} className="underline">
@@ -305,7 +317,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
 
         {outgoingLinks.length > 0 && (
         <section className="sidebar-section">
-          <h2 className="mb-3 font-semibold">Outgoing links</h2>
+          <h2 className="mb-3 font-semibold">{t.conceptDetail.outgoingLinks}</h2>
           <div className="grid gap-2 text-sm">
             {outgoingLinks.map((link) => (
               <Link

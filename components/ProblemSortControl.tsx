@@ -9,10 +9,12 @@ type SortOption = {
 
 type ProblemSortControlProps = {
   value: string;
-  options: SortOption[];
+  options: readonly SortOption[];
+  label?: string;
+  ariaLabel?: string;
 };
 
-export function ProblemSortControl({ value, options }: ProblemSortControlProps) {
+export function ProblemSortControl({ value, options, label = "Sort:", ariaLabel = "Sort problems" }: ProblemSortControlProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -33,8 +35,8 @@ export function ProblemSortControl({ value, options }: ProblemSortControlProps) 
 
   return (
     <label className="problems-ledger-sort">
-      <span>Sort:</span>
-      <select aria-label="Sort problems" onChange={(event) => updateSort(event.target.value)} value={value}>
+      <span>{label}</span>
+      <select aria-label={ariaLabel} onChange={(event) => updateSort(event.target.value)} value={value}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

@@ -28,6 +28,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
+import { getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import {
   canEditProblem,
@@ -35,11 +36,9 @@ import {
   canSetProblemQualityStatus,
   canViewArchivedProblem
 } from "@/lib/permissions";
-import { pluralize } from "@/lib/pluralize";
 import { heroArtForProblemDomain } from "@/lib/problem-hero-art";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
-import { qualityLabel } from "@/lib/quality";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
 import { problemTranslationFreshness } from "@/lib/translation-freshness";
@@ -107,6 +106,10 @@ function difficultyBars(difficulty: number | null) {
   return 4;
 }
 
+function verificationStatusLabel(status: string) {
+  return status.toLowerCase().replaceAll("_", " ");
+}
+
 export default async function ProblemPage({
   params,
   searchParams
@@ -117,6 +120,7 @@ export default async function ProblemPage({
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
   const user = await getCurrentUser();
+  const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
   const problem = await prisma.problem.findUnique({
     where: { slug },
@@ -305,11 +309,9 @@ export default async function ProblemPage({
     ? `/problems/new?translateOf=${problem.slug}&language=${targetTranslationLanguage}`
     : undefined;
   const verificationMessage =
-    queryParams.verification === "incorrect" ? "This verification answer is not correct yet." : null;
+    queryParams.verification === "incorrect" ? t.problemDetail.verificationIncorrect : null;
   const solutionMessage =
-    queryParams.solution === "posted"
-      ? "Solution published. It is saved with the other solutions, which stay hidden until revealed."
-      : null;
+    queryParams.solution === "posted" ? t.problemDetail.solutionPosted : null;
   const heroDomain = problemDomains[0] ?? (problem.domains.length ? "other" : problem.domain);
   const heroImage = heroArtForProblemDomain(heroDomain);
   const difficultyTone = difficultyColor(problem.difficulty ?? null);
@@ -326,13 +328,13 @@ export default async function ProblemPage({
               <AsyncMarkdownInline markdown={problem.title} />
             </h1>
             <p className="problem-hero-byline">
-              by <Link href={`/profile/${problem.author.username}`}>{displayNameForUser(problem.author)}</Link>
+              {t.problemDetail.by} <Link href={`/profile/${problem.author.username}`}>{displayNameForUser(problem.author)}</Link>
             </p>
           </div>
           <div className="problem-hero-meta">
-            <p>{qualityLabel(problem.qualityStatus)}</p>
-            {hiddenDomainCount > 0 && problemDomains.length > 0 && <p>spoiler domain hidden until solved</p>}
-            {!problem.listed && <p>Playlist-specific / unlisted</p>}
+            <p>{t.quality[problem.qualityStatus]}</p>
+            {hiddenDomainCount > 0 && problemDomains.length > 0 && <p>{t.problemDetail.spoilerDomainHiddenUntilSolved}</p>}
+            {!problem.listed && <p>{t.problemDetail.playlistSpecific}</p>}
           </div>
         </div>
       </section>
@@ -349,16 +351,17 @@ export default async function ProblemPage({
             currentLanguage={problem.language}
             hrefPrefix="/problems"
             translations={translations}
+            addTranslationLabel={t.translations.addTranslation}
             createHref={addTranslationHref}
           />
           {isLanguageFallback && (
             <p className="quality-banner quality-unreviewed mb-4 text-sm">
-              Showing the {contentLanguageLabel(problem.language)} version because no {contentLanguageLabel(preferredLanguage)} translation exists yet.
+              {t.translations.fallbackNotice(contentLanguageLabel(problem.language), contentLanguageLabel(preferredLanguage))}
               {addTranslationHref && (
                 <>
                   {" "}
                   <Link href={addTranslationHref as never} className="underline">
-                    Add that translation
+                    {t.translations.addThatTranslation}
                   </Link>
                   .
                 </>
@@ -367,10 +370,9 @@ export default async function ProblemPage({
           )}
           {translationFreshness?.stale && (
             <p className="quality-banner quality-needs-work mb-4 text-sm">
-              This translation may be outdated. Its source page has changed since revision{" "}
-              {translationFreshness.basedOnRevisionId}.{" "}
+              {t.translations.staleNotice(translationFreshness.basedOnRevisionId)}{" "}
               <Link href={translationFreshness.sourceHref as never} className="underline">
-                Compare with {translationFreshness.sourceTitle}
+                {t.translations.compareWith(translationFreshness.sourceTitle)}
               </Link>
               .
             </p>
@@ -386,7 +388,7 @@ export default async function ProblemPage({
           )}
           {showSpoilerTags && (
             <div className="problem-detail-tags zen-meta">
-              <span className="meta">Spoiler tags:</span>
+              <span className="meta">{t.problems.spoiler}</span>
               {problem.spoilerTags.map(({ tag }) => (
                 <Link
                   key={tag.id}
@@ -407,14 +409,14 @@ export default async function ProblemPage({
                 : "zen-hide quality-banner quality-banner-compact quality-unreviewed mb-4"
             }
           >
-            <strong>{qualityLabel(problem.qualityStatus)}.</strong>{" "}
+            <strong>{t.quality[problem.qualityStatus]}.</strong>{" "}
             {problem.qualityStatus === "NEEDS_WORK"
-              ? "This problem has been marked as needing work."
-              : "This problem has not been reviewed by trusted users yet."}
+              ? t.problemDetail.needsWorkNotice
+              : t.problemDetail.unreviewedNotice}
             {user && canSetProblemQualityStatus(user.role, QualityStatus.GOOD) && (
               <form action={markProblemGoodAction.bind(null, problem.id, problem.slug)} className="mt-2">
                 <button type="submit" className="secondary">
-                  This problem is good enough for me
+                  {t.problemDetail.markGoodEnough}
                 </button>
               </form>
             )}
@@ -426,13 +428,13 @@ export default async function ProblemPage({
         </section>
         {hasSpecifiedOrigin && (
           <div className="problem-origin-note zen-meta">
-            {problem.origin.trim().toLowerCase() !== "unknown" && <span>Origin: {problem.origin}</span>}
+            {problem.origin.trim().toLowerCase() !== "unknown" && <span>{t.problemDetail.origin} {problem.origin}</span>}
             {(problem.originChapter || problem.originPage || problem.originNote) && (
               <details>
-                <summary>details</summary>
+                <summary>{t.problemDetail.details}</summary>
                 <div className="grid gap-1 pt-2">
-                  {problem.originChapter && <p>Chapter or section: {problem.originChapter}</p>}
-                  {problem.originPage && <p>Page or problem number: {problem.originPage}</p>}
+                  {problem.originChapter && <p>{t.problemDetail.chapterOrSection} {problem.originChapter}</p>}
+                  {problem.originPage && <p>{t.problemDetail.pageOrProblemNumber} {problem.originPage}</p>}
                   {problem.originNote && <p className="whitespace-pre-wrap">{problem.originNote}</p>}
                 </div>
               </details>
@@ -443,7 +445,7 @@ export default async function ProblemPage({
         <section className="zen-hide related-problems-section mt-8">
           <details>
             <summary>
-              <span>Show related problems</span>
+              <span>{t.problemDetail.showRelatedProblems}</span>
               <span>{visibleRelatedGroups.reduce((count, group) => count + group.relations.length, 0)}</span>
             </summary>
             <div className="grid gap-5 pt-4">
@@ -465,9 +467,9 @@ export default async function ProblemPage({
                             <AsyncMarkdownInline markdown={targetProblem.title} />
                           </strong>
                           <span>
-                            by {displayNameForUser(targetProblem.author)}
-                            {targetProblem.difficulty ? ` \u00b7 difficulty ${targetProblem.difficulty}/100` : ""}
-                            {!targetProblem.listed ? " \u00b7 unlisted" : ""}
+                            {t.problemDetail.by} {displayNameForUser(targetProblem.author)}
+                            {targetProblem.difficulty ? ` \u00b7 ${t.problemDetail.difficulty.toLowerCase()} ${targetProblem.difficulty}/100` : ""}
+                            {!targetProblem.listed ? ` \u00b7 ${t.problemDetail.playlistSpecific.toLowerCase()}` : ""}
                           </span>
                         </Link>
                       ))}
@@ -475,15 +477,15 @@ export default async function ProblemPage({
                   </div>
                 ))
               ) : (
-                <p className="muted">No related problems yet.</p>
+                <p className="muted">{t.problemDetail.noRelatedProblems}</p>
               )}
               {canEditCurrentProblem && (
                 <div className="related-problem-actions">
                   <Link href={`/problems/new?parent=${problem.slug}&listed=0&language=${problem.language}`} className="button">
-                    Create problem specific to this one
+                    {t.problemDetail.createSpecificProblem}
                   </Link>
                   <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
-                    Edit related problems
+                    {t.problemDetail.editRelatedProblems}
                   </Link>
                 </div>
               )}
@@ -493,7 +495,7 @@ export default async function ProblemPage({
 
         <section className="zen-hide proof-section mt-8">
           <div className="section-heading">
-            <h2>Solutions</h2>
+            <h2>{t.problemDetail.solutions}</h2>
             <span>{proofs.length}</span>
           </div>
           {solutionMessage && (
@@ -502,10 +504,10 @@ export default async function ProblemPage({
             </p>
           )}
           <p className="muted mb-4 text-sm">
-            The most useful solution appears first. At {COMMUNITY_ACCEPTED_PROOF_VOTES} useful votes, it is marked community accepted.
+            {t.problemDetail.usefulSolutionDescription.replace("{votes}", String(COMMUNITY_ACCEPTED_PROOF_VOTES))}
           </p>
           {isConjecture && proofs.length === 0 && (
-            <p className="quality-banner quality-stub">This problem is marked as a conjecture. No solution is known here yet.</p>
+            <p className="quality-banner quality-stub">{t.problemDetail.conjectureNoSolution}</p>
           )}
           {problem.hints.length > 0 && (
             <div className="problem-hints">
@@ -517,8 +519,8 @@ export default async function ProblemPage({
           {proofs.length > 0 && (
             <details className="proof-reveal-gate">
               <summary>
-                <span>Reveal solutions</span>
-                <small>Are you sure? Give it a try first.</small>
+                <span>{t.problemDetail.revealSolutions}</span>
+                <small>{t.problemDetail.revealWarning}</small>
               </summary>
               <div className="grid gap-4 pt-4">
                 {proofs.map((proof) => {
@@ -531,16 +533,16 @@ export default async function ProblemPage({
                     <article key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
                       <header className="proof-header">
                         <div>
-                          {accepted && <span className="accepted-label">Community accepted</span>}
+                          {accepted && <span className="accepted-label">{t.problemDetail.communityAccepted}</span>}
                           <p className="meta">
-                            Solution by <Link href={`/profile/${proof.author.username}`}>{displayNameForUser(proof.author)}</Link>
+                            {t.problemDetail.solutionBy} <Link href={`/profile/${proof.author.username}`}>{displayNameForUser(proof.author)}</Link>
                           </p>
                         </div>
                         <div className="proof-actions">
                           {canEditProof && (
                             <Link href={`/problems/${problem.slug}/proofs/${proof.id}/edit` as never} className="button secondary">
                               <Pencil size={16} />
-                              Edit solution
+                              {t.problemDetail.editSolution}
                             </Link>
                           )}
                           {user ? (
@@ -552,10 +554,10 @@ export default async function ProblemPage({
                                 aria-pressed={userVotedProof}
                                 title={
                                   isOwnProof
-                                    ? "You cannot vote for your own solution"
+                                    ? t.problemDetail.cannotVoteOwnSolution
                                     : userVotedProof
-                                      ? "Remove useful vote"
-                                      : "Mark as useful"
+                                      ? t.problemDetail.removeUsefulVote
+                                      : t.problemDetail.markUseful
                                 }
                               >
                                 <ThumbsUp size={16} />
@@ -563,7 +565,7 @@ export default async function ProblemPage({
                               </button>
                             </form>
                           ) : (
-                            <span className="meta">{votes} useful votes</span>
+                            <span className="meta">{t.problemDetail.usefulVotes(votes)}</span>
                           )}
                         </div>
                       </header>
@@ -576,7 +578,7 @@ export default async function ProblemPage({
           )}
           {user && (
             <details className="add-proof">
-              <summary>{proofs.length === 0 ? "Be the first to add your solution!" : "Add another solution"}</summary>
+              <summary>{proofs.length === 0 ? t.problemDetail.firstSolution : t.problemDetail.addAnotherSolution}</summary>
               <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
                 <MarkdownEditor
                   name="bodyMarkdown"
@@ -585,7 +587,7 @@ export default async function ProblemPage({
                   draftKey={`problem:${problem.id}:new-solution:${proofs.length}`}
                   resetSignal={proofs.length}
                 />
-                <button type="submit">Publish solution</button>
+                <button type="submit">{t.problemDetail.publishSolution}</button>
               </form>
             </details>
           )}
@@ -595,7 +597,7 @@ export default async function ProblemPage({
 
         <aside className="problem-rail zen-hide">
           <div className="problem-difficulty-tile">
-            <p>Difficulty</p>
+            <p>{t.problemDetail.difficulty}</p>
             <p className="problem-difficulty-value" style={{ color: difficultyTone }}>
               {problem.difficulty ?? "--"}
               <span>/100</span>
@@ -611,12 +613,12 @@ export default async function ProblemPage({
           {user && attempt?.status !== "SOLVED" && (
             attempt ? (
               <button type="button" className="secondary attempted-state-button w-full" disabled>
-                Attempted
+                {t.problemDetail.attempted}
               </button>
             ) : (
               <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
                 <button type="submit" className="secondary attempt-action-button w-full">
-                  I am attempting to solve this problem
+                  {t.problemDetail.startAttempting}
                 </button>
               </form>
             )
@@ -624,54 +626,54 @@ export default async function ProblemPage({
           {attempt?.status === "SOLVED" ? (
             <button type="button" className="secondary solved-state-button w-full" disabled>
               <Check size={17} />
-              Solved
+              {t.problemDetail.solved}
             </button>
           ) : problem.verificationMode === ProblemVerificationMode.NONE || user?.id === problem.authorId ? (
             <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
               <button type="submit" className="secondary w-full">
                 <Check size={17} />
-                I solved it
+                {t.problemDetail.markSolved}
               </button>
             </form>
           ) : problem.verificationMode === ProblemVerificationMode.SELF_CHECK ? (
             <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)} className="verification-box">
-              <p className="font-medium">Verification</p>
+              <p className="font-medium">{t.problemDetail.verification}</p>
               <p className="muted text-sm">
-                {problem.verificationPrompt || "Enter the short verification answer."}
+                {problem.verificationPrompt || t.problemDetail.verificationPlaceholder}
               </p>
-              <input name="verificationAnswer" required placeholder="Short answer" />
+              <input name="verificationAnswer" required placeholder={t.problemDetail.shortAnswer} />
               <button type="submit" className="secondary w-full">
                 <Check size={17} />
-                Check and mark solved
+                {t.problemDetail.checkAndMarkSolved}
               </button>
             </form>
           ) : (
             <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)} className="verification-box">
-              <p className="font-medium">Author review</p>
+              <p className="font-medium">{t.problemDetail.authorReview}</p>
               <p className="muted text-sm">
-                {problem.verificationPrompt || "Send a short explanation to the problem author for validation."}
+                {problem.verificationPrompt || t.problemDetail.authorReviewDescription}
               </p>
-              <textarea name="verificationAnswer" required placeholder="Explain your answer briefly..." />
+              <textarea name="verificationAnswer" required placeholder={t.problemDetail.explainAnswer} />
               <button type="submit" className="secondary w-full">
-                Request verification
+                {t.problemDetail.requestVerification}
               </button>
             </form>
           )}
           {isOwnProblem ? (
             <div className="own-problem-favorite-note">
               <House size={17} aria-hidden="true" />
-              Your problem {"\u00b7"} {pluralize(favoriteCount, "favorite")}
+              {t.problemDetail.yourProblem} {"\u00b7"} {t.problemDetail.favoriteCount(favoriteCount)}
             </div>
           ) : (
             <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
               <button
                 type="submit"
                 className={favorite ? "favorite-state-button w-full" : "secondary favorite-action-button w-full"}
-                title={favorite ? "Remove from favorites" : "Add this problem to favorites"}
+                title={favorite ? t.problemDetail.removeFavorite : t.problemDetail.addFavorite}
                 aria-pressed={Boolean(favorite)}
               >
                 <Heart size={17} fill={favorite ? "currentColor" : "none"} />
-                {favorite ? "Favorited" : "Add this problem to favorites"} {"\u00b7"} {pluralize(favoriteCount, "favorite")}
+                {favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite} {"\u00b7"} {t.problemDetail.favoriteCount(favoriteCount)}
               </button>
             </form>
           )}
@@ -680,19 +682,19 @@ export default async function ProblemPage({
               {ownVerificationRequests.map((request) => (
                 <details key={request.id} className="verification-thread">
                   <summary>
-                    <span>Review: <strong>{request.status.toLowerCase()}</strong></span>
-                    <span>{request.messages.length ? `${request.messages.length} messages` : "Open discussion"}</span>
+                    <span>{t.problemDetail.reviewStatus(verificationStatusLabel(request.status))}</span>
+                    <span>{request.messages.length ? t.problemDetail.messages(request.messages.length) : t.problemDetail.openDiscussion}</span>
                   </summary>
                   <div className="verification-thread-body">
                     <div className="verification-submission">
-                      <strong>Your submitted answer</strong>
+                      <strong>{t.problemDetail.yourSubmittedAnswer}</strong>
                       <p>{request.answer}</p>
                     </div>
                     {request.messages.length > 0 && (
                       <div className="verification-messages">
                         {request.messages.map((message) => (
                           <div key={message.id} className="verification-message">
-                            <p className="meta">by {displayNameForUser(message.author)}</p>
+                            <p className="meta">{t.problemDetail.by} {displayNameForUser(message.author)}</p>
                             <MarkdownBlock html={message.bodyHtml} />
                           </div>
                         ))}
@@ -701,7 +703,7 @@ export default async function ProblemPage({
                     {request.status === "PENDING" && (
                       <form action={createVerificationMessageAction.bind(null, request.id, problem.slug)} className="grid gap-2">
                         <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
-                        <button type="submit" className="secondary">Reply privately</button>
+                        <button type="submit" className="secondary">{t.problemDetail.replyPrivately}</button>
                       </form>
                     )}
                   </div>
@@ -710,7 +712,7 @@ export default async function ProblemPage({
             </div>
           )}
           <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
-            Edit
+            {t.problemDetail.edit}
           </Link>
           <Link
             href={{ pathname: `/problems/${problem.slug}/discussion` }}
@@ -719,23 +721,23 @@ export default async function ProblemPage({
             rel="noreferrer"
           >
             <MessageSquare size={17} />
-            Discussions {"\u00b7"} {pluralize(discussionPostCount, "post")}
+            {t.problemDetail.discussions} {"\u00b7"} {t.problemDetail.messages(discussionPostCount)}
           </Link>
           {!discussionVisible && (
             <p className="muted text-xs">
-              Start the problem to reveal and join the discussion.
+              {t.problemDetail.discussionLocked}
             </p>
           )}
           <details className="text-sm">
-            <summary className="cursor-pointer font-medium">Report</summary>
+            <summary className="cursor-pointer font-medium">{t.problemDetail.report}</summary>
             <form action={reportProblemAction.bind(null, problem.id)} className="mt-3 grid gap-2">
               <textarea
                 name="reason"
-                placeholder="Incorrect statement, unclear wording, questionable source, copied wording..."
+                placeholder={t.problemDetail.reportPlaceholder}
                 required
               />
               <button type="submit" className="secondary">
-                Submit
+                {t.problemDetail.submit}
               </button>
             </form>
           </details>
@@ -743,26 +745,26 @@ export default async function ProblemPage({
 
         {pendingVerificationRequests.length > 0 && (
           <section className="sidebar-section verification-review-list">
-            <h2 className="mb-3 font-semibold">Pending verifications</h2>
+            <h2 className="mb-3 font-semibold">{t.problemDetail.pendingVerifications}</h2>
             <div className="grid gap-3">
               {pendingVerificationRequests.map((request) => (
                 <div key={request.id} className="verification-review-card">
                   <p className="meta">{displayNameForUser(request.user)}</p>
                   <div className="verification-submission">
-                    <strong>Submitted answer</strong>
+                    <strong>{t.problemDetail.submittedAnswer}</strong>
                     <p>{request.answer}</p>
                   </div>
                   <details className="verification-thread">
                     <summary>
-                      <span>Open discussion</span>
-                      <span>{request.messages.length ? `${request.messages.length} messages` : "No messages yet"}</span>
+                      <span>{t.problemDetail.openDiscussion}</span>
+                      <span>{request.messages.length ? t.problemDetail.messages(request.messages.length) : t.problemDetail.noMessagesYet}</span>
                     </summary>
                     <div className="verification-thread-body">
                       {request.messages.length > 0 && (
                         <div className="verification-messages">
                           {request.messages.map((message) => (
                             <div key={message.id} className="verification-message">
-                              <p className="meta">by {displayNameForUser(message.author)}</p>
+                              <p className="meta">{t.problemDetail.by} {displayNameForUser(message.author)}</p>
                               <MarkdownBlock html={message.bodyHtml} />
                             </div>
                           ))}
@@ -770,16 +772,16 @@ export default async function ProblemPage({
                       )}
                       <form action={createVerificationMessageAction.bind(null, request.id, problem.slug)} className="grid gap-2">
                         <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
-                        <button type="submit" className="secondary">Reply privately</button>
+                        <button type="submit" className="secondary">{t.problemDetail.replyPrivately}</button>
                       </form>
                     </div>
                   </details>
                   <div className="flex flex-wrap gap-2">
                     <form action={reviewProblemVerificationAction.bind(null, request.id, "APPROVED")}>
-                      <button type="submit" className="secondary">Approve answer</button>
+                      <button type="submit" className="secondary">{t.problemDetail.approveAnswer}</button>
                     </form>
                     <form action={reviewProblemVerificationAction.bind(null, request.id, "REJECTED")}>
-                      <button type="submit" className="secondary">Close as not accepted</button>
+                      <button type="submit" className="secondary">{t.problemDetail.closeNotAccepted}</button>
                     </form>
                   </div>
                 </div>
@@ -790,7 +792,7 @@ export default async function ProblemPage({
 
         {links.length > 0 && (
           <section className="sidebar-section">
-            <h2 className="mb-3 font-semibold">Linked concepts</h2>
+            <h2 className="mb-3 font-semibold">{t.problemDetail.linkedConcepts}</h2>
             <div className="grid gap-2 text-sm">
               {links.map((link) => (
                 <Link
@@ -807,7 +809,7 @@ export default async function ProblemPage({
 
         {playlists.length > 0 && (
           <section className="sidebar-section">
-            <h2 className="mb-3 font-semibold">Playlists</h2>
+            <h2 className="mb-3 font-semibold">{t.problemDetail.playlists}</h2>
             <div className="grid gap-2 text-sm">
               {playlists.map((item) => (
                 <Link key={item.id} href={`/playlists/${item.playlist.slug}`} className="underline">

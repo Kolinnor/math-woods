@@ -20,10 +20,9 @@ import {
   PROBLEM_DOMAIN_FAMILIES,
   PROBLEM_DOMAINS
 } from "@/lib/domains";
-import { contentLanguageLabel } from "@/lib/languages";
-import { pluralize } from "@/lib/pluralize";
+import { getTranslations } from "@/lib/i18n/server";
+import type { Dictionary } from "@/lib/i18n/types";
 import { problemLinkClass } from "@/lib/problem-link";
-import { qualityLabel } from "@/lib/quality";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -57,6 +56,12 @@ const SORT_OPTIONS = [
   { value: "difficulty", label: "Hardest first" },
   { value: "easiest", label: "Easiest first" }
 ];
+
+function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
+  return Object.values(MathDomain).includes(domain as MathDomain)
+    ? (t.home.domainLabels[domain as MathDomain] ?? domainLabel(domain))
+    : domainLabel(domain);
+}
 
 function parseProgressFilter(value: string | undefined): ProgressFilter {
   return value === "solved" || value === "all" ? value : "unsolved";
@@ -260,6 +265,7 @@ export default async function ProblemsPage({
   }>;
 }) {
   const user = await getCurrentUser();
+  const t = await getTranslations();
   const {
     q = "",
     tag = "",
@@ -469,7 +475,9 @@ export default async function ProblemsPage({
   const resultStart = totalProblems ? (currentPage - 1) * PROBLEMS_PER_PAGE + 1 : 0;
   const resultEnd = Math.min(currentPage * PROBLEMS_PER_PAGE, totalProblems);
   const progressPercent = progressTotal ? Math.round((progressSolved / progressTotal) * 100) : 0;
-  const progressScope = domainValue ? domainLabel(domainValue) : "all domains";
+  const progressScope = domainValue ? translatedDomainLabel(domainValue, t) : t.common.allDomains;
+  const difficultyRanges = t.problems.difficultyRanges;
+  const sortOptions = t.problems.sortOptions;
 
   return (
     <div className="problems-page-shell">
@@ -478,29 +486,29 @@ export default async function ProblemsPage({
         <div className="problems-hero-overlay" />
         <div className="problems-hero-content">
           <div>
-            <h1>Problems</h1>
+            <h1>{t.problems.title}</h1>
           </div>
           <div className="problems-hero-meta">
             <p>
-              {progressTotal} {progressTotal === 1 ? "problem" : "problems"} · 21 domains
+              {t.problems.heroMeta(progressTotal)}
             </p>
             {user ? (
               <p>
-                You solved {progressSolved} in {progressScope} ({progressPercent}%).
+                {t.problems.solvedProgress(progressSolved, progressScope, progressPercent)}
               </p>
             ) : (
-              <p>Sign in to track solved problems across {progressScope}.</p>
+              <p>{t.problems.signInProgress(progressScope)}</p>
             )}
             <div className="flex flex-wrap gap-2">
               <Link href="/problems/new" className="button">
-                Add a problem
+                {t.problems.addProblem}
               </Link>
               <ContributionRequestDialog
                 action={createContributionRequestAction.bind(null, "PROBLEM", "/problems")}
-                buttonLabel="Request a problem"
-                title="Request a problem"
-                description="Tell contributors what kind of problem you would like to see."
-                placeholder="Describe the kind of problem you would like: the notion, theorem, technique, examples, or difficulty range you have in mind."
+                buttonLabel={t.problems.requestProblem}
+                title={t.problems.requestProblem}
+                description={t.problems.requestProblemDescription}
+                placeholder={t.problems.requestProblemPlaceholder}
               />
             </div>
           </div>
@@ -513,42 +521,48 @@ export default async function ProblemsPage({
         <aside className="problems-filter-panel">
           <LiveSearchForm className="problem-filter-form">
             <label className="problem-filter-search">
-              <span>Search problems</span>
+              <span>{t.problems.searchProblems}</span>
               <input name="q" defaultValue={query} />
             </label>
             {domainValue && <input type="hidden" name="domain" value={domainValue} />}
 
             <div className="problem-filter-section">
-              <p>Difficulty</p>
+              <p>{t.problems.difficulty}</p>
               <ProblemDifficultyFilter
                 customBounds={hasCustomDifficultyBounds}
                 initialMax={difficultyMaxValue}
                 initialMin={difficultyMinValue}
-                ranges={DIFFICULTY_RANGES}
+                ranges={difficultyRanges}
                 selectedRange={difficultyRangeSelectValue}
+                labels={{
+                  minimum: t.problems.minimumDifficulty,
+                  maximum: t.problems.maximumDifficulty,
+                  preset: t.problems.difficultyPreset,
+                  custom: t.problems.customDifficulty
+                }}
               />
             </div>
 
             <div className="problem-filter-section">
-              <p>Status</p>
+              <p>{t.problems.status}</p>
               {user && (
-                <select name="progress" defaultValue={progressValue} aria-label="Solved status">
-                  <option value="unsolved">Unsolved</option>
-                  <option value="solved">Solved</option>
-                  <option value="all">All problems</option>
+                <select name="progress" defaultValue={progressValue} aria-label={t.problems.solvedStatus}>
+                  <option value="unsolved">{t.problems.unsolved}</option>
+                  <option value="solved">{t.problems.solved}</option>
+                  <option value="all">{t.problems.allProblems}</option>
                 </select>
               )}
               <select name="quality" defaultValue={qualityValue ?? ""}>
-                <option value="">Any quality</option>
-                <option value="NEEDS_WORK">Needs work</option>
-                <option value="UNREVIEWED">Unreviewed</option>
-                <option value="GOOD">Good</option>
-                <option value="EXCELLENT">Excellent</option>
+                <option value="">{t.problems.anyQuality}</option>
+                <option value="NEEDS_WORK">{t.problems.needsWork}</option>
+                <option value="UNREVIEWED">{t.problems.unreviewed}</option>
+                <option value="GOOD">{t.problems.good}</option>
+                <option value="EXCELLENT">{t.problems.excellent}</option>
               </select>
               {sortValue !== "newest" && <input type="hidden" name="sort" value={sortValue} />}
               <label className="checkbox-inline">
                 <input name="includeSpoilerTags" type="checkbox" value="1" defaultChecked={showSpoilerTags} />
-                <span>Include spoilers</span>
+                <span>{t.problems.includeSpoilers}</span>
               </label>
             </div>
 
@@ -556,22 +570,28 @@ export default async function ProblemsPage({
               domains={FLAT_PROBLEM_DOMAIN_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
               initialFilters={advancedFilters}
               initialLogic={advancedLogic}
-              statuses={Object.values(QualityStatus).map((status) => ({ value: status, label: qualityLabel(status) }))}
+              labels={t.problems.advancedFilters}
+              statuses={Object.values(QualityStatus).map((status) => ({ value: status, label: t.quality[status] }))}
               tags={tags.map((item) => ({ value: item.slug, label: item.name }))}
             />
           </LiveSearchForm>
         </aside>
 
-        <section className="problems-ledger" aria-label="Problems">
+        <section className="problems-ledger" aria-label={t.problems.ariaLabel}>
           <div className="problems-ledger-header">
             <div>
               {totalProblems > 0 && (
                 <p className="result-summary" role="status" aria-live="polite">
-                  Showing {resultStart}-{resultEnd} of {totalProblems} problems
+                  {t.problems.showingResults(resultStart, resultEnd, totalProblems)}
                 </p>
               )}
             </div>
-            <ProblemSortControl options={SORT_OPTIONS} value={sortValue} />
+            <ProblemSortControl
+              ariaLabel={t.problems.sortAriaLabel}
+              label={t.problems.sort}
+              options={sortOptions}
+              value={sortValue}
+            />
           </div>
 
           <div className="problem-ledger-list">
@@ -595,7 +615,7 @@ export default async function ProblemsPage({
                 <Link
                   key={problem.id}
                   href={`/problems/${problem.slug}`}
-                  title={isOwnProblem ? "Your problem" : isUserFavorite ? "Favorite problem" : undefined}
+                  title={isOwnProblem ? t.problems.yourProblem : isUserFavorite ? t.problems.favoriteProblem : undefined}
                   className={`${problemLinkClass(
                     "problem-ledger-row",
                     solvedIds.has(problem.id) ? "solved" : openedIds.has(problem.id) ? "opened" : null
@@ -614,9 +634,11 @@ export default async function ProblemsPage({
                       <AsyncMarkdownInline markdown={problem.title} />
                     </h3>
                     <p>
-                      {visibleDomainCodes.length ? visibleDomainCodes.map(domainLabel).join(" · ") : "Domain hidden"}
-                      {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? " · spoiler domain hidden" : ""} ·{" "}
-                      {externalSolveCount} solved · {qualityLabel(problem.qualityStatus)}
+                      {visibleDomainCodes.length
+                        ? visibleDomainCodes.map((code) => translatedDomainLabel(code, t)).join(" · ")
+                        : t.problems.domainHidden}
+                      {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""} ·{" "}
+                      {t.problems.solvedCount(externalSolveCount)} · {t.quality[problem.qualityStatus]}
                     </p>
                     {problem.tags.length > 0 && (
                       <div className="problem-ledger-tags">
@@ -629,7 +651,7 @@ export default async function ProblemsPage({
                     )}
                     {showSpoilerTags && problem.spoilerTags.length > 0 && (
                       <div className="problem-ledger-tags">
-                        <span className="meta">Spoiler:</span>
+                        <span className="meta">{t.problems.spoiler}</span>
                         {problem.spoilerTags.map(({ tag }) => (
                           <span key={tag.id} className="tag spoiler-tag">
                             {tag.name}
@@ -639,15 +661,15 @@ export default async function ProblemsPage({
                     )}
                   </div>
                   <div className="problem-ledger-side">
-                    <span>by {displayNameForUser(problem.author)}</span>
+                    <span>{t.common.by} {displayNameForUser(problem.author)}</span>
                     {isOwnProblem && (
-                      <span className="problem-favorite-count problem-own-count" title="Your problem">
+                      <span className="problem-favorite-count problem-own-count" title={t.problems.yourProblem}>
                         <House size={15} />
                       </span>
                     )}
                     <span
                       className={isUserFavorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
-                      title={isUserFavorite ? "You favorited this problem" : "Favorites"}
+                      title={isUserFavorite ? t.problems.favoriteProblem : t.problems.favorites}
                     >
                       <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />
                       {externalFavoriteCount}
@@ -658,11 +680,11 @@ export default async function ProblemsPage({
             })}
             {problems.length === 0 && (
               <p className="empty-state">
-                No problems match these filters.
+                {t.problems.noMatches}
                 {otherLanguageProblems > 0 && (
                   <>
                     <br />
-                    {pluralize(otherLanguageProblems, "problem")} found in other languages.
+                    {t.problems.otherLanguageFound(otherLanguageProblems)}
                   </>
                 )}
               </p>
@@ -670,19 +692,19 @@ export default async function ProblemsPage({
           </div>
 
           {totalPages > 1 && (
-            <nav className="pagination" aria-label="Problem pages">
+            <nav className="pagination" aria-label={t.problems.ariaLabel}>
               {currentPage > 1 ? (
-                <Link href={problemsHref({ ...paginationParams, page: currentPage - 1 }) as never}>Previous</Link>
+                <Link href={problemsHref({ ...paginationParams, page: currentPage - 1 }) as never}>{t.problems.previous}</Link>
               ) : (
-                <span aria-disabled="true">Previous</span>
+                <span aria-disabled="true">{t.problems.previous}</span>
               )}
               <span className="pagination-status">
-                Page {currentPage} of {totalPages}
+                {t.problems.pageStatus(currentPage, totalPages)}
               </span>
               {currentPage < totalPages ? (
-                <Link href={problemsHref({ ...paginationParams, page: currentPage + 1 }) as never}>Next</Link>
+                <Link href={problemsHref({ ...paginationParams, page: currentPage + 1 }) as never}>{t.problems.next}</Link>
               ) : (
-                <span aria-disabled="true">Next</span>
+                <span aria-disabled="true">{t.problems.next}</span>
               )}
             </nav>
           )}

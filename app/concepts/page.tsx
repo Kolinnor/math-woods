@@ -7,6 +7,8 @@ import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { prisma } from "@/lib/db";
 import { coarseDomainForCode, domainCodeAliases, domainLabel, parseDomainCode, PROBLEM_DOMAINS } from "@/lib/domains";
+import { getTranslations } from "@/lib/i18n/server";
+import type { Dictionary } from "@/lib/i18n/types";
 import { missingConcepts } from "@/lib/internal-links";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
@@ -20,10 +22,12 @@ function conceptTitleFromSlug(slug: string) {
     .join(" ");
 }
 
-function sourceTypeLabel(sourceType: "PROBLEM" | "CONCEPT" | "PLAYLIST") {
-  if (sourceType === "PROBLEM") return "Problem";
-  if (sourceType === "CONCEPT") return "Concept";
-  return "Playlist";
+function sourceTypeLabel(sourceType: "PROBLEM" | "CONCEPT" | "PLAYLIST", t: Dictionary["concepts"]) {
+  return t.sourceTypes[sourceType];
+}
+
+function translatedDomainLabel(domain: MathDomain, t: Dictionary) {
+  return t.home.domainLabels[domain] ?? domainLabel(domain);
 }
 
 export default async function ConceptsPage({
@@ -31,6 +35,7 @@ export default async function ConceptsPage({
 }: {
   searchParams: Promise<{ q?: string; domain?: string; status?: string }>;
 }) {
+  const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
   const { q = "", domain = "", status = "" } = await searchParams;
   const query = q.trim();
@@ -76,45 +81,45 @@ export default async function ConceptsPage({
 
   return (
     <ForestPageLayout
-      title="Concepts"
+      title={t.concepts.title}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       meta={
         <>
-          <p>{concepts.length} concepts shown</p>
-          <p>{missing.length} linked gaps</p>
+          <p>{t.concepts.conceptsShown(concepts.length)}</p>
+          <p>{t.concepts.linkedGaps(missing.length)}</p>
         </>
       }
       actions={
         <>
           <Link href="/contributing" className="button secondary">
-            Guidelines
+            {t.concepts.guidelines}
           </Link>
           <Link href="/concepts/random" className="button secondary">
-            Random
+            {t.concepts.random}
           </Link>
           <Link href="/recent-changes" className="button secondary">
-            Recent changes
+            {t.concepts.recentChanges}
           </Link>
           <Link href="/watchlist" className="button secondary">
-            Watchlist
+            {t.concepts.watchlist}
           </Link>
           <Link href="/concepts/new" className="button">
-            New
+            {t.concepts.new}
           </Link>
           <ContributionRequestDialog
             action={createContributionRequestAction.bind(null, "CONCEPT", "/concepts")}
-            buttonLabel="Request a concept"
-            title="Request a concept"
-            description="Tell contributors which mathematical notion should get a concept page."
-            placeholder="Describe the concept page you would like: the notion, examples, related results, references, or level of detail you have in mind."
+            buttonLabel={t.concepts.requestConcept}
+            title={t.concepts.requestConcept}
+            description={t.concepts.requestConceptDescription}
+            placeholder={t.concepts.requestConceptPlaceholder}
           />
         </>
       }
       sidebar={
         <>
-        <h2 className="mb-3 font-semibold">Missing concepts</h2>
-        <p className="muted mb-4 text-sm">Frequently linked gaps are good places to contribute.</p>
+        <h2 className="mb-3 font-semibold">{t.concepts.missingConcepts}</h2>
+        <p className="muted mb-4 text-sm">{t.concepts.missingConceptsDescription}</p>
         <div className="grid gap-2">
           {missing.map((item) => {
             const title = conceptTitleFromSlug(item.slug);
@@ -128,31 +133,31 @@ export default async function ConceptsPage({
                 </Link>
                 {item.sources.length > 0 && (
                   <details className="missing-concept-sources">
-                    <summary>Cited in {item.count}</summary>
+                    <summary>{t.concepts.citedIn(item.count)}</summary>
                     <div>
                       {item.sources.map((source) => (
                         <Link key={`${source.sourceType}-${source.href}`} href={source.href as Route}>
-                          <span>{sourceTypeLabel(source.sourceType)}</span>
+                          <span>{sourceTypeLabel(source.sourceType, t.concepts)}</span>
                           <strong>{source.title}</strong>
                           {source.label && <small>as "{source.label}"</small>}
                         </Link>
                       ))}
-                      {hiddenSourceCount > 0 && <p className="muted text-xs">+ {hiddenSourceCount} more citation(s)</p>}
+                      {hiddenSourceCount > 0 && <p className="muted text-xs">{t.concepts.moreCitations(hiddenSourceCount)}</p>}
                     </div>
                   </details>
                 )}
               </div>
             );
           })}
-          {missing.length === 0 && <p className="muted text-sm">No missing concepts.</p>}
+          {missing.length === 0 && <p className="muted text-sm">{t.concepts.noMissingConcepts}</p>}
         </div>
         </>
       }
     >
       <LiveSearchForm className="filter-bar mb-6 grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem_auto]">
-        <input name="q" defaultValue={query} placeholder="Search titles, content, or aliases" />
+        <input name="q" defaultValue={query} placeholder={t.concepts.searchPlaceholder} />
         <select name="domain" defaultValue={domainValue ?? ""}>
-          <option value="">Any domain</option>
+          <option value="">{t.concepts.anyDomain}</option>
           {PROBLEM_DOMAINS.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
@@ -160,14 +165,14 @@ export default async function ConceptsPage({
           ))}
         </select>
         <select name="status" defaultValue={statusValue ?? ""}>
-          <option value="">Any status</option>
-          <option value="STUB">Stub</option>
-          <option value="USABLE">Usable</option>
-          <option value="REVIEWED">Reviewed</option>
-          <option value="EXCELLENT">Excellent</option>
-          <option value="CONTROVERSIAL">Controversial</option>
+          <option value="">{t.concepts.anyStatus}</option>
+          <option value="STUB">{t.concepts.statuses.STUB}</option>
+          <option value="USABLE">{t.concepts.statuses.USABLE}</option>
+          <option value="REVIEWED">{t.concepts.statuses.REVIEWED}</option>
+          <option value="EXCELLENT">{t.concepts.statuses.EXCELLENT}</option>
+          <option value="CONTROVERSIAL">{t.concepts.statuses.CONTROVERSIAL}</option>
         </select>
-        <button type="submit">Search</button>
+        <button type="submit">{t.common.search}</button>
       </LiveSearchForm>
 
       <div className="list-surface">
@@ -177,18 +182,18 @@ export default async function ConceptsPage({
               <div>
                 <h2 className="font-semibold">{concept.title}</h2>
                 <p className="meta">
-                  {domainLabel(concept.domain)} / {concept.status.toLowerCase()} / {concept._count.references} sources /{" "}
-                  {concept._count.talkPosts} talk posts
+                  {translatedDomainLabel(concept.domain, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()} /{" "}
+                  {t.concepts.sources(concept._count.references)} / {t.concepts.talkPosts(concept._count.talkPosts)}
                 </p>
                 {concept.aliases.length > 0 && (
                   <p className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</p>
                 )}
               </div>
-              <span className="meta">updated {concept.updatedAt.toLocaleDateString("en-US")}</span>
+              <span className="meta">{t.common.updated} {concept.updatedAt.toLocaleDateString("en-US")}</span>
             </div>
           </Link>
         ))}
-        {concepts.length === 0 && <p className="empty-state">No concepts match these filters.</p>}
+        {concepts.length === 0 && <p className="empty-state">{t.concepts.noMatches}</p>}
       </div>
     </ForestPageLayout>
   );

@@ -11,11 +11,17 @@ type DifficultyRange = {
 };
 
 type ProblemDifficultyFilterProps = {
-  ranges: DifficultyRange[];
+  ranges: readonly DifficultyRange[];
   selectedRange: string;
   customBounds: boolean;
   initialMin?: number;
   initialMax?: number;
+  labels?: {
+    minimum: string;
+    maximum: string;
+    preset: string;
+    custom: string;
+  };
 };
 
 const MIN_DIFFICULTY = 1;
@@ -39,7 +45,13 @@ export function ProblemDifficultyFilter({
   selectedRange,
   customBounds,
   initialMin,
-  initialMax
+  initialMax,
+  labels = {
+    minimum: "Minimum difficulty",
+    maximum: "Maximum difficulty",
+    preset: "Difficulty preset",
+    custom: "Custom difficulty"
+  }
 }: ProblemDifficultyFilterProps) {
   const [minValue, setMinValue] = useState(() => initialSliderValue(initialMin, MIN_DIFFICULTY));
   const [maxValue, setMaxValue] = useState(() => initialSliderValue(initialMax, MAX_DIFFICULTY));
@@ -91,7 +103,7 @@ export function ProblemDifficultyFilter({
         <div className="problem-difficulty-slider" style={sliderStyle}>
           <div className="problem-difficulty-slider-track" aria-hidden="true" />
           <input
-            aria-label="Minimum difficulty"
+            aria-label={labels.minimum}
             max={MAX_DIFFICULTY}
             min={MIN_DIFFICULTY}
             onChange={(event) => chooseMin(Number(event.target.value))}
@@ -99,7 +111,7 @@ export function ProblemDifficultyFilter({
             value={minValue}
           />
           <input
-            aria-label="Maximum difficulty"
+            aria-label={labels.maximum}
             max={MAX_DIFFICULTY}
             min={MIN_DIFFICULTY}
             onChange={(event) => chooseMax(Number(event.target.value))}
@@ -113,8 +125,8 @@ export function ProblemDifficultyFilter({
           <span>{maxValue} / 100</span>
         </div>
 
-        <select aria-label="Difficulty preset" onChange={(event) => choosePreset(event.target.value)} value={mode}>
-          {isCustom && <option value="custom">Custom difficulty</option>}
+        <select aria-label={labels.preset} onChange={(event) => choosePreset(event.target.value)} value={mode}>
+          {isCustom && <option value="custom">{labels.custom}</option>}
           {ranges.map((range) => (
             <option key={range.value || "any"} value={range.value}>
               {range.label}

@@ -18,42 +18,94 @@ type ProblemFilterBuilderProps = {
   domains: Option[];
   initialFilters: ProblemFilterRow[];
   initialLogic: "AND" | "OR";
+  labels?: AdvancedFilterLabels;
   statuses: Option[];
   tags: Option[];
 };
 
-const fields = [
-  { value: "text", label: "Text" },
-  { value: "title", label: "Title" },
-  { value: "body", label: "Statement" },
-  { value: "tag", label: "Tag" },
-  { value: "domain", label: "Domain" },
-  { value: "status", label: "Status" },
-  { value: "difficulty", label: "Difficulty" },
-  { value: "origin", label: "Origin" }
-];
+type AdvancedFilterLabels = {
+  title: string;
+  active: (count: number) => string;
+  optional: string;
+  description: string;
+  addFilter: string;
+  logicAriaLabel: string;
+  fieldAriaLabel: string;
+  operatorAriaLabel: string;
+  valueAriaLabel: string;
+  choose: string;
+  valuePlaceholder: string;
+  removeFilter: string;
+  empty: string;
+  fields: Record<"text" | "title" | "body" | "tag" | "domain" | "status" | "difficulty" | "origin", string>;
+  ops: Record<"contains" | "isExactly" | "is" | "atLeast" | "atMost", string>;
+};
 
-const textOps = [
-  { value: "contains", label: "contains" },
-  { value: "is", label: "is exactly" }
-];
+const defaultLabels: AdvancedFilterLabels = {
+  title: "Advanced filters",
+  active: (count) => `${count} active`,
+  optional: "Optional AND / OR filters",
+  description: "Build a small query with AND / OR.",
+  addFilter: "Add filter",
+  logicAriaLabel: "Filter logic",
+  fieldAriaLabel: "Filter field",
+  operatorAriaLabel: "Filter operator",
+  valueAriaLabel: "Filter value",
+  choose: "Choose...",
+  valuePlaceholder: "Value",
+  removeFilter: "Remove filter",
+  empty: "No advanced filter yet.",
+  fields: {
+    text: "Text",
+    title: "Title",
+    body: "Statement",
+    tag: "Tag",
+    domain: "Domain",
+    status: "Status",
+    difficulty: "Difficulty",
+    origin: "Origin"
+  },
+  ops: {
+    contains: "contains",
+    isExactly: "is exactly",
+    is: "is",
+    atLeast: "is at least",
+    atMost: "is at most"
+  }
+};
 
-const exactOps = [{ value: "is", label: "is" }];
+function fieldsFor(labels: AdvancedFilterLabels) {
+  return [
+    { value: "text", label: labels.fields.text },
+    { value: "title", label: labels.fields.title },
+    { value: "body", label: labels.fields.body },
+    { value: "tag", label: labels.fields.tag },
+    { value: "domain", label: labels.fields.domain },
+    { value: "status", label: labels.fields.status },
+    { value: "difficulty", label: labels.fields.difficulty },
+    { value: "origin", label: labels.fields.origin }
+  ];
+}
 
-const difficultyOps = [
-  { value: "is", label: "is" },
-  { value: "atLeast", label: "is at least" },
-  { value: "atMost", label: "is at most" }
-];
+function operatorsFor(field: string, labels: AdvancedFilterLabels) {
+  const textOps = [
+    { value: "contains", label: labels.ops.contains },
+    { value: "is", label: labels.ops.isExactly }
+  ];
+  const exactOps = [{ value: "is", label: labels.ops.is }];
+  const difficultyOps = [
+    { value: "is", label: labels.ops.is },
+    { value: "atLeast", label: labels.ops.atLeast },
+    { value: "atMost", label: labels.ops.atMost }
+  ];
 
-function operatorsFor(field: string) {
   if (field === "difficulty") return difficultyOps;
   if (field === "domain" || field === "status" || field === "tag") return exactOps;
   return textOps;
 }
 
-function defaultOperator(field: string) {
-  return operatorsFor(field)[0].value;
+function defaultOperator(field: string, labels: AdvancedFilterLabels) {
+  return operatorsFor(field, labels)[0].value;
 }
 
 function valueOptionsFor(field: string, domains: Option[], statuses: Option[], tags: Option[]) {
@@ -71,6 +123,7 @@ export function ProblemFilterBuilder({
   domains,
   initialFilters,
   initialLogic,
+  labels = defaultLabels,
   statuses,
   tags
 }: ProblemFilterBuilderProps) {
@@ -79,6 +132,7 @@ export function ProblemFilterBuilder({
   const [logic, setLogic] = useState(initialLogic);
   const [rows, setRows] = useState<ProblemFilterRow[]>(initialFilters);
   const activeCount = rows.filter((row) => row.value.trim()).length;
+  const fields = fieldsFor(labels);
 
   const submitSoon = () => {
     window.setTimeout(() => rootRef.current?.closest("form")?.requestSubmit(), 0);
@@ -106,26 +160,26 @@ export function ProblemFilterBuilder({
 
       <summary className="advanced-filter-summary">
         <span>
-          <strong>Advanced filters</strong>
-          <small>{activeCount ? `${activeCount} active` : "Optional AND / OR filters"}</small>
+          <strong>{labels.title}</strong>
+          <small>{activeCount ? labels.active(activeCount) : labels.optional}</small>
         </span>
         <ChevronDown size={17} aria-hidden="true" />
       </summary>
 
       <div className="advanced-filter-content">
         <div className="advanced-filter-header">
-          <p className="muted">Build a small query with AND / OR.</p>
+          <p className="muted">{labels.description}</p>
           <button
             type="button"
             className="secondary"
             onClick={() => setRows((current) => [...current, emptyRow()])}
           >
             <Plus size={16} aria-hidden="true" />
-            Add filter
+            {labels.addFilter}
           </button>
         </div>
 
-        <div className="filter-logic" role="radiogroup" aria-label="Filter logic">
+        <div className="filter-logic" role="radiogroup" aria-label={labels.logicAriaLabel}>
           {(["AND", "OR"] as const).map((value) => (
             <label key={value} className={logic === value ? "active" : ""}>
               <input
@@ -143,19 +197,19 @@ export function ProblemFilterBuilder({
         {rows.length > 0 ? (
           <div className="advanced-filter-rows">
             {rows.map((row, index) => {
-              const operators = operatorsFor(row.field);
+              const operators = operatorsFor(row.field, labels);
               const valueOptions = valueOptionsFor(row.field, domains, statuses, tags);
-              const op = operators.some((item) => item.value === row.op) ? row.op : defaultOperator(row.field);
+              const op = operators.some((item) => item.value === row.op) ? row.op : defaultOperator(row.field, labels);
 
               return (
                 <div className="advanced-filter-row" key={index}>
                   <select
                     name="filterField"
                     value={row.field}
-                    aria-label="Filter field"
+                    aria-label={labels.fieldAriaLabel}
                     onChange={(event) => {
                       const field = event.target.value;
-                      updateRow(index, { field, op: defaultOperator(field), value: "" });
+                      updateRow(index, { field, op: defaultOperator(field, labels), value: "" });
                     }}
                   >
                     {fields.map((item) => (
@@ -168,7 +222,7 @@ export function ProblemFilterBuilder({
                   <select
                     name="filterOp"
                     value={op}
-                    aria-label="Filter operator"
+                    aria-label={labels.operatorAriaLabel}
                     onChange={(event) => updateRow(index, { ...row, op: event.target.value })}
                   >
                     {operators.map((item) => (
@@ -182,10 +236,10 @@ export function ProblemFilterBuilder({
                     <select
                       name="filterValue"
                       value={row.value}
-                      aria-label="Filter value"
+                      aria-label={labels.valueAriaLabel}
                       onChange={(event) => updateRow(index, { ...row, value: event.target.value })}
                     >
-                      <option value="">Choose...</option>
+                      <option value="">{labels.choose}</option>
                       {valueOptions.map((item) => (
                         <option key={item.value} value={item.value}>
                           {item.label}
@@ -199,8 +253,8 @@ export function ProblemFilterBuilder({
                       min={row.field === "difficulty" ? 1 : undefined}
                       max={row.field === "difficulty" ? 100 : undefined}
                       value={row.value}
-                      placeholder={row.field === "difficulty" ? "1-100" : "Value"}
-                      aria-label="Filter value"
+                      placeholder={row.field === "difficulty" ? "1-100" : labels.valuePlaceholder}
+                      aria-label={labels.valueAriaLabel}
                       onChange={(event) => updateRow(index, { ...row, value: event.target.value })}
                     />
                   )}
@@ -208,8 +262,8 @@ export function ProblemFilterBuilder({
                   <button
                     type="button"
                     className="icon-button secondary"
-                    aria-label="Remove filter"
-                    title="Remove filter"
+                    aria-label={labels.removeFilter}
+                    title={labels.removeFilter}
                     onClick={() => removeRow(index)}
                   >
                     <X size={16} aria-hidden="true" />
@@ -219,7 +273,7 @@ export function ProblemFilterBuilder({
             })}
           </div>
         ) : (
-          <p className="advanced-filter-empty">No advanced filter yet.</p>
+          <p className="advanced-filter-empty">{labels.empty}</p>
         )}
       </div>
     </details>
