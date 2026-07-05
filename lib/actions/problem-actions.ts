@@ -686,6 +686,25 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
   await markSolvedNow(problemId, problemSlug, user);
 }
 
+export async function unmarkProblemSolvedAction(problemId: number, problemSlug: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`problem:unsolve:${user.id}`, 30, 60_000);
+
+  await prisma.problemAttempt.updateMany({
+    where: {
+      userId: user.id,
+      problemId,
+      status: "SOLVED"
+    },
+    data: { status: "STARTED" }
+  });
+
+  revalidatePath("/problems");
+  revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/profile/${user.username}`);
+  revalidatePath("/me");
+}
+
 export async function reviewProblemVerificationAction(requestId: number, decision: "APPROVED" | "REJECTED") {
   const user = await requireVerifiedUser();
   await assertRateLimit(`verification-review:${user.id}`, 30, 60_000);

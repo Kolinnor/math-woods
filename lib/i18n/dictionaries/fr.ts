@@ -278,6 +278,7 @@ export const fr = {
     startAttempting: "Je commence à résoudre ce problème",
     solved: "Résolu",
     markSolved: "Je l'ai résolu",
+    unmarkSolved: "Marquer comme non résolu",
     verification: "Vérification",
     verificationPlaceholder: "Saisis la réponse courte de vérification.",
     checkAndMarkSolved: "Vérifier et marquer comme résolu",

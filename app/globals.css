@@ -1866,14 +1866,17 @@ button.attempted-state-button:disabled {
 }
 
 button.solved-state-button,
-button.solved-state-button:hover,
-button.solved-state-button:disabled {
+button.solved-state-button:hover {
   background: var(--problem-solved);
   border-color: var(--problem-solved);
   box-shadow: 0 1px 1px rgb(0 0 0 / 0.08), 0 7px 16px rgb(15 159 69 / 0.22);
   color: #ffffff;
-  cursor: default;
+  cursor: pointer;
   opacity: 1;
+}
+
+button.solved-state-button:disabled {
+  cursor: default;
 }
 
 button.favorite-action-button {

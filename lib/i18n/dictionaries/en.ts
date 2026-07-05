@@ -273,6 +273,7 @@ export const en = {
     startAttempting: "I am attempting to solve this problem",
     solved: "Solved",
     markSolved: "I solved it",
+    unmarkSolved: "Mark as not solved",
     verification: "Verification",
     verificationPlaceholder: "Enter the short verification answer.",
     checkAndMarkSolved: "Check and mark solved",

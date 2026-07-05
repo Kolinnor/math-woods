@@ -18,7 +18,8 @@ import {
   markProblemSolvedAction,
   reviewProblemVerificationAction,
   startAttemptAction,
-  toggleProblemFavoriteAction
+  toggleProblemFavoriteAction,
+  unmarkProblemSolvedAction
 } from "@/lib/actions/problem-actions";
 import {
   createProofAction,
@@ -624,10 +625,17 @@ export default async function ProblemPage({
             )
           )}
           {attempt?.status === "SOLVED" ? (
-            <button type="button" className="secondary solved-state-button w-full" disabled>
-              <Check size={17} />
-              {t.problemDetail.solved}
-            </button>
+            <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)}>
+              <button
+                type="submit"
+                className="secondary solved-state-button w-full"
+                title={t.problemDetail.unmarkSolved}
+                aria-pressed="true"
+              >
+                <Check size={17} />
+                {t.problemDetail.solved}
+              </button>
+            </form>
           ) : problem.verificationMode === ProblemVerificationMode.NONE || user?.id === problem.authorId ? (
             <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
               <button type="submit" className="secondary w-full">
