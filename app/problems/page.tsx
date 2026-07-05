@@ -38,6 +38,7 @@ type DifficultyRange = {
   max?: number;
 };
 type ProgressFilter = "unsolved" | "solved" | "all";
+type OwnershipFilter = "all" | "others";
 
 const DIFFICULTY_RANGES: DifficultyRange[] = [
   { value: "", label: "Any difficulty" },
@@ -65,6 +66,10 @@ function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
 
 function parseProgressFilter(value: string | undefined): ProgressFilter {
   return value === "solved" || value === "all" ? value : "unsolved";
+}
+
+function parseOwnershipFilter(value: string | undefined): OwnershipFilter {
+  return value === "others" ? "others" : "all";
 }
 
 function parseDifficultyBound(value: string | undefined) {
@@ -255,6 +260,7 @@ export default async function ProblemsPage({
     domain?: string;
     quality?: string;
     progress?: string;
+    ownership?: string;
     sort?: string;
     page?: string;
     filterLogic?: string;
@@ -276,6 +282,7 @@ export default async function ProblemsPage({
     domain = "",
     quality = "",
     progress = "",
+    ownership = "",
     sort = "newest",
     page = "1",
     filterLogic = "AND",
@@ -318,12 +325,15 @@ export default async function ProblemsPage({
     ? (quality as QualityStatus)
     : undefined;
   const progressValue = parseProgressFilter(progress);
+  const ownershipValue = user ? parseOwnershipFilter(ownership) : "all";
   const progressFilterWhere: Prisma.ProblemWhereInput | null =
     user && progressValue === "unsolved"
       ? { attempts: { none: { userId: user.id, status: "SOLVED" } } }
       : user && progressValue === "solved"
         ? { attempts: { some: { userId: user.id, status: "SOLVED" } } }
         : null;
+  const ownershipWhere: Prisma.ProblemWhereInput | null =
+    user && ownershipValue === "others" ? { authorId: { not: user.id } } : null;
   const normalizedSort = sort === "attempted" ? "solved" : sort;
   const sortValue = ["newest", "solved", "favorited", "difficulty", "easiest"].includes(normalizedSort)
     ? normalizedSort
@@ -371,6 +381,7 @@ export default async function ProblemsPage({
     ...(domainValue ? [domainWhere(domainValue, showSpoilerTags)] : []),
     ...(qualityValue ? [{ qualityStatus: qualityValue }] : []),
     ...(progressFilterWhere ? [progressFilterWhere] : []),
+    ...(ownershipWhere ? [ownershipWhere] : []),
     ...(advancedClauses.length
       ? [{ [advancedLogic]: advancedClauses } satisfies Prisma.ProblemWhereInput]
       : [])
@@ -384,6 +395,7 @@ export default async function ProblemsPage({
     status: "PUBLISHED",
     listed: true,
     language: preferredLanguage,
+    ...(ownershipWhere ?? {}),
     ...(domainValue ? domainWhere(domainValue, showSpoilerTags) : {})
   };
 
@@ -465,6 +477,7 @@ export default async function ProblemsPage({
     domain: domainValue,
     quality: qualityValue,
     progress: user && progressValue !== "unsolved" ? progressValue : undefined,
+    ownership: user && ownershipValue !== "all" ? ownershipValue : undefined,
     sort: sortValue === "newest" ? undefined : sortValue,
     filterLogic: advancedFilters.length ? advancedLogic : undefined,
     filterField: advancedFilters.map((filter) => filter.field),
@@ -550,6 +563,12 @@ export default async function ProblemsPage({
                   <option value="unsolved">{t.problems.unsolved}</option>
                   <option value="solved">{t.problems.solved}</option>
                   <option value="all">{t.problems.allProblems}</option>
+                </select>
+              )}
+              {user && (
+                <select name="ownership" defaultValue={ownershipValue} aria-label={t.problems.ownershipStatus}>
+                  <option value="all">{t.problems.includeOwnProblems}</option>
+                  <option value="others">{t.problems.onlyOtherProblems}</option>
                 </select>
               )}
               <select name="quality" defaultValue={qualityValue ?? ""}>
