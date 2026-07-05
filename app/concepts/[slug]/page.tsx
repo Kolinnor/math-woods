@@ -10,8 +10,8 @@ import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
-import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { nextMissingTranslationLanguage, preferredTranslationForLanguage } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -63,11 +63,12 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
         })
       : null
   ]);
-  const existingTranslationLanguages = new Set([concept.language, ...translations.map((translation) => translation.language)]);
-  const targetTranslationLanguage =
-    !existingTranslationLanguages.has(preferredLanguage)
-      ? preferredLanguage
-      : SUPPORTED_CONTENT_LANGUAGES.find((language) => !existingTranslationLanguages.has(language.code))?.code;
+  const preferredTranslation = preferredTranslationForLanguage(concept.language, translations, preferredLanguage);
+  if (preferredTranslation?.slug && preferredTranslation.slug !== concept.slug) {
+    redirect(`/concepts/${preferredTranslation.slug}`);
+  }
+
+  const targetTranslationLanguage = nextMissingTranslationLanguage(concept.language, translations, preferredLanguage);
   const addTranslationHref = targetTranslationLanguage
     ? `/concepts/new?translateOf=${concept.slug}&language=${targetTranslationLanguage}`
     : undefined;

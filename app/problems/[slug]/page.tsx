@@ -3,7 +3,7 @@ import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { QualityStatus } from "@prisma/client";
 import { Check, Heart, House, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -26,7 +26,6 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
-import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import {
   canEditProblem,
   canEditSolution,
@@ -39,6 +38,7 @@ import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { qualityLabel } from "@/lib/quality";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { nextMissingTranslationLanguage, preferredTranslationForLanguage } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -210,6 +210,11 @@ export default async function ProblemPage({
         })
       : Promise.resolve([])
   ]);
+  const preferredTranslation = preferredTranslationForLanguage(problem.language, translations, preferredLanguage);
+  if (preferredTranslation?.slug && preferredTranslation.slug !== problem.slug) {
+    redirect(`/problems/${preferredTranslation.slug}`);
+  }
+
   const proofVotes = new Map(proofVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const ownProofVoteIds = new Set(userVotes.filter((vote) => vote.targetType === TargetType.PROOF).map((vote) => vote.targetId));
   const relatedSolvedIds = new Set(relatedSolvedAttempts.map((attempt) => attempt.problemId));
@@ -235,11 +240,7 @@ export default async function ProblemPage({
     ? problem.domains.filter((item) => revealSpoilerDetails || !item.spoiler).map((item) => item.mscCode)
     : [problem.domain];
   const hiddenDomainCount = revealSpoilerDetails ? 0 : problem.domains.filter((item) => item.spoiler).length;
-  const existingTranslationLanguages = new Set([problem.language, ...translations.map((translation) => translation.language)]);
-  const targetTranslationLanguage =
-    !existingTranslationLanguages.has(preferredLanguage)
-      ? preferredLanguage
-      : SUPPORTED_CONTENT_LANGUAGES.find((language) => !existingTranslationLanguages.has(language.code))?.code;
+  const targetTranslationLanguage = nextMissingTranslationLanguage(problem.language, translations, preferredLanguage);
   const addTranslationHref = targetTranslationLanguage
     ? `/problems/new?translateOf=${problem.slug}&language=${targetTranslationLanguage}`
     : undefined;

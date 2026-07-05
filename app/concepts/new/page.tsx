@@ -10,6 +10,7 @@ import { requireDraftSession } from "@/lib/draft-session";
 import { PROBLEM_DOMAINS } from "@/lib/domains";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
 
 export default async function NewConceptPage({
   searchParams
@@ -21,13 +22,24 @@ export default async function NewConceptPage({
   const draftSession = requireDraftSession("/concepts/new", queryParams);
   const { title = "", translateOf = "", language = "" } = queryParams;
   const preferredLanguage = await getPreferredContentLanguage();
-  const initialLanguage = language ? parseContentLanguage(language) : preferredLanguage;
+  const requestedLanguage = language ? parseContentLanguage(language) : preferredLanguage;
   const sourceConcept = translateOf
     ? await prisma.concept.findUnique({
         where: { slug: translateOf },
         select: { slug: true, title: true, bodyMarkdown: true, language: true, translationGroupId: true }
       })
     : null;
+  const sourceTranslationLanguages = sourceConcept
+    ? await prisma.concept.findMany({
+        where: { translationGroupId: sourceConcept.translationGroupId },
+        select: { language: true }
+      })
+    : [];
+  const unavailableTranslationLanguages = sourceTranslationLanguages.map((translation) => translation.language);
+  const targetTranslationLanguage = sourceConcept
+    ? nextMissingTranslationLanguage(sourceConcept.language, sourceTranslationLanguages, requestedLanguage)
+    : requestedLanguage;
+  const initialLanguage = targetTranslationLanguage ?? requestedLanguage;
   const defaultContent =
     sourceConcept?.bodyMarkdown ??
     "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to [[polynomial]].";
@@ -65,7 +77,12 @@ export default async function NewConceptPage({
         </label>
         <LanguageField
           defaultValue={initialLanguage}
-          help="Each translation is its own page. Missing translations are not shown as existing pages."
+          disabledValues={unavailableTranslationLanguages}
+          help={
+            sourceConcept
+              ? "Languages already linked to this concept are disabled."
+              : "Each translation is its own page. Missing translations are not shown as existing pages."
+          }
         />
         <div className="grid gap-4">
           <ProblemDomainPicker
@@ -97,7 +114,14 @@ export default async function NewConceptPage({
             placeholder={"Reference title | https://example.org/source | Optional note\nBook title | | Chapter 3"}
           />
         </label>
-          <button type="submit">Create concept</button>
+          {sourceConcept && !targetTranslationLanguage && (
+            <p className="quality-banner quality-needs-work text-sm" role="status">
+              All supported languages already exist for this concept.
+            </p>
+          )}
+          <button type="submit" disabled={Boolean(sourceConcept && !targetTranslationLanguage)}>
+            Create concept
+          </button>
         </form>
       </div>
       {sourceConcept && (

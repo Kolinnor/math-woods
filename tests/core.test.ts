@@ -72,9 +72,24 @@ import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notific
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
 import { parseTagInput } from "../lib/tags.ts";
+import {
+  nextMissingTranslationLanguage,
+  preferredTranslationForLanguage,
+  translationLanguageSet
+} from "../lib/translation-routing.ts";
 
 assert.equal(slugify("Relations de Viète"), "relations-de-viete");
 assert.equal(slugify("  L'espace vectoriel ! "), "lespace-vectoriel");
+
+const groupedTranslations = [
+  { language: "fr", slug: "relations-de-viete" },
+  { language: "es", slug: "relaciones-de-vieta" }
+];
+assert.equal(preferredTranslationForLanguage("en", groupedTranslations, "fr")?.slug, "relations-de-viete");
+assert.equal(preferredTranslationForLanguage("fr", groupedTranslations, "fr"), null);
+assert.equal(nextMissingTranslationLanguage("en", groupedTranslations, "fr"), "de");
+assert.equal(nextMissingTranslationLanguage("en", groupedTranslations, "it"), "it");
+assert.deepEqual([...translationLanguageSet("en", groupedTranslations)], ["en", "fr", "es"]);
 
 const links = extractWikiLinks(
   "Voir [[relations de Viète|Viète]], [[polynôme]], puis [[polynôme]]."

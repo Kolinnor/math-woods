@@ -11,6 +11,7 @@ import { requireDraftSession } from "@/lib/draft-session";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
 
 export default async function NewProblemPage({
   searchParams
@@ -29,7 +30,7 @@ export default async function NewProblemPage({
   const draftSession = requireDraftSession("/problems/new", queryParams);
   const { playlist = "", listed = "1", parent = "", translateOf = "", language = "" } = queryParams;
   const preferredLanguage = await getPreferredContentLanguage();
-  const initialLanguage = language ? parseContentLanguage(language) : preferredLanguage;
+  const requestedLanguage = language ? parseContentLanguage(language) : preferredLanguage;
   const isListedByDefault = listed !== "0";
   const parentProblem = parent
     ? await prisma.problem.findUnique({
@@ -43,6 +44,17 @@ export default async function NewProblemPage({
         select: { slug: true, title: true, bodyMarkdown: true, language: true, translationGroupId: true }
       })
     : null;
+  const sourceTranslationLanguages = sourceProblem
+    ? await prisma.problem.findMany({
+        where: { translationGroupId: sourceProblem.translationGroupId },
+        select: { language: true }
+      })
+    : [];
+  const unavailableTranslationLanguages = sourceTranslationLanguages.map((translation) => translation.language);
+  const targetTranslationLanguage = sourceProblem
+    ? nextMissingTranslationLanguage(sourceProblem.language, sourceTranslationLanguages, requestedLanguage)
+    : requestedLanguage;
+  const initialLanguage = targetTranslationLanguage ?? requestedLanguage;
   const defaultStatement =
     sourceProblem?.bodyMarkdown ??
     "Write the problem statement here.\n\nYou can use Markdown for structure:\n- bullet points\n- **bold text** and *italic text*\n- links to concepts with [[concept name]]\n\nYou can use LaTeX with $x^2+1$ for inline formulas, or with $$\\sum_{k=1}^n k = \\frac{n(n+1)}{2}$$ for displayed formulas.";
@@ -97,7 +109,12 @@ export default async function NewProblemPage({
         </label>
         <LanguageField
           defaultValue={initialLanguage}
-          help="Each translation is its own page. If English has not been written, there is no English version yet."
+          disabledValues={unavailableTranslationLanguages}
+          help={
+            sourceProblem
+              ? "Languages already linked to this problem are disabled."
+              : "Each translation is its own page. If English has not been written, there is no English version yet."
+          }
         />
         <div className="grid gap-2">
           <span className="text-sm font-medium">Statement</span>
@@ -203,7 +220,14 @@ export default async function NewProblemPage({
             ?
           </a>
         </p>
-          <button type="submit">Publish</button>
+          {sourceProblem && !targetTranslationLanguage && (
+            <p className="quality-banner quality-needs-work text-sm" role="status">
+              All supported languages already exist for this problem.
+            </p>
+          )}
+          <button type="submit" disabled={Boolean(sourceProblem && !targetTranslationLanguage)}>
+            Publish
+          </button>
         </form>
       </div>
       {sourceProblem && (
