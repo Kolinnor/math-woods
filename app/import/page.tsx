@@ -1,15 +1,11 @@
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { importMarkdownAction } from "@/lib/actions/import-actions";
 import { requireVerifiedUser } from "@/lib/auth";
-import { canUseOwnerTools } from "@/lib/permissions";
-import type { Route } from "next";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function ImportPage() {
-  const user = await requireVerifiedUser();
-  const canAuditObsidianVault = canUseOwnerTools(user);
+  await requireVerifiedUser();
 
   return (
     <ForestPageLayout
@@ -21,20 +17,6 @@ export default async function ImportPage() {
       workspaceClassName="forest-page-workspace-narrow"
     >
       <form action={importMarkdownAction} className="panel grid gap-4 p-5">
-        {canAuditObsidianVault && (
-          <div className="rounded-md border border-line p-3 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-medium">Obsidian migration lab</p>
-                <p className="muted">Owner-only local audit for large private vaults.</p>
-              </div>
-              <Link href={"/import/obsidian" as Route} className="button secondary">
-                Open
-              </Link>
-            </div>
-          </div>
-        )}
-
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Import as</span>

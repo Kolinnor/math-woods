@@ -68,7 +68,6 @@ import {
 } from "../lib/markdown-shortcuts.ts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "../lib/markdown-preview.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
-import { auditObsidianNotes } from "../lib/obsidian-audit.ts";
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
@@ -424,21 +423,6 @@ assert.deepEqual(findWikiLinkRanges("See [[polynomial]] and [[vieta-relations|Vi
 assert.deepEqual(findWikiLinkRanges("Code `[[skip]]` then [[polynomial]]."), [
   { from: 21, to: 35, label: "polynomial" }
 ]);
-
-const obsidianAudit = auditObsidianNotes(
-  [
-    { path: "Algebra/Rings.md", text: "---\npublish: true\naliases: [Ring theory]\n---\n# Rings\nSee [[Ideals]]." },
-    { path: "Algebra/Ideals.md", text: "# Ideals\nBack to [[Ring theory]]." },
-    { path: "Daily/2026-07-05.md", text: "# Private note\nTODO email me@example.com" }
-  ],
-  "2026-07-05T00:00:00.000Z"
-);
-assert.equal(obsidianAudit.summary.totalNotes, 3);
-assert.equal(obsidianAudit.summary.publish, 1);
-assert.equal(obsidianAudit.summary.stub, 1);
-assert.equal(obsidianAudit.summary.private, 1);
-assert.deepEqual(obsidianAudit.notes.find((note) => note.path === "Algebra/Ideals.md")?.backlinks, ["Algebra/Rings.md"]);
-assert.equal(obsidianAudit.notes.find((note) => note.path === "Algebra/Rings.md")?.resolvedLinks[0], "Algebra/Ideals.md");
 
 const renderedLatex = await renderMarkdown(
   "A real sequence $(u_n)_{n\\geq 0}$ satisfies $u_{n+1}=u_n$ for every $n\\geq 0$."
