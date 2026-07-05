@@ -83,12 +83,17 @@ function normalizeLatexLists(markdown: string) {
   );
 }
 
-export async function renderMarkdown(markdown: string, missingSlugs = new Set<string>(), blockDisplayMath = true) {
+export async function renderMarkdown(
+  markdown: string,
+  missingSlugs = new Set<string>(),
+  blockDisplayMath = true,
+  resolveWikiHref = (link: { targetSlug: string }) => `/concepts/${link.targetSlug}`
+) {
   const normalizedMarkdown = normalizeLatexLists(markdown);
   const { markdown: withLatexTokens, replacements } = protectLatex(normalizedMarkdown, blockDisplayMath);
   const withWikiLinks = replaceWikiLinks(
     withLatexTokens,
-    (link) => `/concepts/${link.targetSlug}`,
+    resolveWikiHref,
     missingSlugs
   );
   const html = await marked.parse(withWikiLinks, {

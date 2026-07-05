@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { Eye } from "lucide-react";
@@ -10,11 +11,58 @@ import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
+import { contentLanguageLabel } from "@/lib/languages";
+import { markdownExcerpt } from "@/lib/metadata-text";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
+import { conceptTranslationFreshness } from "@/lib/translation-freshness";
 import { nextMissingTranslationLanguage, preferredTranslationForLanguage } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const concept = await prisma.concept.findUnique({
+    where: { slug },
+    select: {
+      slug: true,
+      title: true,
+      bodyMarkdown: true,
+      translationGroupId: true
+    }
+  });
+  if (!concept) return {};
+
+  const translations = await prisma.concept.findMany({
+    where: { translationGroupId: concept.translationGroupId },
+    select: { slug: true, language: true }
+  });
+  const description = markdownExcerpt(concept.bodyMarkdown, "A Math Woods concept.");
+
+  return {
+    title: `${concept.title} - Math Woods`,
+    description,
+    alternates: {
+      canonical: `/concepts/${concept.slug}`,
+      languages: Object.fromEntries(
+        translations.map((translation) => [translation.language, `/concepts/${translation.slug}`])
+      )
+    },
+    openGraph: {
+      title: concept.title,
+      description,
+      url: `/concepts/${concept.slug}`,
+      siteName: "Math Woods",
+      type: "article"
+    },
+    twitter: {
+      card: "summary",
+      title: concept.title,
+      description
+    }
+  };
+}
 
 export default async function ConceptPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -27,6 +75,9 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
       lastEditedBy: true,
       aliases: { orderBy: { alias: "asc" } },
       references: { orderBy: { position: "asc" } },
+      translatedFromConcept: {
+        select: { id: true, slug: true, title: true, language: true }
+      },
       _count: { select: { talkPosts: true, watchers: true } }
     }
   });
@@ -67,6 +118,15 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
   if (preferredTranslation?.slug && preferredTranslation.slug !== concept.slug) {
     redirect(`/concepts/${preferredTranslation.slug}`);
   }
+  const [conceptBodyHtml, translationFreshness, outgoingConceptHrefBySlug] = await Promise.all([
+    renderMarkdownForContentLanguage(concept.bodyMarkdown, concept.language),
+    conceptTranslationFreshness(concept.translatedFromConcept, concept.translatedFromRevisionId),
+    resolveConceptHrefsForLanguage(
+      outgoingLinks.filter((link) => link.exists).map((link) => link.targetSlug),
+      concept.language
+    )
+  ]);
+  const isLanguageFallback = preferredLanguage !== concept.language;
 
   const targetTranslationLanguage = nextMissingTranslationLanguage(concept.language, translations, preferredLanguage);
   const addTranslationHref = targetTranslationLanguage
@@ -120,6 +180,30 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
             translations={translations}
             createHref={addTranslationHref}
           />
+          {isLanguageFallback && (
+            <p className="quality-banner quality-unreviewed mb-4 text-sm">
+              Showing the {contentLanguageLabel(concept.language)} version because no {contentLanguageLabel(preferredLanguage)} translation exists yet.
+              {addTranslationHref && (
+                <>
+                  {" "}
+                  <Link href={addTranslationHref as never} className="underline">
+                    Add that translation
+                  </Link>
+                  .
+                </>
+              )}
+            </p>
+          )}
+          {translationFreshness?.stale && (
+            <p className="quality-banner quality-needs-work mb-4 text-sm">
+              This translation may be outdated. Its source page has changed since revision{" "}
+              {translationFreshness.basedOnRevisionId}.{" "}
+              <Link href={translationFreshness.sourceHref as never} className="underline">
+                Compare with {translationFreshness.sourceTitle}
+              </Link>
+              .
+            </p>
+          )}
           {concept.aliases.length > 0 && (
             <p className="muted mt-1 text-sm">Also known as: {concept.aliases.map((alias) => alias.alias).join(", ")}</p>
           )}
@@ -147,7 +231,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
         )}
 
         <section className="reading-surface">
-          <MarkdownBlock html={concept.bodyHtml} />
+          <MarkdownBlock html={conceptBodyHtml} />
         </section>
 
         {concept.references.length > 0 && (
@@ -226,7 +310,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
             {outgoingLinks.map((link) => (
               <Link
                 key={link.id}
-                href={link.exists ? `/concepts/${link.targetSlug}` : `/concepts/new?title=${link.targetSlug}`}
+                href={(link.exists ? (outgoingConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : `/concepts/new?title=${link.targetSlug}`) as never}
                 className={link.exists ? "wiki-link" : "wiki-link missing"}
               >
                 {link.label ?? link.targetSlug}

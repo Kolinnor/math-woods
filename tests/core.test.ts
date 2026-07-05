@@ -67,6 +67,7 @@ import {
   markdownHeadingLineText
 } from "../lib/markdown-shortcuts.ts";
 import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "../lib/markdown-preview.ts";
+import { markdownExcerpt } from "../lib/metadata-text.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
@@ -118,6 +119,7 @@ assert.equal(
 );
 assert.equal(wikiLinkMarkup("Category", "this is a category"), "[[Category|this is a category]]");
 assert.equal(wikiLinkMarkup("Category", "Category"), "[[Category|Category]]");
+assert.equal(markdownExcerpt("Use [[polynomial|polynomials]] and $x^2$.", "fallback"), "Use polynomials and formula .");
 
 const start = new Date("2026-06-04T10:00:00.000Z");
 const unlock = unlockDate(start);
@@ -484,6 +486,13 @@ const renderedCode = await renderMarkdown("Code `$x$` and `[[not a link]]`, then
 assert.equal(renderedCode.includes("<code>$x$</code>"), true);
 assert.equal(renderedCode.includes("<code>[[not a link]]</code>"), true);
 assert.equal(renderedCode.includes('href="/concepts/polynomial"'), true);
+const renderedTranslatedWikiLink = await renderMarkdown(
+  "See [[polynomial]].",
+  new Set(),
+  true,
+  (link) => `/concepts/fr-${link.targetSlug}`
+);
+assert.equal(renderedTranslatedWikiLink.includes('href="/concepts/fr-polynomial"'), true);
 
 const renderedUnsafeMarkdown = await renderMarkdown("<script>alert(1)</script><img src=x onerror=alert(1)>");
 assert.equal(renderedUnsafeMarkdown.includes("<script"), false);

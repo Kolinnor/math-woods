@@ -14,6 +14,7 @@ import { refreshLinksForConcept, syncInternalLinks } from "@/lib/internal-links"
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { canEditConcept, canRollbackConcept, canSetConceptStatus } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { ensureSlug } from "@/lib/slug";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -32,6 +33,7 @@ export async function createConceptAction(formData: FormData) {
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const language = parseContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
+  const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
   const domain = parseMathDomain(formData.get("domain"));
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
@@ -59,12 +61,32 @@ export async function createConceptAction(formData: FormData) {
         throw new Error("A concept translation already exists in this language.");
       }
     }
+    const translationSource =
+      translationGroupId && translationSourceSlug
+        ? await tx.concept.findFirst({
+            where: { slug: translationSourceSlug, translationGroupId },
+            select: { id: true }
+          })
+        : null;
+    const sourceRevision = translationSource
+      ? await tx.pageRevision.findFirst({
+          where: { pageType: SourceType.CONCEPT, pageId: translationSource.id },
+          orderBy: { id: "desc" },
+          select: { id: true }
+        })
+      : null;
 
     const created = await tx.concept.create({
       data: {
         slug,
         language,
         ...(translationGroupId ? { translationGroupId } : {}),
+        ...(translationSource
+          ? {
+              translatedFromConceptId: translationSource.id,
+              translatedFromRevisionId: sourceRevision?.id ?? null
+            }
+          : {}),
         title,
         bodyMarkdown,
         bodyHtml,
@@ -73,7 +95,7 @@ export async function createConceptAction(formData: FormData) {
         lastEditedById: user.id
       }
     });
-    await syncInternalLinks(SourceType.CONCEPT, created.id, bodyMarkdown, tx);
+    await syncInternalLinks(SourceType.CONCEPT, created.id, bodyMarkdown, tx, language);
     await syncConceptAliases(created.id, aliases, tx);
     await syncConceptReferences(created.id, references, tx);
     await tx.pageRevision.create({
@@ -106,7 +128,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   await assertRateLimit(`concept:update:${user.id}`, 20, 60_000);
   const existingConcept = await prisma.concept.findUnique({
     where: { id: conceptId },
-    select: { createdById: true, language: true, title: true }
+    select: { createdById: true, language: true, title: true, translationGroupId: true, translatedFromConceptId: true }
   });
   if (!existingConcept) throw new Error("Concept not found.");
   if (!canEditConcept(user, existingConcept)) {
@@ -120,6 +142,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Concept edited";
+  const markTranslationFresh = formData.get("markTranslationFresh") === "on";
   const statusInput = formData.get("status");
   const requestedStatus = String(statusInput ?? "") as ConceptStatus;
   const status = statusInput && canSetConceptStatus(user.role, requestedStatus) ? requestedStatus : undefined;
@@ -139,6 +162,28 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       });
       if (existingTitle) throw duplicateConceptTitleError();
     }
+    if (language !== existingConcept.language) {
+      const existingTranslation = await tx.concept.findFirst({
+        where: {
+          id: { not: conceptId },
+          translationGroupId: existingConcept.translationGroupId,
+          language
+        },
+        select: { slug: true }
+      });
+      if (existingTranslation) {
+        throw new Error("A concept translation already exists in this language.");
+      }
+    }
+
+    const refreshedSourceRevision =
+      markTranslationFresh && existingConcept.translatedFromConceptId
+        ? await tx.pageRevision.findFirst({
+            where: { pageType: SourceType.CONCEPT, pageId: existingConcept.translatedFromConceptId },
+            orderBy: { id: "desc" },
+            select: { id: true }
+          })
+        : null;
 
     const updated = await tx.concept.update({
       where: { id: conceptId },
@@ -149,11 +194,12 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         bodyHtml,
         domain,
         ...(status ? { status } : {}),
+        ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {}),
         lastEditedById: user.id
       }
     });
 
-    await syncInternalLinks(SourceType.CONCEPT, updated.id, bodyMarkdown, tx);
+    await syncInternalLinks(SourceType.CONCEPT, updated.id, bodyMarkdown, tx, language);
     await syncConceptAliases(updated.id, aliases, tx);
     await syncConceptReferences(updated.id, references, tx);
     await tx.pageRevision.create({

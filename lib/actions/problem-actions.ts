@@ -133,6 +133,7 @@ export async function createProblemAction(formData: FormData) {
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const language = parseContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
+  const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement");
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
@@ -182,12 +183,32 @@ export async function createProblemAction(formData: FormData) {
         throw new Error("A problem translation already exists in this language.");
       }
     }
+    const translationSource =
+      translationGroupId && translationSourceSlug
+        ? await tx.problem.findFirst({
+            where: { slug: translationSourceSlug, translationGroupId },
+            select: { id: true }
+          })
+        : null;
+    const sourceRevision = translationSource
+      ? await tx.pageRevision.findFirst({
+          where: { pageType: SourceType.PROBLEM, pageId: translationSource.id },
+          orderBy: { id: "desc" },
+          select: { id: true }
+        })
+      : null;
 
     const created = await tx.problem.create({
       data: {
         slug,
         language,
         ...(translationGroupId ? { translationGroupId } : {}),
+        ...(translationSource
+          ? {
+              translatedFromProblemId: translationSource.id,
+              translatedFromRevisionId: sourceRevision?.id ?? null
+            }
+          : {}),
         title,
         bodyMarkdown,
         bodyHtml,
@@ -240,7 +261,7 @@ export async function createProblemAction(formData: FormData) {
         await linkSpecificProblem(tx, parentProblem.id, created.id);
       }
     }
-    await syncInternalLinks(SourceType.PROBLEM, created.id, bodyMarkdown, tx);
+    await syncInternalLinks(SourceType.PROBLEM, created.id, bodyMarkdown, tx, language);
     await syncProblemDomains(tx, created.id, domains);
     await syncProblemRelationGroups(tx, created.id, relatedProblemGroups);
     await syncProblemTags(created.id, tags, tx);
@@ -286,7 +307,15 @@ export async function updateProblemAction(problemId: number, formData: FormData)
   await assertRateLimit(`problem:update:${user.id}`, 20, 60_000);
   const previous = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { authorId: true, slug: true, title: true, qualityStatus: true }
+    select: {
+      authorId: true,
+      slug: true,
+      title: true,
+      qualityStatus: true,
+      language: true,
+      translationGroupId: true,
+      translatedFromProblemId: true
+    }
   });
   if (!previous) throw new Error("Problem not found.");
   if (!canEditProblem(user, previous)) {
@@ -322,6 +351,7 @@ export async function updateProblemAction(problemId: number, formData: FormData)
   const tags = tagsWithConjecture(boundedText(formData.get("tags"), CONTENT_LIMITS.tagList, "Tags"), formData.get("conjecture"));
   const spoilerTags = boundedText(formData.get("spoilerTags"), CONTENT_LIMITS.tagList, "Spoiler tags");
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Problem edited";
+  const markTranslationFresh = formData.get("markTranslationFresh") === "on";
   const relatedProblemGroups = boundedText(
     formData.get("relatedProblemGroups"),
     CONTENT_LIMITS.relationGroups,
@@ -334,6 +364,29 @@ export async function updateProblemAction(problemId: number, formData: FormData)
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   const problem = await prisma.$transaction(async (tx) => {
+    if (language !== previous.language) {
+      const existingTranslation = await tx.problem.findFirst({
+        where: {
+          id: { not: problemId },
+          translationGroupId: previous.translationGroupId,
+          language
+        },
+        select: { slug: true }
+      });
+      if (existingTranslation) {
+        throw new Error("A problem translation already exists in this language.");
+      }
+    }
+
+    const refreshedSourceRevision =
+      markTranslationFresh && previous.translatedFromProblemId
+        ? await tx.pageRevision.findFirst({
+            where: { pageType: SourceType.PROBLEM, pageId: previous.translatedFromProblemId },
+            orderBy: { id: "desc" },
+            select: { id: true }
+          })
+        : null;
+
     const updated = await tx.problem.update({
       where: { id: problemId },
       data: {
@@ -351,11 +404,12 @@ export async function updateProblemAction(problemId: number, formData: FormData)
         qualityStatus,
         verificationMode,
         verificationPrompt: verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt,
-        verificationAnswer: verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null
+        verificationAnswer: verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null,
+        ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {})
       }
     });
 
-    await syncInternalLinks(SourceType.PROBLEM, updated.id, bodyMarkdown, tx);
+    await syncInternalLinks(SourceType.PROBLEM, updated.id, bodyMarkdown, tx, language);
     await syncProblemDomains(tx, updated.id, domains);
     await syncProblemRelationGroups(tx, updated.id, relatedProblemGroups);
     await syncProblemTags(updated.id, tags, tx);

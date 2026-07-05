@@ -236,50 +236,55 @@ model Session {
 }
 
 model Problem {
-  id                   Int                          @id @default(autoincrement())
-  slug                 String                       @unique
-  language             String                       @default("en")
-  translationGroupId   String                       @default(cuid())
-  title                String
-  bodyMarkdown         String
-  bodyHtml             String
-  authorId             Int
-  difficulty           Int?
-  domain               MathDomain                   @default(OTHER)
-  origin               String                       @default("Unknown")
-  originChapter        String?
-  originPage           String?
-  originNote           String?
-  license              String                       @default("CC BY-SA 4.0")
-  listed               Boolean                      @default(true)
-  status               ProblemStatus                @default(PUBLISHED)
-  qualityStatus        QualityStatus                @default(UNREVIEWED)
-  verificationMode     ProblemVerificationMode      @default(NONE)
-  verificationPrompt   String?
-  verificationAnswer   String?
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
-  author               User                         @relation(fields: [authorId], references: [id])
-  thread               DiscussionThread?
-  attempts             ProblemAttempt[]
-  playlistItems        PlaylistItem[]
-  tags                 ProblemTag[]
-  spoilerTags          ProblemSpoilerTag[]
-  domains              ProblemDomain[]
-  favorites            ProblemFavorite[]
-  hints                ProblemHint[]
-  proofs               ProblemProof[]
-  circuitNodes         PlaylistNode[]
-  quoteLinks           QuoteProblem[]
-  relatedGroups        ProblemRelationGroup[]       @relation("ProblemRelationSource")
-  incomingRelations    ProblemRelation[]            @relation("ProblemRelationTarget")
-  verificationRequests ProblemVerificationRequest[]
-  tipLinks             TipProblem[]
+  id                       Int                          @id @default(autoincrement())
+  slug                     String                       @unique
+  language                 String                       @default("en")
+  translationGroupId       String                       @default(cuid())
+  translatedFromProblemId  Int?
+  translatedFromRevisionId Int?
+  title                    String
+  bodyMarkdown             String
+  bodyHtml                 String
+  authorId                 Int
+  difficulty               Int?
+  domain                   MathDomain                   @default(OTHER)
+  origin                   String                       @default("Unknown")
+  originChapter            String?
+  originPage               String?
+  originNote               String?
+  license                  String                       @default("CC BY-SA 4.0")
+  listed                   Boolean                      @default(true)
+  status                   ProblemStatus                @default(PUBLISHED)
+  qualityStatus            QualityStatus                @default(UNREVIEWED)
+  verificationMode         ProblemVerificationMode      @default(NONE)
+  verificationPrompt       String?
+  verificationAnswer       String?
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+  author                   User                         @relation(fields: [authorId], references: [id])
+  thread                   DiscussionThread?
+  attempts                 ProblemAttempt[]
+  playlistItems            PlaylistItem[]
+  tags                     ProblemTag[]
+  spoilerTags              ProblemSpoilerTag[]
+  domains                  ProblemDomain[]
+  favorites                ProblemFavorite[]
+  hints                    ProblemHint[]
+  proofs                   ProblemProof[]
+  circuitNodes             PlaylistNode[]
+  quoteLinks               QuoteProblem[]
+  relatedGroups            ProblemRelationGroup[]       @relation("ProblemRelationSource")
+  incomingRelations        ProblemRelation[]            @relation("ProblemRelationTarget")
+  verificationRequests     ProblemVerificationRequest[]
+  tipLinks                 TipProblem[]
+  translatedFromProblem    Problem?                     @relation("ProblemTranslationSource", fields: [translatedFromProblemId], references: [id], onDelete: SetNull)
+  derivedTranslations      Problem[]                    @relation("ProblemTranslationSource")
 
   @@unique([translationGroupId, language])
   @@index([status, createdAt])
   @@index([language, status, createdAt])
   @@index([translationGroupId])
+  @@index([translatedFromProblemId])
 }
 
 model ProblemDomain {
@@ -297,31 +302,36 @@ model ProblemDomain {
 }
 
 model Concept {
-  id                 Int                @id @default(autoincrement())
-  slug               String             @unique
-  language           String             @default("en")
-  translationGroupId String             @default(cuid())
-  title              String
-  bodyMarkdown       String
-  bodyHtml           String
-  domain             MathDomain         @default(OTHER)
-  status             ConceptStatus      @default(STUB)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  createdById        Int?
-  lastEditedById     Int?
-  createdBy          User?              @relation("ConceptCreatedBy", fields: [createdById], references: [id])
-  lastEditedBy       User?              @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
-  aliases            ConceptAlias[]
-  references         ConceptReference[]
-  talkPosts          ConceptTalkPost[]
-  watchers           ConceptWatch[]
-  circuitNodes       PlaylistNode[]
-  quoteLinks         QuoteConcept[]
+  id                       Int                @id @default(autoincrement())
+  slug                     String             @unique
+  language                 String             @default("en")
+  translationGroupId       String             @default(cuid())
+  translatedFromConceptId  Int?
+  translatedFromRevisionId Int?
+  title                    String
+  bodyMarkdown             String
+  bodyHtml                 String
+  domain                   MathDomain         @default(OTHER)
+  status                   ConceptStatus      @default(STUB)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  createdById              Int?
+  lastEditedById           Int?
+  createdBy                User?              @relation("ConceptCreatedBy", fields: [createdById], references: [id])
+  lastEditedBy             User?              @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
+  aliases                  ConceptAlias[]
+  references               ConceptReference[]
+  talkPosts                ConceptTalkPost[]
+  watchers                 ConceptWatch[]
+  circuitNodes             PlaylistNode[]
+  quoteLinks               QuoteConcept[]
+  translatedFromConcept    Concept?           @relation("ConceptTranslationSource", fields: [translatedFromConceptId], references: [id], onDelete: SetNull)
+  derivedTranslations      Concept[]          @relation("ConceptTranslationSource")
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
   @@index([translationGroupId])
+  @@index([translatedFromConceptId])
 }
 
 model PageRevision {

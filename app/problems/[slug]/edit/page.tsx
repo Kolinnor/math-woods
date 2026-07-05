@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { QualityStatus } from "@prisma/client";
+import { QualityStatus, SourceType } from "@prisma/client";
 import Link from "next/link";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
 import { LanguageField } from "@/components/LanguageField";
@@ -31,6 +31,9 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
       spoilerTags: { include: { tag: true } },
       domains: { orderBy: { position: "asc" } },
       hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
+      translatedFromProblem: {
+        select: { id: true, slug: true, title: true, language: true }
+      },
       relatedGroups: {
         include: {
           relations: {
@@ -58,6 +61,25 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const canSetGoodStatus = canSetProblemQualityStatus(user.role, QualityStatus.GOOD);
   const canSetExcellentStatus = canSetProblemQualityStatus(user.role, QualityStatus.EXCELLENT);
   if (problem.status === "ARCHIVED" && !canEditArchivedProblem) notFound();
+  const [siblingTranslations, sourceRevision] = await Promise.all([
+    prisma.problem.findMany({
+      where: {
+        translationGroupId: problem.translationGroupId,
+        id: { not: problem.id }
+      },
+      select: { language: true }
+    }),
+    problem.translatedFromProblemId
+      ? prisma.pageRevision.findFirst({
+          where: { pageType: SourceType.PROBLEM, pageId: problem.translatedFromProblemId },
+          orderBy: { id: "desc" },
+          select: { id: true }
+        })
+      : null
+  ]);
+  const staleTranslation = Boolean(
+    sourceRevision && problem.translatedFromRevisionId && sourceRevision.id > problem.translatedFromRevisionId
+  );
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -83,8 +105,21 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
         </label>
         <LanguageField
           defaultValue={problem.language}
+          disabledValues={siblingTranslations.map((translation) => translation.language)}
           help="Changing this moves the page to another language inside the same translation group."
         />
+        {problem.translatedFromProblem && (
+          <label className="checkbox-field">
+            <input name="markTranslationFresh" type="checkbox" defaultChecked={false} />
+            <span>
+              <strong>Mark translation up to date</strong>
+              <small>
+                Source: {problem.translatedFromProblem.title}
+                {staleTranslation ? ` / newer revision ${sourceRevision?.id} available` : " / no newer source revision detected"}
+              </small>
+            </span>
+          </label>
+        )}
         <div className="grid gap-2">
           <span className="text-sm font-medium">Statement</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={problem.bodyMarkdown} />

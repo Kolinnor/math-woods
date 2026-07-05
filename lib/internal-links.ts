@@ -19,7 +19,8 @@ export async function syncInternalLinks(
   sourceType: SourceType,
   sourceId: number,
   markdown: string,
-  tx: Prisma.TransactionClient = prisma
+  tx: Prisma.TransactionClient = prisma,
+  sourceLanguage?: string
 ) {
   const links = extractWikiLinks(markdown);
 
@@ -28,12 +29,16 @@ export async function syncInternalLinks(
   });
 
   for (const link of links) {
-    const concept = await tx.concept.findFirst({
+    const concepts = await tx.concept.findMany({
       where: {
         OR: [{ slug: link.targetSlug }, { aliases: { some: { aliasSlug: link.targetSlug } } }]
       },
-      select: { id: true, slug: true }
+      select: { id: true, slug: true, language: true },
+      orderBy: { id: "asc" }
     });
+    const concept =
+      (sourceLanguage ? concepts.find((candidate) => candidate.language === sourceLanguage) : null) ??
+      concepts[0];
 
     await tx.internalLink.create({
       data: {

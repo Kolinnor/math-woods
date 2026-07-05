@@ -15,8 +15,10 @@ import { getCurrentSession, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { mailStatusLabel } from "@/lib/email-verification";
 import { mergeLatexPreferences, type LatexPreferenceValues } from "@/lib/latex-preferences";
-import { assignableRolesFor, canAssignRole, canManageUserRoles } from "@/lib/permissions";
+import { contentLanguageLabel } from "@/lib/languages";
+import { assignableRolesFor, canAssignRole, canManageUserRoles, canUseOwnerTools } from "@/lib/permissions";
 import { roleLabel } from "@/lib/roles";
+import { translationDashboard } from "@/lib/translation-dashboard";
 import { displayNameForUser } from "@/lib/user-display";
 import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
@@ -314,9 +316,16 @@ export default async function SettingsPage({
   const currentSession = await getCurrentSession();
   const params = searchParams ? await searchParams : {};
   const canManageRoles = canManageUserRoles(user);
+  const canUseTranslationsDashboard = canUseOwnerTools(user);
   const requestedTab =
-    params.tab === "notifications" || params.tab === "admin" || params.tab === "latex" ? params.tab : "account";
-  const tab = requestedTab === "admin" && !canManageRoles ? "account" : requestedTab;
+    params.tab === "notifications" || params.tab === "admin" || params.tab === "latex" || params.tab === "translations"
+      ? params.tab
+      : "account";
+  const tab =
+    (requestedTab === "admin" && !canManageRoles) ||
+    (requestedTab === "translations" && !canUseTranslationsDashboard)
+      ? "account"
+      : requestedTab;
   const adminUsersTab = params.adminUsers === "deleted" ? "deleted" : "active";
   const verifyStatus = params.verify;
   const [sessions, notificationPreferences, savedLatexPreferences] = await Promise.all([
@@ -348,6 +357,7 @@ export default async function SettingsPage({
   const activeUsers = roleUsers.filter((managedUser) => !isDeletedUser(managedUser));
   const deletedUsers = roleUsers.filter(isDeletedUser);
   const shownAdminUsers = adminUsersTab === "deleted" ? deletedUsers : activeUsers;
+  const translationsDashboard = tab === "translations" ? await translationDashboard() : null;
 
   return (
     <ForestPageLayout
@@ -442,6 +452,11 @@ export default async function SettingsPage({
         {canManageRoles && (
           <Link href="/settings?tab=admin" className={tab === "admin" ? "active" : ""}>
             Admin
+          </Link>
+        )}
+        {canUseTranslationsDashboard && (
+          <Link href="/settings?tab=translations" className={tab === "translations" ? "active" : ""}>
+            Translations
           </Link>
         )}
       </nav>
@@ -670,6 +685,79 @@ export default async function SettingsPage({
               Reset to default
             </ConfirmSubmitButton>
           </form>
+        </section>
+      )}
+
+      {tab === "translations" && translationsDashboard && (
+        <section className="panel grid gap-6 p-5">
+          <div>
+            <h2 className="text-lg font-semibold">Translation health</h2>
+            <p className="muted text-sm">
+              Owner-only view for missing translations and pages that may need a refresh after source edits.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-md border border-line p-3">
+              <p className="muted text-xs">Problems</p>
+              <p className="text-2xl font-semibold">{translationsDashboard.totals.problems}</p>
+            </div>
+            <div className="rounded-md border border-line p-3">
+              <p className="muted text-xs">Concepts</p>
+              <p className="text-2xl font-semibold">{translationsDashboard.totals.concepts}</p>
+            </div>
+            <div className="rounded-md border border-line p-3">
+              <p className="muted text-xs">Missing groups</p>
+              <p className="text-2xl font-semibold">{translationsDashboard.totals.withMissingTranslations}</p>
+            </div>
+            <div className="rounded-md border border-line p-3">
+              <p className="muted text-xs">Stale</p>
+              <p className="text-2xl font-semibold">{translationsDashboard.totals.stale}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            <h3 className="font-semibold">Possibly outdated translations</h3>
+            {translationsDashboard.staleTranslations.length > 0 ? (
+              translationsDashboard.staleTranslations.map((item) => (
+                <div key={`${item.type}:${item.href}`} className="rounded-md border border-line p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">
+                        {item.type}: <Link href={item.href as never} className="underline">{item.title}</Link>
+                      </p>
+                      <p className="muted">
+                        {contentLanguageLabel(item.language)} / based on revision {item.basedOnRevisionId}, source now revision{" "}
+                        {item.latestRevisionId}
+                      </p>
+                    </div>
+                    <Link href={item.sourceHref as never} className="button secondary">
+                      Source
+                    </Link>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="muted rounded-md border border-line p-3 text-sm">No stale translations detected.</p>
+            )}
+          </div>
+
+          <div className="grid gap-4">
+            <h3 className="font-semibold">Missing translations</h3>
+            {translationsDashboard.gaps.length > 0 ? (
+              translationsDashboard.gaps.map((gap) => (
+                <div key={`${gap.type}:${gap.href}`} className="rounded-md border border-line p-3 text-sm">
+                  <p className="font-medium">
+                    {gap.type}: <Link href={gap.href as never} className="underline">{gap.title}</Link>
+                  </p>
+                  <p className="muted">Existing: {gap.existingLanguages.map(contentLanguageLabel).join(", ")}</p>
+                  <p className="muted">Missing: {gap.missingLanguages.join(", ")}</p>
+                </div>
+              ))
+            ) : (
+              <p className="muted rounded-md border border-line p-3 text-sm">No missing translations detected.</p>
+            )}
+          </div>
         </section>
       )}
 

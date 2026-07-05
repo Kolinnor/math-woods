@@ -1,4 +1,5 @@
 ﻿import { ProblemVerificationMode } from "@prisma/client";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { QualityStatus } from "@prisma/client";
@@ -26,6 +27,8 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
+import { contentLanguageLabel } from "@/lib/languages";
+import { markdownExcerpt } from "@/lib/metadata-text";
 import {
   canEditProblem,
   canEditSolution,
@@ -38,10 +41,55 @@ import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { qualityLabel } from "@/lib/quality";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
+import { problemTranslationFreshness } from "@/lib/translation-freshness";
 import { nextMissingTranslationLanguage, preferredTranslationForLanguage } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const problem = await prisma.problem.findUnique({
+    where: { slug },
+    select: {
+      slug: true,
+      title: true,
+      bodyMarkdown: true,
+      translationGroupId: true
+    }
+  });
+  if (!problem) return {};
+
+  const translations = await prisma.problem.findMany({
+    where: { translationGroupId: problem.translationGroupId },
+    select: { slug: true, language: true }
+  });
+  const description = markdownExcerpt(problem.bodyMarkdown, "A Math Woods problem.");
+
+  return {
+    title: `${problem.title} - Math Woods`,
+    description,
+    alternates: {
+      canonical: `/problems/${problem.slug}`,
+      languages: Object.fromEntries(
+        translations.map((translation) => [translation.language, `/problems/${translation.slug}`])
+      )
+    },
+    openGraph: {
+      title: problem.title,
+      description,
+      url: `/problems/${problem.slug}`,
+      siteName: "Math Woods",
+      type: "article"
+    },
+    twitter: {
+      card: "summary",
+      title: problem.title,
+      description
+    }
+  };
+}
 
 function difficultyColor(difficulty: number | null) {
   if (!difficulty) return "#8a9184";
@@ -101,6 +149,9 @@ export default async function ProblemPage({
           }
         },
         orderBy: { position: "asc" }
+      },
+      translatedFromProblem: {
+        select: { id: true, slug: true, title: true, language: true }
       }
     }
   });
@@ -214,6 +265,15 @@ export default async function ProblemPage({
   if (preferredTranslation?.slug && preferredTranslation.slug !== problem.slug) {
     redirect(`/problems/${preferredTranslation.slug}`);
   }
+  const [problemBodyHtml, translationFreshness, linkedConceptHrefBySlug] = await Promise.all([
+    renderMarkdownForContentLanguage(problem.bodyMarkdown, problem.language),
+    problemTranslationFreshness(problem.translatedFromProblem, problem.translatedFromRevisionId),
+    resolveConceptHrefsForLanguage(
+      links.filter((link) => link.exists).map((link) => link.targetSlug),
+      problem.language
+    )
+  ]);
+  const isLanguageFallback = preferredLanguage !== problem.language;
 
   const proofVotes = new Map(proofVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const ownProofVoteIds = new Set(userVotes.filter((vote) => vote.targetType === TargetType.PROOF).map((vote) => vote.targetId));
@@ -291,6 +351,30 @@ export default async function ProblemPage({
             translations={translations}
             createHref={addTranslationHref}
           />
+          {isLanguageFallback && (
+            <p className="quality-banner quality-unreviewed mb-4 text-sm">
+              Showing the {contentLanguageLabel(problem.language)} version because no {contentLanguageLabel(preferredLanguage)} translation exists yet.
+              {addTranslationHref && (
+                <>
+                  {" "}
+                  <Link href={addTranslationHref as never} className="underline">
+                    Add that translation
+                  </Link>
+                  .
+                </>
+              )}
+            </p>
+          )}
+          {translationFreshness?.stale && (
+            <p className="quality-banner quality-needs-work mb-4 text-sm">
+              This translation may be outdated. Its source page has changed since revision{" "}
+              {translationFreshness.basedOnRevisionId}.{" "}
+              <Link href={translationFreshness.sourceHref as never} className="underline">
+                Compare with {translationFreshness.sourceTitle}
+              </Link>
+              .
+            </p>
+          )}
           {problem.tags.length > 0 && (
             <div className="problem-detail-tags zen-meta">
               {problem.tags.map(({ tag }) => (
@@ -338,7 +422,7 @@ export default async function ProblemPage({
         )}
 
         <section className="problem-statement reading-surface">
-          <MarkdownBlock html={problem.bodyHtml} />
+          <MarkdownBlock html={problemBodyHtml} />
         </section>
         {hasSpecifiedOrigin && (
           <div className="problem-origin-note zen-meta">
@@ -711,7 +795,7 @@ export default async function ProblemPage({
               {links.map((link) => (
                 <Link
                   key={link.id}
-                  href={link.exists ? `/concepts/${link.targetSlug}` : `/concepts/new?title=${link.targetSlug}`}
+                  href={(link.exists ? (linkedConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : `/concepts/new?title=${link.targetSlug}`) as never}
                   className={link.exists ? "wiki-link" : "wiki-link missing"}
                 >
                   {link.label ?? link.targetSlug}

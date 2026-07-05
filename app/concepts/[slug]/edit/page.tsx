@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ConceptStatus } from "@prisma/client";
+import { ConceptStatus, SourceType } from "@prisma/client";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
@@ -17,7 +17,13 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
   const { slug } = await params;
   const concept = await prisma.concept.findUnique({
     where: { slug },
-    include: { aliases: true, references: { orderBy: { position: "asc" } } }
+    include: {
+      aliases: true,
+      references: { orderBy: { position: "asc" } },
+      translatedFromConcept: {
+        select: { id: true, slug: true, title: true, language: true }
+      }
+    }
   });
 
   if (!concept) notFound();
@@ -35,6 +41,25 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
       canSetReviewedStatus ||
       canSetExcellentStatus ||
       canSetControversialStatus);
+  const [siblingTranslations, sourceRevision] = await Promise.all([
+    prisma.concept.findMany({
+      where: {
+        translationGroupId: concept.translationGroupId,
+        id: { not: concept.id }
+      },
+      select: { language: true }
+    }),
+    concept.translatedFromConceptId
+      ? prisma.pageRevision.findFirst({
+          where: { pageType: SourceType.CONCEPT, pageId: concept.translatedFromConceptId },
+          orderBy: { id: "desc" },
+          select: { id: true }
+        })
+      : null
+  ]);
+  const staleTranslation = Boolean(
+    sourceRevision && concept.translatedFromRevisionId && sourceRevision.id > concept.translatedFromRevisionId
+  );
 
   return (
     <ForestPageLayout
@@ -52,8 +77,21 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
         </label>
         <LanguageField
           defaultValue={concept.language}
+          disabledValues={siblingTranslations.map((translation) => translation.language)}
           help="Changing this moves the page to another language inside the same translation group."
         />
+        {concept.translatedFromConcept && (
+          <label className="checkbox-field">
+            <input name="markTranslationFresh" type="checkbox" defaultChecked={false} />
+            <span>
+              <strong>Mark translation up to date</strong>
+              <small>
+                Source: {concept.translatedFromConcept.title}
+                {staleTranslation ? ` / newer revision ${sourceRevision?.id} available` : " / no newer source revision detected"}
+              </small>
+            </span>
+          </label>
+        )}
         <div className="grid gap-4">
           <ProblemDomainPicker
             domains={PROBLEM_DOMAINS}

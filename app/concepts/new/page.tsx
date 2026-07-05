@@ -57,6 +57,7 @@ export default async function NewConceptPage({
       <div className="translation-compose-main">
         <form action={createConceptAction} className="panel grid gap-4 p-5">
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
+        {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
         <div className="growth-note">
           <strong>Start small.</strong>
           <span>

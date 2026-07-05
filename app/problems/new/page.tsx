@@ -71,6 +71,7 @@ export default async function NewProblemPage({
         {playlist && <input type="hidden" name="addToPlaylistSlug" value={playlist} />}
         {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
         {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
+        {sourceProblem && <input type="hidden" name="translationSourceSlug" value={sourceProblem.slug} />}
         <div className="growth-note">
           <strong>Start small.</strong>
           <span>
