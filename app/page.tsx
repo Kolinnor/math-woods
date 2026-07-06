@@ -295,15 +295,19 @@ export default async function HomePage() {
   const user = await getCurrentUser();
   const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
-  const problemWhere = {
+  const baseProblemWhere = {
     status: "PUBLISHED" as const,
     listed: true,
     language: preferredLanguage
   };
+  const frontPageProblemWhere = {
+    ...baseProblemWhere,
+    canAppearOnFrontPage: true
+  };
 
   const [problemRows, resumeAttempt, tip] = await Promise.all([
     prisma.problem.findMany({
-      where: problemWhere,
+      where: frontPageProblemWhere,
       orderBy: { createdAt: "desc" },
       take: 4,
       include: {
@@ -316,7 +320,7 @@ export default async function HomePage() {
           where: {
             userId: user.id,
             status: { not: "SOLVED" },
-            problem: problemWhere
+            problem: baseProblemWhere
           },
           orderBy: { updatedAt: "desc" },
           include: { problem: { select: { slug: true, title: true } } }
@@ -329,7 +333,7 @@ export default async function HomePage() {
         prisma.tipProblem.findMany({
           where: {
             tipId: tip.id,
-            problem: problemWhere
+            problem: frontPageProblemWhere
           },
           orderBy: { position: "asc" },
           take: 3,

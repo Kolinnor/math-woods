@@ -355,6 +355,7 @@ export async function updateProblemAction(problemId: number, formData: FormData)
       originPage: true,
       originNote: true,
       listed: true,
+      canAppearOnFrontPage: true,
       qualityStatus: true,
       verificationMode: true,
       verificationPrompt: true,
@@ -384,6 +385,9 @@ export async function updateProblemAction(problemId: number, formData: FormData)
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
   const listed = formData.get("listed") === "on";
+  const canAppearOnFrontPage = canUseAdminTools(user)
+    ? formData.get("canAppearOnFrontPage") === "on"
+    : previous.canAppearOnFrontPage;
   const verificationMode = parseProblemVerificationMode(formData.get("verificationMode"));
   const verificationPrompt = optionalBoundedText(
     formData.get("verificationPrompt"),
@@ -428,6 +432,7 @@ export async function updateProblemAction(problemId: number, formData: FormData)
     "source"
   );
   pushChange(changedFields, previous.listed !== listed, "visibility");
+  pushChange(changedFields, previous.canAppearOnFrontPage !== canAppearOnFrontPage, "front page eligibility");
   pushChange(changedFields, previous.qualityStatus !== qualityStatus, "quality");
   pushChange(
     changedFields,
@@ -478,6 +483,7 @@ export async function updateProblemAction(problemId: number, formData: FormData)
         originPage,
         originNote,
         listed,
+        canAppearOnFrontPage,
         qualityStatus,
         verificationMode,
         verificationPrompt: verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt,

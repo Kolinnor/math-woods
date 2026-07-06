@@ -55,6 +55,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const canEditArchivedProblem = canEditProblem(user, problem);
   const canDeleteCurrentProblem = canDeleteProblem(user, problem);
   const canManageProblemHints = canUseAdminTools(user);
+  const canManageFrontPageEligibility = canUseAdminTools(user);
   const canSetCurrentQualityStatus = canSetProblemQualityStatus(user.role, problem.qualityStatus);
   const canSetUnreviewedStatus = canSetProblemQualityStatus(user.role, QualityStatus.UNREVIEWED);
   const canSetNeedsWorkStatus = canSetProblemQualityStatus(user.role, QualityStatus.NEEDS_WORK);
@@ -199,6 +200,17 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             </small>
           </span>
         </label>
+        {canManageFrontPageEligibility && (
+          <label className="checkbox-field">
+            <input name="canAppearOnFrontPage" type="checkbox" defaultChecked={problem.canAppearOnFrontPage} />
+            <span>
+              <strong>Can appear on the front page</strong>
+              <small>
+                Allows this problem to be selected for the home page, including Problem to try. Admins can turn this off for drafts, niche variants, or problems that should stay browse-only.
+              </small>
+            </span>
+          </label>
+        )}
         <label className="checkbox-field">
           <input name="conjecture" type="checkbox" defaultChecked={isConjecture} />
           <span>

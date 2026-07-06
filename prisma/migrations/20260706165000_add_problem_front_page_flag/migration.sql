@@ -1,0 +1,1 @@
+ALTER TABLE "Problem" ADD COLUMN "canAppearOnFrontPage" BOOLEAN NOT NULL DEFAULT true;
