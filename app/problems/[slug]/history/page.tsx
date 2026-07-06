@@ -175,7 +175,7 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
           const changedRows = diffRows.filter((row) => row.kind !== "context").length;
 
           return (
-            <section key={revision.id} className="panel p-4">
+            <section key={revision.id} id={`revision-${revision.id}`} className="revision-card panel p-4 scroll-mt-24">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="font-semibold">Revision {revision.id}</h2>

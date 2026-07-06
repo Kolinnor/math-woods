@@ -55,7 +55,7 @@ import {
   canUseAdminTools
 } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
-import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
+import { parseTagInput, syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -67,6 +67,42 @@ async function renderMarkdownContent(markdown: string) {
 function intField(value: FormDataEntryValue | null, fallback: number) {
   const parsed = Number(value);
   return Number.isInteger(parsed) ? parsed : fallback;
+}
+
+function listFingerprint(values: string[]) {
+  return [...new Set(values.filter(Boolean))].sort().join("|");
+}
+
+function parsedTagFingerprint(input: string) {
+  return listFingerprint(parseTagInput(input).map((tag) => tag.slug));
+}
+
+function storedTagFingerprint(items: Array<{ tag: { slug: string } }>) {
+  return listFingerprint(items.map((item) => item.tag.slug));
+}
+
+function domainFingerprint(items: Array<{ mscCode: string; spoiler: boolean }>) {
+  return listFingerprint(items.map((item) => `${item.mscCode}${item.spoiler ? ":spoiler" : ""}`));
+}
+
+function pushChange(changes: string[], changed: boolean, label: string) {
+  if (changed) changes.push(label);
+}
+
+function problemEditNotificationBody({
+  actorName,
+  title,
+  changedFields,
+  editSummary
+}: {
+  actorName: string;
+  title: string;
+  changedFields: string[];
+  editSummary: string;
+}) {
+  const changed = changedFields.length ? ` Changed: ${changedFields.join(", ")}.` : "";
+  const summary = editSummary && editSummary !== "Problem edited" ? ` Summary: ${editSummary}.` : "";
+  return `${actorName} edited "${title}".${changed}${summary}`;
 }
 
 async function requireProblemHintAdmin() {
@@ -311,10 +347,25 @@ export async function updateProblemAction(problemId: number, formData: FormData)
       authorId: true,
       slug: true,
       title: true,
+      bodyMarkdown: true,
+      difficulty: true,
+      domain: true,
+      origin: true,
+      originChapter: true,
+      originPage: true,
+      originNote: true,
+      listed: true,
       qualityStatus: true,
+      verificationMode: true,
+      verificationPrompt: true,
+      verificationAnswer: true,
       language: true,
       translationGroupId: true,
-      translatedFromProblemId: true
+      translatedFromProblemId: true,
+      translatedFromRevisionId: true,
+      domains: { select: { mscCode: true, spoiler: true } },
+      tags: { include: { tag: { select: { slug: true } } } },
+      spoilerTags: { include: { tag: { select: { slug: true } } } }
     }
   });
   if (!previous) throw new Error("Problem not found.");
@@ -361,6 +412,32 @@ export async function updateProblemAction(problemId: number, formData: FormData)
   if (verificationMode === ProblemVerificationMode.SELF_CHECK && !verificationAnswer) {
     throw new Error("Short answer verification requires an expected answer.");
   }
+
+  const changedFields: string[] = [];
+  pushChange(changedFields, previous.title !== title, "title");
+  pushChange(changedFields, previous.bodyMarkdown !== bodyMarkdown, "statement");
+  pushChange(changedFields, previous.language !== language, "language");
+  pushChange(changedFields, previous.difficulty !== difficulty, "difficulty");
+  pushChange(changedFields, domainFingerprint(previous.domains) !== domainFingerprint(domains), "domains");
+  pushChange(
+    changedFields,
+    previous.origin !== origin ||
+      previous.originChapter !== originChapter ||
+      previous.originPage !== originPage ||
+      previous.originNote !== originNote,
+    "source"
+  );
+  pushChange(changedFields, previous.listed !== listed, "visibility");
+  pushChange(changedFields, previous.qualityStatus !== qualityStatus, "quality");
+  pushChange(
+    changedFields,
+    previous.verificationMode !== verificationMode ||
+      previous.verificationPrompt !== (verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt) ||
+      previous.verificationAnswer !== (verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null),
+    "verification"
+  );
+  pushChange(changedFields, storedTagFingerprint(previous.tags) !== parsedTagFingerprint(tags), "tags");
+  pushChange(changedFields, storedTagFingerprint(previous.spoilerTags) !== parsedTagFingerprint(spoilerTags), "spoiler tags");
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   const problem = await prisma.$transaction(async (tx) => {
@@ -414,7 +491,7 @@ export async function updateProblemAction(problemId: number, formData: FormData)
     await syncProblemRelationGroups(tx, updated.id, relatedProblemGroups);
     await syncProblemTags(updated.id, tags, tx);
     await syncProblemSpoilerTags(updated.id, spoilerTags, tx);
-    await tx.pageRevision.create({
+    const revision = await tx.pageRevision.create({
       data: {
         pageType: SourceType.PROBLEM,
         pageId: updated.id,
@@ -424,19 +501,25 @@ export async function updateProblemAction(problemId: number, formData: FormData)
       }
     });
 
-    return updated;
+    return { updated, revisionId: revision.id };
   });
 
   revalidatePath("/");
-  revalidatePath(`/problems/${problem.slug}`);
+  revalidatePath(`/problems/${problem.updated.slug}`);
+  revalidatePath(`/problems/${problem.updated.slug}/history`);
   await notifyProblemEditSubscribers({
     problemId,
     actorId: user.id,
     title: "Problem edited",
-    body: `${displayNameForUser(user)} edited "${previous.title}".`,
-    href: `/problems/${problem.slug}`
+    body: problemEditNotificationBody({
+      actorName: displayNameForUser(user),
+      title: previous.title,
+      changedFields,
+      editSummary
+    }),
+    href: `/problems/${problem.updated.slug}/history#revision-${problem.revisionId}`
   });
-  redirect(`/problems/${problem.slug}`);
+  redirect(`/problems/${problem.updated.slug}`);
 }
 
 export async function deleteProblemAction(problemId: number) {
