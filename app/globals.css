@@ -6456,12 +6456,6 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
   align-self: start;
   display: grid;
   gap: 1.3rem;
-  max-height: calc(100vh - 6rem);
-  overflow: auto;
-  overscroll-behavior: contain;
-  position: sticky;
-  scrollbar-gutter: stable;
-  top: 5rem;
 }
 
 .problem-difficulty-tile {
