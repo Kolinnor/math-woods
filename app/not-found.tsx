@@ -6,10 +6,7 @@ export default function NotFound() {
       <section className="panel error-page-panel">
         <p className="error-page-kicker">404</p>
         <h1>You got lost in the forest.</h1>
-        <p className="muted">
-          This trail does not seem to lead to a Math Woods page. The map may have changed, or the path may never have
-          existed.
-        </p>
+        <p className="muted">This link does not seem to lead to a Math Woods page.</p>
         <div className="error-page-actions">
           <Link href="/problems" className="button">
             Browse problems

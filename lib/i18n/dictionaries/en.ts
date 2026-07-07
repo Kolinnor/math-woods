@@ -306,6 +306,8 @@ export const en = {
     requestConceptDescription: "Tell contributors which mathematical notion should get a concept page.",
     requestConceptPlaceholder:
       "Describe the concept page you would like: the notion, examples, related results, references, or level of detail you have in mind.",
+    featuredConcepts: "Featured concepts",
+    featuredConceptsDescription: "A few useful entries to start browsing from.",
     missingConcepts: "Missing concepts",
     missingConceptsDescription: "Frequently linked gaps are good places to contribute.",
     citedIn: (count: number) => `Cited in ${count}`,

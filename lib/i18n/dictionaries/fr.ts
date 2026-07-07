@@ -311,6 +311,8 @@ export const fr = {
     requestConceptDescription: "Indique aux contributeurs quelle notion mathématique devrait avoir une page.",
     requestConceptPlaceholder:
       "Décris la page souhaitée : notion, exemples, résultats liés, références ou niveau de détail.",
+    featuredConcepts: "Concepts mis en avant",
+    featuredConceptsDescription: "Quelques entrées utiles pour commencer à explorer.",
     missingConcepts: "Concepts manquants",
     missingConceptsDescription: "Les manques souvent cités sont de bons endroits où contribuer.",
     citedIn: (count: number) => `Cité dans ${count}`,

@@ -9,7 +9,7 @@ import { deleteConceptAction, updateConceptAction } from "@/lib/actions/concept-
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS } from "@/lib/domains";
-import { canDeleteConcept, canEditConcept, canSetConceptStatus } from "@/lib/permissions";
+import { canDeleteConcept, canEditConcept, canSetConceptStatus, canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
 
   if (!concept) notFound();
   if (!canEditConcept(user, concept)) notFound();
+  const canFeatureConcept = canUseAdminTools(user);
   const canDeleteCurrentConcept = canDeleteConcept(user, concept);
   const canSetStubStatus = canSetConceptStatus(user.role, ConceptStatus.STUB);
   const canSetUsableStatus = canSetConceptStatus(user.role, ConceptStatus.USABLE);
@@ -132,6 +133,19 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
               {canSetExcellentStatus && <option value="EXCELLENT">Excellent</option>}
               {canSetControversialStatus && <option value="CONTROVERSIAL">Controversial</option>}
             </select>
+          </label>
+        )}
+        {canFeatureConcept && (
+          <label className="checkbox-field">
+            <input
+              name="canAppearInConceptBrowser"
+              type="checkbox"
+              defaultChecked={concept.canAppearInConceptBrowser}
+            />
+            <span>
+              <strong>Can be featured in the concept browser</strong>
+              <small>Show this concept in the featured concepts panel on the Concepts page.</small>
+            </span>
           </label>
         )}
         <label className="grid gap-2">

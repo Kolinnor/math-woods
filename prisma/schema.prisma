@@ -303,34 +303,36 @@ model ProblemDomain {
 }
 
 model Concept {
-  id                       Int                @id @default(autoincrement())
-  slug                     String             @unique
-  language                 String             @default("en")
-  translationGroupId       String             @default(cuid())
-  translatedFromConceptId  Int?
-  translatedFromRevisionId Int?
-  title                    String
-  bodyMarkdown             String
-  bodyHtml                 String
-  domain                   MathDomain         @default(OTHER)
-  status                   ConceptStatus      @default(STUB)
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
-  createdById              Int?
-  lastEditedById           Int?
-  createdBy                User?              @relation("ConceptCreatedBy", fields: [createdById], references: [id])
-  lastEditedBy             User?              @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
-  aliases                  ConceptAlias[]
-  references               ConceptReference[]
-  talkPosts                ConceptTalkPost[]
-  watchers                 ConceptWatch[]
-  circuitNodes             PlaylistNode[]
-  quoteLinks               QuoteConcept[]
-  translatedFromConcept    Concept?           @relation("ConceptTranslationSource", fields: [translatedFromConceptId], references: [id], onDelete: SetNull)
-  derivedTranslations      Concept[]          @relation("ConceptTranslationSource")
+  id                        Int                @id @default(autoincrement())
+  slug                      String             @unique
+  language                  String             @default("en")
+  translationGroupId        String             @default(cuid())
+  translatedFromConceptId   Int?
+  translatedFromRevisionId  Int?
+  title                     String
+  bodyMarkdown              String
+  bodyHtml                  String
+  domain                    MathDomain         @default(OTHER)
+  status                    ConceptStatus      @default(STUB)
+  canAppearInConceptBrowser Boolean            @default(false)
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  createdById               Int?
+  lastEditedById            Int?
+  createdBy                 User?              @relation("ConceptCreatedBy", fields: [createdById], references: [id])
+  lastEditedBy              User?              @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
+  aliases                   ConceptAlias[]
+  references                ConceptReference[]
+  talkPosts                 ConceptTalkPost[]
+  watchers                  ConceptWatch[]
+  circuitNodes              PlaylistNode[]
+  quoteLinks                QuoteConcept[]
+  translatedFromConcept     Concept?           @relation("ConceptTranslationSource", fields: [translatedFromConceptId], references: [id], onDelete: SetNull)
+  derivedTranslations       Concept[]          @relation("ConceptTranslationSource")
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
+  @@index([language, canAppearInConceptBrowser, updatedAt])
   @@index([translationGroupId])
   @@index([translatedFromConceptId])
 }

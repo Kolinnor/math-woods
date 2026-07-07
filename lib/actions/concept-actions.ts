@@ -12,7 +12,7 @@ import { parseAliases, parseReferences, syncConceptAliases, syncConceptReference
 import { parseMathDomain } from "@/lib/domains";
 import { refreshLinksForConcept, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
-import { canDeleteConcept, canEditConcept, canRollbackConcept, canSetConceptStatus } from "@/lib/permissions";
+import { canDeleteConcept, canEditConcept, canRollbackConcept, canSetConceptStatus, canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -146,6 +146,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const statusInput = formData.get("status");
   const requestedStatus = String(statusInput ?? "") as ConceptStatus;
   const status = statusInput && canSetConceptStatus(user.role, requestedStatus) ? requestedStatus : undefined;
+  const canAppearInConceptBrowser = canUseAdminTools(user)
+    ? formData.get("canAppearInConceptBrowser") === "on"
+    : undefined;
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   const concept = await prisma.$transaction(async (tx) => {
@@ -194,6 +197,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         bodyHtml,
         domain,
         ...(status ? { status } : {}),
+        ...(canAppearInConceptBrowser !== undefined ? { canAppearInConceptBrowser } : {}),
         ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {}),
         lastEditedById: user.id
       }
@@ -216,6 +220,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   });
 
   await refreshLinksForConcept(concept.slug);
+  revalidatePath("/concepts");
   revalidatePath(`/concepts/${concept.slug}`);
   await notifyOwnerOfSiteActivity({
     actor: user,

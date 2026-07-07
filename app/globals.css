@@ -1016,6 +1016,32 @@ a {
   gap: 0.55rem;
 }
 
+.featured-concept-link {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.1rem 0 0.65rem;
+}
+
+.featured-concept-link:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.featured-concept-link:hover strong {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+.featured-concept-link strong {
+  font-weight: 700;
+}
+
+.featured-concept-link span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .missing-concept-card {
   border-bottom: 1px solid var(--line);
   display: grid;

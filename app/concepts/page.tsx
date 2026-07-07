@@ -84,7 +84,7 @@ export default async function ConceptsPage({
   });
   const candidateSlugs = conceptCandidates.map((concept) => concept.slug);
 
-  const [incomingLinkGroups, missing] = await Promise.all([
+  const [incomingLinkGroups, missing, featuredConcepts] = await Promise.all([
     candidateSlugs.length
       ? prisma.internalLink.groupBy({
           by: ["targetSlug"],
@@ -92,7 +92,22 @@ export default async function ConceptsPage({
           _count: { targetSlug: true }
         })
       : Promise.resolve([]),
-    missingConcepts(30)
+    missingConcepts(30),
+    prisma.concept.findMany({
+      where: {
+        language: preferredLanguage,
+        canAppearInConceptBrowser: true
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        domain: true,
+        status: true
+      }
+    })
   ]);
   const incomingLinkCountBySlug = new Map(
     incomingLinkGroups.map((item) => [item.targetSlug, item._count.targetSlug])
@@ -148,39 +163,57 @@ export default async function ConceptsPage({
       }
       sidebar={
         <>
-        <h2 className="mb-3 font-semibold">{t.concepts.missingConcepts}</h2>
-        <p className="muted mb-4 text-sm">{t.concepts.missingConceptsDescription}</p>
-        <div className="grid gap-2">
-          {missing.map((item) => {
-            const title = conceptTitleFromSlug(item.slug);
-            const hiddenSourceCount = Math.max(0, item.count - item.sources.length);
-
-            return (
-              <div key={item.slug} className="missing-concept-card">
-                <Link href={`/concepts/new?title=${encodeURIComponent(title)}`} className="missing-concept-main">
-                  <span className="wiki-link missing">{title}</span>
-                  <span className="muted text-sm">{item.count}</span>
-                </Link>
-                {item.sources.length > 0 && (
-                  <details className="missing-concept-sources">
-                    <summary>{t.concepts.citedIn(item.count)}</summary>
-                    <div>
-                      {item.sources.map((source) => (
-                        <Link key={`${source.sourceType}-${source.href}`} href={source.href as Route}>
-                          <span>{sourceTypeLabel(source.sourceType, t.concepts)}</span>
-                          <strong>{source.title}</strong>
-                          {source.label && <small>as "{source.label}"</small>}
-                        </Link>
-                      ))}
-                      {hiddenSourceCount > 0 && <p className="muted text-xs">{t.concepts.moreCitations(hiddenSourceCount)}</p>}
-                    </div>
-                  </details>
-                )}
+          {featuredConcepts.length > 0 && (
+            <section className="panel mb-6 grid gap-3 p-4">
+              <div>
+                <h2 className="font-semibold">{t.concepts.featuredConcepts}</h2>
+                <p className="muted text-sm">{t.concepts.featuredConceptsDescription}</p>
               </div>
-            );
-          })}
-          {missing.length === 0 && <p className="muted text-sm">{t.concepts.noMissingConcepts}</p>}
-        </div>
+              <div className="grid gap-2">
+                {featuredConcepts.map((concept) => (
+                  <Link key={concept.id} href={`/concepts/${concept.slug}`} className="featured-concept-link">
+                    <strong>{concept.title}</strong>
+                    <span>
+                      {translatedDomainLabel(concept.domain, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+          <h2 className="mb-3 font-semibold">{t.concepts.missingConcepts}</h2>
+          <p className="muted mb-4 text-sm">{t.concepts.missingConceptsDescription}</p>
+          <div className="grid gap-2">
+            {missing.map((item) => {
+              const title = conceptTitleFromSlug(item.slug);
+              const hiddenSourceCount = Math.max(0, item.count - item.sources.length);
+
+              return (
+                <div key={item.slug} className="missing-concept-card">
+                  <Link href={`/concepts/new?title=${encodeURIComponent(title)}`} className="missing-concept-main">
+                    <span className="wiki-link missing">{title}</span>
+                    <span className="muted text-sm">{item.count}</span>
+                  </Link>
+                  {item.sources.length > 0 && (
+                    <details className="missing-concept-sources">
+                      <summary>{t.concepts.citedIn(item.count)}</summary>
+                      <div>
+                        {item.sources.map((source) => (
+                          <Link key={`${source.sourceType}-${source.href}`} href={source.href as Route}>
+                            <span>{sourceTypeLabel(source.sourceType, t.concepts)}</span>
+                            <strong>{source.title}</strong>
+                            {source.label && <small>as "{source.label}"</small>}
+                          </Link>
+                        ))}
+                        {hiddenSourceCount > 0 && <p className="muted text-xs">{t.concepts.moreCitations(hiddenSourceCount)}</p>}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              );
+            })}
+            {missing.length === 0 && <p className="muted text-sm">{t.concepts.noMissingConcepts}</p>}
+          </div>
         </>
       }
     >
