@@ -7,9 +7,9 @@ import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export async function NotificationsMenu({ userId }: { userId: number }) {
   const timeZone = await getRequestTimeZone();
-  const [notifications, unreadCount, readCount] = await Promise.all([
+  const [unreadNotifications, unreadCount, readCount] = await Promise.all([
     prisma.notification.findMany({
-      where: { userId },
+      where: { userId, readAt: null },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: { actor: { select: { username: true } } }
@@ -21,6 +21,16 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       where: { userId, readAt: { not: null } }
     })
   ]);
+  const readNotifications =
+    unreadNotifications.length < 8
+      ? await prisma.notification.findMany({
+          where: { userId, readAt: { not: null } },
+          orderBy: { createdAt: "desc" },
+          take: 8 - unreadNotifications.length,
+          include: { actor: { select: { username: true } } }
+        })
+      : [];
+  const notifications = [...unreadNotifications, ...readNotifications];
 
   return (
     <details className="notification-menu">
