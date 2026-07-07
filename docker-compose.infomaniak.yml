@@ -59,6 +59,7 @@ services:
       RATE_LIMIT_REDIS_URL: redis://valkey:6379
       APP_DOMAIN: ${APP_DOMAIN}
       APP_URL: ${APP_URL:-}
+      CRON_SECRET: ${CRON_SECRET:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_USER: ${SMTP_USER:-}
