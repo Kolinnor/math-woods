@@ -254,7 +254,7 @@ model Problem {
   originNote               String?
   license                  String                       @default("CC BY-SA 4.0")
   listed                   Boolean                      @default(true)
-  canAppearOnFrontPage     Boolean                      @default(true)
+  canAppearOnFrontPage     Boolean                      @default(false)
   status                   ProblemStatus                @default(PUBLISHED)
   qualityStatus            QualityStatus                @default(UNREVIEWED)
   verificationMode         ProblemVerificationMode      @default(NONE)
