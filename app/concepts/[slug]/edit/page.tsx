@@ -1,14 +1,15 @@
 import { notFound } from "next/navigation";
 import { ConceptStatus, SourceType } from "@prisma/client";
+import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
-import { updateConceptAction } from "@/lib/actions/concept-actions";
+import { deleteConceptAction, updateConceptAction } from "@/lib/actions/concept-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS } from "@/lib/domains";
-import { canEditConcept, canSetConceptStatus } from "@/lib/permissions";
+import { canDeleteConcept, canEditConcept, canSetConceptStatus } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
 
   if (!concept) notFound();
   if (!canEditConcept(user, concept)) notFound();
+  const canDeleteCurrentConcept = canDeleteConcept(user, concept);
   const canSetStubStatus = canSetConceptStatus(user.role, ConceptStatus.STUB);
   const canSetUsableStatus = canSetConceptStatus(user.role, ConceptStatus.USABLE);
   const canSetReviewedStatus = canSetConceptStatus(user.role, ConceptStatus.REVIEWED);
@@ -138,6 +140,18 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
         </label>
         <button type="submit">Save changes</button>
       </form>
+
+      {canDeleteCurrentConcept && (
+        <section className="danger-zone mt-6">
+          <div>
+            <h2>Delete concept</h2>
+            <p>This permanently removes the concept page. Links pointing to it will become missing concept links.</p>
+          </div>
+          <form action={deleteConceptAction.bind(null, concept.id)}>
+            <DeleteConceptButton title={concept.title} />
+          </form>
+        </section>
+      )}
     </ForestPageLayout>
   );
 }

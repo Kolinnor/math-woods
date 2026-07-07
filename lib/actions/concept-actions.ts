@@ -1,6 +1,6 @@
 "use server";
 
-import { ConceptStatus, NotificationType, SourceType } from "@prisma/client";
+import { ConceptStatus, NotificationType, SourceType, TargetType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkConceptAchievements } from "@/lib/achievements";
@@ -12,7 +12,7 @@ import { parseAliases, parseReferences, syncConceptAliases, syncConceptReference
 import { parseMathDomain } from "@/lib/domains";
 import { refreshLinksForConcept, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
-import { canEditConcept, canRollbackConcept, canSetConceptStatus } from "@/lib/permissions";
+import { canDeleteConcept, canEditConcept, canRollbackConcept, canSetConceptStatus } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -225,6 +225,63 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     href: `/concepts/${concept.slug}`
   });
   redirect(`/concepts/${concept.slug}`);
+}
+
+export async function deleteConceptAction(conceptId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`concept:delete:${user.id}`, 10, 60_000);
+  const concept = await prisma.concept.findUnique({
+    where: { id: conceptId },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      bodyMarkdown: true,
+      createdById: true,
+      aliases: { select: { aliasSlug: true } }
+    }
+  });
+
+  if (!concept) throw new Error("Concept not found.");
+  if (!canDeleteConcept(user, concept)) {
+    throw new Error("You cannot delete this concept.");
+  }
+
+  const targetSlugs = [concept.slug, ...concept.aliases.map((alias) => alias.aliasSlug)];
+  await prisma.$transaction(async (tx) => {
+    await tx.internalLink.deleteMany({
+      where: {
+        sourceType: SourceType.CONCEPT,
+        sourceId: concept.id
+      }
+    });
+    await tx.internalLink.updateMany({
+      where: {
+        targetSlug: { in: targetSlugs }
+      },
+      data: {
+        exists: false,
+        targetType: TargetType.UNKNOWN
+      }
+    });
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.CONCEPT,
+        pageId: concept.id,
+        markdown: concept.bodyMarkdown,
+        editedById: user.id,
+        editSummary: "Concept deleted"
+      }
+    });
+    await tx.concept.delete({
+      where: { id: concept.id }
+    });
+  });
+
+  revalidatePath("/");
+  revalidatePath("/concepts");
+  revalidatePath(`/concepts/${concept.slug}`);
+  redirect("/concepts");
 }
 
 export async function rollbackConceptRevisionAction(conceptId: number, revisionId: number) {

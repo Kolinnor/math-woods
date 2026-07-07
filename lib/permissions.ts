@@ -127,6 +127,10 @@ export function canRollbackConcept(user: PermissionUser, concept: CreatedResourc
   return canEditConcept(user, concept);
 }
 
+export function canDeleteConcept(user: PermissionUser, _concept: CreatedResource) {
+  return hasAdminPrivileges(user.role);
+}
+
 export function canSetConceptStatus(role: Role, status: ConceptStatus) {
   if (!Object.values(ConceptStatus).includes(status)) return false;
   if (hasAdminPrivileges(role)) return true;
