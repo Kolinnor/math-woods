@@ -1,12 +1,15 @@
 import { ContributionRequestStatus } from "@prisma/client";
+import type { Route } from "next";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { MarkdownBlock } from "@/components/MarkdownBlock";
 import {
   claimContributionRequestAction,
   completeContributionRequestAction,
   releaseContributionRequestAction
 } from "@/lib/actions/contribution-request-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { loadRenderedContributionPage } from "@/lib/contribution-page";
 import { prisma } from "@/lib/db";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
@@ -28,8 +31,9 @@ export default async function ContributingPage({
 }: {
   searchParams?: Promise<{ request?: string }>;
 }) {
-  const [user, activeRequests, completedRequests, params] = await Promise.all([
+  const [user, contributionPage, activeRequests, completedRequests, params] = await Promise.all([
     getCurrentUser(),
+    loadRenderedContributionPage(),
     prisma.contributionRequest.findMany({
       where: { status: { not: ContributionRequestStatus.COMPLETED } },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
@@ -46,32 +50,40 @@ export default async function ContributingPage({
   ]);
   const canManageRequests = Boolean(user && canUseModerationTools(user));
   const canAdminRequests = Boolean(user && canUseAdminTools(user));
+  const canEditPage = Boolean(user && canUseAdminTools(user));
   const allRequests = [...activeRequests, ...completedRequests];
   const openRequestCount = activeRequests.filter((request) => request.status === ContributionRequestStatus.OPEN).length;
   const claimedRequestCount = activeRequests.filter((request) => request.status === ContributionRequestStatus.CLAIMED).length;
 
   return (
     <ForestPageLayout
-      title="Contribution guidelines"
-      eyebrow="Contributing"
+      title={contributionPage.content.title}
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      description="Math Woods should feel like an old map being filled in: rough paths, missing clearings, margin notes, better routes."
       meta={<p>{allRequests.length} open or recent requests</p>}
+      actions={
+        canEditPage && (
+          <Link href={"/contributing/edit" as Route} className="button secondary">
+            Edit page
+          </Link>
+        )
+      }
     >
       <div className="mt-8 grid gap-7">
-        <section className="growth-note">
-          <strong>Do not wait for perfection.</strong>
-          <span>
-            A clean problem, a stub concept, a source note, a partial solution, or a correction request can already help.
-          </span>
-        </section>
+        {contributionPage.sections.map((section, index) =>
+          index === 0 ? (
+            <section key={section.id ?? section.position} className="growth-note">
+              <strong>{section.title}</strong>
+              <MarkdownBlock html={section.bodyHtml} />
+            </section>
+          ) : null
+        )}
 
         <section id="requests" className="contribution-request-board">
           <div className="contribution-request-board-header">
             <div>
-              <p className="section-eyebrow">Requests</p>
-              <h2>Requested problems and concepts</h2>
+              <p className="section-eyebrow">{contributionPage.content.requestEyebrow}</p>
+              <h2>{contributionPage.content.requestTitle}</h2>
             </div>
             <div className="contribution-request-stats" aria-label="Contribution request summary">
               <span>{openRequestCount} open</span>
@@ -79,10 +91,7 @@ export default async function ContributingPage({
               <span>{completedRequests.length} recent completed</span>
             </div>
           </div>
-          <p className="contribution-request-board-intro">
-            Ask for the pages you would like to see from the problem and concept browsers. Trusted contributors can
-            claim a request, work on it, release it if they stop, and mark it complete when the page or problem exists.
-          </p>
+          <p className="contribution-request-board-intro">{contributionPage.content.requestIntro}</p>
           {params.request === "created" && (
             <p className="success-banner mt-4" role="status">
               Your request was added.
@@ -140,54 +149,12 @@ export default async function ContributingPage({
           </div>
         </section>
 
-        <section>
-          <h2 className="text-xl font-semibold">Make rough work visible</h2>
-          <p className="mt-2">
-            Mark unfinished material honestly. Use <strong>Needs work</strong>, stub statuses, talk pages, edit
-            summaries, and reports. A rough page with clear uncertainty is useful.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold">Keep barriers low</h2>
-          <p className="mt-2">
-            Beginners should be able to add examples, ask for clarification, report copied wording, propose a better
-            hint, or create a missing concept.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold">Write for verification</h2>
-          <p className="mt-2">
-            Cite reliable textbooks, papers, lecture notes, or established reference works when a claim needs support.
-            If the source is uncertain, say so. Uncertainty is useful when it is visible.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold">Prefer clarity over completeness</h2>
-          <p className="mt-2">
-            A useful first version can be short. Add definitions, examples, counterexamples, solutions, and links when
-            they are ready.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold">Make edits accountable</h2>
-          <p className="mt-2">
-            Use concise edit summaries. For disputed scope, terminology, or sources, discuss the change on the talk
-            page before repeatedly rewriting it.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold">Use reports without making them scary</h2>
-          <p className="mt-2">
-            Reports are not only for emergencies. They can flag copied wording, questionable origins, wrong statements,
-            spoilers, or pages that need attention.
-          </p>
-        </section>
-
+        {contributionPage.sections.slice(1).map((section) => (
+          <section key={section.id ?? section.position} className="contribution-page-section">
+            <h2 className="text-xl font-semibold">{section.title}</h2>
+            <MarkdownBlock html={section.bodyHtml} />
+          </section>
+        ))}
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3 border-t border-line pt-6">

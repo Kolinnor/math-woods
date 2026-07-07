@@ -808,6 +808,27 @@ model FaqItem {
   @@index([sectionId, position])
 }
 
+model ContributionPageContent {
+  id             Int      @id
+  title          String
+  requestEyebrow String
+  requestTitle   String
+  requestIntro   String   @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ContributionPageSection {
+  id           Int      @id @default(autoincrement())
+  position     Int      @default(0)
+  title        String
+  bodyMarkdown String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([position])
+}
+
 model Tip {
   id             Int          @id @default(autoincrement())
   position       Int          @unique

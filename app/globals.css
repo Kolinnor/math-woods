@@ -2386,10 +2386,18 @@ button.danger:hover,
   font-weight: 750;
 }
 
-.growth-note span {
+.growth-note .prose-math {
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.55;
+}
+
+.growth-note .prose-math p {
+  margin: 0;
+}
+
+.contribution-page-section .prose-math {
+  margin-top: 0.5rem;
 }
 
 .domain-picker {
