@@ -6,7 +6,10 @@ APP_URL="${APP_URL:-https://mathwoods.org}"
 
 if [ -f "$ENV_FILE" ]; then
   set -a
-  . "$ENV_FILE"
+  case "$ENV_FILE" in
+    /*) . "$ENV_FILE" ;;
+    *) . "./$ENV_FILE" ;;
+  esac
   set +a
 fi
 
