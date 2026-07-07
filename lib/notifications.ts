@@ -162,3 +162,45 @@ export async function notifyOwnerOfSiteActivity(input: OwnerActivityNotification
     href: input.href
   });
 }
+
+export async function notifyContributionRequestClaimed({
+  actorId,
+  actorName,
+  requesterId,
+  requestBody,
+  requestKind
+}: {
+  actorId: number;
+  actorName: string;
+  requesterId: number | null;
+  requestBody: string;
+  requestKind: "PROBLEM" | "CONCEPT";
+}) {
+  const owner = await prisma.user.findFirst({
+    where: {
+      username: OWNER_NOTIFICATION_USERNAME,
+      role: Role.OWNER
+    },
+    select: { id: true }
+  });
+  const recipientIds = new Set<number>();
+
+  if (requesterId) recipientIds.add(requesterId);
+  if (owner) recipientIds.add(owner.id);
+
+  const shortBody = requestBody.length > 140 ? `${requestBody.slice(0, 137).trimEnd()}...` : requestBody;
+  const kindLabel = requestKind === "PROBLEM" ? "problem" : "concept";
+
+  return Promise.all(
+    [...recipientIds].map((userId) =>
+      createNotification({
+        userId,
+        actorId,
+        type: NotificationType.CONTRIBUTION_REQUEST_CLAIMED,
+        title: "Contribution request claimed",
+        body: `${actorName} started working on a ${kindLabel} request: "${shortBody}"`,
+        href: "/contributing#requests"
+      })
+    )
+  );
+}

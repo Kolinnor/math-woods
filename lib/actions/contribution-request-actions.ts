@@ -7,8 +7,10 @@ import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
+import { notifyContributionRequestClaimed } from "@/lib/notifications";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { displayNameForUser } from "@/lib/user-display";
 
 function contributionRequestKind(value: string) {
   if (value === ContributionRequestKind.PROBLEM || value === ContributionRequestKind.CONCEPT) return value;
@@ -54,7 +56,7 @@ export async function claimContributionRequestAction(requestId: number) {
   const user = await requireRequestCurator();
   const request = await prisma.contributionRequest.findUnique({
     where: { id: requestId },
-    select: { id: true, status: true }
+    select: { id: true, body: true, kind: true, requesterId: true, status: true }
   });
 
   if (!request) throw new Error("Request not found.");
@@ -68,6 +70,13 @@ export async function claimContributionRequestAction(requestId: number) {
       claimedById: user.id,
       completedAt: null
     }
+  });
+  await notifyContributionRequestClaimed({
+    actorId: user.id,
+    actorName: displayNameForUser(user),
+    requesterId: request.requesterId,
+    requestBody: request.body,
+    requestKind: request.kind
   });
 
   revalidateContributionRequests();

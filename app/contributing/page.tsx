@@ -47,6 +47,8 @@ export default async function ContributingPage({
   const canManageRequests = Boolean(user && canUseModerationTools(user));
   const canAdminRequests = Boolean(user && canUseAdminTools(user));
   const allRequests = [...activeRequests, ...completedRequests];
+  const openRequestCount = activeRequests.filter((request) => request.status === ContributionRequestStatus.OPEN).length;
+  const claimedRequestCount = activeRequests.filter((request) => request.status === ContributionRequestStatus.CLAIMED).length;
 
   return (
     <ForestPageLayout
@@ -63,6 +65,79 @@ export default async function ContributingPage({
           <span>
             A clean problem, a stub concept, a source note, a partial solution, or a correction request can already help.
           </span>
+        </section>
+
+        <section id="requests" className="contribution-request-board">
+          <div className="contribution-request-board-header">
+            <div>
+              <p className="section-eyebrow">Requests</p>
+              <h2>Requested problems and concepts</h2>
+            </div>
+            <div className="contribution-request-stats" aria-label="Contribution request summary">
+              <span>{openRequestCount} open</span>
+              <span>{claimedRequestCount} in progress</span>
+              <span>{completedRequests.length} recent completed</span>
+            </div>
+          </div>
+          <p className="contribution-request-board-intro">
+            Ask for the pages you would like to see from the problem and concept browsers. Trusted contributors can
+            claim a request, work on it, release it if they stop, and mark it complete when the page or problem exists.
+          </p>
+          {params.request === "created" && (
+            <p className="success-banner mt-4" role="status">
+              Your request was added.
+            </p>
+          )}
+          <div className="contribution-requests mt-4">
+            {allRequests.map((request) => {
+              const isAssignee = user?.id === request.claimedById;
+              const canRelease = canManageRequests && request.status === ContributionRequestStatus.CLAIMED && (isAssignee || canAdminRequests);
+              const canComplete = canRelease;
+              const canClaim = canManageRequests && request.status === ContributionRequestStatus.OPEN;
+              const hasRequestActions = canClaim || canComplete || canRelease;
+
+              return (
+                <article key={request.id} className="contribution-request-card">
+                  <div className="contribution-request-card-main">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="tag contribution-request-kind">{requestKindLabel(request.kind)}</span>
+                      <span className="tag contribution-request-status">{requestStatusLabel(request.status)}</span>
+                    </div>
+                    <p>{request.body}</p>
+                    <p className="meta">
+                      Requested by {request.requester ? displayNameForUser(request.requester) : "a deleted user"} /{" "}
+                      {request.createdAt.toLocaleDateString("en-US")}
+                      {request.claimedBy && <> / handled by {displayNameForUser(request.claimedBy)}</>}
+                    </p>
+                  </div>
+                  {hasRequestActions && (
+                    <div className="contribution-request-actions">
+                      {canClaim && (
+                        <form action={claimContributionRequestAction.bind(null, request.id)}>
+                          <button type="submit">I'll work on this</button>
+                        </form>
+                      )}
+                      {canComplete && (
+                        <form action={completeContributionRequestAction.bind(null, request.id)}>
+                          <button type="submit" className="secondary">
+                            Mark complete
+                          </button>
+                        </form>
+                      )}
+                      {canRelease && (
+                        <form action={releaseContributionRequestAction.bind(null, request.id)}>
+                          <button type="submit" className="secondary">
+                            Release
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+            {allRequests.length === 0 && <p className="muted panel p-5">No requests yet.</p>}
+          </div>
         </section>
 
         <section>
@@ -113,69 +188,6 @@ export default async function ContributingPage({
           </p>
         </section>
 
-        <section id="requests">
-          <h2 className="text-xl font-semibold">Requests</h2>
-          <p className="mt-2">
-            If you would like to see a problem or concept page on a particular notion, leave a request from the problem
-            or concept browser. Trusted contributors can claim a request, work on it, release it if they stop, and mark
-            it complete when the page or problem exists.
-          </p>
-          {params.request === "created" && (
-            <p className="success-banner mt-4" role="status">
-              Your request was added.
-            </p>
-          )}
-          <div className="contribution-requests mt-4">
-            {allRequests.map((request) => {
-              const isAssignee = user?.id === request.claimedById;
-              const canRelease = canManageRequests && request.status === ContributionRequestStatus.CLAIMED && (isAssignee || canAdminRequests);
-              const canComplete = canRelease;
-              const canClaim = canManageRequests && request.status === ContributionRequestStatus.OPEN;
-              const hasRequestActions = canClaim || canComplete || canRelease;
-
-              return (
-                <article key={request.id} className="contribution-request-card">
-                  <div className="contribution-request-card-main">
-                    <div className="flex flex-wrap gap-2">
-                      <span className="tag">{requestKindLabel(request.kind)}</span>
-                      <span className="tag">{requestStatusLabel(request.status)}</span>
-                    </div>
-                    <p>{request.body}</p>
-                    <p className="meta">
-                      Requested by {request.requester ? displayNameForUser(request.requester) : "a deleted user"} /{" "}
-                      {request.createdAt.toLocaleDateString("en-US")}
-                      {request.claimedBy && <> / handled by {displayNameForUser(request.claimedBy)}</>}
-                    </p>
-                  </div>
-                  {hasRequestActions && (
-                    <div className="contribution-request-actions">
-                      {canClaim && (
-                        <form action={claimContributionRequestAction.bind(null, request.id)}>
-                          <button type="submit">I'll work on this</button>
-                        </form>
-                      )}
-                      {canComplete && (
-                        <form action={completeContributionRequestAction.bind(null, request.id)}>
-                          <button type="submit" className="secondary">
-                            Mark complete
-                          </button>
-                        </form>
-                      )}
-                      {canRelease && (
-                        <form action={releaseContributionRequestAction.bind(null, request.id)}>
-                          <button type="submit" className="secondary">
-                            Release
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-            {allRequests.length === 0 && <p className="muted panel p-5">No requests yet.</p>}
-          </div>
-        </section>
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3 border-t border-line pt-6">

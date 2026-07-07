@@ -588,10 +588,6 @@ export default async function ProblemsPage({
                   <option value="others">{t.problems.onlyOtherProblems}</option>
                 </select>
               )}
-              <label className="problem-filter-inline-field">
-                <span>{t.problems.author}</span>
-                <input name="author" defaultValue={authorQuery} placeholder={t.problems.authorPlaceholder} />
-              </label>
               <select name="quality" defaultValue={qualityValue ?? ""}>
                 <option value="">{t.problems.anyQuality}</option>
                 <option value="NEEDS_WORK">{t.problems.needsWork}</option>
@@ -599,6 +595,10 @@ export default async function ProblemsPage({
                 <option value="GOOD">{t.problems.good}</option>
                 <option value="EXCELLENT">{t.problems.excellent}</option>
               </select>
+              <label className="problem-filter-inline-field">
+                <span>{t.problems.author}</span>
+                <input name="author" defaultValue={authorQuery} placeholder={t.problems.authorPlaceholder} />
+              </label>
               {sortValue !== "newest" && <input type="hidden" name="sort" value={sortValue} />}
               <label className="checkbox-inline">
                 <input name="includeSpoilerTags" type="checkbox" value="1" defaultChecked={showSpoilerTags} />

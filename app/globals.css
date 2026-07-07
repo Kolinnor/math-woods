@@ -18,6 +18,11 @@
   --accent-hover: #185638;
   --accent-soft: #d9ebde;
   --accent-border: #1e5f3f;
+  --request-action: #a85f20;
+  --request-action-hover: #874914;
+  --request-action-border: #7a3f11;
+  --request-action-text: #fffaf2;
+  --request-action-soft: #fff1dc;
   --code: #edf1ed;
   --link: #1f6792;
   --missing: #a34d42;
@@ -89,6 +94,11 @@
   --accent-hover: #94e2ab;
   --accent-soft: #284a34;
   --accent-border: #74c78f;
+  --request-action: #f0b96f;
+  --request-action-hover: #ffd18e;
+  --request-action-border: #d89a52;
+  --request-action-text: #20160b;
+  --request-action-soft: #463322;
   --code: #3b413d;
   --link: #9ac0dd;
   --missing: #d79588;
@@ -140,6 +150,11 @@
   --accent-hover: #88e5aa;
   --accent-soft: #213d2d;
   --accent-border: #67c889;
+  --request-action: #f0b96f;
+  --request-action-hover: #ffd18e;
+  --request-action-border: #d89a52;
+  --request-action-text: #20160b;
+  --request-action-soft: #3b291b;
   --code: #2c322e;
   --link: #8db8db;
   --missing: #d18b7d;
@@ -987,6 +1002,54 @@ a {
   min-height: 10rem;
 }
 
+.contribution-request-board {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--request-action-soft) 82%, transparent), transparent 62%),
+    var(--panel);
+  border: 1px solid color-mix(in srgb, var(--request-action-border) 44%, var(--line));
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 34px rgb(83 52 21 / 0.08);
+  padding: 1rem;
+}
+
+.contribution-request-board-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.contribution-request-board-header h2 {
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  font-weight: 800;
+  margin: 0.1rem 0 0;
+}
+
+.contribution-request-board-intro {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0.85rem 0 0;
+  max-width: 68rem;
+}
+
+.contribution-request-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.contribution-request-stats span {
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--request-action-border) 36%, var(--line));
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 750;
+  padding: 0.28rem 0.55rem;
+  white-space: nowrap;
+}
+
 .contribution-requests {
   display: grid;
   gap: 0.9rem;
@@ -994,7 +1057,8 @@ a {
 
 .contribution-request-card {
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--request-action-border) 26%, var(--line));
+  border-left: 4px solid var(--request-action);
   border-radius: 8px;
   display: grid;
   gap: 1rem;
@@ -1014,6 +1078,18 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
+}
+
+.contribution-request-kind {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--ink);
+}
+
+.contribution-request-status {
+  background: var(--request-action-soft);
+  border-color: color-mix(in srgb, var(--request-action-border) 48%, var(--line));
+  color: var(--ink);
 }
 
 .featured-concept-link {
@@ -1879,6 +1955,21 @@ button.secondary:hover,
   box-shadow: 0 1px 1px rgb(0 0 0 / 0.06), 0 5px 12px rgb(0 0 0 / 0.06);
 }
 
+button.contribution-request-button,
+.button.contribution-request-button {
+  background: var(--request-action);
+  border-color: var(--request-action-border);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.08), 0 8px 18px color-mix(in srgb, var(--request-action) 28%, transparent);
+  color: var(--request-action-text);
+}
+
+button.contribution-request-button:hover,
+.button.contribution-request-button:hover {
+  background: var(--request-action-hover);
+  border-color: var(--request-action-border);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.1), 0 10px 22px color-mix(in srgb, var(--request-action) 34%, transparent);
+}
+
 button.attempt-action-button {
   border-color: var(--problem-opened-border);
   color: var(--problem-opened);
@@ -2530,6 +2621,15 @@ button.domain-picker-tile > span:last-child {
   color: var(--accent);
   font-size: 0.72rem;
   font-weight: 750;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.section-eyebrow {
+  color: var(--request-action);
+  font-size: 0.72rem;
+  font-weight: 800;
   letter-spacing: 0.04em;
   margin: 0;
   text-transform: uppercase;

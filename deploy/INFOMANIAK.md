@@ -158,6 +158,14 @@ A reasonable cron setup is:
 27 3 * * * cd /opt/math-woods && SKIP_LOCAL_BACKUP=1 sh deploy/sync-backups-offsite.sh >/var/log/math-woods-offsite-backup.log 2>&1
 ```
 
+Contribution request reminders are sent by the app through a protected cron endpoint. Add `CRON_SECRET` to
+`.env.production`, then run the reminder script once per morning:
+
+```cron
+CRON_TZ=Europe/Paris
+0 8 * * * cd /opt/math-woods && sh deploy/run-daily-reminders.sh >/var/log/math-woods-daily-reminders.log 2>&1
+```
+
 ## Updating Math Woods
 
 After changing the code:

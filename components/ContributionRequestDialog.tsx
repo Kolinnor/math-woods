@@ -21,7 +21,7 @@ export function ContributionRequestDialog({
 
   return (
     <>
-      <button type="button" className="button secondary" onClick={() => dialogRef.current?.showModal()}>
+      <button type="button" className="button contribution-request-button" onClick={() => dialogRef.current?.showModal()}>
         {buttonLabel}
       </button>
       <dialog ref={dialogRef} className="contribution-request-dialog">

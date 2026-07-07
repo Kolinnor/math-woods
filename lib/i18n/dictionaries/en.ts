@@ -361,7 +361,7 @@ export const en = {
     reportPlaceholder: "Ambiguous definition, conflict, missing source...",
     submit: "Submit",
     problemsUsingConcept: (count: number) => `Problems using this concept (${count})`,
-    spoilerProblemsUsingConcept: (count: number) => `Problems using this concept as a spoiler (${count})`,
+    spoilerProblemsUsingConcept: (count: number) => `Problems using this concept (spoiler) (${count})`,
     noProblemsUsingConcept: "No listed problems link to this concept yet.",
     noSpoilerProblemsUsingConcept: "No listed problems use this concept as a spoiler yet.",
     backlinks: "Backlinks",

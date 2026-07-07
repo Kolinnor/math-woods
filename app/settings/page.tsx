@@ -116,6 +116,16 @@ const notificationOptions = [
     type: NotificationType.CONCEPT_EDITED,
     title: "A concept was edited",
     description: "For the owner: when a user edits or rolls back a concept."
+  },
+  {
+    type: NotificationType.CONTRIBUTION_REQUEST_CLAIMED,
+    title: "A contribution request was claimed",
+    description: "When someone starts working on one of your requests. The owner receives these for all requests."
+  },
+  {
+    type: NotificationType.CONTRIBUTION_REQUEST_REMINDER,
+    title: "Contribution request reminders",
+    description: "A daily reminder when you have claimed contribution requests still in progress."
   }
 ] as const;
 
