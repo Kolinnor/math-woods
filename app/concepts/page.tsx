@@ -30,15 +30,22 @@ function translatedDomainLabel(domain: MathDomain, t: Dictionary) {
   return t.home.domainLabels[domain] ?? domainLabel(domain);
 }
 
+type ConceptSort = "updated" | "linked";
+
+function parseConceptSort(value: string | undefined): ConceptSort {
+  return value === "linked" ? "linked" : "updated";
+}
+
 export default async function ConceptsPage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; domain?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; domain?: string; status?: string; sort?: string }>;
 }) {
   const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
-  const { q = "", domain = "", status = "" } = await searchParams;
+  const { q = "", domain = "", status = "", sort = "" } = await searchParams;
   const query = q.trim();
+  const sortValue = parseConceptSort(sort);
   const domainValue = domain ? parseDomainCode(domain) : undefined;
   const domainFilterValues = domainValue
     ? [
@@ -66,18 +73,41 @@ export default async function ConceptsPage({
     ...(statusValue ? { status: statusValue } : {})
   };
 
-  const [concepts, missing] = await Promise.all([
-    prisma.concept.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      take: 75,
-      include: {
-        aliases: true,
-        _count: { select: { references: true, talkPosts: true } }
-      }
-    }),
+  const conceptCandidates = await prisma.concept.findMany({
+    where,
+    orderBy: { updatedAt: "desc" },
+    ...(sortValue === "updated" ? { take: 75 } : {}),
+    include: {
+      aliases: true,
+      _count: { select: { references: true, talkPosts: true } }
+    }
+  });
+  const candidateSlugs = conceptCandidates.map((concept) => concept.slug);
+
+  const [incomingLinkGroups, missing] = await Promise.all([
+    candidateSlugs.length
+      ? prisma.internalLink.groupBy({
+          by: ["targetSlug"],
+          where: { exists: true, targetSlug: { in: candidateSlugs } },
+          _count: { targetSlug: true }
+        })
+      : Promise.resolve([]),
     missingConcepts(30)
   ]);
+  const incomingLinkCountBySlug = new Map(
+    incomingLinkGroups.map((item) => [item.targetSlug, item._count.targetSlug])
+  );
+  const concepts =
+    sortValue === "linked"
+      ? [...conceptCandidates]
+          .sort((left, right) => {
+            const rightCount = incomingLinkCountBySlug.get(right.slug) ?? 0;
+            const leftCount = incomingLinkCountBySlug.get(left.slug) ?? 0;
+            if (rightCount !== leftCount) return rightCount - leftCount;
+            return right.updatedAt.getTime() - left.updatedAt.getTime();
+          })
+          .slice(0, 75)
+      : conceptCandidates;
 
   return (
     <ForestPageLayout
@@ -154,7 +184,7 @@ export default async function ConceptsPage({
         </>
       }
     >
-      <LiveSearchForm className="filter-bar mb-6 grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem_auto]">
+      <LiveSearchForm className="filter-bar mb-6 grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem_12rem_auto]">
         <input name="q" defaultValue={query} placeholder={t.concepts.searchPlaceholder} />
         <select name="domain" defaultValue={domainValue ?? ""}>
           <option value="">{t.concepts.anyDomain}</option>
@@ -172,6 +202,10 @@ export default async function ConceptsPage({
           <option value="EXCELLENT">{t.concepts.statuses.EXCELLENT}</option>
           <option value="CONTROVERSIAL">{t.concepts.statuses.CONTROVERSIAL}</option>
         </select>
+        <select name="sort" defaultValue={sortValue === "linked" ? "linked" : ""} aria-label={t.concepts.sortAriaLabel}>
+          <option value="">{t.concepts.sortUpdated}</option>
+          <option value="linked">{t.concepts.sortMostLinked}</option>
+        </select>
         <button type="submit">{t.common.search}</button>
       </LiveSearchForm>
 
@@ -183,7 +217,8 @@ export default async function ConceptsPage({
                 <h2 className="font-semibold">{concept.title}</h2>
                 <p className="meta">
                   {translatedDomainLabel(concept.domain, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()} /{" "}
-                  {t.concepts.sources(concept._count.references)} / {t.concepts.talkPosts(concept._count.talkPosts)}
+                  {t.concepts.incomingLinks(incomingLinkCountBySlug.get(concept.slug) ?? 0)} / {t.concepts.sources(concept._count.references)} /{" "}
+                  {t.concepts.talkPosts(concept._count.talkPosts)}
                 </p>
                 {concept.aliases.length > 0 && (
                   <p className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</p>

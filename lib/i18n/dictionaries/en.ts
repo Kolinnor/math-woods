@@ -314,6 +314,9 @@ export const en = {
     searchPlaceholder: "Search titles, content, or aliases",
     anyDomain: "Any domain",
     anyStatus: "Any status",
+    sortAriaLabel: "Sort concepts",
+    sortUpdated: "Recently updated",
+    sortMostLinked: "Most linked",
     statuses: {
       MISSING: "Missing",
       STUB: "Stub",
@@ -322,6 +325,7 @@ export const en = {
       EXCELLENT: "Excellent",
       CONTROVERSIAL: "Controversial"
     },
+    incomingLinks: (count: number) => `${count} incoming ${count === 1 ? "link" : "links"}`,
     sources: (count: number) => `${count} ${count === 1 ? "source" : "sources"}`,
     talkPosts: (count: number) => `${count} talk ${count === 1 ? "post" : "posts"}`,
     noMatches: "No concepts match these filters.",

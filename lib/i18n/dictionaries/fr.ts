@@ -319,6 +319,9 @@ export const fr = {
     searchPlaceholder: "Rechercher dans les titres, contenus ou alias",
     anyDomain: "Tout domaine",
     anyStatus: "Tout statut",
+    sortAriaLabel: "Trier les concepts",
+    sortUpdated: "Modifiés récemment",
+    sortMostLinked: "Les plus liés",
     statuses: {
       MISSING: "Manquant",
       STUB: "Ébauche",
@@ -327,6 +330,7 @@ export const fr = {
       EXCELLENT: "Excellent",
       CONTROVERSIAL: "Controversé"
     },
+    incomingLinks: (count: number) => `${count} lien${count > 1 ? "s" : ""} entrant${count > 1 ? "s" : ""}`,
     sources: (count: number) => `${count} source${count > 1 ? "s" : ""}`,
     talkPosts: (count: number) => `${count} message${count > 1 ? "s" : ""} de discussion`,
     noMatches: "Aucun concept ne correspond à ces filtres.",
