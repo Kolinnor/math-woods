@@ -1,6 +1,7 @@
 import { Role, UserMathLevel } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hasTrustedPrivileges } from "@/lib/permissions";
+import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
 
 type ReputationProblem = {
   authorId: number;
@@ -87,7 +88,11 @@ function summarizeUser(
 export async function getReputationLeaderboard() {
   const users = await prisma.user.findMany({
     where: {
-      deletedAt: null
+      deletedAt: null,
+      OR: [
+        { emailVerifiedAt: { not: null } },
+        { role: { in: [Role.MODERATOR, Role.ADMIN, Role.OWNER] } }
+      ]
     },
     select: {
       id: true,
@@ -99,7 +104,8 @@ export async function getReputationLeaderboard() {
     }
   });
 
-  const userIds = users.map((user) => user.id);
+  const visibleUsers = users.filter((user) => displayNameForUser(user).length <= DISPLAY_NAME_MAX_LENGTH);
+  const userIds = visibleUsers.map((user) => user.id);
   if (userIds.length === 0) return [];
 
   const problems = await prisma.problem.findMany({
@@ -132,7 +138,7 @@ export async function getReputationLeaderboard() {
     problemsByAuthor.set(problem.authorId, existing);
   }
 
-  return users.map((user) => summarizeUser(user, problemsByAuthor.get(user.id) ?? []));
+  return visibleUsers.map((user) => summarizeUser(user, problemsByAuthor.get(user.id) ?? []));
 }
 
 export async function getUserReputation(userId: number) {
