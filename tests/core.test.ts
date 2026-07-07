@@ -66,7 +66,7 @@ import {
   markdownHeadingLevelForEvent,
   markdownHeadingLineText
 } from "../lib/markdown-shortcuts.ts";
-import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "../lib/markdown-preview.ts";
+import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownPreviewClass } from "../lib/markdown-preview.ts";
 import { markdownExcerpt } from "../lib/metadata-text.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
@@ -354,6 +354,9 @@ assert.equal(headingLevel("Paragraph"), null);
 assert.equal(markdownPreviewClass("StrongEmphasis"), "cm-md-strong");
 assert.equal(markdownHeadingLineText("Existing title", 4), "#### Existing title");
 assert.equal(markdownHeadingLineText("## Existing title", 4), "#### Existing title");
+assert.equal(markdownHeadingLineText("", 5), "##### ");
+assert.equal(markdownHeadingPreviewText("##### "), null);
+assert.equal(markdownHeadingPreviewText("##### Title"), "Title");
 assert.equal(
   keyboardEventMatchesShortcut(
     { altKey: false, ctrlKey: false, metaKey: false, shiftKey: true, code: "Digit4", key: "$" },

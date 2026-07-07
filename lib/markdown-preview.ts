@@ -14,6 +14,11 @@ export function markdownPreviewClass(nodeName: string) {
   return null;
 }
 
+export function markdownHeadingPreviewText(source: string) {
+  const text = source.replace(/^#{1,6}\s*/, "");
+  return text.trim() ? text : null;
+}
+
 export type WikiLinkRange = {
   from: number;
   to: number;

@@ -50,7 +50,7 @@ import {
   markdownHeadingLineText,
   type MarkdownHeadingShortcuts
 } from "@/lib/markdown-shortcuts";
-import { findWikiLinkRanges, headingLevel, markdownPreviewClass } from "@/lib/markdown-preview";
+import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownPreviewClass } from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
 
@@ -862,7 +862,8 @@ function buildLivePreviewDecorations(state: EditorState) {
       const previewClass = markdownPreviewClass(node.name);
 
       if (level && !active) {
-        const headingText = state.doc.sliceString(node.from, node.to).replace(/^#{1,6}\s*/, "");
+        const headingText = markdownHeadingPreviewText(state.doc.sliceString(node.from, node.to));
+        if (!headingText) return;
         decorations.push(
           Decoration.replace({
             widget: new MarkdownHeadingWidget(headingText, level, node.from),
