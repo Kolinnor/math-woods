@@ -37,7 +37,7 @@ const rankingOptions: Array<{
     value: "problems",
     label: "Number of problems",
     title: "Ranking by problems created",
-    subtitle: "Members who have created at least one problem."
+    subtitle: "All members, ranked by how many problems they have created."
   }
 ];
 
@@ -122,7 +122,7 @@ export default async function UsersPage({
               </span>
             </Link>
           ))}
-          {users.length === 0 && <p className="empty-state">No problem contributors yet.</p>}
+          {users.length === 0 && <p className="empty-state">No users yet.</p>}
         </div>
       </section>
     </ForestPageLayout>

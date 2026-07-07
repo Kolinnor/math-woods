@@ -87,9 +87,7 @@ function summarizeUser(
 export async function getReputationLeaderboard() {
   const users = await prisma.user.findMany({
     where: {
-      problems: {
-        some: { status: { not: "ARCHIVED" } }
-      }
+      deletedAt: null
     },
     select: {
       id: true,
