@@ -3835,13 +3835,15 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 }
 
 .problem-filter-search,
-.problem-filter-section {
+.problem-filter-section,
+.problem-filter-inline-field {
   display: grid;
   gap: 0.55rem;
 }
 
 .problem-filter-search span,
-.problem-filter-section p {
+.problem-filter-section p,
+.problem-filter-inline-field span {
   color: #8a9184;
   font-size: 0.68rem;
   font-weight: 750;
@@ -4010,14 +4012,23 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   color: inherit;
   display: grid;
   gap: 1rem;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   padding: 0.85rem 0.4rem;
-  text-decoration: none;
   transition: background-color 120ms ease;
 }
 
 .problem-ledger-row:hover {
   background: rgb(248 244 234 / 0.65);
+}
+
+.problem-ledger-content {
+  align-items: center;
+  color: inherit;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 64px minmax(0, 1fr);
+  min-width: 0;
+  text-decoration: none;
 }
 
 .problem-ledger-difficulty {
@@ -4075,6 +4086,17 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   gap: 0.4rem;
   justify-items: end;
   white-space: nowrap;
+}
+
+.problem-ledger-author {
+  color: inherit;
+  text-decoration: none;
+}
+
+.problem-ledger-author:hover {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .list-row {
@@ -6288,13 +6310,17 @@ body:has(.home-shell) > .site-footer {
 
   .problem-ledger-row {
     align-items: start;
+    grid-template-columns: 1fr;
+  }
+
+  .problem-ledger-content {
     grid-template-columns: 48px minmax(0, 1fr);
   }
 
   .problem-ledger-side {
     align-items: flex-start;
-    grid-column: 2;
     justify-items: start;
+    padding-left: calc(48px + 1rem);
     white-space: normal;
   }
 }

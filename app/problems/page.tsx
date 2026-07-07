@@ -261,6 +261,7 @@ export default async function ProblemsPage({
     quality?: string;
     progress?: string;
     ownership?: string;
+    author?: string;
     sort?: string;
     page?: string;
     filterLogic?: string;
@@ -283,6 +284,7 @@ export default async function ProblemsPage({
     quality = "",
     progress = "",
     ownership = "",
+    author = "",
     sort = "newest",
     page = "1",
     filterLogic = "AND",
@@ -326,6 +328,18 @@ export default async function ProblemsPage({
     : undefined;
   const progressValue = parseProgressFilter(progress);
   const ownershipValue = user ? parseOwnershipFilter(ownership) : "all";
+  const authorQuery = author.trim();
+  const authorSlug = ensureSlug(authorQuery, "");
+  const authorWhere: Prisma.ProblemWhereInput | null = authorQuery
+    ? {
+        author: {
+          OR: [
+            { username: { contains: authorSlug || authorQuery, mode: "insensitive" } },
+            { displayName: { contains: authorQuery, mode: "insensitive" } }
+          ]
+        }
+      }
+    : null;
   const progressFilterWhere: Prisma.ProblemWhereInput | null =
     user && progressValue === "unsolved"
       ? { attempts: { none: { userId: user.id, status: "SOLVED" } } }
@@ -382,6 +396,7 @@ export default async function ProblemsPage({
     ...(qualityValue ? [{ qualityStatus: qualityValue }] : []),
     ...(progressFilterWhere ? [progressFilterWhere] : []),
     ...(ownershipWhere ? [ownershipWhere] : []),
+    ...(authorWhere ? [authorWhere] : []),
     ...(advancedClauses.length
       ? [{ [advancedLogic]: advancedClauses } satisfies Prisma.ProblemWhereInput]
       : [])
@@ -396,6 +411,7 @@ export default async function ProblemsPage({
     listed: true,
     language: preferredLanguage,
     ...(ownershipWhere ?? {}),
+    ...(authorWhere ?? {}),
     ...(domainValue ? domainWhere(domainValue, showSpoilerTags) : {})
   };
 
@@ -478,6 +494,7 @@ export default async function ProblemsPage({
     quality: qualityValue,
     progress: user && progressValue !== "unsolved" ? progressValue : undefined,
     ownership: user && ownershipValue !== "all" ? ownershipValue : undefined,
+    author: authorQuery || undefined,
     sort: sortValue === "newest" ? undefined : sortValue,
     filterLogic: advancedFilters.length ? advancedLogic : undefined,
     filterField: advancedFilters.map((filter) => filter.field),
@@ -571,6 +588,10 @@ export default async function ProblemsPage({
                   <option value="others">{t.problems.onlyOtherProblems}</option>
                 </select>
               )}
+              <label className="problem-filter-inline-field">
+                <span>{t.problems.author}</span>
+                <input name="author" defaultValue={authorQuery} placeholder={t.problems.authorPlaceholder} />
+              </label>
               <select name="quality" defaultValue={qualityValue ?? ""}>
                 <option value="">{t.problems.anyQuality}</option>
                 <option value="NEEDS_WORK">{t.problems.needsWork}</option>
@@ -629,18 +650,19 @@ export default async function ProblemsPage({
               const difficulty = problem.difficulty ?? null;
               const difficultyLevel = difficultyBars(difficulty);
               const tone = difficultyColor(difficulty);
+              const authorName = displayNameForUser(problem.author);
 
               return (
-                <Link
+                <div
                   key={problem.id}
-                  href={`/problems/${problem.slug}`}
                   title={isOwnProblem ? t.problems.yourProblem : isUserFavorite ? t.problems.favoriteProblem : undefined}
                   className={`${problemLinkClass(
                     "problem-ledger-row",
                     solvedIds.has(problem.id) ? "solved" : openedIds.has(problem.id) ? "opened" : null
                   )}${isOwnProblem ? " problem-own" : isUserFavorite ? " problem-favorite" : ""}`}
                 >
-                  <div className="problem-ledger-difficulty" style={{ color: tone }}>
+                  <Link href={`/problems/${problem.slug}`} className="problem-ledger-content">
+                    <div className="problem-ledger-difficulty" style={{ color: tone }}>
                     <span>{difficulty ? String(difficulty).padStart(2, "0") : "--"}</span>
                     <span className="problem-ledger-bars" aria-hidden="true">
                       {[1, 2, 3, 4].map((level) => (
@@ -678,9 +700,16 @@ export default async function ProblemsPage({
                         ))}
                       </div>
                     )}
-                  </div>
+                    </div>
+                  </Link>
                   <div className="problem-ledger-side">
-                    <span>{t.common.by} {displayNameForUser(problem.author)}</span>
+                    <Link
+                      href={problemsHref({ ...paginationParams, author: authorName }) as never}
+                      className="problem-ledger-author"
+                      title={t.problems.filterByAuthor(authorName)}
+                    >
+                      {t.common.by} {authorName}
+                    </Link>
                     {isOwnProblem && (
                       <span className="problem-favorite-count problem-own-count" title={t.problems.yourProblem}>
                         <House size={15} />
@@ -694,7 +723,7 @@ export default async function ProblemsPage({
                       {externalFavoriteCount}
                     </span>
                   </div>
-                </Link>
+                </div>
               );
             })}
             {problems.length === 0 && (
