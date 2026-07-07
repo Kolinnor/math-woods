@@ -60,7 +60,7 @@ export const fr = {
       guestTitle: "Math Woods est un lieu calme pour résoudre des problèmes et étudier les mathématiques",
       startSolving: "Commencer à résoudre",
       contributeQuestion: "Comment contribuer ?",
-      artCredit: "Ivan Shishkin, Morning in a Pine Forest (1889) / domaine public"
+      artCredit: "Ivan Shishkin, Morning in a Pine Forest (1889) (domaine public)"
     },
     trail: {
       ariaLabel: "Comment fonctionne Math Woods",
@@ -365,6 +365,10 @@ export const fr = {
     report: "Signaler",
     reportPlaceholder: "Définition ambiguë, conflit, source manquante...",
     submit: "Envoyer",
+    problemsUsingConcept: (count: number) => `Problèmes utilisant ce concept (${count})`,
+    spoilerProblemsUsingConcept: (count: number) => `Problèmes utilisant ce concept comme spoiler (${count})`,
+    noProblemsUsingConcept: "Aucun problème listé ne renvoie encore vers ce concept.",
+    noSpoilerProblemsUsingConcept: "Aucun problème listé n'utilise encore ce concept comme spoiler.",
     backlinks: "Liens entrants",
     outgoingLinks: "Liens sortants"
   }

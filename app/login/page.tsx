@@ -28,20 +28,18 @@ export default async function LoginPage({
   return (
     <ForestPageLayout
       title="Sign in"
-      eyebrow="Account"
-      heroImage="/art/brook-in-the-forest.jpg"
-      heroAlt="Ivan Shishkin, Brook in the Forest"
-      description="Use an account to solve, discuss, save, and contribute."
+      heroImage="/art/morning-in-a-pine-forest.jpg"
+      heroAlt="Ivan Shishkin, Morning in a Pine Forest"
+      description="Record your progress and share your knowledge."
     >
     <div className="grid gap-6 md:grid-cols-2">
       <section>
         <h1 className="mb-2 text-2xl font-bold">Sign in</h1>
-        <p className="muted mb-5">Use your username or email.</p>
         {loginError && <p className="quality-banner quality-needs-work mb-4">{loginError}</p>}
         <form action={loginAction} className="panel grid gap-4 p-5">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Username or email</span>
-            <input name="identifier" placeholder="you@example.com" required />
+            <input name="identifier" required />
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-medium">Password</span>
@@ -53,7 +51,6 @@ export default async function LoginPage({
 
       <section>
         <h2 className="mb-2 text-2xl font-bold">Create account</h2>
-        <p className="muted mb-5">Create an account, then verify your email to solve, discuss, and contribute problems.</p>
         {registerError && <p className="quality-banner quality-needs-work mb-4">{registerError}</p>}
         <form action={registerAction} className="panel grid gap-4 p-5">
           <label className="grid gap-2">

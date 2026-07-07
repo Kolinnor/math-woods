@@ -4730,6 +4730,49 @@ button.relation-remove-button {
   padding: 2rem clamp(1.25rem, 4vw, 3rem);
 }
 
+.concept-problem-boxes {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.concept-problem-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.concept-problem-box summary {
+  cursor: pointer;
+  font-weight: 750;
+  list-style-position: inside;
+  padding: 0.85rem 1rem;
+}
+
+.concept-problem-box summary:hover {
+  background: var(--panel-muted);
+}
+
+.concept-problem-list {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem 1rem;
+}
+
+.concept-problem-list p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.concept-problem-link {
+  color: var(--link);
+  font-size: 0.92rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .problem-statement .prose-math {
   font-size: 0.95rem;
 }

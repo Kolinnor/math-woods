@@ -14,7 +14,7 @@ import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
-import { contentLanguageLabel } from "@/lib/languages";
+import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
@@ -28,6 +28,52 @@ function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
   return Object.values(MathDomain).includes(domain as MathDomain)
     ? (t.home.domainLabels[domain as MathDomain] ?? domainLabel(domain))
     : domainLabel(domain);
+}
+
+function titleFromConceptSlug(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .join(" ");
+}
+
+function uniqueLinksByTargetSlug<T extends { targetSlug: string }>(links: T[]) {
+  const seen = new Set<string>();
+  return links.filter((link) => {
+    if (seen.has(link.targetSlug)) return false;
+    seen.add(link.targetSlug);
+    return true;
+  });
+}
+
+async function resolveConceptTitlesForLanguage(slugs: readonly string[], language: string) {
+  const uniqueSlugs = [...new Set(slugs)];
+  if (uniqueSlugs.length === 0) return new Map<string, string>();
+
+  const targetLanguage = parseContentLanguage(language);
+  const concepts = await prisma.concept.findMany({
+    where: { slug: { in: uniqueSlugs } },
+    select: { slug: true, title: true, translationGroupId: true }
+  });
+  if (concepts.length === 0) return new Map<string, string>();
+
+  const translatedConcepts = await prisma.concept.findMany({
+    where: {
+      translationGroupId: { in: [...new Set(concepts.map((concept) => concept.translationGroupId))] },
+      language: targetLanguage
+    },
+    select: { title: true, translationGroupId: true }
+  });
+  const translatedTitleByGroup = new Map(
+    translatedConcepts.map((concept) => [concept.translationGroupId, concept.title])
+  );
+
+  return new Map(
+    concepts.map((concept) => [
+      concept.slug,
+      translatedTitleByGroup.get(concept.translationGroupId) ?? concept.title
+    ])
+  );
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -128,13 +174,16 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
   if (preferredTranslation?.slug && preferredTranslation.slug !== concept.slug) {
     redirect(`/concepts/${preferredTranslation.slug}`);
   }
-  const [conceptBodyHtml, translationFreshness, outgoingConceptHrefBySlug] = await Promise.all([
+  const uniqueOutgoingLinks = uniqueLinksByTargetSlug(outgoingLinks);
+  const existingOutgoingSlugs = uniqueOutgoingLinks.filter((link) => link.exists).map((link) => link.targetSlug);
+  const [conceptBodyHtml, translationFreshness, outgoingConceptHrefBySlug, outgoingConceptTitleBySlug] = await Promise.all([
     renderMarkdownForContentLanguage(concept.bodyMarkdown, concept.language),
     conceptTranslationFreshness(concept.translatedFromConcept, concept.translatedFromRevisionId),
     resolveConceptHrefsForLanguage(
-      outgoingLinks.filter((link) => link.exists).map((link) => link.targetSlug),
+      existingOutgoingSlugs,
       concept.language
-    )
+    ),
+    resolveConceptTitlesForLanguage(existingOutgoingSlugs, concept.language)
   ]);
   const isLanguageFallback = preferredLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
@@ -145,9 +194,12 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     ? `/concepts/new?translateOf=${concept.slug}&language=${targetTranslationLanguage}`
     : undefined;
 
-  const [problemBacklinks, conceptBacklinks] = await Promise.all([
+  const conceptLookupSlugs = [concept.slug, ...concept.aliases.map((alias) => alias.aliasSlug)];
+  const [problemBacklinks, conceptBacklinks, spoilerProblemBacklinksRaw] = await Promise.all([
     prisma.problem.findMany({
       where: {
+        status: "PUBLISHED",
+        listed: true,
         id: {
           in: backlinks.filter((link) => link.sourceType === "PROBLEM").map((link) => link.sourceId)
         }
@@ -161,8 +213,27 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
         }
       },
       select: { id: true, slug: true, title: true }
+    }),
+    prisma.problem.findMany({
+      where: {
+        status: "PUBLISHED",
+        listed: true,
+        language: concept.language,
+        spoilerTags: {
+          some: {
+            tag: {
+              slug: { in: conceptLookupSlugs }
+            }
+          }
+        }
+      },
+      select: { id: true, slug: true, title: true },
+      orderBy: { updatedAt: "desc" },
+      take: 30
     })
   ]);
+  const problemBacklinkIds = new Set(problemBacklinks.map((problem) => problem.id));
+  const spoilerProblemBacklinks = spoilerProblemBacklinksRaw.filter((problem) => !problemBacklinkIds.has(problem.id));
 
   return (
     <ForestPageLayout
@@ -246,6 +317,36 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
           <MarkdownBlock html={conceptBodyHtml} />
         </section>
 
+        <div className="concept-problem-boxes">
+          <details className="concept-problem-box">
+            <summary>
+              <span>{t.conceptDetail.problemsUsingConcept(problemBacklinks.length)}</span>
+            </summary>
+            <div className="concept-problem-list">
+              {problemBacklinks.map((problem) => (
+                <Link key={problem.id} href={`/problems/${problem.slug}`} className="concept-problem-link">
+                  <AsyncMarkdownInline markdown={problem.title} />
+                </Link>
+              ))}
+              {problemBacklinks.length === 0 && <p>{t.conceptDetail.noProblemsUsingConcept}</p>}
+            </div>
+          </details>
+
+          <details className="concept-problem-box">
+            <summary>
+              <span>{t.conceptDetail.spoilerProblemsUsingConcept(spoilerProblemBacklinks.length)}</span>
+            </summary>
+            <div className="concept-problem-list">
+              {spoilerProblemBacklinks.map((problem) => (
+                <Link key={problem.id} href={`/problems/${problem.slug}`} className="concept-problem-link">
+                  <AsyncMarkdownInline markdown={problem.title} />
+                </Link>
+              ))}
+              {spoilerProblemBacklinks.length === 0 && <p>{t.conceptDetail.noSpoilerProblemsUsingConcept}</p>}
+            </div>
+          </details>
+        </div>
+
         {concept.references.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-3 text-lg font-semibold">{t.conceptDetail.references}</h2>
@@ -315,19 +416,23 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
         </section>
         )}
 
-        {outgoingLinks.length > 0 && (
+        {uniqueOutgoingLinks.length > 0 && (
         <section className="sidebar-section">
           <h2 className="mb-3 font-semibold">{t.conceptDetail.outgoingLinks}</h2>
           <div className="grid gap-2 text-sm">
-            {outgoingLinks.map((link) => (
-              <Link
-                key={link.id}
-                href={(link.exists ? (outgoingConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : `/concepts/new?title=${link.targetSlug}`) as never}
-                className={link.exists ? "wiki-link" : "wiki-link missing"}
-              >
-                {link.label ?? link.targetSlug}
-              </Link>
-            ))}
+            {uniqueOutgoingLinks.map((link) => {
+              const title = outgoingConceptTitleBySlug.get(link.targetSlug) ?? titleFromConceptSlug(link.targetSlug);
+
+              return (
+                <Link
+                  key={link.id}
+                  href={(link.exists ? (outgoingConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : `/concepts/new?title=${encodeURIComponent(title)}`) as never}
+                  className={link.exists ? "wiki-link" : "wiki-link missing"}
+                >
+                  {title}
+                </Link>
+              );
+            })}
           </div>
         </section>
         )}
