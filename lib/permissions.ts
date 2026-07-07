@@ -96,8 +96,8 @@ export function canRollbackProblem(user: PermissionUser, problem: ProblemPermiss
   return canEditProblem(user, problem);
 }
 
-export function canArchiveProblem(user: PermissionUser, _problem: ProblemPermissionTarget) {
-  return hasAdminPrivileges(user.role);
+export function canArchiveProblem(user: PermissionUser, problem: ProblemPermissionTarget) {
+  return problem.authorId === user.id || hasAdminPrivileges(user.role);
 }
 
 export function canDeleteProblem(user: PermissionUser, problem: ProblemPermissionTarget) {

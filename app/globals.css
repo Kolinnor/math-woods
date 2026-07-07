@@ -556,7 +556,11 @@ a {
   justify-content: flex-end;
 }
 
-.notification-read-button {
+.notification-title-link {
+  font-weight: 700;
+}
+
+.notification-clear-button {
   background: transparent;
   border: 0;
   color: var(--link);
@@ -565,7 +569,7 @@ a {
   padding: 0.2rem;
 }
 
-.notification-read-button:hover {
+.notification-clear-button:hover {
   background: var(--panel-muted);
   color: var(--ink);
 }

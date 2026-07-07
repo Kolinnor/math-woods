@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { Bell, CheckCheck, Trash2 } from "lucide-react";
-import { clearReadNotificationsAction, markAllNotificationsReadAction } from "@/lib/actions/notification-actions";
+import { Bell, Trash2 } from "lucide-react";
+import { clearNotificationsAction } from "@/lib/actions/notification-actions";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export async function NotificationsMenu({ userId }: { userId: number }) {
   const timeZone = await getRequestTimeZone();
-  const [unreadNotifications, unreadCount, readCount] = await Promise.all([
+  const [unreadNotifications, unreadCount, notificationCount] = await Promise.all([
     prisma.notification.findMany({
       where: { userId, readAt: null },
       orderBy: { createdAt: "desc" },
@@ -18,7 +18,7 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       where: { userId, readAt: null }
     }),
     prisma.notification.count({
-      where: { userId, readAt: { not: null } }
+      where: { userId }
     })
   ]);
   const readNotifications =
@@ -40,21 +40,15 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       </summary>
       <div className="notification-popover">
         <div className="notification-header">
-          <strong>Notifications</strong>
+          <Link href={"/notifications" as never} className="notification-title-link">
+            Notifications
+          </Link>
           <div className="notification-actions">
-            {unreadCount > 0 && (
-              <form action={markAllNotificationsReadAction}>
-                <button type="submit" className="notification-read-button">
-                  <CheckCheck size={15} />
-                  Mark all read
-                </button>
-              </form>
-            )}
-            {readCount > 0 && (
-              <form action={clearReadNotificationsAction}>
-                <button type="submit" className="notification-read-button">
+            {notificationCount > 0 && (
+              <form action={clearNotificationsAction}>
+                <button type="submit" className="notification-clear-button">
                   <Trash2 size={15} />
-                  Clear read
+                  Clear notifications
                 </button>
               </form>
             )}

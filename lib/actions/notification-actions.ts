@@ -24,21 +24,6 @@ const configurableNotificationTypes = [
   NotificationType.CONCEPT_EDITED
 ] as const;
 
-export async function markAllNotificationsReadAction() {
-  const user = await requireUser();
-  await assertRateLimit(`notifications:${user.id}`, 60, 60_000);
-
-  await prisma.notification.updateMany({
-    where: {
-      userId: user.id,
-      readAt: null
-    },
-    data: { readAt: new Date() }
-  });
-
-  revalidatePath("/", "layout");
-}
-
 export async function markNotificationReadAction(notificationId: number) {
   const user = await requireUser();
   await assertRateLimit(`notification-read:${user.id}`, 120, 60_000);
@@ -55,18 +40,18 @@ export async function markNotificationReadAction(notificationId: number) {
   revalidatePath("/", "layout");
 }
 
-export async function clearReadNotificationsAction() {
+export async function clearNotificationsAction() {
   const user = await requireUser();
-  await assertRateLimit(`notifications-clear:${user.id}`, 20, 60_000);
+  await assertRateLimit(`notifications-clear-all:${user.id}`, 20, 60_000);
 
   await prisma.notification.deleteMany({
     where: {
-      userId: user.id,
-      readAt: { not: null }
+      userId: user.id
     }
   });
 
   revalidatePath("/", "layout");
+  revalidatePath("/notifications");
 }
 
 export async function updateNotificationPreferencesAction(formData: FormData) {
