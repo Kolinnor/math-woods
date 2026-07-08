@@ -5289,25 +5289,32 @@ button.relation-remove-button {
 }
 
 .tab-nav {
+  align-items: center;
   border-bottom: 1px solid var(--line);
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
   margin-bottom: 1.25rem;
 }
 
-.tab-nav a,
-.tab-nav span {
+.tab-nav > a,
+.tab-nav > span {
   border-bottom: 2px solid transparent;
   color: var(--muted);
   font-size: 0.875rem;
   padding: 0.55rem 0.75rem;
 }
 
-.tab-nav span,
-.tab-nav a.active {
+.tab-nav > span,
+.tab-nav > a.active {
   border-bottom-color: var(--accent);
   color: var(--ink);
   font-weight: 650;
+}
+
+.tab-nav .translation-links {
+  margin-left: 0.35rem;
+  margin-top: 0;
 }
 
 .home-hero {

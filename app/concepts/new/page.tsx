@@ -97,7 +97,7 @@ export default async function NewConceptPage({
           />
           <label className="grid gap-2">
             <span className="text-sm font-medium">Aliases</span>
-            <input name="aliases" placeholder="Vieta's formulas, Viète relations" />
+            <input name="aliases" />
           </label>
         </div>
         <div className="grid gap-2">

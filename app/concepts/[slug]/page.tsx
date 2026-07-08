@@ -257,13 +257,6 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
         <div className="reading-header mb-5">
-          <ContentTranslations
-            currentLanguage={concept.language}
-            hrefPrefix="/concepts"
-            translations={translations}
-            addTranslationLabel={t.translations.addTranslation}
-            createHref={addTranslationHref}
-          />
           {isLanguageFallback && (
             <p className="quality-banner quality-unreviewed mb-4 text-sm">
               {t.translations.fallbackNotice(contentLanguageLabel(concept.language), contentLanguageLabel(preferredLanguage))}
@@ -300,6 +293,13 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
           <Link href={`/concepts/${concept.slug}/history`}>
             {t.conceptDetail.history}
           </Link>
+          <ContentTranslations
+            currentLanguage={concept.language}
+            hrefPrefix="/concepts"
+            translations={translations}
+            addTranslationLabel={t.translations.addTranslation}
+            createHref={addTranslationHref}
+          />
         </nav>
 
         {concept.status === "STUB" && (

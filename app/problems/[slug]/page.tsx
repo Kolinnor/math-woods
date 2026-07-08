@@ -348,13 +348,6 @@ export default async function ProblemPage({
           </p>
         )}
 
-          <ContentTranslations
-            currentLanguage={problem.language}
-            hrefPrefix="/problems"
-            translations={translations}
-            addTranslationLabel={t.translations.addTranslation}
-            createHref={addTranslationHref}
-          />
           {isLanguageFallback && (
             <p className="quality-banner quality-unreviewed mb-4 text-sm">
               {t.translations.fallbackNotice(contentLanguageLabel(problem.language), contentLanguageLabel(preferredLanguage))}
@@ -378,6 +371,22 @@ export default async function ProblemPage({
               .
             </p>
           )}
+          <nav className="tab-nav problem-tab-nav">
+            <span>{t.problemDetail.problem}</span>
+            <Link href={`/problems/${problem.slug}/discussion`}>
+              {t.problemDetail.discussions} · {t.problemDetail.messages(discussionPostCount)}
+            </Link>
+            <Link href={`/problems/${problem.slug}/history`}>
+              {t.conceptDetail.history}
+            </Link>
+            <ContentTranslations
+              currentLanguage={problem.language}
+              hrefPrefix="/problems"
+              translations={translations}
+              addTranslationLabel={t.translations.addTranslation}
+              createHref={addTranslationHref}
+            />
+          </nav>
           {problem.tags.length > 0 && (
             <div className="problem-detail-tags zen-meta">
               {problem.tags.map(({ tag }) => (
