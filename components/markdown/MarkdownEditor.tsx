@@ -52,6 +52,7 @@ import {
 } from "@/lib/markdown-shortcuts";
 import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownPreviewClass } from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
+import { ensureSlug } from "@/lib/slug";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
@@ -106,6 +107,10 @@ type ConceptSuggestion = {
   slug: string;
   aliases: string[];
 };
+
+function linkTargetForSuggestion(suggestion: ConceptSuggestion) {
+  return ensureSlug(suggestion.title, "") === suggestion.slug ? suggestion.title : suggestion.slug;
+}
 
 type ImageUploadResponse = {
   ok: boolean;
@@ -1284,10 +1289,12 @@ export function MarkdownEditor({
   }
 
   function selectLinkSuggestion(suggestion: ConceptSuggestion) {
-    setLinkTarget(suggestion.title);
+    const target = linkTargetForSuggestion(suggestion);
+    setLinkTarget(target);
+    setLinkText((currentText) => currentText.trim() ? currentText : suggestion.title);
     setLinkSuggestions([]);
     setLinkSuggestionsLoading(false);
-    setSelectedLinkSuggestionQuery(suggestion.title);
+    setSelectedLinkSuggestionQuery(target);
     linkTargetInputRef.current?.focus();
   }
 
