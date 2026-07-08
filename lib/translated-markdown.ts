@@ -4,6 +4,7 @@ import { renderMarkdown } from "@/lib/markdown";
 import { extractWikiLinks } from "@/lib/wikilinks";
 
 type ResolvedConcept = {
+  language: string;
   slug: string;
   translationGroupId: string;
 };
@@ -42,14 +43,21 @@ export async function renderMarkdownForContentLanguage(markdown: string, languag
   const targetLanguage = parseContentLanguage(language);
   const links = extractWikiLinks(markdown);
   const targetSlugs = [...new Set(links.map((link) => link.targetSlug))];
+  const targetTitles = [...new Set(links.map((link) => link.target.trim()).filter(Boolean))];
 
   if (targetSlugs.length === 0) return renderMarkdown(markdown);
 
   const concepts = await prisma.concept.findMany({
     where: {
-      OR: [{ slug: { in: targetSlugs } }, { aliases: { some: { aliasSlug: { in: targetSlugs } } } }]
+      OR: [
+        { slug: { in: targetSlugs } },
+        { aliases: { some: { aliasSlug: { in: targetSlugs } } } },
+        ...targetTitles.map((title) => ({ title: { equals: title, mode: "insensitive" as const } }))
+      ]
     },
     select: {
+      title: true,
+      language: true,
       slug: true,
       translationGroupId: true,
       aliases: {
@@ -59,14 +67,33 @@ export async function renderMarkdownForContentLanguage(markdown: string, languag
     }
   });
 
+  const conceptCandidatesByLookupSlug = new Map<string, ResolvedConcept[]>();
+  const addConceptCandidate = (lookupSlug: string, concept: ResolvedConcept) => {
+    conceptCandidatesByLookupSlug.set(lookupSlug, [
+      ...(conceptCandidatesByLookupSlug.get(lookupSlug) ?? []),
+      concept
+    ]);
+  };
+
   const conceptByLookupSlug = new Map<string, ResolvedConcept>();
   for (const concept of concepts) {
     if (targetSlugs.includes(concept.slug)) {
-      conceptByLookupSlug.set(concept.slug, concept);
+      addConceptCandidate(concept.slug, concept);
     }
     for (const alias of concept.aliases) {
-      conceptByLookupSlug.set(alias.aliasSlug, concept);
+      addConceptCandidate(alias.aliasSlug, concept);
     }
+    for (const link of links) {
+      if (concept.title.toLowerCase() === link.target.trim().toLowerCase()) {
+        addConceptCandidate(link.targetSlug, concept);
+      }
+    }
+  }
+  for (const [lookupSlug, candidates] of conceptCandidatesByLookupSlug) {
+    conceptByLookupSlug.set(
+      lookupSlug,
+      candidates.find((candidate) => candidate.language === targetLanguage) ?? candidates[0]
+    );
   }
 
   const translationGroups = [...new Set(concepts.map((concept) => concept.translationGroupId))];

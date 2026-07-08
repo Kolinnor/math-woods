@@ -1,5 +1,6 @@
 import { Prisma, SourceType, TargetType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { ensureSlug } from "@/lib/slug";
 import { extractWikiLinks } from "@/lib/wikilinks";
 
 export type MissingConceptSource = {
@@ -31,7 +32,11 @@ export async function syncInternalLinks(
   for (const link of links) {
     const concepts = await tx.concept.findMany({
       where: {
-        OR: [{ slug: link.targetSlug }, { aliases: { some: { aliasSlug: link.targetSlug } } }]
+        OR: [
+          { slug: link.targetSlug },
+          { title: { equals: link.target, mode: "insensitive" } },
+          { aliases: { some: { aliasSlug: link.targetSlug } } }
+        ]
       },
       select: { id: true, slug: true, language: true },
       orderBy: { id: "asc" }
@@ -77,9 +82,24 @@ export async function refreshLinksForConceptId(
 }
 
 async function refreshLinksForConceptRecord(
-  concept: { slug: string; aliases: { aliasSlug: string }[] },
+  concept: { slug: string; title: string; aliases: { aliasSlug: string }[] },
   tx: Prisma.TransactionClient = prisma
 ) {
+  const titleSlug = ensureSlug(concept.title, "");
+  if (titleSlug && titleSlug !== concept.slug) {
+    await tx.internalLink.updateMany({
+      where: {
+        exists: false,
+        targetSlug: titleSlug
+      },
+      data: {
+        targetSlug: concept.slug,
+        exists: true,
+        targetType: TargetType.CONCEPT
+      }
+    });
+  }
+
   await tx.internalLink.updateMany({
     where: { targetSlug: concept.slug },
     data: {

@@ -2,18 +2,48 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+function slugify(input) {
+  return input
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
 async function main() {
   const concepts = await prisma.concept.findMany({
     select: {
+      title: true,
       slug: true,
       aliases: { select: { aliasSlug: true } }
     }
   });
 
   let canonicalLinks = 0;
+  let titleLinks = 0;
   let aliasLinks = 0;
 
   for (const concept of concepts) {
+    const titleSlug = slugify(concept.title);
+    if (titleSlug && titleSlug !== concept.slug) {
+      const titleResult = await prisma.internalLink.updateMany({
+        where: {
+          exists: false,
+          targetSlug: titleSlug
+        },
+        data: {
+          targetSlug: concept.slug,
+          exists: true,
+          targetType: "CONCEPT"
+        }
+      });
+      titleLinks += titleResult.count;
+    }
+
     const canonicalResult = await prisma.internalLink.updateMany({
       where: {
         exists: false,
@@ -42,7 +72,7 @@ async function main() {
   }
 
   console.log(
-    `Internal link reconciliation complete. Canonical links fixed: ${canonicalLinks}. Alias links fixed: ${aliasLinks}.`
+    `Internal link reconciliation complete. Canonical links fixed: ${canonicalLinks}. Title links fixed: ${titleLinks}. Alias links fixed: ${aliasLinks}.`
   );
 }
 
