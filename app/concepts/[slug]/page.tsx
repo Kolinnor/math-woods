@@ -188,6 +188,10 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
   const isLanguageFallback = preferredLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
   const conceptDomainLabel = translatedDomainLabel(concept.domain, t);
+  const hasReadingHeader =
+    isLanguageFallback ||
+    Boolean(translationFreshness?.stale) ||
+    concept.aliases.length > 0;
 
   const targetTranslationLanguage = nextMissingTranslationLanguage(concept.language, translations, preferredLanguage);
   const addTranslationHref = targetTranslationLanguage
@@ -256,34 +260,36 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     >
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
-        <div className="reading-header mb-5">
-          {isLanguageFallback && (
-            <p className="quality-banner quality-unreviewed mb-4 text-sm">
-              {t.translations.fallbackNotice(contentLanguageLabel(concept.language), contentLanguageLabel(preferredLanguage))}
-              {addTranslationHref && (
-                <>
-                  {" "}
-                  <Link href={addTranslationHref as never} className="underline">
-                    {t.translations.addThatTranslation}
-                  </Link>
-                  .
-                </>
-              )}
-            </p>
-          )}
-          {translationFreshness?.stale && (
-            <p className="quality-banner quality-needs-work mb-4 text-sm">
-              {t.translations.staleNotice(translationFreshness.basedOnRevisionId)}{" "}
-              <Link href={translationFreshness.sourceHref as never} className="underline">
-                {t.translations.compareWith(translationFreshness.sourceTitle)}
-              </Link>
-              .
-            </p>
-          )}
-          {concept.aliases.length > 0 && (
-            <p className="muted mt-1 text-sm">{t.conceptDetail.alsoKnownAs} {concept.aliases.map((alias) => alias.alias).join(", ")}</p>
-          )}
-        </div>
+        {hasReadingHeader && (
+          <div className="reading-header mb-5">
+            {isLanguageFallback && (
+              <p className="quality-banner quality-unreviewed mb-4 text-sm">
+                {t.translations.fallbackNotice(contentLanguageLabel(concept.language), contentLanguageLabel(preferredLanguage))}
+                {addTranslationHref && (
+                  <>
+                    {" "}
+                    <Link href={addTranslationHref as never} className="underline">
+                      {t.translations.addThatTranslation}
+                    </Link>
+                    .
+                  </>
+                )}
+              </p>
+            )}
+            {translationFreshness?.stale && (
+              <p className="quality-banner quality-needs-work mb-4 text-sm">
+                {t.translations.staleNotice(translationFreshness.basedOnRevisionId)}{" "}
+                <Link href={translationFreshness.sourceHref as never} className="underline">
+                  {t.translations.compareWith(translationFreshness.sourceTitle)}
+                </Link>
+                .
+              </p>
+            )}
+            {concept.aliases.length > 0 && (
+              <p className="muted mt-1 text-sm">{t.conceptDetail.alsoKnownAs} {concept.aliases.map((alias) => alias.alias).join(", ")}</p>
+            )}
+          </div>
+        )}
 
         <nav className="tab-nav">
           <span>{t.conceptDetail.article}</span>
@@ -300,13 +306,13 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
             addTranslationLabel={t.translations.addTranslation}
             createHref={addTranslationHref}
           />
+          {concept.status === "STUB" && (
+            <span className="tab-nav-notice tab-nav-notice-stub">
+              {t.conceptDetail.stubNotice}
+            </span>
+          )}
         </nav>
 
-        {concept.status === "STUB" && (
-          <p className="quality-banner quality-stub mb-4">
-            {t.conceptDetail.stubNotice}
-          </p>
-        )}
         {concept.status === "CONTROVERSIAL" && (
           <p className="quality-banner quality-controversial mb-4">
             {t.conceptDetail.controversialNotice}

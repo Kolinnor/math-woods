@@ -60,8 +60,28 @@ export async function refreshLinksForConcept(slug: string) {
   });
   if (!concept) return;
 
-  await prisma.internalLink.updateMany({
-    where: { targetSlug: slug },
+  await refreshLinksForConceptRecord(concept);
+}
+
+export async function refreshLinksForConceptId(
+  conceptId: number,
+  tx: Prisma.TransactionClient = prisma
+) {
+  const concept = await tx.concept.findUnique({
+    where: { id: conceptId },
+    include: { aliases: true }
+  });
+  if (!concept) return;
+
+  await refreshLinksForConceptRecord(concept, tx);
+}
+
+async function refreshLinksForConceptRecord(
+  concept: { slug: string; aliases: { aliasSlug: string }[] },
+  tx: Prisma.TransactionClient = prisma
+) {
+  await tx.internalLink.updateMany({
+    where: { targetSlug: concept.slug },
     data: {
       exists: true,
       targetType: TargetType.CONCEPT
@@ -69,10 +89,10 @@ export async function refreshLinksForConcept(slug: string) {
   });
 
   for (const alias of concept.aliases) {
-    await prisma.internalLink.updateMany({
+    await tx.internalLink.updateMany({
       where: { targetSlug: alias.aliasSlug },
       data: {
-        targetSlug: slug,
+        targetSlug: concept.slug,
         exists: true,
         targetType: TargetType.CONCEPT
       }

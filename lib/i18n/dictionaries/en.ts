@@ -350,7 +350,7 @@ export const en = {
     article: "Article",
     talk: "Talk",
     history: "History",
-    stubNotice: "This article is a stub. It needs a fuller definition, examples, and reliable references.",
+    stubNotice: "This article is a stub",
     controversialNotice: "This article is marked controversial. Check the talk page and sources before relying on it.",
     references: "References",
     watching: "Watching",

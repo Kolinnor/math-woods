@@ -10,7 +10,7 @@ import { prisma } from "@/lib/db";
 import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { parseMathDomain } from "@/lib/domains";
-import { refreshLinksForConcept, syncInternalLinks } from "@/lib/internal-links";
+import { refreshLinksForConcept, refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { canDeleteConcept, canEditConcept, canRollbackConcept, canSetConceptStatus, canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -98,6 +98,7 @@ export async function createConceptAction(formData: FormData) {
     await syncInternalLinks(SourceType.CONCEPT, created.id, bodyMarkdown, tx, language);
     await syncConceptAliases(created.id, aliases, tx);
     await syncConceptReferences(created.id, references, tx);
+    await refreshLinksForConceptId(created.id, tx);
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.CONCEPT,
@@ -206,6 +207,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     await syncInternalLinks(SourceType.CONCEPT, updated.id, bodyMarkdown, tx, language);
     await syncConceptAliases(updated.id, aliases, tx);
     await syncConceptReferences(updated.id, references, tx);
+    await refreshLinksForConceptId(updated.id, tx);
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.CONCEPT,

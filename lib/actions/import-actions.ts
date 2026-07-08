@@ -14,7 +14,7 @@ import {
 import { prisma } from "@/lib/db";
 import { parseAliases, syncConceptAliases } from "@/lib/concept-metadata";
 import { parseMathDomain } from "@/lib/domains";
-import { syncInternalLinks } from "@/lib/internal-links";
+import { refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
@@ -67,6 +67,7 @@ export async function importMarkdownAction(formData: FormData) {
         parseAliases(getStringArrayAttribute(parsed.attributes, "aliases").join(",")),
         tx
       );
+      await refreshLinksForConceptId(created.id, tx);
       await tx.pageRevision.create({
         data: {
           pageType: SourceType.CONCEPT,

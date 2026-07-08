@@ -5298,14 +5298,14 @@ button.relation-remove-button {
 }
 
 .tab-nav > a,
-.tab-nav > span {
+.tab-nav > span:not(.tab-nav-notice) {
   border-bottom: 2px solid transparent;
   color: var(--muted);
   font-size: 0.875rem;
   padding: 0.55rem 0.75rem;
 }
 
-.tab-nav > span,
+.tab-nav > span:not(.tab-nav-notice),
 .tab-nav > a.active {
   border-bottom-color: var(--accent);
   color: var(--ink);
@@ -5315,6 +5315,20 @@ button.relation-remove-button {
 .tab-nav .translation-links {
   margin-left: 0.35rem;
   margin-top: 0;
+}
+
+.tab-nav-notice {
+  border: 1px solid var(--notice-amber-border);
+  border-radius: 999px;
+  color: var(--notice-text);
+  font-size: 0.78rem;
+  font-weight: 750;
+  margin-left: auto;
+  padding: 0.32rem 0.7rem;
+}
+
+.tab-nav-notice-stub {
+  background: var(--notice-amber-bg);
 }
 
 .home-hero {

@@ -355,7 +355,7 @@ export const fr = {
     article: "Article",
     talk: "Discussion",
     history: "Historique",
-    stubNotice: "Cet article est une ébauche. Il lui faut une définition plus complète, des exemples et des références fiables.",
+    stubNotice: "Cet article est une ébauche",
     controversialNotice: "Cet article est marqué comme controversé. Consulte la discussion et les sources avant de t'y fier.",
     references: "Références",
     watching: "Suivi",
