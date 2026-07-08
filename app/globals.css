@@ -6694,7 +6694,7 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
   text-align: center;
 }
 
-.problem-difficulty-tile > p {
+.problem-difficulty-tile > p:first-child {
   color: #8a9184;
   font-size: 0.62rem;
   font-weight: 750;
