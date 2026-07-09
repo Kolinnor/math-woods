@@ -5,6 +5,7 @@ import { clearNotificationsAction } from "@/lib/actions/notification-actions";
 import { requireUser } from "@/lib/auth";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
+import { cleanupNotificationsForUser, notificationOpenHref } from "@/lib/notification-lifecycle";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function NotificationsPage() {
   const user = await requireUser();
   const timeZone = await getRequestTimeZone();
+  await cleanupNotificationsForUser(user.id);
   const [unreadNotifications, readNotifications] = await Promise.all([
     prisma.notification.findMany({
       where: { userId: user.id, readAt: null },
@@ -54,7 +56,7 @@ export default async function NotificationsPage() {
         {notifications.map((notification) => (
           <Link
             key={notification.id}
-            href={notification.href as never}
+            href={notificationOpenHref(notification.id) as never}
             className={notification.readAt ? "notification-item" : "notification-item notification-unread"}
           >
             <span>

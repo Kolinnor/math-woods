@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { TargetType } from "@prisma/client";
+import { NotificationType } from "@prisma/client";
 import { QualityStatus } from "@prisma/client";
 import { Check, Heart, House, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
@@ -28,6 +29,7 @@ import { domainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
 import { getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
+import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import {
   canEditProblem,
   canEditSolution,
@@ -162,6 +164,13 @@ export default async function ProblemPage({
   const isOwnProblem = user?.id === problem.authorId;
   const canViewArchived = canViewArchivedProblem(user, problem);
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
+  if (user) {
+    await markNotificationsReadForHref(user.id, `/problems/${problem.slug}`, [
+      NotificationType.PROOF_ADDED,
+      NotificationType.PROBLEM_SOLVED,
+      NotificationType.PROBLEM_CREATED
+    ]);
+  }
   const hasSpecifiedOrigin =
     problem.origin.trim().toLowerCase() !== "unknown" ||
     Boolean(problem.originChapter || problem.originPage || problem.originNote);

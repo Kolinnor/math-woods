@@ -1,4 +1,4 @@
-import { FriendshipStatus } from "@prisma/client";
+import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
@@ -7,6 +7,7 @@ import { createChatMessageAction, sendFriendRequestAction } from "@/lib/actions/
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { directChatPair } from "@/lib/direct-chat";
+import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,10 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
   });
 
   if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) notFound();
+  await markNotificationsReadForHref(user.id, `/chat/${otherUser.username}`, [
+    NotificationType.CHAT_MESSAGE,
+    NotificationType.FRIEND_REQUEST
+  ]);
 
   const friendship = await prisma.friendship.findFirst({
     where: {

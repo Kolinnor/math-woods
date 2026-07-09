@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MathDomain } from "@prisma/client";
+import { MathDomain, NotificationType } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { Eye } from "lucide-react";
@@ -16,6 +16,7 @@ import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { markdownExcerpt } from "@/lib/metadata-text";
+import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
 import { conceptTranslationFreshness } from "@/lib/translation-freshness";
@@ -145,6 +146,12 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     });
     if (alias) redirect(`/concepts/${alias.concept.slug}`);
     notFound();
+  }
+  if (user) {
+    await markNotificationsReadForHref(user.id, `/concepts/${concept.slug}`, [
+      NotificationType.CONCEPT_CREATED,
+      NotificationType.CONCEPT_EDITED
+    ]);
   }
 
   const [translations, outgoingLinks, backlinks, watched] = await Promise.all([

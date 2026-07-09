@@ -1,4 +1,4 @@
-import { TargetType } from "@prisma/client";
+import { NotificationType, TargetType } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/actions/problem-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canEditDiscussionHint, canEditProblem, canViewArchivedProblem } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -40,6 +41,9 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
 
   if (!problem) notFound();
   if (problem.status === "ARCHIVED" && !canViewArchivedProblem(user, problem)) notFound();
+  if (user) {
+    await markNotificationsReadForHref(user.id, `/problems/${problem.slug}/discussion`, NotificationType.DISCUSSION_POSTED);
+  }
 
   const [attempt, postVoteGroups, userVotes] = await Promise.all([
     user

@@ -1,4 +1,4 @@
-import { ContributionRequestStatus } from "@prisma/client";
+import { ContributionRequestStatus, NotificationType } from "@prisma/client";
 import type { Route } from "next";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -11,6 +11,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { loadRenderedContributionPage } from "@/lib/contribution-page";
 import { prisma } from "@/lib/db";
+import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -48,6 +49,12 @@ export default async function ContributingPage({
     }),
     searchParams ? searchParams : Promise.resolve({} as { request?: string })
   ]);
+  if (user) {
+    await markNotificationsReadForHref(user.id, "/contributing#requests", [
+      NotificationType.CONTRIBUTION_REQUEST_CLAIMED,
+      NotificationType.CONTRIBUTION_REQUEST_REMINDER
+    ]);
+  }
   const canManageRequests = Boolean(user && canUseModerationTools(user));
   const canAdminRequests = Boolean(user && canUseAdminTools(user));
   const canEditPage = Boolean(user && canUseAdminTools(user));

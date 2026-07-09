@@ -1,4 +1,4 @@
-import { FriendshipStatus } from "@prisma/client";
+import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { AddFriendForm } from "@/components/AddFriendForm";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -10,6 +10,7 @@ import {
 } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ function otherFriend(friendship: FriendRow, userId: number) {
 
 export default async function FriendsPage() {
   const user = await requireVerifiedUser();
+  await markNotificationsReadForHref(user.id, "/friends", NotificationType.FRIEND_REQUEST);
   const now = new Date();
   const onlineSince = new Date(now.getTime() - ONLINE_WINDOW_MS);
   const [friends, incomingRequests, outgoingRequests, recentChats] = await Promise.all([

@@ -7,6 +7,7 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { acceptedFriendshipBetween, directChatPair } from "@/lib/direct-chat";
+import { clearFriendRequestNotifications } from "@/lib/notification-lifecycle";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
@@ -55,6 +56,7 @@ export async function sendFriendRequestAction(username: string) {
         where: { id: existing.id },
         data: { status: FriendshipStatus.ACCEPTED }
       });
+      await clearFriendRequestNotifications(user.id, target.id);
       revalidatePath("/friends");
       revalidatePath("/", "layout");
       revalidatePath(`/profile/${target.username}`);
@@ -106,6 +108,7 @@ export async function acceptFriendRequestAction(friendshipId: number) {
     where: { id: friendship.id },
     data: { status: FriendshipStatus.ACCEPTED }
   });
+  await clearFriendRequestNotifications(user.id, friendship.requesterId);
 
   await createNotification({
     userId: friendship.requesterId,
@@ -126,13 +129,19 @@ export async function declineFriendRequestAction(friendshipId: number) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`friend-decline:${user.id}`, 40, 60_000);
 
-  await prisma.friendship.deleteMany({
+  const friendship = await prisma.friendship.findFirst({
     where: {
       id: friendshipId,
       addresseeId: user.id,
       status: FriendshipStatus.PENDING
-    }
+    },
+    select: { id: true, requesterId: true }
   });
+
+  if (friendship) {
+    await prisma.friendship.delete({ where: { id: friendship.id } });
+    await clearFriendRequestNotifications(user.id, friendship.requesterId);
+  }
 
   revalidatePath("/friends");
   revalidatePath("/", "layout");
@@ -148,7 +157,7 @@ export async function cancelFriendRequestAction(friendshipId: number) {
       requesterId: user.id,
       status: FriendshipStatus.PENDING
     },
-    include: { addressee: { select: { username: true } } }
+    include: { addressee: { select: { id: true, username: true } } }
   });
 
   if (!friendship) throw new Error("Friend request not found.");
@@ -156,6 +165,7 @@ export async function cancelFriendRequestAction(friendshipId: number) {
   await prisma.friendship.delete({
     where: { id: friendship.id }
   });
+  await clearFriendRequestNotifications(friendship.addresseeId, user.id);
 
   revalidatePath("/friends");
   revalidatePath("/", "layout");
