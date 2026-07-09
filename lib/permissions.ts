@@ -159,7 +159,7 @@ export function canEditDiscussionHint(user: PermissionUser, hint: AuthoredResour
 }
 
 export function canEditVerificationMessage(user: PermissionUser, message: AuthoredResource) {
-  return message.authorId === user.id || hasTrustedPrivileges(user.role);
+  return message.authorId === user.id;
 }
 
 export function canRevealHintWithoutAttempt(
@@ -171,9 +171,9 @@ export function canRevealHintWithoutAttempt(
 }
 
 export function canReviewProblemVerification(user: PermissionUser, problem: ProblemPermissionTarget) {
-  return problem.authorId === user.id || hasTrustedPrivileges(user.role);
+  return problem.authorId === user.id;
 }
 
 export function canJoinVerificationDiscussion(user: PermissionUser, request: VerificationRequestPermissionTarget) {
-  return request.userId === user.id || request.problem.authorId === user.id || hasTrustedPrivileges(user.role);
+  return request.userId === user.id || request.problem.authorId === user.id;
 }

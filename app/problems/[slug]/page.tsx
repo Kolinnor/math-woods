@@ -226,7 +226,7 @@ export default async function ProblemPage({
           take: 3
         })
       : Promise.resolve([]),
-    user && canEditProblem(user, problem)
+    user?.id === problem.authorId
       ? prisma.problemVerificationRequest.findMany({
           where: { problemId: problem.id, status: "PENDING" },
           include: {
