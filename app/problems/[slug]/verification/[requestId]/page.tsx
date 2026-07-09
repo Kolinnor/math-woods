@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -142,9 +143,9 @@ export default async function ProblemVerificationPage({
                           </form>
                         </details>
                         <form action={deleteVerificationMessageAction.bind(null, message.id, request.problem.slug)}>
-                          <button type="submit" className="secondary">
+                          <ConfirmSubmitButton className="secondary" message="Delete this message?">
                             Delete message
-                          </button>
+                          </ConfirmSubmitButton>
                         </form>
                       </div>
                     )}
@@ -163,6 +164,7 @@ export default async function ProblemVerificationPage({
                 minHeight="9rem"
                 lineNumbers={false}
                 draftKey={`verification-request:${request.id}:reply`}
+                resetSignal={request.messages.length}
               />
               <button type="submit">Post reply</button>
             </form>
