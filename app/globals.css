@@ -1392,6 +1392,7 @@ button.markdown-editor-tool-button:disabled svg {
 }
 
 .markdown-editor .cm-latex-token {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 650;
 }
 
@@ -1401,7 +1402,7 @@ button.markdown-editor-tool-button:disabled svg {
 
 .markdown-editor .cm-latex-command {
   color: #fb7185;
-  font-style: italic;
+  font-style: normal;
 }
 
 .markdown-editor .cm-latex-bracket {
@@ -4734,6 +4735,23 @@ button.relation-remove-button {
   font-size: 0.78rem;
 }
 
+.verification-thread-link {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  text-decoration: none;
+}
+
+.verification-thread-link span:last-child {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.verification-thread-link:hover {
+  border-color: var(--accent);
+}
+
 .verification-thread-body {
   border-top: 1px solid var(--line);
   display: grid;
@@ -4784,6 +4802,30 @@ button.relation-remove-button {
 
 .verification-review-card p {
   margin: 0;
+}
+
+.verification-page-grid {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.34fr);
+}
+
+.verification-page-rail {
+  display: grid;
+  gap: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .verification-page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .verification-page-rail {
+    position: static;
+  }
 }
 
 .empty-state {

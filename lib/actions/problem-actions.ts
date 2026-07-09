@@ -45,6 +45,7 @@ import { assertRateLimit } from "@/lib/rate-limit";
 import {
   canArchiveProblem,
   canEditDiscussionHint,
+  canEditVerificationMessage,
   canEditPlaylist,
   canEditProblem,
   canJoinProblemDiscussion,
@@ -753,7 +754,7 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
     const answer = boundedText(formData?.get("verificationAnswer"), CONTENT_LIMITS.longNote, "Verification explanation");
     if (!answer) throw new Error("Please explain your answer before requesting review.");
 
-    await prisma.problemVerificationRequest.create({
+    const request = await prisma.problemVerificationRequest.create({
       data: {
         problemId,
         userId: user.id,
@@ -766,7 +767,7 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
       type: NotificationType.VERIFICATION_REQUESTED,
       title: "Solution review requested",
       body: `${displayNameForUser(user)} requested verification for "${problem.title}".`,
-      href: `/problems/${problem.slug}`
+      href: `/problems/${problem.slug}/verification/${request.id}`
     });
     revalidatePath(`/problems/${problemSlug}`);
     return;
@@ -855,10 +856,11 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
       decision === "APPROVED"
         ? `Your answer to "${request.problem.title}" was accepted.`
         : `Your answer to "${request.problem.title}" was not accepted yet.`,
-    href: `/problems/${request.problem.slug}`
+    href: `/problems/${request.problem.slug}/verification/${request.id}`
   });
 
   revalidatePath(`/problems/${request.problem.slug}`);
+  revalidatePath(`/problems/${request.problem.slug}/verification/${request.id}`);
   revalidatePath(`/profile/${request.user.username}`);
   revalidatePath("/me");
 }
@@ -912,12 +914,54 @@ export async function createVerificationMessageAction(requestId: number, problem
         type: NotificationType.VERIFICATION_MESSAGE,
         title: "New verification message",
         body: `${displayNameForUser(user)} replied about "${request.problem.title}".`,
-        href: `/problems/${request.problem.slug}`
+        href: `/problems/${request.problem.slug}/verification/${request.id}`
       })
     )
   );
 
   revalidatePath(`/problems/${request.problem.slug}`);
+  revalidatePath(`/problems/${request.problem.slug}/verification/${request.id}`);
+}
+
+export async function updateVerificationMessageAction(messageId: number, problemSlug: string, formData: FormData) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`verification-message-edit:${user.id}`, 30, 60_000);
+  const bodyMarkdown = requiredBoundedText(
+    formData.get("bodyMarkdown"),
+    CONTENT_LIMITS.discussionPost,
+    "Verification message"
+  );
+  const message = await prisma.problemVerificationMessage.findUnique({
+    where: { id: messageId },
+    include: {
+      request: {
+        include: {
+          problem: { select: { id: true, slug: true, title: true, authorId: true } }
+        }
+      }
+    }
+  });
+
+  if (!message || message.request.problem.slug !== problemSlug) {
+    throw new Error("Verification message not found.");
+  }
+  if (!canJoinVerificationDiscussion(user, message.request)) {
+    throw new Error("You cannot join this verification discussion.");
+  }
+  if (!canEditVerificationMessage(user, message)) {
+    throw new Error("You cannot edit this verification message.");
+  }
+
+  await prisma.problemVerificationMessage.update({
+    where: { id: message.id },
+    data: {
+      bodyMarkdown,
+      bodyHtml: await renderMarkdownContent(bodyMarkdown)
+    }
+  });
+
+  revalidatePath(`/problems/${message.request.problem.slug}`);
+  revalidatePath(`/problems/${message.request.problem.slug}/verification/${message.request.id}`);
 }
 
 export async function toggleProblemFavoriteAction(problemId: number, problemSlug: string) {

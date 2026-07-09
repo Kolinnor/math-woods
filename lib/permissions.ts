@@ -158,6 +158,10 @@ export function canEditDiscussionHint(user: PermissionUser, hint: AuthoredResour
   return hint.authorId === user.id || hasTrustedPrivileges(user.role);
 }
 
+export function canEditVerificationMessage(user: PermissionUser, message: AuthoredResource) {
+  return message.authorId === user.id || hasTrustedPrivileges(user.role);
+}
+
 export function canRevealHintWithoutAttempt(
   user: PermissionUser,
   hint: AuthoredResource,

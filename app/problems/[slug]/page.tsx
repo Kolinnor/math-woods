@@ -8,15 +8,12 @@ import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
-import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemHintReveal } from "@/components/ProblemHintReveal";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
-  createVerificationMessageAction,
   markProblemGoodAction,
   markProblemSolvedAction,
-  reviewProblemVerificationAction,
   startAttemptAction,
   toggleProblemFavoriteAction,
   unmarkProblemSolvedAction
@@ -697,34 +694,16 @@ export default async function ProblemPage({
           {ownVerificationRequests.length > 0 && attempt?.status !== "SOLVED" && (
             <div className="verification-history">
               {ownVerificationRequests.map((request) => (
-                <details key={request.id} className="verification-thread">
-                  <summary>
-                    <span>{t.problemDetail.reviewStatus(verificationStatusLabel(request.status))}</span>
-                    <span>{request.messages.length ? t.problemDetail.messages(request.messages.length) : t.problemDetail.openDiscussion}</span>
-                  </summary>
-                  <div className="verification-thread-body">
-                    <div className="verification-submission">
-                      <strong>{t.problemDetail.yourSubmittedAnswer}</strong>
-                      <p>{request.answer}</p>
-                    </div>
-                    {request.messages.length > 0 && (
-                      <div className="verification-messages">
-                        {request.messages.map((message) => (
-                          <div key={message.id} className="verification-message">
-                            <p className="meta">{t.problemDetail.by} {displayNameForUser(message.author)}</p>
-                            <MarkdownBlock html={message.bodyHtml} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {request.status === "PENDING" && (
-                      <form action={createVerificationMessageAction.bind(null, request.id, problem.slug)} className="grid gap-2">
-                        <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
-                        <button type="submit" className="secondary">{t.problemDetail.replyPrivately}</button>
-                      </form>
-                    )}
-                  </div>
-                </details>
+                <Link
+                  key={request.id}
+                  href={`/problems/${problem.slug}/verification/${request.id}` as never}
+                  className="verification-thread verification-thread-link"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span>{t.problemDetail.reviewStatus(verificationStatusLabel(request.status))}</span>
+                  <span>{request.messages.length ? t.problemDetail.messages(request.messages.length) : t.problemDetail.openDiscussion}</span>
+                </Link>
               ))}
             </div>
           )}
@@ -771,36 +750,15 @@ export default async function ProblemPage({
                     <strong>{t.problemDetail.submittedAnswer}</strong>
                     <p>{request.answer}</p>
                   </div>
-                  <details className="verification-thread">
-                    <summary>
-                      <span>{t.problemDetail.openDiscussion}</span>
-                      <span>{request.messages.length ? t.problemDetail.messages(request.messages.length) : t.problemDetail.noMessagesYet}</span>
-                    </summary>
-                    <div className="verification-thread-body">
-                      {request.messages.length > 0 && (
-                        <div className="verification-messages">
-                          {request.messages.map((message) => (
-                            <div key={message.id} className="verification-message">
-                              <p className="meta">{t.problemDetail.by} {displayNameForUser(message.author)}</p>
-                              <MarkdownBlock html={message.bodyHtml} />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <form action={createVerificationMessageAction.bind(null, request.id, problem.slug)} className="grid gap-2">
-                        <LazyMarkdownEditor name="bodyMarkdown" minHeight="7rem" lineNumbers={false} />
-                        <button type="submit" className="secondary">{t.problemDetail.replyPrivately}</button>
-                      </form>
-                    </div>
-                  </details>
-                  <div className="flex flex-wrap gap-2">
-                    <form action={reviewProblemVerificationAction.bind(null, request.id, "APPROVED")}>
-                      <button type="submit" className="secondary">{t.problemDetail.approveAnswer}</button>
-                    </form>
-                    <form action={reviewProblemVerificationAction.bind(null, request.id, "REJECTED")}>
-                      <button type="submit" className="secondary">{t.problemDetail.closeNotAccepted}</button>
-                    </form>
-                  </div>
+                  <Link
+                    href={`/problems/${problem.slug}/verification/${request.id}` as never}
+                    className="verification-thread verification-thread-link"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span>{t.problemDetail.openDiscussion}</span>
+                    <span>{request.messages.length ? t.problemDetail.messages(request.messages.length) : t.problemDetail.noMessagesYet}</span>
+                  </Link>
                 </div>
               ))}
             </div>
