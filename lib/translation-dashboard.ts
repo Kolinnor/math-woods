@@ -12,6 +12,7 @@ type TranslationDashboardPage = {
 type TranslationGap = {
   existingLanguages: string[];
   href: string;
+  missingLanguageLinks: { href: string; label: string }[];
   missingLanguages: string[];
   title: string;
   type: "Concept" | "Problem";
@@ -19,16 +20,15 @@ type TranslationGap = {
 
 type StaleTranslation = TranslationDashboardPage & {
   basedOnRevisionId: number | null;
+  editHref: string;
   latestRevisionId: number;
   sourceHref: string;
   sourceTitle: string;
 };
 
-function missingLanguageLabels(existingLanguages: string[]) {
+function missingLanguages(existingLanguages: string[]) {
   const existing = new Set(existingLanguages);
-  return SUPPORTED_CONTENT_LANGUAGES.filter((language) => !existing.has(language.code)).map((language) =>
-    contentLanguageLabel(language.code)
-  );
+  return SUPPORTED_CONTENT_LANGUAGES.filter((language) => !existing.has(language.code));
 }
 
 export async function translationDashboard() {
@@ -73,10 +73,15 @@ export async function translationDashboard() {
     ...[...problemGroups.values()].map((group) => {
       const anchor = group[0];
       const existingLanguages = [...new Set(group.map((item) => item.language))];
+      const missing = missingLanguages(existingLanguages);
       return {
         existingLanguages,
         href: `/problems/${anchor.slug}`,
-        missingLanguages: missingLanguageLabels(existingLanguages),
+        missingLanguageLinks: missing.map((language) => ({
+          href: `/problems/${anchor.slug}/translate?language=${language.code}`,
+          label: contentLanguageLabel(language.code)
+        })),
+        missingLanguages: missing.map((language) => contentLanguageLabel(language.code)),
         title: anchor.title,
         type: "Problem" as const
       };
@@ -84,10 +89,15 @@ export async function translationDashboard() {
     ...[...conceptGroups.values()].map((group) => {
       const anchor = group[0];
       const existingLanguages = [...new Set(group.map((item) => item.language))];
+      const missing = missingLanguages(existingLanguages);
       return {
         existingLanguages,
         href: `/concepts/${anchor.slug}`,
-        missingLanguages: missingLanguageLabels(existingLanguages),
+        missingLanguageLinks: missing.map((language) => ({
+          href: `/concepts/${anchor.slug}/translate?language=${language.code}`,
+          label: contentLanguageLabel(language.code)
+        })),
+        missingLanguages: missing.map((language) => contentLanguageLabel(language.code)),
         title: anchor.title,
         type: "Concept" as const
       };
@@ -146,6 +156,7 @@ export async function translationDashboard() {
       return [
         {
           basedOnRevisionId: problem.translatedFromRevisionId,
+          editHref: `/problems/${problem.slug}/edit`,
           href: `/problems/${problem.slug}`,
           language: problem.language,
           latestRevisionId,
@@ -165,6 +176,7 @@ export async function translationDashboard() {
       return [
         {
           basedOnRevisionId: concept.translatedFromRevisionId,
+          editHref: `/concepts/${concept.slug}/edit`,
           href: `/concepts/${concept.slug}`,
           language: concept.language,
           latestRevisionId,

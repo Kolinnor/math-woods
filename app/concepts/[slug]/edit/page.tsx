@@ -5,6 +5,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
+import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { deleteConceptAction, updateConceptAction } from "@/lib/actions/concept-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -22,7 +23,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
       aliases: true,
       references: { orderBy: { position: "asc" } },
       translatedFromConcept: {
-        select: { id: true, slug: true, title: true, language: true }
+        select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true }
       }
     }
   });
@@ -71,8 +72,10 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       description="Changes create a revision and refresh outgoing links automatically."
-      workspaceClassName="forest-page-workspace-narrow"
+      workspaceClassName={concept.translatedFromConcept ? undefined : "forest-page-workspace-narrow"}
     >
+      <div className={concept.translatedFromConcept ? "translation-compose-page" : ""}>
+      <div className="translation-compose-main">
       <form action={updateConceptAction.bind(null, concept.id)} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
@@ -166,6 +169,20 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           </form>
         </section>
       )}
+      </div>
+      {concept.translatedFromConcept && (
+        <TranslationReferencePanel
+          basedOnRevisionId={concept.translatedFromRevisionId}
+          href={`/concepts/${concept.translatedFromConcept.slug}`}
+          idPrefix={`concept-${concept.id}-translation-source`}
+          latestRevisionId={sourceRevision?.id ?? null}
+          markdown={concept.translatedFromConcept.bodyMarkdown}
+          language={concept.translatedFromConcept.language}
+          stale={staleTranslation}
+          title={concept.translatedFromConcept.title}
+        />
+      )}
+      </div>
     </ForestPageLayout>
   );
 }

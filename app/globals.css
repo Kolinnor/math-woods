@@ -1886,8 +1886,26 @@ button.markdown-editor-tool-button:disabled svg {
   padding-bottom: 0.65rem;
 }
 
+.translation-reference-header > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
 .translation-reference-header strong {
   color: var(--accent-strong);
+}
+
+.translation-reference-link {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  font-weight: 750;
+  padding: 0.2rem 0.55rem;
+}
+
+.translation-reference-link:hover {
+  border-color: var(--accent);
 }
 
 .translation-reference-panel h2 {
@@ -1896,6 +1914,81 @@ button.markdown-editor-tool-button:disabled svg {
   font-weight: 650;
   line-height: 1.2;
   margin: 0;
+}
+
+.translation-reference-status {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+}
+
+.translation-reference-status.stale {
+  background: var(--notice-yellow-bg);
+  border-color: var(--notice-yellow-border);
+  color: var(--notice-text);
+}
+
+.translation-reference-tabs {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.translation-reference-tab-input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.translation-reference-tab-list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.translation-reference-tab-list label {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 750;
+  padding: 0.28rem 0.7rem;
+}
+
+.translation-reference-tabs:has(input[value="rendered"]:checked) label[for$="-rendered"],
+.translation-reference-tabs:has(input[value="markdown"]:checked) label[for$="-markdown"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.translation-reference-view {
+  display: none;
+}
+
+.translation-reference-tab-input[value="rendered"]:checked ~ .translation-reference-rendered,
+.translation-reference-tab-input[value="markdown"]:checked ~ .translation-reference-markdown {
+  display: block;
+}
+
+.translation-reference-markdown {
+  background: var(--code);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  margin: 0;
+  max-height: 31rem;
+  overflow: auto;
+  padding: 0.85rem;
+  white-space: pre-wrap;
 }
 
 .translation-reference-panel .prose-math {

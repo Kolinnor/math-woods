@@ -202,7 +202,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
 
   const targetTranslationLanguage = nextMissingTranslationLanguage(concept.language, translations, preferredLanguage);
   const addTranslationHref = targetTranslationLanguage
-    ? `/concepts/new?translateOf=${concept.slug}&language=${targetTranslationLanguage}`
+    ? `/concepts/${concept.slug}/translate?language=${targetTranslationLanguage}`
     : undefined;
 
   const conceptLookupSlugs = [concept.slug, ...concept.aliases.map((alias) => alias.aliasSlug)];

@@ -7,6 +7,7 @@ import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
 import { ProblemVerificationFields } from "@/components/ProblemVerificationFields";
+import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import {
   createProblemHintAction,
   deleteProblemAction,
@@ -33,7 +34,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
       domains: { orderBy: { position: "asc" } },
       hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
       translatedFromProblem: {
-        select: { id: true, slug: true, title: true, language: true }
+        select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true }
       },
       relatedGroups: {
         include: {
@@ -84,7 +85,8 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   );
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={problem.translatedFromProblem ? "translation-compose-page" : "mx-auto max-w-3xl"}>
+      <div className="translation-compose-main">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="mb-2 text-2xl font-bold">Edit problem</h1>
@@ -305,6 +307,19 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             <DeleteProblemButton title={problem.title} />
           </form>
         </section>
+      )}
+      </div>
+      {problem.translatedFromProblem && (
+        <TranslationReferencePanel
+          basedOnRevisionId={problem.translatedFromRevisionId}
+          href={`/problems/${problem.translatedFromProblem.slug}`}
+          idPrefix={`problem-${problem.id}-translation-source`}
+          latestRevisionId={sourceRevision?.id ?? null}
+          markdown={problem.translatedFromProblem.bodyMarkdown}
+          language={problem.translatedFromProblem.language}
+          stale={staleTranslation}
+          title={problem.translatedFromProblem.title}
+        />
       )}
     </div>
   );

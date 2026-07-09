@@ -751,9 +751,14 @@ export default async function SettingsPage({
                         {item.latestRevisionId}
                       </p>
                     </div>
-                    <Link href={item.sourceHref as never} className="button secondary">
-                      Source
-                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={item.editHref as never} className="button">
+                        Update translation
+                      </Link>
+                      <Link href={item.sourceHref as never} className="button secondary">
+                        Source
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))
@@ -772,6 +777,13 @@ export default async function SettingsPage({
                   </p>
                   <p className="muted">Existing: {gap.existingLanguages.map(contentLanguageLabel).join(", ")}</p>
                   <p className="muted">Missing: {gap.missingLanguages.join(", ")}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {gap.missingLanguageLinks.map((link) => (
+                      <Link key={link.href} href={link.href as never} className="button secondary">
+                        Translate to {link.label}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               ))
             ) : (

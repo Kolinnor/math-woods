@@ -127,6 +127,8 @@ export default async function NewConceptPage({
       </div>
       {sourceConcept && (
         <TranslationReferencePanel
+          href={`/concepts/${sourceConcept.slug}`}
+          idPrefix="concept-translation-source"
           title={sourceConcept.title}
           language={sourceConcept.language}
           markdown={sourceConcept.bodyMarkdown}

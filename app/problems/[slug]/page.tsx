@@ -316,7 +316,7 @@ export default async function ProblemPage({
   const hiddenDomainCount = revealSpoilerDetails ? 0 : problem.domains.filter((item) => item.spoiler).length;
   const targetTranslationLanguage = nextMissingTranslationLanguage(problem.language, translations, preferredLanguage);
   const addTranslationHref = targetTranslationLanguage
-    ? `/problems/new?translateOf=${problem.slug}&language=${targetTranslationLanguage}`
+    ? `/problems/${problem.slug}/translate?language=${targetTranslationLanguage}`
     : undefined;
   const verificationMessage =
     queryParams.verification === "incorrect" ? t.problemDetail.verificationIncorrect : null;

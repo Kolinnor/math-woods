@@ -214,6 +214,8 @@ export default async function NewProblemPage({
       </div>
       {sourceProblem && (
         <TranslationReferencePanel
+          href={`/problems/${sourceProblem.slug}`}
+          idPrefix="problem-translation-source"
           title={sourceProblem.title}
           language={sourceProblem.language}
           markdown={sourceProblem.bodyMarkdown}
