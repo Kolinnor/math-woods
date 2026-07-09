@@ -23,7 +23,9 @@ const configurableNotificationTypes = [
   NotificationType.CONCEPT_CREATED,
   NotificationType.CONCEPT_EDITED,
   NotificationType.CONTRIBUTION_REQUEST_CLAIMED,
-  NotificationType.CONTRIBUTION_REQUEST_REMINDER
+  NotificationType.CONTRIBUTION_REQUEST_REMINDER,
+  NotificationType.FRIEND_REQUEST,
+  NotificationType.CHAT_MESSAGE
 ] as const;
 
 export async function markNotificationReadAction(notificationId: number) {

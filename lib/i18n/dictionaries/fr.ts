@@ -39,6 +39,7 @@ export const fr = {
     contributing: "Contribuer",
     suggestions: "Suggestions",
     about: "À propos",
+    friends: "Amis",
     settings: "Paramètres",
     moderation: "Modération",
     signOut: "Se déconnecter",

@@ -37,6 +37,7 @@ export const en = {
     contributing: "Contributing",
     suggestions: "Suggestions",
     about: "About",
+    friends: "Friends",
     settings: "Settings",
     moderation: "Moderation",
     signOut: "Sign out",

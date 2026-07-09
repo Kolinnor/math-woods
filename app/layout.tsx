@@ -8,6 +8,7 @@ import "./globals.css";
 import { AchievementToast } from "@/components/AchievementToast";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ErrorReporter } from "@/components/ErrorReporter";
+import { FriendsMenu } from "@/components/FriendsMenu";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
@@ -158,6 +159,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Search size={16} aria-hidden="true" />
                 <input name="q" aria-label={t.nav.searchAriaLabel} placeholder={t.nav.searchPlaceholder} />
               </LiveSearchForm>
+              {user && <FriendsMenu userId={user.id} />}
               {user && <NotificationsMenu userId={user.id} />}
               <details className="nav-menu">
                 <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle}>
@@ -170,6 +172,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/about">{t.nav.about}</Link>
                   {user && <div className="nav-menu-divider" />}
                   {user && <Link href={`/profile/${user.username}`}>{displayNameForUser(user)}</Link>}
+                  {user && <Link href={"/friends" as never}>{t.nav.friends}</Link>}
                   {user && <Link href="/settings">{t.nav.settings}</Link>}
                   {user && canUseModerationTools(user) && <Link href="/moderation">{t.nav.moderation}</Link>}
                   {user ? (

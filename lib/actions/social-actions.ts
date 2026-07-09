@@ -1,0 +1,214 @@
+"use server";
+
+import { FriendshipStatus, NotificationType } from "@prisma/client";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireVerifiedUser } from "@/lib/auth";
+import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { prisma } from "@/lib/db";
+import { createNotification } from "@/lib/notifications";
+import { assertRateLimit } from "@/lib/rate-limit";
+import { displayNameForUser } from "@/lib/user-display";
+
+async function renderMarkdownContent(markdown: string) {
+  const { renderMarkdown } = await import("@/lib/markdown");
+  return renderMarkdown(markdown);
+}
+
+function directChatPair(userId: number, otherUserId: number) {
+  return userId < otherUserId
+    ? { userAId: userId, userBId: otherUserId }
+    : { userAId: otherUserId, userBId: userId };
+}
+
+async function friendshipBetween(userId: number, otherUserId: number) {
+  return prisma.friendship.findFirst({
+    where: {
+      OR: [
+        { requesterId: userId, addresseeId: otherUserId },
+        { requesterId: otherUserId, addresseeId: userId }
+      ]
+    }
+  });
+}
+
+async function acceptedFriendshipBetween(userId: number, otherUserId: number) {
+  return prisma.friendship.findFirst({
+    where: {
+      status: FriendshipStatus.ACCEPTED,
+      OR: [
+        { requesterId: userId, addresseeId: otherUserId },
+        { requesterId: otherUserId, addresseeId: userId }
+      ]
+    }
+  });
+}
+
+export async function sendFriendRequestAction(username: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`friend-request:${user.id}`, 20, 60_000);
+  const target = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true, username: true, deletedAt: true }
+  });
+
+  if (!target || target.deletedAt) throw new Error("User not found.");
+  if (target.id === user.id) throw new Error("You cannot add yourself as a friend.");
+
+  const existing = await friendshipBetween(user.id, target.id);
+  if (existing) {
+    if (existing.status === FriendshipStatus.PENDING && existing.addresseeId === user.id) {
+      await prisma.friendship.update({
+        where: { id: existing.id },
+        data: { status: FriendshipStatus.ACCEPTED }
+      });
+      revalidatePath("/friends");
+      revalidatePath("/", "layout");
+      revalidatePath(`/profile/${target.username}`);
+      redirect(`/chat/${target.username}` as never);
+    }
+
+    revalidatePath("/friends");
+    revalidatePath("/", "layout");
+    revalidatePath(`/profile/${target.username}`);
+    return;
+  }
+
+  await prisma.friendship.create({
+    data: {
+      requesterId: user.id,
+      addresseeId: target.id
+    }
+  });
+
+  await createNotification({
+    userId: target.id,
+    actorId: user.id,
+    type: NotificationType.FRIEND_REQUEST,
+    title: "New friend request",
+    body: `${displayNameForUser(user)} sent you a friend request.`,
+    href: "/friends"
+  });
+
+  revalidatePath("/friends");
+  revalidatePath("/", "layout");
+  revalidatePath(`/profile/${target.username}`);
+}
+
+export async function acceptFriendRequestAction(friendshipId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`friend-accept:${user.id}`, 40, 60_000);
+  const friendship = await prisma.friendship.findFirst({
+    where: {
+      id: friendshipId,
+      addresseeId: user.id,
+      status: FriendshipStatus.PENDING
+    },
+    include: { requester: { select: { id: true, username: true } } }
+  });
+
+  if (!friendship) throw new Error("Friend request not found.");
+
+  await prisma.friendship.update({
+    where: { id: friendship.id },
+    data: { status: FriendshipStatus.ACCEPTED }
+  });
+
+  await createNotification({
+    userId: friendship.requesterId,
+    actorId: user.id,
+    type: NotificationType.FRIEND_REQUEST,
+    title: "Friend request accepted",
+    body: `${displayNameForUser(user)} accepted your friend request.`,
+    href: `/chat/${user.username}`
+  });
+
+  revalidatePath("/friends");
+  revalidatePath("/", "layout");
+  revalidatePath(`/profile/${friendship.requester.username}`);
+  redirect(`/chat/${friendship.requester.username}` as never);
+}
+
+export async function declineFriendRequestAction(friendshipId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`friend-decline:${user.id}`, 40, 60_000);
+
+  await prisma.friendship.deleteMany({
+    where: {
+      id: friendshipId,
+      addresseeId: user.id,
+      status: FriendshipStatus.PENDING
+    }
+  });
+
+  revalidatePath("/friends");
+  revalidatePath("/", "layout");
+}
+
+export async function removeFriendAction(friendshipId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`friend-remove:${user.id}`, 20, 60_000);
+
+  await prisma.friendship.deleteMany({
+    where: {
+      id: friendshipId,
+      status: { in: [FriendshipStatus.ACCEPTED, FriendshipStatus.PENDING] },
+      OR: [{ requesterId: user.id }, { addresseeId: user.id }]
+    }
+  });
+
+  revalidatePath("/friends");
+  revalidatePath("/", "layout");
+  redirect("/friends" as never);
+}
+
+export async function sendFriendRequestByUsernameAction(formData: FormData) {
+  const username = String(formData.get("username") ?? "").trim();
+  if (!username) throw new Error("Username is required.");
+  await sendFriendRequestAction(username);
+  redirect("/friends" as never);
+}
+
+export async function createChatMessageAction(otherUsername: string, formData: FormData) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`chat-message:${user.id}`, 30, 60_000);
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Message");
+  const otherUser = await prisma.user.findUnique({
+    where: { username: otherUsername },
+    select: { id: true, username: true, deletedAt: true }
+  });
+
+  if (!otherUser || otherUser.deletedAt) throw new Error("User not found.");
+  if (otherUser.id === user.id) throw new Error("You cannot chat with yourself.");
+
+  const friendship = await acceptedFriendshipBetween(user.id, otherUser.id);
+  if (!friendship) throw new Error("You can only chat with accepted friends.");
+
+  const pair = directChatPair(user.id, otherUser.id);
+  const chat = await prisma.directChat.upsert({
+    where: { userAId_userBId: pair },
+    update: { updatedAt: new Date() },
+    create: pair
+  });
+
+  await prisma.chatMessage.create({
+    data: {
+      directChatId: chat.id,
+      authorId: user.id,
+      bodyMarkdown,
+      bodyHtml: await renderMarkdownContent(bodyMarkdown)
+    }
+  });
+  await createNotification({
+    userId: otherUser.id,
+    actorId: user.id,
+    type: NotificationType.CHAT_MESSAGE,
+    title: "New message",
+    body: `${displayNameForUser(user)} sent you a message.`,
+    href: `/chat/${user.username}`
+  });
+
+  revalidatePath("/friends");
+  revalidatePath(`/chat/${otherUser.username}`);
+  redirect(`/chat/${otherUser.username}` as never);
+}

@@ -141,12 +141,20 @@ enum NotificationType {
   CONCEPT_EDITED
   CONTRIBUTION_REQUEST_CLAIMED
   CONTRIBUTION_REQUEST_REMINDER
+  FRIEND_REQUEST
+  CHAT_MESSAGE
 }
 
 enum ProblemVerificationMode {
   NONE
   SELF_CHECK
   AUTHOR_REVIEW
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
 }
 
 enum ProblemVerificationStatus {
@@ -207,6 +215,11 @@ model User {
   verificationRequests         ProblemVerificationRequest[] @relation("ProblemVerificationRequester")
   reviewedVerificationRequests ProblemVerificationRequest[] @relation("ProblemVerificationReviewer")
   verificationMessages         ProblemVerificationMessage[]
+  friendRequestsSent           Friendship[]                 @relation("FriendshipRequester")
+  friendRequestsReceived       Friendship[]                 @relation("FriendshipAddressee")
+  directChatsAsA               DirectChat[]                 @relation("DirectChatUserA")
+  directChatsAsB               DirectChat[]                 @relation("DirectChatUserB")
+  chatMessages                 ChatMessage[]
   contributionRequestsCreated  ContributionRequest[]        @relation("ContributionRequestRequester")
   contributionRequestsClaimed  ContributionRequest[]        @relation("ContributionRequestClaimedBy")
 }
@@ -235,6 +248,51 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model Friendship {
+  id          Int              @id @default(autoincrement())
+  requesterId Int
+  addresseeId Int
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status, updatedAt])
+  @@index([requesterId, status, updatedAt])
+}
+
+model DirectChat {
+  id        Int           @id @default(autoincrement())
+  userAId   Int
+  userBId   Int
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  userA     User          @relation("DirectChatUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB     User          @relation("DirectChatUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+  @@index([updatedAt])
+}
+
+model ChatMessage {
+  id           Int        @id @default(autoincrement())
+  directChatId Int
+  authorId     Int
+  bodyMarkdown String
+  bodyHtml     String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  directChat   DirectChat @relation(fields: [directChatId], references: [id], onDelete: Cascade)
+  author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([directChatId, createdAt])
+  @@index([authorId, createdAt])
 }
 
 model Problem {

@@ -126,6 +126,16 @@ const notificationOptions = [
     type: NotificationType.CONTRIBUTION_REQUEST_REMINDER,
     title: "Contribution request reminders",
     description: "A daily reminder when you have claimed contribution requests still in progress."
+  },
+  {
+    type: NotificationType.FRIEND_REQUEST,
+    title: "Friend requests",
+    description: "When someone sends or accepts a friend request."
+  },
+  {
+    type: NotificationType.CHAT_MESSAGE,
+    title: "Private chat messages",
+    description: "When a friend sends you a private message."
   }
 ] as const;
 

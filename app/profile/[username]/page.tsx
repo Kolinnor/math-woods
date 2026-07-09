@@ -1,8 +1,15 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { FriendshipStatus } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ACHIEVEMENTS } from "@/lib/achievements";
+import {
+  acceptFriendRequestAction,
+  declineFriendRequestAction,
+  removeFriendAction,
+  sendFriendRequestAction
+} from "@/lib/actions/social-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { mathLevelLabel } from "@/lib/math-levels";
@@ -53,7 +60,8 @@ export default async function ProfilePage({
     externalFavoriteCount,
     achievementUnlocks,
     currentUserSolved,
-    reputation
+    reputation,
+    friendship
   ] = await Promise.all([
     prisma.problem.findMany({
       where: { authorId: user.id, status: "PUBLISHED", listed: true },
@@ -98,12 +106,57 @@ export default async function ProfilePage({
           select: { problemId: true }
         })
       : [],
-    getUserReputation(user.id)
+    getUserReputation(user.id),
+    currentUser && currentUser.id !== user.id
+      ? prisma.friendship.findFirst({
+          where: {
+            OR: [
+              { requesterId: currentUser.id, addresseeId: user.id },
+              { requesterId: user.id, addresseeId: currentUser.id }
+            ]
+          }
+        })
+      : null
   ]);
 
   const isSelf = currentUser?.id === user.id;
   const currentUserSolvedIds = new Set(currentUserSolved.map((attempt) => attempt.problemId));
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
+  const profileActions = isSelf ? (
+    <Link href={`/profile/${user.username}/edit`} className="button secondary">
+      Edit profile
+    </Link>
+  ) : currentUser && friendship?.status === FriendshipStatus.ACCEPTED ? (
+    <div className="flex flex-wrap gap-2">
+      <Link href={`/chat/${user.username}` as never} className="button">
+        Message
+      </Link>
+      <form action={removeFriendAction.bind(null, friendship.id)}>
+        <button type="submit" className="secondary">
+          Remove friend
+        </button>
+      </form>
+    </div>
+  ) : currentUser && friendship?.status === FriendshipStatus.PENDING && friendship.addresseeId === currentUser.id ? (
+    <div className="flex flex-wrap gap-2">
+      <form action={acceptFriendRequestAction.bind(null, friendship.id)}>
+        <button type="submit">Accept friend request</button>
+      </form>
+      <form action={declineFriendRequestAction.bind(null, friendship.id)}>
+        <button type="submit" className="secondary">
+          Decline
+        </button>
+      </form>
+    </div>
+  ) : currentUser && friendship?.status === FriendshipStatus.PENDING ? (
+    <span className="button secondary" aria-disabled="true">
+      Friend request sent
+    </span>
+  ) : currentUser ? (
+    <form action={sendFriendRequestAction.bind(null, user.username)}>
+      <button type="submit">Add friend</button>
+    </form>
+  ) : null;
 
   return (
     <ForestPageLayout
@@ -113,13 +166,7 @@ export default async function ProfilePage({
       heroAlt="Ivan Shishkin, Brook in the Forest"
       description={`${mathLevelLabel(user.mathLevel)} / reputation ${reputation}`}
       meta={<p>{user.role.toLowerCase()}</p>}
-      actions={
-        isSelf && (
-          <Link href={`/profile/${user.username}/edit`} className="button secondary">
-            Edit profile
-          </Link>
-        )
-      }
+      actions={profileActions}
     >
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
