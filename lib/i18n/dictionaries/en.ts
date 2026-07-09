@@ -246,6 +246,7 @@ export const en = {
     usefulSolutionDescription:
       "The most useful solution appears first. At {votes} useful votes, it is marked community accepted.",
     conjectureNoSolution: "This problem is marked as a conjecture. No solution is known here yet.",
+    solutionsHiddenUntilVerified: "Solutions are hidden until your answer has been verified.",
     revealSolutions: "Reveal solutions",
     revealWarning: "Are you sure? Give it a try first.",
     communityAccepted: "Community accepted",

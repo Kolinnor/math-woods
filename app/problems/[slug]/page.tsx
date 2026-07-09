@@ -294,6 +294,8 @@ export default async function ProblemPage({
     .filter((group) => group.relations.length > 0);
   const isProblemAuthor = Boolean(user && problem.authorId === user.id);
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
+  const requiresSolutionVerification = problem.verificationMode !== ProblemVerificationMode.NONE;
+  const canViewSolutions = !requiresSolutionVerification || attempt?.status === "SOLVED" || canEditCurrentProblem;
   const discussionVisible = Boolean(attempt || canEditCurrentProblem);
   const discussionPostCount = problem.thread?.posts.length ?? 0;
   const revealSpoilerDetails = attempt?.status === "SOLVED" || isProblemAuthor;
@@ -523,7 +525,12 @@ export default async function ProblemPage({
               ))}
             </div>
           )}
-          {proofs.length > 0 && (
+          {proofs.length > 0 && !canViewSolutions && (
+            <p className="quality-banner quality-unreviewed">
+              {t.problemDetail.solutionsHiddenUntilVerified}
+            </p>
+          )}
+          {proofs.length > 0 && canViewSolutions && (
             <details className="proof-reveal-gate">
               <summary>
                 <span>{t.problemDetail.revealSolutions}</span>

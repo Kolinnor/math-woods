@@ -251,6 +251,7 @@ export const fr = {
     usefulSolutionDescription:
       "La solution la plus utile apparaît en premier. À {votes} votes utiles, elle devient acceptée par la communauté.",
     conjectureNoSolution: "Ce problème est marqué comme conjecture. Aucune solution n'est connue ici pour l'instant.",
+    solutionsHiddenUntilVerified: "Les solutions sont masquées jusqu'à validation de ta réponse.",
     revealSolutions: "Afficher les solutions",
     revealWarning: "Tu es sûr ? Essaie encore un peu avant.",
     communityAccepted: "Acceptée par la communauté",
