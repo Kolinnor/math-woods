@@ -1,5 +1,6 @@
 import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
+import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { prisma } from "@/lib/db";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -56,7 +57,7 @@ export async function FriendsMenu({ userId }: { userId: number }) {
   const actionCount = incomingCount + unreadChatCount;
 
   return (
-    <details className="friends-menu">
+    <AutoClosingDetails className="friends-menu">
       <summary aria-label="Open friends menu" title="Friends">
         <span className="friend-online-dot" aria-hidden="true" />
         <span>{onlineFriends.length} online</span>
@@ -84,6 +85,6 @@ export async function FriendsMenu({ userId }: { userId: number }) {
           </Link>
         )}
       </div>
-    </details>
+    </AutoClosingDetails>
   );
 }
