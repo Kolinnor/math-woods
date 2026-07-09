@@ -1599,6 +1599,36 @@ button.markdown-editor-tool-button:disabled svg {
   text-underline-offset: 2px;
 }
 
+.markdown-editor .cm-md-image {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: text;
+  display: inline-grid;
+  gap: 0.35rem;
+  margin: 0.35rem 0;
+  max-width: min(100%, 34rem);
+  overflow: hidden;
+  padding: 0.45rem;
+  vertical-align: top;
+}
+
+.markdown-editor .cm-md-image img {
+  border-radius: 4px;
+  display: block;
+  height: auto;
+  max-height: 24rem;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.markdown-editor .cm-md-image figcaption {
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .markdown-link-menu {
   background: var(--panel);
   border: 1px solid var(--line-strong);
@@ -2381,6 +2411,17 @@ button.danger:hover,
   border-left: 3px solid var(--line-strong);
   color: var(--muted);
   padding-left: 1rem;
+}
+
+.prose-math img {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: block;
+  height: auto;
+  margin: 0.75rem 0 1rem;
+  max-height: 42rem;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .prose-math table {

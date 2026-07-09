@@ -505,9 +505,18 @@ assert.equal(renderedTranslatedWikiLink.includes('href="/concepts/fr-polynomial"
 const renderedUnsafeMarkdown = await renderMarkdown("<script>alert(1)</script><img src=x onerror=alert(1)>");
 assert.equal(renderedUnsafeMarkdown.includes("<script"), false);
 assert.equal(renderedUnsafeMarkdown.includes("onerror"), false);
+assert.equal(renderedUnsafeMarkdown.includes("<img"), false);
 
 const renderedUnsafeLink = await renderMarkdown("[bad](javascript:alert(1))");
 assert.equal(renderedUnsafeLink.includes('href="javascript:'), false);
+
+const renderedMarkdownImage = await renderMarkdown("![diagram](https://images.mathwoods.org/uploads/diagram.png)");
+assert.equal(renderedMarkdownImage.includes('<img src="https://images.mathwoods.org/uploads/diagram.png"'), true);
+assert.equal(renderedMarkdownImage.includes('alt="diagram"'), true);
+assert.equal(renderedMarkdownImage.includes('loading="lazy"'), true);
+
+const renderedUnsafeMarkdownImage = await renderMarkdown("![bad](javascript:alert(1))");
+assert.equal(renderedUnsafeMarkdownImage.includes("<img"), false);
 
 const renderedExternalLink = await renderMarkdown("[external](https://example.com)");
 assert.equal(renderedExternalLink.includes('href="https://example.com"'), true);

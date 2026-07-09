@@ -377,6 +377,56 @@ class WikiLinkWidget extends WidgetType {
   }
 }
 
+class MarkdownImageWidget extends WidgetType {
+  constructor(
+    readonly alt: string,
+    readonly src: string,
+    readonly from: number
+  ) {
+    super();
+  }
+
+  eq(other: MarkdownImageWidget) {
+    return other.alt === this.alt && other.src === this.src && other.from === this.from;
+  }
+
+  toDOM(view: EditorView) {
+    const element = document.createElement("figure");
+    element.className = "cm-md-image";
+    element.title = "Click to edit image";
+
+    const image = document.createElement("img");
+    image.src = this.src;
+    image.alt = this.alt;
+    image.loading = "lazy";
+    image.decoding = "async";
+    element.appendChild(image);
+
+    if (this.alt) {
+      const caption = document.createElement("figcaption");
+      caption.textContent = this.alt;
+      element.appendChild(caption);
+    }
+
+    element.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      view.focus();
+      view.dispatch({
+        selection: { anchor: this.from + 2 },
+        effects: setPreviewFocus.of(true),
+        annotations: previewOnly,
+        scrollIntoView: true
+      });
+    });
+    return element;
+  }
+
+  ignoreEvent() {
+    return true;
+  }
+}
+
 class MarkdownHeadingWidget extends WidgetType {
   constructor(
     readonly text: string,
@@ -653,6 +703,16 @@ function markdownImage(url: string, alt: string) {
   return `![${alt}](${url})`;
 }
 
+function parseMarkdownImage(markdown: string) {
+  const match = markdown.match(/^!\[([^\]\n]*)\]\((\S+?)(?:\s+["'][^"']*["'])?\)$/);
+  if (!match) return null;
+  if (!/^https?:\/\//i.test(match[2])) return null;
+  return {
+    alt: match[1],
+    src: match[2]
+  };
+}
+
 function imageInsertText(view: EditorView, imageMarkdown: string) {
   const selection = view.state.selection.main;
   const line = view.state.doc.lineAt(selection.from);
@@ -900,6 +960,22 @@ function buildLivePreviewDecorations(state: EditorState) {
       if (overlapsRanges(node.from, node.to, previewRanges)) return;
       const parent = node.node.parent;
       const parentName = parent?.name ?? "";
+      if (node.name === "Image") {
+        const active = selectionOverlapsRange(state, node.from, node.to);
+        if (!active) {
+          const image = parseMarkdownImage(state.doc.sliceString(node.from, node.to));
+          if (!image) return;
+          decorations.push(
+            Decoration.replace({
+              widget: new MarkdownImageWidget(image.alt, image.src, node.from),
+              inclusive: false
+            }).range(node.from, node.to)
+          );
+          return false;
+        }
+        return;
+      }
+
       if (node.name === "ListMark") {
         const active = selectionOverlapsRange(state, node.from, node.to);
         if (!active) {

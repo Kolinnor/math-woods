@@ -134,12 +134,14 @@ export async function renderMarkdown(
       "munder",
       "munderover",
       "none",
+      "img",
       "svg",
       "path"
     ]),
     allowedAttributes: {
       a: ["href", "class", "rel", "target"],
       code: ["class"],
+      img: ["src", "alt", "title", "loading", "decoding"],
       span: ["class", "style"],
       math: ["xmlns", "display"],
       annotation: ["encoding"],
@@ -154,7 +156,20 @@ export async function renderMarkdown(
           ...attribs,
           ...externalLinkAttributes(attribs.href)
         }
+      }),
+      img: (_tagName, attribs) => ({
+        tagName: "img",
+        attribs: {
+          ...attribs,
+          alt: attribs.alt ?? "",
+          loading: "lazy",
+          decoding: "async"
+        }
       })
+    },
+    exclusiveFilter: (frame) => {
+      if (frame.tag !== "img") return false;
+      return !/^https?:\/\//i.test(frame.attribs.src ?? "");
     },
     allowedStyles: {
       span: {
