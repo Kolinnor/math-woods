@@ -64,6 +64,7 @@ export default async function ProblemVerificationPage({
 
   const canReview = canReviewProblemVerification(user, request.problem);
   const isPending = request.status === "PENDING";
+  const ownReplyResetSignal = request.messages.filter((message) => message.authorId === user.id).at(-1)?.id ?? 0;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -164,7 +165,7 @@ export default async function ProblemVerificationPage({
                 minHeight="9rem"
                 lineNumbers={false}
                 draftKey={`verification-request:${request.id}:reply`}
-                resetSignal={request.messages.length}
+                resetSignal={ownReplyResetSignal}
               />
               <button type="submit">Post reply</button>
             </form>

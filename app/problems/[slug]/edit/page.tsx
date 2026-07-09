@@ -284,7 +284,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
               <MarkdownEditor
                 name="bodyMarkdown"
                 minHeight="8rem"
-                draftKey={`problem:${problem.id}:new-hint:${problem.hints.length}`}
+                draftKey={`problem:${problem.id}:new-hint`}
                 resetSignal={problem.hints.length}
               />
             </div>

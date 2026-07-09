@@ -24,6 +24,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
   });
 
   if (!concept) notFound();
+  const ownTalkPostResetSignal = user ? concept.talkPosts.filter((post) => post.authorId === user.id).at(-1)?.id ?? 0 : 0;
 
   return (
     <ForestPageLayout
@@ -69,7 +70,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
               minHeight="9rem"
               lineNumbers={false}
               draftKey={`concept-talk:${concept.id}:reply`}
-              resetSignal={concept.talkPosts.length}
+              resetSignal={ownTalkPostResetSignal}
             />
           </div>
           <button type="submit">Post</button>

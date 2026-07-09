@@ -1,4 +1,4 @@
-import { FriendshipStatus } from "@prisma/client";
+import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { displayNameForUser } from "@/lib/user-display";
@@ -8,7 +8,7 @@ const ONLINE_WINDOW_MS = 10 * 60 * 1000;
 export async function FriendsMenu({ userId }: { userId: number }) {
   const now = new Date();
   const onlineSince = new Date(now.getTime() - ONLINE_WINDOW_MS);
-  const [friendships, incomingCount] = await Promise.all([
+  const [friendships, incomingCount, unreadChatCount] = await Promise.all([
     prisma.friendship.findMany({
       where: {
         status: FriendshipStatus.ACCEPTED,
@@ -25,6 +25,13 @@ export async function FriendsMenu({ userId }: { userId: number }) {
       where: {
         addresseeId: userId,
         status: FriendshipStatus.PENDING
+      }
+    }),
+    prisma.notification.count({
+      where: {
+        userId,
+        readAt: null,
+        type: NotificationType.CHAT_MESSAGE
       }
     })
   ]);
@@ -46,18 +53,24 @@ export async function FriendsMenu({ userId }: { userId: number }) {
   const onlineFriends = friendships
     .map((friendship) => (friendship.requesterId === userId ? friendship.addressee : friendship.requester))
     .filter((friend) => onlineIds.has(friend.id));
+  const actionCount = incomingCount + unreadChatCount;
 
   return (
     <details className="friends-menu">
       <summary aria-label="Open friends menu" title="Friends">
         <span className="friend-online-dot" aria-hidden="true" />
         <span>{onlineFriends.length} online</span>
-        {incomingCount > 0 && <strong>{incomingCount}</strong>}
+        {actionCount > 0 && <strong>{Math.min(actionCount, 99)}</strong>}
       </summary>
       <div className="friends-menu-popover">
         <Link href={"/friends" as never} className="friends-menu-title">
           Friends
         </Link>
+        {unreadChatCount > 0 && (
+          <Link href={"/notifications" as never} className="friends-menu-request">
+            {unreadChatCount} unread {unreadChatCount === 1 ? "message" : "messages"}
+          </Link>
+        )}
         {onlineFriends.map((friend) => (
           <Link key={friend.id} href={`/chat/${friend.username}` as never} className="friends-menu-row">
             <span className="friend-online-dot" aria-hidden="true" />

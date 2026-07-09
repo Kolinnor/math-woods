@@ -283,6 +283,7 @@ export default async function ProblemPage({
   const proofs = [...problem.proofs].sort(
     (a, b) => (proofVotes.get(b.id) ?? 0) - (proofVotes.get(a.id) ?? 0) || a.createdAt.getTime() - b.createdAt.getTime()
   );
+  const ownProofResetSignal = user ? problem.proofs.filter((proof) => proof.authorId === user.id).at(-1)?.id ?? 0 : 0;
   const acceptedProofId =
     proofs.length > 0 && (proofVotes.get(proofs[0].id) ?? 0) >= COMMUNITY_ACCEPTED_PROOF_VOTES ? proofs[0].id : null;
   const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
@@ -598,8 +599,8 @@ export default async function ProblemPage({
                   name="bodyMarkdown"
                   minHeight="12rem"
                   lineNumbers={false}
-                  draftKey={`problem:${problem.id}:new-solution:${proofs.length}`}
-                  resetSignal={proofs.length}
+                  draftKey={`problem:${problem.id}:new-solution`}
+                  resetSignal={ownProofResetSignal}
                 />
                 <button type="submit">{t.problemDetail.publishSolution}</button>
               </form>

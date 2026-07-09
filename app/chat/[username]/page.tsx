@@ -76,6 +76,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       bodyHtml: message.bodyHtml,
       createdAt: message.createdAt.toISOString()
     })) ?? [];
+  const ownMessageResetSignal = messages.filter((message) => message.authorId === user.id).at(-1)?.id ?? 0;
 
   return (
     <div className="chat-page mx-auto max-w-4xl">
@@ -108,7 +109,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           minHeight="9rem"
           lineNumbers={false}
           draftKey={`chat:${otherUser.id}:message`}
-          resetSignal={messages.length}
+          resetSignal={ownMessageResetSignal}
         />
         <button type="submit">Send</button>
       </form>

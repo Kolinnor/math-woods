@@ -70,6 +70,8 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
   const discussionVisible = Boolean(attempt || canEditCurrentProblem);
   const postVotes = new Map(postVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const ownPostVoteIds = new Set(userVotes.map((vote) => vote.targetId));
+  const ownDiscussionPostResetSignal =
+    user && problem.thread ? problem.thread.posts.filter((post) => post.authorId === user.id).at(-1)?.id ?? 0 : 0;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -176,7 +178,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
               minHeight="9rem"
               lineNumbers={false}
               draftKey={`problem-discussion:${problem.id}:reply`}
-              resetSignal={problem.thread?.posts.length ?? 0}
+              resetSignal={ownDiscussionPostResetSignal}
             />
             <button type="submit">Post</button>
           </form>

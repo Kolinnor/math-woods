@@ -56,7 +56,8 @@ import { ensureSlug } from "@/lib/slug";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
-const DRAFT_RESET_PREFIX = `${DRAFT_PREFIX}:reset`;
+const DRAFT_SUBMIT_PREFIX = `${DRAFT_PREFIX}:submit`;
+const DRAFT_SUBMIT_TTL_MS = 10 * 60 * 1000;
 const LINK_MENU_VIEWPORT_MARGIN = 12;
 const IMAGE_UPLOAD_ACCEPT = "image/avif,image/jpeg,image/png,image/webp";
 
@@ -136,6 +137,11 @@ type MarkdownDraft = {
   updatedAt: number;
 };
 
+type MarkdownDraftSubmit = {
+  signal: string;
+  submittedAt: number;
+};
+
 function readMarkdownDraft(key: string): MarkdownDraft | null {
   try {
     const raw = window.localStorage.getItem(key);
@@ -170,8 +176,8 @@ function removeMarkdownDraft(key: string) {
   }
 }
 
-function markdownDraftResetKey(key: string) {
-  return `${DRAFT_RESET_PREFIX}:${key}`;
+function markdownDraftSubmitKey(key: string) {
+  return `${DRAFT_SUBMIT_PREFIX}:${key}`;
 }
 
 function resetSignalValue(resetSignal: MarkdownEditorProps["resetSignal"]) {
@@ -179,20 +185,49 @@ function resetSignalValue(resetSignal: MarkdownEditorProps["resetSignal"]) {
   return String(resetSignal);
 }
 
-function readDraftResetSignal(key: string) {
+function readDraftSubmit(key: string): MarkdownDraftSubmit | null {
   try {
-    return window.localStorage.getItem(markdownDraftResetKey(key));
+    const raw = window.localStorage.getItem(markdownDraftSubmitKey(key));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<MarkdownDraftSubmit>;
+    if (typeof parsed.signal !== "string" || typeof parsed.submittedAt !== "number") return null;
+    return { signal: parsed.signal, submittedAt: parsed.submittedAt };
   } catch {
     return null;
   }
 }
 
-function writeDraftResetSignal(key: string, resetSignal: string) {
+function writeDraftSubmit(key: string, resetSignal: string) {
   try {
-    window.localStorage.setItem(markdownDraftResetKey(key), resetSignal);
+    window.localStorage.setItem(
+      markdownDraftSubmitKey(key),
+      JSON.stringify({
+        signal: resetSignal,
+        submittedAt: Date.now()
+      } satisfies MarkdownDraftSubmit)
+    );
   } catch {
-    // Draft resets are best-effort; editing must continue if storage is unavailable.
+    // Draft submit markers are best-effort; editing must continue if storage is unavailable.
   }
+}
+
+function removeDraftSubmit(key: string) {
+  try {
+    window.localStorage.removeItem(markdownDraftSubmitKey(key));
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function freshDraftSubmitForSignal(key: string, resetSignal: string) {
+  const submit = readDraftSubmit(key);
+  if (!submit) return false;
+  const fresh = Date.now() - submit.submittedAt <= DRAFT_SUBMIT_TTL_MS;
+  if (!fresh) {
+    removeDraftSubmit(key);
+    return false;
+  }
+  return submit.signal === resetSignal;
 }
 
 function formatDraftTime(timestamp: number) {
@@ -994,12 +1029,16 @@ export function MarkdownEditor({
     draftKeyRef.current = resolvedDraftKey;
     const currentResetSignal = resetSignalValue(resetSignal);
     if (currentResetSignal !== null) {
-      const previousResetSignal = readDraftResetSignal(resolvedDraftKey);
-      if (previousResetSignal === null) {
-        writeDraftResetSignal(resolvedDraftKey, currentResetSignal);
-      } else if (previousResetSignal !== currentResetSignal) {
+      const submit = readDraftSubmit(resolvedDraftKey);
+      const submittedThenChanged =
+        submit &&
+        Date.now() - submit.submittedAt <= DRAFT_SUBMIT_TTL_MS &&
+        submit.signal !== currentResetSignal;
+      if (submittedThenChanged) {
         removeMarkdownDraft(resolvedDraftKey);
-        writeDraftResetSignal(resolvedDraftKey, currentResetSignal);
+      }
+      if (submit && (submittedThenChanged || Date.now() - submit.submittedAt > DRAFT_SUBMIT_TTL_MS)) {
+        removeDraftSubmit(resolvedDraftKey);
       }
     }
     const savedDraft = readMarkdownDraft(resolvedDraftKey);
@@ -1158,6 +1197,14 @@ export function MarkdownEditor({
     host.addEventListener("contextmenu", openLinkMenu);
     document.addEventListener("focusin", outsideInteraction, true);
     document.addEventListener("mousedown", outsideInteraction, true);
+    const form = host.closest("form");
+    const markDraftSubmitted = () => {
+      const key = draftKeyRef.current;
+      const currentResetSignal = resetSignalValue(resetSignalRef.current);
+      if (!key || currentResetSignal === null) return;
+      writeDraftSubmit(key, currentResetSignal);
+    };
+    form?.addEventListener("submit", markDraftSubmitted);
 
     return () => {
       host.removeEventListener("focusin", focusIn);
@@ -1165,6 +1212,7 @@ export function MarkdownEditor({
       host.removeEventListener("contextmenu", openLinkMenu);
       document.removeEventListener("focusin", outsideInteraction, true);
       document.removeEventListener("mousedown", outsideInteraction, true);
+      form?.removeEventListener("submit", markDraftSubmitted);
       view.destroy();
       viewRef.current = null;
     };
@@ -1234,13 +1282,18 @@ export function MarkdownEditor({
 
   useEffect(() => {
     if (resetSignalRef.current === resetSignal) return;
-    resetSignalRef.current = resetSignal;
 
     const key = draftKeyRef.current;
-    const currentResetSignal = resetSignalValue(resetSignal);
+    const previousResetSignal = resetSignalValue(resetSignalRef.current);
+    if (!key || previousResetSignal === null || !freshDraftSubmitForSignal(key, previousResetSignal)) {
+      resetSignalRef.current = resetSignal;
+      return;
+    }
+
+    resetSignalRef.current = resetSignal;
     if (key) {
       removeMarkdownDraft(key);
-      if (currentResetSignal !== null) writeDraftResetSignal(key, currentResetSignal);
+      removeDraftSubmit(key);
     }
     setRestoredDraftAt(null);
     setValue(initialValue);
