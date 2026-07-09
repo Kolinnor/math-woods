@@ -170,16 +170,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
           </div>
 
           <form action={createDiscussionPostAction.bind(null, problem.id, true)} className="panel mt-6 grid gap-3 p-5">
-            <label className="grid gap-2">
-              <span className="text-sm font-medium">Add to the discussion</span>
-              <select name="type" defaultValue="COMMENT">
-                <option value="COMMENT">Comment</option>
-                <option value="HINT">Hint</option>
-                <option value="SOLUTION">Solution</option>
-                <option value="GENERALIZATION">Generalization</option>
-                <option value="CORRECTION">Correction</option>
-              </select>
-            </label>
+            <h2 className="text-sm font-medium">Add to the discussion</h2>
             <LazyMarkdownEditor name="bodyMarkdown" minHeight="9rem" lineNumbers={false} />
             <button type="submit">Post</button>
           </form>
