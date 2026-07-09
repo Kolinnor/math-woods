@@ -6,6 +6,7 @@ import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
+import { ProblemVerificationFields } from "@/components/ProblemVerificationFields";
 import {
   createProblemHintAction,
   deleteProblemAction,
@@ -225,35 +226,12 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             problems: group.relations.map(({ targetProblem }) => targetProblem)
           }))}
         />
-        <fieldset className="origin-fields grid gap-4">
-          <legend className="font-semibold">Solve verification</legend>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Verification mode</span>
-            <select name="verificationMode" defaultValue={problem.verificationMode}>
-              {Object.entries(VERIFICATION_MODE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Verification question</span>
-            <input
-              name="verificationPrompt"
-              defaultValue={problem.verificationPrompt ?? ""}
-              placeholder="For example: What is the last letter of the answer?"
-            />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Expected short answer</span>
-            <input
-              name="verificationAnswer"
-              defaultValue={problem.verificationAnswer ?? ""}
-              placeholder="Used only for short answer check"
-            />
-          </label>
-        </fieldset>
+        <ProblemVerificationFields
+          initialMode={problem.verificationMode}
+          initialPrompt={problem.verificationPrompt ?? ""}
+          initialAnswer={problem.verificationAnswer ?? ""}
+          modeOptions={Object.entries(VERIFICATION_MODE_LABELS)}
+        />
         <label className="grid gap-2">
           <span className="text-sm font-medium">Edit summary</span>
           <input name="editSummary" placeholder="Clarified statement, fixed notation..." />
@@ -265,7 +243,6 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
         <section className="problem-hint-admin panel mt-6 grid gap-5 p-5">
           <div>
             <h2 className="text-lg font-semibold">Hints before solutions</h2>
-            <p className="muted text-sm">These hints are hidden by default on the problem page and appear before the solutions.</p>
           </div>
 
           {problem.hints.length > 0 && (

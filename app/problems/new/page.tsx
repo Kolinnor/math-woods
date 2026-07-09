@@ -3,6 +3,7 @@ import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
+import { ProblemVerificationFields } from "@/components/ProblemVerificationFields";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { requireVerifiedUser } from "@/lib/auth";
 import { PROBLEM_DOMAINS } from "@/lib/domains";
@@ -185,27 +186,7 @@ export default async function NewProblemPage({
           </span>
         </label>
         <ProblemRelationPicker />
-        <fieldset className="origin-fields grid gap-4">
-          <legend className="font-semibold">Solve verification</legend>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Verification mode</span>
-            <select name="verificationMode" defaultValue="NONE">
-              {Object.entries(VERIFICATION_MODE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Verification question</span>
-            <input name="verificationPrompt" placeholder="For example: What is the last letter of the answer?" />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Expected short answer</span>
-            <input name="verificationAnswer" placeholder="Used only for short answer check" />
-          </label>
-        </fieldset>
+        <ProblemVerificationFields modeOptions={Object.entries(VERIFICATION_MODE_LABELS)} />
         <div className="grid gap-2">
           <span className="text-sm font-medium">Initial solution (optional)</span>
           <MarkdownEditor

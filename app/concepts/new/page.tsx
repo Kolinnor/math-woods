@@ -74,7 +74,7 @@ export default async function NewConceptPage({
         )}
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
-          <input name="title" required defaultValue={sourceConcept?.title ?? title} placeholder="Vieta Relations" />
+          <input name="title" required defaultValue={sourceConcept?.title ?? title} />
         </label>
         <LanguageField
           defaultValue={initialLanguage}
