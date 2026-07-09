@@ -4,6 +4,7 @@ import { AddFriendForm } from "@/components/AddFriendForm";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import {
   acceptFriendRequestAction,
+  cancelFriendRequestAction,
   declineFriendRequestAction,
   removeFriendAction
 } from "@/lib/actions/social-actions";
@@ -146,6 +147,11 @@ export default async function FriendsPage() {
                   <div key={request.id} className="friend-row">
                     <Link href={`/profile/${request.addressee.username}`}>{displayNameForUser(request.addressee)}</Link>
                     <span className="muted text-sm">pending</span>
+                    <form action={cancelFriendRequestAction.bind(null, request.id)}>
+                      <button type="submit" className="secondary">
+                        Cancel
+                      </button>
+                    </form>
                   </div>
                 ))}
               </div>

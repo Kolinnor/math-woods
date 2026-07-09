@@ -542,12 +542,14 @@ a {
   border: 1px solid var(--line);
   border-radius: 7px;
   box-shadow: var(--shadow);
+  color: var(--ink);
   display: grid;
   min-width: 13rem;
   padding: 0.45rem;
   position: absolute;
   right: 0;
   top: calc(100% + 0.5rem);
+  z-index: 50;
 }
 
 .friends-menu-title,
@@ -555,9 +557,11 @@ a {
 .friends-menu-request {
   align-items: center;
   border-radius: 4px;
+  color: var(--ink);
   display: flex;
   gap: 0.45rem;
   padding: 0.5rem 0.6rem;
+  text-shadow: none;
 }
 
 .friends-menu-title {
@@ -647,6 +651,7 @@ a {
   border: 1px solid var(--line);
   border-radius: 7px;
   box-shadow: var(--shadow);
+  color: var(--ink);
   display: grid;
   min-width: min(22rem, calc(100vw - 1.5rem));
   overflow: hidden;
@@ -673,7 +678,9 @@ a {
 }
 
 .notification-title-link {
+  color: var(--ink);
   font-weight: 700;
+  text-shadow: none;
 }
 
 .notification-clear-button {
@@ -698,9 +705,11 @@ a {
 
 .notification-item {
   border-bottom: 1px solid var(--line);
+  color: var(--ink);
   display: grid;
   gap: 0.3rem;
   padding: 0.8rem 0.9rem;
+  text-shadow: none;
 }
 
 .notification-item:last-child {
@@ -5001,6 +5010,26 @@ button.relation-remove-button {
 .chat-thread {
   display: grid;
   gap: 0.9rem;
+  max-height: min(62vh, 42rem);
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.chat-live-status {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  justify-self: end;
+  padding: 0.25rem 0.55rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .chat-message {

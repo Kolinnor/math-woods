@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
+import { acceptedFriendshipBetween, directChatPair } from "@/lib/direct-chat";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
@@ -13,12 +14,6 @@ import { displayNameForUser } from "@/lib/user-display";
 async function renderMarkdownContent(markdown: string) {
   const { renderMarkdown } = await import("@/lib/markdown");
   return renderMarkdown(markdown);
-}
-
-function directChatPair(userId: number, otherUserId: number) {
-  return userId < otherUserId
-    ? { userAId: userId, userBId: otherUserId }
-    : { userAId: otherUserId, userBId: userId };
 }
 
 async function friendshipBetween(userId: number, otherUserId: number) {
@@ -32,16 +27,14 @@ async function friendshipBetween(userId: number, otherUserId: number) {
   });
 }
 
-async function acceptedFriendshipBetween(userId: number, otherUserId: number) {
-  return prisma.friendship.findFirst({
-    where: {
-      status: FriendshipStatus.ACCEPTED,
-      OR: [
-        { requesterId: userId, addresseeId: otherUserId },
-        { requesterId: otherUserId, addresseeId: userId }
-      ]
-    }
-  });
+function isNextRedirectError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof error.digest === "string" &&
+    error.digest.startsWith("NEXT_REDIRECT")
+  );
 }
 
 export async function sendFriendRequestAction(username: string) {
@@ -145,6 +138,30 @@ export async function declineFriendRequestAction(friendshipId: number) {
   revalidatePath("/", "layout");
 }
 
+export async function cancelFriendRequestAction(friendshipId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`friend-cancel:${user.id}`, 40, 60_000);
+
+  const friendship = await prisma.friendship.findFirst({
+    where: {
+      id: friendshipId,
+      requesterId: user.id,
+      status: FriendshipStatus.PENDING
+    },
+    include: { addressee: { select: { username: true } } }
+  });
+
+  if (!friendship) throw new Error("Friend request not found.");
+
+  await prisma.friendship.delete({
+    where: { id: friendship.id }
+  });
+
+  revalidatePath("/friends");
+  revalidatePath("/", "layout");
+  revalidatePath(`/profile/${friendship.addressee.username}`);
+}
+
 export async function removeFriendAction(friendshipId: number) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`friend-remove:${user.id}`, 20, 60_000);
@@ -180,6 +197,7 @@ export async function sendFriendRequestByUsernameFormAction(
     await sendFriendRequestAction(username);
     return { ok: true, message: "Friend request sent." };
   } catch (error) {
+    if (isNextRedirectError(error)) throw error;
     const message = error instanceof Error ? error.message : "Could not send this friend request.";
     return { ok: false, message };
   }

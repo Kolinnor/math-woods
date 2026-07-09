@@ -6,6 +6,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import {
   acceptFriendRequestAction,
+  cancelFriendRequestAction,
   declineFriendRequestAction,
   removeFriendAction,
   sendFriendRequestAction
@@ -149,9 +150,11 @@ export default async function ProfilePage({
       </form>
     </div>
   ) : currentUser && friendship?.status === FriendshipStatus.PENDING ? (
-    <span className="button secondary" aria-disabled="true">
-      Friend request sent
-    </span>
+    <form action={cancelFriendRequestAction.bind(null, friendship.id)}>
+      <button type="submit" className="secondary">
+        Friend request sent
+      </button>
+    </form>
   ) : currentUser ? (
     <form action={sendFriendRequestAction.bind(null, user.username)}>
       <button type="submit">Add friend</button>

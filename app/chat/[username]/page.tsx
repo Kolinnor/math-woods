@@ -1,20 +1,15 @@
 import { FriendshipStatus } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
-import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { createChatMessageAction, sendFriendRequestAction } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { directChatPair } from "@/lib/direct-chat";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
-
-function directChatPair(userId: number, otherUserId: number) {
-  return userId < otherUserId
-    ? { userAId: userId, userBId: otherUserId }
-    : { userAId: otherUserId, userBId: userId };
-}
 
 export default async function ChatPage({ params }: { params: Promise<{ username: string }> }) {
   const user = await requireVerifiedUser();
@@ -72,7 +67,15 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       }
     }
   });
-  const messages = chat?.messages ?? [];
+  const messages: LiveChatMessage[] =
+    chat?.messages.map((message) => ({
+      id: message.id,
+      authorId: message.authorId,
+      authorUsername: message.author.username,
+      authorName: displayNameForUser(message.author),
+      bodyHtml: message.bodyHtml,
+      createdAt: message.createdAt.toISOString()
+    })) ?? [];
 
   return (
     <div className="chat-page mx-auto max-w-4xl">
@@ -91,22 +94,12 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
         </div>
       </div>
 
-      <section className="chat-thread panel p-5">
-        {messages.map((message) => {
-          const ownMessage = message.authorId === user.id;
-          return (
-            <article key={message.id} className={ownMessage ? "chat-message chat-message-own" : "chat-message"}>
-              <p className="meta">
-                <Link href={`/profile/${message.author.username}`}>{displayNameForUser(message.author)}</Link>
-                {" \u00b7 "}
-                {message.createdAt.toLocaleString("en-US")}
-              </p>
-              <MarkdownBlock html={message.bodyHtml} />
-            </article>
-          );
-        })}
-        {messages.length === 0 && <p className="muted">No messages yet.</p>}
-      </section>
+      <LiveChatThread
+        key={otherUser.username}
+        currentUserId={user.id}
+        otherUsername={otherUser.username}
+        initialMessages={messages}
+      />
 
       <form action={createChatMessageAction.bind(null, otherUser.username)} className="panel mt-5 grid gap-3 p-5">
         <h2 className="font-semibold">Message</h2>
