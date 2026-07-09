@@ -964,6 +964,36 @@ export async function updateVerificationMessageAction(messageId: number, problem
   revalidatePath(`/problems/${message.request.problem.slug}/verification/${message.request.id}`);
 }
 
+export async function deleteVerificationMessageAction(messageId: number, problemSlug: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`verification-message-delete:${user.id}`, 30, 60_000);
+  const message = await prisma.problemVerificationMessage.findUnique({
+    where: { id: messageId },
+    include: {
+      request: {
+        include: {
+          problem: { select: { id: true, slug: true, title: true, authorId: true } }
+        }
+      }
+    }
+  });
+
+  if (!message || message.request.problem.slug !== problemSlug) {
+    throw new Error("Verification message not found.");
+  }
+  if (!canJoinVerificationDiscussion(user, message.request)) {
+    throw new Error("You cannot join this verification discussion.");
+  }
+  if (!canEditVerificationMessage(user, message)) {
+    throw new Error("You cannot delete this verification message.");
+  }
+
+  await prisma.problemVerificationMessage.delete({ where: { id: message.id } });
+
+  revalidatePath(`/problems/${message.request.problem.slug}`);
+  revalidatePath(`/problems/${message.request.problem.slug}/verification/${message.request.id}`);
+}
+
 export async function toggleProblemFavoriteAction(problemId: number, problemSlug: string) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`favorite:${user.id}`, 60, 60_000);

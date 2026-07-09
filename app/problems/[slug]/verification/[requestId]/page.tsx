@@ -5,6 +5,7 @@ import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import {
   createVerificationMessageAction,
+  deleteVerificationMessageAction,
   reviewProblemVerificationAction,
   updateVerificationMessageAction
 } from "@/lib/actions/problem-actions";
@@ -121,24 +122,31 @@ export default async function ProblemVerificationPage({
                     </p>
                     <MarkdownBlock html={message.bodyHtml} />
                     {canEditMessage && (
-                      <details className="mt-3 text-sm">
-                        <summary className="cursor-pointer font-medium">Edit message</summary>
-                        <form
-                          action={updateVerificationMessageAction.bind(null, message.id, request.problem.slug)}
-                          className="mt-3 grid gap-2"
-                        >
-                          <LazyMarkdownEditor
-                            name="bodyMarkdown"
-                            initialValue={message.bodyMarkdown}
-                            minHeight="7rem"
-                            lineNumbers={false}
-                            draftKey={`verification-message:${message.id}:edit`}
-                          />
+                      <div className="mt-3 grid gap-3 text-sm">
+                        <details>
+                          <summary className="cursor-pointer font-medium">Edit message</summary>
+                          <form
+                            action={updateVerificationMessageAction.bind(null, message.id, request.problem.slug)}
+                            className="mt-3 grid gap-2"
+                          >
+                            <LazyMarkdownEditor
+                              name="bodyMarkdown"
+                              initialValue={message.bodyMarkdown}
+                              minHeight="7rem"
+                              lineNumbers={false}
+                              draftKey={`verification-message:${message.id}:edit`}
+                            />
+                            <button type="submit" className="secondary">
+                              Save message
+                            </button>
+                          </form>
+                        </details>
+                        <form action={deleteVerificationMessageAction.bind(null, message.id, request.problem.slug)}>
                           <button type="submit" className="secondary">
-                            Save message
+                            Delete message
                           </button>
                         </form>
-                      </details>
+                      </div>
                     )}
                   </article>
                 );
