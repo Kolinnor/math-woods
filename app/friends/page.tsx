@@ -1,11 +1,11 @@
 import { FriendshipStatus } from "@prisma/client";
 import Link from "next/link";
+import { AddFriendForm } from "@/components/AddFriendForm";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import {
   acceptFriendRequestAction,
   declineFriendRequestAction,
-  removeFriendAction,
-  sendFriendRequestByUsernameAction
+  removeFriendAction
 } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -98,10 +98,7 @@ export default async function FriendsPage() {
             <h2 className="font-semibold">Add a friend</h2>
             <p className="muted text-sm">Enter a username to send a friend request.</p>
           </div>
-          <form action={sendFriendRequestByUsernameAction} className="friend-add-form">
-            <input name="username" placeholder="username" required />
-            <button type="submit">Add friend</button>
-          </form>
+          <AddFriendForm />
         </section>
 
         <section className="panel p-5">

@@ -4931,6 +4931,26 @@ button.relation-remove-button {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.friend-form-message {
+  border-radius: 6px;
+  font-size: 0.9rem;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+}
+
+.friend-form-error {
+  background: var(--notice-red-bg);
+  border: 1px solid var(--notice-red-border);
+  color: var(--notice-text);
+}
+
+.friend-form-success {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--ink);
+}
+
 .friend-list {
   display: grid;
   gap: 0.65rem;

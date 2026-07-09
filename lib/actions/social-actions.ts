@@ -169,6 +169,22 @@ export async function sendFriendRequestByUsernameAction(formData: FormData) {
   redirect("/friends" as never);
 }
 
+export async function sendFriendRequestByUsernameFormAction(
+  _state: { ok: boolean; message: string | null },
+  formData: FormData
+) {
+  const username = String(formData.get("username") ?? "").trim();
+  if (!username) return { ok: false, message: "Enter a username." };
+
+  try {
+    await sendFriendRequestAction(username);
+    return { ok: true, message: "Friend request sent." };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not send this friend request.";
+    return { ok: false, message };
+  }
+}
+
 export async function createChatMessageAction(otherUsername: string, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`chat-message:${user.id}`, 30, 60_000);
