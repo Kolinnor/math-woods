@@ -64,7 +64,13 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
         <form action={createConceptTalkPostAction.bind(null, concept.id, concept.slug)} className="panel mt-6 grid gap-3 p-5">
           <div className="grid gap-2">
             <span className="text-sm font-medium">Add to the discussion</span>
-            <LazyMarkdownEditor name="bodyMarkdown" minHeight="9rem" lineNumbers={false} />
+            <LazyMarkdownEditor
+              name="bodyMarkdown"
+              minHeight="9rem"
+              lineNumbers={false}
+              draftKey={`concept-talk:${concept.id}:reply`}
+              resetSignal={concept.talkPosts.length}
+            />
           </div>
           <button type="submit">Post</button>
         </form>

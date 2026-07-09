@@ -171,7 +171,13 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
 
           <form action={createDiscussionPostAction.bind(null, problem.id, true)} className="panel mt-6 grid gap-3 p-5">
             <h2 className="text-sm font-medium">Add to the discussion</h2>
-            <LazyMarkdownEditor name="bodyMarkdown" minHeight="9rem" lineNumbers={false} />
+            <LazyMarkdownEditor
+              name="bodyMarkdown"
+              minHeight="9rem"
+              lineNumbers={false}
+              draftKey={`problem-discussion:${problem.id}:reply`}
+              resetSignal={problem.thread?.posts.length ?? 0}
+            />
             <button type="submit">Post</button>
           </form>
         </>

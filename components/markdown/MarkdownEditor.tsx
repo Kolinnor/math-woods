@@ -56,6 +56,7 @@ import { ensureSlug } from "@/lib/slug";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
+const DRAFT_RESET_PREFIX = `${DRAFT_PREFIX}:reset`;
 const LINK_MENU_VIEWPORT_MARGIN = 12;
 const IMAGE_UPLOAD_ACCEPT = "image/avif,image/jpeg,image/png,image/webp";
 
@@ -166,6 +167,31 @@ function removeMarkdownDraft(key: string) {
     window.localStorage.removeItem(key);
   } catch {
     // Ignore storage errors.
+  }
+}
+
+function markdownDraftResetKey(key: string) {
+  return `${DRAFT_RESET_PREFIX}:${key}`;
+}
+
+function resetSignalValue(resetSignal: MarkdownEditorProps["resetSignal"]) {
+  if (resetSignal === null || resetSignal === undefined) return null;
+  return String(resetSignal);
+}
+
+function readDraftResetSignal(key: string) {
+  try {
+    return window.localStorage.getItem(markdownDraftResetKey(key));
+  } catch {
+    return null;
+  }
+}
+
+function writeDraftResetSignal(key: string, resetSignal: string) {
+  try {
+    window.localStorage.setItem(markdownDraftResetKey(key), resetSignal);
+  } catch {
+    // Draft resets are best-effort; editing must continue if storage is unavailable.
   }
 }
 
@@ -966,6 +992,16 @@ export function MarkdownEditor({
     if (!hostRef.current || viewRef.current) return;
     const resolvedDraftKey = `${DRAFT_PREFIX}:${draftKey ?? `${window.location.pathname}:${name}`}`;
     draftKeyRef.current = resolvedDraftKey;
+    const currentResetSignal = resetSignalValue(resetSignal);
+    if (currentResetSignal !== null) {
+      const previousResetSignal = readDraftResetSignal(resolvedDraftKey);
+      if (previousResetSignal === null) {
+        writeDraftResetSignal(resolvedDraftKey, currentResetSignal);
+      } else if (previousResetSignal !== currentResetSignal) {
+        removeMarkdownDraft(resolvedDraftKey);
+        writeDraftResetSignal(resolvedDraftKey, currentResetSignal);
+      }
+    }
     const savedDraft = readMarkdownDraft(resolvedDraftKey);
     const startValue = savedDraft && savedDraft.value !== initialValue ? savedDraft.value : initialValue;
 
@@ -1201,7 +1237,11 @@ export function MarkdownEditor({
     resetSignalRef.current = resetSignal;
 
     const key = draftKeyRef.current;
-    if (key) removeMarkdownDraft(key);
+    const currentResetSignal = resetSignalValue(resetSignal);
+    if (key) {
+      removeMarkdownDraft(key);
+      if (currentResetSignal !== null) writeDraftResetSignal(key, currentResetSignal);
+    }
     setRestoredDraftAt(null);
     setValue(initialValue);
     setLinkMenu(null);
