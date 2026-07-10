@@ -1,4 +1,4 @@
-import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
+import { MathDomain, Prisma, QualityStatus, UserMathLevel } from "@prisma/client";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
@@ -26,6 +26,7 @@ import { problemLinkClass } from "@/lib/problem-link";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
+import { hasAdminPrivileges } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ type DifficultyRange = {
 };
 type ProgressFilter = "unsolved" | "solved" | "all";
 type OwnershipFilter = "all" | "others";
+type SolutionFilter = "with" | "without" | "all";
 
 const DIFFICULTY_RANGES: DifficultyRange[] = [
   { value: "", label: "Any difficulty" },
@@ -70,6 +72,21 @@ function parseProgressFilter(value: string | undefined): ProgressFilter {
 
 function parseOwnershipFilter(value: string | undefined): OwnershipFilter {
   return value === "others" ? "others" : "all";
+}
+
+function canDefaultToAllSolutions(user: Awaited<ReturnType<typeof getCurrentUser>>) {
+  if (!user) return false;
+  if (hasAdminPrivileges(user.role)) return true;
+  return (
+    user.mathLevel === UserMathLevel.ADVANCED_UNDERGRAD ||
+    user.mathLevel === UserMathLevel.GRADUATE_CONTEST ||
+    user.mathLevel === UserMathLevel.RESEARCH
+  );
+}
+
+function parseSolutionFilter(value: string | undefined, defaultValue: SolutionFilter): SolutionFilter {
+  if (value === "with" || value === "without" || value === "all") return value;
+  return defaultValue;
 }
 
 function parseDifficultyBound(value: string | undefined) {
@@ -261,6 +278,7 @@ export default async function ProblemsPage({
     quality?: string;
     progress?: string;
     ownership?: string;
+    solutions?: string;
     author?: string;
     sort?: string;
     page?: string;
@@ -284,6 +302,7 @@ export default async function ProblemsPage({
     quality = "",
     progress = "",
     ownership = "",
+    solutions = "",
     author = "",
     sort = "newest",
     page = "1",
@@ -328,6 +347,14 @@ export default async function ProblemsPage({
     : undefined;
   const progressValue = parseProgressFilter(progress);
   const ownershipValue = user ? parseOwnershipFilter(ownership) : "all";
+  const defaultSolutionValue: SolutionFilter = canDefaultToAllSolutions(user) ? "all" : "with";
+  const solutionValue = parseSolutionFilter(solutions, defaultSolutionValue);
+  const solutionWhere: Prisma.ProblemWhereInput | null =
+    solutionValue === "with"
+      ? { proofs: { some: {} } }
+      : solutionValue === "without"
+        ? { proofs: { none: {} } }
+        : null;
   const authorQuery = author.trim();
   const authorSlug = ensureSlug(authorQuery, "");
   const authorWhere: Prisma.ProblemWhereInput | null = authorQuery
@@ -396,6 +423,7 @@ export default async function ProblemsPage({
     ...(qualityValue ? [{ qualityStatus: qualityValue }] : []),
     ...(progressFilterWhere ? [progressFilterWhere] : []),
     ...(ownershipWhere ? [ownershipWhere] : []),
+    ...(solutionWhere ? [solutionWhere] : []),
     ...(authorWhere ? [authorWhere] : []),
     ...(advancedClauses.length
       ? [{ [advancedLogic]: advancedClauses } satisfies Prisma.ProblemWhereInput]
@@ -494,6 +522,7 @@ export default async function ProblemsPage({
     quality: qualityValue,
     progress: user && progressValue !== "unsolved" ? progressValue : undefined,
     ownership: user && ownershipValue !== "all" ? ownershipValue : undefined,
+    solutions: solutionValue !== defaultSolutionValue ? solutionValue : undefined,
     author: authorQuery || undefined,
     sort: sortValue === "newest" ? undefined : sortValue,
     filterLogic: advancedFilters.length ? advancedLogic : undefined,
@@ -594,6 +623,11 @@ export default async function ProblemsPage({
                 <option value="UNREVIEWED">{t.problems.unreviewed}</option>
                 <option value="GOOD">{t.problems.good}</option>
                 <option value="EXCELLENT">{t.problems.excellent}</option>
+              </select>
+              <select name="solutions" defaultValue={solutionValue} aria-label={t.problems.solutionStatus}>
+                <option value="with">{t.problems.withSolutions}</option>
+                <option value="all">{t.problems.anySolutionStatus}</option>
+                <option value="without">{t.problems.withoutSolutions}</option>
               </select>
               <label className="problem-filter-inline-field">
                 <span>{t.problems.author}</span>
