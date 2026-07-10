@@ -159,7 +159,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Search size={16} aria-hidden="true" />
                 <input name="q" aria-label={t.nav.searchAriaLabel} placeholder={t.nav.searchPlaceholder} />
               </LiveSearchForm>
-              {user && <FriendsMenu userId={user.id} />}
               {user && <NotificationsMenu userId={user.id} />}
               <details className="nav-menu">
                 <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle}>
@@ -195,6 +194,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           )}
         </header>
         {user && <AchievementToast userId={user.id} />}
+        {user && (
+          <div className="floating-friends-menu">
+            <FriendsMenu userId={user.id} />
+          </div>
+        )}
         <main className="site-main mx-auto max-w-6xl px-4 py-8">{children}</main>
         <footer className="site-footer">
           <div className="mx-auto grid max-w-6xl gap-3 px-4 py-6 text-sm md:grid-cols-[1fr_auto] md:items-center">

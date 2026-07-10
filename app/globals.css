@@ -497,6 +497,13 @@ a {
   position: relative;
 }
 
+.floating-friends-menu {
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 70;
+}
+
 .friends-menu summary {
   align-items: center;
   background: var(--panel);
@@ -550,6 +557,17 @@ a {
   right: 0;
   top: calc(100% + 0.5rem);
   z-index: 50;
+}
+
+.floating-friends-menu .friends-menu summary {
+  box-shadow: var(--shadow);
+}
+
+.floating-friends-menu .friends-menu-popover {
+  bottom: calc(100% + 0.5rem);
+  max-height: min(24rem, calc(100vh - 7rem));
+  overflow: auto;
+  top: auto;
 }
 
 .friends-menu-title,
