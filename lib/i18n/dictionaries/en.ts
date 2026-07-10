@@ -155,8 +155,8 @@ export const en = {
     anyQuality: "Any quality",
     solutionStatus: "Solution status",
     withSolutions: "Has solutions",
-    anySolutionStatus: "Any solution status",
-    withoutSolutions: "No solutions yet",
+    anySolutionStatus: "All problems",
+    withoutSolutions: "No solutions",
     needsWork: "Needs work",
     unreviewed: "Unreviewed",
     good: "Good",
@@ -217,8 +217,8 @@ export const en = {
       { value: "6-19", label: "Beginner / High school (6-19)", min: 6, max: 19 },
       { value: "20-39", label: "Intermediate / Undergraduate (20-39)", min: 20, max: 39 },
       { value: "40-64", label: "Advanced / Graduate (40-64)", min: 40, max: 64 },
-      { value: "65-84", label: "Expert / Research-ready (65-84)", min: 65, max: 84 },
-      { value: "85-100", label: "Professional mathematician (85-100)", min: 85, max: 100 }
+      { value: "65-84", label: "Expert / Specialized (65-84)", min: 65, max: 84 },
+      { value: "85-100", label: "Research-level (85-100)", min: 85, max: 100 }
     ],
     sortOptions: [
       { value: "newest", label: "Newest" },

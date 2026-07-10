@@ -70,7 +70,7 @@ export default async function LoginPage({
           </label>
           <label className="grid gap-2">
             <span className="field-label-with-help text-sm font-medium">
-              What is your level in mathematics?
+              What level of problems would you like to see first?
               <span className="help-link" tabIndex={0} title={MATH_LEVEL_HELP_TEXT} aria-label={MATH_LEVEL_HELP_TEXT}>
                 ?
               </span>
@@ -86,7 +86,7 @@ export default async function LoginPage({
               ))}
             </select>
             <small className="muted">
-              This matches the site difficulty scale, from 1 to 100, and can be changed later.
+              This can be changed anytime.
             </small>
           </label>
           <button type="submit">Create account</button>

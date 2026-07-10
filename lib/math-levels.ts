@@ -8,7 +8,7 @@ export const MATH_LEVEL_OPTIONS: Array<{
 }> = [
   {
     value: UserMathLevel.BEGINNER_PRE_UNIVERSITY,
-    label: "I just started mathematics",
+    label: "Introductory",
     range: "level 1-5",
     description: "Very first steps, gentle definitions, and introductory examples."
   },
@@ -32,20 +32,20 @@ export const MATH_LEVEL_OPTIONS: Array<{
   },
   {
     value: UserMathLevel.GRADUATE_CONTEST,
-    label: "Expert / Research-ready",
+    label: "Expert / Specialized",
     range: "level 65-84",
     description: "Demanding problems, technical arguments, and research-adjacent reading."
   },
   {
     value: UserMathLevel.RESEARCH,
-    label: "Professional mathematician",
+    label: "Research-level",
     range: "level 85-100",
     description: "Research-level mathematics and very specialized problems."
   }
 ];
 
 export const MATH_LEVEL_HELP_TEXT =
-  "Difficulty levels are superficial and do not capture someone's mathematical level very well. They are only used as a rough signal for the content you will see in recommendations.";
+  "This only helps choose which problems to show first. You can change it anytime.";
 
 export function parseMathLevel(value: FormDataEntryValue | string | null | undefined) {
   const input = String(value ?? "") as UserMathLevel;

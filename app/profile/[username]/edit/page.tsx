@@ -44,7 +44,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
         </label>
         <label className="grid gap-2">
           <span className="field-label-with-help text-sm font-medium">
-            What is your level in mathematics?
+            What level of problems would you like to see?
             <span className="help-link" tabIndex={0} title={MATH_LEVEL_HELP_TEXT} aria-label={MATH_LEVEL_HELP_TEXT}>
               ?
             </span>
@@ -57,6 +57,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
               </option>
             ))}
           </select>
+          <small className="muted">This can be changed anytime.</small>
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-medium">Bio</span>
