@@ -160,6 +160,7 @@ export const fr = {
     withSolutions: "Avec solutions",
     anySolutionStatus: "Tous les problèmes",
     withoutSolutions: "Sans solution",
+    languages: "Langues",
     needsWork: "À retravailler",
     unreviewed: "Non relu",
     good: "Bon",

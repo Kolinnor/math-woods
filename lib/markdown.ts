@@ -2,6 +2,7 @@ import katex from "katex";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { findLatexRanges } from "./latex-ranges.ts";
+import { markdownImageSizingFromSrc } from "./markdown-images.ts";
 import { replaceWikiLinks } from "./wikilinks.ts";
 
 function externalLinkAttributes(href: string | undefined): Record<string, string> {
@@ -141,7 +142,7 @@ export async function renderMarkdown(
     allowedAttributes: {
       a: ["href", "class", "rel", "target"],
       code: ["class"],
-      img: ["src", "alt", "title", "loading", "decoding"],
+      img: ["src", "alt", "title", "loading", "decoding", "style"],
       span: ["class", "style"],
       math: ["xmlns", "display"],
       annotation: ["encoding"],
@@ -157,15 +158,25 @@ export async function renderMarkdown(
           ...externalLinkAttributes(attribs.href)
         }
       }),
-      img: (_tagName, attribs) => ({
-        tagName: "img",
-        attribs: {
+      img: (_tagName, attribs) => {
+        const sizing = markdownImageSizingFromSrc(attribs.src ?? "");
+        const imageAttribs: Record<string, string> = {
           ...attribs,
+          src: sizing.src,
           alt: attribs.alt ?? "",
           loading: "lazy",
           decoding: "async"
+        };
+
+        if (sizing.width < 100) {
+          imageAttribs.style = `width:${sizing.width}%;max-width:100%;height:auto;`;
         }
-      })
+
+        return {
+          tagName: "img",
+          attribs: imageAttribs
+        };
+      }
     },
     exclusiveFilter: (frame) => {
       if (frame.tag !== "img") return false;
@@ -188,6 +199,11 @@ export async function renderMarkdown(
         top: [/^-?\d+(\.\d+)?(em|ex|px|rem|%)$/],
         "vertical-align": [/^-?\d+(\.\d+)?(em|ex|px|rem|%)$/],
         width: [/^-?\d+(\.\d+)?(em|ex|px|rem|%)$/]
+      },
+      img: {
+        height: [/^auto$/],
+        "max-width": [/^100%$/],
+        width: [/^(25|50|75)%$/]
       }
     },
     allowedSchemes: ["http", "https", "mailto", "tel"],

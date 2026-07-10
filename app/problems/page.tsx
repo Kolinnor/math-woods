@@ -22,6 +22,7 @@ import {
 } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
+import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
@@ -41,6 +42,9 @@ type DifficultyRange = {
 type ProgressFilter = "unsolved" | "solved" | "all";
 type OwnershipFilter = "all" | "others";
 type SolutionFilter = "with" | "without" | "all";
+
+const SUPPORTED_LANGUAGE_CODES = SUPPORTED_CONTENT_LANGUAGES.map((language) => language.code);
+const SUPPORTED_LANGUAGE_CODE_SET = new Set(SUPPORTED_LANGUAGE_CODES);
 
 const DIFFICULTY_RANGES: DifficultyRange[] = [
   { value: "", label: "Any difficulty" },
@@ -87,6 +91,14 @@ function canDefaultToAllSolutions(user: Awaited<ReturnType<typeof getCurrentUser
 function parseSolutionFilter(value: string | undefined, defaultValue: SolutionFilter): SolutionFilter {
   if (value === "with" || value === "without" || value === "all") return value;
   return defaultValue;
+}
+
+function parseLanguageFilters(value: SearchValue) {
+  const values = valuesOf(value)
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => SUPPORTED_LANGUAGE_CODE_SET.has(item));
+  const uniqueValues = [...new Set(values)];
+  return uniqueValues.length ? uniqueValues : SUPPORTED_LANGUAGE_CODES;
 }
 
 function parseDifficultyBound(value: string | undefined) {
@@ -279,6 +291,7 @@ export default async function ProblemsPage({
     progress?: string;
     ownership?: string;
     solutions?: string;
+    language?: SearchValue;
     author?: string;
     sort?: string;
     page?: string;
@@ -303,6 +316,7 @@ export default async function ProblemsPage({
     progress = "",
     ownership = "",
     solutions = "",
+    language,
     author = "",
     sort = "newest",
     page = "1",
@@ -347,6 +361,9 @@ export default async function ProblemsPage({
     : undefined;
   const progressValue = parseProgressFilter(progress);
   const ownershipValue = user ? parseOwnershipFilter(ownership) : "all";
+  const languageValues = parseLanguageFilters(language);
+  const includesEveryLanguage = languageValues.length === SUPPORTED_LANGUAGE_CODES.length;
+  const languageWhere: Prisma.ProblemWhereInput | null = includesEveryLanguage ? null : { language: { in: languageValues } };
   const defaultSolutionValue: SolutionFilter = canDefaultToAllSolutions(user) ? "all" : "with";
   const solutionValue = parseSolutionFilter(solutions, defaultSolutionValue);
   const solutionWhere: Prisma.ProblemWhereInput | null =
@@ -424,20 +441,18 @@ export default async function ProblemsPage({
     ...(progressFilterWhere ? [progressFilterWhere] : []),
     ...(ownershipWhere ? [ownershipWhere] : []),
     ...(solutionWhere ? [solutionWhere] : []),
+    ...(languageWhere ? [languageWhere] : []),
     ...(authorWhere ? [authorWhere] : []),
     ...(advancedClauses.length
       ? [{ [advancedLogic]: advancedClauses } satisfies Prisma.ProblemWhereInput]
       : [])
   ];
-  const whereClauses: Prisma.ProblemWhereInput[] = [
-    ...baseWhereClauses,
-    { language: preferredLanguage }
-  ];
+  const whereClauses: Prisma.ProblemWhereInput[] = [...baseWhereClauses];
   const where: Prisma.ProblemWhereInput = { AND: whereClauses };
   const progressWhere: Prisma.ProblemWhereInput = {
     status: "PUBLISHED",
     listed: true,
-    language: preferredLanguage,
+    ...(languageWhere ?? {}),
     ...(ownershipWhere ?? {}),
     ...(authorWhere ?? {}),
     ...(domainValue ? domainWhere(domainValue, showSpoilerTags) : {})
@@ -463,17 +478,6 @@ export default async function ProblemsPage({
         })
       : Promise.resolve(0)
   ]);
-  const otherLanguageProblems =
-    totalProblems === 0
-      ? await prisma.problem.count({
-          where: {
-            AND: [
-              ...baseWhereClauses,
-              { language: { not: preferredLanguage } }
-            ]
-          }
-        })
-      : 0;
   const totalPages = Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
   const currentPage = Math.min(requestedPage, totalPages);
   const problems = await prisma.problem.findMany({
@@ -523,6 +527,7 @@ export default async function ProblemsPage({
     progress: user && progressValue !== "unsolved" ? progressValue : undefined,
     ownership: user && ownershipValue !== "all" ? ownershipValue : undefined,
     solutions: solutionValue !== defaultSolutionValue ? solutionValue : undefined,
+    language: includesEveryLanguage ? undefined : languageValues,
     author: authorQuery || undefined,
     sort: sortValue === "newest" ? undefined : sortValue,
     filterLogic: advancedFilters.length ? advancedLogic : undefined,
@@ -629,6 +634,20 @@ export default async function ProblemsPage({
                 <option value="all">{t.problems.anySolutionStatus}</option>
                 <option value="without">{t.problems.withoutSolutions}</option>
               </select>
+              <fieldset className="problem-language-filter">
+                <legend>{t.problems.languages}</legend>
+                {SUPPORTED_CONTENT_LANGUAGES.map((languageOption) => (
+                  <label key={languageOption.code}>
+                    <input
+                      name="language"
+                      type="checkbox"
+                      value={languageOption.code}
+                      defaultChecked={languageValues.includes(languageOption.code)}
+                    />
+                    <span>{languageOption.code.toUpperCase()}</span>
+                  </label>
+                ))}
+              </fieldset>
               <label className="problem-filter-inline-field">
                 <span>{t.problems.author}</span>
                 <input name="author" defaultValue={authorQuery} placeholder={t.problems.authorPlaceholder} />
@@ -685,6 +704,7 @@ export default async function ProblemsPage({
               const difficultyLevel = difficultyBars(difficulty);
               const tone = difficultyColor(difficulty);
               const authorName = displayNameForUser(problem.author);
+              const showLanguageBadge = problem.language !== preferredLanguage;
 
               return (
                 <div
@@ -707,6 +727,11 @@ export default async function ProblemsPage({
                   <div className="problem-ledger-main">
                     <h3>
                       <AsyncMarkdownInline markdown={problem.title} />
+                      {showLanguageBadge && (
+                        <span className="problem-language-badge" title={contentLanguageLabel(problem.language)}>
+                          {problem.language.toUpperCase()}
+                        </span>
+                      )}
                     </h3>
                     <p>
                       {visibleDomainCodes.length
@@ -763,12 +788,6 @@ export default async function ProblemsPage({
             {problems.length === 0 && (
               <p className="empty-state">
                 {t.problems.noMatches}
-                {otherLanguageProblems > 0 && (
-                  <>
-                    <br />
-                    {t.problems.otherLanguageFound(otherLanguageProblems)}
-                  </>
-                )}
               </p>
             )}
           </div>

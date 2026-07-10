@@ -1631,6 +1631,46 @@ button.markdown-editor-tool-button:disabled svg {
   vertical-align: top;
 }
 
+.markdown-editor .cm-md-image-toolbar {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 0.4rem;
+}
+
+.markdown-editor .cm-md-image-toolbar button {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  min-height: auto;
+  padding: 0.35rem 0.45rem;
+}
+
+.markdown-editor .cm-md-image-toolbar button:hover {
+  background: var(--panel);
+  border-color: var(--line-strong);
+}
+
+.markdown-editor .cm-md-image-toolbar button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.markdown-editor .cm-md-image-sizes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
 .markdown-editor .cm-md-image img {
   border-radius: 4px;
   display: block;
@@ -2500,6 +2540,12 @@ button.danger:hover,
   border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   padding: 0.1rem 0.25rem;
+}
+
+.prose-math img {
+  display: block;
+  height: auto;
+  max-width: 100%;
 }
 
 .prose-math pre {
@@ -4230,6 +4276,52 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   color: #1c211b;
 }
 
+.problem-language-filter {
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+}
+
+.problem-language-filter legend {
+  color: #8a9184;
+  flex: 0 0 100%;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.problem-language-filter label {
+  align-items: center;
+  background: #f8f4ea;
+  border: 1px solid #d8d0bd;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.problem-language-filter label:has(input:checked) {
+  background: #e3efe1;
+  border-color: #9db595;
+}
+
+.problem-language-filter input {
+  margin: 0;
+}
+
+.problem-language-filter span {
+  color: #1c211b;
+  font-size: 0.73rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+
 .problem-filter-form .advanced-filter-header,
 .problem-filter-form .advanced-filter-row {
   align-items: stretch;
@@ -4429,9 +4521,25 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 }
 
 .problem-ledger-main h3 {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
   font-size: 1rem;
   font-weight: 650;
+  gap: 0.45rem;
   margin: 0;
+}
+
+.problem-language-badge {
+  background: #e8e2d3;
+  border: 1px solid #d8d0bd;
+  border-radius: 999px;
+  color: #5d6458;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 0.18rem 0.34rem;
 }
 
 .problem-ledger-main p,

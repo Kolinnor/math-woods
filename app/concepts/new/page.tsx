@@ -46,11 +46,11 @@ export default async function NewConceptPage({
 
   return (
     <ForestPageLayout
-      title="New concept"
-      eyebrow={sourceConcept ? "Translation" : "Concept"}
+      title={sourceConcept ? "Translation" : "New concept"}
+      eyebrow={sourceConcept ? undefined : "Concept"}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description="A stub can be useful: name the idea, add a link, cite one source."
+      description={sourceConcept ? undefined : "A stub can be useful: name the idea, add a link, cite one source."}
       workspaceClassName={sourceConcept ? undefined : "forest-page-workspace-narrow"}
     >
     <div className={sourceConcept ? "translation-compose-page" : ""}>
@@ -58,12 +58,14 @@ export default async function NewConceptPage({
         <form action={createConceptAction} className="panel grid gap-4 p-5">
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
         {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
-        <div className="growth-note">
-          <strong>Start small.</strong>
-          <span>
-            A definition, one example, or one reliable reference is enough for a first version.
-          </span>
-        </div>
+        {!sourceConcept && (
+          <div className="growth-note">
+            <strong>Start small.</strong>
+            <span>
+              A definition, one example, or one reliable reference is enough for a first version.
+            </span>
+          </div>
+        )}
         {sourceConcept && (
           <div className="playlist-context-note">
             <strong>Translating from {contentLanguageLabel(sourceConcept.language)}.</strong>
@@ -121,7 +123,7 @@ export default async function NewConceptPage({
             </p>
           )}
           <button type="submit" disabled={Boolean(sourceConcept && !targetTranslationLanguage)}>
-            Create concept
+            {sourceConcept ? "Create translation" : "Create concept"}
           </button>
         </form>
       </div>

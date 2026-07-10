@@ -50,6 +50,12 @@ import {
   markdownHeadingLineText,
   type MarkdownHeadingShortcuts
 } from "@/lib/markdown-shortcuts";
+import {
+  MARKDOWN_IMAGE_WIDTHS,
+  markdownImageSizingFromSrc,
+  markdownImageSrcWithWidth,
+  type MarkdownImageWidth
+} from "@/lib/markdown-images";
 import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownPreviewClass } from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
@@ -381,19 +387,54 @@ class MarkdownImageWidget extends WidgetType {
   constructor(
     readonly alt: string,
     readonly src: string,
-    readonly from: number
+    readonly width: MarkdownImageWidth,
+    readonly from: number,
+    readonly to: number
   ) {
     super();
   }
 
   eq(other: MarkdownImageWidget) {
-    return other.alt === this.alt && other.src === this.src && other.from === this.from;
+    return other.alt === this.alt && other.src === this.src && other.width === this.width && other.from === this.from && other.to === this.to;
+  }
+
+  private replaceImage(view: EditorView, width: MarkdownImageWidth) {
+    view.dispatch({
+      changes: {
+        from: this.from,
+        to: this.to,
+        insert: markdownImage(markdownImageSrcWithWidth(this.src, width), this.alt)
+      },
+      selection: { anchor: this.from },
+      scrollIntoView: true
+    });
+    view.focus();
+  }
+
+  private deleteImage(view: EditorView) {
+    view.dispatch({
+      changes: { from: this.from, to: this.to },
+      selection: { anchor: this.from },
+      scrollIntoView: true
+    });
+    view.focus();
+  }
+
+  private editSource(view: EditorView) {
+    view.focus();
+    view.dispatch({
+      selection: { anchor: this.from + 2 },
+      effects: setPreviewFocus.of(true),
+      annotations: previewOnly,
+      scrollIntoView: true
+    });
   }
 
   toDOM(view: EditorView) {
     const element = document.createElement("figure");
     element.className = "cm-md-image";
-    element.title = "Click to edit image";
+    element.title = "Image preview";
+    element.style.width = `${this.width}%`;
 
     const image = document.createElement("img");
     image.src = this.src;
@@ -408,15 +449,84 @@ class MarkdownImageWidget extends WidgetType {
       element.appendChild(caption);
     }
 
+    const toolbar = document.createElement("div");
+    toolbar.className = "cm-md-image-toolbar";
+
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.textContent = "Copy";
+    copyButton.title = "Copy image URL";
+    copyButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    copyButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void navigator.clipboard?.writeText(this.src);
+      view.focus();
+    });
+    toolbar.appendChild(copyButton);
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.textContent = "Edit";
+    editButton.title = "Edit Markdown source";
+    editButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    editButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.editSource(view);
+    });
+    toolbar.appendChild(editButton);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.title = "Delete image";
+    deleteButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    deleteButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.deleteImage(view);
+    });
+    toolbar.appendChild(deleteButton);
+
+    const sizeGroup = document.createElement("span");
+    sizeGroup.className = "cm-md-image-sizes";
+    for (const width of MARKDOWN_IMAGE_WIDTHS) {
+      const sizeButton = document.createElement("button");
+      sizeButton.type = "button";
+      sizeButton.textContent = `${width}%`;
+      sizeButton.title = `Set image width to ${width}%`;
+      if (width === this.width) sizeButton.setAttribute("aria-pressed", "true");
+      sizeButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      sizeButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.replaceImage(view, width);
+      });
+      sizeGroup.appendChild(sizeButton);
+    }
+    toolbar.appendChild(sizeGroup);
+    element.appendChild(toolbar);
+
     element.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
       view.focus();
       view.dispatch({
-        selection: { anchor: this.from + 2 },
         effects: setPreviewFocus.of(true),
-        annotations: previewOnly,
-        scrollIntoView: true
+        annotations: previewOnly
       });
     });
     return element;
@@ -707,9 +817,11 @@ function parseMarkdownImage(markdown: string) {
   const match = markdown.match(/^!\[([^\]\n]*)\]\((\S+?)(?:\s+["'][^"']*["'])?\)$/);
   if (!match) return null;
   if (!/^https?:\/\//i.test(match[2])) return null;
+  const sizing = markdownImageSizingFromSrc(match[2]);
   return {
     alt: match[1],
-    src: match[2]
+    src: sizing.src,
+    width: sizing.width
   };
 }
 
@@ -967,7 +1079,7 @@ function buildLivePreviewDecorations(state: EditorState) {
           if (!image) return;
           decorations.push(
             Decoration.replace({
-              widget: new MarkdownImageWidget(image.alt, image.src, node.from),
+              widget: new MarkdownImageWidget(image.alt, image.src, image.width, node.from, node.to),
               inclusive: false
             }).range(node.from, node.to)
           );

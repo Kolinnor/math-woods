@@ -157,6 +157,7 @@ export const en = {
     withSolutions: "Has solutions",
     anySolutionStatus: "All problems",
     withoutSolutions: "No solutions",
+    languages: "Languages",
     needsWork: "Needs work",
     unreviewed: "Unreviewed",
     good: "Good",
