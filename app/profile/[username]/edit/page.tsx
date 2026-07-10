@@ -4,9 +4,11 @@ import { updateProfileAction } from "@/lib/actions/user-actions";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MATH_LEVEL_HELP_TEXT, MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
+import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
+const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
 
 export default async function EditProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const currentUser = await requireUser();
@@ -21,8 +23,8 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
     <ForestPageLayout
       title="Edit profile"
       eyebrow={displayNameForUser(user)}
-      heroImage="/art/brook-in-the-forest.jpg"
-      heroAlt="Ivan Shishkin, Brook in the Forest"
+      heroImage={SOCIAL_HERO_ART.src}
+      heroAlt={SOCIAL_HERO_ART.alt}
       description="A short public note about your mathematical interests."
       workspaceClassName="forest-page-workspace-narrow"
     >

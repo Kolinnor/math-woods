@@ -1,3 +1,4 @@
+import { NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -16,12 +17,12 @@ export default async function NotificationsPage() {
   await cleanupNotificationsForUser(user.id);
   const [unreadNotifications, readNotifications] = await Promise.all([
     prisma.notification.findMany({
-      where: { userId: user.id, readAt: null },
+      where: { userId: user.id, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
       take: 100
     }),
     prisma.notification.findMany({
-      where: { userId: user.id, readAt: { not: null } },
+      where: { userId: user.id, readAt: { not: null }, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
       take: 100
     })

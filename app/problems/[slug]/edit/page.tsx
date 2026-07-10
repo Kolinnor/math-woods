@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { QualityStatus, SourceType } from "@prisma/client";
 import Link from "next/link";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -85,23 +86,26 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   );
 
   return (
-    <div className={problem.translatedFromProblem ? "translation-compose-page" : "mx-auto max-w-3xl"}>
-      <div className="translation-compose-main">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="mb-2 text-2xl font-bold">Edit problem</h1>
-          <p className="muted">Changes create a revision and refresh wikilinks automatically.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <ForestPageLayout
+      title="Edit problem"
+      eyebrow={problem.title}
+      heroImage="/art/rye.jpg"
+      heroAlt="Ivan Shishkin, Rye"
+      description="Changes create a revision and refresh wikilinks automatically."
+      workspaceClassName={problem.translatedFromProblem ? undefined : "forest-page-workspace-narrow"}
+      actions={
+        <>
           <Link href={`/problems/${problem.slug}`} className="button secondary">
             View problem
           </Link>
           <Link href={`/problems/${problem.slug}/history`} className="button secondary">
             History
           </Link>
-        </div>
-      </div>
-
+        </>
+      }
+    >
+      <div className={problem.translatedFromProblem ? "translation-compose-page" : ""}>
+        <div className="translation-compose-main">
       <form action={updateProblemAction.bind(null, problem.id)} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
@@ -308,7 +312,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           </form>
         </section>
       )}
-      </div>
+        </div>
       {problem.translatedFromProblem && (
         <TranslationReferencePanel
           basedOnRevisionId={problem.translatedFromRevisionId}
@@ -321,6 +325,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           title={problem.translatedFromProblem.title}
         />
       )}
-    </div>
+      </div>
+    </ForestPageLayout>
   );
 }

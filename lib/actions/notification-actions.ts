@@ -50,7 +50,8 @@ export async function clearNotificationsAction() {
 
   await prisma.notification.deleteMany({
     where: {
-      userId: user.id
+      userId: user.id,
+      type: { not: NotificationType.CHAT_MESSAGE }
     }
   });
 

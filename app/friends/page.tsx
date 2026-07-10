@@ -11,11 +11,13 @@ import {
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
+import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
 const ONLINE_WINDOW_MS = 10 * 60 * 1000;
+const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
 
 async function acceptedFriendshipsForUser(userId: number) {
   return prisma.friendship.findMany({
@@ -91,8 +93,8 @@ export default async function FriendsPage() {
     <ForestPageLayout
       title="Friends"
       eyebrow="Social"
-      heroImage="/art/brook-in-the-forest.jpg"
-      heroAlt="Ivan Shishkin, Brook in the Forest"
+      heroImage={SOCIAL_HERO_ART.src}
+      heroAlt={SOCIAL_HERO_ART.alt}
       description={`${onlineFriends.length} ${onlineFriends.length === 1 ? "friend" : "friends"} online`}
     >
       <div className="friends-page-grid">

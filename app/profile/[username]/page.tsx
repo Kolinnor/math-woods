@@ -15,10 +15,12 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { mathLevelLabel } from "@/lib/math-levels";
 import { problemLinkClass } from "@/lib/problem-link";
+import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { getUserReputation } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
+const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
 
 export default async function ProfilePage({
   params,
@@ -165,8 +167,8 @@ export default async function ProfilePage({
     <ForestPageLayout
       title={displayNameForUser(user)}
       eyebrow="Profile"
-      heroImage="/art/brook-in-the-forest.jpg"
-      heroAlt="Ivan Shishkin, Brook in the Forest"
+      heroImage={SOCIAL_HERO_ART.src}
+      heroAlt={SOCIAL_HERO_ART.alt}
       description={`${mathLevelLabel(user.mathLevel)} / reputation ${reputation}`}
       meta={<p>{user.role.toLowerCase()}</p>}
       actions={profileActions}

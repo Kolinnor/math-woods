@@ -1,6 +1,7 @@
 import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { createChatMessageAction, sendFriendRequestAction } from "@/lib/actions/social-actions";
@@ -8,9 +9,11 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { directChatPair } from "@/lib/direct-chat";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
+import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
+const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
 
 export default async function ChatPage({ params }: { params: Promise<{ username: string }> }) {
   const user = await requireVerifiedUser();
@@ -41,11 +44,22 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
 
   if (friendship?.status !== FriendshipStatus.ACCEPTED) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <ForestPageLayout
+        title={displayNameForUser(otherUser)}
+        eyebrow="Private chat"
+        heroImage={SOCIAL_HERO_ART.src}
+        heroAlt={SOCIAL_HERO_ART.alt}
+        description="A private LaTeX-friendly conversation between friends."
+        workspaceClassName="forest-page-workspace-narrow"
+        actions={
+          <Link href={"/friends" as never} className="button secondary">
+            Friends
+          </Link>
+        }
+      >
         <section className="panel grid gap-4 p-5">
           <div>
-            <p className="muted text-sm">Private chat</p>
-            <h1 className="text-2xl font-bold">{displayNameForUser(otherUser)}</h1>
+            <h2 className="text-lg font-semibold">Friends only</h2>
           </div>
           <p className="muted">You can start a private chat once you are friends.</p>
           <div className="flex flex-wrap gap-2">
@@ -57,7 +71,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
             </Link>
           </div>
         </section>
-      </div>
+      </ForestPageLayout>
     );
   }
 
@@ -84,40 +98,44 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
   const ownMessageResetSignal = messages.filter((message) => message.authorId === user.id).at(-1)?.id ?? 0;
 
   return (
-    <div className="chat-page mx-auto max-w-4xl">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="muted text-sm">Private chat</p>
-          <h1 className="text-2xl font-bold">{displayNameForUser(otherUser)}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <ForestPageLayout
+      title={displayNameForUser(otherUser)}
+      eyebrow="Private chat"
+      heroImage={SOCIAL_HERO_ART.src}
+      heroAlt={SOCIAL_HERO_ART.alt}
+      description="A private LaTeX-friendly conversation between friends."
+      workspaceClassName="forest-page-workspace-narrow"
+      actions={
+        <>
           <Link href={"/friends" as never} className="button secondary">
             Friends
           </Link>
           <Link href={`/profile/${otherUser.username}`} className="button secondary">
             Profile
           </Link>
-        </div>
-      </div>
-
-      <LiveChatThread
-        key={otherUser.username}
-        currentUserId={user.id}
-        otherUsername={otherUser.username}
-        initialMessages={messages}
-      />
-
-      <form action={createChatMessageAction.bind(null, otherUser.username)} className="panel mt-5 grid gap-3 p-5">
-        <h2 className="font-semibold">Message</h2>
-        <LazyMarkdownEditor
-          name="bodyMarkdown"
-          minHeight="9rem"
-          lineNumbers={false}
-          draftKey={`chat:${otherUser.id}:message`}
-          resetSignal={ownMessageResetSignal}
+        </>
+      }
+    >
+      <div className="chat-page">
+        <LiveChatThread
+          key={otherUser.username}
+          currentUserId={user.id}
+          otherUsername={otherUser.username}
+          initialMessages={messages}
         />
-        <button type="submit">Send</button>
-      </form>
-    </div>
+
+        <form action={createChatMessageAction.bind(null, otherUser.username)} className="panel mt-5 grid gap-3 p-5">
+          <h2 className="font-semibold">Message</h2>
+          <LazyMarkdownEditor
+            name="bodyMarkdown"
+            minHeight="9rem"
+            lineNumbers={false}
+            draftKey={`chat:${otherUser.id}:message`}
+            resetSignal={ownMessageResetSignal}
+          />
+          <button type="submit">Send</button>
+        </form>
+      </div>
+    </ForestPageLayout>
   );
 }

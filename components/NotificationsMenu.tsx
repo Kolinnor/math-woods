@@ -1,3 +1,4 @@
+import { NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { Bell, Trash2 } from "lucide-react";
 import { clearNotificationsAction } from "@/lib/actions/notification-actions";
@@ -11,16 +12,16 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
   await cleanupNotificationsForUser(userId);
   const [unreadNotifications, unreadCount, notificationCount] = await Promise.all([
     prisma.notification.findMany({
-      where: { userId, readAt: null },
+      where: { userId, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: { actor: { select: { username: true } } }
     }),
     prisma.notification.count({
-      where: { userId, readAt: null }
+      where: { userId, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } }
     }),
     prisma.notification.count({
-      where: { userId }
+      where: { userId, type: { not: NotificationType.CHAT_MESSAGE } }
     })
   ]);
 

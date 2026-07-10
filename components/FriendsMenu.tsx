@@ -68,7 +68,7 @@ export async function FriendsMenu({ userId }: { userId: number }) {
           Friends
         </Link>
         {unreadChatCount > 0 && (
-          <Link href={"/notifications" as never} className="friends-menu-request">
+          <Link href={"/friends" as never} className="friends-menu-request">
             {unreadChatCount} unread {unreadChatCount === 1 ? "message" : "messages"}
           </Link>
         )}
