@@ -5,6 +5,7 @@ import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display"
 
 type ReputationProblem = {
   authorId: number;
+  translationGroupId: string;
   attempts: Array<{
     userId: number;
     user: { role: Role };
@@ -14,6 +15,27 @@ type ReputationProblem = {
     user: { role: Role };
   }>;
 };
+
+function mergeTranslatedProblems(problems: ReputationProblem[]) {
+  const groups = new Map<string, ReputationProblem>();
+  for (const problem of problems) {
+    const key = `${problem.authorId}:${problem.translationGroupId}`;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        ...problem,
+        attempts: [...problem.attempts],
+        favorites: [...problem.favorites]
+      });
+      continue;
+    }
+    const attemptUsers = new Set(existing.attempts.map((attempt) => attempt.userId));
+    const favoriteUsers = new Set(existing.favorites.map((favorite) => favorite.userId));
+    existing.attempts.push(...problem.attempts.filter((attempt) => !attemptUsers.has(attempt.userId)));
+    existing.favorites.push(...problem.favorites.filter((favorite) => !favoriteUsers.has(favorite.userId)));
+  }
+  return [...groups.values()];
+}
 
 export type UserReputationSummary = {
   userId: number;
@@ -115,6 +137,7 @@ export async function getReputationLeaderboard() {
     },
     select: {
       authorId: true,
+      translationGroupId: true,
       attempts: {
         where: { status: "SOLVED" },
         select: {
@@ -132,7 +155,7 @@ export async function getReputationLeaderboard() {
   });
 
   const problemsByAuthor = new Map<number, ReputationProblem[]>();
-  for (const problem of problems) {
+  for (const problem of mergeTranslatedProblems(problems)) {
     const existing = problemsByAuthor.get(problem.authorId) ?? [];
     existing.push(problem);
     problemsByAuthor.set(problem.authorId, existing);
@@ -149,6 +172,7 @@ export async function getUserReputation(userId: number) {
     },
     select: {
       authorId: true,
+      translationGroupId: true,
       attempts: {
         where: { status: "SOLVED" },
         select: {
@@ -165,5 +189,5 @@ export async function getUserReputation(userId: number) {
     }
   });
 
-  return problems.reduce((total, problem) => total + scoreProblem(problem), 0);
+  return mergeTranslatedProblems(problems).reduce((total, problem) => total + scoreProblem(problem), 0);
 }

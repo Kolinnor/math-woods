@@ -10,6 +10,8 @@ import {
   EditorView,
   keymap,
   lineNumbers,
+  type ViewUpdate,
+  ViewPlugin,
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
@@ -20,7 +22,10 @@ import {
   type LatexPreferenceValues
 } from "@/lib/latex-preferences";
 import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
-import { normalizeDisplayMathLineBreaks } from "@/lib/latex-display-lines";
+import {
+  createDisplayMathLineBreakNormalizer,
+  skipDisplayMathLineBreakNormalization
+} from "@/lib/latex-display-line-transactions";
 import {
   latexEditorPreferencesFromApi,
   latexKeyboardShortcut,
@@ -33,7 +38,7 @@ import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
-  rangeIsStandaloneLine,
+  latexPreviewUsesCenteredLine,
   type LatexPreviewDiagnostic
 } from "@/lib/latex-live-preview";
 import {
@@ -51,9 +56,9 @@ import {
   type MarkdownHeadingShortcuts
 } from "@/lib/markdown-shortcuts";
 import {
-  MARKDOWN_IMAGE_WIDTHS,
   markdownImageSizingFromSrc,
   markdownImageSrcWithWidth,
+  normalizeMarkdownImageWidth,
   type MarkdownImageWidth
 } from "@/lib/markdown-images";
 import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownPreviewClass } from "@/lib/markdown-preview";
@@ -109,6 +114,57 @@ type LinkMenuPosition = {
   left: number;
   top: number;
 };
+
+type MarkdownImageToolbarIcon = "copy" | "edit" | "delete";
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const MARKDOWN_IMAGE_TOOLBAR_ICONS: Record<
+  MarkdownImageToolbarIcon,
+  Array<["path" | "line" | "rect", Record<string, string>]>
+> = {
+  copy: [
+    ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }],
+    ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }]
+  ],
+  edit: [
+    [
+      "path",
+      {
+        d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
+      }
+    ],
+    ["path", { d: "m15 5 4 4" }]
+  ],
+  delete: [
+    ["path", { d: "M3 6h18" }],
+    ["path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }],
+    ["path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" }],
+    ["line", { x1: "10", x2: "10", y1: "11", y2: "17" }],
+    ["line", { x1: "14", x2: "14", y1: "11", y2: "17" }]
+  ]
+};
+
+function appendToolbarIcon(button: HTMLButtonElement, icon: MarkdownImageToolbarIcon, label: string) {
+  button.className = "cm-md-image-icon-button";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", "15");
+  svg.setAttribute("height", "15");
+  svg.setAttribute("aria-hidden", "true");
+
+  for (const [tagName, attributes] of MARKDOWN_IMAGE_TOOLBAR_ICONS[icon]) {
+    const child = document.createElementNS(SVG_NS, tagName);
+    for (const [name, value] of Object.entries(attributes)) {
+      child.setAttribute(name, value);
+    }
+    svg.appendChild(child);
+  }
+
+  button.appendChild(svg);
+}
 
 type ConceptSuggestion = {
   title: string;
@@ -399,11 +455,12 @@ class MarkdownImageWidget extends WidgetType {
   }
 
   private replaceImage(view: EditorView, width: MarkdownImageWidth) {
+    const normalizedWidth = normalizeMarkdownImageWidth(width);
     view.dispatch({
       changes: {
         from: this.from,
         to: this.to,
-        insert: markdownImage(markdownImageSrcWithWidth(this.src, width), this.alt)
+        insert: markdownImage(markdownImageSrcWithWidth(this.src, normalizedWidth), this.alt)
       },
       selection: { anchor: this.from },
       scrollIntoView: true
@@ -430,6 +487,77 @@ class MarkdownImageWidget extends WidgetType {
     });
   }
 
+  private startResize(
+    view: EditorView,
+    element: HTMLElement,
+    widthLabel: HTMLElement,
+    event: PointerEvent,
+    horizontalDirection: -1 | 1
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const parent = element.parentElement;
+    const parentWidth = parent?.getBoundingClientRect().width ?? 0;
+    if (parentWidth <= 0) return;
+
+    const startX = event.clientX;
+    const startWidth = element.getBoundingClientRect().width;
+    let nextWidth = this.width;
+    const handle = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    handle?.setPointerCapture?.(event.pointerId);
+    element.classList.add("cm-md-image-resizing");
+
+    const updateWidth = (clientX: number) => {
+      const delta = (clientX - startX) * horizontalDirection;
+      const nextPixels = startWidth + delta;
+      nextWidth = normalizeMarkdownImageWidth((nextPixels / parentWidth) * 100);
+      element.style.width = `${nextWidth}%`;
+      widthLabel.textContent = `${nextWidth}%`;
+    };
+
+    const stopResize = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+      element.classList.remove("cm-md-image-resizing");
+      handle?.releasePointerCapture?.(event.pointerId);
+      this.replaceImage(view, nextWidth);
+    };
+
+    const cancelResize = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+      element.classList.remove("cm-md-image-resizing");
+      element.style.width = `${this.width}%`;
+      widthLabel.textContent = `${this.width}%`;
+      handle?.releasePointerCapture?.(event.pointerId);
+      view.focus();
+    };
+
+    function handlePointerMove(moveEvent: PointerEvent) {
+      moveEvent.preventDefault();
+      updateWidth(moveEvent.clientX);
+    }
+
+    function handlePointerUp(upEvent: PointerEvent) {
+      upEvent.preventDefault();
+      updateWidth(upEvent.clientX);
+      stopResize();
+    }
+
+    function handlePointerCancel(cancelEvent: PointerEvent) {
+      cancelEvent.preventDefault();
+      cancelResize();
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerCancel);
+    view.focus();
+  }
+
   toDOM(view: EditorView) {
     const element = document.createElement("figure");
     element.className = "cm-md-image";
@@ -454,8 +582,7 @@ class MarkdownImageWidget extends WidgetType {
 
     const copyButton = document.createElement("button");
     copyButton.type = "button";
-    copyButton.textContent = "Copy";
-    copyButton.title = "Copy image URL";
+    appendToolbarIcon(copyButton, "copy", "Copy image URL");
     copyButton.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -470,8 +597,7 @@ class MarkdownImageWidget extends WidgetType {
 
     const editButton = document.createElement("button");
     editButton.type = "button";
-    editButton.textContent = "Edit";
-    editButton.title = "Edit Markdown source";
+    appendToolbarIcon(editButton, "edit", "Edit Markdown source");
     editButton.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -485,8 +611,7 @@ class MarkdownImageWidget extends WidgetType {
 
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
-    deleteButton.textContent = "Delete";
-    deleteButton.title = "Delete image";
+    appendToolbarIcon(deleteButton, "delete", "Delete image");
     deleteButton.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -498,27 +623,34 @@ class MarkdownImageWidget extends WidgetType {
     });
     toolbar.appendChild(deleteButton);
 
-    const sizeGroup = document.createElement("span");
-    sizeGroup.className = "cm-md-image-sizes";
-    for (const width of MARKDOWN_IMAGE_WIDTHS) {
-      const sizeButton = document.createElement("button");
-      sizeButton.type = "button";
-      sizeButton.textContent = `${width}%`;
-      sizeButton.title = `Set image width to ${width}%`;
-      if (width === this.width) sizeButton.setAttribute("aria-pressed", "true");
-      sizeButton.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      });
-      sizeButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.replaceImage(view, width);
-      });
-      sizeGroup.appendChild(sizeButton);
-    }
-    toolbar.appendChild(sizeGroup);
+    const widthLabel = document.createElement("span");
+    widthLabel.className = "cm-md-image-width";
+    widthLabel.textContent = `${this.width}%`;
+    widthLabel.title = "Drag an image corner to resize";
+    toolbar.appendChild(widthLabel);
     element.appendChild(toolbar);
+
+    const resizeHandles: Array<[string, -1 | 1]> = [
+      ["top-left", -1],
+      ["top-right", 1],
+      ["bottom-left", -1],
+      ["bottom-right", 1]
+    ];
+    for (const [position, direction] of resizeHandles) {
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = `cm-md-image-resize-handle cm-md-image-resize-${position}`;
+      handle.title = "Drag to resize image";
+      handle.setAttribute("aria-label", "Resize image");
+      handle.addEventListener("pointerdown", (event) => {
+        this.startResize(view, element, widthLabel, event, direction);
+      });
+      handle.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      element.appendChild(handle);
+    }
 
     element.addEventListener("mousedown", (event) => {
       event.preventDefault();
@@ -724,6 +856,9 @@ function dispatchLatexShortcutResult(view: EditorView, result: LatexEditorShortc
     changes: result.changes,
     selection: typeof result.anchor === "number" ? { anchor: result.anchor } : undefined,
     effects: setPreviewFocus.of(true),
+    annotations: result.skipDisplayMathLineBreakNormalization
+      ? skipDisplayMathLineBreakNormalization.of(true)
+      : undefined,
     scrollIntoView: true
   });
 }
@@ -857,6 +992,8 @@ function clipboardImageFile(data: DataTransfer | null) {
 }
 
 const setPreviewFocus = StateEffect.define<boolean>();
+const resumeLatexPreview = StateEffect.define<void>();
+const displayMathLineBreakNormalizer = createDisplayMathLineBreakNormalizer(setPreviewFocus);
 const previewOnly = Transaction.addToHistory.of(false);
 const previewFocusField = StateField.define<boolean>({
   create: () => false,
@@ -871,6 +1008,7 @@ const previewFocusField = StateField.define<boolean>({
 const suppressLatexPreviewOnJoinedLine = StateField.define<boolean>({
   create: () => false,
   update(_value, transaction) {
+    if (transaction.effects.some((effect) => effect.is(resumeLatexPreview))) return false;
     if (!transaction.docChanged) return false;
 
     let removedLineBreak = false;
@@ -884,6 +1022,37 @@ const suppressLatexPreviewOnJoinedLine = StateField.define<boolean>({
     return removedLineBreak;
   }
 });
+
+const resumeLatexPreviewAfterLayout = ViewPlugin.fromClass(
+  class {
+    private firstFrame: number | null = null;
+    private secondFrame: number | null = null;
+
+    update(update: ViewUpdate) {
+      if (!update.state.field(suppressLatexPreviewOnJoinedLine) || this.firstFrame !== null || this.secondFrame !== null) {
+        return;
+      }
+
+      this.firstFrame = window.requestAnimationFrame(() => {
+        this.firstFrame = null;
+        this.secondFrame = window.requestAnimationFrame(() => {
+          this.secondFrame = null;
+          if (!update.view.state.field(suppressLatexPreviewOnJoinedLine)) return;
+
+          update.view.dispatch({
+            effects: resumeLatexPreview.of(undefined),
+            annotations: previewOnly
+          });
+        });
+      });
+    }
+
+    destroy() {
+      if (this.firstFrame !== null) window.cancelAnimationFrame(this.firstFrame);
+      if (this.secondFrame !== null) window.cancelAnimationFrame(this.secondFrame);
+    }
+  }
+);
 
 const latexDiagnosticWarningKeys = new Set<string>();
 
@@ -1012,7 +1181,7 @@ function buildLivePreviewDecorations(state: EditorState) {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
     const useBlockLayout = renderDisplayMode && latexPreviewUsesBlockDecoration(text, range);
-    const visualBlockLayout = renderDisplayMode && rangeIsStandaloneLine(text, range.from, range.to);
+    const visualBlockLayout = latexPreviewUsesCenteredLine(text, range);
     const diagnostics = latexPreviewDiagnosticsForRange(text, range, renderDisplayMode, useBlockLayout);
     reportLatexPreviewDiagnostics(diagnostics);
     const widget = new LatexWidget(
@@ -1048,6 +1217,9 @@ function buildLivePreviewDecorations(state: EditorState) {
     }
 
     return [
+      ...(visualBlockLayout
+        ? [Decoration.line({ class: "cm-latex-display-line" }).range(state.doc.lineAt(range.from).from)]
+        : []),
       Decoration.replace({
         widget,
         block: useBlockLayout,
@@ -1144,7 +1316,8 @@ const liveMarkdownPreview = StateField.define<DecorationSet>({
   create: (state) => buildLivePreviewDecorations(state),
   update(decorations, transaction) {
     const focusChanged = transaction.effects.some((effect) => effect.is(setPreviewFocus));
-    if (transaction.docChanged || transaction.selection || focusChanged) {
+    const latexPreviewResumed = transaction.effects.some((effect) => effect.is(resumeLatexPreview));
+    if (transaction.docChanged || transaction.selection || focusChanged || latexPreviewResumed) {
       return buildLivePreviewDecorations(transaction.state);
     }
     return decorations;
@@ -1165,20 +1338,6 @@ const previewFocusEvents = EditorView.domEventHandlers({
     view.dispatch({ effects: setPreviewFocus.of(false), annotations: previewOnly });
     return false;
   }
-});
-
-const displayMathLineBreakNormalizer = EditorState.transactionFilter.of((transaction) => {
-  if (!transaction.docChanged) return transaction;
-
-  const nextText = transaction.newDoc.toString();
-  const normalizedDisplayMath = normalizeDisplayMathLineBreaks(nextText, transaction.newSelection.main.anchor);
-  if (!normalizedDisplayMath.changed) return transaction;
-
-  return {
-    changes: { from: 0, to: transaction.startState.doc.length, insert: normalizedDisplayMath.text },
-    selection: { anchor: normalizedDisplayMath.cursor ?? normalizedDisplayMath.text.length },
-    effects: setPreviewFocus.of(true)
-  };
 });
 
 export function MarkdownEditor({
@@ -1278,6 +1437,7 @@ export function MarkdownEditor({
           previewFocusField,
           suppressLatexPreviewOnJoinedLine,
           liveMarkdownPreview,
+          resumeLatexPreviewAfterLayout,
           previewFocusEvents,
           displayMathLineBreakNormalizer,
           EditorView.domEventHandlers({
@@ -1690,7 +1850,13 @@ export function MarkdownEditor({
           {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
           <span>{imageUploading ? "Uploading" : "Image"}</span>
         </button>
-        {imageUploadMessage && <span className="markdown-editor-toolbar-status">{imageUploadMessage}</span>}
+        <span className="markdown-editor-toolbar-status">
+          {imageUploadMessage || (
+            <>
+              Configure LaTeX shortcuts in <a href="/settings?tab=latex">Settings</a>.
+            </>
+          )}
+        </span>
         <input
           ref={imageInputRef}
           type="file"

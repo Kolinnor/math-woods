@@ -20,7 +20,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pos
         select: {
           problemId: true,
           problem: {
-            select: { authorId: true }
+            select: { authorId: true, translationGroupId: true }
           }
         }
       }
@@ -32,12 +32,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pos
   const canRevealWithoutAttempt = canRevealHintWithoutAttempt(user, post, post.thread.problem);
 
   if (!canRevealWithoutAttempt) {
-    const attempt = await prisma.problemAttempt.findUnique({
+    const attempt = await prisma.problemAttempt.findFirst({
       where: {
-        userId_problemId: {
-          userId: user.id,
-          problemId: post.thread.problemId
-        }
+        userId: user.id,
+        problem: { translationGroupId: post.thread.problem.translationGroupId }
       },
       select: { id: true }
     });

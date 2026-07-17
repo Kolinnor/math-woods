@@ -5,6 +5,7 @@ import { frontmatter, markdownResponse } from "@/lib/export-markdown";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { canEditProblem } from "@/lib/permissions";
+import { canViewProblem } from "@/lib/problem-visibility";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -21,11 +22,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   });
 
   if (!problem) notFound();
+  if (!canViewProblem(user, problem)) notFound();
 
   const solvedAttempt =
     user && problem.verificationMode !== ProblemVerificationMode.NONE
-      ? await prisma.problemAttempt.findUnique({
-          where: { userId_problemId: { userId: user.id, problemId: problem.id } },
+      ? await prisma.problemAttempt.findFirst({
+          where: {
+            userId: user.id,
+            status: "SOLVED",
+            problem: { translationGroupId: problem.translationGroupId }
+          },
           select: { status: true }
         })
       : null;

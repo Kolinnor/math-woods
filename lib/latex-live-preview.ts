@@ -52,6 +52,10 @@ export function latexPreviewUsesBlockDecoration(text: string, range: LatexRange)
   return false;
 }
 
+export function latexPreviewUsesCenteredLine(text: string, range: LatexRange) {
+  return range.displayMode && rangeIsStandaloneLine(text, range.from, range.to);
+}
+
 export function latexPreviewLayoutKind(renderDisplayMode: boolean, useBlockLayout: boolean): LatexPreviewLayoutKind {
   if (useBlockLayout) return "block-display";
   return renderDisplayMode ? "inline-display" : "inline";

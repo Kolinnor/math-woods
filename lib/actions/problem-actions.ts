@@ -2,6 +2,7 @@
 
 import type { Route } from "next";
 import {
+  AttemptStatus,
   NotificationType,
   PostType,
   ProblemStatus,
@@ -17,7 +18,6 @@ import { redirect } from "next/navigation";
 import {
   checkHintAchievements,
   checkProblemSolvedByOthersAchievements,
-  checkProofAchievements,
   checkSolveAchievements,
   checkUsefulPostAchievements
 } from "@/lib/achievements";
@@ -26,6 +26,7 @@ import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { syncInternalLinks } from "@/lib/internal-links";
+import { canEditExploration } from "@/lib/explorations";
 import {
   createNotification,
   notifyOwnerOfSiteActivity,
@@ -46,7 +47,6 @@ import {
   canArchiveProblem,
   canEditDiscussionHint,
   canEditVerificationMessage,
-  canEditPlaylist,
   canEditProblem,
   canJoinProblemDiscussion,
   canJoinVerificationDiscussion,
@@ -57,6 +57,7 @@ import {
 } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
 import { parseTagInput, syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
+import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -76,6 +77,16 @@ function listFingerprint(values: string[]) {
 
 function parsedTagFingerprint(input: string) {
   return listFingerprint(parseTagInput(input).map((tag) => tag.slug));
+}
+
+function mergedAttemptStatus(left: AttemptStatus, right: AttemptStatus) {
+  const rank: Record<AttemptStatus, number> = {
+    STARTED: 0,
+    BLOCKED: 1,
+    REVIEW_LATER: 2,
+    SOLVED: 3
+  };
+  return rank[right] > rank[left] ? right : left;
 }
 
 function storedTagFingerprint(items: Array<{ tag: { slug: string } }>) {
@@ -167,11 +178,12 @@ export async function deleteProblemHintAction(hintId: number, problemSlug: strin
 export async function createProblemAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:create:${user.id}`, 5, 60_000);
-  const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+  const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Title") || "Untitled problem";
   const language = parseContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement");
+  const bodyMarkdown =
+    boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || "Statement to be written.";
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
   const domain = domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER;
@@ -191,7 +203,10 @@ export async function createProblemAction(formData: FormData) {
     CONTENT_LIMITS.mediumText,
     "Verification answer"
   );
-  const addToPlaylistSlug = ensureSlug(String(formData.get("addToPlaylistSlug") ?? ""), "");
+  const addToExplorationSlug = ensureSlug(
+    String(formData.get("addToExplorationSlug") ?? formData.get("addToPlaylistSlug") ?? ""),
+    ""
+  );
   const parentProblemSlug = ensureSlug(String(formData.get("parentProblemSlug") ?? ""), "");
   const qualityStatus = QualityStatus.UNREVIEWED;
   const tags = tagsWithConjecture(boundedText(formData.get("tags"), CONTENT_LIMITS.tagList, "Tags"), formData.get("conjecture"));
@@ -201,7 +216,6 @@ export async function createProblemAction(formData: FormData) {
     CONTENT_LIMITS.relationGroups,
     "Related problem groups"
   );
-  const proofMarkdown = boundedText(formData.get("proofMarkdown"), CONTENT_LIMITS.markdown, "Initial solution");
 
   if (verificationMode === ProblemVerificationMode.SELF_CHECK && !verificationAnswer) {
     throw new Error("Short answer verification requires an expected answer.");
@@ -224,9 +238,16 @@ export async function createProblemAction(formData: FormData) {
       translationGroupId && translationSourceSlug
         ? await tx.problem.findFirst({
             where: { slug: translationSourceSlug, translationGroupId },
-            select: { id: true }
+            select: { id: true, authorId: true, difficulty: true, canAppearOnFrontPage: true, createdAt: true }
           })
         : null;
+    const originalProblem = translationGroupId
+      ? await tx.problem.findFirst({
+          where: { translationGroupId, translatedFromProblemId: null },
+          orderBy: { createdAt: "asc" },
+          select: { authorId: true, difficulty: true, canAppearOnFrontPage: true, createdAt: true }
+        })
+      : null;
     const sourceRevision = translationSource
       ? await tx.pageRevision.findFirst({
           where: { pageType: SourceType.PROBLEM, pageId: translationSource.id },
@@ -234,6 +255,9 @@ export async function createProblemAction(formData: FormData) {
           select: { id: true }
         })
       : null;
+    const sharedDifficulty = translationSource
+      ? (originalProblem?.difficulty ?? translationSource.difficulty ?? difficulty)
+      : difficulty;
 
     const created = await tx.problem.create({
       data: {
@@ -249,18 +273,21 @@ export async function createProblemAction(formData: FormData) {
         title,
         bodyMarkdown,
         bodyHtml,
-        difficulty,
+        difficulty: sharedDifficulty,
         domain,
         origin,
         originChapter,
         originPage,
         originNote,
         listed,
+        ...(translationGroupId ? { createdAt: originalProblem?.createdAt ?? translationSource?.createdAt } : {}),
+        canAppearOnFrontPage:
+          originalProblem?.canAppearOnFrontPage ?? translationSource?.canAppearOnFrontPage ?? false,
         qualityStatus,
         verificationMode,
         verificationPrompt: verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt,
         verificationAnswer: verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null,
-        authorId: user.id,
+        authorId: translationSource ? (originalProblem?.authorId ?? translationSource.authorId) : user.id,
         thread: { create: {} }
       }
     });
@@ -270,12 +297,63 @@ export async function createProblemAction(formData: FormData) {
         problemId: created.id
       }
     });
-    if (addToPlaylistSlug) {
+    if (translationGroupId) {
+      const [groupAttempts, groupFavoriteUsers, groupProblems] = await Promise.all([
+        tx.problemAttempt.findMany({
+          where: { problem: { translationGroupId }, problemId: { not: created.id } },
+          select: { userId: true, status: true, startedAt: true, discussionUnlockAt: true }
+        }),
+        tx.problemFavorite.findMany({
+          where: { problem: { translationGroupId } },
+          distinct: ["userId"],
+          select: { userId: true }
+        }),
+        tx.problem.findMany({ where: { translationGroupId }, select: { id: true } })
+      ]);
+      const attemptsByUser = new Map<number, (typeof groupAttempts)[number]>();
+      for (const attempt of groupAttempts) {
+        const existing = attemptsByUser.get(attempt.userId);
+        if (!existing) {
+          attemptsByUser.set(attempt.userId, attempt);
+          continue;
+        }
+        attemptsByUser.set(attempt.userId, {
+          ...existing,
+          status: mergedAttemptStatus(existing.status, attempt.status),
+          startedAt: existing.startedAt < attempt.startedAt ? existing.startedAt : attempt.startedAt,
+          discussionUnlockAt:
+            existing.discussionUnlockAt < attempt.discussionUnlockAt
+              ? existing.discussionUnlockAt
+              : attempt.discussionUnlockAt
+        });
+      }
+      if (attemptsByUser.size > 0) {
+        await tx.problemAttempt.createMany({
+          data: [...attemptsByUser.values()].map((attempt) => ({
+            userId: attempt.userId,
+            problemId: created.id,
+            status: attempt.status,
+            startedAt: attempt.startedAt,
+            discussionUnlockAt: attempt.discussionUnlockAt
+          })),
+          skipDuplicates: true
+        });
+      }
+      if (groupFavoriteUsers.length > 0) {
+        await tx.problemFavorite.createMany({
+          data: groupFavoriteUsers.flatMap(({ userId }) =>
+            groupProblems.map(({ id: problemId }) => ({ userId, problemId }))
+          ),
+          skipDuplicates: true
+        });
+      }
+    }
+    if (addToExplorationSlug) {
       const playlist = await tx.playlist.findUnique({
-        where: { slug: addToPlaylistSlug },
-        select: { id: true, authorId: true }
+        where: { slug: addToExplorationSlug },
+        include: { collaborators: true }
       });
-      if (playlist && canEditPlaylist(user, playlist)) {
+      if (playlist && canEditExploration(user, playlist)) {
         const last = await tx.playlistItem.findFirst({
           where: { playlistId: playlist.id },
           orderBy: { position: "desc" }
@@ -287,6 +365,24 @@ export async function createProblemAction(formData: FormData) {
             position: (last?.position ?? 0) + 1
           }
         });
+        const targetPage = await tx.explorationPage.findFirst({
+          where: { playlistId: playlist.id },
+          orderBy: [{ isStart: "desc" }, { position: "asc" }]
+        });
+        if (targetPage) {
+          const lastBlock = await tx.explorationBlock.findFirst({
+            where: { pageId: targetPage.id },
+            orderBy: { position: "desc" }
+          });
+          await tx.explorationBlock.create({
+            data: {
+              pageId: targetPage.id,
+              kind: "PROBLEM",
+              problemId: created.id,
+              position: (lastBlock?.position ?? 0) + 1
+            }
+          });
+        }
       }
     }
     if (parentProblemSlug) {
@@ -303,16 +399,6 @@ export async function createProblemAction(formData: FormData) {
     await syncProblemRelationGroups(tx, created.id, relatedProblemGroups);
     await syncProblemTags(created.id, tags, tx);
     await syncProblemSpoilerTags(created.id, spoilerTags, tx);
-    if (proofMarkdown) {
-      await tx.problemProof.create({
-        data: {
-          problemId: created.id,
-          authorId: user.id,
-          bodyMarkdown: proofMarkdown,
-          bodyHtml: await renderMarkdownContent(proofMarkdown)
-        }
-      });
-    }
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.PROBLEM,
@@ -333,10 +419,7 @@ export async function createProblemAction(formData: FormData) {
     body: `${displayNameForUser(user)} created "${problem.title}".`,
     href: `/problems/${problem.slug}`
   });
-  if (proofMarkdown) {
-    await checkProofAchievements(user.id);
-  }
-  redirect(`/problems/${problem.slug}`);
+  redirect(contentLanguageViewHref("/problems", problem.slug, problem.language) as Route);
 }
 
 export async function updateProblemAction(problemId: number, formData: FormData) {
@@ -375,9 +458,10 @@ export async function updateProblemAction(problemId: number, formData: FormData)
     throw new Error("You cannot edit this problem.");
   }
 
-  const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+  const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Title") || previous.title;
   const language = parseContentLanguage(formData.get("language"));
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement");
+  const bodyMarkdown =
+    boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
   const domain = domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER;
@@ -492,6 +576,28 @@ export async function updateProblemAction(problemId: number, formData: FormData)
         ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {})
       }
     });
+    const siblingDifficultyWhere =
+      difficulty === null
+        ? { difficulty: { not: null } }
+        : { OR: [{ difficulty: null }, { difficulty: { not: difficulty } }] };
+    await tx.problem.updateMany({
+      where: {
+        translationGroupId: previous.translationGroupId,
+        id: { not: problemId },
+        ...siblingDifficultyWhere
+      },
+      data: { difficulty }
+    });
+    if (canAppearOnFrontPage !== previous.canAppearOnFrontPage) {
+      await tx.problem.updateMany({
+        where: {
+          translationGroupId: previous.translationGroupId,
+          id: { not: problemId },
+          canAppearOnFrontPage: { not: canAppearOnFrontPage }
+        },
+        data: { canAppearOnFrontPage }
+      });
+    }
 
     await syncInternalLinks(SourceType.PROBLEM, updated.id, bodyMarkdown, tx, language);
     await syncProblemDomains(tx, updated.id, domains);
@@ -526,7 +632,44 @@ export async function updateProblemAction(problemId: number, formData: FormData)
     }),
     href: `/problems/${problem.updated.slug}/history#revision-${problem.revisionId}`
   });
-  redirect(`/problems/${problem.updated.slug}`);
+  redirect(contentLanguageViewHref("/problems", problem.updated.slug, problem.updated.language) as Route);
+}
+
+export async function dismissProblemTranslationStaleNoticeAction(problemId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`problem:translation-dismiss:${user.id}`, 30, 60_000);
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: {
+      slug: true,
+      language: true,
+      translatedFromProblem: { select: { id: true, authorId: true } }
+    }
+  });
+
+  if (!problem?.translatedFromProblem) {
+    throw new Error("Translation source not found.");
+  }
+  if (problem.translatedFromProblem.authorId !== user.id && !canUseAdminTools(user)) {
+    throw new Error("You cannot dismiss this translation notice.");
+  }
+
+  const latestSourceRevision = await prisma.pageRevision.findFirst({
+    where: { pageType: SourceType.PROBLEM, pageId: problem.translatedFromProblem.id },
+    orderBy: { id: "desc" },
+    select: { id: true }
+  });
+  if (!latestSourceRevision) {
+    throw new Error("Source revision not found.");
+  }
+
+  await prisma.problem.update({
+    where: { id: problemId },
+    data: { translatedFromRevisionId: latestSourceRevision.id }
+  });
+
+  revalidatePath(`/problems/${problem.slug}`);
+  redirect(contentLanguageViewHref("/problems", problem.slug, problem.language) as Route);
 }
 
 export async function deleteProblemAction(problemId: number) {
@@ -636,72 +779,79 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
   });
 
   revalidatePath(`/problems/${problem.slug}`);
-  redirect(`/problems/${problem.slug}`);
+  redirect(contentLanguageViewHref("/problems", problem.slug, problem.language) as Route);
 }
 
 export async function startAttemptAction(problemId: number, problemSlug: string) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`attempt:start:${user.id}`, 60, 60_000);
   const now = new Date();
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: { translationGroupId: true }
+  });
+  if (!problem) throw new Error("Problem not found.");
+  const translations = await prisma.problem.findMany({
+    where: { translationGroupId: problem.translationGroupId },
+    select: { id: true, slug: true }
+  });
 
-  await prisma.problemAttempt.upsert({
-    where: {
-      userId_problemId: {
-        userId: user.id,
-        problemId
-      }
-    },
-    update: {},
-    create: {
+  await prisma.problemAttempt.createMany({
+    data: translations.map((translation) => ({
       userId: user.id,
-      problemId,
+      problemId: translation.id,
       startedAt: now,
       discussionUnlockAt: unlockDate(now)
-    }
+    })),
+    skipDuplicates: true
   });
 
   revalidatePath("/problems");
-  revalidatePath(`/problems/${problemSlug}`);
+  for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);
   revalidatePath("/me");
 }
 
 async function markSolvedNow(problemId: number, problemSlug: string, user: { id: number; username: string; displayName?: string | null }) {
   const now = new Date();
-  const previousAttempt = await prisma.problemAttempt.findUnique({
-    where: {
-      userId_problemId: {
-        userId: user.id,
-        problemId
-      }
-    },
-    select: { status: true }
-  });
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { authorId: true, title: true }
+    select: { authorId: true, title: true, translationGroupId: true }
   });
+  if (!problem) throw new Error("Problem not found.");
+  const translations = await prisma.problem.findMany({
+    where: { translationGroupId: problem.translationGroupId },
+    select: { id: true, slug: true }
+  });
+  const translationIds = translations.map((translation) => translation.id);
+  const wasAlreadySolved = Boolean(
+    await prisma.problemAttempt.findFirst({
+      where: { userId: user.id, problemId: { in: translationIds }, status: "SOLVED" },
+      select: { id: true }
+    })
+  );
 
-  await prisma.problemAttempt.upsert({
-    where: {
-      userId_problemId: {
+  await prisma.$transaction(async (tx) => {
+    await tx.problemAttempt.createMany({
+      data: translationIds.map((translationProblemId) => ({
         userId: user.id,
-        problemId
-      }
-    },
-    update: { status: "SOLVED" },
-    create: {
-      userId: user.id,
-      problemId,
-      startedAt: now,
-      discussionUnlockAt: unlockDate(now),
-      status: "SOLVED"
-    }
+        problemId: translationProblemId,
+        startedAt: now,
+        discussionUnlockAt: unlockDate(now),
+        status: "SOLVED" as const
+      })),
+      skipDuplicates: true
+    });
+    await tx.problemAttempt.updateMany({
+      where: { userId: user.id, problemId: { in: translationIds } },
+      data: { status: "SOLVED" }
+    });
   });
 
-  revalidatePath(`/problems/${problemSlug}`);
+  for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);
+  revalidatePath("/problems");
   revalidatePath(`/profile/${user.username}`);
   revalidatePath("/me");
-  if (problem && problem.authorId !== user.id && previousAttempt?.status !== "SOLVED") {
+  if (problem.authorId !== user.id && !wasAlreadySolved) {
     await createNotification({
       userId: problem.authorId,
       actorId: user.id,
@@ -711,7 +861,7 @@ async function markSolvedNow(problemId: number, problemSlug: string, user: { id:
       href: `/problems/${problemSlug}`
     });
   }
-  if (previousAttempt?.status !== "SOLVED") {
+  if (!wasAlreadySolved) {
     await checkSolveAchievements(user.id);
     if (problem && problem.authorId !== user.id) {
       await checkProblemSolvedByOthersAchievements(problem.authorId);
@@ -730,7 +880,8 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
       slug: true,
       authorId: true,
       verificationMode: true,
-      verificationAnswer: true
+      verificationAnswer: true,
+      language: true
     }
   });
 
@@ -744,7 +895,7 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
   if (problem.verificationMode === ProblemVerificationMode.SELF_CHECK) {
     const answer = boundedText(formData?.get("verificationAnswer"), CONTENT_LIMITS.mediumText, "Verification answer");
     if (!verificationMatches(problem.verificationAnswer, answer)) {
-      redirect(`/problems/${problemSlug}?verification=incorrect`);
+      redirect(contentLanguageViewHref("/problems", problemSlug, problem.language, { verification: "incorrect" }) as Route);
     }
     await markSolvedNow(problemId, problemSlug, user);
     return;
@@ -780,17 +931,27 @@ export async function unmarkProblemSolvedAction(problemId: number, problemSlug: 
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:unsolve:${user.id}`, 30, 60_000);
 
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: { translationGroupId: true }
+  });
+  if (!problem) throw new Error("Problem not found.");
+  const translations = await prisma.problem.findMany({
+    where: { translationGroupId: problem.translationGroupId },
+    select: { id: true, slug: true }
+  });
+
   await prisma.problemAttempt.updateMany({
     where: {
       userId: user.id,
-      problemId,
+      problemId: { in: translations.map((translation) => translation.id) },
       status: "SOLVED"
     },
     data: { status: "STARTED" }
   });
 
   revalidatePath("/problems");
-  revalidatePath(`/problems/${problemSlug}`);
+  for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);
   revalidatePath(`/profile/${user.username}`);
   revalidatePath("/me");
 }
@@ -802,7 +963,7 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
     where: { id: requestId },
     include: {
       user: { select: { id: true, username: true } },
-      problem: { select: { id: true, slug: true, title: true, authorId: true } }
+      problem: { select: { id: true, slug: true, title: true, authorId: true, translationGroupId: true } }
     }
   });
 
@@ -814,6 +975,11 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
     revalidatePath(`/problems/${request.problem.slug}`);
     return;
   }
+  const translatedProblems = await prisma.problem.findMany({
+    where: { translationGroupId: request.problem.translationGroupId },
+    select: { id: true, slug: true }
+  });
+  const translatedProblemIds = translatedProblems.map((problem) => problem.id);
 
   await prisma.$transaction(async (tx) => {
     await tx.problemVerificationRequest.update({
@@ -826,16 +992,20 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
     });
 
     if (decision === "APPROVED") {
-      await tx.problemAttempt.upsert({
-        where: { userId_problemId: { userId: request.userId, problemId: request.problemId } },
-        update: { status: "SOLVED" },
-        create: {
+      const now = new Date();
+      await tx.problemAttempt.createMany({
+        data: translatedProblemIds.map((translatedProblemId) => ({
           userId: request.userId,
-          problemId: request.problemId,
-          startedAt: new Date(),
-          discussionUnlockAt: unlockDate(new Date()),
-          status: "SOLVED"
-        }
+          problemId: translatedProblemId,
+          startedAt: now,
+          discussionUnlockAt: unlockDate(now),
+          status: "SOLVED" as const
+        })),
+        skipDuplicates: true
+      });
+      await tx.problemAttempt.updateMany({
+        where: { userId: request.userId, problemId: { in: translatedProblemIds } },
+        data: { status: "SOLVED" }
       });
     }
   });
@@ -860,6 +1030,7 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
   });
 
   revalidatePath(`/problems/${request.problem.slug}`);
+  for (const translatedProblem of translatedProblems) revalidatePath(`/problems/${translatedProblem.slug}`);
   revalidatePath(`/problems/${request.problem.slug}/verification/${request.id}`);
   revalidatePath(`/profile/${request.user.username}`);
   revalidatePath("/me");
@@ -999,7 +1170,7 @@ export async function toggleProblemFavoriteAction(problemId: number, problemSlug
   await assertRateLimit(`favorite:${user.id}`, 60, 60_000);
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { authorId: true }
+    select: { authorId: true, translationGroupId: true }
   });
 
   if (!problem || problem.authorId === user.id) {
@@ -1007,18 +1178,31 @@ export async function toggleProblemFavoriteAction(problemId: number, problemSlug
     return;
   }
 
-  const key = { userId: user.id, problemId };
-  const existing = await prisma.problemFavorite.findUnique({
-    where: { userId_problemId: key }
+  const translations = await prisma.problem.findMany({
+    where: { translationGroupId: problem.translationGroupId },
+    select: { id: true, slug: true }
+  });
+  const translationIds = translations.map((translation) => translation.id);
+  const existing = await prisma.problemFavorite.findFirst({
+    where: { userId: user.id, problemId: { in: translationIds } },
+    select: { problemId: true }
   });
 
   if (existing) {
-    await prisma.problemFavorite.delete({ where: { userId_problemId: key } });
+    await prisma.problemFavorite.deleteMany({
+      where: { userId: user.id, problemId: { in: translationIds } }
+    });
   } else {
-    await prisma.problemFavorite.create({ data: key });
+    await prisma.problemFavorite.createMany({
+      data: translationIds.map((translationProblemId) => ({
+        userId: user.id,
+        problemId: translationProblemId
+      })),
+      skipDuplicates: true
+    });
   }
 
-  revalidatePath(`/problems/${problemSlug}`);
+  for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);
   revalidatePath("/problems");
   revalidatePath("/");
   revalidatePath("/tips");
@@ -1039,22 +1223,22 @@ export async function createDiscussionPostAction(
   const formData =
     typeof returnToDiscussionOrFormData === "boolean" ? maybeFormData : returnToDiscussionOrFormData;
   if (!(formData instanceof FormData)) throw new Error("Discussion message is missing.");
-  const [attempt, problem] = await Promise.all([
-    prisma.problemAttempt.findUnique({
-      where: {
-        userId_problemId: {
-          userId: user.id,
-          problemId
-        }
-      }
-    }),
-    prisma.problem.findUnique({
-      where: { id: problemId },
-      select: { slug: true, title: true, authorId: true, thread: { select: { id: true } } }
-    })
-  ]);
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: {
+      slug: true,
+      title: true,
+      authorId: true,
+      translationGroupId: true,
+      thread: { select: { id: true } }
+    }
+  });
 
   if (!problem) throw new Error("Problem not found.");
+  const attempt = await prisma.problemAttempt.findFirst({
+    where: { userId: user.id, problem: { translationGroupId: problem.translationGroupId } },
+    orderBy: { discussionUnlockAt: "asc" }
+  });
   if (!canJoinProblemDiscussion(user, problem, attempt)) {
     throw new Error("Start this problem before joining the discussion.");
   }

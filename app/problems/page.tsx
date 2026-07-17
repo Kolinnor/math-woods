@@ -4,7 +4,6 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { Heart, House } from "lucide-react";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
-import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
@@ -17,13 +16,13 @@ import {
   domainLabel,
   FLAT_PROBLEM_DOMAIN_OPTIONS,
   parseDomainCode,
-  PROBLEM_DOMAIN_FAMILIES,
-  PROBLEM_DOMAINS
+  translatedDomainLabel as translatedDomainOptionLabel
 } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { canViewUnreviewedProblems, visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -31,7 +30,7 @@ import { hasAdminPrivileges } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
-const PROBLEMS_PER_PAGE = 40;
+const PROBLEMS_PER_PAGE = 7;
 type SearchValue = string | string[] | undefined;
 type DifficultyRange = {
   value: string;
@@ -65,9 +64,7 @@ const SORT_OPTIONS = [
 ];
 
 function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
-  return Object.values(MathDomain).includes(domain as MathDomain)
-    ? (t.home.domainLabels[domain as MathDomain] ?? domainLabel(domain))
-    : domainLabel(domain);
+  return translatedDomainOptionLabel(domain, t.home.domainLabels);
 }
 
 function parseProgressFilter(value: string | undefined): ProgressFilter {
@@ -131,6 +128,12 @@ function problemsHref(params: Record<string, number | string | string[] | undefi
 
 function valuesOf(value: SearchValue) {
   return Array.isArray(value) ? value : value ? [value] : [];
+}
+
+function languagePreferenceRank(language: string, preferredLanguage: string, selectedLanguages: string[]) {
+  if (language === preferredLanguage) return 0;
+  const selectedIndex = selectedLanguages.indexOf(language);
+  return selectedIndex >= 0 ? selectedIndex + 1 : selectedLanguages.length + 1;
 }
 
 function difficultyColor(difficulty: number | null) {
@@ -295,6 +298,7 @@ export default async function ProblemsPage({
     author?: string;
     sort?: string;
     page?: string;
+    showAll?: string;
     filterLogic?: string;
     filterField?: SearchValue;
     filterOp?: SearchValue;
@@ -320,6 +324,7 @@ export default async function ProblemsPage({
     author = "",
     sort = "newest",
     page = "1",
+    showAll = "",
     filterLogic = "AND",
     filterField,
     filterOp,
@@ -328,6 +333,7 @@ export default async function ProblemsPage({
   } = await searchParams;
   const preferredLanguage = await getPreferredContentLanguage();
   const showSpoilerTags = includeSpoilerTags === "1" || includeSpoilerTags === "on";
+  const showAllProblems = showAll === "1" || showAll === "on";
   const query = q.trim();
   const queryTagSlug = ensureSlug(query, "");
   const tagSlug = ensureSlug(tag, "");
@@ -366,6 +372,8 @@ export default async function ProblemsPage({
   const languageWhere: Prisma.ProblemWhereInput | null = includesEveryLanguage ? null : { language: { in: languageValues } };
   const defaultSolutionValue: SolutionFilter = canDefaultToAllSolutions(user) ? "all" : "with";
   const solutionValue = parseSolutionFilter(solutions, defaultSolutionValue);
+  const problemVisibilityWhere = visibleProblemWhere(user);
+  const canSeeUnreviewedProblems = canViewUnreviewedProblems(user);
   const solutionWhere: Prisma.ProblemWhereInput | null =
     solutionValue === "with"
       ? { proofs: { some: {} } }
@@ -384,11 +392,20 @@ export default async function ProblemsPage({
         }
       }
     : null;
+  const solvedProblemGroups = user
+    ? await prisma.problem.findMany({
+        where: { attempts: { some: { userId: user.id, status: "SOLVED" } } },
+        distinct: ["translationGroupId"],
+        select: { translationGroupId: true }
+      })
+    : [];
+  const solvedTranslationGroupIds = solvedProblemGroups.map((problem) => problem.translationGroupId);
+  const solvedTranslationGroupIdSet = new Set(solvedTranslationGroupIds);
   const progressFilterWhere: Prisma.ProblemWhereInput | null =
     user && progressValue === "unsolved"
-      ? { attempts: { none: { userId: user.id, status: "SOLVED" } } }
+      ? { translationGroupId: { notIn: solvedTranslationGroupIds } }
       : user && progressValue === "solved"
-        ? { attempts: { some: { userId: user.id, status: "SOLVED" } } }
+        ? { translationGroupId: { in: solvedTranslationGroupIds } }
         : null;
   const ownershipWhere: Prisma.ProblemWhereInput | null =
     user && ownershipValue === "others" ? { authorId: { not: user.id } } : null;
@@ -433,6 +450,7 @@ export default async function ProblemsPage({
   const baseWhereClauses: Prisma.ProblemWhereInput[] = [
     { status: "PUBLISHED" },
     { listed: true },
+    problemVisibilityWhere,
     ...(queryClauses.length ? [{ OR: queryClauses } satisfies Prisma.ProblemWhereInput] : []),
     ...(tagSlug ? [tagWhere(tagSlug, showSpoilerTags)].filter((item): item is Prisma.ProblemWhereInput => Boolean(item)) : []),
     ...(difficultyWhere ? [difficultyWhere] : []),
@@ -452,14 +470,14 @@ export default async function ProblemsPage({
   const progressWhere: Prisma.ProblemWhereInput = {
     status: "PUBLISHED",
     listed: true,
+    ...problemVisibilityWhere,
     ...(languageWhere ?? {}),
     ...(ownershipWhere ?? {}),
     ...(authorWhere ?? {}),
     ...(domainValue ? domainWhere(domainValue, showSpoilerTags) : {})
   };
 
-  const [totalProblems, tags, progressTotal, progressSolved] = await Promise.all([
-    prisma.problem.count({ where }),
+  const [tags, progressProblemGroups, problemCandidateKeys] = await Promise.all([
     prisma.tag.findMany({
       where: showSpoilerTags
         ? { OR: [{ problems: { some: {} } }, { spoilerProblems: { some: {} } }] }
@@ -467,55 +485,107 @@ export default async function ProblemsPage({
       orderBy: { name: "asc" },
       take: 80
     }),
-    prisma.problem.count({ where: progressWhere }),
-    user
-      ? prisma.problemAttempt.count({
-          where: {
-            userId: user.id,
-            status: "SOLVED",
-            problem: progressWhere
+    prisma.problem.findMany({
+      where: progressWhere,
+      distinct: ["translationGroupId"],
+      select: { translationGroupId: true }
+    }),
+    prisma.problem.findMany({
+      where,
+      orderBy,
+      select: {
+        id: true,
+        translationGroupId: true,
+        language: true,
+        translatedFromProblemId: true
+      }
+    })
+  ]);
+  const progressTotal = progressProblemGroups.length;
+  const progressSolved = progressProblemGroups.filter((problem) =>
+    solvedTranslationGroupIdSet.has(problem.translationGroupId)
+  ).length;
+  const candidatesByTranslationGroup = new Map<string, typeof problemCandidateKeys>();
+  for (const candidate of problemCandidateKeys) {
+    candidatesByTranslationGroup.set(candidate.translationGroupId, [
+      ...(candidatesByTranslationGroup.get(candidate.translationGroupId) ?? []),
+      candidate
+    ]);
+  }
+  const dedupedProblems = [...candidatesByTranslationGroup.values()].map((candidates) => {
+    const sortedCandidates = [...candidates].sort((left, right) => {
+      const languageRank =
+        languagePreferenceRank(left.language, preferredLanguage, languageValues) -
+        languagePreferenceRank(right.language, preferredLanguage, languageValues);
+      if (languageRank !== 0) return languageRank;
+      if (left.translatedFromProblemId === null && right.translatedFromProblemId !== null) return -1;
+      if (left.translatedFromProblemId !== null && right.translatedFromProblemId === null) return 1;
+      return candidates.indexOf(left) - candidates.indexOf(right);
+    });
+    return sortedCandidates[0];
+  });
+  const totalProblems = dedupedProblems.length;
+  const totalPages = showAllProblems ? 1 : Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
+  const currentPage = showAllProblems ? 1 : Math.min(requestedPage, totalPages);
+  const pageProblemKeys = showAllProblems
+    ? dedupedProblems
+    : dedupedProblems.slice((currentPage - 1) * PROBLEMS_PER_PAGE, currentPage * PROBLEMS_PER_PAGE);
+  const pageProblemIds = pageProblemKeys.map((problem) => problem.id);
+  const pageProblems = pageProblemIds.length
+    ? await prisma.problem.findMany({
+        where: { id: { in: pageProblemIds } },
+        include: {
+          author: true,
+          domains: { orderBy: { position: "asc" } },
+          tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
+          spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } }
+        }
+      })
+    : [];
+  const problemById = new Map(pageProblems.map((problem) => [problem.id, problem]));
+  const problems = pageProblemIds.flatMap((problemId) => {
+    const problem = problemById.get(problemId);
+    return problem ? [problem] : [];
+  });
+  const displayedTranslationGroupIds = problems.map((problem) => problem.translationGroupId);
+  const [groupAttempts, groupFavorites] = displayedTranslationGroupIds.length
+    ? await Promise.all([
+        prisma.problemAttempt.findMany({
+          where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
+          select: {
+            userId: true,
+            status: true,
+            problem: { select: { translationGroupId: true } }
+          }
+        }),
+        prisma.problemFavorite.findMany({
+          where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
+          select: {
+            userId: true,
+            problem: { select: { translationGroupId: true } }
           }
         })
-      : Promise.resolve(0)
-  ]);
-  const totalPages = Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
-  const currentPage = Math.min(requestedPage, totalPages);
-  const problems = await prisma.problem.findMany({
-    where,
-    orderBy,
-    skip: (currentPage - 1) * PROBLEMS_PER_PAGE,
-    take: PROBLEMS_PER_PAGE,
-    include: {
-      author: true,
-      domains: { orderBy: { position: "asc" } },
-      tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
-      spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
-      attempts: { where: { status: "SOLVED" }, select: { userId: true } },
-      favorites: { select: { userId: true } },
-      _count: { select: { favorites: true } }
+      ])
+    : [[], []];
+  const solvedUsersByGroup = new Map<string, Set<number>>();
+  const favoriteUsersByGroup = new Map<string, Set<number>>();
+  const openedTranslationGroupIds = new Set<string>();
+  for (const attempt of groupAttempts) {
+    const groupId = attempt.problem.translationGroupId;
+    if (attempt.status === "SOLVED") {
+      const solvedUsers = solvedUsersByGroup.get(groupId) ?? new Set<number>();
+      solvedUsers.add(attempt.userId);
+      solvedUsersByGroup.set(groupId, solvedUsers);
+    } else if (attempt.userId === user?.id) {
+      openedTranslationGroupIds.add(groupId);
     }
-  });
-  const displayedProblemIds = problems.map((problem) => problem.id);
-  const [problemAttempts, problemFavorites] =
-    user && displayedProblemIds.length
-      ? await Promise.all([
-          prisma.problemAttempt.findMany({
-            where: { userId: user.id, problemId: { in: displayedProblemIds } },
-            select: { problemId: true, status: true }
-          }),
-          prisma.problemFavorite.findMany({
-            where: { userId: user.id, problemId: { in: displayedProblemIds } },
-            select: { problemId: true }
-          })
-        ])
-      : [[], []];
-  const solvedIds = new Set(
-    problemAttempts.filter((attempt) => attempt.status === "SOLVED").map((attempt) => attempt.problemId)
-  );
-  const openedIds = new Set(
-    problemAttempts.filter((attempt) => attempt.status !== "SOLVED").map((attempt) => attempt.problemId)
-  );
-  const favoriteIds = new Set(problemFavorites.map((favorite) => favorite.problemId));
+  }
+  for (const favorite of groupFavorites) {
+    const groupId = favorite.problem.translationGroupId;
+    const favoriteUsers = favoriteUsersByGroup.get(groupId) ?? new Set<number>();
+    favoriteUsers.add(favorite.userId);
+    favoriteUsersByGroup.set(groupId, favoriteUsers);
+  }
   const paginationParams = {
     q: query,
     tag: tagSlug,
@@ -534,10 +604,9 @@ export default async function ProblemsPage({
     filterField: advancedFilters.map((filter) => filter.field),
     filterOp: advancedFilters.map((filter) => filter.op),
     filterValue: advancedFilters.map((filter) => filter.value),
-    includeSpoilerTags: showSpoilerTags ? "1" : undefined
+    includeSpoilerTags: showSpoilerTags ? "1" : undefined,
+    showAll: showAllProblems ? "1" : undefined
   };
-  const resultStart = totalProblems ? (currentPage - 1) * PROBLEMS_PER_PAGE + 1 : 0;
-  const resultEnd = Math.min(currentPage * PROBLEMS_PER_PAGE, totalProblems);
   const progressPercent = progressTotal ? Math.round((progressSolved / progressTotal) * 100) : 0;
   const progressScope = domainValue ? translatedDomainLabel(domainValue, t) : t.common.allDomains;
   const difficultyRanges = t.problems.difficultyRanges;
@@ -563,7 +632,7 @@ export default async function ProblemsPage({
             ) : (
               <p>{t.problems.signInProgress(progressScope)}</p>
             )}
-            <div className="flex flex-wrap gap-2">
+            <div className="problems-hero-actions">
               <Link href="/problems/new" className="button">
                 {t.problems.addProblem}
               </Link>
@@ -579,11 +648,9 @@ export default async function ProblemsPage({
         </div>
       </section>
 
-      <ProblemDomainStrip domains={PROBLEM_DOMAINS} families={PROBLEM_DOMAIN_FAMILIES} selectedDomain={domainValue} />
-
       <div className="problems-workspace">
         <aside className="problems-filter-panel">
-          <LiveSearchForm className="problem-filter-form">
+          <LiveSearchForm className="problem-filter-form" persistKey="problems">
             <label className="problem-filter-search">
               <span>{t.problems.searchProblems}</span>
               <input name="q" defaultValue={query} />
@@ -608,6 +675,23 @@ export default async function ProblemsPage({
             </div>
 
             <div className="problem-filter-section">
+              <fieldset className="problem-language-filter">
+                <legend>{t.problems.languages}</legend>
+                {SUPPORTED_CONTENT_LANGUAGES.map((languageOption) => (
+                  <label key={languageOption.code}>
+                    <input
+                      name="language"
+                      type="checkbox"
+                      value={languageOption.code}
+                      defaultChecked={languageValues.includes(languageOption.code)}
+                    />
+                    <span>{languageOption.code.toUpperCase()}</span>
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+
+            <div className="problem-filter-section">
               <p>{t.problems.status}</p>
               {user && (
                 <select name="progress" defaultValue={progressValue} aria-label={t.problems.solvedStatus}>
@@ -625,7 +709,7 @@ export default async function ProblemsPage({
               <select name="quality" defaultValue={qualityValue ?? ""}>
                 <option value="">{t.problems.anyQuality}</option>
                 <option value="NEEDS_WORK">{t.problems.needsWork}</option>
-                <option value="UNREVIEWED">{t.problems.unreviewed}</option>
+                {canSeeUnreviewedProblems && <option value="UNREVIEWED">{t.problems.unreviewed}</option>}
                 <option value="GOOD">{t.problems.good}</option>
                 <option value="EXCELLENT">{t.problems.excellent}</option>
               </select>
@@ -634,20 +718,6 @@ export default async function ProblemsPage({
                 <option value="all">{t.problems.anySolutionStatus}</option>
                 <option value="without">{t.problems.withoutSolutions}</option>
               </select>
-              <fieldset className="problem-language-filter">
-                <legend>{t.problems.languages}</legend>
-                {SUPPORTED_CONTENT_LANGUAGES.map((languageOption) => (
-                  <label key={languageOption.code}>
-                    <input
-                      name="language"
-                      type="checkbox"
-                      value={languageOption.code}
-                      defaultChecked={languageValues.includes(languageOption.code)}
-                    />
-                    <span>{languageOption.code.toUpperCase()}</span>
-                  </label>
-                ))}
-              </fieldset>
               <label className="problem-filter-inline-field">
                 <span>{t.problems.author}</span>
                 <input name="author" defaultValue={authorQuery} placeholder={t.problems.authorPlaceholder} />
@@ -660,11 +730,16 @@ export default async function ProblemsPage({
             </div>
 
             <ProblemFilterBuilder
-              domains={FLAT_PROBLEM_DOMAIN_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
+              domains={FLAT_PROBLEM_DOMAIN_OPTIONS.map((item) => ({
+                value: item.value,
+                label: translatedDomainLabel(item.value, t)
+              }))}
               initialFilters={advancedFilters}
               initialLogic={advancedLogic}
               labels={t.problems.advancedFilters}
-              statuses={Object.values(QualityStatus).map((status) => ({ value: status, label: t.quality[status] }))}
+              statuses={Object.values(QualityStatus)
+                .filter((status) => canSeeUnreviewedProblems || status !== QualityStatus.UNREVIEWED)
+                .map((status) => ({ value: status, label: t.quality[status] }))}
               tags={tags.map((item) => ({ value: item.slug, label: item.name }))}
             />
           </LiveSearchForm>
@@ -675,7 +750,7 @@ export default async function ProblemsPage({
             <div>
               {totalProblems > 0 && (
                 <p className="result-summary" role="status" aria-live="polite">
-                  {t.problems.showingResults(resultStart, resultEnd, totalProblems)}
+                  {t.problems.showingResults(totalProblems)}
                 </p>
               )}
             </div>
@@ -690,10 +765,14 @@ export default async function ProblemsPage({
           <div className="problem-ledger-list">
             {problems.map((problem) => {
               const isOwnProblem = user?.id === problem.authorId;
-              const isUserFavorite = !isOwnProblem && favoriteIds.has(problem.id);
-              const externalSolveCount = problem.attempts.filter((attempt) => attempt.userId !== problem.authorId).length;
-              const externalFavoriteCount = problem.favorites.filter((favorite) => favorite.userId !== problem.authorId).length;
-              const revealSpoilerDomains = showSpoilerTags || solvedIds.has(problem.id);
+              const groupSolvedUsers = solvedUsersByGroup.get(problem.translationGroupId) ?? new Set<number>();
+              const groupFavoriteUsers = favoriteUsersByGroup.get(problem.translationGroupId) ?? new Set<number>();
+              const isSolved = Boolean(user && groupSolvedUsers.has(user.id));
+              const isOpened = !isSolved && openedTranslationGroupIds.has(problem.translationGroupId);
+              const isUserFavorite = Boolean(!isOwnProblem && user && groupFavoriteUsers.has(user.id));
+              const externalSolveCount = [...groupSolvedUsers].filter((userId) => userId !== problem.authorId).length;
+              const externalFavoriteCount = [...groupFavoriteUsers].filter((userId) => userId !== problem.authorId).length;
+              const revealSpoilerDomains = showSpoilerTags || isSolved;
               const visibleDomainCodes = problem.domains.length
                 ? problem.domains
                     .filter((item) => revealSpoilerDomains || !item.spoiler)
@@ -712,7 +791,7 @@ export default async function ProblemsPage({
                   title={isOwnProblem ? t.problems.yourProblem : isUserFavorite ? t.problems.favoriteProblem : undefined}
                   className={`${problemLinkClass(
                     "problem-ledger-row",
-                    solvedIds.has(problem.id) ? "solved" : openedIds.has(problem.id) ? "opened" : null
+                    isSolved ? "solved" : isOpened ? "opened" : null
                   )}${isOwnProblem ? " problem-own" : isUserFavorite ? " problem-favorite" : ""}`}
                 >
                   <Link href={`/problems/${problem.slug}`} className="problem-ledger-content">
@@ -792,20 +871,37 @@ export default async function ProblemsPage({
             )}
           </div>
 
-          {totalPages > 1 && (
+          {(totalPages > 1 || showAllProblems) && (
             <nav className="pagination" aria-label={t.problems.ariaLabel}>
-              {currentPage > 1 ? (
-                <Link href={problemsHref({ ...paginationParams, page: currentPage - 1 }) as never}>{t.problems.previous}</Link>
+              {!showAllProblems && currentPage > 1 ? (
+                <Link href={problemsHref({ ...paginationParams, showAll: undefined, page: currentPage - 1 }) as never} aria-label={t.problems.previous}>
+                  &larr;
+                </Link>
               ) : (
-                <span aria-disabled="true">{t.problems.previous}</span>
+                <span aria-disabled="true" aria-label={t.problems.previous}>
+                  &larr;
+                </span>
               )}
               <span className="pagination-status">
-                {t.problems.pageStatus(currentPage, totalPages)}
+                {showAllProblems ? t.problems.showingAll : t.problems.pageStatus(currentPage, totalPages)}
               </span>
-              {currentPage < totalPages ? (
-                <Link href={problemsHref({ ...paginationParams, page: currentPage + 1 }) as never}>{t.problems.next}</Link>
+              {!showAllProblems && currentPage < totalPages ? (
+                <Link href={problemsHref({ ...paginationParams, showAll: undefined, page: currentPage + 1 }) as never} aria-label={t.problems.next}>
+                  &rarr;
+                </Link>
               ) : (
-                <span aria-disabled="true">{t.problems.next}</span>
+                <span aria-disabled="true" aria-label={t.problems.next}>
+                  &rarr;
+                </span>
+              )}
+              {showAllProblems ? (
+                <Link href={problemsHref({ ...paginationParams, showAll: undefined, page: undefined }) as never}>
+                  {t.problems.showPages}
+                </Link>
+              ) : (
+                <Link href={problemsHref({ ...paginationParams, showAll: "1", page: undefined }) as never}>
+                  {t.problems.showAll}
+                </Link>
               )}
             </nav>
           )}

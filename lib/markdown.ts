@@ -36,7 +36,7 @@ function protectLatex(input: string, blockDisplayMath = true) {
 
   for (let index = ranges.length - 1; index >= 0; index -= 1) {
     const range = ranges[index];
-    const token = `MATHHILLSLATEX${input.length}TOKEN${index}`;
+    const token = `@@MATHHILLSLATEX${input.length}TOKEN${index}@@`;
     replacements.set(
       token,
       katex.renderToString(range.formula, {
@@ -143,6 +143,7 @@ export async function renderMarkdown(
       a: ["href", "class", "rel", "target"],
       code: ["class"],
       img: ["src", "alt", "title", "loading", "decoding", "style"],
+      ol: ["start"],
       span: ["class", "style"],
       math: ["xmlns", "display"],
       annotation: ["encoding"],
@@ -203,7 +204,7 @@ export async function renderMarkdown(
       img: {
         height: [/^auto$/],
         "max-width": [/^100%$/],
-        width: [/^(25|50|75)%$/]
+        width: [/^(?:[5-9]|[1-9]\d|100)%$/]
       }
     },
     allowedSchemes: ["http", "https", "mailto", "tel"],

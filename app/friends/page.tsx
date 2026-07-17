@@ -10,6 +10,7 @@ import {
 } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getTranslations } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { displayNameForUser } from "@/lib/user-display";
@@ -41,6 +42,7 @@ function otherFriend(friendship: FriendRow, userId: number) {
 
 export default async function FriendsPage() {
   const user = await requireVerifiedUser();
+  const t = await getTranslations();
   await markNotificationsReadForHref(user.id, "/friends", NotificationType.FRIEND_REQUEST);
   const now = new Date();
   const onlineSince = new Date(now.getTime() - ONLINE_WINDOW_MS);
@@ -91,23 +93,29 @@ export default async function FriendsPage() {
 
   return (
     <ForestPageLayout
-      title="Friends"
-      eyebrow="Social"
+      title={t.social.friends}
+      eyebrow={t.social.social}
       heroImage={SOCIAL_HERO_ART.src}
       heroAlt={SOCIAL_HERO_ART.alt}
-      description={`${onlineFriends.length} ${onlineFriends.length === 1 ? "friend" : "friends"} online`}
+      description={t.social.friendsOnline(onlineFriends.length)}
     >
       <div className="friends-page-grid">
         <section className="panel grid gap-4 p-5">
           <div>
-            <h2 className="font-semibold">Add a friend</h2>
-            <p className="muted text-sm">Enter a username to send a friend request.</p>
+            <h2 className="font-semibold">{t.social.addFriendTitle}</h2>
+            <p className="muted text-sm">{t.social.addFriendDescription}</p>
           </div>
-          <AddFriendForm />
+          <AddFriendForm
+            labels={{
+              addFriend: t.social.addFriend,
+              sending: t.social.sending,
+              usernamePlaceholder: t.social.usernamePlaceholder
+            }}
+          />
         </section>
 
         <section className="panel p-5">
-          <h2 className="mb-3 font-semibold">Online friends</h2>
+          <h2 className="mb-3 font-semibold">{t.social.onlineFriends}</h2>
           <div className="friend-list">
             {onlineFriends.map((friendship) => {
               const friend = otherFriend(friendship, user.id);
@@ -116,44 +124,44 @@ export default async function FriendsPage() {
                   <span className="friend-online-dot" aria-hidden="true" />
                   <Link href={`/profile/${friend.username}`}>{displayNameForUser(friend)}</Link>
                   <Link href={`/chat/${friend.username}` as never} className="button secondary">
-                    Chat
+                    {t.social.chat}
                   </Link>
                 </div>
               );
             })}
-            {onlineFriends.length === 0 && <p className="muted">No friends online right now.</p>}
+            {onlineFriends.length === 0 && <p className="muted">{t.social.noFriendsOnlineNow}</p>}
           </div>
         </section>
 
         <section className="panel p-5">
-          <h2 className="mb-3 font-semibold">Friend requests</h2>
+          <h2 className="mb-3 font-semibold">{t.social.friendRequests}</h2>
           <div className="friend-list">
             {incomingRequests.map((request) => (
               <div key={request.id} className="friend-row">
                 <Link href={`/profile/${request.requester.username}`}>{displayNameForUser(request.requester)}</Link>
                 <form action={acceptFriendRequestAction.bind(null, request.id)}>
-                  <button type="submit">Accept</button>
+                  <button type="submit">{t.social.accept}</button>
                 </form>
                 <form action={declineFriendRequestAction.bind(null, request.id)}>
                   <button type="submit" className="secondary">
-                    Decline
+                    {t.social.decline}
                   </button>
                 </form>
               </div>
             ))}
-            {incomingRequests.length === 0 && <p className="muted">No pending requests.</p>}
+            {incomingRequests.length === 0 && <p className="muted">{t.social.noPendingRequests}</p>}
           </div>
           {outgoingRequests.length > 0 && (
             <div className="mt-5">
-              <h3 className="mb-2 text-sm font-semibold">Sent requests</h3>
+              <h3 className="mb-2 text-sm font-semibold">{t.social.sentRequests}</h3>
               <div className="friend-list">
                 {outgoingRequests.map((request) => (
                   <div key={request.id} className="friend-row">
                     <Link href={`/profile/${request.addressee.username}`}>{displayNameForUser(request.addressee)}</Link>
-                    <span className="muted text-sm">pending</span>
+                    <span className="muted text-sm">{t.social.pending}</span>
                     <form action={cancelFriendRequestAction.bind(null, request.id)}>
                       <button type="submit" className="secondary">
-                        Cancel
+                        {t.social.cancel}
                       </button>
                     </form>
                   </div>
@@ -164,7 +172,7 @@ export default async function FriendsPage() {
         </section>
 
         <section className="panel p-5">
-          <h2 className="mb-3 font-semibold">All friends</h2>
+          <h2 className="mb-3 font-semibold">{t.social.allFriends}</h2>
           <div className="friend-list">
             {friends.map((friendship) => {
               const friend = otherFriend(friendship, user.id);
@@ -174,22 +182,22 @@ export default async function FriendsPage() {
                   <span className={online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
                   <Link href={`/profile/${friend.username}`}>{displayNameForUser(friend)}</Link>
                   <Link href={`/chat/${friend.username}` as never} className="button secondary">
-                    Chat
+                    {t.social.chat}
                   </Link>
                   <form action={removeFriendAction.bind(null, friendship.id)}>
                     <button type="submit" className="secondary">
-                      Remove
+                      {t.social.remove}
                     </button>
                   </form>
                 </div>
               );
             })}
-            {friends.length === 0 && <p className="muted">No friends yet.</p>}
+            {friends.length === 0 && <p className="muted">{t.social.noFriendsYet}</p>}
           </div>
         </section>
 
         <section className="panel p-5">
-          <h2 className="mb-3 font-semibold">Recent chats</h2>
+          <h2 className="mb-3 font-semibold">{t.social.recentChats}</h2>
           <div className="friend-list">
             {recentChats.map((chat) => {
               const friend = chat.userAId === user.id ? chat.userB : chat.userA;
@@ -200,12 +208,12 @@ export default async function FriendsPage() {
                   <span>
                     {latest
                       ? `${displayNameForUser(latest.author)}: ${latest.bodyMarkdown.slice(0, 120)}`
-                      : "No messages yet."}
+                      : t.social.noMessagesYet}
                   </span>
                 </Link>
               );
             })}
-            {recentChats.length === 0 && <p className="muted">No chats yet.</p>}
+            {recentChats.length === 0 && <p className="muted">{t.social.noChatsYet}</p>}
           </div>
         </section>
       </div>

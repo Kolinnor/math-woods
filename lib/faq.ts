@@ -186,24 +186,24 @@ export const DEFAULT_FAQ_SECTIONS: FaqSectionContent[] = [
   },
   {
     position: 4,
-    title: "Creating playlists",
+    title: "Creating explorations",
     anchorId: "",
     items: [
       {
         position: 0,
-        question: "Should playlist problems be reusable?",
+        question: "Should exploration problems be reusable?",
         answerMarkdown: "Usually, yes. Listed problems can appear in several paths and keep their discussion in one place."
       },
       {
         position: 1,
-        question: "When should a problem be specific to one playlist?",
+        question: "When should a problem be specific to one exploration?",
         answerMarkdown:
-          "Some steps only make sense inside a particular route: a tiny diagnostic question, a local warm-up, a reference to the previous branch, or an exercise whose wording depends on the playlist. In those cases, make it playlist-specific. It stays accessible from the playlist and stays out of the general index."
+          "Some steps only make sense inside a particular route: a tiny diagnostic question, a local warm-up, a reference to the previous branch, or an exercise whose wording depends on the exploration. In those cases, make it exploration-specific. It stays accessible from the exploration and stays out of the general index."
       },
       {
         position: 2,
-        question: "Can a playlist mix both kinds?",
-        answerMarkdown: "Yes. A playlist can mix public problems, concepts, notes, and local exercises."
+        question: "Can an exploration mix both kinds?",
+        answerMarkdown: "Yes. An exploration can mix public problems, concepts, notes, and local exercises."
       }
     ]
   },

@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import { NotificationType, TargetType, VoteType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -10,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { notifyProblemAuthor } from "@/lib/notifications";
 import { canDeleteSolution, canEditSolution } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
 async function renderMarkdownContent(markdown: string) {
@@ -21,6 +23,13 @@ export async function createProofAction(problemId: number, problemSlug: string, 
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof:${user.id}`, 6, 60_000);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Solution");
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: { slug: true, language: true }
+  });
+  if (!problem || problem.slug !== problemSlug) {
+    throw new Error("Problem not found.");
+  }
 
   await prisma.problemProof.create({
     data: {
@@ -41,7 +50,7 @@ export async function createProofAction(problemId: number, problemSlug: string, 
     body: `${displayNameForUser(user)} added a solution.`,
     href: `/problems/${problemSlug}`
   });
-  redirect(`/problems/${problemSlug}?solution=posted`);
+  redirect(contentLanguageViewHref("/problems", problemSlug, problem.language) as Route);
 }
 
 export async function updateProofAction(proofId: number, problemSlug: string, formData: FormData) {
@@ -51,7 +60,7 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
 
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
-    select: { authorId: true, problem: { select: { slug: true } } }
+    select: { authorId: true, problem: { select: { slug: true, language: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
@@ -69,7 +78,7 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
   });
 
   revalidatePath(`/problems/${problemSlug}`);
-  redirect(`/problems/${problemSlug}`);
+  redirect(contentLanguageViewHref("/problems", problemSlug, proof.problem.language) as Route);
 }
 
 export async function deleteProofAction(proofId: number, problemSlug: string) {
@@ -78,7 +87,7 @@ export async function deleteProofAction(proofId: number, problemSlug: string) {
 
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
-    select: { authorId: true, problem: { select: { slug: true } } }
+    select: { authorId: true, problem: { select: { slug: true, language: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
@@ -93,7 +102,7 @@ export async function deleteProofAction(proofId: number, problemSlug: string) {
   ]);
 
   revalidatePath(`/problems/${problemSlug}`);
-  redirect(`/problems/${problemSlug}`);
+  redirect(contentLanguageViewHref("/problems", problemSlug, proof.problem.language) as Route);
 }
 
 export async function voteProofAction(proofId: number, problemSlug: string) {

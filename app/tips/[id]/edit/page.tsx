@@ -7,7 +7,8 @@ import { deleteTipAction, updateTipAction } from "@/lib/actions/tip-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { loadTip } from "@/lib/daily-tip";
-import { domainLabel } from "@/lib/domains";
+import { translatedDomainLabel } from "@/lib/domains";
+import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ type TipProblemRow = {
 export default async function EditTipPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
+  const t = await getTranslations();
 
   const { id } = await params;
   const tipId = Number(id);
@@ -50,7 +52,7 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
       id: problem.id,
       title: problem.title,
       slug: problem.slug,
-      domainLabel: domainLabel(problem.domain),
+      domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
       difficulty: problem.difficulty
     }));
 

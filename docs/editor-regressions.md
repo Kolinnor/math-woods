@@ -227,3 +227,73 @@ Guardrail:
   replacement previews, not only ranges on the cursor line.
 - This suppression should last only for that post-deletion editor state; previews may return on the next ordinary
   edit/focus transaction.
+
+## 2026-07-17 - Temporary LaTeX suppression should resume automatically
+
+Symptom:
+
+- After some edits near display math, every live LaTeX preview could remain visible as raw highlighted source until the
+  user clicked elsewhere in the editor.
+
+Root cause:
+
+- The multi-line deletion guard correctly suppressed all replacement previews for the dangerous post-deletion state,
+  but it relied on a later edit, selection, or focus transaction to rebuild them.
+
+Guardrail:
+
+- Keep the global one-state suppression when a transaction removes a newline; it protects CodeMirror from stale
+  one-character-wide line measurements.
+- Schedule a dedicated, non-history transaction after the guarded layout has had time to settle so previews return
+  automatically. Do not make restoration depend on a user click or unrelated edit.
+- Continue deriving live-preview decorations from a `StateField`; the scheduling plugin must only request restoration,
+  not own or mutate decorations directly.
+
+## 2026-07-17 - Inline dollar autoclose must not be parsed as a display range
+
+Symptom:
+
+- Pressing `$` once to open inline math could unexpectedly move surrounding text onto new lines.
+- The issue only appeared when non-whitespace text followed the cursor and another `$$` delimiter existed later in the
+  document, which made it difficult to reproduce consistently.
+
+Root cause:
+
+- Inline dollar autoclose temporarily inserts `$$` with the cursor between the two characters.
+- Before the user typed the inline formula, the display parser could pair that temporary `$$` with a later display
+  delimiter across multiple lines. The display-line normalizer then treated the false range as genuine and rewrote the
+  document with line breaks.
+
+Guardrail:
+
+- Mark the transaction that creates a fresh inline autoclose pair and skip display-line normalization for that
+  transaction only.
+- Do not disable normalization for the second `$` that promotes the pair toward `$$$$`/`$$...$$`, selected-text inline
+  wrapping, ordinary edits inside a completed display range, or display-math keyboard shortcuts.
+- Keep the parser and normalizer behavior for genuine `$$...$$` ranges unchanged.
+
+## 2026-07-17 - Standalone display previews should remain vertically compact
+
+Symptom:
+
+- Consecutive source lines containing standalone `$$...$$` ranges appeared separated by large blank vertical areas in
+  the live editor, even though the Markdown contained no blank logical lines.
+
+Root cause:
+
+- Display previews intentionally remained inline CodeMirror replacement decorations to avoid earlier block-measurement
+  failures, but their root `<span>` was changed to `display: block` in CSS.
+- CodeMirror places inline widget buffers before and after non-editable replacement widgets. Turning only the widget
+  into a CSS block split those buffers and the widget across anonymous line boxes; explicit widget margin and padding
+  increased the resulting height further.
+
+Guardrail:
+
+- Keep the root element of a non-block CodeMirror display widget inline-level (`inline-block`). Do not simulate a block
+  by setting that root to `display: block`.
+- Center an inactive standalone display preview with a line decoration on its existing CodeMirror source line. Do not
+  apply that centering to mixed-content lines or while the range is being edited as raw source.
+- Do not reintroduce `block: true` CodeMirror decorations or a full-width inline widget. Keep vertical margin at zero
+  and use only compact padding so consecutive display lines remain close without touching.
+- Do not put `overflow-x: auto` on the shrink-to-fit display widget itself: some browsers expose a tiny native
+  scrollbar under short formulas. Let the editor scroller handle genuinely oversized content.

@@ -6,7 +6,7 @@ type LanguageFieldProps = {
   disabledValues?: readonly string[];
 };
 
-export function LanguageField({ defaultValue, help, disabledValues = [] }: LanguageFieldProps) {
+export function LanguageField({ defaultValue, disabledValues = [] }: LanguageFieldProps) {
   const language = parseContentLanguage(defaultValue);
   const disabledLanguages = new Set(disabledValues.map((value) => parseContentLanguage(value)));
 
@@ -20,7 +20,6 @@ export function LanguageField({ defaultValue, help, disabledValues = [] }: Langu
           </option>
         ))}
       </select>
-      {help && <small className="muted">{help}</small>}
     </label>
   );
 }

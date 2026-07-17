@@ -1,15 +1,19 @@
 import { createProblemAction } from "@/lib/actions/problem-actions";
+import { FieldHelp } from "@/components/FieldHelp";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
+import { ProblemDetailsDisclosure } from "@/components/ProblemDetailsDisclosure";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
 import { ProblemVerificationFields } from "@/components/ProblemVerificationFields";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { requireVerifiedUser } from "@/lib/auth";
-import { PROBLEM_DOMAINS } from "@/lib/domains";
+import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
-import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
+import { getTranslations } from "@/lib/i18n/server";
+import { parseContentLanguage } from "@/lib/languages";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
@@ -19,6 +23,7 @@ export default async function NewProblemPage({
 }: {
   searchParams: Promise<{
     playlist?: string;
+    exploration?: string;
     listed?: string;
     parent?: string;
     translateOf?: string;
@@ -27,9 +32,11 @@ export default async function NewProblemPage({
   }>;
 }) {
   await requireVerifiedUser();
+  const t = await getTranslations();
   const queryParams = await searchParams;
   const draftSession = requireDraftSession("/problems/new", queryParams);
-  const { playlist = "", listed = "1", parent = "", translateOf = "", language = "" } = queryParams;
+  const { playlist = "", exploration = "", listed = "1", parent = "", translateOf = "", language = "" } = queryParams;
+  const explorationSlug = exploration || playlist;
   const preferredLanguage = await getPreferredContentLanguage();
   const requestedLanguage = language ? parseContentLanguage(language) : preferredLanguage;
   const isListedByDefault = listed !== "0";
@@ -42,7 +49,16 @@ export default async function NewProblemPage({
   const sourceProblem = translateOf
     ? await prisma.problem.findUnique({
         where: { slug: translateOf },
-        select: { slug: true, title: true, bodyMarkdown: true, language: true, translationGroupId: true }
+        select: {
+          slug: true,
+          title: true,
+          bodyMarkdown: true,
+          language: true,
+          translationGroupId: true,
+          difficulty: true,
+          domain: true,
+          domains: { orderBy: { position: "asc" } }
+        }
       })
     : null;
   const sourceTranslationLanguages = sourceProblem
@@ -56,160 +72,149 @@ export default async function NewProblemPage({
     ? nextMissingTranslationLanguage(sourceProblem.language, sourceTranslationLanguages, requestedLanguage)
     : requestedLanguage;
   const initialLanguage = targetTranslationLanguage ?? requestedLanguage;
-  const defaultStatement =
-    sourceProblem?.bodyMarkdown ??
-    "Write the problem statement here.\n\nYou can use Markdown for structure:\n- bullet points\n- **bold text** and *italic text*\n- links to concepts with [[concept name]]\n\nYou can use LaTeX with $x^2+1$ for inline formulas, or with $$\\sum_{k=1}^n k = \\frac{n(n+1)}{2}$$ for displayed formulas.";
+  const defaultStatement = sourceProblem?.bodyMarkdown ?? "";
+  const initialDomains = sourceProblem
+    ? sourceProblem.domains.length
+      ? sourceProblem.domains.map((item) => item.mscCode)
+      : [sourceProblem.domain]
+    : ["OTHER"];
+  const initialDomainSpoilers = sourceProblem
+    ? sourceProblem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)
+    : [];
 
   return (
     <div className={sourceProblem ? "translation-compose-page" : "mx-auto max-w-3xl"}>
       <div className="translation-compose-main">
-        <h1 className="mb-2 text-2xl font-bold">New problem</h1>
-        <p className="muted mb-5">
-          A short, clear statement is enough.
-        </p>
+        <h1 className="mb-4 text-2xl font-bold">New problem</h1>
 
-        <form action={createProblemAction} className="panel grid gap-4 p-5">
-        {playlist && <input type="hidden" name="addToPlaylistSlug" value={playlist} />}
-        {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
-        {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
-        {sourceProblem && <input type="hidden" name="translationSourceSlug" value={sourceProblem.slug} />}
-        <div className="growth-note">
-          <strong>Start small.</strong>
-          <span>
-            Add what you know. Mark what is uncertain. Others can discuss, edit, report, or add solutions.
-          </span>
-        </div>
-        {playlist && (
-          <div className="playlist-context-note">
-            <strong>Creating for a playlist.</strong>
-            <span>
-              This problem will be added to the playlist. Keep it listed if it can stand alone. Unlist it if it needs
-              this playlist's context.
-            </span>
-          </div>
-        )}
-        {parentProblem && (
-          <div className="playlist-context-note">
-            <strong>Specific to another problem.</strong>
-            <span>
-              This will be linked from "{parentProblem.title}". Keep it unlisted if it is mainly a local variation,
-              warm-up, or helper exercise.
-            </span>
-          </div>
-        )}
-        {sourceProblem && (
-          <div className="playlist-context-note">
-            <strong>Translating from {contentLanguageLabel(sourceProblem.language)}.</strong>
-            <span>
-              This will create a separate {contentLanguageLabel(initialLanguage)} page linked to "{sourceProblem.title}".
-            </span>
-          </div>
-        )}
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Title</span>
-          <input name="title" required defaultValue={sourceProblem?.title ?? ""} placeholder="Roots and coefficients" />
-        </label>
-        <LanguageField
-          defaultValue={initialLanguage}
-          disabledValues={unavailableTranslationLanguages}
-          help={
-            sourceProblem
-              ? "Languages already linked to this problem are disabled."
-              : "Each translation is its own page. If English has not been written, there is no English version yet."
-          }
-        />
-        <div className="grid gap-2">
-          <span className="text-sm font-medium">Statement</span>
-          <MarkdownEditor
-            name="bodyMarkdown"
-            initialValue={defaultStatement}
-            draftKey={`problem:new:${draftSession}:statement`}
-          />
-        </div>
-        <div className="grid gap-4">
-          <ProblemDomainPicker domains={PROBLEM_DOMAINS} initialValues={["OTHER"]} />
-          <label className="problem-difficulty-field grid gap-2">
-            <span className="text-sm font-medium">Difficulty (1–100)</span>
-            <input name="difficulty" type="number" min="1" max="100" placeholder="50" />
-          </label>
-        </div>
-        <label className="checkbox-field">
-          <input name="listed" type="checkbox" defaultChecked={isListedByDefault} />
-          <span>
-            <strong>Listed in the problem browser</strong>
-            <small>
-              Keep this on for problems that are reusable on their own. Turn it off for local steps or variations tied to a playlist or another problem.
-            </small>
-          </span>
-        </label>
-        <fieldset className="origin-fields grid gap-4">
-          <legend className="font-semibold">Problem origin</legend>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Approximate origin</span>
-            <input name="origin" defaultValue="Unknown" placeholder="Unknown, IMO 1988, a textbook..." />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <form action={createProblemAction} className="problem-compose-form">
+          {explorationSlug && <input type="hidden" name="addToExplorationSlug" value={explorationSlug} />}
+          {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
+          {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
+          {sourceProblem && <input type="hidden" name="translationSourceSlug" value={sourceProblem.slug} />}
+
+          <section className="problem-compose-card">
+            <div className="problem-compose-section-title">Essential information</div>
+            {explorationSlug && <p className="muted text-sm">Creating for an exploration.</p>}
+            {parentProblem && <p className="muted text-sm">Linked from "{parentProblem.title}".</p>}
+
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Chapter or section</span>
-              <input name="originChapter" placeholder="Chapter 4, Algebra" />
+              <span className="text-sm font-medium">Title</span>
+              <input name="title" defaultValue={sourceProblem?.title ?? ""} placeholder="Roots and coefficients" />
             </label>
-            <label className="grid gap-2">
-              <span className="text-sm font-medium">Page or problem number</span>
-              <input name="originPage" placeholder="p. 127, Problem 6" />
-            </label>
-          </div>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Provenance note</span>
-            <textarea
-              className="compact-textarea"
-              name="originNote"
-              placeholder="It seems this problem first appeared in..."
+
+            <div className="grid gap-2">
+              <span className="text-sm font-medium">Statement</span>
+              <MarkdownEditor
+                name="bodyMarkdown"
+                initialValue={defaultStatement}
+                draftKey={`problem:new:${draftSession}:statement`}
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[1fr_0.85fr]">
+              <LanguageField
+                defaultValue={initialLanguage}
+                disabledValues={unavailableTranslationLanguages}
+                help={
+                  sourceProblem
+                    ? "Languages already linked to this problem are disabled."
+                    : "Each translation is its own page."
+                }
+              />
+              <ProblemDifficultyField
+                defaultValue={sourceProblem?.difficulty}
+                help="A rough 1-100 estimate used for browsing and recommendations."
+              />
+            </div>
+
+            <ProblemDomainPicker
+              domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
+              initialValues={initialDomains}
+              initialSpoilers={initialDomainSpoilers}
             />
-          </label>
-        </fieldset>
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Tags</span>
-          <input name="tags" placeholder="polynomials, roots, algebra" />
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Spoiler tags</span>
-          <input name="spoilerTags" placeholder="Trick question, induction, Cauchy-Schwarz" />
-          <small className="muted">
-            Hidden until a user marks the problem solved. They can still be searched from the problem browser.
-          </small>
-        </label>
-        <label className="checkbox-field">
-          <input name="conjecture" type="checkbox" />
-          <span>
-            <strong>Conjecture</strong>
-            <small>No solution is currently known or supplied.</small>
-          </span>
-        </label>
-        <ProblemRelationPicker />
-        <ProblemVerificationFields modeOptions={Object.entries(VERIFICATION_MODE_LABELS)} />
-        <div className="grid gap-2">
-          <span className="text-sm font-medium">Initial solution (optional)</span>
-          <MarkdownEditor
-            name="proofMarkdown"
-            initialValue=""
-            minHeight="11rem"
-            draftKey={`problem:new:${draftSession}:initial-solution`}
-          />
-        </div>
-        <p className="muted text-sm">
-          Make sure you can share this wording.{" "}
-          <a href="/about#creating-problems" className="help-link" aria-label="Read problem creation guidance">
-            ?
-          </a>
-        </p>
+          </section>
+
+          <div className="problem-compose-actions">
+            <button type="submit" disabled={Boolean(sourceProblem && !targetTranslationLanguage)}>
+              Publish
+            </button>
+            <ProblemDetailsDisclosure>
+                <section className="problem-compose-subsection">
+                  <h2>Origin</h2>
+                  <label className="grid gap-2">
+                    <span className="field-label-with-help text-sm font-medium">
+                      Approximate origin
+                      <FieldHelp text="Where the problem comes from, if known. Unknown is fine." />
+                    </span>
+                    <input name="origin" defaultValue="Unknown" placeholder="Unknown, IMO 1988, a textbook..." />
+                  </label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium">Chapter or section</span>
+                      <input name="originChapter" placeholder="Chapter 4, Algebra" />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium">Page or problem number</span>
+                      <input name="originPage" placeholder="p. 127, Problem 6" />
+                    </label>
+                  </div>
+                  <label className="grid gap-2">
+                    <span className="field-label-with-help text-sm font-medium">
+                      Provenance note
+                      <FieldHelp text="Add uncertainty, publication details, or context about the source." />
+                    </span>
+                    <textarea className="compact-textarea" name="originNote" />
+                  </label>
+                </section>
+
+                <section className="problem-compose-subsection">
+                  <h2>Tags</h2>
+                  <label className="grid gap-2">
+                    <span className="field-label-with-help text-sm font-medium">
+                      Tags
+                      <FieldHelp text="Comma-separated visible tags for search and browsing." />
+                    </span>
+                    <input name="tags" placeholder="polynomials, roots, algebra" />
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="field-label-with-help text-sm font-medium">
+                      Spoiler tags
+                      <FieldHelp text="Tags hidden until the problem is solved." />
+                    </span>
+                    <input name="spoilerTags" placeholder="induction, Cauchy-Schwarz" />
+                  </label>
+                  <label className="checkbox-field">
+                    <input name="conjecture" type="checkbox" />
+                    <span>
+                      <strong>Conjecture</strong>
+                    </span>
+                  </label>
+                </section>
+
+                <section className="problem-compose-subsection">
+                  <h2>Publishing options</h2>
+                  <label className="checkbox-field">
+                    <input name="listed" type="checkbox" defaultChecked={isListedByDefault} />
+                    <span>
+                      <strong>Listed in the problem browser</strong>
+                    </span>
+                  </label>
+                  <ProblemVerificationFields modeOptions={Object.entries(VERIFICATION_MODE_LABELS)} />
+                </section>
+
+                <section className="problem-compose-subsection">
+                  <h2>Related problems</h2>
+                  <ProblemRelationPicker />
+                </section>
+            </ProblemDetailsDisclosure>
+          </div>
+
           {sourceProblem && !targetTranslationLanguage && (
             <p className="quality-banner quality-needs-work text-sm" role="status">
               All supported languages already exist for this problem.
             </p>
           )}
-          <button type="submit" disabled={Boolean(sourceProblem && !targetTranslationLanguage)}>
-            Publish
-          </button>
         </form>
       </div>
       {sourceProblem && (

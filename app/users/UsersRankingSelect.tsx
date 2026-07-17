@@ -9,16 +9,18 @@ type RankingOption = {
 
 export function UsersRankingSelect({
   options,
-  value
+  value,
+  label
 }: {
   options: RankingOption[];
   value: string;
+  label: string;
 }) {
   const router = useRouter();
 
   return (
     <label className="users-sort-form">
-      <span className="sr-only">Ranking mode</span>
+      <span className="sr-only">{label}</span>
       <select
         name="sort"
         value={value}

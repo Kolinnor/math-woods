@@ -142,6 +142,46 @@ export async function notifyProblemEditSubscribers({
   );
 }
 
+export async function notifyConceptAuthor({
+  conceptId,
+  actorId,
+  title,
+  body,
+  href
+}: {
+  conceptId: number;
+  actorId: number;
+  title: string;
+  body: string;
+  href: string;
+}) {
+  const [concept, owner] = await Promise.all([
+    prisma.concept.findUnique({
+      where: { id: conceptId },
+      select: { createdById: true }
+    }),
+    prisma.user.findFirst({
+      where: {
+        username: OWNER_NOTIFICATION_USERNAME,
+        role: Role.OWNER
+      },
+      select: { id: true }
+    })
+  ]);
+
+  if (!concept?.createdById) return null;
+  if (owner?.id === concept.createdById) return null;
+
+  return createNotification({
+    userId: concept.createdById,
+    actorId,
+    type: NotificationType.CONCEPT_EDITED,
+    title,
+    body,
+    href
+  });
+}
+
 export async function notifyOwnerOfSiteActivity(input: OwnerActivityNotificationInput) {
   const owner = await prisma.user.findFirst({
     where: {

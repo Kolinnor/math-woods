@@ -3,6 +3,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { createSuggestionAction } from "@/lib/actions/suggestion-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getTranslations } from "@/lib/i18n/server";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -14,6 +15,7 @@ export default async function SuggestionsPage({
   searchParams: Promise<{ submitted?: string }>;
 }) {
   const user = await getCurrentUser();
+  const t = await getTranslations();
   const canContribute = Boolean(user && isVerifiedContributor(user));
   const { submitted } = await searchParams;
   const suggestions = await prisma.suggestion.findMany({
@@ -55,7 +57,7 @@ export default async function SuggestionsPage({
       ) : (
         <p className="panel p-5">
           <Link href="/login" className="underline">
-            Sign in
+            {t.nav.signIn}
           </Link>{" "}
           to send a suggestion.
         </p>

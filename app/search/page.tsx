@@ -4,9 +4,11 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { domainLabel } from "@/lib/domains";
+import { translatedDomainLabel } from "@/lib/domains";
+import { getTranslations } from "@/lib/i18n/server";
 import { contentLanguageLabel } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +41,9 @@ export default async function SearchPage({
 }) {
   const query = (await searchParams).q?.trim() ?? "";
   const user = await getCurrentUser();
+  const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
-  const [concepts, problems, playlists, quotes] = query
+  const [concepts, problems, explorations, quotes] = query
     ? await Promise.all([
         prisma.concept.findMany({
           where: {
@@ -59,6 +62,7 @@ export default async function SearchPage({
             status: "PUBLISHED",
             listed: true,
             language: preferredLanguage,
+            ...visibleProblemWhere(user),
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { bodyMarkdown: { contains: query, mode: "insensitive" } },
@@ -70,6 +74,7 @@ export default async function SearchPage({
         prisma.playlist.findMany({
           where: {
             visibility: "PUBLIC",
+            status: "PUBLISHED",
             language: preferredLanguage,
             OR: [
               { title: { contains: query, mode: "insensitive" } },
@@ -83,13 +88,20 @@ export default async function SearchPage({
     : [[], [], [], []];
   const solvedAttempts = user
     ? await prisma.problemAttempt.findMany({
-        where: { userId: user.id, status: "SOLVED", problemId: { in: problems.map((problem) => problem.id) } },
-        select: { problemId: true }
+        where: {
+          userId: user.id,
+          status: "SOLVED",
+          problem: { translationGroupId: { in: problems.map((problem) => problem.translationGroupId) } }
+        },
+        select: { problem: { select: { translationGroupId: true } } }
       })
     : [];
-  const solvedIds = new Set(solvedAttempts.map((attempt) => attempt.problemId));
+  const solvedGroupIds = new Set(solvedAttempts.map((attempt) => attempt.problem.translationGroupId));
+  const solvedIds = new Set(
+    problems.filter((problem) => solvedGroupIds.has(problem.translationGroupId)).map((problem) => problem.id)
+  );
 
-  const total = concepts.length + problems.length + playlists.length + quotes.length;
+  const total = concepts.length + problems.length + explorations.length + quotes.length;
 
   return (
     <ForestPageLayout
@@ -97,7 +109,7 @@ export default async function SearchPage({
       eyebrow="Find your way"
       heroImage="/art/brook-in-the-forest.jpg"
       heroAlt="Ivan Shishkin, Brook in the Forest"
-      description="Search across concepts, problems, playlists, and quotes."
+      description="Search across concepts, problems, explorations, and quotes."
       meta={
         query ? (
           <p>
@@ -128,7 +140,7 @@ export default async function SearchPage({
               <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
                 <div className="font-medium">{concept.title}</div>
                 <div className="muted mt-1 text-xs">
-                  {domainLabel(concept.domain)} / {concept.status.toLowerCase()}
+                  {translatedDomainLabel(concept.domain, t.home.domainLabels)} / {concept.status.toLowerCase()}
                 </div>
                 {concept.aliases.length > 0 && (
                   <div className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</div>
@@ -150,18 +162,18 @@ export default async function SearchPage({
                 <div className="font-medium">
                   <AsyncMarkdownInline markdown={problem.title} />
                 </div>
-                <div className="muted mt-1 text-xs">{domainLabel(problem.domain)}</div>
+                <div className="muted mt-1 text-xs">{translatedDomainLabel(problem.domain, t.home.domainLabels)}</div>
               </Link>
             ))}
           </div>
         </section>
 
         <section>
-          <h2 className="mb-3 font-semibold">Playlists</h2>
+          <h2 className="mb-3 font-semibold">Explorations</h2>
           <div className="grid gap-3">
-            {playlists.map((playlist) => (
-              <Link key={playlist.id} href={`/playlists/${playlist.slug}`} className="panel block p-4">
-                <div className="font-medium">{playlist.title}</div>
+            {explorations.map((exploration) => (
+              <Link key={exploration.id} href={`/explorations/${exploration.slug}/start` as never} className="panel block p-4">
+                <div className="font-medium">{exploration.title}</div>
               </Link>
             ))}
           </div>

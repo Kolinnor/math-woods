@@ -1,12 +1,15 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
 export default async function RecentChangesPage() {
+  const user = await getCurrentUser();
   const revisions = await prisma.pageRevision.findMany({
     include: { editedBy: true },
     orderBy: { createdAt: "desc" },
@@ -16,7 +19,10 @@ export default async function RecentChangesPage() {
   const problemIds = revisions.filter((item) => item.pageType === "PROBLEM").map((item) => item.pageId);
   const [concepts, problems] = await Promise.all([
     prisma.concept.findMany({ where: { id: { in: conceptIds } }, select: { id: true, slug: true, title: true } }),
-    prisma.problem.findMany({ where: { id: { in: problemIds } }, select: { id: true, slug: true, title: true } })
+    prisma.problem.findMany({
+      where: { id: { in: problemIds }, ...visibleProblemWhere(user) },
+      select: { id: true, slug: true, title: true }
+    })
   ]);
   const conceptsById = new Map(concepts.map((item) => [item.id, item]));
   const problemsById = new Map(problems.map((item) => [item.id, item]));

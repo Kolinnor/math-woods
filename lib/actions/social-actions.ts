@@ -4,18 +4,12 @@ import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
-import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { acceptedFriendshipBetween, directChatPair } from "@/lib/direct-chat";
+import { sendDirectChatMessage } from "@/lib/direct-chat";
 import { clearFriendRequestNotifications } from "@/lib/notification-lifecycle";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
-
-async function renderMarkdownContent(markdown: string) {
-  const { renderMarkdown } = await import("@/lib/markdown");
-  return renderMarkdown(markdown);
-}
 
 async function friendshipBetween(userId: number, otherUserId: number) {
   return prisma.friendship.findFirst({
@@ -216,43 +210,9 @@ export async function sendFriendRequestByUsernameFormAction(
 export async function createChatMessageAction(otherUsername: string, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`chat-message:${user.id}`, 30, 60_000);
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Message");
-  const otherUser = await prisma.user.findUnique({
-    where: { username: otherUsername },
-    select: { id: true, username: true, deletedAt: true }
-  });
-
-  if (!otherUser || otherUser.deletedAt) throw new Error("User not found.");
-  if (otherUser.id === user.id) throw new Error("You cannot chat with yourself.");
-
-  const friendship = await acceptedFriendshipBetween(user.id, otherUser.id);
-  if (!friendship) throw new Error("You can only chat with accepted friends.");
-
-  const pair = directChatPair(user.id, otherUser.id);
-  const chat = await prisma.directChat.upsert({
-    where: { userAId_userBId: pair },
-    update: { updatedAt: new Date() },
-    create: pair
-  });
-
-  await prisma.chatMessage.create({
-    data: {
-      directChatId: chat.id,
-      authorId: user.id,
-      bodyMarkdown,
-      bodyHtml: await renderMarkdownContent(bodyMarkdown)
-    }
-  });
-  await createNotification({
-    userId: otherUser.id,
-    actorId: user.id,
-    type: NotificationType.CHAT_MESSAGE,
-    title: "New message",
-    body: `${displayNameForUser(user)} sent you a message.`,
-    href: `/chat/${user.username}`
-  });
+  await sendDirectChatMessage(user, otherUsername, formData.get("bodyMarkdown"));
 
   revalidatePath("/friends");
-  revalidatePath(`/chat/${otherUser.username}`);
-  redirect(`/chat/${otherUser.username}` as never);
+  revalidatePath(`/chat/${otherUsername}`);
+  redirect(`/chat/${otherUsername}` as never);
 }

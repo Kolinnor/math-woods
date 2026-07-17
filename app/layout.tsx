@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import type { Route } from "next";
 import Link from "next/link";
 import { Inter, Spectral } from "next/font/google";
-import { Menu, Search } from "lucide-react";
+import { Menu } from "lucide-react";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { AchievementToast } from "@/components/AchievementToast";
+import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { FriendsMenu } from "@/components/FriendsMenu";
-import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { TimeZoneReporter } from "@/components/TimeZoneReporter";
@@ -149,24 +149,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="primary-nav">
               <Link href="/problems">{t.nav.problems}</Link>
               <Link href="/concepts">{t.nav.concepts}</Link>
-              <Link href="/playlists">{t.nav.playlists}</Link>
+              <Link href={"/explorations" as Route}>{t.nav.playlists}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
               <Link href={usersRoute}>{t.nav.users}</Link>
             </div>
             <div className="nav-tools">
               <LanguageSelector initialLanguage={initialLanguage} />
-              <LiveSearchForm action="/search" className="header-search" updatingLabel={t.nav.updatingResults}>
-                <Search size={16} aria-hidden="true" />
-                <input name="q" aria-label={t.nav.searchAriaLabel} placeholder={t.nav.searchPlaceholder} />
-              </LiveSearchForm>
               {user && <NotificationsMenu userId={user.id} />}
-              <details className="nav-menu">
+              <AutoClosingDetails className="nav-menu">
                 <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle}>
                   <Menu size={18} />
                 </summary>
                 <div className="nav-menu-popover">
                   <Link href="/recent-changes">{t.nav.recentChanges}</Link>
-                  <Link href="/contributing">{t.nav.contributing}</Link>
+                  {user && canUseAdminTools(user) && <Link href="/contributing">{t.nav.contributing}</Link>}
                   <Link href="/suggestions">{t.nav.suggestions}</Link>
                   <Link href="/about">{t.nav.about}</Link>
                   {user && <div className="nav-menu-divider" />}
@@ -186,7 +182,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     </Link>
                   )}
                 </div>
-              </details>
+              </AutoClosingDetails>
             </div>
           </nav>
           {needsEmailVerification && user && (

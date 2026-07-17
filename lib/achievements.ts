@@ -86,9 +86,11 @@ async function unlockAchievement(userId: number, key: AchievementKey) {
 }
 
 export async function checkSolveAchievements(userId: number) {
-  const solvedCount = await prisma.problemAttempt.count({
-    where: { userId, status: "SOLVED" }
+  const solvedAttempts = await prisma.problemAttempt.findMany({
+    where: { userId, status: "SOLVED" },
+    select: { problem: { select: { translationGroupId: true } } }
   });
+  const solvedCount = new Set(solvedAttempts.map((attempt) => attempt.problem.translationGroupId)).size;
 
   if (solvedCount >= 1) await unlockAchievement(userId, "first-clearing");
   if (solvedCount >= 10) await unlockAchievement(userId, "pathfinder");
@@ -138,14 +140,15 @@ export async function checkConceptAchievements(userId: number) {
 }
 
 export async function checkProblemSolvedByOthersAchievements(userId: number) {
-  const solvedProblemGroups = await prisma.problemAttempt.groupBy({
-    by: ["problemId"],
+  const solvedProblems = await prisma.problemAttempt.findMany({
     where: {
       status: "SOLVED",
       userId: { not: userId },
       problem: { authorId: userId }
-    }
+    },
+    select: { problem: { select: { translationGroupId: true } } }
   });
+  const solvedProblemGroups = new Set(solvedProblems.map((attempt) => attempt.problem.translationGroupId));
 
-  if (solvedProblemGroups.length >= 5) await unlockAchievement(userId, "trail-maker");
+  if (solvedProblemGroups.size >= 5) await unlockAchievement(userId, "trail-maker");
 }

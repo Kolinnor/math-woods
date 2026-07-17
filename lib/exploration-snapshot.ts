@@ -1,0 +1,78 @@
+export type ExplorationSnapshotOption = {
+  id: number;
+  label: string;
+  value: string | null;
+  feedbackHtml: string | null;
+  isCorrect: boolean | null;
+  toPageId: number | null;
+  effects: unknown;
+  position: number;
+};
+
+export type ExplorationSnapshotBlock = {
+  id: number;
+  key: string;
+  kind: string;
+  title: string | null;
+  bodyMarkdown: string | null;
+  bodyHtml: string | null;
+  explanationHtml: string | null;
+  position: number;
+  quizType: string | null;
+  settings: unknown;
+  visibilityRule: unknown;
+  required: boolean;
+  points: number;
+  problem: {
+    id: number;
+    slug: string;
+    title: string;
+    difficulty: number | null;
+    authorId: number;
+    qualityStatus: string;
+    translationGroupId: string;
+  } | null;
+  concept: { id: number; slug: string; title: string; translationGroupId: string } | null;
+  options: ExplorationSnapshotOption[];
+};
+
+export type ExplorationSnapshotPage = {
+  id: number;
+  key: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  position: number;
+  isStart: boolean;
+  isEnd: boolean;
+  visibilityRule: unknown;
+  blocks: ExplorationSnapshotBlock[];
+};
+
+export function explorationSnapshotPages(snapshot: unknown): ExplorationSnapshotPage[] {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return [];
+  const pages = (snapshot as { pages?: unknown }).pages;
+  if (!Array.isArray(pages)) return [];
+  const validPages = pages.filter((page): page is ExplorationSnapshotPage => {
+    if (!page || typeof page !== "object" || Array.isArray(page)) return false;
+    const candidate = page as Partial<ExplorationSnapshotPage>;
+    return typeof candidate.id === "number" && typeof candidate.key === "string" && Array.isArray(candidate.blocks);
+  });
+  const configuredEnd = validPages.find((page) => page.isEnd === true);
+  const fallbackEnd = configuredEnd
+    ? null
+    : validPages.reduce<ExplorationSnapshotPage | null>(
+        (last, page) => !last || page.position > last.position ? page : last,
+        null
+      );
+  return validPages.map((page) => ({
+    ...page,
+    isEnd: page.id === (configuredEnd?.id ?? fallbackEnd?.id)
+  }));
+}
+
+export function findSnapshotBlock(snapshot: unknown, pageKey: string, blockKey: string) {
+  const page = explorationSnapshotPages(snapshot).find((candidate) => candidate.key === pageKey);
+  const block = page?.blocks.find((candidate) => candidate.key === blockKey);
+  return page && block ? { page, block } : null;
+}

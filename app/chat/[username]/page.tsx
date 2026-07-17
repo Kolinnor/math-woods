@@ -8,6 +8,7 @@ import { createChatMessageAction, sendFriendRequestAction } from "@/lib/actions/
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { directChatPair } from "@/lib/direct-chat";
+import { getTranslations } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { displayNameForUser } from "@/lib/user-display";
@@ -17,6 +18,7 @@ const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
 
 export default async function ChatPage({ params }: { params: Promise<{ username: string }> }) {
   const user = await requireVerifiedUser();
+  const t = await getTranslations();
   const { username } = await params;
   const otherUser = await prisma.user.findUnique({
     where: { username },
@@ -46,28 +48,28 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
     return (
       <ForestPageLayout
         title={displayNameForUser(otherUser)}
-        eyebrow="Private chat"
+        eyebrow={t.social.privateChat}
         heroImage={SOCIAL_HERO_ART.src}
         heroAlt={SOCIAL_HERO_ART.alt}
-        description="A private LaTeX-friendly conversation between friends."
+        description={t.social.privateChatDescription}
         workspaceClassName="forest-page-workspace-narrow"
         actions={
           <Link href={"/friends" as never} className="button secondary">
-            Friends
+            {t.social.friends}
           </Link>
         }
       >
         <section className="panel grid gap-4 p-5">
           <div>
-            <h2 className="text-lg font-semibold">Friends only</h2>
+            <h2 className="text-lg font-semibold">{t.social.friendsOnly}</h2>
           </div>
-          <p className="muted">You can start a private chat once you are friends.</p>
+          <p className="muted">{t.social.friendsOnlyDescription}</p>
           <div className="flex flex-wrap gap-2">
             <form action={sendFriendRequestAction.bind(null, otherUser.username)}>
-              <button type="submit">Send friend request</button>
+              <button type="submit">{t.social.sendFriendRequest}</button>
             </form>
             <Link href={"/friends" as never} className="button secondary">
-              Friends
+              {t.social.friends}
             </Link>
           </div>
         </section>
@@ -100,18 +102,18 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
   return (
     <ForestPageLayout
       title={displayNameForUser(otherUser)}
-      eyebrow="Private chat"
+      eyebrow={t.social.privateChat}
       heroImage={SOCIAL_HERO_ART.src}
       heroAlt={SOCIAL_HERO_ART.alt}
-      description="A private LaTeX-friendly conversation between friends."
+      description={t.social.privateChatDescription}
       workspaceClassName="forest-page-workspace-narrow"
       actions={
         <>
           <Link href={"/friends" as never} className="button secondary">
-            Friends
+            {t.social.friends}
           </Link>
           <Link href={`/profile/${otherUser.username}`} className="button secondary">
-            Profile
+            {t.social.profile}
           </Link>
         </>
       }
@@ -122,10 +124,15 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           currentUserId={user.id}
           otherUsername={otherUser.username}
           initialMessages={messages}
+          labels={{
+            live: t.social.live,
+            livePaused: t.social.livePaused,
+            noMessagesYet: t.social.noMessagesYet
+          }}
         />
 
         <form action={createChatMessageAction.bind(null, otherUser.username)} className="panel mt-5 grid gap-3 p-5">
-          <h2 className="font-semibold">Message</h2>
+          <h2 className="font-semibold">{t.social.message}</h2>
           <LazyMarkdownEditor
             name="bodyMarkdown"
             minHeight="9rem"
@@ -133,7 +140,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
             draftKey={`chat:${otherUser.id}:message`}
             resetSignal={ownMessageResetSignal}
           />
-          <button type="submit">Send</button>
+          <button type="submit">{t.social.send}</button>
         </form>
       </div>
     </ForestPageLayout>

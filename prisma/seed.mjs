@@ -1,4 +1,4 @@
-import { PlaylistNodeKind, PrismaClient, SourceType, TargetType } from "@prisma/client";
+import { ExplorationBlockKind, ExplorationStatus, PlaylistNodeKind, PrismaClient, SourceType, TargetType } from "@prisma/client";
 import { pbkdf2Sync, randomBytes } from "node:crypto";
 import katex from "katex";
 import { marked } from "marked";
@@ -385,12 +385,6 @@ async function main() {
     }
   }
 
-  await prisma.conceptWatch.upsert({
-    where: { userId_conceptId: { userId: curator.id, conceptId: viete.id } },
-    update: {},
-    create: { userId: curator.id, conceptId: viete.id }
-  });
-
   const talkPost = await prisma.conceptTalkPost.findFirst({
     where: { conceptId: viete.id, authorId: curator.id }
   });
@@ -622,6 +616,8 @@ async function main() {
     where: { slug: "polynomials-first-path" },
     update: {
       title: "Polynomials: First Path",
+      status: ExplorationStatus.PUBLISHED,
+      publishedAt: new Date(),
       descriptionMarkdown:
         "A short first path for testing [[polynomial|polynomials]], roots, and coefficients.",
       descriptionHtml: simpleHtml(
@@ -636,7 +632,9 @@ async function main() {
       descriptionHtml: simpleHtml(
         "A short first path for testing [[polynomial|polynomials]], roots, and coefficients."
       ),
-      authorId: curator.id
+      authorId: curator.id,
+      status: ExplorationStatus.PUBLISHED,
+      publishedAt: new Date()
     }
   });
 
@@ -716,6 +714,91 @@ async function main() {
         position: 1
       }
     ]
+  });
+
+  await prisma.explorationPage.deleteMany({ where: { playlistId: playlist.id } });
+  const introPage = await prisma.explorationPage.create({
+    data: {
+      playlistId: playlist.id,
+      key: "seed-introduction",
+      slug: "introduction",
+      title: "Start with the object",
+      summary: "Recall the central object before testing the coefficient language.",
+      position: 1,
+      isStart: true
+    }
+  });
+  const exercisePage = await prisma.explorationPage.create({
+    data: {
+      playlistId: playlist.id,
+      key: "seed-exercise",
+      slug: "roots-and-coefficients",
+      title: "Try roots and coefficients",
+      position: 2
+    }
+  });
+  const reviewPage = await prisma.explorationPage.create({
+    data: {
+      playlistId: playlist.id,
+      key: "seed-review",
+      slug: "vieta-review",
+      title: "Review Vieta relations",
+      position: 3,
+      isEnd: true,
+      visibilityRule: { variable: "needsVietaReview", operator: "equals", value: true }
+    }
+  });
+  await prisma.explorationBlock.create({
+    data: {
+      pageId: introPage.id,
+      kind: ExplorationBlockKind.CONCEPT,
+      conceptId: polynomial.id,
+      bodyMarkdown: "Read the definition, then check how comfortable the language feels.",
+      bodyHtml: await renderedDemoHtml("Read the definition, then check how comfortable the language feels."),
+      position: 1
+    }
+  });
+  const confidenceBlock = await prisma.explorationBlock.create({
+    data: {
+      pageId: introPage.id,
+      key: "seed-confidence-choice",
+      kind: ExplorationBlockKind.CHOICE,
+      title: "Does the definition feel clear?",
+      position: 2,
+      required: true
+    }
+  });
+  await prisma.explorationBlockOption.createMany({
+    data: [
+      { blockId: confidenceBlock.id, label: "Yes, try the exercise", toPageId: exercisePage.id, position: 1 },
+      {
+        blockId: confidenceBlock.id,
+        label: "I need a reminder",
+        toPageId: reviewPage.id,
+        effects: [{ variable: "needsVietaReview", operation: "set", value: true }],
+        position: 2
+      }
+    ]
+  });
+  await prisma.explorationBlock.create({
+    data: {
+      pageId: exercisePage.id,
+      kind: ExplorationBlockKind.PROBLEM,
+      problemId: problem.id,
+      bodyMarkdown: "Use this as the first serious check that the coefficient language is usable.",
+      bodyHtml: await renderedDemoHtml("Use this as the first serious check that the coefficient language is usable."),
+      position: 1
+    }
+  });
+  await prisma.explorationBlock.create({
+    data: {
+      pageId: reviewPage.id,
+      kind: ExplorationBlockKind.CONCEPT,
+      conceptId: viete.id,
+      bodyMarkdown: "Revisit the relationship between roots and coefficients, then return to the exercise.",
+      bodyHtml: await renderedDemoHtml("Revisit the relationship between roots and coefficients, then return to the exercise."),
+      position: 1
+    }
   });
 
   await prisma.problemFavorite.upsert({

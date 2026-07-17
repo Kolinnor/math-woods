@@ -136,6 +136,11 @@ const notificationOptions = [
     type: NotificationType.CHAT_MESSAGE,
     title: "Private chat messages",
     description: "When a friend sends you a private message."
+  },
+  {
+    type: NotificationType.EXPLORATION_PUBLISHED,
+    title: "New exploration editions",
+    description: "When an exploration you follow publishes a new edition."
   }
 ] as const;
 

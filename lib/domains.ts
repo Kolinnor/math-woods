@@ -221,6 +221,28 @@ export function domainLabel(domain: MathDomain | string) {
   return findDomainOption(domain)?.label ?? "Other";
 }
 
+export function translatedDomainLabel(
+  domain: MathDomain | string,
+  labels: Partial<Record<string, string>>
+) {
+  const option = findDomainOption(domain);
+  if (!option) return labels[MathDomain.OTHER] ?? "Other";
+  return labels[option.value] ?? labels[option.domain] ?? option.label;
+}
+
+export function translatedDomainOptions(
+  domains: readonly DomainOption[],
+  labels: Partial<Record<string, string>>
+): DomainOption[] {
+  return domains.map((domain) => ({
+    ...domain,
+    label: translatedDomainLabel(domain.value, labels),
+    ...(domain.children
+      ? { children: translatedDomainOptions(domain.children, labels) }
+      : {})
+  }));
+}
+
 export function domainDescription(domain: MathDomain | string | null | undefined) {
   const option = findDomainOption(domain);
   if (!option) return null;

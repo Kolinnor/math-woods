@@ -6,7 +6,14 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { prisma } from "@/lib/db";
-import { coarseDomainForCode, domainCodeAliases, domainLabel, parseDomainCode, PROBLEM_DOMAINS } from "@/lib/domains";
+import {
+  coarseDomainForCode,
+  domainCodeAliases,
+  domainLabel,
+  parseDomainCode,
+  PROBLEM_DOMAINS,
+  translatedDomainLabel as translatedDomainOptionLabel
+} from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { missingConcepts } from "@/lib/internal-links";
@@ -25,8 +32,8 @@ function sourceTypeLabel(sourceType: "PROBLEM" | "CONCEPT" | "PLAYLIST", t: Dict
   return t.sourceTypes[sourceType];
 }
 
-function translatedDomainLabel(domain: MathDomain, t: Dictionary) {
-  return t.home.domainLabels[domain] ?? domainLabel(domain);
+function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
+  return translatedDomainOptionLabel(domain, t.home.domainLabels);
 }
 
 type ConceptSort = "updated" | "linked";
@@ -136,23 +143,15 @@ export default async function ConceptsPage({
       }
       actions={
         <>
-          <Link href="/contributing" className="button secondary">
-            {t.concepts.guidelines}
-          </Link>
-          <Link href="/concepts/random" className="button secondary">
+          <Link href="/concepts/random" className="button secondary concept-browser-action-button">
             {t.concepts.random}
           </Link>
-          <Link href="/recent-changes" className="button secondary">
-            {t.concepts.recentChanges}
-          </Link>
-          <Link href="/watchlist" className="button secondary">
-            {t.concepts.watchlist}
-          </Link>
-          <Link href="/concepts/new" className="button">
+          <Link href="/concepts/new" className="button concept-browser-action-button">
             {t.concepts.new}
           </Link>
           <ContributionRequestDialog
             action={createContributionRequestAction.bind(null, "CONCEPT", "/concepts")}
+            buttonClassName="concept-browser-action-button"
             buttonLabel={t.concepts.requestConcept}
             title={t.concepts.requestConcept}
             description={t.concepts.requestConceptDescription}
@@ -216,13 +215,13 @@ export default async function ConceptsPage({
         </>
       }
     >
-      <LiveSearchForm className="filter-bar mb-6 grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem_12rem_auto]">
+      <LiveSearchForm className="filter-bar concept-search-bar mb-6 grid gap-3 p-4" persistKey="concepts">
         <input name="q" defaultValue={query} placeholder={t.concepts.searchPlaceholder} />
         <select name="domain" defaultValue={domainValue ?? ""}>
           <option value="">{t.concepts.anyDomain}</option>
           {PROBLEM_DOMAINS.map((item) => (
             <option key={item.value} value={item.value}>
-              {item.label}
+              {translatedDomainLabel(item.value, t)}
             </option>
           ))}
         </select>

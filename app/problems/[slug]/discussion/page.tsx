@@ -14,14 +14,17 @@ import {
 } from "@/lib/actions/problem-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getTranslations } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canEditDiscussionHint, canEditProblem, canViewArchivedProblem } from "@/lib/permissions";
+import { canViewProblem } from "@/lib/problem-visibility";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProblemDiscussionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const t = await getTranslations();
   const user = await getCurrentUser();
   const problem = await prisma.problem.findUnique({
     where: { slug },
@@ -41,14 +44,16 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
 
   if (!problem) notFound();
   if (problem.status === "ARCHIVED" && !canViewArchivedProblem(user, problem)) notFound();
+  if (!canViewProblem(user, problem)) notFound();
   if (user) {
     await markNotificationsReadForHref(user.id, `/problems/${problem.slug}/discussion`, NotificationType.DISCUSSION_POSTED);
   }
 
   const [attempt, postVoteGroups, userVotes] = await Promise.all([
     user
-      ? prisma.problemAttempt.findUnique({
-          where: { userId_problemId: { userId: user.id, problemId: problem.id } }
+      ? prisma.problemAttempt.findFirst({
+          where: { userId: user.id, problem: { translationGroupId: problem.translationGroupId } },
+          orderBy: { discussionUnlockAt: "asc" }
         })
       : null,
     problem.thread?.posts.length
@@ -81,20 +86,20 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="muted text-sm">Problem discussion</p>
+          <p className="muted text-sm">{t.problemDetail.discussions}</p>
           <h1 className="text-2xl font-bold">
             <AsyncMarkdownInline markdown={problem.title} />
           </h1>
         </div>
         <Link href={`/problems/${problem.slug}`} className="button secondary">
-          Problem
+          {t.problemDetail.problem}
         </Link>
       </div>
 
       {!user && (
         <p className="muted panel p-5">
           <Link href="/login" className="underline">
-            Sign in
+            {t.nav.signIn}
           </Link>{" "}
           to start this problem and reveal the discussion.
         </p>
@@ -172,7 +177,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                 </article>
               );
             })}
-            {(problem.thread?.posts.length ?? 0) === 0 && <p className="muted panel p-5">No messages yet.</p>}
+            {(problem.thread?.posts.length ?? 0) === 0 && <p className="muted panel p-5">{t.problemDetail.noMessagesYet}</p>}
           </div>
 
           <form action={createDiscussionPostAction.bind(null, problem.id, true)} className="panel mt-6 grid gap-3 p-5">

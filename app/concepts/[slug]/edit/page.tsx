@@ -9,13 +9,15 @@ import { TranslationReferencePanel } from "@/components/TranslationReferencePane
 import { deleteConceptAction, updateConceptAction } from "@/lib/actions/concept-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { PROBLEM_DOMAINS } from "@/lib/domains";
+import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
+import { getTranslations } from "@/lib/i18n/server";
 import { canDeleteConcept, canEditConcept, canSetConceptStatus, canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditConceptPage({ params }: { params: Promise<{ slug: string }> }) {
   const user = await requireVerifiedUser();
+  const t = await getTranslations();
   const { slug } = await params;
   const concept = await prisma.concept.findUnique({
     where: { slug },
@@ -100,7 +102,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
         )}
         <div className="grid gap-4">
           <ProblemDomainPicker
-            domains={PROBLEM_DOMAINS}
+            domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
             helpText="Choose one Math Woods domain."
             initialValues={[concept.domain]}
             inputName="domain"

@@ -1,13 +1,15 @@
 "use server";
 
-import { PlaylistNodeKind, TargetType, VoteType } from "@prisma/client";
+import { PlaylistNodeKind } from "@prisma/client";
+import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser, requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
+import { canEditExploration } from "@/lib/explorations";
 import { parseContentLanguage } from "@/lib/languages";
-import { canDeletePlaylist, canEditPlaylist } from "@/lib/permissions";
+import { canDeletePlaylist } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -21,12 +23,12 @@ async function requirePlaylistEditor(playlistId: number, requireVerified = false
   const user = requireVerified ? await requireVerifiedUser() : await requireUser();
   const playlist = await prisma.playlist.findUnique({
     where: { id: playlistId },
-    select: { id: true, slug: true, authorId: true }
+    include: { collaborators: true }
   });
 
-  if (!playlist) throw new Error("Playlist not found.");
-  if (!canEditPlaylist(user, playlist)) {
-    throw new Error("Only the playlist creator can edit this playlist.");
+  if (!playlist) throw new Error("Exploration not found.");
+  if (!canEditExploration(user, playlist)) {
+    throw new Error("You cannot edit this exploration.");
   }
 
   return { user, playlist };
@@ -40,7 +42,7 @@ export async function createPlaylistAction(formData: FormData) {
   const descriptionMarkdown = boundedText(
     formData.get("descriptionMarkdown"),
     CONTENT_LIMITS.markdown,
-    "Playlist description"
+    "Exploration description"
   );
 
   const playlist = await prisma.playlist.create({
@@ -54,8 +56,8 @@ export async function createPlaylistAction(formData: FormData) {
     }
   });
 
-  revalidatePath("/playlists");
-  redirect(`/playlists/${playlist.slug}`);
+  revalidatePath("/explorations");
+  redirect(`/explorations/${playlist.slug}` as Route);
 }
 
 export async function deletePlaylistAction(playlistId: number) {
@@ -66,9 +68,9 @@ export async function deletePlaylistAction(playlistId: number) {
     where: { id: playlistId },
     select: { id: true, slug: true, authorId: true }
   });
-  if (!playlist) throw new Error("Playlist not found.");
+  if (!playlist) throw new Error("Exploration not found.");
   if (!canDeletePlaylist(user, playlist)) {
-    throw new Error("You cannot delete this playlist.");
+    throw new Error("You cannot delete this exploration.");
   }
 
   await prisma.playlist.delete({
@@ -76,11 +78,11 @@ export async function deletePlaylistAction(playlistId: number) {
   });
 
   revalidatePath("/");
-  revalidatePath("/playlists");
-  revalidatePath(`/playlists/${playlist.slug}`);
-  revalidatePath(`/playlists/${playlist.slug}/start`);
-  revalidatePath(`/playlists/${playlist.slug}/edit`);
-  redirect("/playlists");
+  revalidatePath("/explorations");
+  revalidatePath(`/explorations/${playlist.slug}`);
+  revalidatePath(`/explorations/${playlist.slug}/start`);
+  revalidatePath(`/explorations/${playlist.slug}/edit`);
+  redirect("/explorations" as Route);
 }
 
 export async function addProblemToPlaylistAction(playlistId: number, formData: FormData) {
@@ -108,58 +110,14 @@ export async function addProblemToPlaylistAction(playlistId: number, formData: F
       playlistId,
       problemId: problem.id,
       position: (last?.position ?? 0) + 1,
-      noteMarkdown: boundedText(formData.get("noteMarkdown"), CONTENT_LIMITS.longNote, "Playlist item note") || null
+      noteMarkdown: boundedText(formData.get("noteMarkdown"), CONTENT_LIMITS.longNote, "Exploration item note") || null
     }
   });
 
-  revalidatePath("/playlists");
-  revalidatePath(`/playlists/${playlist.slug}`);
-  revalidatePath(`/playlists/${playlist.slug}/start`);
-  revalidatePath(`/playlists/${playlist.slug}/edit`);
-}
-
-export async function votePlaylistAction(playlistId: number) {
-  const user = await requireVerifiedUser();
-  await assertRateLimit(`vote:${user.id}`, 120, 60_000);
-  const playlist = await prisma.playlist.findUnique({
-    where: { id: playlistId },
-    select: { slug: true }
-  });
-  const key = {
-    userId: user.id,
-    targetType: TargetType.PLAYLIST,
-    targetId: playlistId
-  };
-  const existing = await prisma.vote.findUnique({
-    where: { userId_targetType_targetId: key }
-  });
-
-  if (existing) {
-    await prisma.vote.delete({ where: { userId_targetType_targetId: key } });
-  } else {
-    await prisma.vote.create({ data: { ...key, voteType: VoteType.UP } });
-  }
-
-  revalidatePath("/playlists");
-  if (playlist) revalidatePath(`/playlists/${playlist.slug}`);
-}
-
-export async function togglePlaylistFollowAction(playlistId: number, playlistSlug: string) {
-  const user = await requireVerifiedUser();
-  await assertRateLimit(`playlist-follow:${user.id}`, 60, 60_000);
-  const key = { userId: user.id, playlistId };
-  const existing = await prisma.playlistFollow.findUnique({
-    where: { userId_playlistId: key }
-  });
-
-  if (existing) {
-    await prisma.playlistFollow.delete({ where: { userId_playlistId: key } });
-  } else {
-    await prisma.playlistFollow.create({ data: key });
-  }
-
-  revalidatePath(`/playlists/${playlistSlug}`);
-  revalidatePath("/playlists");
+  revalidatePath("/explorations");
+  revalidatePath(`/explorations/${playlist.slug}`);
+  revalidatePath(`/explorations/${playlist.slug}/start`);
+  revalidatePath(`/explorations/${playlist.slug}/edit`);
 }
 
 export async function addPlaylistNodeAction(playlistId: number, playlistSlug: string, formData: FormData) {
@@ -215,9 +173,9 @@ export async function addPlaylistNodeAction(playlistId: number, playlistSlug: st
     }
   });
 
-  revalidatePath(`/playlists/${playlistSlug}`);
-  revalidatePath(`/playlists/${playlistSlug}/start`);
-  revalidatePath(`/playlists/${playlistSlug}/edit`);
+  revalidatePath(`/explorations/${playlistSlug}`);
+  revalidatePath(`/explorations/${playlistSlug}/start`);
+  revalidatePath(`/explorations/${playlistSlug}/edit`);
 }
 
 export async function addPlaylistChoiceAction(playlistId: number, playlistSlug: string, formData: FormData) {
@@ -236,7 +194,7 @@ export async function addPlaylistChoiceAction(playlistId: number, playlistSlug: 
     where: { playlistId, id: { in: [fromNodeId, toNodeId] } },
     select: { id: true }
   });
-  if (nodes.length !== 2) throw new Error("Both steps must belong to this playlist.");
+  if (nodes.length !== 2) throw new Error("Both steps must belong to this exploration.");
 
   const last = await prisma.playlistChoice.findFirst({
     where: { fromNodeId },
@@ -253,7 +211,7 @@ export async function addPlaylistChoiceAction(playlistId: number, playlistSlug: 
     }
   });
 
-  revalidatePath(`/playlists/${playlistSlug}`);
-  revalidatePath(`/playlists/${playlistSlug}/start`);
-  revalidatePath(`/playlists/${playlistSlug}/edit`);
+  revalidatePath(`/explorations/${playlistSlug}`);
+  revalidatePath(`/explorations/${playlistSlug}/start`);
+  revalidatePath(`/explorations/${playlistSlug}/edit`);
 }

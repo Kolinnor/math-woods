@@ -1,18 +1,20 @@
-export const MARKDOWN_IMAGE_WIDTHS = [25, 50, 75, 100] as const;
-
-export type MarkdownImageWidth = (typeof MARKDOWN_IMAGE_WIDTHS)[number];
+export type MarkdownImageWidth = number;
 
 const WIDTH_FRAGMENT_PREFIX = "mw-width-";
+const MIN_IMAGE_WIDTH = 5;
+const MAX_IMAGE_WIDTH = 100;
 
 export function normalizeMarkdownImageWidth(value: unknown): MarkdownImageWidth {
   const parsed = Number(value);
-  return MARKDOWN_IMAGE_WIDTHS.includes(parsed as MarkdownImageWidth) ? (parsed as MarkdownImageWidth) : 100;
+  if (!Number.isFinite(parsed)) return 100;
+  return Math.min(MAX_IMAGE_WIDTH, Math.max(MIN_IMAGE_WIDTH, Math.round(parsed)));
 }
 
 export function markdownImageSrcWithWidth(src: string, width: MarkdownImageWidth) {
   const clean = markdownImageSizingFromSrc(src).src;
   const url = new URL(clean);
-  url.hash = width === 100 ? "" : `${WIDTH_FRAGMENT_PREFIX}${width}`;
+  const normalizedWidth = normalizeMarkdownImageWidth(width);
+  url.hash = normalizedWidth === 100 ? "" : `${WIDTH_FRAGMENT_PREFIX}${normalizedWidth}`;
   return url.toString();
 }
 
@@ -26,7 +28,7 @@ export function markdownImageSizingFromSrc(src: string): { src: string; width: M
   }
 
   const hash = decodeURIComponent(url.hash.replace(/^#/, ""));
-  const match = hash.match(/^mw-width-(25|50|75|100)$/);
+  const match = hash.match(/^mw-width-(\d{1,3}(?:\.\d+)?)$/);
   const width = match ? normalizeMarkdownImageWidth(match[1]) : 100;
 
   if (match) url.hash = "";

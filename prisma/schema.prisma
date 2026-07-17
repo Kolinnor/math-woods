@@ -100,6 +100,53 @@ enum PlaylistNodeKind {
   NOTE
 }
 
+enum ExplorationStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExplorationCollaboratorRole {
+  EDITOR
+  REVIEWER
+}
+
+enum ExplorationBlockKind {
+  MARKDOWN
+  HEADING
+  DEFINITION
+  THEOREM
+  LEMMA
+  PROPOSITION
+  COROLLARY
+  PROOF
+  EXAMPLE
+  COUNTEREXAMPLE
+  REMARK
+  CALLOUT
+  IMAGE
+  DIVIDER
+  PROBLEM
+  CONCEPT
+  QUIZ
+  CHOICE
+}
+
+enum ExplorationQuizType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_TEXT
+  NUMBER
+}
+
+enum ExplorationSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
 enum ReportStatus {
   OPEN
   REVIEWED
@@ -143,6 +190,7 @@ enum NotificationType {
   CONTRIBUTION_REQUEST_REMINDER
   FRIEND_REQUEST
   CHAT_MESSAGE
+  EXPLORATION_PUBLISHED
 }
 
 enum ProblemVerificationMode {
@@ -191,7 +239,6 @@ model User {
   conceptsEdited               Concept[]                    @relation("ConceptLastEditedBy")
   revisions                    PageRevision[]
   conceptTalkPosts             ConceptTalkPost[]
-  conceptWatches               ConceptWatch[]
   attempts                     ProblemAttempt[]
   posts                        DiscussionPost[]
   playlists                    Playlist[]
@@ -222,6 +269,9 @@ model User {
   chatMessages                 ChatMessage[]
   contributionRequestsCreated  ContributionRequest[]        @relation("ContributionRequestRequester")
   contributionRequestsClaimed  ContributionRequest[]        @relation("ContributionRequestClaimedBy")
+  explorationCollaborations    ExplorationCollaborator[]
+  explorationEditionsPublished ExplorationEdition[]         @relation("ExplorationEditionPublisher")
+  explorationSessions          ExplorationSession[]
 }
 
 model EmailVerificationToken {
@@ -333,6 +383,7 @@ model Problem {
   hints                    ProblemHint[]
   proofs                   ProblemProof[]
   circuitNodes             PlaylistNode[]
+  explorationBlocks        ExplorationBlock[]
   quoteLinks               QuoteProblem[]
   relatedGroups            ProblemRelationGroup[]       @relation("ProblemRelationSource")
   incomingRelations        ProblemRelation[]            @relation("ProblemRelationTarget")
@@ -384,8 +435,8 @@ model Concept {
   aliases                   ConceptAlias[]
   references                ConceptReference[]
   talkPosts                 ConceptTalkPost[]
-  watchers                  ConceptWatch[]
   circuitNodes              PlaylistNode[]
+  explorationBlocks         ExplorationBlock[]
   quoteLinks                QuoteConcept[]
   translatedFromConcept     Concept?           @relation("ConceptTranslationSource", fields: [translatedFromConceptId], references: [id], onDelete: SetNull)
   derivedTranslations       Concept[]          @relation("ConceptTranslationSource")
@@ -472,17 +523,6 @@ model ConceptTalkPost {
   author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([conceptId, createdAt])
-}
-
-model ConceptWatch {
-  userId    Int
-  conceptId Int
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  concept   Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
-
-  @@id([userId, conceptId])
-  @@index([conceptId])
 }
 
 model InternalLink {
@@ -670,25 +710,187 @@ model Vote {
 }
 
 model Playlist {
-  id                  Int                @id @default(autoincrement())
-  slug                String             @unique
-  language            String             @default("en")
-  translationGroupId  String             @default(cuid())
-  title               String
-  descriptionMarkdown String
-  descriptionHtml     String
-  authorId            Int
-  visibility          PlaylistVisibility @default(PUBLIC)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  author              User               @relation(fields: [authorId], references: [id])
-  items               PlaylistItem[]
-  followers           PlaylistFollow[]
-  circuitNodes        PlaylistNode[]
+  id                    Int                       @id @default(autoincrement())
+  slug                  String                    @unique
+  language              String                    @default("en")
+  translationGroupId    String                    @default(cuid())
+  title                 String
+  summary               String?
+  descriptionMarkdown   String
+  descriptionHtml       String
+  coverImageUrl         String?
+  domain                MathDomain                @default(OTHER)
+  audience              String?
+  prerequisitesMarkdown String?
+  prerequisitesHtml     String?
+  estimatedMinutes      Int?
+  difficulty            Int?
+  license               String                    @default("CC BY-NC-SA 4.0")
+  authorId              Int
+  visibility            PlaylistVisibility        @default(PUBLIC)
+  status                ExplorationStatus         @default(DRAFT)
+  publishedAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  author                User                      @relation(fields: [authorId], references: [id])
+  items                 PlaylistItem[]
+  followers             PlaylistFollow[]
+  circuitNodes          PlaylistNode[]
+  pages                 ExplorationPage[]
+  collaborators         ExplorationCollaborator[]
+  editions              ExplorationEdition[]
+  explorationSessions   ExplorationSession[]
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
   @@index([translationGroupId])
+}
+
+model ExplorationPage {
+  id              Int                      @id @default(autoincrement())
+  playlistId      Int
+  key             String                   @default(cuid())
+  slug            String
+  title           String
+  summary         String?
+  position        Int
+  isStart         Boolean                  @default(false)
+  isEnd           Boolean                  @default(false)
+  visibilityRule  Json?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  playlist        Playlist                 @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  blocks          ExplorationBlock[]
+  incomingOptions ExplorationBlockOption[] @relation("ExplorationOptionTarget")
+  sessions        ExplorationSession[]
+
+  @@unique([playlistId, key])
+  @@unique([playlistId, slug])
+  @@index([playlistId, position])
+}
+
+model ExplorationBlock {
+  id                  Int                      @id @default(autoincrement())
+  pageId              Int
+  key                 String                   @default(cuid())
+  kind                ExplorationBlockKind     @default(MARKDOWN)
+  title               String?
+  bodyMarkdown        String?
+  bodyHtml            String?
+  explanationMarkdown String?
+  explanationHtml     String?
+  position            Int
+  problemId           Int?
+  conceptId           Int?
+  quizType            ExplorationQuizType?
+  settings            Json?
+  visibilityRule      Json?
+  required            Boolean                  @default(false)
+  points              Int                      @default(0)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  page                ExplorationPage          @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  problem             Problem?                 @relation(fields: [problemId], references: [id], onDelete: SetNull)
+  concept             Concept?                 @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+  options             ExplorationBlockOption[]
+  answers             ExplorationAnswer[]
+
+  @@unique([pageId, key])
+  @@index([pageId, position])
+  @@index([problemId])
+  @@index([conceptId])
+}
+
+model ExplorationBlockOption {
+  id               Int              @id @default(autoincrement())
+  blockId          Int
+  label            String
+  value            String?
+  feedbackMarkdown String?
+  feedbackHtml     String?
+  isCorrect        Boolean?
+  toPageId         Int?
+  effects          Json?
+  position         Int
+  createdAt        DateTime         @default(now())
+  block            ExplorationBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  toPage           ExplorationPage? @relation("ExplorationOptionTarget", fields: [toPageId], references: [id], onDelete: SetNull)
+
+  @@index([blockId, position])
+  @@index([toPageId])
+}
+
+model ExplorationCollaborator {
+  playlistId Int
+  userId     Int
+  role       ExplorationCollaboratorRole @default(EDITOR)
+  createdAt  DateTime                    @default(now())
+  playlist   Playlist                    @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user       User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, userId])
+  @@index([userId])
+}
+
+model ExplorationEdition {
+  id            Int                  @id @default(autoincrement())
+  playlistId    Int
+  version       Int
+  snapshot      Json
+  changeSummary String?
+  publishedById Int?
+  publishedAt   DateTime             @default(now())
+  playlist      Playlist             @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  publishedBy   User?                @relation("ExplorationEditionPublisher", fields: [publishedById], references: [id], onDelete: SetNull)
+  sessions      ExplorationSession[]
+
+  @@unique([playlistId, version])
+  @@index([playlistId, publishedAt])
+}
+
+model ExplorationSession {
+  id              Int                      @id @default(autoincrement())
+  playlistId      Int
+  userId          Int
+  editionId       Int?
+  currentPageId   Int?
+  currentPageKey  String?
+  state           Json                     @default("{}")
+  visitedPageIds  Json                     @default("[]")
+  visitedPageKeys Json                     @default("[]")
+  status          ExplorationSessionStatus @default(IN_PROGRESS)
+  score           Int                      @default(0)
+  maxScore        Int                      @default(0)
+  startedAt       DateTime                 @default(now())
+  lastSeenAt      DateTime                 @updatedAt
+  completedAt     DateTime?
+  playlist        Playlist                 @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  edition         ExplorationEdition?      @relation(fields: [editionId], references: [id], onDelete: SetNull)
+  currentPage     ExplorationPage?         @relation(fields: [currentPageId], references: [id], onDelete: SetNull)
+  answers         ExplorationAnswer[]
+
+  @@unique([playlistId, userId])
+  @@index([userId, lastSeenAt])
+  @@index([playlistId, status])
+}
+
+model ExplorationAnswer {
+  id        Int                @id @default(autoincrement())
+  sessionId Int
+  blockId   Int?
+  blockKey  String
+  response  Json
+  isCorrect Boolean?
+  score     Int                @default(0)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  session   ExplorationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  block     ExplorationBlock?  @relation(fields: [blockId], references: [id], onDelete: SetNull)
+
+  @@unique([sessionId, blockKey])
+  @@index([blockKey, isCorrect])
+  @@index([blockId])
 }
 
 model PlaylistItem {

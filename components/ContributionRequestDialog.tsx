@@ -4,6 +4,7 @@ import { useRef } from "react";
 
 type ContributionRequestDialogProps = {
   action: (formData: FormData) => void;
+  buttonClassName?: string;
   buttonLabel: string;
   description: string;
   placeholder: string;
@@ -12,6 +13,7 @@ type ContributionRequestDialogProps = {
 
 export function ContributionRequestDialog({
   action,
+  buttonClassName = "",
   buttonLabel,
   description,
   placeholder,
@@ -21,7 +23,11 @@ export function ContributionRequestDialog({
 
   return (
     <>
-      <button type="button" className="button contribution-request-button" onClick={() => dialogRef.current?.showModal()}>
+      <button
+        type="button"
+        className={`button contribution-request-button ${buttonClassName}`.trim()}
+        onClick={() => dialogRef.current?.showModal()}
+      >
         {buttonLabel}
       </button>
       <dialog ref={dialogRef} className="contribution-request-dialog">

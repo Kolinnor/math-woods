@@ -6,6 +6,7 @@ import { clearNotificationsAction } from "@/lib/actions/notification-actions";
 import { requireUser } from "@/lib/auth";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
+import { getTranslations } from "@/lib/i18n/server";
 import { cleanupNotificationsForUser, notificationOpenHref } from "@/lib/notification-lifecycle";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
   const user = await requireUser();
+  const t = await getTranslations();
   const timeZone = await getRequestTimeZone();
   await cleanupNotificationsForUser(user.id);
   const [unreadNotifications, readNotifications] = await Promise.all([
@@ -31,15 +33,15 @@ export default async function NotificationsPage() {
 
   return (
     <ForestPageLayout
-      title="Notifications"
-      eyebrow="Inbox"
+      title={t.notifications.title}
+      eyebrow={t.notifications.inbox}
       heroImage="/art/forest-road.jpg"
       heroAlt="Ivan Shishkin, Road in a Forest"
-      description="Recent updates from problems, concepts, discussions, and site activity."
+      description={t.notifications.description}
       meta={
         <>
-          <p>{notifications.length} shown</p>
-          <p>{unreadNotifications.length} unread</p>
+          <p>{t.notifications.shown(notifications.length)}</p>
+          <p>{t.notifications.unread(unreadNotifications.length)}</p>
         </>
       }
       actions={
@@ -47,7 +49,7 @@ export default async function NotificationsPage() {
           <form action={clearNotificationsAction}>
             <button type="submit" className="danger">
               <Trash2 size={16} />
-              Clear notifications
+              {t.notifications.clear}
             </button>
           </form>
         )
@@ -67,7 +69,7 @@ export default async function NotificationsPage() {
             <p>{notification.body}</p>
           </Link>
         ))}
-        {notifications.length === 0 && <p className="empty-state">No notifications yet.</p>}
+        {notifications.length === 0 && <p className="empty-state">{t.notifications.noNotifications}</p>}
       </div>
     </ForestPageLayout>
   );

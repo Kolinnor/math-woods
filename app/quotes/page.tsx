@@ -8,14 +8,16 @@ import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { createQuoteAction } from "@/lib/actions/quote-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getTranslations } from "@/lib/i18n/server";
 import { contentLanguageLabel } from "@/lib/languages";
 import { isVerifiedContributor } from "@/lib/permissions";
+import { canViewProblem } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
-async function findQuotes(where: Prisma.QuoteWhereInput) {
+async function findQuotes(where: Prisma.QuoteWhereInput, user: Awaited<ReturnType<typeof getCurrentUser>>) {
   try {
     const quotes = await prisma.quote.findMany({
       where,
@@ -28,7 +30,13 @@ async function findQuotes(where: Prisma.QuoteWhereInput) {
         _count: { select: { relatedProblems: true, relatedConcepts: true } }
       }
     });
-    return { quotes, unavailable: false };
+    return {
+      quotes: quotes.map((quote) => ({
+        ...quote,
+        relatedProblems: quote.relatedProblems.filter(({ problem }) => canViewProblem(user, problem))
+      })),
+      unavailable: false
+    };
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2021") {
       return { quotes: [], unavailable: true };
@@ -43,6 +51,7 @@ export default async function QuotesPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const user = await getCurrentUser();
+  const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
   const canContribute = Boolean(user && isVerifiedContributor(user));
   const { q = "" } = await searchParams;
@@ -59,7 +68,7 @@ export default async function QuotesPage({
       }
     : { language: preferredLanguage };
 
-  const { quotes, unavailable } = await findQuotes(where);
+  const { quotes, unavailable } = await findQuotes(where, user);
 
   return (
     <ForestPageLayout
@@ -125,7 +134,7 @@ export default async function QuotesPage({
         ) : (
           <p className="panel p-4 text-sm">
             <Link href="/login" className="underline">
-              Sign in
+              {t.nav.signIn}
             </Link>{" "}
             to add a quote.
           </p>

@@ -13,6 +13,7 @@ import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemHintReveal } from "@/components/ProblemHintReveal";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
+  dismissProblemTranslationStaleNoticeAction,
   markProblemGoodAction,
   markProblemSolvedAction,
   startAttemptAction,
@@ -34,15 +35,22 @@ import {
   canEditProblem,
   canEditSolution,
   canSetProblemQualityStatus,
+  canUseAdminTools,
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { heroArtForProblemDomain } from "@/lib/problem-hero-art";
+import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
 import { problemTranslationFreshness } from "@/lib/translation-freshness";
-import { nextMissingTranslationLanguage, preferredTranslationForLanguage } from "@/lib/translation-routing";
+import {
+  nextMissingTranslationLanguage,
+  preferredTranslationForLanguage,
+  requestedTranslationLanguage,
+  TRANSLATION_VIEW_LANGUAGE_PARAM
+} from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -55,10 +63,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       slug: true,
       title: true,
       bodyMarkdown: true,
-      translationGroupId: true
+      translationGroupId: true,
+      qualityStatus: true
     }
   });
-  if (!problem) return {};
+  if (!problem || problem.qualityStatus === QualityStatus.UNREVIEWED) return {};
 
   const translations = await prisma.problem.findMany({
     where: { translationGroupId: problem.translationGroupId },
@@ -115,7 +124,7 @@ export default async function ProblemPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ solution?: string; verification?: string }>;
+  searchParams?: Promise<{ solution?: string; verification?: string; viewLanguage?: string }>;
 }) {
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
@@ -155,7 +164,7 @@ export default async function ProblemPage({
         orderBy: { position: "asc" }
       },
       translatedFromProblem: {
-        select: { id: true, slug: true, title: true, language: true }
+        select: { id: true, slug: true, title: true, language: true, authorId: true }
       }
     }
   });
@@ -164,6 +173,7 @@ export default async function ProblemPage({
   const isOwnProblem = user?.id === problem.authorId;
   const canViewArchived = canViewArchivedProblem(user, problem);
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
+  if (!canViewProblem(user, problem)) notFound();
   if (user) {
     await markNotificationsReadForHref(user.id, `/problems/${problem.slug}`, [
       NotificationType.PROOF_ADDED,
@@ -176,9 +186,9 @@ export default async function ProblemPage({
     Boolean(problem.originChapter || problem.originPage || problem.originNote);
 
   const proofIds = problem.proofs.map((proof) => proof.id);
-  const relatedProblemIds = problem.relatedGroups.flatMap((group) =>
-    group.relations.map((relation) => relation.targetProblemId)
-  );
+  const relatedProblems = problem.relatedGroups.flatMap((group) =>
+    group.relations.map((relation) => relation.targetProblem)
+  ).filter((targetProblem) => canViewProblem(user, targetProblem));
   const proofVoteGroupsPromise = proofIds.length
     ? prisma.vote.groupBy({
         by: ["targetId"],
@@ -189,20 +199,21 @@ export default async function ProblemPage({
   const [
     translations,
     links,
-    attempt,
+    attemptsInTranslationGroup,
     playlists,
     ownVerificationRequests,
     pendingVerificationRequests,
     proofVoteGroups,
     userVotes,
     favorite,
-    favoriteCount,
+    groupFavoriteRows,
     relatedSolvedAttempts
   ] = await Promise.all([
     prisma.problem.findMany({
       where: {
         translationGroupId: problem.translationGroupId,
         id: { not: problem.id },
+        ...visibleProblemWhere(user),
         ...(canViewArchived ? {} : { status: { not: "ARCHIVED" } })
       },
       select: { slug: true, title: true, language: true },
@@ -213,10 +224,11 @@ export default async function ProblemPage({
       orderBy: { targetSlug: "asc" }
     }),
     user
-      ? prisma.problemAttempt.findUnique({
-          where: { userId_problemId: { userId: user.id, problemId: problem.id } }
+      ? prisma.problemAttempt.findMany({
+          where: { userId: user.id, problem: { translationGroupId: problem.translationGroupId } },
+          orderBy: { discussionUnlockAt: "asc" }
         })
-      : null,
+      : Promise.resolve([]),
     prisma.playlistItem.findMany({
       where: { problemId: problem.id },
       include: { playlist: true },
@@ -260,21 +272,44 @@ export default async function ProblemPage({
         })
       : Promise.resolve([]),
     user && !isOwnProblem
-      ? prisma.problemFavorite.findUnique({
-          where: { userId_problemId: { userId: user.id, problemId: problem.id } }
+      ? prisma.problemFavorite.findFirst({
+          where: { userId: user.id, problem: { translationGroupId: problem.translationGroupId } }
         })
       : null,
-    prisma.problemFavorite.count({ where: { problemId: problem.id, userId: { not: problem.authorId } } }),
-    user && relatedProblemIds.length
+    prisma.problemFavorite.findMany({
+      where: {
+        userId: { not: problem.authorId },
+        problem: { translationGroupId: problem.translationGroupId }
+      },
+      distinct: ["userId"],
+      select: { userId: true }
+    }),
+    user && relatedProblems.length
       ? prisma.problemAttempt.findMany({
-          where: { userId: user.id, status: "SOLVED", problemId: { in: relatedProblemIds } },
-          select: { problemId: true }
+          where: {
+            userId: user.id,
+            status: "SOLVED",
+            problem: {
+              translationGroupId: { in: relatedProblems.map((relatedProblem) => relatedProblem.translationGroupId) }
+            }
+          },
+          select: { problem: { select: { translationGroupId: true } } }
         })
       : Promise.resolve([])
   ]);
-  const preferredTranslation = preferredTranslationForLanguage(problem.language, translations, preferredLanguage);
+  const attempt =
+    attemptsInTranslationGroup.find((translationAttempt) => translationAttempt.status === "SOLVED") ??
+    attemptsInTranslationGroup[0] ??
+    null;
+  const favoriteCount = groupFavoriteRows.length;
+  const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
+  const targetViewLanguage = requestedLanguage ?? preferredLanguage;
+  const preferredTranslation = preferredTranslationForLanguage(problem.language, translations, targetViewLanguage);
   if (preferredTranslation?.slug && preferredTranslation.slug !== problem.slug) {
-    redirect(`/problems/${preferredTranslation.slug}`);
+    const viewLanguageQuery = requestedLanguage
+      ? `?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(requestedLanguage)}`
+      : "";
+    redirect(`/problems/${preferredTranslation.slug}${viewLanguageQuery}`);
   }
   const [problemBodyHtml, translationFreshness, linkedConceptHrefBySlug] = await Promise.all([
     renderMarkdownForContentLanguage(problem.bodyMarkdown, problem.language),
@@ -284,11 +319,18 @@ export default async function ProblemPage({
       problem.language
     )
   ]);
-  const isLanguageFallback = preferredLanguage !== problem.language;
+  const isLanguageFallback = targetViewLanguage !== problem.language;
 
   const proofVotes = new Map(proofVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const ownProofVoteIds = new Set(userVotes.filter((vote) => vote.targetType === TargetType.PROOF).map((vote) => vote.targetId));
-  const relatedSolvedIds = new Set(relatedSolvedAttempts.map((attempt) => attempt.problemId));
+  const relatedSolvedGroupIds = new Set(
+    relatedSolvedAttempts.map((attempt) => attempt.problem.translationGroupId)
+  );
+  const relatedSolvedIds = new Set(
+    relatedProblems
+      .filter((relatedProblem) => relatedSolvedGroupIds.has(relatedProblem.translationGroupId))
+      .map((relatedProblem) => relatedProblem.id)
+  );
   const proofs = [...problem.proofs].sort(
     (a, b) => (proofVotes.get(b.id) ?? 0) - (proofVotes.get(a.id) ?? 0) || a.createdAt.getTime() - b.createdAt.getTime()
   );
@@ -299,7 +341,9 @@ export default async function ProblemPage({
   const visibleRelatedGroups = problem.relatedGroups
     .map((group) => ({
       ...group,
-      relations: group.relations.filter((relation) => relation.targetProblem.status !== "ARCHIVED")
+      relations: group.relations.filter(
+        (relation) => relation.targetProblem.status !== "ARCHIVED" && canViewProblem(user, relation.targetProblem)
+      )
     }))
     .filter((group) => group.relations.length > 0);
   const isProblemAuthor = Boolean(user && problem.authorId === user.id);
@@ -314,14 +358,18 @@ export default async function ProblemPage({
     ? problem.domains.filter((item) => revealSpoilerDetails || !item.spoiler).map((item) => item.mscCode)
     : [problem.domain];
   const hiddenDomainCount = revealSpoilerDetails ? 0 : problem.domains.filter((item) => item.spoiler).length;
-  const targetTranslationLanguage = nextMissingTranslationLanguage(problem.language, translations, preferredLanguage);
+  const targetTranslationLanguage = nextMissingTranslationLanguage(problem.language, translations, targetViewLanguage);
   const addTranslationHref = targetTranslationLanguage
     ? `/problems/${problem.slug}/translate?language=${targetTranslationLanguage}`
     : undefined;
+  const canManageTranslationFreshness = Boolean(
+    user &&
+      translationFreshness?.stale &&
+      problem.translatedFromProblem &&
+      (problem.translatedFromProblem.authorId === user.id || canUseAdminTools(user))
+  );
   const verificationMessage =
     queryParams.verification === "incorrect" ? t.problemDetail.verificationIncorrect : null;
-  const solutionMessage =
-    queryParams.solution === "posted" ? t.problemDetail.solutionPosted : null;
   const heroDomain = problemDomains[0] ?? (problem.domains.length ? "other" : problem.domain);
   const heroImage = heroArtForProblemDomain(heroDomain);
   const difficultyTone = difficultyColor(problem.difficulty ?? null);
@@ -359,7 +407,7 @@ export default async function ProblemPage({
 
           {isLanguageFallback && (
             <p className="quality-banner quality-unreviewed mb-4 text-sm">
-              {t.translations.fallbackNotice(contentLanguageLabel(problem.language), contentLanguageLabel(preferredLanguage))}
+              {t.translations.fallbackNotice(contentLanguageLabel(problem.language), contentLanguageLabel(targetViewLanguage))}
               {addTranslationHref && (
                 <>
                   {" "}
@@ -372,13 +420,21 @@ export default async function ProblemPage({
             </p>
           )}
           {translationFreshness?.stale && (
-            <p className="quality-banner quality-needs-work mb-4 text-sm">
-              {t.translations.staleNotice(translationFreshness.basedOnRevisionId)}{" "}
-              <Link href={translationFreshness.sourceHref as never} className="underline">
-                {t.translations.compareWith(translationFreshness.sourceTitle)}
-              </Link>
-              .
-            </p>
+            <div className="quality-banner quality-needs-work translation-stale-banner mb-4 text-sm">
+              <span>{t.translations.staleNotice(translationFreshness.basedOnRevisionId)}</span>
+              {canManageTranslationFreshness && (
+                <>
+                  <Link href={translationFreshness.sourceHref as never} className="underline">
+                    {t.translations.compareWith(translationFreshness.sourceTitle)}
+                  </Link>
+                  <form action={dismissProblemTranslationStaleNoticeAction.bind(null, problem.id)}>
+                    <button type="submit" className="secondary translation-stale-dismiss">
+                      {t.translations.dismiss}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
           )}
           <nav className="tab-nav problem-tab-nav">
             <span>{t.problemDetail.problem}</span>
@@ -517,14 +573,6 @@ export default async function ProblemPage({
             <h2>{t.problemDetail.solutions}</h2>
             <span>{proofs.length}</span>
           </div>
-          {solutionMessage && (
-            <p className="quality-banner mb-4" role="status">
-              {solutionMessage}
-            </p>
-          )}
-          <p className="muted mb-4 text-sm">
-            {t.problemDetail.usefulSolutionDescription.replace("{votes}", String(COMMUNITY_ACCEPTED_PROOF_VOTES))}
-          </p>
           {isConjecture && proofs.length === 0 && (
             <p className="quality-banner quality-stub">{t.problemDetail.conjectureNoSolution}</p>
           )}
@@ -804,7 +852,7 @@ export default async function ProblemPage({
             <h2 className="mb-3 font-semibold">{t.problemDetail.playlists}</h2>
             <div className="grid gap-2 text-sm">
               {playlists.map((item) => (
-                <Link key={item.id} href={`/playlists/${item.playlist.slug}`} className="underline">
+                <Link key={item.id} href={`/explorations/${item.playlist.slug}/start` as never} className="underline">
                   {item.playlist.title}
                 </Link>
               ))}

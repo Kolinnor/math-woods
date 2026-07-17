@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions/problem-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getTranslations } from "@/lib/i18n/server";
 import {
   canEditVerificationMessage,
   canJoinVerificationDiscussion,
@@ -34,6 +35,7 @@ export default async function ProblemVerificationPage({
   params: Promise<{ slug: string; requestId: string }>;
 }) {
   const { slug, requestId } = await params;
+  const t = await getTranslations();
   const user = await getCurrentUser();
   const numericRequestId = Number.parseInt(requestId, 10);
   if (!Number.isInteger(numericRequestId)) notFound();
@@ -108,7 +110,7 @@ export default async function ProblemVerificationPage({
                 <p className="muted text-sm">
                   {request.messages.length
                     ? `${request.messages.length} ${request.messages.length === 1 ? "message" : "messages"}`
-                    : "No messages yet"}
+                    : t.problemDetail.noMessagesYet}
                 </p>
               </div>
               {request.reviewer && (
@@ -161,7 +163,7 @@ export default async function ProblemVerificationPage({
                   </article>
                 );
               })}
-              {request.messages.length === 0 && <p className="muted">No messages yet.</p>}
+              {request.messages.length === 0 && <p className="muted">{t.problemDetail.noMessagesYet}</p>}
             </div>
           </section>
 

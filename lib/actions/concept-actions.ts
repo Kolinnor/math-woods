@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import { ConceptStatus, NotificationType, SourceType, TargetType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -7,7 +8,7 @@ import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
+import { notifyConceptAuthor, notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { parseMathDomain } from "@/lib/domains";
 import { refreshLinksForConcept, refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
@@ -15,6 +16,7 @@ import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { canDeleteConcept, canEditConcept, canRollbackConcept, canSetConceptStatus, canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
+import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -121,7 +123,7 @@ export async function createConceptAction(formData: FormData) {
     href: `/concepts/${concept.slug}`
   });
   await checkConceptAchievements(user.id);
-  redirect(`/concepts/${concept.slug}`);
+  redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
 }
 
 export async function updateConceptAction(conceptId: number, formData: FormData) {
@@ -231,7 +233,51 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     body: `${displayNameForUser(user)} edited "${concept.title}".`,
     href: `/concepts/${concept.slug}`
   });
-  redirect(`/concepts/${concept.slug}`);
+  await notifyConceptAuthor({
+    conceptId: concept.id,
+    actorId: user.id,
+    title: "Concept edited",
+    body: `${displayNameForUser(user)} edited "${concept.title}".`,
+    href: `/concepts/${concept.slug}`
+  });
+  redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
+}
+
+export async function dismissConceptTranslationStaleNoticeAction(conceptId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`concept:translation-dismiss:${user.id}`, 30, 60_000);
+  const concept = await prisma.concept.findUnique({
+    where: { id: conceptId },
+    select: {
+      slug: true,
+      language: true,
+      translatedFromConcept: { select: { id: true, createdById: true } }
+    }
+  });
+
+  if (!concept?.translatedFromConcept) {
+    throw new Error("Translation source not found.");
+  }
+  if (concept.translatedFromConcept.createdById !== user.id && !canUseAdminTools(user)) {
+    throw new Error("You cannot dismiss this translation notice.");
+  }
+
+  const latestSourceRevision = await prisma.pageRevision.findFirst({
+    where: { pageType: SourceType.CONCEPT, pageId: concept.translatedFromConcept.id },
+    orderBy: { id: "desc" },
+    select: { id: true }
+  });
+  if (!latestSourceRevision) {
+    throw new Error("Source revision not found.");
+  }
+
+  await prisma.concept.update({
+    where: { id: conceptId },
+    data: { translatedFromRevisionId: latestSourceRevision.id }
+  });
+
+  revalidatePath(`/concepts/${concept.slug}`);
+  redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
 }
 
 export async function deleteConceptAction(conceptId: number) {
@@ -347,5 +393,12 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
     body: `${displayNameForUser(user)} rolled back "${concept.title}".`,
     href: `/concepts/${concept.slug}`
   });
-  redirect(`/concepts/${concept.slug}`);
+  await notifyConceptAuthor({
+    conceptId: concept.id,
+    actorId: user.id,
+    title: "Concept edited",
+    body: `${displayNameForUser(user)} rolled back "${concept.title}".`,
+    href: `/concepts/${concept.slug}`
+  });
+  redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
 }

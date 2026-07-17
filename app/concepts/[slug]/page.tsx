@@ -2,33 +2,37 @@ import type { Metadata } from "next";
 import { MathDomain, NotificationType } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
-import { Eye } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
-import { toggleConceptWatchAction } from "@/lib/actions/concept-community-actions";
+import { dismissConceptTranslationStaleNoticeAction } from "@/lib/actions/concept-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { domainLabel } from "@/lib/domains";
+import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
+import { canUseAdminTools } from "@/lib/permissions";
+import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
 import { conceptTranslationFreshness } from "@/lib/translation-freshness";
-import { nextMissingTranslationLanguage, preferredTranslationForLanguage } from "@/lib/translation-routing";
+import {
+  nextMissingTranslationLanguage,
+  preferredTranslationForLanguage,
+  requestedTranslationLanguage,
+  TRANSLATION_VIEW_LANGUAGE_PARAM
+} from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
 function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
-  return Object.values(MathDomain).includes(domain as MathDomain)
-    ? (t.home.domainLabels[domain as MathDomain] ?? domainLabel(domain))
-    : domainLabel(domain);
+  return translatedDomainOptionLabel(domain, t.home.domainLabels);
 }
 
 function titleFromConceptSlug(slug: string) {
@@ -120,8 +124,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function ConceptPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ConceptPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ viewLanguage?: string }>;
+}) {
   const { slug } = await params;
+  const queryParams = searchParams ? await searchParams : {};
   const user = await getCurrentUser();
   const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
@@ -133,9 +144,9 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
       aliases: { orderBy: { alias: "asc" } },
       references: { orderBy: { position: "asc" } },
       translatedFromConcept: {
-        select: { id: true, slug: true, title: true, language: true }
+        select: { id: true, slug: true, title: true, language: true, createdById: true }
       },
-      _count: { select: { talkPosts: true, watchers: true } }
+      _count: { select: { talkPosts: true } }
     }
   });
 
@@ -154,7 +165,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     ]);
   }
 
-  const [translations, outgoingLinks, backlinks, watched] = await Promise.all([
+  const [translations, outgoingLinks, backlinks] = await Promise.all([
     prisma.concept.findMany({
       where: {
         translationGroupId: concept.translationGroupId,
@@ -170,16 +181,16 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     prisma.internalLink.findMany({
       where: { targetSlug: concept.slug, exists: true },
       orderBy: { createdAt: "desc" }
-    }),
-    user
-      ? prisma.conceptWatch.findUnique({
-          where: { userId_conceptId: { userId: user.id, conceptId: concept.id } }
-        })
-      : null
+    })
   ]);
-  const preferredTranslation = preferredTranslationForLanguage(concept.language, translations, preferredLanguage);
+  const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
+  const targetViewLanguage = requestedLanguage ?? preferredLanguage;
+  const preferredTranslation = preferredTranslationForLanguage(concept.language, translations, targetViewLanguage);
   if (preferredTranslation?.slug && preferredTranslation.slug !== concept.slug) {
-    redirect(`/concepts/${preferredTranslation.slug}`);
+    const viewLanguageQuery = requestedLanguage
+      ? `?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(requestedLanguage)}`
+      : "";
+    redirect(`/concepts/${preferredTranslation.slug}${viewLanguageQuery}`);
   }
   const uniqueOutgoingLinks = uniqueLinksByTargetSlug(outgoingLinks);
   const existingOutgoingSlugs = uniqueOutgoingLinks.filter((link) => link.exists).map((link) => link.targetSlug);
@@ -192,7 +203,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     ),
     resolveConceptTitlesForLanguage(existingOutgoingSlugs, concept.language)
   ]);
-  const isLanguageFallback = preferredLanguage !== concept.language;
+  const isLanguageFallback = targetViewLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
   const conceptDomainLabel = translatedDomainLabel(concept.domain, t);
   const hasReadingHeader =
@@ -200,10 +211,16 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
     Boolean(translationFreshness?.stale) ||
     concept.aliases.length > 0;
 
-  const targetTranslationLanguage = nextMissingTranslationLanguage(concept.language, translations, preferredLanguage);
+  const targetTranslationLanguage = nextMissingTranslationLanguage(concept.language, translations, targetViewLanguage);
   const addTranslationHref = targetTranslationLanguage
     ? `/concepts/${concept.slug}/translate?language=${targetTranslationLanguage}`
     : undefined;
+  const canManageTranslationFreshness = Boolean(
+    user &&
+      translationFreshness?.stale &&
+      concept.translatedFromConcept &&
+      (concept.translatedFromConcept.createdById === user.id || canUseAdminTools(user))
+  );
 
   const conceptLookupSlugs = [concept.slug, ...concept.aliases.map((alias) => alias.aliasSlug)];
   const [problemBacklinks, conceptBacklinks, spoilerProblemBacklinksRaw] = await Promise.all([
@@ -211,6 +228,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
       where: {
         status: "PUBLISHED",
         listed: true,
+        ...visibleProblemWhere(user),
         id: {
           in: backlinks.filter((link) => link.sourceType === "PROBLEM").map((link) => link.sourceId)
         }
@@ -230,6 +248,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
         status: "PUBLISHED",
         listed: true,
         language: concept.language,
+        ...visibleProblemWhere(user),
         spoilerTags: {
           some: {
             tag: {
@@ -260,7 +279,6 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
       }
       meta={
         <>
-          <p>{t.conceptDetail.watchers(concept._count.watchers)}</p>
           <p>{t.conceptDetail.talkPosts(concept._count.talkPosts)}</p>
         </>
       }
@@ -271,7 +289,7 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
           <div className="reading-header mb-5">
             {isLanguageFallback && (
               <p className="quality-banner quality-unreviewed mb-4 text-sm">
-                {t.translations.fallbackNotice(contentLanguageLabel(concept.language), contentLanguageLabel(preferredLanguage))}
+                {t.translations.fallbackNotice(contentLanguageLabel(concept.language), contentLanguageLabel(targetViewLanguage))}
                 {addTranslationHref && (
                   <>
                     {" "}
@@ -284,13 +302,21 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
               </p>
             )}
             {translationFreshness?.stale && (
-              <p className="quality-banner quality-needs-work mb-4 text-sm">
-                {t.translations.staleNotice(translationFreshness.basedOnRevisionId)}{" "}
-                <Link href={translationFreshness.sourceHref as never} className="underline">
-                  {t.translations.compareWith(translationFreshness.sourceTitle)}
-                </Link>
-                .
-              </p>
+              <div className="quality-banner quality-needs-work translation-stale-banner mb-4 text-sm">
+                <span>{t.translations.staleNotice(translationFreshness.basedOnRevisionId)}</span>
+                {canManageTranslationFreshness && (
+                  <>
+                    <Link href={translationFreshness.sourceHref as never} className="underline">
+                      {t.translations.compareWith(translationFreshness.sourceTitle)}
+                    </Link>
+                    <form action={dismissConceptTranslationStaleNoticeAction.bind(null, concept.id)}>
+                      <button type="submit" className="secondary translation-stale-dismiss">
+                        {t.translations.dismiss}
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
             )}
             {concept.aliases.length > 0 && (
               <p className="muted mt-1 text-sm">{t.conceptDetail.alsoKnownAs} {concept.aliases.map((alias) => alias.alias).join(", ")}</p>
@@ -383,14 +409,6 @@ export default async function ConceptPage({ params }: { params: Promise<{ slug: 
 
       <aside className="grid content-start gap-5">
         <section className="action-surface">
-          {user && (
-            <form action={toggleConceptWatchAction.bind(null, concept.id, concept.slug)}>
-              <button type="submit" className="secondary w-full">
-                <Eye size={17} fill={watched ? "currentColor" : "none"} />
-                {watched ? t.conceptDetail.watching : t.conceptDetail.watch} · {concept._count.watchers}
-              </button>
-            </form>
-          )}
           <Link href={`/concepts/${concept.slug}/edit`} className="button secondary">
             {t.conceptDetail.edit}
           </Link>

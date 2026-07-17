@@ -8,7 +8,8 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { loadTips, type TipEntry } from "@/lib/daily-tip";
-import { domainLabel } from "@/lib/domains";
+import { translatedDomainLabel } from "@/lib/domains";
+import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
 
@@ -27,7 +28,12 @@ type TipProblemLink = {
   problemId: number;
 };
 
-function tipMatchesQuery(tip: TipEntry, relatedProblems: TipProblem[], query: string) {
+function tipMatchesQuery(
+  tip: TipEntry,
+  relatedProblems: TipProblem[],
+  query: string,
+  domainLabels: Partial<Record<string, string>>
+) {
   if (!query) return true;
 
   const haystack = [
@@ -36,7 +42,7 @@ function tipMatchesQuery(tip: TipEntry, relatedProblems: TipProblem[], query: st
     ...relatedProblems.map((problem) => [
       problem.title,
       problem.origin,
-      domainLabel(problem.domain),
+      translatedDomainLabel(problem.domain, domainLabels),
       ...problem.tags.map(({ tag }) => tag.name)
     ].join(" "))
   ].join(" ").toLowerCase();
@@ -51,6 +57,7 @@ export default async function TipsPage({
 }) {
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
+  const t = await getTranslations();
 
   const { q = "", updated, deleted } = await searchParams;
   const query = q.trim();
@@ -86,16 +93,23 @@ export default async function TipsPage({
   const solvedAttempts =
     user && linkedProblemIds.length
       ? await prisma.problemAttempt.findMany({
-          where: { userId: user.id, status: "SOLVED", problemId: { in: linkedProblemIds } },
-          select: { problemId: true }
+          where: {
+            userId: user.id,
+            status: "SOLVED",
+            problem: { translationGroupId: { in: linkedProblems.map((problem) => problem.translationGroupId) } }
+          },
+          select: { problem: { select: { translationGroupId: true } } }
         })
       : [];
-  const solvedIds = new Set(solvedAttempts.map((attempt) => attempt.problemId));
+  const solvedGroupIds = new Set(solvedAttempts.map((attempt) => attempt.problem.translationGroupId));
+  const solvedIds = new Set(
+    linkedProblems.filter((problem) => solvedGroupIds.has(problem.translationGroupId)).map((problem) => problem.id)
+  );
   const tips = tipRows.map((tip, index) => ({
     tip,
     index,
     relatedProblems: tipProblemsByTipId.get(tip.id) ?? []
-  })).filter(({ tip, relatedProblems }) => tipMatchesQuery(tip, relatedProblems, query));
+  })).filter(({ tip, relatedProblems }) => tipMatchesQuery(tip, relatedProblems, query, t.home.domainLabels));
 
   return (
     <ForestPageLayout
@@ -156,7 +170,7 @@ export default async function TipsPage({
                         <AsyncMarkdownInline markdown={problem.title} />
                       </strong>
                       <span className="tip-problem-meta">
-                        {domainLabel(problem.domain)} /{" "}
+                        {translatedDomainLabel(problem.domain, t.home.domainLabels)} /{" "}
                         {problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set"} /{" "}
                         {problem._count.attempts} attempts
                       </span>

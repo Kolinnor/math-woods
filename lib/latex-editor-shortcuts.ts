@@ -10,6 +10,7 @@ export type LatexEditorChange = {
 export type LatexEditorShortcutResult = {
   changes: LatexEditorChange | LatexEditorChange[];
   anchor?: number;
+  skipDisplayMathLineBreakNormalization?: boolean;
 };
 
 type KeyboardShortcutEvent = {
@@ -304,7 +305,8 @@ export function latexTextInputShortcut(
 
     return {
       changes: { from, to, insert: "$$" },
-      anchor: from + (preferences.moveCursorBetweenDollars ? 1 : 2)
+      anchor: from + (preferences.moveCursorBetweenDollars ? 1 : 2),
+      skipDisplayMathLineBreakNormalization: true
     };
   }
 

@@ -1,18 +1,19 @@
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { loginAction, registerAction } from "@/lib/actions/auth-actions";
-import { MATH_LEVEL_HELP_TEXT, MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
+import { getTranslations } from "@/lib/i18n/server";
+import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/user-display";
 
-function loginErrorMessage(reason: string | undefined) {
-  if (reason === "rate-limited") return "Too many sign-in attempts. Please wait a moment and try again.";
-  if (reason === "invalid") return "The username/email or password is not correct.";
+function loginErrorMessage(reason: string | undefined, t: Awaited<ReturnType<typeof getTranslations>>) {
+  if (reason === "rate-limited") return t.auth.errors.tooManySignIns;
+  if (reason === "invalid") return t.auth.errors.invalidSignIn;
   return null;
 }
 
-function registerErrorMessage(reason: string | undefined) {
-  if (reason === "rate-limited") return "Too many account creation attempts. Please wait a moment and try again.";
-  if (reason === "already-used") return "This profile name or email is already used.";
-  if (reason === "invalid") return "The account information could not be accepted. Please check the form and try again.";
+function registerErrorMessage(reason: string | undefined, t: Awaited<ReturnType<typeof getTranslations>>) {
+  if (reason === "rate-limited") return t.auth.errors.tooManyAccounts;
+  if (reason === "already-used") return t.auth.errors.accountUsed;
+  if (reason === "invalid") return t.auth.errors.invalidAccount;
   return null;
 }
 
@@ -21,75 +22,72 @@ export default async function LoginPage({
 }: {
   searchParams?: Promise<{ loginError?: string; registerError?: string }>;
 }) {
+  const t = await getTranslations();
   const params = searchParams ? await searchParams : {};
-  const loginError = loginErrorMessage(params.loginError);
-  const registerError = registerErrorMessage(params.registerError);
+  const loginError = loginErrorMessage(params.loginError, t);
+  const registerError = registerErrorMessage(params.registerError, t);
 
   return (
     <ForestPageLayout
-      title="Sign in"
+      title={t.auth.signIn}
       heroImage="/art/morning-in-a-pine-forest.jpg"
       heroAlt="Ivan Shishkin, Morning in a Pine Forest"
-      description="Record your progress and share your knowledge."
+      description={t.auth.description}
     >
     <div className="grid gap-6 md:grid-cols-2">
       <section>
-        <h1 className="mb-2 text-2xl font-bold">Sign in</h1>
+        <h1 className="mb-2 text-2xl font-bold">{t.auth.signIn}</h1>
         {loginError && <p className="quality-banner quality-needs-work mb-4">{loginError}</p>}
         <form action={loginAction} className="panel grid gap-4 p-5">
           <label className="grid gap-2">
-            <span className="text-sm font-medium">Username or email</span>
+            <span className="text-sm font-medium">{t.auth.usernameOrEmail}</span>
             <input name="identifier" required />
           </label>
           <label className="grid gap-2">
-            <span className="text-sm font-medium">Password</span>
+            <span className="text-sm font-medium">{t.auth.password}</span>
             <input name="password" type="password" required />
           </label>
-          <button type="submit">Sign in</button>
+          <button type="submit">{t.auth.signIn}</button>
         </form>
       </section>
 
       <section>
-        <h2 className="mb-2 text-2xl font-bold">Create account</h2>
+        <h2 className="mb-2 text-2xl font-bold">{t.auth.createAccount}</h2>
         {registerError && <p className="quality-banner quality-needs-work mb-4">{registerError}</p>}
         <form action={registerAction} className="panel grid gap-4 p-5">
           <label className="grid gap-2">
-            <span className="text-sm font-medium">Profile name</span>
+            <span className="text-sm font-medium">{t.auth.profileName}</span>
             <input name="displayName" minLength={2} maxLength={DISPLAY_NAME_MAX_LENGTH} required />
-            <small className="muted">
-              This is the name other people will see. It can contain spaces.
-            </small>
+            <small className="muted">{t.auth.profileNameHelp}</small>
           </label>
           <label className="grid gap-2">
-            <span className="text-sm font-medium">Email</span>
+            <span className="text-sm font-medium">{t.auth.email}</span>
             <input name="email" type="email" placeholder="you@example.com" required />
           </label>
           <label className="grid gap-2">
-            <span className="text-sm font-medium">Password</span>
+            <span className="text-sm font-medium">{t.auth.password}</span>
             <input name="password" type="password" minLength={8} required />
           </label>
           <label className="grid gap-2">
             <span className="field-label-with-help text-sm font-medium">
-              What level of problems would you like to see first?
-              <span className="help-link" tabIndex={0} title={MATH_LEVEL_HELP_TEXT} aria-label={MATH_LEVEL_HELP_TEXT}>
+              {t.auth.mathLevelQuestion}
+              <span className="help-link" tabIndex={0} title={t.auth.mathLevelHelp} aria-label={t.auth.mathLevelHelp}>
                 ?
               </span>
             </span>
             <select name="mathLevel" required defaultValue="">
               <option value="" disabled>
-                Choose a level
+                {t.auth.chooseLevel}
               </option>
               {MATH_LEVEL_OPTIONS.map((level) => (
                 <option key={level.value} value={level.value}>
-                  {level.label} ({level.range})
+                  {t.auth.mathLevels[level.value]} ({t.auth.mathLevelRange(level.range)})
                 </option>
               ))}
             </select>
-            <small className="muted">
-              This can be changed anytime.
-            </small>
+            <small className="muted">{t.auth.mathLevelHelp}</small>
           </label>
-          <button type="submit">Create account</button>
+          <button type="submit">{t.auth.createAccount}</button>
         </form>
       </section>
     </div>

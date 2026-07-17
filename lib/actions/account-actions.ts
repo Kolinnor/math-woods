@@ -73,7 +73,6 @@ export async function deleteAccountAction(formData: FormData) {
     prisma.problemAttempt.deleteMany({ where: { userId: user.id } }),
     prisma.vote.deleteMany({ where: { userId: user.id } }),
     prisma.report.deleteMany({ where: { reporterId: user.id } }),
-    prisma.conceptWatch.deleteMany({ where: { userId: user.id } }),
     prisma.playlistFollow.deleteMany({ where: { userId: user.id } }),
     prisma.problemVerificationRequest.deleteMany({ where: { userId: user.id } }),
     prisma.problemVerificationRequest.updateMany({ where: { reviewerId: user.id }, data: { reviewerId: null } }),

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ConceptStatus, QualityStatus, Role } from "@prisma/client";
+import { EditorState, StateEffect } from "@codemirror/state";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import {
   getBooleanAttribute,
@@ -23,9 +24,15 @@ import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-err
 import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
-  latexPreviewUsesBlockDecoration
+  latexPreviewUsesBlockDecoration,
+  latexPreviewUsesCenteredLine
 } from "../lib/latex-live-preview.ts";
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
+import { explorationSnapshotPages } from "../lib/exploration-snapshot.ts";
+import {
+  createDisplayMathLineBreakNormalizer,
+  skipDisplayMathLineBreakNormalization
+} from "../lib/latex-display-line-transactions.ts";
 import {
   latexAlignShortcut,
   latexDisplayMathShortcut,
@@ -72,6 +79,7 @@ import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-n
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
+import { rankSearchMatches, searchMatchScore } from "../lib/search-ranking.ts";
 import { parseTagInput } from "../lib/tags.ts";
 import {
   nextMissingTranslationLanguage,
@@ -79,6 +87,12 @@ import {
   translationLanguageSet
 } from "../lib/translation-routing.ts";
 import { dictionaryForContentLanguage, interfaceLocaleForContentLanguage } from "../lib/i18n/dictionary.ts";
+import {
+  applyEffects,
+  conditionMatches,
+  numericAnswerMatches,
+  parseExplorationValue
+} from "../lib/exploration-engine.ts";
 
 assert.equal(slugify("Relations de Viète"), "relations-de-viete");
 assert.equal(slugify("  L'espace vectoriel ! "), "lespace-vectoriel");
@@ -170,6 +184,8 @@ const mixedDollarRanges = findLatexRanges(mixedDollarText);
 assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[0]), "inline");
 assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[1]), "display");
 assert.equal(latexPreviewUsesBlockDecoration(mixedDollarText, mixedDollarRanges[1]), false);
+assert.equal(latexPreviewUsesCenteredLine(mixedDollarText, mixedDollarRanges[0]), false);
+assert.equal(latexPreviewUsesCenteredLine(mixedDollarText, mixedDollarRanges[1]), false);
 assert.deepEqual(normalizeDisplayMathLineBreaks("Before $$x^2 + 1$$ after", 18), {
   text: "Before\n$$x^2 + 1$$\nafter",
   cursor: 18,
@@ -216,12 +232,18 @@ const standaloneDoubleDollarText = "$$x^2 + 1$$\nnext";
 const standaloneDoubleDollarRanges = findLatexRanges(standaloneDoubleDollarText);
 assert.equal(latexPreviewRenderMode(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), "display");
 assert.equal(latexPreviewUsesBlockDecoration(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), false);
+assert.equal(latexPreviewUsesCenteredLine(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), true);
 assert.deepEqual(latexPreviewDiagnosticsForRange(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0], true, false), []);
 const centeredDoubleDollarText = "$$2x+1=3x+2$$";
 const centeredDoubleDollarRanges = findLatexRanges(centeredDoubleDollarText);
 assert.equal(centeredDoubleDollarRanges[0]?.displayMode, true);
 assert.equal(latexPreviewRenderMode(centeredDoubleDollarText, centeredDoubleDollarRanges[0]), "display");
 assert.equal(latexPreviewUsesBlockDecoration(centeredDoubleDollarText, centeredDoubleDollarRanges[0]), false);
+const compactDisplayLinesText = "$ligne1$\n$$ligne2$$\n$$ligne3$$";
+assert.deepEqual(
+  findLatexRanges(compactDisplayLinesText).map((range) => latexPreviewUsesCenteredLine(compactDisplayLinesText, range)),
+  [false, true, true]
+);
 assert.equal(latexCursorTargetForArrow("A $x+1$ B", 2, "forward"), 3);
 assert.equal(latexCursorTargetForArrow("A $x+1$ B", 7, "backward"), 6);
 assert.equal(latexCursorTargetForArrow(centeredDoubleDollarText, 0, "forward"), 2);
@@ -377,7 +399,13 @@ assert.deepEqual(parseLatexCustomCommands("RR => \\mathbb{R}\n% ignored\nbad lin
 ]);
 assert.deepEqual(latexTextInputShortcut("Let ", 4, 4, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 4, to: 4, insert: "$$" },
-  anchor: 5
+  anchor: 5,
+  skipDisplayMathLineBreakNormalization: true
+});
+assert.deepEqual(latexTextInputShortcut("Before after\n$$y$$", 7, 7, "$", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 7, to: 7, insert: "$$" },
+  anchor: 8,
+  skipDisplayMathLineBreakNormalization: true
 });
 assert.deepEqual(latexTextInputShortcut("Let x", 4, 5, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 4, to: 5, insert: "$x$" },
@@ -385,8 +413,34 @@ assert.deepEqual(latexTextInputShortcut("Let x", 4, 5, "$", DEFAULT_LATEX_PREFER
 });
 assert.deepEqual(latexTextInputShortcut("$", 1, 1, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 1, to: 1, insert: "$$" },
+  anchor: 2,
+  skipDisplayMathLineBreakNormalization: true
+});
+assert.deepEqual(latexTextInputShortcut("$$", 1, 1, "$", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 1, to: 1, insert: "$$" },
   anchor: 2
 });
+const previewFocusEffect = StateEffect.define<boolean>();
+const displayMathNormalizer = createDisplayMathLineBreakNormalizer(previewFocusEffect);
+const inlineAutocloseState = EditorState.create({
+  doc: "Before after\n$$y$$",
+  extensions: [displayMathNormalizer]
+});
+const inlineAutocloseTransaction = inlineAutocloseState.update({
+  changes: { from: 7, to: 7, insert: "$$" },
+  selection: { anchor: 8 },
+  annotations: skipDisplayMathLineBreakNormalization.of(true)
+});
+assert.equal(inlineAutocloseTransaction.newDoc.toString(), "Before $$after\n$$y$$");
+const genuineDisplayState = EditorState.create({
+  doc: "Before $$$$ after",
+  extensions: [displayMathNormalizer]
+});
+const genuineDisplayTransaction = genuineDisplayState.update({
+  changes: { from: 9, to: 9, insert: "x" },
+  selection: { anchor: 10 }
+});
+assert.equal(genuineDisplayTransaction.newDoc.toString(), "Before\n$$x$$\nafter");
 assert.deepEqual(latexTextInputShortcut("`code ", 6, 6, "$", DEFAULT_LATEX_PREFERENCES), null);
 assert.deepEqual(latexTextInputShortcut("$x$", 2, 2, "^", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 2, to: 2, insert: "^{}" },
@@ -455,6 +509,12 @@ const renderedLatex = await renderMarkdown(
 assert.equal(renderedLatex.includes("u_{n+1}=u_n"), true);
 assert.equal(renderedLatex.includes("<em>{n\\geq 0}</annotation>"), false);
 
+const renderedItalicAfterLatex = await renderMarkdown(
+  "*Dans le cas* $n_1$*, correspondant à la gamme chromatique usuelle.*"
+);
+assert.equal(renderedItalicAfterLatex.includes("*, correspondant"), false);
+assert.equal(renderedItalicAfterLatex.includes("<em>, correspondant"), true);
+
 const renderedBackslashLatex = await renderMarkdown("Let \\(x^2\\) and \\[y=x+1\\].");
 assert.equal(renderedBackslashLatex.includes("x^2"), true);
 assert.equal(renderedBackslashLatex.includes("y=x+1"), true);
@@ -474,6 +534,9 @@ const renderedLatexList = await renderMarkdown(String.raw`\begin{itemize}
 assert.equal(renderedLatexList.includes("<ul>"), true);
 assert.equal(renderedLatexList.includes("<li>Either"), true);
 assert.equal(renderedLatexList.includes("z"), true);
+
+const renderedOrderedListStart = await renderMarkdown("1. First\n\n- Aside\n\n4. Fourth");
+assert.equal(renderedOrderedListStart.includes('<ol start="4">'), true);
 
 const renderedMatrixLatex = await renderMarkdown(
   String.raw`$$A=\left(\begin{array}{lll}1&2&3\\4&5&6\\7&8&9\end{array}\right)$$`
@@ -541,9 +604,31 @@ const labelsWrappingMarkdownEditor = tsxFiles("app").flatMap((path) => {
     .map(() => path);
 });
 assert.deepEqual(labelsWrappingMarkdownEditor, []);
+const editorCssSource = readFileSync(join("app", "globals.css"), "utf-8");
+const latexDisplayRule = editorCssSource.match(/\.markdown-editor \.cm-latex-display \{([^}]*)\}/)?.[1] ?? "";
+assert.match(latexDisplayRule, /display:\s*inline-block/);
+assert.doesNotMatch(latexDisplayRule, /display:\s*block/);
+assert.doesNotMatch(latexDisplayRule, /overflow-x:\s*auto/);
+assert.match(editorCssSource, /\.markdown-editor \.cm-latex-display-line \{\s*text-align:\s*center;/);
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");
+
+const legacyExplorationPages = explorationSnapshotPages({
+  pages: [
+    { id: 1, key: "first", position: 1, blocks: [] },
+    { id: 2, key: "last", position: 2, blocks: [] }
+  ]
+});
+assert.deepEqual(legacyExplorationPages.map((page) => page.isEnd), [false, true]);
+
+const configuredExplorationPages = explorationSnapshotPages({
+  pages: [
+    { id: 1, key: "first", position: 1, isEnd: true, blocks: [] },
+    { id: 2, key: "last", position: 2, isEnd: false, blocks: [] }
+  ]
+});
+assert.deepEqual(configuredExplorationPages.map((page) => page.isEnd), [true, false]);
 
 const staleChunkError = new Error(
   "Loading chunk 7330 failed. (error: https://mathwoods.org/_next/static/chunks/d3ac728e-652fe3530429dda0.js)"
@@ -594,5 +679,41 @@ assert.equal(presignedUpload.headers["Cache-Control"], "public, max-age=31536000
 assert.equal(presignedUpload.publicUrl, "https://images.mathwoods.org/uploads/2026/07/user-7/example.webp");
 assert.match(presignedUpload.url, /^https:\/\/s3\.example\.test\/mathwoods-images\/uploads\/2026\/07\/user-7\/example\.webp\?/);
 assert.match(presignedUpload.url, /X-Amz-Signature=/);
+
+assert.equal(parseExplorationValue("true"), true);
+assert.equal(parseExplorationValue("42"), 42);
+assert.equal(
+  conditionMatches(
+    { all: [{ variable: "quiz.basics.correct", operator: "equals", value: true }, { variable: "score", operator: "gte", value: 2 }] },
+    { "quiz.basics.correct": true, score: 3 }
+  ),
+  true
+);
+assert.equal(conditionMatches({ variable: "topics", operator: "contains", value: "groups" }, { topics: ["groups", "rings"] }), true);
+assert.deepEqual(
+  applyEffects(
+    { score: 2, topics: ["groups"] },
+    [
+      { variable: "score", operation: "increment", value: 3 },
+      { variable: "topics", operation: "append", value: "rings" },
+      { variable: "needsReview", operation: "set", value: true }
+    ]
+  ),
+  { score: 5, topics: ["groups", "rings"], needsReview: true }
+);
+assert.equal(numericAnswerMatches("3,1416", 3.14, 0.01), true);
+assert.equal(numericAnswerMatches("3.2", 3.14, 0.01), false);
+
+const rankedGroupMatches = rankSearchMatches(
+  [
+    { title: "Abelian group", slug: "abelian-group", aliases: [] },
+    { title: "Category of groups", slug: "category-of-groups", aliases: [] },
+    { title: "Group", slug: "group", aliases: [] },
+    { title: "Group action", slug: "group-action", aliases: [] }
+  ],
+  "group"
+);
+assert.deepEqual(rankedGroupMatches.map((item) => item.title), ["Group", "Group action", "Abelian group", "Category of groups"]);
+assert.equal(searchMatchScore({ title: "Groupe", slug: "groupe", aliases: ["Group"] }, "group"), 1);
 
 console.log("core tests ok");

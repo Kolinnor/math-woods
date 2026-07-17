@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { domainLabel } from "@/lib/domains";
+import { translatedDomainLabel } from "@/lib/domains";
+import { getTranslations } from "@/lib/i18n/server";
+import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { rankSearchMatches } from "@/lib/search-ranking";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +20,38 @@ export async function GET(request: Request) {
   }
 
   const language = await getPreferredContentLanguage();
-  const problems = await prisma.problem.findMany({
+  const user = await getCurrentUser();
+  const t = await getTranslations();
+  const commonWhere = {
+    status: listedOnly ? "PUBLISHED" as const : { not: "ARCHIVED" as const },
+    listed: listedOnly ? true : undefined,
+    slug: excludeSlug ? { not: excludeSlug } : undefined,
+    ...visibleProblemWhere(user)
+  };
+  const problemSelect = {
+    id: true,
+    title: true,
+    slug: true,
+    domain: true,
+    difficulty: true,
+    listed: true,
+    language: true
+  } as const;
+  const [exactProblems, matchingProblems] = await Promise.all([
+    prisma.problem.findMany({
+      where: {
+        ...commonWhere,
+        OR: [
+          { title: { equals: query, mode: "insensitive" } },
+          { slug: { equals: query.toLowerCase(), mode: "insensitive" } }
+        ]
+      },
+      select: problemSelect,
+      take: 20
+    }),
+    prisma.problem.findMany({
     where: {
-      status: listedOnly ? "PUBLISHED" : { not: "ARCHIVED" },
-      listed: listedOnly ? true : undefined,
-      slug: excludeSlug ? { not: excludeSlug } : undefined,
+      ...commonWhere,
       OR: [
         {
           language,
@@ -33,25 +64,23 @@ export async function GET(request: Request) {
         { slug: { contains: query.toLowerCase(), mode: "insensitive" } }
       ]
     },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      domain: true,
-      difficulty: true,
-      listed: true,
-      language: true
-    },
-    orderBy: [{ language: "asc" }, { title: "asc" }],
-    take: 10
-  });
+    select: problemSelect,
+    orderBy: { title: "asc" },
+    take: 100
+    })
+  ]);
+  const problems = rankSearchMatches(
+    [...new Map([...exactProblems, ...matchingProblems].map((problem) => [problem.id, problem])).values()],
+    query,
+    language
+  ).slice(0, 20);
 
   return NextResponse.json({
     problems: problems.map((problem) => ({
       id: problem.id,
       title: problem.title,
       slug: problem.slug,
-      domainLabel: domainLabel(problem.domain),
+      domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
       difficulty: problem.difficulty,
       listed: problem.listed,
       language: problem.language

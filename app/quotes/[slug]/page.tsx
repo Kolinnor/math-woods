@@ -3,13 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { canViewProblem } from "@/lib/problem-visibility";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
 export default async function QuotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const user = await getCurrentUser();
   const quote = await prisma.quote.findUnique({
     where: { slug },
     include: {
@@ -36,6 +39,7 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
   });
 
   if (!quote) notFound();
+  const relatedProblems = quote.relatedProblems.filter(({ problem }) => canViewProblem(user, problem));
 
   return (
     <ForestPageLayout
@@ -46,7 +50,7 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
       description={`added by ${quote.contributor ? displayNameForUser(quote.contributor) : "former user"} on ${quote.createdAt.toLocaleDateString("en-US")}`}
       meta={
         <>
-          <p>{quote.relatedProblems.length} related problems</p>
+          <p>{relatedProblems.length} related problems</p>
           <p>{quote.relatedConcepts.length} related concepts</p>
         </>
       }
@@ -69,7 +73,7 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
           <div>
             <h2 className="mb-3 text-lg font-semibold">Related problems</h2>
             <div className="grid gap-3">
-              {quote.relatedProblems.map(({ problem }) => (
+              {relatedProblems.map(({ problem }) => (
                 <Link key={problem.id} href={`/problems/${problem.slug}`} className="panel block p-4">
                   <div className="font-medium">
                     <AsyncMarkdownInline markdown={problem.title} />
@@ -83,7 +87,7 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
                   </div>
                 </Link>
               ))}
-              {quote.relatedProblems.length === 0 && <p className="empty-state">No related problems yet.</p>}
+              {relatedProblems.length === 0 && <p className="empty-state">No related problems yet.</p>}
             </div>
           </div>
 

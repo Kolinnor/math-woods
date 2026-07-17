@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser, requireVerifiedUser } from "@/lib/auth";
+import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -27,22 +27,4 @@ export async function createConceptTalkPostAction(conceptId: number, conceptSlug
 
   revalidatePath(`/concepts/${conceptSlug}/talk`);
   revalidatePath(`/concepts/${conceptSlug}`);
-}
-
-export async function toggleConceptWatchAction(conceptId: number, conceptSlug: string) {
-  const user = await requireUser();
-  await assertRateLimit(`concept-watch:${user.id}`, 60, 60_000);
-  const key = { userId: user.id, conceptId };
-  const existing = await prisma.conceptWatch.findUnique({
-    where: { userId_conceptId: key }
-  });
-
-  if (existing) {
-    await prisma.conceptWatch.delete({ where: { userId_conceptId: key } });
-  } else {
-    await prisma.conceptWatch.create({ data: key });
-  }
-
-  revalidatePath(`/concepts/${conceptSlug}`);
-  revalidatePath("/watchlist");
 }

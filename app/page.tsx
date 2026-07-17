@@ -5,29 +5,15 @@ import { MarkdownInline } from "@/components/MarkdownInline";
 import { getCurrentUser } from "@/lib/auth";
 import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
-import { domainLabel } from "@/lib/domains";
+import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
+import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
-
-const recentImages = [
-  {
-    src: "/art/rye.jpg",
-    alt: "Ivan Shishkin, Rye"
-  },
-  {
-    src: "/art/brook-in-the-forest.jpg",
-    alt: "Ivan Shishkin, Brook in the Forest"
-  },
-  {
-    src: "/art/birch-grove.jpg",
-    alt: "Ivan Shishkin, Birch Grove"
-  }
-] as const;
 
 type HomeProblem = {
   id: number;
@@ -49,7 +35,7 @@ type HomeProblem = {
 type HomeTranslations = Dictionary["home"];
 
 function homeDomainLabel(domain: MathDomain, t: HomeTranslations) {
-  return t.domainLabels[domain] ?? domainLabel(domain);
+  return translatedDomainLabel(domain, t.domainLabels);
 }
 
 async function withRenderedTitles<T extends { title: string }>(items: T[]) {
@@ -202,64 +188,6 @@ function ProblemToTry({ problem, t }: { problem: HomeProblem | null; t: HomeTran
   );
 }
 
-function DomainGrid({ t }: { t: HomeTranslations["domains"] }) {
-  return (
-    <section>
-      <div className="home-section-heading">
-        <h2>{t.title}</h2>
-      </div>
-      <div className="home-domain-grid">
-        {t.items.map((item) =>
-          "href" in item ? (
-            <Link key={item.label} href={item.href as never} className="home-domain-more">
-              {item.label}
-            </Link>
-          ) : (
-            <Link key={item.domain} href={`/problems?domain=${item.domain}` as never}>
-              {item.label}
-            </Link>
-          )
-        )}
-      </div>
-    </section>
-  );
-}
-
-function RecentlyAdded({ problems, t }: { problems: HomeProblem[]; t: HomeTranslations }) {
-  return (
-    <section>
-      <div className="home-section-heading">
-        <h2>{t.recent.title}</h2>
-        <Link href="/problems?sort=recent">{t.recent.browseAll}</Link>
-      </div>
-      <div className="home-recent-grid">
-        {problems.map((problem, index) => {
-          const image = recentImages[index % recentImages.length];
-          return (
-            <Link key={problem.id} href={`/problems/${problem.slug}`} className="home-recent-card">
-              <div className="home-recent-image">
-                <Image src={image.src} alt={image.alt} fill sizes="(max-width: 760px) 100vw, 33vw" />
-              </div>
-              <div>
-                <p>{homeDomainLabel(problem.domain, t)}</p>
-                <h3>
-                  <MarkdownInline html={problem.titleHtml} />
-                </h3>
-                <span>
-                  {t.recent.cardMeta(
-                    problem.difficulty,
-                    problem.author ? displayNameForUser(problem.author) : t.recent.curator
-                  )}
-                </span>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 function TrailCta({ t }: { t: HomeTranslations["cta"] }) {
   return (
     <section className="home-trail-cta">
@@ -298,23 +226,22 @@ export default async function HomePage() {
   const baseProblemWhere = {
     status: "PUBLISHED" as const,
     listed: true,
-    language: preferredLanguage
+    language: preferredLanguage,
+    ...visibleProblemWhere(user)
   };
   const frontPageProblemWhere = {
     ...baseProblemWhere,
     canAppearOnFrontPage: true
   };
 
-  const [problemRows, resumeAttempt, tip] = await Promise.all([
-    prisma.problem.findMany({
-      where: frontPageProblemWhere,
-      orderBy: { createdAt: "desc" },
-      take: 4,
-      include: {
-        author: { select: { username: true, displayName: true } },
-        _count: { select: { attempts: true, favorites: true } }
-      }
-    }),
+  const [solvedProblemGroups, resumeAttempt, tip] = await Promise.all([
+    user
+      ? prisma.problem.findMany({
+          where: { attempts: { some: { userId: user.id, status: "SOLVED" } } },
+          distinct: ["translationGroupId"],
+          select: { translationGroupId: true }
+        })
+      : [],
     user
       ? prisma.problemAttempt.findFirst({
           where: {
@@ -328,6 +255,23 @@ export default async function HomePage() {
       : null,
     user ? loadDailyTip() : null
   ]);
+  const solvedTranslationGroupIds = solvedProblemGroups.map((problem) => problem.translationGroupId);
+  const recommendedProblemWhere = user
+    ? {
+        ...frontPageProblemWhere,
+        translationGroupId: { notIn: solvedTranslationGroupIds }
+      }
+    : frontPageProblemWhere;
+
+  const problemRows = await prisma.problem.findMany({
+    where: recommendedProblemWhere,
+    orderBy: { createdAt: "desc" },
+    take: 4,
+    include: {
+      author: { select: { username: true, displayName: true } },
+      _count: { select: { attempts: true, favorites: true } }
+    }
+  });
   const [practiceLinks, tipBodyHtml] = tip
     ? await Promise.all([
         prisma.tipProblem.findMany({
@@ -357,7 +301,6 @@ export default async function HomePage() {
   const practiceRows = practiceLinks.map((link) => link.problem);
   const renderedPractice = tip ? await withRenderedTitles(practiceRows) : [];
   const featured = renderedProblems[0] ?? null;
-  const recent = renderedProblems.slice(1, 4);
   const homeUser = user
     ? {
         name: displayNameForUser(user)
@@ -385,11 +328,7 @@ export default async function HomePage() {
             difficultyUnset={t.common.difficultyUnset}
           />
         )}
-        <section className="home-duo-grid">
-          <ProblemToTry problem={featured} t={t.home} />
-          <DomainGrid t={t.home.domains} />
-        </section>
-        <RecentlyAdded problems={recent} t={t.home} />
+        <ProblemToTry problem={featured} t={t.home} />
       </main>
       {!homeUser && <TrailCta t={t.home.cta} />}
       <HomeFooter t={t.home.footer} />

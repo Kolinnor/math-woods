@@ -4,6 +4,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { verifyEmailToken } from "@/lib/email-verification";
+import { getTranslations } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default async function VerifyEmailPage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token = "" } = await searchParams;
+  const t = await getTranslations();
   const user = await getCurrentUser();
   const result = token ? await verifyEmailToken(token) : { ok: false as const, reason: "missing" as const };
   const canResend = Boolean(user && !user.emailVerifiedAt);
@@ -48,7 +50,7 @@ export default async function VerifyEmailPage({
               </form>
             ) : (
               <Link href="/login" className="button secondary">
-                Sign in to resend
+                {t.auth.signInToResend}
               </Link>
             )}
           </>

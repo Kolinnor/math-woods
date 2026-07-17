@@ -1,5 +1,6 @@
 import { SourceType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { contentLanguageViewHref } from "@/lib/translation-routing";
 
 type TranslationSource = {
   id: number;
@@ -31,7 +32,7 @@ export async function problemTranslationFreshness(
   return {
     basedOnRevisionId,
     latestRevisionId: latestRevision?.id ?? null,
-    sourceHref: `/problems/${source.slug}`,
+    sourceHref: contentLanguageViewHref("/problems", source.slug, source.language),
     sourceLanguage: source.language,
     sourceTitle: source.title,
     stale: Boolean(latestRevision && basedOnRevisionId && latestRevision.id > basedOnRevisionId)
@@ -52,7 +53,7 @@ export async function conceptTranslationFreshness(
   return {
     basedOnRevisionId,
     latestRevisionId: latestRevision?.id ?? null,
-    sourceHref: `/concepts/${source.slug}`,
+    sourceHref: contentLanguageViewHref("/concepts", source.slug, source.language),
     sourceLanguage: source.language,
     sourceTitle: source.title,
     stale: Boolean(latestRevision && basedOnRevisionId && latestRevision.id > basedOnRevisionId)

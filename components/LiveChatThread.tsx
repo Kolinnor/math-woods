@@ -3,20 +3,19 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import type { DirectChatMessage } from "@/lib/direct-chat";
 
-export type LiveChatMessage = {
-  id: number;
-  authorId: number;
-  authorUsername: string;
-  authorName: string;
-  bodyHtml: string;
-  createdAt: string;
-};
+export type LiveChatMessage = DirectChatMessage;
 
 type LiveChatThreadProps = {
   currentUserId: number;
   otherUsername: string;
   initialMessages: LiveChatMessage[];
+  labels: {
+    live: string;
+    livePaused: string;
+    noMessagesYet: string;
+  };
 };
 
 function formatMessageTime(value: string) {
@@ -26,7 +25,7 @@ function formatMessageTime(value: string) {
   }).format(new Date(value));
 }
 
-export function LiveChatThread({ currentUserId, otherUsername, initialMessages }: LiveChatThreadProps) {
+export function LiveChatThread({ currentUserId, otherUsername, initialMessages, labels }: LiveChatThreadProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [status, setStatus] = useState<"live" | "checking" | "paused">("live");
   const latestIdRef = useRef(initialMessages.at(-1)?.id ?? 0);
@@ -101,7 +100,7 @@ export function LiveChatThread({ currentUserId, otherUsername, initialMessages }
     <section className="chat-thread panel p-5" ref={threadRef}>
       <div className="chat-live-status" aria-live="polite">
         <span className={status === "paused" ? "friend-offline-dot" : "friend-online-dot"} aria-hidden="true" />
-        <span>{status === "paused" ? "Live updates paused" : "Live"}</span>
+        <span>{status === "paused" ? labels.livePaused : labels.live}</span>
       </div>
       {messages.map((message) => {
         const ownMessage = message.authorId === currentUserId;
@@ -116,7 +115,7 @@ export function LiveChatThread({ currentUserId, otherUsername, initialMessages }
           </article>
         );
       })}
-      {messages.length === 0 && <p className="muted">No messages yet.</p>}
+      {messages.length === 0 && <p className="muted">{labels.noMessagesYet}</p>}
     </section>
   );
 }

@@ -6,12 +6,14 @@ import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { createConceptTalkPostAction } from "@/lib/actions/concept-community-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getTranslations } from "@/lib/i18n/server";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConceptTalkPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const t = await getTranslations();
   const user = await getCurrentUser();
   const concept = await prisma.concept.findUnique({
     where: { slug },
@@ -78,7 +80,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
       ) : (
         <p className="muted mt-6">
           <Link href="/login" className="underline">
-            Sign in
+            {t.nav.signIn}
           </Link>{" "}
           to join the editorial discussion.
         </p>

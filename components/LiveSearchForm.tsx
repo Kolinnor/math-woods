@@ -1,13 +1,14 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, ReactNode, useRef, useTransition } from "react";
+import { FormEvent, ReactNode, useEffect, useRef, useTransition } from "react";
 
 type LiveSearchFormProps = {
   action?: string;
   children: ReactNode;
   className?: string;
   debounceMs?: number;
+  persistKey?: string;
   updatingLabel?: string;
 };
 
@@ -16,14 +17,39 @@ export function LiveSearchForm({
   children,
   className,
   debounceMs = 250,
+  persistKey,
   updatingLabel = "Updating results"
 }: LiveSearchFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const restoredRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!persistKey || restoredRef.current) return;
+    restoredRef.current = true;
+
+    const storageKey = `math-woods:filters:${persistKey}`;
+    const currentQuery = searchParams.toString();
+    if (currentQuery) {
+      sessionStorage.setItem(storageKey, currentQuery);
+      return;
+    }
+
+    const savedQuery = sessionStorage.getItem(storageKey);
+    if (!savedQuery) return;
+    const targetPath = action || pathname;
+    startTransition(() => router.replace(`${targetPath}?${savedQuery}` as never, { scroll: false }));
+  }, [action, pathname, persistKey, router, searchParams]);
+
+  useEffect(() => {
+    if (!persistKey) return;
+    const currentQuery = searchParams.toString();
+    if (currentQuery) sessionStorage.setItem(`math-woods:filters:${persistKey}`, currentQuery);
+  }, [persistKey, searchParams]);
 
   const updateUrl = () => {
     const form = formRef.current;
@@ -46,6 +72,11 @@ export function LiveSearchForm({
 
     const query = nextParams.toString();
     const nextUrl = query ? `${targetPath}?${query}` : targetPath;
+    if (persistKey) {
+      const storageKey = `math-woods:filters:${persistKey}`;
+      if (query) sessionStorage.setItem(storageKey, query);
+      else sessionStorage.removeItem(storageKey);
+    }
     startTransition(() => router.replace(nextUrl as never, { scroll: false }));
   };
 

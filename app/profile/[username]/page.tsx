@@ -13,9 +13,11 @@ import {
 } from "@/lib/actions/social-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { mathLevelLabel } from "@/lib/math-levels";
+import { getTranslations } from "@/lib/i18n/server";
 import { problemLinkClass } from "@/lib/problem-link";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
+import { hasTrustedPrivileges } from "@/lib/permissions";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 import { getUserReputation } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -30,12 +32,14 @@ export default async function ProfilePage({
   searchParams: Promise<{ view?: string }>;
 }) {
   const { username } = await params;
+  const t = await getTranslations();
   const requestedView = (await searchParams).view;
   const view =
     requestedView === "solved" || requestedView === "favorites" || requestedView === "achievements"
       ? requestedView
       : "overview";
   const currentUser = await getCurrentUser();
+  const preferredLanguage = await getPreferredContentLanguage();
   const user = await prisma.user.findUnique({
     where: { username },
     include: {
@@ -54,25 +58,27 @@ export default async function ProfilePage({
   if (!user) notFound();
 
   const [
-    problems,
+    problemRows,
     playlists,
     revisions,
-    solved,
-    favorites,
-    solvedCount,
-    externalFavoriteCount,
+    solvedRows,
+    favoriteRows,
     achievementUnlocks,
     currentUserSolved,
     reputation,
     friendship
   ] = await Promise.all([
     prisma.problem.findMany({
-      where: { authorId: user.id, status: "PUBLISHED", listed: true },
-      orderBy: { createdAt: "desc" },
-      take: 10
+      where: { authorId: user.id, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" }
     }),
     prisma.playlist.findMany({
-      where: { authorId: user.id },
+      where: {
+        authorId: user.id,
+        ...(currentUser && (currentUser.id === user.id || hasTrustedPrivileges(currentUser.role))
+          ? {}
+          : { status: "PUBLISHED", visibility: "PUBLIC" })
+      },
       orderBy: { createdAt: "desc" },
       take: 10
     }),
@@ -84,20 +90,12 @@ export default async function ProfilePage({
     prisma.problemAttempt.findMany({
       where: { userId: user.id, status: "SOLVED" },
       include: { problem: true },
-      orderBy: { updatedAt: "desc" },
-      take: 50
+      orderBy: { updatedAt: "desc" }
     }),
     prisma.problemFavorite.findMany({
       where: { userId: user.id, problem: { authorId: { not: user.id } } },
       include: { problem: true },
-      orderBy: { createdAt: "desc" },
-      take: 50
-    }),
-    prisma.problemAttempt.count({
-      where: { userId: user.id, status: "SOLVED" }
-    }),
-    prisma.problemFavorite.count({
-      where: { userId: user.id, problem: { authorId: { not: user.id } } }
+      orderBy: { createdAt: "desc" }
     }),
     prisma.achievementUnlock.findMany({
       where: { userId: user.id },
@@ -122,54 +120,81 @@ export default async function ProfilePage({
       : null
   ]);
 
+  const problemByGroup = new Map<string, (typeof problemRows)[number]>();
+  for (const problem of problemRows) {
+    const selected = problemByGroup.get(problem.translationGroupId);
+    if (!selected || (selected.language !== preferredLanguage && problem.language === preferredLanguage)) {
+      problemByGroup.set(problem.translationGroupId, problem);
+    }
+  }
+  const solvedByGroup = new Map<string, (typeof solvedRows)[number]>();
+  for (const attempt of solvedRows) {
+    const selected = solvedByGroup.get(attempt.problem.translationGroupId);
+    if (!selected || (selected.problem.language !== preferredLanguage && attempt.problem.language === preferredLanguage)) {
+      solvedByGroup.set(attempt.problem.translationGroupId, attempt);
+    }
+  }
+  const favoritesByGroup = new Map<string, (typeof favoriteRows)[number]>();
+  for (const favorite of favoriteRows) {
+    const selected = favoritesByGroup.get(favorite.problem.translationGroupId);
+    if (!selected || (selected.problem.language !== preferredLanguage && favorite.problem.language === preferredLanguage)) {
+      favoritesByGroup.set(favorite.problem.translationGroupId, favorite);
+    }
+  }
+  const problems = [...problemByGroup.values()].slice(0, 10);
+  const solved = [...solvedByGroup.values()].slice(0, 50);
+  const favorites = [...favoritesByGroup.values()].slice(0, 50);
+  const authoredProblemCount = problemByGroup.size;
+  const solvedCount = solvedByGroup.size;
+  const externalFavoriteCount = favoritesByGroup.size;
   const isSelf = currentUser?.id === user.id;
   const currentUserSolvedIds = new Set(currentUserSolved.map((attempt) => attempt.problemId));
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
   const profileActions = isSelf ? (
     <Link href={`/profile/${user.username}/edit`} className="button secondary">
-      Edit profile
+      {t.profile.editProfile}
     </Link>
   ) : currentUser && friendship?.status === FriendshipStatus.ACCEPTED ? (
     <div className="flex flex-wrap gap-2">
       <Link href={`/chat/${user.username}` as never} className="button">
-        Message
+        {t.profile.message}
       </Link>
       <form action={removeFriendAction.bind(null, friendship.id)}>
         <button type="submit" className="secondary">
-          Remove friend
+          {t.profile.removeFriend}
         </button>
       </form>
     </div>
   ) : currentUser && friendship?.status === FriendshipStatus.PENDING && friendship.addresseeId === currentUser.id ? (
     <div className="flex flex-wrap gap-2">
       <form action={acceptFriendRequestAction.bind(null, friendship.id)}>
-        <button type="submit">Accept friend request</button>
+        <button type="submit">{t.profile.acceptFriendRequest}</button>
       </form>
       <form action={declineFriendRequestAction.bind(null, friendship.id)}>
         <button type="submit" className="secondary">
-          Decline
+          {t.social.decline}
         </button>
       </form>
     </div>
   ) : currentUser && friendship?.status === FriendshipStatus.PENDING ? (
     <form action={cancelFriendRequestAction.bind(null, friendship.id)}>
       <button type="submit" className="secondary">
-        Friend request sent
+        {t.profile.friendRequestSent}
       </button>
     </form>
   ) : currentUser ? (
     <form action={sendFriendRequestAction.bind(null, user.username)}>
-      <button type="submit">Add friend</button>
+      <button type="submit">{t.social.addFriend}</button>
     </form>
   ) : null;
 
   return (
     <ForestPageLayout
       title={displayNameForUser(user)}
-      eyebrow="Profile"
+      eyebrow={t.profile.profile}
       heroImage={SOCIAL_HERO_ART.src}
       heroAlt={SOCIAL_HERO_ART.alt}
-      description={`${mathLevelLabel(user.mathLevel)} / reputation ${reputation}`}
+      description={`${user.mathLevel ? t.auth.mathLevels[user.mathLevel] : t.profile.notSet} / ${t.profile.reputation} ${reputation}`}
       meta={<p>{user.role.toLowerCase()}</p>}
       actions={profileActions}
     >
@@ -177,28 +202,28 @@ export default async function ProfilePage({
       <article>
         <nav className="mb-6 flex flex-wrap gap-2 text-sm">
           <Link href={`/profile/${user.username}`} className="rounded border border-line px-3 py-2">
-            Overview
+            {t.profile.overview}
           </Link>
           <Link href={`/profile/${user.username}?view=solved`} className="rounded border border-line px-3 py-2">
-            Solved · {solvedCount}
+            {t.profile.solved} {"\u00b7"} {solvedCount}
           </Link>
           <Link href={`/profile/${user.username}?view=favorites`} className="rounded border border-line px-3 py-2">
-            Favorites · {externalFavoriteCount}
+            {t.profile.favorites} {"\u00b7"} {externalFavoriteCount}
           </Link>
           <Link href={`/profile/${user.username}?view=achievements`} className="rounded border border-line px-3 py-2">
-            Achievements / {achievementUnlocks.length}
+            {t.profile.achievements} / {achievementUnlocks.length}
           </Link>
         </nav>
 
         {view === "overview" && (
           <>
             <section className="panel mb-6 p-5">
-              <h2 className="mb-3 font-semibold">Bio</h2>
-              <p className="whitespace-pre-wrap">{user.bio || "No bio yet."}</p>
+              <h2 className="mb-3 font-semibold">{t.profile.bio}</h2>
+              <p className="whitespace-pre-wrap">{user.bio || t.profile.noBio}</p>
             </section>
 
             <section className="mb-6">
-              <h2 className="mb-3 font-semibold">Problems</h2>
+              <h2 className="mb-3 font-semibold">{t.profile.problems}</h2>
               <div className="grid gap-3">
                 {problems.map((problem) => (
                   <Link
@@ -209,19 +234,19 @@ export default async function ProfilePage({
                     <AsyncMarkdownInline markdown={problem.title} />
                   </Link>
                 ))}
-                {problems.length === 0 && <p className="muted panel p-5">No public problems yet.</p>}
+                {problems.length === 0 && <p className="muted panel p-5">{t.profile.noPublicProblems}</p>}
               </div>
             </section>
 
             <section>
-              <h2 className="mb-3 font-semibold">Playlists</h2>
+              <h2 className="mb-3 font-semibold">{t.profile.playlists}</h2>
               <div className="grid gap-3">
                 {playlists.map((playlist) => (
-                  <Link key={playlist.id} href={`/playlists/${playlist.slug}`} className="panel block p-4">
+                  <Link key={playlist.id} href={`/explorations/${playlist.slug}/start` as never} className="panel block p-4">
                     {playlist.title}
                   </Link>
                 ))}
-                {playlists.length === 0 && <p className="muted panel p-5">No playlists yet.</p>}
+                {playlists.length === 0 && <p className="muted panel p-5">{t.profile.noPlaylists}</p>}
               </div>
             </section>
           </>
@@ -229,7 +254,7 @@ export default async function ProfilePage({
 
         {view === "solved" && (
           <section>
-            <h2 className="mb-3 font-semibold">Solved problems</h2>
+            <h2 className="mb-3 font-semibold">{t.profile.solvedProblems}</h2>
             <div className="grid gap-3">
               {solved.map((attempt) => (
                 <Link
@@ -240,14 +265,14 @@ export default async function ProfilePage({
                   <AsyncMarkdownInline markdown={attempt.problem.title} />
                 </Link>
               ))}
-              {solved.length === 0 && <p className="muted panel p-5">No solved problems yet.</p>}
+              {solved.length === 0 && <p className="muted panel p-5">{t.profile.noSolvedProblems}</p>}
             </div>
           </section>
         )}
 
         {view === "favorites" && (
           <section>
-            <h2 className="mb-3 font-semibold">Favorite problems</h2>
+            <h2 className="mb-3 font-semibold">{t.profile.favoriteProblems}</h2>
           <div className="grid gap-3">
               {favorites.map((favorite) => (
                 <Link
@@ -258,14 +283,14 @@ export default async function ProfilePage({
                   <AsyncMarkdownInline markdown={favorite.problem.title} />
               </Link>
             ))}
-              {favorites.length === 0 && <p className="muted panel p-5">No favorite problems yet.</p>}
+              {favorites.length === 0 && <p className="muted panel p-5">{t.profile.noFavoriteProblems}</p>}
           </div>
         </section>
         )}
 
         {view === "achievements" && (
           <section>
-            <h2 className="mb-3 font-semibold">Achievements</h2>
+            <h2 className="mb-3 font-semibold">{t.profile.achievements}</h2>
             <div className="achievement-grid">
               {ACHIEVEMENTS.map((achievement) => {
                 const unlock = achievementUnlockMap.get(achievement.key);
@@ -279,7 +304,7 @@ export default async function ProfilePage({
                       <strong>{achievement.title}</strong>
                       <p>{achievement.description}</p>
                     </div>
-                    <span>{unlock ? unlock.unlockedAt.toLocaleDateString("en-US") : "Locked"}</span>
+                    <span>{unlock ? unlock.unlockedAt.toLocaleDateString("en-US") : t.profile.locked}</span>
                   </article>
                 );
               })}
@@ -290,37 +315,37 @@ export default async function ProfilePage({
 
       <aside className="grid content-start gap-5">
         <section className="panel p-5">
-          <h2 className="mb-3 font-semibold">Contributions</h2>
+          <h2 className="mb-3 font-semibold">{t.profile.contributions}</h2>
           <div className="grid gap-2 text-sm">
             <div className="flex justify-between gap-3">
-              <span>Problems</span>
-              <span>{user._count.problems}</span>
+              <span>{t.profile.problems}</span>
+              <span>{authoredProblemCount}</span>
             </div>
             <div className="flex justify-between gap-3">
-              <span>Playlists</span>
+              <span>{t.profile.playlists}</span>
               <span>{user._count.playlists}</span>
             </div>
             <div className="flex justify-between gap-3">
-              <span>Concepts created</span>
+              <span>{t.profile.conceptsCreated}</span>
               <span>{user._count.conceptsCreated}</span>
             </div>
             <div className="flex justify-between gap-3">
-              <span>Discussion posts</span>
+              <span>{t.profile.discussionPosts}</span>
               <span>{user._count.posts}</span>
             </div>
             <div className="flex justify-between gap-3">
-              <span>Solved</span>
+              <span>{t.profile.solved}</span>
               <span>{solvedCount}</span>
             </div>
             <div className="flex justify-between gap-3">
-              <span>Favorites</span>
+              <span>{t.profile.favorites}</span>
               <span>{externalFavoriteCount}</span>
             </div>
           </div>
         </section>
 
         <section className="panel p-5">
-          <h2 className="mb-3 font-semibold">Recent edits</h2>
+          <h2 className="mb-3 font-semibold">{t.profile.recentEdits}</h2>
           <div className="grid gap-3 text-sm">
             {revisions.map((revision) => (
               <div key={revision.id}>
@@ -328,7 +353,7 @@ export default async function ProfilePage({
                 <div className="muted">{revision.createdAt.toLocaleString("en-US")}</div>
               </div>
             ))}
-            {revisions.length === 0 && <p className="muted">No edits yet.</p>}
+            {revisions.length === 0 && <p className="muted">{t.profile.noEdits}</p>}
           </div>
         </section>
       </aside>

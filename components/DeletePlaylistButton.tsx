@@ -13,13 +13,13 @@ export function DeletePlaylistButton({ title }: DeletePlaylistButtonProps) {
       className="danger"
       onClick={(event) => {
         const confirmed = window.confirm(
-          `Delete "${title}"?\n\nThis removes the playlist, its circuit, and its playlist ordering. The problems themselves will not be deleted.`
+          `Delete "${title}"?\n\nThis removes the exploration, its circuit, and its ordering. The problems themselves will not be deleted.`
         );
         if (!confirmed) event.preventDefault();
       }}
     >
       <Trash2 aria-hidden="true" size={16} />
-      Delete playlist
+      Delete exploration
     </button>
   );
 }

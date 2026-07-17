@@ -7,8 +7,9 @@ import { TranslationReferencePanel } from "@/components/TranslationReferencePane
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
-import { PROBLEM_DOMAINS } from "@/lib/domains";
-import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
+import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
+import { getTranslations } from "@/lib/i18n/server";
+import { parseContentLanguage } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
 
@@ -18,6 +19,7 @@ export default async function NewConceptPage({
   searchParams: Promise<{ title?: string; translateOf?: string; language?: string; draft?: string }>;
 }) {
   await requireVerifiedUser();
+  const t = await getTranslations();
   const queryParams = await searchParams;
   const draftSession = requireDraftSession("/concepts/new", queryParams);
   const { title = "", translateOf = "", language = "" } = queryParams;
@@ -66,14 +68,6 @@ export default async function NewConceptPage({
             </span>
           </div>
         )}
-        {sourceConcept && (
-          <div className="playlist-context-note">
-            <strong>Translating from {contentLanguageLabel(sourceConcept.language)}.</strong>
-            <span>
-              This will create a separate {contentLanguageLabel(initialLanguage)} page linked to "{sourceConcept.title}".
-            </span>
-          </div>
-        )}
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
           <input name="title" required defaultValue={sourceConcept?.title ?? title} />
@@ -89,7 +83,7 @@ export default async function NewConceptPage({
         />
         <div className="grid gap-4">
           <ProblemDomainPicker
-            domains={PROBLEM_DOMAINS}
+            domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
             helpText={null}
             initialValues={["OTHER"]}
             inputName="domain"
