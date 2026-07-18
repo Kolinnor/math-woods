@@ -10,6 +10,7 @@ import {
   Handle,
   MarkerType,
   MiniMap,
+  Panel,
   Position,
   ReactFlow,
   useNodesState,
@@ -18,10 +19,11 @@ import {
   type Node,
   type NodeProps
 } from "@xyflow/react";
-import { ExternalLink, Flag, GitBranch, LayoutGrid, Link2, Plus, Unlink } from "lucide-react";
+import { AlertTriangle, CircleCheck, ExternalLink, Flag, GitBranch, LayoutGrid, Link2, Plus, Trash2, Unlink } from "lucide-react";
 import {
   createExplorationCanvasChoiceAction,
   createExplorationPageAction,
+  deleteExplorationCanvasPageAction,
   setExplorationContinueAction,
   updateExplorationCanvasChoiceAction,
   updateExplorationCanvasPositionsAction
@@ -49,8 +51,6 @@ export type ExplorationMapPage = {
 };
 
 type PageNodeData = {
-  blockCount: number;
-  choiceCount: number;
   editHref: string;
   isStart: boolean;
   position: number;
@@ -62,6 +62,10 @@ type PageFlowNode = Node<PageNodeData, "explorationPage">;
 type LinkData =
   | { kind: "continue"; pageId: number }
   | { kind: "choice"; optionId: number; pageId: number };
+type DeleteTarget =
+  | { kind: "page"; pageId: number; title: string }
+  | { kind: "continue"; pageId: number; sourceTitle: string; targetTitle: string }
+  | { kind: "choice"; label: string; optionId: number; pageId: number; sourceTitle: string; targetTitle: string };
 
 function fallbackPosition(index: number) {
   return { x: (index % 4) * 320, y: Math.floor(index / 4) * 220 };
@@ -78,13 +82,9 @@ function PageNode({ data, selected }: NodeProps<PageFlowNode>) {
       <div className="exploration-map-node-heading">
         <span>Page {data.position}</span>
         {data.isStart && <strong><Flag size={12} /> Start</strong>}
-        {data.terminal && <strong className="is-terminal">End</strong>}
+        {data.terminal && <strong className="is-terminal"><CircleCheck size={12} /> End</strong>}
       </div>
       <h3>{data.title}</h3>
-      <div className="exploration-map-node-meta">
-        <span>{data.blockCount} {data.blockCount === 1 ? "block" : "blocks"}</span>
-        <span>{data.choiceCount} {data.choiceCount === 1 ? "path" : "paths"}</span>
-      </div>
       <Link className="nodrag exploration-map-node-edit" href={data.editHref as never}>
         Edit <ExternalLink size={13} />
       </Link>
@@ -103,8 +103,6 @@ function pageNodes(pages: ExplorationMapPage[], slug: string): PageFlowNode[] {
       ? fallbackPosition(index)
       : { x: page.canvasX, y: page.canvasY },
     data: {
-      blockCount: page.blockCount,
-      choiceCount: page.choices.length,
       editHref: `/explorations/${slug}/edit?view=page&page=${page.id}`,
       isStart: page.isStart,
       position: page.position,
@@ -168,6 +166,7 @@ export function ExplorationMapCanvas({
   const [newPageTitle, setNewPageTitle] = useState("");
   const [newPathLabel, setNewPathLabel] = useState("");
   const [newPathTarget, setNewPathTarget] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -191,6 +190,60 @@ export function ExplorationMapCanvas({
   const edges = useMemo(() => pageEdges(pages, selectedEdgeId), [pages, selectedEdgeId]);
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
   const availableTargets = pages;
+
+  const requestSelectedDeletion = useCallback(() => {
+    if (selectedEdgeId) {
+      const edge = edges.find((candidate) => candidate.id === selectedEdgeId);
+      if (!edge?.data) return;
+      const data = edge.data;
+      const sourceTitle = pages.find((page) => page.id === data.pageId)?.title ?? "this page";
+      const targetTitle = pages.find((page) => page.id === Number(edge.target))?.title ?? "the destination page";
+      if (data.kind === "continue") {
+        setDeleteTarget({
+          kind: "continue",
+          pageId: data.pageId,
+          sourceTitle,
+          targetTitle
+        });
+        return;
+      }
+      const choice = pages.flatMap((page) => page.choices).find((item) => item.id === data.optionId);
+      setDeleteTarget({
+        kind: "choice",
+        label: choice?.label ?? "this path",
+        optionId: data.optionId,
+        pageId: data.pageId,
+        sourceTitle,
+        targetTitle
+      });
+      return;
+    }
+    const page = pages.find((candidate) => candidate.id === selectedPageId);
+    if (!page) return;
+    if (pages.length <= 1) {
+      setError("An exploration must keep at least one page.");
+      return;
+    }
+    setDeleteTarget({ kind: "page", pageId: page.id, title: page.title });
+  }, [edges, pages, selectedEdgeId, selectedPageId]);
+
+  useEffect(() => {
+    function handleDeleteKey(event: KeyboardEvent) {
+      if (event.key === "Escape" && deleteTarget && !isPending) {
+        event.preventDefault();
+        setDeleteTarget(null);
+        return;
+      }
+      if (event.key !== "Delete" || deleteTarget || isPending) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (!selectedEdgeId && selectedPageId === null) return;
+      event.preventDefault();
+      requestSelectedDeletion();
+    }
+    window.addEventListener("keydown", handleDeleteKey, true);
+    return () => window.removeEventListener("keydown", handleDeleteKey, true);
+  }, [deleteTarget, isPending, requestSelectedDeletion, selectedEdgeId, selectedPageId]);
 
   const changeContinue = useCallback((pageId: number, targetPageId: number | null) => {
     const previous = pages.find((page) => page.id === pageId)?.continueToPageId ?? null;
@@ -332,23 +385,49 @@ export function ExplorationMapCanvas({
     });
   }
 
+  function confirmDeletion() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setError("");
+    startTransition(async () => {
+      try {
+        if (target.kind === "page") {
+          const result = await deleteExplorationCanvasPageAction(target.pageId);
+          setPages((items) => items
+            .filter((page) => page.id !== result.deletedPageId)
+            .map((page) => ({
+              ...page,
+              continueToPageId: page.continueToPageId === result.deletedPageId ? null : page.continueToPageId,
+              isStart: result.newStartPageId === page.id ? true : page.isStart,
+              choices: page.choices.map((choice) => choice.toPageId === result.deletedPageId
+                ? { ...choice, toPageId: null }
+                : choice)
+            })));
+          setSelectedPageId(result.replacementPageId);
+        } else if (target.kind === "continue") {
+          await setExplorationContinueAction(target.pageId, null);
+          setPages((items) => items.map((page) => page.id === target.pageId
+            ? { ...page, continueToPageId: null }
+            : page));
+        } else {
+          await updateExplorationCanvasChoiceAction(target.optionId, target.label, null);
+          setPages((items) => items.map((page) => ({
+            ...page,
+            choices: page.choices.map((choice) => choice.id === target.optionId
+              ? { ...choice, toPageId: null }
+              : choice)
+          })));
+        }
+        setSelectedEdgeId(null);
+        setDeleteTarget(null);
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "The item could not be deleted.");
+      }
+    });
+  }
+
   return (
     <section className="exploration-map-workspace" aria-busy={isPending}>
-      <div className="exploration-map-toolbar">
-        <form onSubmit={(event) => { event.preventDefault(); createPage(); }}>
-          <input
-            aria-label="New page title"
-            onChange={(event) => setNewPageTitle(event.target.value)}
-            placeholder="New page title"
-            value={newPageTitle}
-          />
-          <button disabled={!newPageTitle.trim() || isPending} type="submit"><Plus size={16} /> Add page</button>
-        </form>
-        <button className="secondary" disabled={isPending || pages.length === 0} onClick={arrangePages} type="button">
-          <LayoutGrid size={16} /> Arrange
-        </button>
-      </div>
-
       <div className="exploration-map-shell">
         <div className="exploration-map-canvas">
           <ReactFlow<PageFlowNode, Edge<LinkData>>
@@ -380,6 +459,24 @@ export function ExplorationMapCanvas({
             snapGrid={[20, 20]}
             snapToGrid
           >
+            <Panel className="exploration-map-create-panel" position="top-left">
+              <form className="nodrag nopan" onSubmit={(event) => { event.preventDefault(); createPage(); }}>
+                <input
+                  aria-label="New page title"
+                  onChange={(event) => setNewPageTitle(event.target.value)}
+                  placeholder="New page title"
+                  value={newPageTitle}
+                />
+                <button disabled={!newPageTitle.trim() || isPending} title="Add page" type="submit">
+                  <Plus size={16} /> <span>Add page</span>
+                </button>
+              </form>
+            </Panel>
+            <Panel className="exploration-map-arrange-panel" position="top-right">
+              <button className="secondary nodrag nopan" disabled={isPending || pages.length === 0} onClick={arrangePages} title="Arrange pages" type="button">
+                <LayoutGrid size={16} /> <span>Arrange</span>
+              </button>
+            </Panel>
             <Background color="#c8d3ca" gap={20} size={1} variant={BackgroundVariant.Dots} />
             <Controls position="bottom-left" showInteractive={false} />
             <MiniMap
@@ -455,6 +552,50 @@ export function ExplorationMapCanvas({
           {error && <p className="form-error" role="alert">{error}</p>}
         </aside>
       </div>
+
+      {deleteTarget && (
+        <div
+          className="exploration-map-delete-backdrop"
+          onMouseDown={() => { if (!isPending) setDeleteTarget(null); }}
+          role="presentation"
+        >
+          <div
+            aria-labelledby="exploration-map-delete-title"
+            aria-modal="true"
+            className="exploration-map-delete-dialog"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="exploration-map-delete-icon"><AlertTriangle aria-hidden="true" size={22} /></div>
+            <div>
+              <h2 id="exploration-map-delete-title">
+                {deleteTarget.kind === "page" ? "Delete this page?" : "Delete this link?"}
+              </h2>
+              {deleteTarget.kind === "page" ? (
+                <p>
+                  "{deleteTarget.title}", all of its blocks and its outgoing links will be deleted.
+                  Links from other pages to it will be disconnected. This cannot be undone.
+                </p>
+              ) : deleteTarget.kind === "continue" ? (
+                <p>
+                  The Continue link from "{deleteTarget.sourceTitle}" to "{deleteTarget.targetTitle}" will be removed.
+                </p>
+              ) : (
+                <p>
+                  The "{deleteTarget.label}" link from "{deleteTarget.sourceTitle}" to "{deleteTarget.targetTitle}" will be disconnected.
+                  The choice itself will remain available for editing.
+                </p>
+              )}
+            </div>
+            <div className="exploration-map-delete-actions">
+              <button autoFocus className="secondary" disabled={isPending} onClick={() => setDeleteTarget(null)} type="button">Cancel</button>
+              <button className="danger" disabled={isPending} onClick={confirmDeletion} type="button">
+                <Trash2 size={16} /> {isPending ? "Deleting..." : deleteTarget.kind === "page" ? "Delete page" : "Delete link"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

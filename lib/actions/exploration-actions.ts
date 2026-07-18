@@ -474,7 +474,7 @@ export async function updateExplorationCanvasChoiceAction(
   return { optionId, pageId: page.id, targetPageId: normalizedTarget, label };
 }
 
-export async function deleteExplorationPageAction(pageId: number) {
+async function deleteExplorationPageRecord(pageId: number) {
   const { user, page, exploration } = await requirePageEditor(pageId);
   const pages = await prisma.explorationPage.findMany({
     where: { playlistId: page.playlistId },
@@ -491,8 +491,24 @@ export async function deleteExplorationPageAction(pageId: number) {
     if (page.isEnd) await tx.explorationPage.update({ where: { id: endingReplacement.id }, data: { isEnd: true } });
   });
   await recordExplorationChange(page.playlistId, user.id, `Deleted page "${page.title}"`);
-  revalidateExploration(exploration.slug);
-  redirect(`/explorations/${exploration.slug}/edit?page=${replacement.id}` as Route);
+  return {
+    deletedPageId: page.id,
+    explorationSlug: exploration.slug,
+    newStartPageId: page.isStart ? replacement.id : null,
+    replacementPageId: replacement.id
+  };
+}
+
+export async function deleteExplorationCanvasPageAction(pageId: number) {
+  const result = await deleteExplorationPageRecord(pageId);
+  revalidateExploration(result.explorationSlug, { editor: false });
+  return result;
+}
+
+export async function deleteExplorationPageAction(pageId: number) {
+  const result = await deleteExplorationPageRecord(pageId);
+  revalidateExploration(result.explorationSlug);
+  redirect(`/explorations/${result.explorationSlug}/edit?page=${result.replacementPageId}` as Route);
 }
 
 export async function createExplorationBlockAction(pageId: number, formData: FormData) {
