@@ -347,10 +347,6 @@ export function ExplorationReader({
             if (block.kind === "CHOICE") {
               return (
                 <section key={block.id} className="exploration-interaction-block">
-                  <div className="exploration-interaction-heading">
-                    <CircleHelp size={20} />
-                    <h2>{block.title || "Where should we go next?"}</h2>
-                  </div>
                   {block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}
                   <div className="exploration-choice-grid">
                     {block.options.map((option) => (
@@ -437,7 +433,7 @@ export function ExplorationReader({
             return (
               <section id={`block-${block.key}`} key={block.id} className={framed ? `exploration-math-block kind-${block.kind.toLocaleLowerCase()}` : "exploration-prose-block"}>
                 {framed && <p className="eyebrow">{blockLabel(block.kind)}{statementNumbers.has(block.key) ? ` ${statementNumbers.get(block.key)}` : ""}</p>}
-                {block.title && <h2>{block.title}</h2>}
+                {framed && block.title && <h2>{block.title}</h2>}
                 {block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}
               </section>
             );

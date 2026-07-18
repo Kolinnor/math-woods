@@ -342,7 +342,6 @@ export async function deleteExplorationPageAction(pageId: number) {
 export async function createExplorationBlockAction(pageId: number, formData: FormData) {
   const { page, exploration } = await requirePageEditor(pageId);
   const kind = enumValue(Object.values(ExplorationBlockKind), formData.get("kind"), ExplorationBlockKind.MARKDOWN);
-  const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Block title") || null;
   const referenceSlug = ensureSlug(String(formData.get("referenceSlug") ?? ""));
   const [problem, concept, last] = await Promise.all([
     kind === ExplorationBlockKind.PROBLEM && referenceSlug
@@ -364,7 +363,6 @@ export async function createExplorationBlockAction(pageId: number, formData: For
     data: {
       pageId,
       kind,
-      title,
       bodyMarkdown,
       bodyHtml: bodyMarkdown ? await renderMarkdownContent(bodyMarkdown) : null,
       position: (last?.position ?? 0) + 1,
@@ -396,29 +394,30 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
   const quizType = kind === ExplorationBlockKind.QUIZ
     ? enumValue(Object.values(ExplorationQuizType), formData.get("quizType"), block.quizType ?? ExplorationQuizType.SINGLE_CHOICE)
     : null;
-  const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Block title") || null;
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Block content") || null;
   const explanationMarkdown = boundedText(
     formData.get("explanationMarkdown"),
     CONTENT_LIMITS.markdown,
     "Explanation"
   ) || null;
-  const referenceSlug = ensureSlug(String(formData.get("referenceSlug") ?? ""));
+  // A newly selected reference type has no matching slug field until the editor rerenders.
+  const referenceSlug = block.kind === kind
+    ? ensureSlug(String(formData.get("referenceSlug") ?? ""))
+    : "";
   const problem = kind === ExplorationBlockKind.PROBLEM && referenceSlug
     ? await prisma.problem.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
     : null;
   const concept = kind === ExplorationBlockKind.CONCEPT && referenceSlug
     ? await prisma.concept.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
     : null;
-  if (kind === ExplorationBlockKind.PROBLEM && !problem) throw new Error("Problem not found.");
-  if (kind === ExplorationBlockKind.CONCEPT && !concept) throw new Error("Concept not found.");
+  if (kind === ExplorationBlockKind.PROBLEM && block.kind === kind && !problem) throw new Error("Problem not found.");
+  if (kind === ExplorationBlockKind.CONCEPT && block.kind === kind && !concept) throw new Error("Concept not found.");
   const rule = ruleFromForm(formData);
 
   await prisma.explorationBlock.update({
     where: { id: blockId },
     data: {
       kind,
-      title,
       bodyMarkdown,
       bodyHtml: bodyMarkdown ? await renderMarkdownContent(bodyMarkdown) : null,
       explanationMarkdown,
@@ -433,6 +432,29 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
     }
   });
   revalidateExploration(exploration.slug);
+}
+
+export async function setExplorationBlockPositionAction(blockId: number, requestedPosition: number) {
+  const { block, exploration } = await requireBlockEditor(blockId);
+  const blocks = await prisma.explorationBlock.findMany({
+    where: { pageId: block.pageId },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: { id: true }
+  });
+  const position = Number.isFinite(requestedPosition)
+    ? Math.max(1, Math.min(blocks.length, Math.trunc(requestedPosition)))
+    : block.position;
+  const reordered = blocks.filter((candidate) => candidate.id !== block.id);
+  reordered.splice(position - 1, 0, { id: block.id });
+
+  await prisma.$transaction(
+    reordered.map((candidate, index) => prisma.explorationBlock.update({
+      where: { id: candidate.id },
+      data: { position: index + 1 }
+    }))
+  );
+  revalidateExploration(exploration.slug, { editor: false });
+  return { position };
 }
 
 export async function moveExplorationBlockAction(blockId: number, direction: "up" | "down") {

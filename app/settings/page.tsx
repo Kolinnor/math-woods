@@ -1,5 +1,6 @@
 import { NotificationType, Role } from "@prisma/client";
 import Link from "next/link";
+import { EditorSettingsVisitedMarker } from "@/components/EditorSettingsVisitedMarker";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import {
   changePasswordAction,
@@ -605,6 +606,7 @@ export default async function SettingsPage({
 
       {tab === "latex" && (
         <section className="panel p-5">
+          <EditorSettingsVisitedMarker />
           <div className="mb-5">
             <h2 className="text-lg font-semibold">Editor</h2>
             <p className="muted text-sm">

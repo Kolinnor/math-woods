@@ -1,8 +1,6 @@
 import Link from "next/link";
 import {
-  ArrowDown,
   ArrowLeft,
-  ArrowUp,
   Eye,
   FileClock,
   Plus,
@@ -21,6 +19,7 @@ import { notFound } from "next/navigation";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DeletePlaylistButton } from "@/components/DeletePlaylistButton";
 import { ExplorationAddContentForm } from "@/components/ExplorationAddContentForm";
+import { ExplorationBlockHeaderControls } from "@/components/ExplorationBlockHeaderControls";
 import { ExplorationAddPageForm } from "@/components/ExplorationAddPageForm";
 import { ExplorationPagePositionInput } from "@/components/ExplorationPagePositionInput";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -33,7 +32,6 @@ import {
   deleteExplorationBlockAction,
   deleteExplorationOptionAction,
   deleteExplorationPageAction,
-  moveExplorationBlockAction,
   publishExplorationAction,
   removeExplorationCollaboratorAction,
   updateExplorationBlockAction,
@@ -182,7 +180,6 @@ export default async function EditExplorationPage({
       actions={
         <>
           <Link href={`/explorations/${exploration.slug}/start` as never} className="button secondary"><ArrowLeft size={16} /> Read</Link>
-          <Link href={`/explorations/${exploration.slug}/start?preview=draft` as never} className="button secondary"><Eye size={16} /> Preview draft</Link>
           <Link href={`/explorations/${exploration.slug}/history` as never} className="button secondary"><FileClock size={16} /> Editions</Link>
         </>
       }
@@ -241,43 +238,58 @@ export default async function EditExplorationPage({
                 <h2>{selectedPage.title}</h2>
               </header>
 
-              <details className="studio-page-settings">
-                <summary><Settings size={16} /><strong>Page settings</strong></summary>
-                <form action={updateExplorationPageAction.bind(null, selectedPage.id)} className="studio-page-settings-form">
-                  <label><span>Page title</span><input name="title" defaultValue={selectedPage.title} required /></label>
-                  <label><span>URL slug</span><input name="slug" defaultValue={selectedPage.slug} /></label>
-                  <label className="md:col-span-2"><span>Summary</span><input name="summary" defaultValue={selectedPage.summary ?? ""} /></label>
-                  <label className="checkbox-field md:col-span-2"><input name="isStart" type="checkbox" defaultChecked={selectedPage.isStart} /><span><strong>Starting page</strong></span></label>
-                  <label className="checkbox-field md:col-span-2"><input name="isEnd" type="checkbox" defaultChecked={selectedPage.isEnd} /><span><strong>Ending page</strong></span></label>
-                  <details className="studio-advanced-fields md:col-span-2">
-                    <summary>Conditional visibility</summary>
-                    <div><p className="studio-field-group-title">Show this page only when</p><ConditionInputs value={selectedPage.visibilityRule} /></div>
-                  </details>
-                  <div className="studio-form-actions md:col-span-2">
-                    <button type="submit">Save page settings</button>
-                  </div>
-                </form>
-                <form action={deleteExplorationPageAction.bind(null, selectedPage.id)} className="studio-page-delete">
-                  <ConfirmSubmitButton message={`Delete page "${selectedPage.title}" and all of its blocks?`} className="danger" title="Delete page"><Trash2 size={16} /> Delete page</ConfirmSubmitButton>
-                </form>
-              </details>
+              <div className="studio-page-tools">
+                <details className="studio-page-settings">
+                  <summary><Settings size={16} /><strong>Page settings</strong></summary>
+                  <form action={updateExplorationPageAction.bind(null, selectedPage.id)} className="studio-page-settings-form">
+                    <label><span>Page title</span><input name="title" defaultValue={selectedPage.title} required /></label>
+                    <label><span>URL slug</span><input name="slug" defaultValue={selectedPage.slug} /></label>
+                    <label className="md:col-span-2"><span>Summary</span><input name="summary" defaultValue={selectedPage.summary ?? ""} /></label>
+                    <label className="checkbox-field md:col-span-2"><input name="isStart" type="checkbox" defaultChecked={selectedPage.isStart} /><span><strong>Starting page</strong></span></label>
+                    <label className="checkbox-field md:col-span-2"><input name="isEnd" type="checkbox" defaultChecked={selectedPage.isEnd} /><span><strong>Ending page</strong></span></label>
+                    <details className="studio-advanced-fields md:col-span-2">
+                      <summary>Conditional visibility</summary>
+                      <div><p className="studio-field-group-title">Show this page only when</p><ConditionInputs value={selectedPage.visibilityRule} /></div>
+                    </details>
+                    <div className="studio-form-actions md:col-span-2">
+                      <button type="submit">Save page settings</button>
+                    </div>
+                  </form>
+                  <form action={deleteExplorationPageAction.bind(null, selectedPage.id)} className="studio-page-delete">
+                    <ConfirmSubmitButton message={`Delete page "${selectedPage.title}" and all of its blocks?`} className="danger" title="Delete page"><Trash2 size={16} /> Delete page</ConfirmSubmitButton>
+                  </form>
+                </details>
+                <Link
+                  href={`/explorations/${exploration.slug}/start?preview=draft` as never}
+                  className="button secondary studio-page-preview-button"
+                >
+                  <Eye size={16} /> Preview draft
+                </Link>
+              </div>
 
               <section className="studio-block-list">
                 {selectedPage.blocks.map((block) => {
                   const settings = objectValue(block.settings);
-                  const titleInputId = `exploration-block-${block.id}-title`;
+                  const blockFormId = `exploration-block-${block.id}-form`;
                   return (
                     <article key={block.id} id={`block-${block.id}`} className="studio-block-editor">
                       <div className="studio-block-topline">
-                        <label htmlFor={titleInputId}>Title</label>
+                        <ExplorationBlockHeaderControls
+                          blockId={block.id}
+                          formId={blockFormId}
+                          kind={block.kind}
+                          kinds={[
+                            ...(EDITOR_BLOCK_KINDS.includes(block.kind) ? [] : [{ value: block.kind, label: editorBlockLabel(block.kind) }]),
+                            ...EDITOR_BLOCK_KINDS.map((kind) => ({ value: kind, label: editorBlockLabel(kind) }))
+                          ]}
+                          max={selectedPage.blocks.length}
+                          position={block.position}
+                        />
                         <div className="studio-block-actions">
-                          <form action={moveExplorationBlockAction.bind(null, block.id, "up")}><button className="icon-button secondary" title="Move block up"><ArrowUp size={15} /></button></form>
-                          <form action={moveExplorationBlockAction.bind(null, block.id, "down")}><button className="icon-button secondary" title="Move block down"><ArrowDown size={15} /></button></form>
                           <form action={deleteExplorationBlockAction.bind(null, block.id)}><ConfirmSubmitButton message="Delete this block?" className="icon-button danger" title="Delete block"><Trash2 size={15} /></ConfirmSubmitButton></form>
                         </div>
                       </div>
-                      <form action={updateExplorationBlockAction.bind(null, block.id)} className="studio-block-form">
-                        <input id={titleInputId} name="title" defaultValue={block.title ?? ""} placeholder={explorationBlockLabel(block.kind)} />
+                      <form action={updateExplorationBlockAction.bind(null, block.id)} className="studio-block-form" id={blockFormId}>
                         {(block.kind === ExplorationBlockKind.PROBLEM || block.kind === ExplorationBlockKind.CONCEPT) && (
                           <label><span>{block.kind === ExplorationBlockKind.PROBLEM ? "Problem" : "Concept"} slug</span><input name="referenceSlug" defaultValue={block.problem?.slug ?? block.concept?.slug ?? ""} required /></label>
                         )}
@@ -298,10 +310,6 @@ export default async function EditExplorationPage({
                         <details className="studio-advanced-fields">
                           <summary>Advanced settings</summary>
                           <div className="grid gap-4 md:grid-cols-3">
-                            <label><span>Block type</span><select name="kind" defaultValue={block.kind}>{[
-                              ...(EDITOR_BLOCK_KINDS.includes(block.kind) ? [] : [block.kind]),
-                              ...EDITOR_BLOCK_KINDS
-                            ].map((kind) => <option key={kind} value={kind}>{editorBlockLabel(kind)}</option>)}</select></label>
                             <label><span>Points</span><input name="points" type="number" min={0} defaultValue={block.points} /></label>
                             <label className="checkbox-field"><input name="required" type="checkbox" defaultChecked={block.required} /><span><strong>Required before continuing</strong></span></label>
                           </div>
@@ -354,7 +362,7 @@ export default async function EditExplorationPage({
               </section>
 
               <details className="studio-add-block">
-                <summary><Plus size={18} /><strong>Add content</strong></summary>
+                <summary><Plus size={18} /><strong>Add block</strong></summary>
                 <ExplorationAddContentForm
                   explorationSlug={exploration.slug}
                   pageId={selectedPage.id}

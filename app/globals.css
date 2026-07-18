@@ -1946,10 +1946,51 @@ textarea {
   padding: 0.6rem 1rem 0;
 }
 
-.studio-block-topline > label {
-  color: var(--muted);
-  font-size: 0.76rem;
+.studio-block-heading {
+  align-items: center;
+  display: flex;
+  font-size: 0.82rem;
   font-weight: 700;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.studio-block-position-input,
+.studio-block-kind-select {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 3px;
+  color: inherit;
+  font: inherit;
+  min-height: 1.8rem;
+}
+
+.studio-block-position-input {
+  appearance: textfield;
+  padding: 0.15rem;
+  text-align: center;
+  width: 2.25rem;
+}
+
+.studio-block-kind-select {
+  cursor: pointer;
+  max-width: 12rem;
+  padding: 0.15rem 1.55rem 0.15rem 0.3rem;
+  width: auto;
+}
+
+.studio-block-position-input:hover,
+.studio-block-position-input:focus,
+.studio-block-kind-select:hover,
+.studio-block-kind-select:focus {
+  background: #fff;
+  border-color: #9baa9d;
+}
+
+.studio-block-position-input::-webkit-inner-spin-button,
+.studio-block-position-input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
 .studio-quiz-settings,
@@ -2291,6 +2332,22 @@ textarea {
 
 .studio-page-settings {
   padding: 0;
+}
+
+.studio-page-tools {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.studio-page-tools > .studio-page-settings {
+  flex: 1;
+  min-width: 0;
+}
+
+.studio-page-preview-button {
+  flex: 0 0 auto;
+  min-height: 2.85rem;
 }
 
 .studio-settings-band > summary,
@@ -3222,6 +3279,15 @@ button.danger,
     align-items: start;
     flex-direction: column;
     gap: 0.35rem;
+  }
+
+  .studio-page-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .studio-page-preview-button {
+    justify-content: center;
   }
 
   .studio-block-topline {

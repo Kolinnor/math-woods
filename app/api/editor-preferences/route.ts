@@ -20,5 +20,24 @@ export async function GET() {
     ])
   );
 
-  return NextResponse.json(payload);
+  return NextResponse.json({
+    ...payload,
+    editorSettingsVisited: Boolean(savedPreferences)
+  });
+}
+
+export async function POST() {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ ok: false }, { status: 401 });
+
+  await prisma.latexPreference.upsert({
+    where: { userId: user.id },
+    update: {},
+    create: {
+      userId: user.id,
+      ...DEFAULT_LATEX_PREFERENCES
+    }
+  });
+
+  return NextResponse.json({ ok: true });
 }

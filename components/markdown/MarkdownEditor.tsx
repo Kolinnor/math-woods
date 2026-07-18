@@ -65,6 +65,11 @@ import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownP
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
+import {
+  EDITOR_SETTINGS_VISITED_EVENT,
+  editorSettingsWereVisited,
+  markEditorSettingsVisited
+} from "@/lib/editor-settings-visit";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
 const DRAFT_SUBMIT_PREFIX = `${DRAFT_PREFIX}:submit`;
@@ -1369,6 +1374,7 @@ export function MarkdownEditor({
   const [selectedLinkSuggestionQuery, setSelectedLinkSuggestionQuery] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageUploadMessage, setImageUploadMessage] = useState<string | null>(null);
+  const [showLatexSettingsHint, setShowLatexSettingsHint] = useState(false);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
@@ -1573,11 +1579,17 @@ export function MarkdownEditor({
 
   useEffect(() => {
     let cancelled = false;
+    const locallyVisited = editorSettingsWereVisited();
+    const hideSettingsHint = () => setShowLatexSettingsHint(false);
+    window.addEventListener(EDITOR_SETTINGS_VISITED_EVENT, hideSettingsHint);
 
     fetch("/api/editor-preferences", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (cancelled) return;
+        const settingsVisited = locallyVisited || data?.editorSettingsVisited === true;
+        if (data?.editorSettingsVisited === true) markEditorSettingsVisited();
+        setShowLatexSettingsHint(!settingsVisited);
         const view = viewRef.current;
         if (!view) return;
 
@@ -1593,10 +1605,12 @@ export function MarkdownEditor({
       })
       .catch(() => {
         // Defaults stay active if preferences are unavailable.
+        if (!cancelled) setShowLatexSettingsHint(!locallyVisited);
       });
 
     return () => {
       cancelled = true;
+      window.removeEventListener(EDITOR_SETTINGS_VISITED_EVENT, hideSettingsHint);
     };
   }, []);
 
@@ -1850,13 +1864,15 @@ export function MarkdownEditor({
           {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
           <span>{imageUploading ? "Uploading" : "Image"}</span>
         </button>
-        <span className="markdown-editor-toolbar-status">
-          {imageUploadMessage || (
-            <>
-              Configure LaTeX shortcuts in <a href="/settings?tab=latex">Settings</a>.
-            </>
-          )}
-        </span>
+        {(imageUploadMessage || showLatexSettingsHint) && (
+          <span className="markdown-editor-toolbar-status">
+            {imageUploadMessage || (
+              <>
+                Configure LaTeX shortcuts in <a href="/settings?tab=latex" onClick={markEditorSettingsVisited}>Settings</a>.
+              </>
+            )}
+          </span>
+        )}
         <input
           ref={imageInputRef}
           type="file"

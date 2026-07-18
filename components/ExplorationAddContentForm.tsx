@@ -23,7 +23,6 @@ export function ExplorationAddContentForm({
   const [kind, setKind] = useState("MARKDOWN");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const isChoice = kind === "CHOICE";
   const isReference = kind === "PROBLEM" || kind === "CONCEPT";
   const selectedLabel = kinds.find((option) => option.value === kind)?.label.toLocaleLowerCase() ?? "content";
 
@@ -47,19 +46,6 @@ export function ExplorationAddContentForm({
           {kinds.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
       </label>
-
-      {isChoice && (
-        <label className="studio-add-content-title">
-          <span>Question</span>
-          <input
-            key={kind}
-            name="title"
-            required
-            placeholder="What would you like to ask?"
-            disabled={isPending}
-          />
-        </label>
-      )}
 
       {isReference && (
         <label className="studio-add-content-title">
