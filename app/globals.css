@@ -2277,6 +2277,15 @@ textarea {
   box-shadow: 0 4px 12px rgb(27 47 33 / 0.1);
 }
 
+.exploration-map-panel-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.exploration-map-panel-actions .is-active {
+  background: #245f41;
+}
+
 .exploration-map-shell {
   background: #edf3ee;
   border: 1px solid #b7c4b9;
@@ -2338,12 +2347,61 @@ textarea {
   color: #59655d;
 }
 
+.exploration-map-node-warning {
+  align-items: center;
+  color: #9a6425;
+  display: inline-flex;
+}
+
 .exploration-map-node h3 {
   font-size: 0.94rem;
   line-height: 1.25;
   margin: 0.65rem 0;
   min-height: 2.35rem;
   overflow-wrap: anywhere;
+}
+
+.exploration-map-node-outputs {
+  display: grid;
+  gap: 0.32rem;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 160ms ease, opacity 120ms ease, margin 160ms ease;
+}
+
+.exploration-map-node-outputs.is-open {
+  margin: 0.2rem 0 0.65rem;
+  max-height: 22rem;
+  opacity: 1;
+  overflow: visible;
+}
+
+.exploration-map-node-output {
+  align-items: center;
+  background: #f1f5f2;
+  border-left: 2px solid #4f8064;
+  display: flex;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  min-height: 1.65rem;
+  padding: 0.28rem 0.5rem;
+  position: relative;
+}
+
+.exploration-map-node-output.is-quiz {
+  background: #f0f4f7;
+  border-left-color: #416b89;
+}
+
+.exploration-map-node-output span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exploration-map-output-handle.react-flow__handle-right {
+  right: -1.08rem;
 }
 
 .exploration-map-node-edit {
@@ -2372,9 +2430,18 @@ textarea {
   stroke: #2d7250;
 }
 
+.exploration-map-edge.is-quiz .react-flow__edge-path {
+  stroke: #416b89;
+}
+
 .exploration-map-edge.selected .react-flow__edge-path {
   stroke: #b14e3f;
   stroke-width: 2.6;
+}
+
+.exploration-map-edge.is-traced .react-flow__edge-path {
+  stroke: #d08a2f;
+  stroke-width: 3;
 }
 
 .exploration-map-canvas .react-flow__edge-text {
@@ -2428,6 +2495,68 @@ textarea {
   line-height: 1.25;
   margin: 0.2rem 0 0;
   overflow-wrap: anywhere;
+}
+
+.exploration-map-warnings {
+  background: #fff8e9;
+  border-left: 3px solid #c88a36;
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.7rem;
+}
+
+.exploration-map-warnings p {
+  align-items: flex-start;
+  color: #725126;
+  display: flex;
+  font-size: 0.72rem;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.exploration-map-warnings svg {
+  flex: 0 0 auto;
+  margin-top: 0.08rem;
+}
+
+.exploration-map-trace {
+  background: #f0f6f2;
+  border-left: 3px solid var(--accent);
+  margin-top: 0.75rem;
+  padding: 0.65rem;
+}
+
+.exploration-map-trace-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.exploration-map-trace-heading strong,
+.exploration-map-trace-routes p {
+  align-items: center;
+  display: flex;
+  font-size: 0.74rem;
+  gap: 0.35rem;
+}
+
+.exploration-map-trace-routes {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.exploration-map-trace-routes button {
+  justify-content: flex-start;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.exploration-map-trace-routes p {
+  color: var(--accent);
+  margin: 0;
 }
 
 .exploration-map-inspector > section {
@@ -2485,6 +2614,91 @@ textarea {
   border-top: 1px solid #dce2dd;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
+}
+
+.exploration-map-quiz-section {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.exploration-map-quiz {
+  border-top: 1px solid #dce2dd;
+  padding-top: 0.65rem;
+}
+
+.exploration-map-quiz > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.exploration-map-quiz > summary small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+.exploration-map-quiz-body {
+  margin-top: 0.55rem;
+}
+
+.exploration-map-quiz-route {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.exploration-map-route-kind {
+  color: #416b89;
+  font-size: 0.64rem;
+  font-weight: 800;
+  grid-column: 1 / -1;
+  text-transform: uppercase;
+}
+
+.exploration-map-quiz-route > small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  grid-column: 1 / -1;
+}
+
+.exploration-map-route-actions {
+  display: flex;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.exploration-map-new-quiz-route {
+  border-top: 1px solid #dce2dd;
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+.exploration-map-new-quiz-route fieldset {
+  border: 0;
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+}
+
+.exploration-map-new-quiz-route legend {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.exploration-map-new-quiz-route .checkbox-field {
+  align-items: center;
+  display: flex;
+  font-size: 0.72rem;
+  gap: 0.4rem;
 }
 
 .exploration-map-inspector-empty {

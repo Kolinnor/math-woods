@@ -141,6 +141,13 @@ enum ExplorationQuizType {
   NUMBER
 }
 
+enum ExplorationOutcomeKind {
+  ANSWER
+  CORRECT
+  INCORRECT
+  COMBINATION
+}
+
 enum ExplorationSessionStatus {
   IN_PROGRESS
   COMPLETED
@@ -747,27 +754,28 @@ model Playlist {
 }
 
 model ExplorationPage {
-  id              Int                      @id @default(autoincrement())
-  playlistId      Int
-  key             String                   @default(cuid())
-  slug            String
-  title           String
-  summary         String?
-  position        Int
-  isStart         Boolean                  @default(false)
-  isEnd           Boolean                  @default(false)
-  canvasX         Float?
-  canvasY         Float?
-  continueToPageId Int?
-  visibilityRule  Json?
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-  playlist        Playlist                 @relation(fields: [playlistId], references: [id], onDelete: Cascade)
-  blocks          ExplorationBlock[]
-  incomingOptions ExplorationBlockOption[] @relation("ExplorationOptionTarget")
-  continueToPage  ExplorationPage?         @relation("ExplorationContinueTarget", fields: [continueToPageId], references: [id], onDelete: SetNull)
-  incomingContinues ExplorationPage[]      @relation("ExplorationContinueTarget")
-  sessions        ExplorationSession[]
+  id                Int                       @id @default(autoincrement())
+  playlistId        Int
+  key               String                    @default(cuid())
+  slug              String
+  title             String
+  summary           String?
+  position          Int
+  isStart           Boolean                   @default(false)
+  isEnd             Boolean                   @default(false)
+  canvasX           Float?
+  canvasY           Float?
+  continueToPageId  Int?
+  visibilityRule    Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  playlist          Playlist                  @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  blocks            ExplorationBlock[]
+  incomingOptions   ExplorationBlockOption[]  @relation("ExplorationOptionTarget")
+  incomingOutcomes  ExplorationBlockOutcome[] @relation("ExplorationOutcomeTarget")
+  continueToPage    ExplorationPage?          @relation("ExplorationContinueTarget", fields: [continueToPageId], references: [id], onDelete: SetNull)
+  incomingContinues ExplorationPage[]         @relation("ExplorationContinueTarget")
+  sessions          ExplorationSession[]
 
   @@unique([playlistId, key])
   @@unique([playlistId, slug])
@@ -776,10 +784,10 @@ model ExplorationPage {
 }
 
 model ExplorationBlock {
-  id                  Int                      @id @default(autoincrement())
+  id                  Int                       @id @default(autoincrement())
   pageId              Int
-  key                 String                   @default(cuid())
-  kind                ExplorationBlockKind     @default(MARKDOWN)
+  key                 String                    @default(cuid())
+  kind                ExplorationBlockKind      @default(MARKDOWN)
   title               String?
   bodyMarkdown        String?
   bodyHtml            String?
@@ -791,14 +799,15 @@ model ExplorationBlock {
   quizType            ExplorationQuizType?
   settings            Json?
   visibilityRule      Json?
-  required            Boolean                  @default(false)
-  points              Int                      @default(0)
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
-  page                ExplorationPage          @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  problem             Problem?                 @relation(fields: [problemId], references: [id], onDelete: SetNull)
-  concept             Concept?                 @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+  required            Boolean                   @default(false)
+  points              Int                       @default(0)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  page                ExplorationPage           @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  problem             Problem?                  @relation(fields: [problemId], references: [id], onDelete: SetNull)
+  concept             Concept?                  @relation(fields: [conceptId], references: [id], onDelete: SetNull)
   options             ExplorationBlockOption[]
+  outcomes            ExplorationBlockOutcome[]
   answers             ExplorationAnswer[]
 
   @@unique([pageId, key])
@@ -808,7 +817,7 @@ model ExplorationBlock {
 }
 
 model ExplorationBlockOption {
-  id               Int              @id @default(autoincrement())
+  id               Int                        @id @default(autoincrement())
   blockId          Int
   label            String
   value            String?
@@ -818,12 +827,40 @@ model ExplorationBlockOption {
   toPageId         Int?
   effects          Json?
   position         Int
-  createdAt        DateTime         @default(now())
-  block            ExplorationBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
-  toPage           ExplorationPage? @relation("ExplorationOptionTarget", fields: [toPageId], references: [id], onDelete: SetNull)
+  createdAt        DateTime                   @default(now())
+  block            ExplorationBlock           @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  toPage           ExplorationPage?           @relation("ExplorationOptionTarget", fields: [toPageId], references: [id], onDelete: SetNull)
+  outcomeMatches   ExplorationOutcomeOption[]
 
   @@index([blockId, position])
   @@index([toPageId])
+}
+
+model ExplorationBlockOutcome {
+  id        Int                        @id @default(autoincrement())
+  blockId   Int
+  kind      ExplorationOutcomeKind
+  label     String
+  toPageId  Int?
+  position  Int
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+  block     ExplorationBlock           @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  toPage    ExplorationPage?           @relation("ExplorationOutcomeTarget", fields: [toPageId], references: [id], onDelete: SetNull)
+  matches   ExplorationOutcomeOption[]
+
+  @@index([blockId, position])
+  @@index([toPageId])
+}
+
+model ExplorationOutcomeOption {
+  outcomeId Int
+  optionId  Int
+  outcome   ExplorationBlockOutcome @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  option    ExplorationBlockOption  @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@id([outcomeId, optionId])
+  @@index([optionId])
 }
 
 model ExplorationCollaborator {

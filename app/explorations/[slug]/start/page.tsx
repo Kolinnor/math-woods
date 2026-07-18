@@ -37,7 +37,8 @@ export default async function StartExplorationPage({
             include: {
               problem: { select: { slug: true, title: true, difficulty: true, authorId: true, qualityStatus: true } },
               concept: { select: { slug: true, title: true } },
-              options: { orderBy: { position: "asc" } }
+              options: { orderBy: { position: "asc" } },
+              outcomes: { include: { matches: true }, orderBy: { position: "asc" } }
             }
           }
         }
@@ -105,6 +106,13 @@ export default async function StartExplorationPage({
             value: option.value,
             feedbackHtml: null,
             toPageId: option.toPageId
+          })),
+          outcomes: block.outcomes.map((outcome) => ({
+            id: outcome.id,
+            kind: outcome.kind,
+            label: outcome.label,
+            optionIds: outcome.matches.map((match) => match.optionId),
+            toPageId: outcome.toPageId
           }))
         }))
       )

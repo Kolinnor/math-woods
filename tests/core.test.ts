@@ -31,6 +31,8 @@ import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
 import { explorationSnapshotPages } from "../lib/exploration-snapshot.ts";
 import { EXPLORATION_CHANGE_COALESCE_MS, shouldCoalesceExplorationChange } from "../lib/exploration-history.ts";
 import { hasReachableExplorationExit } from "../lib/exploration-navigation.ts";
+import { resolveExplorationQuizOutcome } from "../lib/exploration-routing.ts";
+import { reachableExplorationPageIds } from "../lib/exploration-map-analysis.ts";
 import { guestProgressContentKey } from "../lib/guest-progress.ts";
 import {
   createDisplayMathLineBreakNormalizer,
@@ -721,6 +723,26 @@ assert.deepEqual(
 );
 assert.equal(numericAnswerMatches("3,1416", 3.14, 0.01), true);
 assert.equal(numericAnswerMatches("3.2", 3.14, 0.01), false);
+
+const quizOutcomes = [
+  { id: 1, kind: "CORRECT" as const, optionIds: [], position: 1, toPageId: 10 },
+  { id: 2, kind: "INCORRECT" as const, optionIds: [], position: 2, toPageId: 11 },
+  { id: 3, kind: "COMBINATION" as const, optionIds: [4, 2], position: 3, toPageId: 12 },
+  { id: 4, kind: "ANSWER" as const, optionIds: [7], position: 4, toPageId: 13 }
+];
+assert.equal(resolveExplorationQuizOutcome(quizOutcomes, [2, 4], true)?.id, 3);
+assert.equal(resolveExplorationQuizOutcome(quizOutcomes, [7], false)?.id, 4);
+assert.equal(resolveExplorationQuizOutcome(quizOutcomes, [8], true)?.id, 1);
+assert.equal(resolveExplorationQuizOutcome(quizOutcomes, [8], false)?.id, 2);
+assert.equal(resolveExplorationQuizOutcome([], [8], false), null);
+assert.deepEqual(
+  [...reachableExplorationPageIds([
+    { id: 1, isStart: true, targetPageIds: [2] },
+    { id: 2, isStart: false, targetPageIds: [1] },
+    { id: 3, isStart: false, targetPageIds: [] }
+  ])],
+  [1, 2]
+);
 
 const explorationChangeNow = new Date("2026-07-18T12:00:00.000Z").getTime();
 const recentExplorationChange = {

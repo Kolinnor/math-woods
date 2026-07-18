@@ -9,6 +9,15 @@ export type ExplorationSnapshotOption = {
   position: number;
 };
 
+export type ExplorationSnapshotOutcome = {
+  id: number;
+  kind: "ANSWER" | "CORRECT" | "INCORRECT" | "COMBINATION";
+  label: string;
+  toPageId: number | null;
+  position: number;
+  matches: Array<{ optionId: number }>;
+};
+
 export type ExplorationSnapshotBlock = {
   id: number;
   key: string;
@@ -34,6 +43,7 @@ export type ExplorationSnapshotBlock = {
   } | null;
   concept: { id: number; slug: string; title: string; translationGroupId: string } | null;
   options: ExplorationSnapshotOption[];
+  outcomes: ExplorationSnapshotOutcome[];
 };
 
 export type ExplorationSnapshotPage = {
@@ -70,6 +80,10 @@ export function explorationSnapshotPages(snapshot: unknown): ExplorationSnapshot
       );
   return validPages.map((page) => ({
     ...page,
+    blocks: page.blocks.map((block) => ({
+      ...block,
+      outcomes: Array.isArray(block.outcomes) ? block.outcomes : []
+    })),
     canvasX: typeof page.canvasX === "number" ? page.canvasX : null,
     canvasY: typeof page.canvasY === "number" ? page.canvasY : null,
     continueToPageId: typeof page.continueToPageId === "number" ? page.continueToPageId : null,

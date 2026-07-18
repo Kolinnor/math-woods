@@ -3,6 +3,7 @@
 import {
   ExplorationBlockKind,
   ExplorationCollaboratorRole,
+  ExplorationOutcomeKind,
   ExplorationQuizType,
   ExplorationSessionStatus,
   ExplorationStatus,
@@ -27,6 +28,7 @@ import {
   parseExplorationValue,
   type ExplorationState
 } from "@/lib/exploration-engine";
+import { resolveExplorationQuizOutcome } from "@/lib/exploration-routing";
 import {
   canEditExploration,
   canReviewExploration,
@@ -101,6 +103,16 @@ async function requireBlockEditor(blockId: number) {
   const user = await requireVerifiedUser();
   if (!canEditExploration(user, block.page.playlist)) throw new Error("You cannot edit this exploration.");
   return { user, block, page: block.page, exploration: block.page.playlist };
+}
+
+async function requireOutcomeEditor(outcomeId: number) {
+  const outcome = await prisma.explorationBlockOutcome.findUnique({
+    where: { id: outcomeId },
+    include: { matches: true }
+  });
+  if (!outcome) throw new Error("Quiz route not found.");
+  const context = await requireBlockEditor(outcome.blockId);
+  return { ...context, outcome };
 }
 
 async function uniquePageSlug(playlistId: number, source: string, exceptId?: number) {
@@ -474,6 +486,133 @@ export async function updateExplorationCanvasChoiceAction(
   return { optionId, pageId: page.id, targetPageId: normalizedTarget, label };
 }
 
+export async function createExplorationQuizOutcomeAction(
+  blockId: number,
+  rawKind: string,
+  rawOptionIds: number[],
+  targetPageId: number | null
+) {
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
+  if (block.kind !== ExplorationBlockKind.QUIZ) throw new Error("Only quiz blocks accept quiz routes.");
+  const kind = Object.values(ExplorationOutcomeKind).includes(rawKind as ExplorationOutcomeKind)
+    ? rawKind as ExplorationOutcomeKind
+    : null;
+  if (!kind || kind === ExplorationOutcomeKind.ANSWER) throw new Error("Invalid quiz route type.");
+  if (
+    kind === ExplorationOutcomeKind.COMBINATION
+    && block.quizType !== ExplorationQuizType.SINGLE_CHOICE
+    && block.quizType !== ExplorationQuizType.MULTIPLE_CHOICE
+    && block.quizType !== ExplorationQuizType.TRUE_FALSE
+  ) {
+    throw new Error("Exact-selection routes require a quiz with answer options.");
+  }
+
+  const optionIds = [...new Set(rawOptionIds.map(Number).filter(Number.isInteger))].sort((left, right) => left - right);
+  const options = optionIds.length
+    ? await prisma.explorationBlockOption.findMany({
+        where: { blockId, id: { in: optionIds } },
+        orderBy: { position: "asc" },
+        select: { id: true, label: true }
+      })
+    : [];
+  if (options.length !== optionIds.length) throw new Error("A selected answer does not belong to this quiz.");
+  if (kind !== ExplorationOutcomeKind.COMBINATION && optionIds.length > 0) {
+    throw new Error("Only exact-selection routes can contain answers.");
+  }
+
+  const normalizedTarget = targetPageId === null ? null : Number(targetPageId);
+  if (normalizedTarget !== null) {
+    if (!Number.isInteger(normalizedTarget)) throw new Error("Invalid target page.");
+    const target = await prisma.explorationPage.findFirst({
+      where: { id: normalizedTarget, playlistId: page.playlistId },
+      select: { id: true }
+    });
+    if (!target) throw new Error("The target page does not belong to this exploration.");
+  }
+
+  const existing = await prisma.explorationBlockOutcome.findMany({
+    where: { blockId },
+    include: { matches: true },
+    orderBy: { position: "asc" }
+  });
+  if (
+    (kind === ExplorationOutcomeKind.CORRECT || kind === ExplorationOutcomeKind.INCORRECT)
+    && existing.some((outcome) => outcome.kind === kind)
+  ) {
+    throw new Error(`${kind === ExplorationOutcomeKind.CORRECT ? "Correct" : "Incorrect"} already has a route.`);
+  }
+  if (kind === ExplorationOutcomeKind.COMBINATION && existing.some((outcome) => {
+    if (outcome.kind !== ExplorationOutcomeKind.COMBINATION) return false;
+    const existingIds = outcome.matches.map((match) => match.optionId).sort((left, right) => left - right);
+    return existingIds.length === optionIds.length && existingIds.every((optionId, index) => optionId === optionIds[index]);
+  })) {
+    throw new Error("This exact answer selection already has a route.");
+  }
+
+  const label = kind === ExplorationOutcomeKind.CORRECT
+    ? "Correct"
+    : kind === ExplorationOutcomeKind.INCORRECT
+      ? "Incorrect"
+      : options.length
+        ? options.map((option) => option.label).join(" + ")
+        : "No answer selected";
+  const outcome = await prisma.explorationBlockOutcome.create({
+    data: {
+      blockId,
+      kind,
+      label: label.slice(0, CONTENT_LIMITS.shortText),
+      toPageId: normalizedTarget,
+      position: (existing.at(-1)?.position ?? 0) + 1,
+      matches: optionIds.length ? { create: optionIds.map((optionId) => ({ optionId })) } : undefined
+    },
+    include: { matches: true }
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Added a quiz route from "${page.title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
+  return {
+    id: outcome.id,
+    blockId,
+    kind: outcome.kind,
+    label: outcome.label,
+    optionIds: outcome.matches.map((match) => match.optionId),
+    position: outcome.position,
+    toPageId: outcome.toPageId
+  };
+}
+
+export async function updateExplorationQuizOutcomeAction(
+  outcomeId: number,
+  rawLabel: string,
+  targetPageId: number | null
+) {
+  const { user, outcome, page, exploration } = await requireOutcomeEditor(outcomeId);
+  const label = requiredBoundedText(rawLabel, CONTENT_LIMITS.shortText, "Route label");
+  const normalizedTarget = targetPageId === null ? null : Number(targetPageId);
+  if (normalizedTarget !== null) {
+    if (!Number.isInteger(normalizedTarget)) throw new Error("Invalid target page.");
+    const target = await prisma.explorationPage.findFirst({
+      where: { id: normalizedTarget, playlistId: page.playlistId },
+      select: { id: true }
+    });
+    if (!target) throw new Error("The target page does not belong to this exploration.");
+  }
+  await prisma.explorationBlockOutcome.update({
+    where: { id: outcome.id },
+    data: { label, toPageId: normalizedTarget }
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Updated a quiz route from "${page.title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
+  return { outcomeId: outcome.id, label, targetPageId: normalizedTarget };
+}
+
+export async function deleteExplorationQuizOutcomeAction(outcomeId: number) {
+  const { user, outcome, page, exploration } = await requireOutcomeEditor(outcomeId);
+  await prisma.explorationBlockOutcome.delete({ where: { id: outcome.id } });
+  await recordExplorationChange(page.playlistId, user.id, `Deleted a quiz route from "${page.title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
+  return { outcomeId: outcome.id };
+}
+
 async function deleteExplorationPageRecord(pageId: number) {
   const { user, page, exploration } = await requirePageEditor(pageId);
   const pages = await prisma.explorationPage.findMany({
@@ -603,6 +742,32 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
       settings: quizType ? jsonInput(blockSettings(formData)) : Prisma.JsonNull
     }
   });
+  if (kind === ExplorationBlockKind.QUIZ && block.kind !== ExplorationBlockKind.QUIZ) {
+    const [routedOptions, answerOutcomes] = await Promise.all([
+      prisma.explorationBlockOption.findMany({
+        where: { blockId, toPageId: { not: null } },
+        orderBy: { position: "asc" }
+      }),
+      prisma.explorationBlockOutcome.findMany({
+        where: { blockId, kind: ExplorationOutcomeKind.ANSWER },
+        include: { matches: true }
+      })
+    ]);
+    const routedOptionIds = new Set(answerOutcomes.flatMap((outcome) => outcome.matches.map((match) => match.optionId)));
+    for (const option of routedOptions) {
+      if (routedOptionIds.has(option.id)) continue;
+      await prisma.explorationBlockOutcome.create({
+        data: {
+          blockId,
+          kind: ExplorationOutcomeKind.ANSWER,
+          label: option.label,
+          position: option.position,
+          toPageId: option.toPageId,
+          matches: { create: { optionId: option.id } }
+        }
+      });
+    }
+  }
   if (formData.get("skipHistory") !== "true") {
     await recordExplorationChange(
       page.playlistId,
@@ -681,24 +846,36 @@ export async function createExplorationOptionAction(blockId: number, formData: F
 }
 
 export async function updateExplorationOptionAction(optionId: number, formData: FormData) {
-  const option = await prisma.explorationBlockOption.findUnique({ where: { id: optionId }, select: { blockId: true } });
+  const option = await prisma.explorationBlockOption.findUnique({
+    where: { id: optionId },
+    select: { blockId: true, toPageId: true }
+  });
   if (!option) throw new Error("Option not found.");
   const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
   const label = requiredBoundedText(formData.get("label"), CONTENT_LIMITS.shortText, "Option label");
-  const toPageId = Number(formData.get("toPageId")) || null;
+  const toPageId = formData.has("toPageId") ? Number(formData.get("toPageId")) || null : option.toPageId;
   if (toPageId) {
     const target = await prisma.explorationPage.findFirst({ where: { id: toPageId, playlistId: exploration.id } });
     if (!target) throw new Error("Target page does not belong to this exploration.");
   }
-  await prisma.explorationBlockOption.update({
-    where: { id: optionId },
-    data: {
-      label,
-      ...(formData.get("isCorrectField") === "true"
-        ? { isCorrect: formData.get("isCorrect") === "on" }
-        : {}),
-      toPageId
-    }
+  await prisma.$transaction(async (tx) => {
+    await tx.explorationBlockOption.update({
+      where: { id: optionId },
+      data: {
+        label,
+        ...(formData.get("isCorrectField") === "true"
+          ? { isCorrect: formData.get("isCorrect") === "on" }
+          : {}),
+        toPageId
+      }
+    });
+    await tx.explorationBlockOutcome.updateMany({
+      where: {
+        kind: ExplorationOutcomeKind.ANSWER,
+        matches: { some: { optionId } }
+      },
+      data: { label, toPageId }
+    });
   });
   await recordExplorationChange(page.playlistId, user.id, `Updated an option in block ${block.position} on "${page.title}"`);
   revalidateExploration(exploration.slug, { editor: false });
@@ -708,7 +885,12 @@ export async function deleteExplorationOptionAction(optionId: number) {
   const option = await prisma.explorationBlockOption.findUnique({ where: { id: optionId }, select: { blockId: true } });
   if (!option) return;
   const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
-  await prisma.explorationBlockOption.delete({ where: { id: optionId } });
+  await prisma.$transaction(async (tx) => {
+    await tx.explorationBlockOutcome.deleteMany({
+      where: { matches: { some: { optionId } } }
+    });
+    await tx.explorationBlockOption.delete({ where: { id: optionId } });
+  });
   await recordExplorationChange(page.playlistId, user.id, `Deleted an option from block ${block.position} on "${page.title}"`);
   revalidateExploration(exploration.slug);
 }
@@ -763,7 +945,8 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
             include: {
               problem: { select: { id: true, translationGroupId: true } },
               concept: { select: { id: true, translationGroupId: true } },
-              options: { orderBy: { position: "asc" } }
+              options: { orderBy: { position: "asc" } },
+              outcomes: { include: { matches: true }, orderBy: { position: "asc" } }
             }
           }
         }
@@ -819,6 +1002,7 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
     });
     const pageIds = new Map<number, number>();
     const blockIds = new Map<number, number>();
+    const optionIds = new Map<number, number>();
     for (const page of source.pages) {
       const nextPage = await tx.explorationPage.create({
         data: {
@@ -875,7 +1059,7 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
       for (const block of page.blocks) {
         const nextBlockId = blockIds.get(block.id)!;
         for (const option of block.options) {
-          await tx.explorationBlockOption.create({
+          const nextOption = await tx.explorationBlockOption.create({
             data: {
               blockId: nextBlockId,
               label: option.label,
@@ -886,6 +1070,26 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
               toPageId: option.toPageId ? pageIds.get(option.toPageId) ?? null : null,
               effects: option.effects ? jsonInput(option.effects) : Prisma.JsonNull,
               position: option.position
+            }
+          });
+          optionIds.set(option.id, nextOption.id);
+        }
+        for (const outcome of block.outcomes) {
+          await tx.explorationBlockOutcome.create({
+            data: {
+              blockId: nextBlockId,
+              kind: outcome.kind,
+              label: outcome.label,
+              toPageId: outcome.toPageId ? pageIds.get(outcome.toPageId) ?? null : null,
+              position: outcome.position,
+              matches: outcome.matches.length
+                ? {
+                    create: outcome.matches.flatMap((match) => {
+                      const optionId = optionIds.get(match.optionId);
+                      return optionId ? [{ optionId }] : [];
+                    })
+                  }
+                : undefined
             }
           });
         }
@@ -922,7 +1126,8 @@ async function explorationSnapshot(playlistId: number) {
                 }
               },
               concept: { select: { id: true, slug: true, title: true, translationGroupId: true } },
-              options: { orderBy: { position: "asc" } }
+              options: { orderBy: { position: "asc" } },
+              outcomes: { include: { matches: true }, orderBy: { position: "asc" } }
             }
           }
         }
@@ -1038,7 +1243,11 @@ export async function submitExplorationResponseAction(
     : null;
   const liveBlock = await prisma.explorationBlock.findFirst({
     where: { key: blockKey, page: { key: pageKey, playlistId } },
-    include: { options: { orderBy: { position: "asc" } }, page: true }
+    include: {
+      options: { orderBy: { position: "asc" } },
+      outcomes: { include: { matches: true }, orderBy: { position: "asc" } },
+      page: true
+    }
   });
   const block = liveBlock;
   const sourcePage = liveBlock?.page;
@@ -1067,6 +1276,20 @@ export async function submitExplorationResponseAction(
   }
 
   const selected = selectedOptions[0] ?? null;
+  const matchedOutcome = block.kind === ExplorationBlockKind.QUIZ
+    ? resolveExplorationQuizOutcome(
+        block.outcomes.map((outcome) => ({
+          id: outcome.id,
+          kind: outcome.kind,
+          optionIds: outcome.matches.map((match) => match.optionId),
+          position: outcome.position,
+          toPageId: outcome.toPageId
+        })),
+        optionIds,
+        isCorrect
+      )
+    : null;
+  const nextPageId = matchedOutcome?.toPageId ?? selected?.toPageId ?? null;
   let state = asExplorationState(previousSession?.state);
   state = applyEffects(state, selectedOptions.flatMap((option) => Array.isArray(option.effects) ? option.effects : []));
   const stableBlockKey = `${pageKey}:${blockKey}`;
@@ -1079,9 +1302,9 @@ export async function submitExplorationResponseAction(
       where: { page: { playlistId } },
       _sum: { points: true }
     }))._sum.points ?? 0;
-    const selectedLivePage = selected?.toPageId
+    const selectedLivePage = nextPageId
       ? await prisma.explorationPage.findFirst({
-          where: { id: selected.toPageId, playlistId },
+          where: { id: nextPageId, playlistId },
           select: { id: true, key: true }
         })
       : null;
@@ -1145,7 +1368,7 @@ export async function submitExplorationResponseAction(
   return {
     isCorrect,
     feedbackHtml: selected?.feedbackHtml ?? block.explanationHtml ?? null,
-    nextPageId: selected?.toPageId ?? null,
+    nextPageId,
     state,
     score
   };

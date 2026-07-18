@@ -58,12 +58,13 @@ import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 
 export const dynamic = "force-dynamic";
 
-const EDITOR_BLOCK_KINDS: ExplorationBlockKind[] = [
+const ADD_BLOCK_KINDS: ExplorationBlockKind[] = [
   ExplorationBlockKind.MARKDOWN,
   ExplorationBlockKind.PROBLEM,
   ExplorationBlockKind.CONCEPT,
   ExplorationBlockKind.CHOICE
 ];
+const EDITOR_BLOCK_KINDS: ExplorationBlockKind[] = [...ADD_BLOCK_KINDS, ExplorationBlockKind.QUIZ];
 
 function editorBlockLabel(kind: ExplorationBlockKind) {
   return kind === ExplorationBlockKind.MARKDOWN ? "Text" : explorationBlockLabel(kind);
@@ -152,7 +153,8 @@ export default async function EditExplorationPage({
             include: {
               problem: { select: { slug: true, title: true } },
               concept: { select: { slug: true, title: true } },
-              options: { orderBy: { position: "asc" } }
+              options: { orderBy: { position: "asc" } },
+              outcomes: { include: { matches: true }, orderBy: { position: "asc" } }
             }
           }
         }
@@ -166,26 +168,61 @@ export default async function EditExplorationPage({
   const canDelete = canDeletePlaylist(user, exploration);
   const settingsDialogId = "exploration-settings-dialog";
   const mapMode = view === "map" || !selectedPageRaw;
-  const mapPages: ExplorationMapPage[] = exploration.pages.map((page) => ({
-    id: page.id,
-    slug: page.slug,
-    title: page.title,
-    position: page.position,
-    isStart: page.isStart,
-    canvasX: page.canvasX,
-    canvasY: page.canvasY,
-    continueToPageId: page.continueToPageId,
-    blockCount: page.blocks.length,
-    choices: page.blocks
-      .filter((block) => block.kind === ExplorationBlockKind.CHOICE)
-      .flatMap((block) => block.options.map((option) => ({
-        id: option.id,
-        blockId: block.id,
-        label: option.label,
-        position: option.position,
-        toPageId: option.toPageId
-      })))
-  }));
+  const mapPages: ExplorationMapPage[] = exploration.pages.map((page) => {
+    const lastBlockPosition = page.blocks.at(-1)?.position ?? 0;
+    const warnings = page.blocks.flatMap((block) => {
+      const leavesPage = block.kind === ExplorationBlockKind.CHOICE
+        ? block.options.some((option) => option.toPageId !== null)
+        : block.kind === ExplorationBlockKind.QUIZ
+          ? block.outcomes.some((outcome) => outcome.toPageId !== null)
+          : false;
+      return leavesPage && block.position < lastBlockPosition
+        ? [`Block ${block.position} can leave this page before later content is reached.`]
+        : [];
+    });
+    return {
+      id: page.id,
+      slug: page.slug,
+      title: page.title,
+      position: page.position,
+      isStart: page.isStart,
+      canvasX: page.canvasX,
+      canvasY: page.canvasY,
+      continueToPageId: page.continueToPageId,
+      blockCount: page.blocks.length,
+      choices: page.blocks
+        .filter((block) => block.kind === ExplorationBlockKind.CHOICE)
+        .flatMap((block) => block.options.map((option) => ({
+          id: option.id,
+          blockId: block.id,
+          label: option.label,
+          position: option.position,
+          toPageId: option.toPageId
+        }))),
+      quizzes: page.blocks
+        .filter((block) => block.kind === ExplorationBlockKind.QUIZ)
+        .map((block) => ({
+          blockId: block.id,
+          blockPosition: block.position,
+          title: block.title || `Quiz ${block.position}`,
+          quizType: block.quizType,
+          options: block.options.map((option) => ({
+            id: option.id,
+            isCorrect: option.isCorrect,
+            label: option.label
+          })),
+          outcomes: block.outcomes.map((outcome) => ({
+            id: outcome.id,
+            kind: outcome.kind,
+            label: outcome.label,
+            optionIds: outcome.matches.map((match) => match.optionId),
+            position: outcome.position,
+            toPageId: outcome.toPageId
+          }))
+        })),
+      warnings
+    };
+  });
 
   return (
     <ForestPageLayout
@@ -338,7 +375,7 @@ export default async function EditExplorationPage({
                               <div key={option.id} className="studio-option-row">
                                 <AutoSaveForm action={updateExplorationOptionAction.bind(null, option.id)} className="studio-option-autosave-form" statusClassName="sr-only">
                                 <label><span>Label</span><input name="label" defaultValue={option.label} required /></label>
-                                <label><span>Send to</span><PageSelect pages={exploration.pages} defaultValue={option.toPageId} excludePageId={selectedPage.id} /></label>
+                                {block.kind === ExplorationBlockKind.CHOICE && <label><span>Send to</span><PageSelect pages={exploration.pages} defaultValue={option.toPageId} excludePageId={selectedPage.id} /></label>}
                                 {block.kind === ExplorationBlockKind.QUIZ && <label className="checkbox-field"><input name="isCorrectField" type="hidden" value="true" /><input name="isCorrect" type="checkbox" defaultChecked={option.isCorrect === true} /><span><strong>Correct</strong></span></label>}
                                 </AutoSaveForm>
                                 <form action={deleteExplorationOptionAction.bind(null, option.id)} className="studio-option-delete">
@@ -349,7 +386,7 @@ export default async function EditExplorationPage({
                           })}
                           <form action={createExplorationOptionAction.bind(null, block.id)} className="studio-new-option">
                             <label><span>New label</span><input name="label" required placeholder={block.kind === ExplorationBlockKind.QUIZ ? "An answer" : "Take this path"} /></label>
-                            <label><span>Send to</span><PageSelect pages={exploration.pages} excludePageId={selectedPage.id} /></label>
+                            {block.kind === ExplorationBlockKind.CHOICE && <label><span>Send to</span><PageSelect pages={exploration.pages} excludePageId={selectedPage.id} /></label>}
                             {block.kind === ExplorationBlockKind.QUIZ && <label className="checkbox-field"><input name="isCorrect" type="checkbox" /><span><strong>Correct answer</strong></span></label>}
                             <button type="submit" className="secondary"><Plus size={15} /> Add option</button>
                           </form>
@@ -367,7 +404,7 @@ export default async function EditExplorationPage({
                 <ExplorationAddContentForm
                   explorationSlug={exploration.slug}
                   pageId={selectedPage.id}
-                  kinds={EDITOR_BLOCK_KINDS.map((kind) => ({ value: kind, label: editorBlockLabel(kind) }))}
+                  kinds={ADD_BLOCK_KINDS.map((kind) => ({ value: kind, label: editorBlockLabel(kind) }))}
                 />
               </details>
             </>

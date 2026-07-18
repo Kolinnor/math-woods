@@ -34,6 +34,14 @@ type ReaderOption = {
   toPageId: number | null;
 };
 
+type ReaderOutcome = {
+  id: number;
+  kind: string;
+  label: string;
+  optionIds: number[];
+  toPageId: number | null;
+};
+
 type ReaderBlock = {
   id: number;
   key: string;
@@ -49,6 +57,7 @@ type ReaderBlock = {
   problem: { slug: string; titleHtml: string; difficulty: number | null } | null;
   concept: { slug: string; title: string } | null;
   options: ReaderOption[];
+  outcomes: ReaderOutcome[];
 };
 
 type ReaderPage = {
@@ -166,8 +175,11 @@ export function ExplorationReader({
   const isTerminalPage = !hasReachableExplorationExit({
     continueToPageId: currentPage?.continueToPageId ?? null,
     choiceTargetPageIds: visibleBlocks
-      .filter((block) => block.kind === "CHOICE")
-      .flatMap((block) => block.options.map((option) => option.toPageId)),
+      .flatMap((block) => block.kind === "CHOICE"
+        ? block.options.map((option) => option.toPageId)
+        : block.kind === "QUIZ"
+          ? block.outcomes.map((outcome) => outcome.toPageId)
+          : []),
     readablePageIds: visiblePageIds
   });
   const progress = visiblePages.length ? Math.round((visited.size / visiblePages.length) * 100) : 0;
