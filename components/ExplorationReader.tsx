@@ -279,7 +279,8 @@ export function ExplorationReader({
   const hasRoutedChoice = currentBlock.options.some((option) => option.toBlockId !== null);
   const hasRoutedOutcome = currentBlock.outcomes.some((outcome) => outcome.toBlockId !== null);
   const terminal = currentBlock.isEnd || (!currentBlock.continueToBlockId && !hasRoutedChoice && !hasRoutedOutcome);
-  const canContinue = !currentBlock.required || Boolean(currentResult);
+  const interactiveBlock = currentBlock.kind === "QUIZ" || currentBlock.kind === "CHOICE";
+  const canContinue = !interactiveBlock || !currentBlock.required || Boolean(currentResult);
   const nextBlockId = currentResult?.nextBlockId ?? currentBlock.continueToBlockId;
 
   return (
