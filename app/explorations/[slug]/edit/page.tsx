@@ -38,6 +38,7 @@ import {
   removeExplorationCollaboratorAction,
   updateExplorationBlockAction,
   updateExplorationBlockContinueFormAction,
+  updateExplorationBlockNameAction,
   updateExplorationMetadataAction,
   updateExplorationOptionAction
 } from "@/lib/actions/exploration-actions";
@@ -68,10 +69,12 @@ function objectValue(value: unknown): Record<string, unknown> {
 
 function blockDisplayLabel(block: {
   kind: ExplorationBlockKind;
+  name: string | null;
   bodyMarkdown: string | null;
   problem: { title: string } | null;
   concept: { title: string } | null;
 }) {
+  if (block.name) return block.name;
   if (block.problem) return block.problem.title;
   if (block.concept) return block.concept.title;
   const firstLine = block.bodyMarkdown?.split("\n").find((line) => line.trim())?.trim();
@@ -208,6 +211,10 @@ export default async function EditExplorationPage({
                       <select className="studio-block-kind-select" name="kind" form={blockFormId} defaultValue={selectedBlock.kind}>
                         {EDITOR_BLOCK_KINDS.map((kind) => <option key={kind} value={kind}>{editorBlockLabel(kind)}</option>)}
                       </select>
+                      <span aria-hidden="true">-</span>
+                      <AutoSaveForm action={updateExplorationBlockNameAction.bind(null, selectedBlock.id)} className="studio-block-name-form" statusClassName="sr-only">
+                        <input name="name" defaultValue={selectedBlock.name ?? ""} maxLength={160} placeholder="Name" aria-label="Block name" />
+                      </AutoSaveForm>
                     </div>
                     <form action={deleteExplorationBlockAction.bind(null, selectedBlock.id)}>
                       <ConfirmSubmitButton message="Delete this block?" className="icon-button danger" title="Delete block"><Trash2 size={15} /></ConfirmSubmitButton>

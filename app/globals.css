@@ -2035,6 +2035,27 @@ textarea {
   min-width: 0;
 }
 
+.studio-block-name-form {
+  min-width: 7rem;
+  width: min(18rem, 32vw);
+}
+
+.studio-block-name-form input {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 3px;
+  font: inherit;
+  min-height: 1.8rem;
+  padding: 0.15rem 0.3rem;
+  width: 100%;
+}
+
+.studio-block-name-form input:hover,
+.studio-block-name-form input:focus {
+  background: #fff;
+  border-color: #9baa9d;
+}
+
 .studio-block-position-input,
 .studio-block-kind-select {
   background: transparent;

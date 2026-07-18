@@ -907,6 +907,7 @@ export async function createExplorationBlockAction(pageId: number, formData: For
   if (kind === ExplorationBlockKind.PROBLEM && !problem) throw new Error("Problem not found.");
   if (kind === ExplorationBlockKind.CONCEPT && !concept) throw new Error("Concept not found.");
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Block content") || null;
+  const name = boundedText(formData.get("name"), CONTENT_LIMITS.title, "Block name") || null;
   const quizType = kind === ExplorationBlockKind.QUIZ
     ? enumValue(Object.values(ExplorationQuizType), formData.get("quizType"), ExplorationQuizType.SINGLE_CHOICE)
     : null;
@@ -916,6 +917,7 @@ export async function createExplorationBlockAction(pageId: number, formData: For
       pageId,
       branchId: requestedBranchId,
       kind,
+      name,
       bodyMarkdown,
       bodyHtml: bodyMarkdown ? await renderMarkdownContent(bodyMarkdown) : null,
       position: (last?.position ?? 0) + 1,
@@ -944,6 +946,19 @@ export async function createExplorationBlockAction(pageId: number, formData: For
   // Keep the current studio mounted while its client form selects the new block.
   revalidateExploration(exploration.slug, { editor: false });
   return { blockId: block.id };
+}
+
+export async function updateExplorationBlockNameAction(blockId: number, formData: FormData) {
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
+  const name = boundedText(formData.get("name"), CONTENT_LIMITS.title, "Block name") || null;
+  if (name === block.name) return;
+  await prisma.explorationBlock.update({ where: { id: blockId }, data: { name } });
+  await recordExplorationChange(
+    page.playlistId,
+    user.id,
+    name ? `Named block ${block.position} "${name}"` : `Removed the name of block ${block.position}`
+  );
+  revalidateExploration(exploration.slug);
 }
 
 export async function updateExplorationBlockAction(blockId: number, formData: FormData) {
@@ -1394,6 +1409,7 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
             isStart: block.isStart,
             isEnd: block.isEnd,
             kind: block.kind,
+            name: block.name,
             title: block.title,
             bodyMarkdown: block.bodyMarkdown,
             bodyHtml: block.bodyHtml,

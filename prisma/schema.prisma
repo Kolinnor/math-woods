@@ -801,6 +801,7 @@ model ExplorationBlock {
   isEnd               Boolean                   @default(false)
   continueToBlockId   Int?
   kind                ExplorationBlockKind      @default(MARKDOWN)
+  name                String?
   title               String?
   bodyMarkdown        String?
   bodyHtml            String?

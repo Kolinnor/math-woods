@@ -32,6 +32,7 @@ export type ExplorationSnapshotBlock = {
   continueToBlockId: number | null;
   key: string;
   kind: string;
+  name: string | null;
   title: string | null;
   bodyMarkdown: string | null;
   bodyHtml: string | null;
@@ -97,6 +98,7 @@ export function explorationSnapshotPages(snapshot: unknown): ExplorationSnapshot
       canvasY: typeof block.canvasY === "number" ? block.canvasY : null,
       isStart: block.isStart === true,
       isEnd: block.isEnd === true,
+      name: typeof block.name === "string" ? block.name : null,
       continueToBlockId: typeof block.continueToBlockId === "number" ? block.continueToBlockId : null,
       options: block.options.map((option) => ({
         ...option,
