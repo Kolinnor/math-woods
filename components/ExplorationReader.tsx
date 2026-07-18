@@ -10,6 +10,7 @@ import {
   submitExplorationResponseAction
 } from "@/lib/actions/exploration-actions";
 import { asExplorationState, type ExplorationState } from "@/lib/exploration-engine";
+import { canAutomaticallyAdvance, explorationPathAfter } from "@/lib/exploration-block-graph";
 
 export type ExplorationReaderBlock = {
   id: number;
@@ -25,6 +26,7 @@ export type ExplorationReaderBlock = {
   isStart: boolean;
   isEnd: boolean;
   continueToBlockId: number | null;
+  autoContinue: boolean;
   problem: { slug: string; titleHtml: string; difficulty: number | null } | null;
   concept: { slug: string; title: string } | null;
   options: Array<{ id: number; label: string; toBlockId: number | null }>;
@@ -33,7 +35,7 @@ export type ExplorationReaderBlock = {
 
 type InitialAnswer = { blockKey: string; response: unknown; isCorrect: boolean | null };
 type ResponseResult = { isCorrect: boolean | null; feedbackHtml: string | null; nextBlockId: number | null };
-type StoredProgress = { blockId?: number; state?: ExplorationState; visited?: string[] };
+type StoredProgress = { blockId?: number; path?: number[]; state?: ExplorationState; visited?: string[] };
 
 function storageKey(playlistId: number) {
   return `math-woods:exploration-blocks:${playlistId}`;
@@ -43,11 +45,18 @@ function stableKey(block: ExplorationReaderBlock) {
   return `${block.pageKey}:${block.key}`;
 }
 
+function validPath(blocks: ExplorationReaderBlock[], requested: number[], fallbackId: number) {
+  const ids = new Set(blocks.map((block) => block.id));
+  const path = requested.filter((id) => Number.isInteger(id) && ids.has(id)).slice(-2000);
+  return path.length ? path : [fallbackId];
+}
+
 export function ExplorationReader({
   playlistId,
   slug,
   blocks,
   initialBlockId,
+  initialPathBlockIds,
   initialState,
   initialVisitedBlockKeys,
   initialAnswers,
@@ -58,6 +67,7 @@ export function ExplorationReader({
   slug: string;
   blocks: ExplorationReaderBlock[];
   initialBlockId: number;
+  initialPathBlockIds: number[];
   initialState: ExplorationState;
   initialVisitedBlockKeys: string[];
   initialAnswers: InitialAnswer[];
@@ -65,18 +75,67 @@ export function ExplorationReader({
   canEdit?: boolean;
 }) {
   const [state, setState] = useState(() => asExplorationState(initialState));
-  const [currentBlockId, setCurrentBlockId] = useState(initialBlockId);
+  const [path, setPath] = useState(() => validPath(blocks, initialPathBlockIds, initialBlockId));
   const [visited, setVisited] = useState(() => new Set(initialVisitedBlockKeys));
-  const [history, setHistory] = useState<number[]>([]);
   const [responses, setResponses] = useState<Record<string, string | string[]>>(() =>
     Object.fromEntries(initialAnswers.map((answer) => [answer.blockKey, answer.response as string | string[]]))
   );
   const [results, setResults] = useState<Record<string, ResponseResult>>(() =>
     Object.fromEntries(initialAnswers.map((answer) => [answer.blockKey, { isCorrect: answer.isCorrect, feedbackHtml: null, nextBlockId: null }]))
   );
+  const [guestProgressLoaded, setGuestProgressLoaded] = useState(signedIn);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const currentBlock = blocks.find((block) => block.id === currentBlockId) ?? blocks[0];
+  const blockById = new Map(blocks.map((block) => [block.id, block]));
+  const currentBlock = blockById.get(path.at(-1) ?? initialBlockId) ?? blocks[0];
+
+  function pathKeys(blockIds: number[]) {
+    return blockIds.flatMap((id) => blockById.get(id)?.key ?? []);
+  }
+
+  function scrollToLatest(blockId: number) {
+    window.setTimeout(() => {
+      const matches = document.querySelectorAll<HTMLElement>(`[data-exploration-block-id="${blockId}"]`);
+      matches.item(matches.length - 1)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 40);
+  }
+
+  function persist(block: ExplorationReaderBlock, nextState: ExplorationState, completed = false, nextPath = path) {
+    if (!signedIn) return;
+    startTransition(() => {
+      void saveExplorationBlockProgressAction(
+        playlistId,
+        block.key,
+        nextState,
+        completed,
+        pathKeys(nextPath)
+      ).catch((reason) => {
+        setError(reason instanceof Error ? reason.message : "Progress could not be saved.");
+      });
+    });
+  }
+
+  function revealAfter(pathIndex: number, blockId: number, nextState = state, saveProgress = true) {
+    const target = blockById.get(blockId);
+    if (!target) return;
+    const progressingState = nextState.explorationCompleted === true
+      ? { ...nextState, explorationCompleted: false }
+      : nextState;
+    const nextPath = explorationPathAfter(path, pathIndex, target.id);
+    setState(progressingState);
+    setPath(nextPath);
+    setVisited((items) => new Set([...items, target.key]));
+    window.history.replaceState(null, "", `/explorations/${slug}/start?block=${target.key}`);
+    if (saveProgress) persist(target, progressingState, false, nextPath);
+    scrollToLatest(target.id);
+  }
+
+  function truncateAfter(pathIndex: number) {
+    const nextPath = path.slice(0, pathIndex + 1);
+    const target = blockById.get(nextPath.at(-1) ?? 0);
+    setPath(nextPath);
+    if (target) window.history.replaceState(null, "", `/explorations/${slug}/start?block=${target.key}`);
+  }
 
   useEffect(() => {
     if (signedIn) return;
@@ -84,76 +143,100 @@ export function ExplorationReader({
       const saved = JSON.parse(localStorage.getItem(storageKey(playlistId)) ?? "null") as StoredProgress | null;
       if (!saved) return;
       if (saved.state) setState(asExplorationState(saved.state));
-      if (saved.blockId && blocks.some((block) => block.id === saved.blockId)) setCurrentBlockId(saved.blockId);
+      const restoredPath = validPath(blocks, saved.path ?? (saved.blockId ? [saved.blockId] : []), initialBlockId);
+      setPath(restoredPath);
       if (saved.visited) setVisited(new Set(saved.visited));
     } catch {
       localStorage.removeItem(storageKey(playlistId));
+    } finally {
+      setGuestProgressLoaded(true);
     }
-  }, [blocks, playlistId, signedIn]);
+  }, [blocks, initialBlockId, playlistId, signedIn]);
 
   useEffect(() => {
-    if (signedIn) return;
-    localStorage.setItem(storageKey(playlistId), JSON.stringify({ blockId: currentBlockId, state, visited: [...visited] } satisfies StoredProgress));
-  }, [currentBlockId, playlistId, signedIn, state, visited]);
+    if (signedIn || !guestProgressLoaded) return;
+    localStorage.setItem(storageKey(playlistId), JSON.stringify({
+      blockId: path.at(-1),
+      path,
+      state,
+      visited: [...visited]
+    } satisfies StoredProgress));
+  }, [guestProgressLoaded, path, playlistId, signedIn, state, visited]);
 
-  function persist(block: ExplorationReaderBlock, nextState: ExplorationState, completed = false) {
-    if (!signedIn) return;
-    startTransition(() => {
-      void saveExplorationBlockProgressAction(playlistId, block.key, nextState, completed).catch((reason) => {
-        setError(reason instanceof Error ? reason.message : "Progress could not be saved.");
-      });
-    });
-  }
-
-  function goTo(blockId: number, addHistory = true, nextState = state) {
-    const target = blocks.find((block) => block.id === blockId);
-    if (!target || !currentBlock) return;
-    if (addHistory) setHistory((items) => [...items, currentBlock.id]);
-    setCurrentBlockId(target.id);
-    setVisited((items) => new Set([...items, target.key]));
-    window.history.replaceState(null, "", `/explorations/${slug}/start?block=${target.key}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    persist(target, nextState);
-  }
+  useEffect(() => {
+    if (!currentBlock || isPending || !currentBlock.autoContinue || !currentBlock.continueToBlockId) return;
+    if (currentBlock.kind === "CHOICE" || currentBlock.kind === "QUIZ") return;
+    if (!canAutomaticallyAdvance(path, currentBlock.continueToBlockId)) {
+      setError("Automatic progression stopped to avoid a loop.");
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      revealAfter(path.length - 1, currentBlock.continueToBlockId!);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  // The path itself is the progression trigger; revealAfter intentionally uses its latest snapshot.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBlock?.id, currentBlock?.autoContinue, currentBlock?.continueToBlockId, currentBlock?.kind, isPending, path]);
 
   function goBack() {
-    const previous = history.at(-1);
+    if (path.length <= 1) return;
+    const nextPath = path.slice(0, -1);
+    const previous = blockById.get(nextPath.at(-1)!);
     if (!previous) return;
-    setHistory((items) => items.slice(0, -1));
-    goTo(previous, false);
+    const nextState = state.explorationCompleted === true
+      ? { ...state, explorationCompleted: false }
+      : state;
+    setState(nextState);
+    setPath(nextPath);
+    window.history.replaceState(null, "", `/explorations/${slug}/start?block=${previous.key}`);
+    persist(previous, nextState, false, nextPath);
+    scrollToLatest(previous.id);
   }
 
   function restart() {
     const first = blocks.find((block) => block.isStart) ?? blocks[0];
     if (!first) return;
     const emptyState: ExplorationState = {};
+    const nextPath = [first.id];
     setState(emptyState);
     setResponses({});
     setResults({});
-    setHistory([]);
+    setPath(nextPath);
     setVisited(new Set([first.key]));
-    setCurrentBlockId(first.id);
     localStorage.removeItem(storageKey(playlistId));
-    persist(first, emptyState);
+    window.history.replaceState(null, "", `/explorations/${slug}/start?block=${first.key}`);
+    persist(first, emptyState, false, nextPath);
+    scrollToLatest(first.id);
   }
 
   function setResponse(key: string, value: string | string[]) {
     setResponses((items) => ({ ...items, [key]: value }));
   }
 
-  function submitResponse(block: ExplorationReaderBlock, response: string | string[]) {
+  function submitResponse(block: ExplorationReaderBlock, response: string | string[], pathIndex: number) {
     if ((typeof response === "string" && !response.trim()) || (Array.isArray(response) && response.length === 0)) return;
     setError(null);
     startTransition(async () => {
       try {
         const key = stableKey(block);
-        const result = await submitExplorationResponseAction(playlistId, block.pageKey, block.key, response, true, state);
+        const result = await submitExplorationResponseAction(
+          playlistId,
+          block.pageKey,
+          block.key,
+          response,
+          true,
+          state,
+          pathKeys(path.slice(0, pathIndex + 1))
+        );
         const nextState = asExplorationState(result.state);
         setState(nextState);
         setResponses((items) => ({ ...items, [key]: response }));
         setResults((items) => ({ ...items, [key]: { isCorrect: result.isCorrect, feedbackHtml: result.feedbackHtml, nextBlockId: result.nextBlockId } }));
-        if (block.kind === "CHOICE" && result.nextBlockId) window.setTimeout(() => goTo(result.nextBlockId!, true, nextState), 0);
-        else persist(block, nextState);
+        if (result.nextBlockId && (block.kind === "CHOICE" || block.autoContinue)) {
+          window.setTimeout(() => revealAfter(pathIndex, result.nextBlockId!, nextState, false), 0);
+        } else {
+          truncateAfter(pathIndex);
+        }
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The response could not be checked.");
       }
@@ -162,39 +245,42 @@ export function ExplorationReader({
 
   if (!currentBlock) return <p className="muted">This exploration has no blocks yet.</p>;
 
-  const key = stableKey(currentBlock);
-  const response = responses[key] ?? (currentBlock.quizType === "MULTIPLE_CHOICE" ? [] : "");
-  const result = results[key];
-  const hasRoutedChoice = currentBlock.options.some((option) => option.toBlockId !== null);
-  const hasRoutedOutcome = currentBlock.outcomes.some((outcome) => outcome.toBlockId !== null);
-  const terminal = currentBlock.isEnd || (!currentBlock.continueToBlockId && !hasRoutedChoice && !hasRoutedOutcome);
-  const canContinue = !currentBlock.required || Boolean(result);
-
-  function renderBlock() {
-    if (currentBlock.kind === "PROBLEM" && currentBlock.problem) return (
-      <section className="exploration-reference-block exploration-problem-block"><div><p className="eyebrow">Problem</p><h2><MarkdownInline html={currentBlock.problem.titleHtml} /></h2>{currentBlock.problem.difficulty !== null && <span className="muted">Difficulty {currentBlock.problem.difficulty}/100</span>}</div>{currentBlock.bodyHtml && <MarkdownBlock html={currentBlock.bodyHtml} />}<Link href={`/problems/${currentBlock.problem.slug}`} className="button secondary">Open problem <ExternalLink size={16} /></Link></section>
+  function renderBlock(block: ExplorationReaderBlock, pathIndex: number) {
+    const key = stableKey(block);
+    const response = responses[key] ?? (block.quizType === "MULTIPLE_CHOICE" ? [] : "");
+    const result = results[key];
+    if (block.kind === "PROBLEM" && block.problem) return (
+      <section className="exploration-reference-block exploration-problem-block"><div><p className="eyebrow">Problem</p><h2><MarkdownInline html={block.problem.titleHtml} /></h2>{block.problem.difficulty !== null && <span className="muted">Difficulty {block.problem.difficulty}/100</span>}</div>{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<Link href={`/problems/${block.problem.slug}`} className="button secondary">Open problem <ExternalLink size={16} /></Link></section>
     );
-    if (currentBlock.kind === "CONCEPT" && currentBlock.concept) return (
-      <section className="exploration-reference-block exploration-concept-block"><div><p className="eyebrow">Concept</p><h2>{currentBlock.concept.title}</h2></div>{currentBlock.bodyHtml && <MarkdownBlock html={currentBlock.bodyHtml} />}<Link href={`/concepts/${currentBlock.concept.slug}`} className="button secondary">Open concept <BookOpen size={16} /></Link></section>
+    if (block.kind === "CONCEPT" && block.concept) return (
+      <section className="exploration-reference-block exploration-concept-block"><div><p className="eyebrow">Concept</p><h2>{block.concept.title}</h2></div>{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<Link href={`/concepts/${block.concept.slug}`} className="button secondary">Open concept <BookOpen size={16} /></Link></section>
     );
-    if (currentBlock.kind === "CHOICE") return (
-      <section className="exploration-interaction-block">{currentBlock.bodyHtml && <MarkdownBlock html={currentBlock.bodyHtml} />}<div className="exploration-choice-grid">{currentBlock.options.map((option) => <button key={option.id} type="button" className={responses[key] === String(option.id) ? "secondary is-selected" : "secondary"} disabled={isPending} onClick={() => submitResponse(currentBlock, String(option.id))}>{option.label}<ArrowRight size={16} /></button>)}</div></section>
+    if (block.kind === "CHOICE") return (
+      <section className="exploration-interaction-block">{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<div className="exploration-choice-grid">{block.options.map((option) => <button key={option.id} type="button" className={responses[key] === String(option.id) ? "secondary is-selected" : "secondary"} disabled={isPending} onClick={() => submitResponse(block, String(option.id), pathIndex)}>{option.label}<ArrowRight size={16} /></button>)}</div></section>
     );
-    if (currentBlock.kind === "QUIZ") {
-      const multiple = currentBlock.quizType === "MULTIPLE_CHOICE";
-      const textEntry = currentBlock.quizType === "SHORT_TEXT" || currentBlock.quizType === "NUMBER";
+    if (block.kind === "QUIZ") {
+      const multiple = block.quizType === "MULTIPLE_CHOICE";
+      const textEntry = block.quizType === "SHORT_TEXT" || block.quizType === "NUMBER";
       return (
         <section className="exploration-interaction-block">
-          <div className="exploration-interaction-heading"><CircleHelp size={20} /><div><p className="eyebrow">Quiz{currentBlock.points ? ` · ${currentBlock.points} points` : ""}</p><h2>{currentBlock.title || "Check your understanding"}</h2></div></div>
-          {currentBlock.bodyHtml && <MarkdownBlock html={currentBlock.bodyHtml} />}
-          {textEntry ? <label className="grid gap-2"><span>Your answer</span><input inputMode={currentBlock.quizType === "NUMBER" ? "decimal" : undefined} value={typeof response === "string" ? response : ""} onChange={(event) => setResponse(key, event.target.value)} /></label> : <div className="exploration-quiz-options">{currentBlock.options.map((option) => { const selected = multiple ? Array.isArray(response) && response.includes(String(option.id)) : response === String(option.id); return <label key={option.id}><input type={multiple ? "checkbox" : "radio"} name={`quiz-${currentBlock.id}`} checked={selected} onChange={() => { if (multiple) { const values = Array.isArray(response) ? response : []; setResponse(key, selected ? values.filter((id) => id !== String(option.id)) : [...values, String(option.id)]); } else setResponse(key, String(option.id)); }} /><span>{option.label}</span></label>; })}</div>}
-          <button type="button" disabled={isPending} onClick={() => submitResponse(currentBlock, response)}>Check answer</button>
+          <div className="exploration-interaction-heading"><CircleHelp size={20} /><div><p className="eyebrow">Quiz{block.points ? ` · ${block.points} points` : ""}</p><h2>{block.title || "Check your understanding"}</h2></div></div>
+          {block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}
+          {textEntry ? <label className="grid gap-2"><span>Your answer</span><input inputMode={block.quizType === "NUMBER" ? "decimal" : undefined} value={typeof response === "string" ? response : ""} onChange={(event) => setResponse(key, event.target.value)} /></label> : <div className="exploration-quiz-options">{block.options.map((option) => { const selected = multiple ? Array.isArray(response) && response.includes(String(option.id)) : response === String(option.id); return <label key={option.id}><input type={multiple ? "checkbox" : "radio"} name={`quiz-${block.id}-${pathIndex}`} checked={selected} onChange={() => { if (multiple) { const values = Array.isArray(response) ? response : []; setResponse(key, selected ? values.filter((id) => id !== String(option.id)) : [...values, String(option.id)]); } else setResponse(key, String(option.id)); }} /><span>{option.label}</span></label>; })}</div>}
+          <button type="button" disabled={isPending} onClick={() => submitResponse(block, response, pathIndex)}>Check answer</button>
           {result && <div className={`exploration-feedback ${result.isCorrect === true ? "is-correct" : result.isCorrect === false ? "is-incorrect" : ""}`}><strong>{result.isCorrect === true ? "Correct" : result.isCorrect === false ? "Not quite" : "Response saved"}</strong>{result.feedbackHtml && <MarkdownBlock html={result.feedbackHtml} />}</div>}
         </section>
       );
     }
-    return <section className="exploration-prose-block">{currentBlock.title && <h2>{currentBlock.title}</h2>}{currentBlock.bodyHtml && <MarkdownBlock html={currentBlock.bodyHtml} />}</section>;
+    return <section className="exploration-prose-block">{block.title && <h2>{block.title}</h2>}{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}</section>;
   }
+
+  const currentKey = stableKey(currentBlock);
+  const currentResult = results[currentKey];
+  const hasRoutedChoice = currentBlock.options.some((option) => option.toBlockId !== null);
+  const hasRoutedOutcome = currentBlock.outcomes.some((outcome) => outcome.toBlockId !== null);
+  const terminal = currentBlock.isEnd || (!currentBlock.continueToBlockId && !hasRoutedChoice && !hasRoutedOutcome);
+  const canContinue = !currentBlock.required || Boolean(currentResult);
+  const nextBlockId = currentResult?.nextBlockId ?? currentBlock.continueToBlockId;
 
   return (
     <main className="exploration-block-reader">
@@ -202,13 +288,31 @@ export function ExplorationReader({
         <p>{visited.size} block{visited.size === 1 ? "" : "s"} visited</p>
         {canEdit && <Link href={`/explorations/${slug}/edit?view=block&block=${currentBlock.id}`} className="button secondary"><Pencil size={16} /> Edit</Link>}
       </header>
-      {renderBlock()}
+      <div className="exploration-reader-sequence">
+        {path.map((blockId, pathIndex) => {
+          const block = blockById.get(blockId);
+          if (!block) return null;
+          return (
+            <div
+              className={pathIndex === path.length - 1 ? "exploration-reader-step is-current" : "exploration-reader-step"}
+              data-exploration-block-id={block.id}
+              key={`${block.id}:${pathIndex}`}
+            >
+              {renderBlock(block, pathIndex)}
+            </div>
+          );
+        })}
+      </div>
       {error && <p className="form-error" role="alert">{error}</p>}
-      {terminal && state.explorationCompleted === true && <section className="exploration-completion-summary"><Flag size={22} /><div><h2>Exploration complete</h2><p>You followed a path through {visited.size} blocks.</p></div></section>}
+      {terminal && state.explorationCompleted === true && <section className="exploration-completion-summary"><Flag size={22} /><div><h2>Exploration complete</h2><p>You followed a path through {path.length} blocks.</p></div></section>}
       <footer className="exploration-reader-controls">
-        <button type="button" className="secondary" disabled={history.length === 0} onClick={goBack}><ArrowLeft size={17} /> Back</button>
-        <button type="button" className="secondary" onClick={restart}><RotateCcw size={17} /> Restart</button>
-        {terminal ? <button type="button" disabled={!canContinue} onClick={() => { const nextState = { ...state, explorationCompleted: true }; setState(nextState); persist(currentBlock, nextState, true); }}><Flag size={17} /> Complete exploration</button> : currentBlock.kind !== "CHOICE" && (result?.nextBlockId || currentBlock.continueToBlockId) ? <button type="button" disabled={!canContinue} onClick={() => goTo(result?.nextBlockId ?? currentBlock.continueToBlockId!)}>Continue <ArrowRight size={17} /></button> : null}
+        <button type="button" className="secondary" disabled={path.length <= 1 || isPending} onClick={goBack}><ArrowLeft size={17} /> Back</button>
+        <button type="button" className="secondary" disabled={isPending} onClick={restart}><RotateCcw size={17} /> Restart</button>
+        {terminal
+          ? <button type="button" disabled={!canContinue || isPending} onClick={() => { const nextState = { ...state, explorationCompleted: true }; setState(nextState); persist(currentBlock, nextState, true, path); }}><Flag size={17} /> Complete exploration</button>
+          : currentBlock.kind !== "CHOICE" && nextBlockId && !currentBlock.autoContinue
+            ? <button type="button" disabled={!canContinue || isPending} onClick={() => revealAfter(path.length - 1, nextBlockId)}>Continue <ArrowRight size={17} /></button>
+            : null}
       </footer>
     </main>
   );

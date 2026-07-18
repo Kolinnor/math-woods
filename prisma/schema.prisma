@@ -800,6 +800,7 @@ model ExplorationBlock {
   isStart             Boolean                   @default(false)
   isEnd               Boolean                   @default(false)
   continueToBlockId   Int?
+  autoContinue        Boolean                   @default(false)
   kind                ExplorationBlockKind      @default(MARKDOWN)
   name                String?
   title               String?
@@ -952,6 +953,7 @@ model ExplorationSession {
   visitedPageIds  Json                     @default("[]")
   visitedPageKeys Json                     @default("[]")
   visitedBlockKeys Json                    @default("[]")
+  pathBlockKeys    Json                     @default("[]")
   status          ExplorationSessionStatus @default(IN_PROGRESS)
   score           Int                      @default(0)
   maxScore        Int                      @default(0)

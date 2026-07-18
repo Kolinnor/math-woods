@@ -33,7 +33,12 @@ import { EXPLORATION_CHANGE_COALESCE_MS, shouldCoalesceExplorationChange } from 
 import { hasReachableExplorationExit } from "../lib/exploration-navigation.ts";
 import { resolveExplorationQuizOutcome } from "../lib/exploration-routing.ts";
 import { reachableExplorationPageIds } from "../lib/exploration-map-analysis.ts";
-import { nextExplorationBlockId, reachableExplorationBlockIds } from "../lib/exploration-block-graph.ts";
+import {
+  canAutomaticallyAdvance,
+  explorationPathAfter,
+  nextExplorationBlockId,
+  reachableExplorationBlockIds
+} from "../lib/exploration-block-graph.ts";
 import {
   clearExplorationBranches,
   descendantExplorationBranchIds,
@@ -753,6 +758,10 @@ assert.deepEqual(
 assert.equal(nextExplorationBlockId(9, 8, 7), 9);
 assert.equal(nextExplorationBlockId(null, 8, 7), 8);
 assert.equal(nextExplorationBlockId(null, null, 7), 7);
+assert.deepEqual(explorationPathAfter([1, 2, 3], 1, 4), [1, 2, 4]);
+assert.deepEqual(explorationPathAfter([1], 0, 2), [1, 2]);
+assert.equal(canAutomaticallyAdvance([1, 2], 3), true);
+assert.equal(canAutomaticallyAdvance([1, 2], 1), false);
 assert.deepEqual(
   [...reachableExplorationBlockIds([
     { id: 1, isStart: true, continueToBlockId: 2, optionTargetBlockIds: [], outcomeTargetBlockIds: [] },

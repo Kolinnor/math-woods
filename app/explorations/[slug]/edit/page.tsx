@@ -26,6 +26,7 @@ import { ExplorationBlockList } from "@/components/ExplorationBlockList";
 import { ExplorationBlockNameHelp } from "@/components/ExplorationBlockNameHelp";
 import { ExplorationChoiceActionFields } from "@/components/ExplorationChoiceActionFields";
 import { ExplorationMapCanvas, type ExplorationMapBlock } from "@/components/ExplorationMapCanvas";
+import { ExplorationNextBlockFields } from "@/components/ExplorationNextBlockFields";
 import { ExplorationSettingsButton } from "@/components/ExplorationSettingsButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
@@ -143,6 +144,7 @@ export default async function EditExplorationPage({
     isStart: block.isStart,
     isEnd: block.isEnd,
     continueToBlockId: block.continueToBlockId,
+    autoContinue: block.autoContinue,
     options: block.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId })),
     outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, label: outcome.label, toBlockId: outcome.toBlockId }))
   }));
@@ -248,7 +250,11 @@ export default async function EditExplorationPage({
 
                   {selectedBlock.kind !== ExplorationBlockKind.CHOICE && (
                     <AutoSaveForm action={updateExplorationBlockContinueFormAction.bind(null, selectedBlock.id)} className="studio-block-route" statusClassName="sr-only">
-                      <label><span>Next block</span><select name="continueToBlockId" defaultValue={selectedBlock.continueToBlockId ?? ""}><option value="">End here</option>{blockLabels.filter((block) => block.id !== selectedBlock.id).map((block) => <option key={block.id} value={block.id}>{block.label}</option>)}</select></label>
+                      <ExplorationNextBlockFields
+                        blocks={blockLabels.filter((block) => block.id !== selectedBlock.id)}
+                        initialAutomatic={selectedBlock.autoContinue}
+                        initialBlockId={selectedBlock.continueToBlockId}
+                      />
                     </AutoSaveForm>
                   )}
 

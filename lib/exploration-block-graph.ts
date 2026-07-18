@@ -14,6 +14,15 @@ export function nextExplorationBlockId(
   return outcomeTargetBlockId ?? optionTargetBlockId ?? continueToBlockId;
 }
 
+export function explorationPathAfter(path: number[], sourceIndex: number, targetBlockId: number) {
+  const safeIndex = Math.max(0, Math.min(Math.trunc(sourceIndex), path.length - 1));
+  return [...path.slice(0, safeIndex + 1), targetBlockId].slice(-2000);
+}
+
+export function canAutomaticallyAdvance(path: number[], targetBlockId: number) {
+  return !path.includes(targetBlockId);
+}
+
 export function reachableExplorationBlockIds(blocks: ExplorationGraphBlock[]) {
   const byId = new Map(blocks.map((block) => [block.id, block]));
   const start = blocks.find((block) => block.isStart) ?? blocks[0];

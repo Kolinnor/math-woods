@@ -48,6 +48,7 @@ export type ExplorationMapBlock = {
   isStart: boolean;
   isEnd: boolean;
   continueToBlockId: number | null;
+  autoContinue: boolean;
   options: Array<{ id: number; label: string; toBlockId: number | null }>;
   outcomes: Array<{ id: number; label: string; toBlockId: number | null }>;
 };
@@ -71,6 +72,7 @@ function mapHistoryState(blocks: ExplorationMapBlock[]): ExplorationMapHistoryBl
     isStart: block.isStart,
     isEnd: block.isEnd,
     continueToBlockId: block.continueToBlockId,
+    autoContinue: block.autoContinue,
     name: block.name,
     options: block.options.map((option) => ({ id: option.id, toBlockId: option.toBlockId })),
     outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, toBlockId: outcome.toBlockId }))
@@ -151,7 +153,9 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
         source: String(block.id),
         sourceHandle: "continue",
         target: String(block.continueToBlockId),
-        label: "Continue",
+        label: block.autoContinue ? "Automatic" : "Continue",
+        animated: block.autoContinue,
+        style: block.autoContinue ? { strokeDasharray: "5 4" } : undefined,
         markerEnd: { type: MarkerType.ArrowClosed },
         data: { kind: "continue", recordId: block.id }
       });
@@ -276,7 +280,7 @@ export function ExplorationMapCanvas({
       try {
         if (edge.data!.kind === "continue") {
           await setExplorationBlockContinueAction(edge.data!.recordId, null);
-          updateBlock(edge.data!.recordId, (block) => ({ ...block, continueToBlockId: null }));
+          updateBlock(edge.data!.recordId, (block) => ({ ...block, continueToBlockId: null, autoContinue: false }));
         } else if (edge.data!.kind === "choice") {
           await setExplorationChoiceBlockTargetAction(edge.data!.recordId, null);
           const sourceId = Number(edge.source);
@@ -309,6 +313,7 @@ export function ExplorationMapCanvas({
         const next = blocksRef.current.filter((block) => block.id !== blockId).map((block) => ({
           ...block,
           continueToBlockId: block.continueToBlockId === blockId ? null : block.continueToBlockId,
+          autoContinue: block.continueToBlockId === blockId ? false : block.autoContinue,
           options: block.options.map((option) => option.toBlockId === blockId ? { ...option, toBlockId: null } : option),
           outcomes: block.outcomes.map((outcome) => outcome.toBlockId === blockId ? { ...outcome, toBlockId: null } : outcome)
         }));
@@ -400,7 +405,7 @@ export function ExplorationMapCanvas({
         const next = blocksRef.current.map((block) => ({
           ...block,
           ...(endpoint === "start" ? { isStart: block.id === selectedBlock.id } : { isEnd: block.id === selectedBlock.id }),
-          ...(endpoint === "end" && block.id === selectedBlock.id ? { continueToBlockId: null } : {})
+          ...(endpoint === "end" && block.id === selectedBlock.id ? { continueToBlockId: null, autoContinue: false } : {})
         }));
         commitBlocks(next);
       } catch (reason) {

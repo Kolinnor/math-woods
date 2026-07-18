@@ -30,6 +30,7 @@ export type ExplorationSnapshotBlock = {
   isStart: boolean;
   isEnd: boolean;
   continueToBlockId: number | null;
+  autoContinue: boolean;
   key: string;
   kind: string;
   name: string | null;
@@ -98,6 +99,7 @@ export function explorationSnapshotPages(snapshot: unknown): ExplorationSnapshot
       canvasY: typeof block.canvasY === "number" ? block.canvasY : null,
       isStart: block.isStart === true,
       isEnd: block.isEnd === true,
+      autoContinue: block.autoContinue === true,
       name: typeof block.name === "string" ? block.name : null,
       continueToBlockId: typeof block.continueToBlockId === "number" ? block.continueToBlockId : null,
       options: block.options.map((option) => ({

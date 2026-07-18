@@ -58,6 +58,14 @@ export default async function StartExplorationPage({
   const startBlock = readableBlocks.find((block) => block.isStart) ?? readableBlocks[0];
   const initialBlock = requestedBlock ?? resumedBlock ?? startBlock;
   if (!initialBlock) notFound();
+  const readableByKey = new Map(readableBlocks.map((block) => [block.key, block]));
+  const persistedPath = Array.isArray(session?.pathBlockKeys)
+    ? session.pathBlockKeys.map(String).flatMap((key) => readableByKey.get(key) ?? [])
+    : [];
+  const initialPathIndex = persistedPath.findLastIndex((block) => block.id === initialBlock.id);
+  const initialPathBlocks = initialPathIndex >= 0
+    ? persistedPath.slice(0, initialPathIndex + 1)
+    : [initialBlock];
 
   const blocks: ExplorationReaderBlock[] = await Promise.all(readableBlocks.map(async (block) => ({
     id: block.id,
@@ -73,6 +81,7 @@ export default async function StartExplorationPage({
     isStart: block.isStart,
     isEnd: block.isEnd,
     continueToBlockId: block.continueToBlockId,
+    autoContinue: block.autoContinue,
     problem: block.problem ? {
       slug: block.problem.slug,
       titleHtml: await renderInlineMarkdown(block.problem.title),
@@ -101,6 +110,7 @@ export default async function StartExplorationPage({
         slug={exploration.slug}
         blocks={blocks}
         initialBlockId={initialBlock.id}
+        initialPathBlockIds={initialPathBlocks.map((block) => block.id)}
         initialState={asExplorationState(session?.state)}
         initialVisitedBlockKeys={initialVisitedBlockKeys}
         initialAnswers={(session?.answers ?? []).map((answer) => ({ blockKey: answer.blockKey, response: answer.response, isCorrect: answer.isCorrect }))}

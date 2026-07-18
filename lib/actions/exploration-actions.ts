@@ -389,6 +389,7 @@ export type ExplorationMapHistoryBlock = {
   isStart: boolean;
   isEnd: boolean;
   continueToBlockId: number | null;
+  autoContinue: boolean;
   name: string | null;
   options: Array<{ id: number; toBlockId: number | null }>;
   outcomes: Array<{ id: number; toBlockId: number | null }>;
@@ -571,6 +572,7 @@ export async function restoreExplorationMapStateAction(
       isStart: block.isStart === true,
       isEnd: block.isEnd === true,
       continueToBlockId: block.isEnd ? null : target(block.continueToBlockId, false),
+      autoContinue: block.isEnd || block.continueToBlockId === null ? false : block.autoContinue === true,
       name: boundedText(block.name, CONTENT_LIMITS.title, "Block name") || null,
       options: block.options.map((option) => ({ id: option.id, toBlockId: target(option.toBlockId, false) })),
       outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, toBlockId: target(outcome.toBlockId) }))
@@ -587,6 +589,7 @@ export async function restoreExplorationMapStateAction(
           isStart: block.isStart,
           isEnd: block.isEnd,
           continueToBlockId: block.continueToBlockId,
+          autoContinue: block.autoContinue,
           name: block.name
         }
       });
@@ -612,7 +615,11 @@ export async function restoreExplorationMapStateAction(
   revalidateExploration(exploration.slug, { editor: false });
 }
 
-export async function setExplorationBlockContinueAction(blockId: number, targetBlockId: number | null) {
+export async function setExplorationBlockContinueAction(
+  blockId: number,
+  targetBlockId: number | null,
+  autoContinue?: boolean
+) {
   const { user, block, page, exploration } = await requireBlockEditor(blockId);
   const normalizedTarget = targetBlockId === null ? null : Number(targetBlockId);
   if (normalizedTarget === blockId) throw new Error("A block cannot continue to itself.");
@@ -625,7 +632,15 @@ export async function setExplorationBlockContinueAction(blockId: number, targetB
   }
   await prisma.explorationBlock.update({
     where: { id: block.id },
-    data: { continueToBlockId: normalizedTarget, isEnd: normalizedTarget === null ? block.isEnd : false }
+    data: {
+      continueToBlockId: normalizedTarget,
+      isEnd: normalizedTarget === null ? block.isEnd : false,
+      ...(normalizedTarget === null
+        ? { autoContinue: false }
+        : autoContinue === undefined
+          ? {}
+          : { autoContinue })
+    }
   });
   await recordExplorationChange(page.playlistId, user.id, "Updated a block link");
   revalidateExploration(exploration.slug, { editor: false });
@@ -634,7 +649,7 @@ export async function setExplorationBlockContinueAction(blockId: number, targetB
 
 export async function updateExplorationBlockContinueFormAction(blockId: number, formData: FormData) {
   const targetBlockId = Number(formData.get("continueToBlockId")) || null;
-  return setExplorationBlockContinueAction(blockId, targetBlockId);
+  return setExplorationBlockContinueAction(blockId, targetBlockId, formData.get("autoContinue") === "on");
 }
 
 export async function setExplorationBlockEndpointAction(blockId: number, endpoint: "start" | "end") {
@@ -646,7 +661,9 @@ export async function setExplorationBlockEndpointAction(blockId: number, endpoin
     });
     await tx.explorationBlock.update({
       where: { id: blockId },
-      data: endpoint === "start" ? { isStart: true } : { isEnd: true, continueToBlockId: null }
+      data: endpoint === "start"
+        ? { isStart: true }
+        : { isEnd: true, continueToBlockId: null, autoContinue: false }
     });
   });
   await recordExplorationChange(page.playlistId, user.id, `Changed exploration ${endpoint} block`);
@@ -1187,7 +1204,9 @@ export async function deleteExplorationBlockAction(blockId: number) {
     const replacement = block.continueToBlockId;
     await tx.explorationBlock.updateMany({
       where: { continueToBlockId: blockId },
-      data: { continueToBlockId: replacement }
+      data: replacement === null
+        ? { continueToBlockId: null, autoContinue: false }
+        : { continueToBlockId: replacement }
     });
     await tx.explorationBlockOption.updateMany({
       where: { toBlockId: blockId },
@@ -1524,6 +1543,7 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
             canvasY: block.canvasY,
             isStart: block.isStart,
             isEnd: block.isEnd,
+            autoContinue: block.autoContinue,
             kind: block.kind,
             name: block.name,
             title: block.title,
@@ -1742,7 +1762,8 @@ export async function submitExplorationResponseAction(
   blockKey: string,
   response: unknown,
   persistResponse = true,
-  rawState?: ExplorationState
+  rawState?: ExplorationState,
+  rawPathBlockKeys: string[] = []
 ) {
   const user = await getCurrentUser();
   const exploration = await prisma.playlist.findUnique({
@@ -1840,6 +1861,7 @@ export async function submitExplorationResponseAction(
     }
   }
   state = applyEffects(state, selectedOptions.flatMap((option) => Array.isArray(option.effects) ? option.effects : []));
+  state.explorationCompleted = false;
   const stableBlockKey = `${pageKey}:${blockKey}`;
   state[`block.${stableBlockKey}.answered`] = true;
   if (isCorrect !== null) state[`block.${stableBlockKey}.correct`] = isCorrect;
@@ -1862,10 +1884,32 @@ export async function submitExplorationResponseAction(
           include: { page: { select: { id: true, key: true } } }
         })
       : null;
-    const targetPageKey = targetLiveBlock?.page.key ?? selectedLivePage?.key ?? pageKey;
-    const targetLivePage = selectedLivePage ?? await prisma.explorationPage.findFirst({
+    const responseAdvances = block.kind === ExplorationBlockKind.CHOICE || block.autoContinue;
+    const sessionTargetBlock = responseAdvances ? targetLiveBlock : null;
+    const targetPageKey = sessionTargetBlock?.page.key ?? (responseAdvances ? selectedLivePage?.key : null) ?? pageKey;
+    const targetLivePage = (responseAdvances ? selectedLivePage : null) ?? await prisma.explorationPage.findFirst({
       where: { playlistId, key: targetPageKey }, select: { id: true, key: true }
     });
+    const requestedPathBlockKeys = Array.isArray(rawPathBlockKeys) && rawPathBlockKeys.length
+      ? rawPathBlockKeys.map(String).slice(-2000)
+      : Array.isArray(previousSession?.pathBlockKeys)
+        ? previousSession.pathBlockKeys.map(String).slice(-2000)
+        : [];
+    const validPathBlocks = requestedPathBlockKeys.length
+      ? await prisma.explorationBlock.findMany({
+          where: { key: { in: requestedPathBlockKeys }, page: { playlistId } },
+          select: { key: true }
+        })
+      : [];
+    const validPathKeys = new Set(validPathBlocks.map((candidate) => candidate.key));
+    const previousPathBlockKeys = requestedPathBlockKeys.filter((key) => validPathKeys.has(key));
+    const sourcePathIndex = previousPathBlockKeys.lastIndexOf(block.key);
+    const pathBlockKeys = sourcePathIndex >= 0
+      ? previousPathBlockKeys.slice(0, sourcePathIndex + 1)
+      : [...previousPathBlockKeys, block.key];
+    if (sessionTargetBlock && pathBlockKeys.at(-1) !== sessionTargetBlock.key) {
+      pathBlockKeys.push(sessionTargetBlock.key);
+    }
     const visited = new Set<number>(
       Array.isArray(previousSession?.visitedPageIds)
         ? previousSession.visitedPageIds.map(Number).filter(Number.isInteger)
@@ -1888,27 +1932,30 @@ export async function submitExplorationResponseAction(
       where: { playlistId_userId: { playlistId, userId: user.id } },
       update: {
         editionId: null,
-        currentPageId: targetLiveBlock?.page.id ?? targetLivePage?.id ?? liveBlock?.pageId ?? null,
+        currentPageId: sessionTargetBlock?.page.id ?? targetLivePage?.id ?? liveBlock?.pageId ?? null,
         currentPageKey: targetPageKey,
-        currentBlockKey: targetLiveBlock?.key ?? block.key,
+        currentBlockKey: sessionTargetBlock?.key ?? block.key,
         state: jsonInput(state),
         visitedPageIds: jsonInput([...visited]),
         visitedPageKeys: jsonInput([...visitedKeys]),
         visitedBlockKeys: jsonInput([...visitedBlockKeys]),
+        pathBlockKeys: jsonInput(pathBlockKeys),
         maxScore,
-        status: ExplorationSessionStatus.IN_PROGRESS
+        status: ExplorationSessionStatus.IN_PROGRESS,
+        completedAt: null
       },
       create: {
         playlistId,
         userId: user.id,
         editionId: null,
-        currentPageId: targetLiveBlock?.page.id ?? targetLivePage?.id ?? liveBlock?.pageId ?? null,
+        currentPageId: sessionTargetBlock?.page.id ?? targetLivePage?.id ?? liveBlock?.pageId ?? null,
         currentPageKey: targetPageKey,
-        currentBlockKey: targetLiveBlock?.key ?? block.key,
+        currentBlockKey: sessionTargetBlock?.key ?? block.key,
         state: jsonInput(state),
         visitedPageIds: jsonInput([...visited]),
         visitedPageKeys: jsonInput([...visitedKeys]),
         visitedBlockKeys: jsonInput([...visitedBlockKeys]),
+        pathBlockKeys: jsonInput(pathBlockKeys),
         maxScore
       }
     });
@@ -1950,7 +1997,8 @@ export async function saveExplorationBlockProgressAction(
   playlistId: number,
   blockKey: string,
   rawState: ExplorationState,
-  completed = false
+  completed = false,
+  rawPathBlockKeys: string[] = []
 ) {
   const user = await getCurrentUser();
   if (!user) return { saved: false };
@@ -1964,6 +2012,18 @@ export async function saveExplorationBlockProgressAction(
     include: { page: { select: { id: true, key: true } } }
   });
   if (!block) throw new Error("Invalid exploration block.");
+  const requestedPathBlockKeys = Array.isArray(rawPathBlockKeys)
+    ? rawPathBlockKeys.map(String).slice(-2000)
+    : [];
+  const validPathBlocks = requestedPathBlockKeys.length
+    ? await prisma.explorationBlock.findMany({
+        where: { key: { in: requestedPathBlockKeys }, page: { playlistId } },
+        select: { key: true }
+      })
+    : [];
+  const validPathKeys = new Set(validPathBlocks.map((candidate) => candidate.key));
+  const pathBlockKeys = requestedPathBlockKeys.filter((key) => validPathKeys.has(key));
+  if (pathBlockKeys.at(-1) !== block.key) pathBlockKeys.push(block.key);
   const existing = await prisma.explorationSession.findUnique({
     where: { playlistId_userId: { playlistId, userId: user.id } }
   });
@@ -1980,6 +2040,7 @@ export async function saveExplorationBlockProgressAction(
       currentBlockKey: block.key,
       state: jsonInput(asExplorationState(rawState)),
       visitedBlockKeys: jsonInput([...visitedBlockKeys]),
+      pathBlockKeys: jsonInput(pathBlockKeys),
       status: completed ? ExplorationSessionStatus.COMPLETED : ExplorationSessionStatus.IN_PROGRESS,
       completedAt: completed ? new Date() : null
     },
@@ -1992,6 +2053,7 @@ export async function saveExplorationBlockProgressAction(
       currentBlockKey: block.key,
       state: jsonInput(asExplorationState(rawState)),
       visitedBlockKeys: jsonInput([...visitedBlockKeys]),
+      pathBlockKeys: jsonInput(pathBlockKeys),
       status: completed ? ExplorationSessionStatus.COMPLETED : ExplorationSessionStatus.IN_PROGRESS,
       completedAt: completed ? new Date() : null
     }

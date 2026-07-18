@@ -3286,8 +3286,12 @@ textarea {
 }
 
 .studio-block-route {
+  align-items: end;
   background: #f5f7f5;
   border-top: 1px solid #d8ded8;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: minmax(12rem, 1fr) auto;
   padding: 0.55rem 0.7rem;
 }
 
@@ -3302,6 +3306,19 @@ textarea {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.studio-block-route .studio-block-route-automatic {
+  display: flex;
+  grid-template-columns: none;
+  min-height: 2.65rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .studio-block-route {
+    grid-template-columns: 1fr;
+  }
 }
 
 .studio-block-row {
@@ -3601,6 +3618,23 @@ textarea {
   color: var(--muted);
   font-size: 0.78rem;
   margin: 0;
+}
+
+.exploration-reader-sequence {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.exploration-reader-step {
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+  padding-bottom: 1.4rem;
+}
+
+.exploration-reader-step.is-current {
+  border-bottom: 0;
+  padding-bottom: 0;
+  scroll-margin-top: 5rem;
 }
 
 .studio-add-block {
