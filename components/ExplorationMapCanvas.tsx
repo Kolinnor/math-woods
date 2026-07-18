@@ -29,13 +29,16 @@ import {
   setExplorationBlockEndpointAction,
   setExplorationChoiceBlockTargetAction,
   setExplorationQuizOutcomeBlockTargetAction,
-  updateExplorationBlockCanvasPositionsAction
+  updateExplorationBlockCanvasPositionsAction,
+  updateExplorationBlockNameAction
 } from "@/lib/actions/exploration-actions";
 
 export type ExplorationMapBlock = {
   id: number;
   key: string;
   kind: string;
+  name: string | null;
+  fallbackLabel: string;
   label: string;
   excerpt: string;
   canvasX: number | null;
@@ -313,6 +316,27 @@ export function ExplorationMapCanvas({
     });
   }
 
+  function saveBlockName(blockId: number, rawName: string) {
+    const name = rawName.trim();
+    const block = blocks.find((candidate) => candidate.id === blockId);
+    if (!block || (block.name ?? "") === name) return;
+    setError("");
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.set("name", name);
+        await updateExplorationBlockNameAction(blockId, formData);
+        updateBlock(blockId, (candidate) => ({
+          ...candidate,
+          name: name || null,
+          label: name || candidate.fallbackLabel
+        }));
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "The block name could not be saved.");
+      }
+    });
+  }
+
   const nodeColor = useMemo(() => (node: Node<BlockNodeData>) => {
     if (node.data.block.isStart) return "#2b744d";
     if (node.data.block.isEnd) return "#7b6a36";
@@ -345,7 +369,19 @@ export function ExplorationMapCanvas({
           <Panel className="exploration-block-inspector nodrag nopan" position="top-right">
             <div>
               <span>{selectedBlock.kind.toLocaleLowerCase().replaceAll("_", " ")}</span>
-              <strong>{selectedBlock.label}</strong>
+              <input
+                key={selectedBlock.id}
+                aria-label="Block name"
+                defaultValue={selectedBlock.name ?? ""}
+                maxLength={160}
+                onBlur={(event) => saveBlockName(selectedBlock.id, event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }}
+                placeholder="Name"
+              />
             </div>
             <Link className="button secondary" href={`/explorations/${explorationSlug}/edit?view=block&block=${selectedBlock.id}` as never}>Edit <ExternalLink size={14} /></Link>
             <button className="secondary" type="button" onClick={() => setEndpoint("start")}><Flag size={15} /> Set as start</button>

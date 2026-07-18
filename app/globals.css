@@ -3451,6 +3451,12 @@ textarea {
   text-transform: uppercase;
 }
 
+.exploration-block-inspector input {
+  font-weight: 700;
+  min-width: 0;
+  width: 100%;
+}
+
 .exploration-block-inspector button,
 .exploration-block-inspector .button {
   justify-content: flex-start;

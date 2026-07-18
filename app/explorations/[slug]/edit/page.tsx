@@ -67,18 +67,20 @@ function objectValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
-function blockDisplayLabel(block: {
+function blockFallbackLabel(block: {
   kind: ExplorationBlockKind;
-  name: string | null;
   bodyMarkdown: string | null;
   problem: { title: string } | null;
   concept: { title: string } | null;
 }) {
-  if (block.name) return block.name;
   if (block.problem) return block.problem.title;
   if (block.concept) return block.concept.title;
   const firstLine = block.bodyMarkdown?.split("\n").find((line) => line.trim())?.trim();
   return firstLine?.slice(0, 64) || editorBlockLabel(block.kind);
+}
+
+function blockDisplayLabel(block: Parameters<typeof blockFallbackLabel>[0] & { name: string | null }) {
+  return block.name || blockFallbackLabel(block);
 }
 
 export default async function EditExplorationPage({
@@ -128,6 +130,8 @@ export default async function EditExplorationPage({
     id: block.id,
     key: block.key,
     kind: editorBlockLabel(block.kind),
+    name: block.name,
+    fallbackLabel: blockFallbackLabel(block),
     label: blockDisplayLabel(block),
     excerpt: (block.bodyMarkdown ?? "").replaceAll("\n", " ").slice(0, 110),
     canvasX: block.canvasX,
