@@ -2056,7 +2056,7 @@ textarea {
   border-color: #9baa9d;
 }
 
-.exploration-block-name-help {
+.exploration-help-tooltip-trigger {
   align-items: center;
   color: var(--accent);
   cursor: help;
@@ -2066,12 +2066,12 @@ textarea {
   position: relative;
 }
 
-.exploration-block-name-help:focus-visible {
+.exploration-help-tooltip-trigger:focus-visible {
   border-radius: 50%;
   box-shadow: 0 0 0 2px rgb(34 106 70 / 0.22);
 }
 
-.exploration-block-name-tooltip {
+.exploration-help-tooltip {
   background: #173f2d;
   border-radius: 4px;
   bottom: calc(100% + 0.45rem);
@@ -2092,10 +2092,24 @@ textarea {
   z-index: 40;
 }
 
-.exploration-block-name-help:hover .exploration-block-name-tooltip,
-.exploration-block-name-help:focus .exploration-block-name-tooltip {
+.exploration-help-tooltip-trigger:hover .exploration-help-tooltip,
+.exploration-help-tooltip-trigger:focus .exploration-help-tooltip {
   opacity: 1;
   visibility: visible;
+}
+
+.studio-block-route-automatic-label {
+  align-items: center;
+  cursor: pointer;
+  display: inline-flex;
+}
+
+.studio-block-route-automatic .exploration-help-tooltip-trigger {
+  display: inline-flex;
+}
+
+.studio-block-route-automatic .exploration-help-tooltip {
+  display: block;
 }
 
 .studio-block-position-input,

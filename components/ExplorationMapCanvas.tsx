@@ -153,6 +153,7 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
         source: String(block.id),
         sourceHandle: "continue",
         target: String(block.continueToBlockId),
+        reconnectable: "target",
         label: block.autoContinue ? "Automatic" : "Continue",
         animated: block.autoContinue,
         style: block.autoContinue ? { strokeDasharray: "5 4" } : undefined,
@@ -167,6 +168,7 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
         source: String(block.id),
         sourceHandle: `choice-${option.id}`,
         target: String(option.toBlockId),
+        reconnectable: "target",
         label: option.label,
         markerEnd: { type: MarkerType.ArrowClosed },
         data: { kind: "choice", recordId: option.id }
@@ -179,6 +181,7 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
         source: String(block.id),
         sourceHandle: `quiz-${outcome.id}`,
         target: String(outcome.toBlockId),
+        reconnectable: "target",
         label: outcome.label,
         markerEnd: { type: MarkerType.ArrowClosed },
         data: { kind: "quiz", recordId: outcome.id }
@@ -268,6 +271,37 @@ export function ExplorationMapCanvas({
         }
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The blocks could not be linked.");
+      }
+    });
+  }, [isPending, updateBlock]);
+
+  const reconnect = useCallback((edge: Edge<GraphEdgeData>, connection: Connection) => {
+    if (isPending || !edge.data) return;
+    const sourceId = Number(edge.source);
+    const targetId = Number(connection.target);
+    if (!Number.isInteger(sourceId) || !Number.isInteger(targetId) || sourceId === targetId) return;
+    setError("");
+    startTransition(async () => {
+      try {
+        if (edge.data!.kind === "continue") {
+          await setExplorationBlockContinueAction(edge.data!.recordId, targetId);
+          updateBlock(edge.data!.recordId, (block) => ({ ...block, continueToBlockId: targetId, isEnd: false }));
+        } else if (edge.data!.kind === "choice") {
+          await setExplorationChoiceBlockTargetAction(edge.data!.recordId, targetId);
+          updateBlock(sourceId, (block) => ({
+            ...block,
+            options: block.options.map((option) => option.id === edge.data!.recordId ? { ...option, toBlockId: targetId } : option)
+          }));
+        } else {
+          await setExplorationQuizOutcomeBlockTargetAction(edge.data!.recordId, targetId);
+          updateBlock(sourceId, (block) => ({
+            ...block,
+            outcomes: block.outcomes.map((outcome) => outcome.id === edge.data!.recordId ? { ...outcome, toBlockId: targetId } : outcome)
+          }));
+        }
+        setSelectedEdgeId(edge.id);
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "The link could not be reconnected.");
       }
     });
   }, [isPending, updateBlock]);
@@ -450,6 +484,8 @@ export function ExplorationMapCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={connect}
+        onReconnect={reconnect}
+        reconnectRadius={18}
         onSelectionChange={selectionChanged}
         onNodeClick={(_, node) => {
           setSelectedNodeId(Number(node.id));

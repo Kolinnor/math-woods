@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import { ExplorationHelpTooltip } from "@/components/ExplorationHelpTooltip";
 
 export function ExplorationNextBlockFields({
   blocks,
@@ -13,6 +14,7 @@ export function ExplorationNextBlockFields({
 }) {
   const [target, setTarget] = useState(initialBlockId === null ? "" : String(initialBlockId));
   const [automatic, setAutomatic] = useState(initialBlockId !== null && initialAutomatic);
+  const automaticId = useId();
 
   return (
     <>
@@ -31,16 +33,20 @@ export function ExplorationNextBlockFields({
           {blocks.map((block) => <option key={block.id} value={block.id}>{block.label}</option>)}
         </select>
       </label>
-      <label className="checkbox-field studio-block-route-automatic" title="Reveal the next block without waiting for the reader to click Continue.">
+      <div className="checkbox-field studio-block-route-automatic">
         <input
+          id={automaticId}
           checked={automatic}
           disabled={!target}
           name="autoContinue"
           onChange={(event) => setAutomatic(event.target.checked)}
           type="checkbox"
         />
-        <span><strong>Automatic</strong></span>
-      </label>
+        <label className="studio-block-route-automatic-label" htmlFor={automaticId}><strong>Automatic</strong></label>
+        <ExplorationHelpTooltip label="About automatic progression">
+          Shows the next block immediately. When disabled, the reader clicks Continue first.
+        </ExplorationHelpTooltip>
+      </div>
     </>
   );
 }

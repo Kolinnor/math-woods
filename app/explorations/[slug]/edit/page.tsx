@@ -22,6 +22,7 @@ import { AutoSaveForm } from "@/components/AutoSaveForm";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DeletePlaylistButton } from "@/components/DeletePlaylistButton";
 import { ExplorationAddContentForm } from "@/components/ExplorationAddContentForm";
+import { ExplorationBlockKindSelect } from "@/components/ExplorationBlockKindSelect";
 import { ExplorationBlockList } from "@/components/ExplorationBlockList";
 import { ExplorationBlockNameHelp } from "@/components/ExplorationBlockNameHelp";
 import { ExplorationChoiceActionFields } from "@/components/ExplorationChoiceActionFields";
@@ -215,9 +216,11 @@ export default async function EditExplorationPage({
                   <div className="studio-block-topline">
                     <div className="studio-block-heading">
                       <strong>Block</strong><span aria-hidden="true">-</span>
-                      <select className="studio-block-kind-select" name="kind" form={blockFormId} defaultValue={selectedBlock.kind}>
-                        {EDITOR_BLOCK_KINDS.map((kind) => <option key={kind} value={kind}>{editorBlockLabel(kind)}</option>)}
-                      </select>
+                      <ExplorationBlockKindSelect
+                        formId={blockFormId}
+                        initialKind={selectedBlock.kind}
+                        kinds={EDITOR_BLOCK_KINDS.map((kind) => ({ value: kind, label: editorBlockLabel(kind) }))}
+                      />
                       <span aria-hidden="true">-</span>
                       <AutoSaveForm action={updateExplorationBlockNameAction.bind(null, selectedBlock.id)} className="studio-block-name-form" statusClassName="sr-only">
                         <input name="name" defaultValue={selectedBlock.name ?? ""} maxLength={160} placeholder="Name" aria-label="Block name" />
@@ -260,7 +263,7 @@ export default async function EditExplorationPage({
 
                   {(selectedBlock.kind === ExplorationBlockKind.QUIZ || selectedBlock.kind === ExplorationBlockKind.CHOICE) && (
                     <section className="studio-option-editor">
-                      <div className="studio-option-editor-heading">{selectedBlock.kind === ExplorationBlockKind.QUIZ ? "Answers" : "Paths"}</div>
+                      <div className="studio-option-editor-heading">Answers</div>
                       <div className="studio-option-editor-body">
                         {selectedBlock.options.map((option) => (
                           <div key={option.id} className="studio-option-row">

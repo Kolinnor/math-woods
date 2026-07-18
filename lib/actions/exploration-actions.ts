@@ -1166,7 +1166,7 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
       `Updated block ${block.position} on "${page.title}"`
     );
   }
-  revalidateExploration(exploration.slug, { editor: false });
+  revalidateExploration(exploration.slug, { editor: block.kind !== kind });
 }
 
 export async function setExplorationBlockPositionAction(blockId: number, requestedPosition: number) {
