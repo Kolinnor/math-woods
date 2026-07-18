@@ -6,6 +6,26 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-07-18 - Autosave responses must not remount an active editor
+
+Symptom:
+
+- While typing in an autosaved exploration block, the caret or selected text could lose focus at apparently random
+  moments.
+
+Root cause:
+
+- The autosave server action could return the freshly saved Markdown as a new `initialValue` prop.
+- `MarkdownEditor` recreates its CodeMirror instance when `initialValue` changes, so the network response destroyed the
+  active selection. The variable request duration made the interruption look random.
+
+Guardrail:
+
+- Autosaved Markdown fields must keep their initialization value stable for the lifetime of the mounted field.
+- Switching to another block should mount a new field normally; an autosave response for the current block must not
+  replace its active CodeMirror instance.
+- Do not solve this by changing LaTeX preview decorations or Markdown parsing.
+
 ## 2026-06-28 - Display LaTeX preview must not use plugin-provided block decorations
 
 Symptom:

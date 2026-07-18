@@ -393,8 +393,13 @@ export function ExplorationMapCanvas({
   }, [deleteBlock, deleteEdge, edges, isPending, redo, selectedEdgeId, selectedNodeId, undo]);
 
   function selectionChanged(selection: OnSelectionChangeParams) {
-    setSelectedNodeId(selection.nodes[0] ? Number(selection.nodes[0].id) : null);
-    setSelectedEdgeId(selection.edges[0]?.id ?? null);
+    if (selection.nodes[0]) {
+      setSelectedNodeId(Number(selection.nodes[0].id));
+      setSelectedEdgeId(null);
+    } else if (selection.edges[0]) {
+      setSelectedNodeId(null);
+      setSelectedEdgeId(selection.edges[0].id);
+    }
   }
 
   function setEndpoint(endpoint: "start" | "end") {
@@ -446,8 +451,22 @@ export function ExplorationMapCanvas({
         onEdgesChange={onEdgesChange}
         onConnect={connect}
         onSelectionChange={selectionChanged}
+        onNodeClick={(_, node) => {
+          setSelectedNodeId(Number(node.id));
+          setSelectedEdgeId(null);
+        }}
+        onNodeDragStart={(_, node) => {
+          setSelectedNodeId(Number(node.id));
+          setSelectedEdgeId(null);
+        }}
+        onPaneClick={() => {
+          setSelectedNodeId(null);
+          setSelectedEdgeId(null);
+        }}
         onNodeDragStop={(_, node) => {
           const blockId = Number(node.id);
+          setSelectedNodeId(blockId);
+          setSelectedEdgeId(null);
           const current = blocksRef.current;
           const block = current.find((candidate) => candidate.id === blockId);
           if (!block || (block.canvasX === node.position.x && block.canvasY === node.position.y)) return;

@@ -29,7 +29,7 @@ import { ExplorationMapCanvas, type ExplorationMapBlock } from "@/components/Exp
 import { ExplorationNextBlockFields } from "@/components/ExplorationNextBlockFields";
 import { ExplorationSettingsButton } from "@/components/ExplorationSettingsButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
+import { AutoSaveMarkdownEditor } from "@/components/markdown/AutoSaveMarkdownEditor";
 import {
   addExplorationCollaboratorAction,
   changeExplorationStatusAction,
@@ -233,7 +233,7 @@ export default async function EditExplorationPage({
                       <label><span>{selectedBlock.kind === ExplorationBlockKind.PROBLEM ? "Problem" : "Concept"}</span><input name="referenceSlug" defaultValue={selectedBlock.problem?.slug ?? selectedBlock.concept?.slug ?? ""} required /></label>
                     )}
                     {selectedBlock.kind !== ExplorationBlockKind.DIVIDER && selectedBlock.kind !== ExplorationBlockKind.HEADING && (
-                      <LazyMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} localDrafts={false} minHeight={selectedBlock.kind === ExplorationBlockKind.CHOICE ? "5rem" : "7rem"} lineNumbers={false} />
+                      <AutoSaveMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} localDrafts={false} minHeight={selectedBlock.kind === ExplorationBlockKind.CHOICE ? "5rem" : "7rem"} lineNumbers={false} />
                     )}
                     {selectedBlock.kind === ExplorationBlockKind.QUIZ && (
                       <div className="studio-quiz-settings">
@@ -243,7 +243,7 @@ export default async function EditExplorationPage({
                           <label><span>Tolerance</span><input name="tolerance" type="number" step="any" min={0} defaultValue={String(settings.tolerance ?? "")} /></label>
                         </div>
                         <label className="checkbox-field"><input name="caseSensitive" type="checkbox" defaultChecked={settings.caseSensitive === true} /><span><strong>Case-sensitive</strong></span></label>
-                        <div className="grid gap-2"><span className="text-sm font-medium">Explanation</span><LazyMarkdownEditor name="explanationMarkdown" initialValue={selectedBlock.explanationMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:explanation`} localDrafts={false} minHeight="5rem" lineNumbers={false} /></div>
+                        <div className="grid gap-2"><span className="text-sm font-medium">Explanation</span><AutoSaveMarkdownEditor name="explanationMarkdown" initialValue={selectedBlock.explanationMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:explanation`} localDrafts={false} minHeight="5rem" lineNumbers={false} /></div>
                       </div>
                     )}
                   </AutoSaveForm>
@@ -304,8 +304,8 @@ export default async function EditExplorationPage({
                 <label><span>License</span><input name="license" defaultValue={exploration.license} /></label>
               </div>
               <label><span>Cover image URL</span><input name="coverImageUrl" defaultValue={exploration.coverImageUrl ?? ""} /></label>
-              <div className="grid gap-2"><span className="text-sm font-medium">Catalogue introduction</span><LazyMarkdownEditor name="descriptionMarkdown" initialValue={exploration.descriptionMarkdown} draftKey={`exploration:${exploration.id}:metadata:description`} localDrafts={false} minHeight="8rem" /></div>
-              <div className="grid gap-2"><span className="text-sm font-medium">Prerequisites</span><LazyMarkdownEditor name="prerequisitesMarkdown" initialValue={exploration.prerequisitesMarkdown ?? ""} draftKey={`exploration:${exploration.id}:metadata:prerequisites`} localDrafts={false} minHeight="6rem" lineNumbers={false} /></div>
+              <div className="grid gap-2"><span className="text-sm font-medium">Catalogue introduction</span><AutoSaveMarkdownEditor name="descriptionMarkdown" initialValue={exploration.descriptionMarkdown} draftKey={`exploration:${exploration.id}:metadata:description`} localDrafts={false} minHeight="8rem" /></div>
+              <div className="grid gap-2"><span className="text-sm font-medium">Prerequisites</span><AutoSaveMarkdownEditor name="prerequisitesMarkdown" initialValue={exploration.prerequisitesMarkdown ?? ""} draftKey={`exploration:${exploration.id}:metadata:prerequisites`} localDrafts={false} minHeight="6rem" lineNumbers={false} /></div>
             </AutoSaveForm>
             <section className="studio-collaborators"><div className="studio-section-heading"><h2>Collaborators</h2></div><div className="studio-collaborator-list"><div><strong>{exploration.author.displayName || exploration.author.username}</strong><span>Owner</span></div>{exploration.collaborators.map((collaborator) => <div key={collaborator.userId}><strong>{collaborator.user.displayName || collaborator.user.username}</strong><span>{collaborator.role.toLocaleLowerCase()}</span><form action={removeExplorationCollaboratorAction.bind(null, exploration.id, collaborator.userId)}><button className="icon-button danger" title="Remove collaborator"><Trash2 size={15} /></button></form></div>)}</div><form action={addExplorationCollaboratorAction.bind(null, exploration.id)} className="studio-add-collaborator"><input name="username" required placeholder="Username" /><select name="role"><option value="EDITOR">Editor</option><option value="REVIEWER">Reviewer</option></select><button type="submit" className="secondary"><Plus size={16} /> Add</button></form></section>
             <section className="studio-translation-tools"><div className="studio-section-heading"><h2>Translation</h2></div><form action={cloneExplorationTranslationAction.bind(null, exploration.id)}><select name="language" defaultValue="" required><option value="" disabled>Choose language</option>{SUPPORTED_CONTENT_LANGUAGES.filter((language) => language.code !== exploration.language).map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}</select><button type="submit" className="secondary"><Plus size={16} /> Create translation</button></form></section>
