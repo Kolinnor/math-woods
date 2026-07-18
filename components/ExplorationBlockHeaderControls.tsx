@@ -58,6 +58,7 @@ export function ExplorationBlockHeaderControls({
           return;
         }
         formData.set("kind", kindValue);
+        formData.set("skipHistory", "true");
         await updateExplorationBlockAction(blockId, formData);
         const result = await setExplorationBlockPositionAction(blockId, normalizedPosition);
         setPositionValue(String(result.position));

@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { asExplorationState, conditionMatches } from "@/lib/exploration-engine";
 import { canEditExploration, canViewExploration } from "@/lib/explorations";
-import { explorationSnapshotPages, type ExplorationSnapshotPage } from "@/lib/exploration-snapshot";
+import type { ExplorationSnapshotPage } from "@/lib/exploration-snapshot";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { displayNameForUser } from "@/lib/user-display";
@@ -29,7 +29,6 @@ export default async function StartExplorationPage({
     include: {
       author: true,
       collaborators: true,
-      editions: { orderBy: { version: "desc" }, take: 1 },
       pages: {
         orderBy: { position: "asc" },
         include: {
@@ -52,14 +51,11 @@ export default async function StartExplorationPage({
   const session = user
     ? await prisma.explorationSession.findUnique({
         where: { playlistId_userId: { playlistId: exploration.id, userId: user.id } },
-        include: { answers: true, edition: true }
+        include: { answers: true }
       })
     : null;
   const draftPreview = isEditor && preview === "draft";
-  const selectedEdition = draftPreview ? null : session?.edition ?? exploration.editions[0] ?? null;
-  const contentPages = selectedEdition
-    ? explorationSnapshotPages(selectedEdition.snapshot)
-    : exploration.pages as unknown as ExplorationSnapshotPage[];
+  const contentPages = exploration.pages as unknown as ExplorationSnapshotPage[];
   const initialState = asExplorationState(session?.state);
   const readablePages = contentPages.filter((page) => conditionMatches(page.visibilityRule, initialState));
   const requestedPage = readablePages.find((page) => page.slug === requestedPageSlug);
@@ -136,7 +132,6 @@ export default async function StartExplorationPage({
     >
       <ExplorationReader
         playlistId={exploration.id}
-        editionId={selectedEdition?.id ?? null}
         slug={exploration.slug}
         pages={pages}
         initialPageId={initialPage.id}

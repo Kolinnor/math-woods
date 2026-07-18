@@ -1495,6 +1495,7 @@ export function MarkdownEditor({
               const nextValue = update.state.doc.toString();
               setValue(nextValue);
               setRestoredDraftAt(null);
+              hostRef.current?.closest("form")?.dispatchEvent(new Event("input", { bubbles: true }));
 
               if (nextValue === initialValue) {
                 removeMarkdownDraft(resolvedDraftKey);

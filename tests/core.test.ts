@@ -29,6 +29,7 @@ import {
 } from "../lib/latex-live-preview.ts";
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
 import { explorationSnapshotPages } from "../lib/exploration-snapshot.ts";
+import { EXPLORATION_CHANGE_COALESCE_MS, shouldCoalesceExplorationChange } from "../lib/exploration-history.ts";
 import { guestProgressContentKey } from "../lib/guest-progress.ts";
 import {
   createDisplayMathLineBreakNormalizer,
@@ -713,6 +714,35 @@ assert.deepEqual(
 );
 assert.equal(numericAnswerMatches("3,1416", 3.14, 0.01), true);
 assert.equal(numericAnswerMatches("3.2", 3.14, 0.01), false);
+
+const explorationChangeNow = new Date("2026-07-18T12:00:00.000Z").getTime();
+const recentExplorationChange = {
+  changeSummary: "Updated block 2 on Introduction",
+  publishedAt: new Date(explorationChangeNow - EXPLORATION_CHANGE_COALESCE_MS + 1),
+  publishedById: 7,
+  sessionCount: 0
+};
+assert.equal(shouldCoalesceExplorationChange(recentExplorationChange, 7, recentExplorationChange.changeSummary, explorationChangeNow), true);
+assert.equal(shouldCoalesceExplorationChange({ ...recentExplorationChange, publishedById: 8 }, 7, recentExplorationChange.changeSummary, explorationChangeNow), false);
+assert.equal(shouldCoalesceExplorationChange({ ...recentExplorationChange, sessionCount: 1 }, 7, recentExplorationChange.changeSummary, explorationChangeNow), false);
+assert.equal(
+  shouldCoalesceExplorationChange(
+    { ...recentExplorationChange, publishedAt: new Date(explorationChangeNow - EXPLORATION_CHANGE_COALESCE_MS) },
+    7,
+    recentExplorationChange.changeSummary,
+    explorationChangeNow
+  ),
+  true
+);
+assert.equal(
+  shouldCoalesceExplorationChange(
+    { ...recentExplorationChange, publishedAt: new Date(explorationChangeNow - EXPLORATION_CHANGE_COALESCE_MS - 1) },
+    7,
+    recentExplorationChange.changeSummary,
+    explorationChangeNow
+  ),
+  false
+);
 
 const rankedGroupMatches = rankSearchMatches(
   [

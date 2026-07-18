@@ -12,7 +12,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     include: {
       author: true,
       collaborators: true,
-      editions: { orderBy: { version: "desc" }, take: 1 },
       pages: {
         orderBy: { position: "asc" },
         include: {
@@ -65,7 +64,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     author: exploration.author.username,
     visibility: exploration.visibility.toLowerCase(),
     status: exploration.status.toLowerCase(),
-    edition: exploration.editions[0]?.version ?? 0,
     license: exploration.license,
     domain: exploration.domain.toLowerCase(),
     estimatedMinutes: exploration.estimatedMinutes ?? undefined,

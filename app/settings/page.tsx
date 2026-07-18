@@ -140,8 +140,8 @@ const notificationOptions = [
   },
   {
     type: NotificationType.EXPLORATION_PUBLISHED,
-    title: "New exploration editions",
-    description: "When an exploration you follow publishes a new edition."
+    title: "Exploration publications",
+    description: "When an exploration you follow is published."
   }
 ] as const;
 

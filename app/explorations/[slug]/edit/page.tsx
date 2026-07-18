@@ -6,7 +6,8 @@ import {
   Plus,
   Send,
   Settings,
-  Trash2
+  Trash2,
+  X
 } from "lucide-react";
 import {
   ExplorationBlockKind,
@@ -16,12 +17,14 @@ import {
   PlaylistVisibility
 } from "@prisma/client";
 import { notFound } from "next/navigation";
+import { AutoSaveForm } from "@/components/AutoSaveForm";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DeletePlaylistButton } from "@/components/DeletePlaylistButton";
 import { ExplorationAddContentForm } from "@/components/ExplorationAddContentForm";
 import { ExplorationBlockHeaderControls } from "@/components/ExplorationBlockHeaderControls";
 import { ExplorationAddPageForm } from "@/components/ExplorationAddPageForm";
 import { ExplorationPagePositionInput } from "@/components/ExplorationPagePositionInput";
+import { ExplorationSettingsButton } from "@/components/ExplorationSettingsButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import {
@@ -73,15 +76,6 @@ function conditionFields(value: unknown) {
     variable: typeof condition.variable === "string" ? condition.variable : "",
     operator: typeof condition.operator === "string" ? condition.operator : "equals",
     value: condition.value === undefined ? "" : String(condition.value)
-  };
-}
-
-function effectFields(value: unknown) {
-  const effect = Array.isArray(value) ? objectValue(value[0]) : {};
-  return {
-    variable: typeof effect.variable === "string" ? effect.variable : "",
-    operation: typeof effect.operation === "string" ? effect.operation : "set",
-    value: effect.value === undefined ? "" : String(effect.value)
   };
 }
 
@@ -147,7 +141,6 @@ export default async function EditExplorationPage({
     include: {
       author: true,
       collaborators: { include: { user: true }, orderBy: { createdAt: "asc" } },
-      editions: { orderBy: { version: "desc" }, take: 1 },
       pages: {
         orderBy: { position: "asc" },
         include: {
@@ -168,7 +161,7 @@ export default async function EditExplorationPage({
   const requestedPageId = Number(selectedPageRaw);
   const selectedPage = exploration.pages.find((page) => page.id === requestedPageId) ?? exploration.pages[0] ?? null;
   const canDelete = canDeletePlaylist(user, exploration);
-  const latestVersion = exploration.editions[0]?.version ?? 0;
+  const settingsDialogId = "exploration-settings-dialog";
 
   return (
     <ForestPageLayout
@@ -180,7 +173,8 @@ export default async function EditExplorationPage({
       actions={
         <>
           <Link href={`/explorations/${exploration.slug}/start` as never} className="button secondary"><ArrowLeft size={16} /> Read</Link>
-          <Link href={`/explorations/${exploration.slug}/history` as never} className="button secondary"><FileClock size={16} /> Editions</Link>
+          <Link href={`/explorations/${exploration.slug}/history` as never} className="button secondary"><FileClock size={16} /> History</Link>
+          <ExplorationSettingsButton dialogId={settingsDialogId} />
         </>
       }
     >
@@ -194,14 +188,11 @@ export default async function EditExplorationPage({
               <button type="submit" className="secondary"><Send size={16} /> Send for review</button>
             </form>
           )}
-          <details className="studio-publish-menu">
-            <summary className="button">Publish</summary>
+          {exploration.status !== ExplorationStatus.PUBLISHED && (
             <form action={publishExplorationAction.bind(null, exploration.id)}>
-              <strong>Publish edition {latestVersion + 1}</strong>
-              <input name="changeSummary" placeholder="What changed?" aria-label="Edition change summary" />
-              <button type="submit">Publish edition {latestVersion + 1}</button>
+              <button type="submit">Publish</button>
             </form>
-          </details>
+          )}
         </div>
       </section>
 
@@ -240,21 +231,19 @@ export default async function EditExplorationPage({
 
               <div className="studio-page-tools">
                 <details className="studio-page-settings">
-                  <summary><Settings size={16} /><strong>Page settings</strong></summary>
-                  <form action={updateExplorationPageAction.bind(null, selectedPage.id)} className="studio-page-settings-form">
+                  <summary><Settings size={21} /><strong>Page settings</strong></summary>
+                  <AutoSaveForm action={updateExplorationPageAction.bind(null, selectedPage.id)} className="studio-page-settings-form">
                     <label><span>Page title</span><input name="title" defaultValue={selectedPage.title} required /></label>
                     <label><span>URL slug</span><input name="slug" defaultValue={selectedPage.slug} /></label>
-                    <label className="md:col-span-2"><span>Summary</span><input name="summary" defaultValue={selectedPage.summary ?? ""} /></label>
-                    <label className="checkbox-field md:col-span-2"><input name="isStart" type="checkbox" defaultChecked={selectedPage.isStart} /><span><strong>Starting page</strong></span></label>
-                    <label className="checkbox-field md:col-span-2"><input name="isEnd" type="checkbox" defaultChecked={selectedPage.isEnd} /><span><strong>Ending page</strong></span></label>
+                    <div className="studio-page-toggles md:col-span-2">
+                      <label className="checkbox-field"><input name="isStart" type="checkbox" defaultChecked={selectedPage.isStart} /><span><strong>Starting page</strong></span></label>
+                      <label className="checkbox-field"><input name="isEnd" type="checkbox" defaultChecked={selectedPage.isEnd} /><span><strong>Ending page</strong></span></label>
+                    </div>
                     <details className="studio-advanced-fields md:col-span-2">
                       <summary>Conditional visibility</summary>
                       <div><p className="studio-field-group-title">Show this page only when</p><ConditionInputs value={selectedPage.visibilityRule} /></div>
                     </details>
-                    <div className="studio-form-actions md:col-span-2">
-                      <button type="submit">Save page settings</button>
-                    </div>
-                  </form>
+                  </AutoSaveForm>
                   <form action={deleteExplorationPageAction.bind(null, selectedPage.id)} className="studio-page-delete">
                     <ConfirmSubmitButton message={`Delete page "${selectedPage.title}" and all of its blocks?`} className="danger" title="Delete page"><Trash2 size={16} /> Delete page</ConfirmSubmitButton>
                   </form>
@@ -289,7 +278,7 @@ export default async function EditExplorationPage({
                           <form action={deleteExplorationBlockAction.bind(null, block.id)}><ConfirmSubmitButton message="Delete this block?" className="icon-button danger" title="Delete block"><Trash2 size={15} /></ConfirmSubmitButton></form>
                         </div>
                       </div>
-                      <form action={updateExplorationBlockAction.bind(null, block.id)} className="studio-block-form" id={blockFormId}>
+                      <AutoSaveForm action={updateExplorationBlockAction.bind(null, block.id)} className="studio-block-form" id={blockFormId}>
                         {(block.kind === ExplorationBlockKind.PROBLEM || block.kind === ExplorationBlockKind.CONCEPT) && (
                           <label><span>{block.kind === ExplorationBlockKind.PROBLEM ? "Problem" : "Concept"} slug</span><input name="referenceSlug" defaultValue={block.problem?.slug ?? block.concept?.slug ?? ""} required /></label>
                         )}
@@ -307,43 +296,24 @@ export default async function EditExplorationPage({
                             <div className="grid gap-2"><span className="text-sm font-medium">Explanation after answering</span><LazyMarkdownEditor name="explanationMarkdown" initialValue={block.explanationMarkdown ?? ""} draftKey={`exploration:block:${block.id}:explanation`} minHeight="6rem" lineNumbers={false} /></div>
                           </div>
                         )}
-                        <details className="studio-advanced-fields">
-                          <summary>Advanced settings</summary>
-                          <div className="grid gap-4 md:grid-cols-3">
-                            <label><span>Points</span><input name="points" type="number" min={0} defaultValue={block.points} /></label>
-                            <label className="checkbox-field"><input name="required" type="checkbox" defaultChecked={block.required} /><span><strong>Required before continuing</strong></span></label>
-                          </div>
-                          <div><p className="studio-field-group-title">Show this block only when</p><ConditionInputs value={block.visibilityRule} /></div>
-                        </details>
-                        <div className="studio-block-save"><button type="submit">Save</button></div>
-                      </form>
+                      </AutoSaveForm>
 
                       {(block.kind === ExplorationBlockKind.QUIZ || block.kind === ExplorationBlockKind.CHOICE) && (
                         <details className="studio-option-editor" open={block.options.length === 0}>
                           <summary>{block.kind === ExplorationBlockKind.QUIZ ? "Answers" : "Paths"} <span>{block.options.length}</span></summary>
                           <div className="studio-option-editor-body">
                           {block.options.map((option) => {
-                            const effect = effectFields(option.effects);
                             return (
-                              <form key={option.id} action={updateExplorationOptionAction.bind(null, option.id)} className="studio-option-row">
+                              <div key={option.id} className="studio-option-row">
+                                <AutoSaveForm action={updateExplorationOptionAction.bind(null, option.id)} className="studio-option-autosave-form" statusClassName="sr-only">
                                 <label><span>Label</span><input name="label" defaultValue={option.label} required /></label>
                                 <label><span>Send to</span><PageSelect pages={exploration.pages} defaultValue={option.toPageId} excludePageId={selectedPage.id} /></label>
-                                {block.kind === ExplorationBlockKind.QUIZ && <label className="checkbox-field"><input name="isCorrect" type="checkbox" defaultChecked={option.isCorrect === true} /><span><strong>Correct</strong></span></label>}
-                                <details className="studio-option-advanced">
-                                  <summary>More</summary>
-                                  <div className="studio-option-advanced-grid">
-                                    <label><span>Value</span><input name="value" defaultValue={option.value ?? ""} /></label>
-                                    <label><span>Feedback</span><input name="feedbackMarkdown" defaultValue={option.feedbackMarkdown ?? ""} /></label>
-                                    <label><span>Set variable</span><input name="effectVariable" defaultValue={effect.variable} placeholder="needs_review" /></label>
-                                    <label><span>Operation</span><select name="effectOperation" defaultValue={effect.operation}><option value="set">set</option><option value="increment">increment</option><option value="append">append</option><option value="remove">remove</option></select></label>
-                                    <label><span>Value</span><input name="effectValue" defaultValue={effect.value} placeholder="true" /></label>
-                                  </div>
-                                </details>
-                                <div className="studio-option-actions">
-                                  <button type="submit" className="secondary">Save</button>
-                                  <button formAction={deleteExplorationOptionAction.bind(null, option.id)} className="icon-button danger" title="Delete option"><Trash2 size={15} /></button>
-                                </div>
-                              </form>
+                                {block.kind === ExplorationBlockKind.QUIZ && <label className="checkbox-field"><input name="isCorrectField" type="hidden" value="true" /><input name="isCorrect" type="checkbox" defaultChecked={option.isCorrect === true} /><span><strong>Correct</strong></span></label>}
+                                </AutoSaveForm>
+                                <form action={deleteExplorationOptionAction.bind(null, option.id)} className="studio-option-delete">
+                                  <ConfirmSubmitButton message="Delete this option?" className="icon-button danger" title="Delete option"><Trash2 size={15} /></ConfirmSubmitButton>
+                                </form>
+                              </div>
                             );
                           })}
                           <form action={createExplorationOptionAction.bind(null, block.id)} className="studio-new-option">
@@ -374,12 +344,17 @@ export default async function EditExplorationPage({
             <p className="muted studio-empty-state">Add the first page to begin writing.</p>
           )}
 
-          <details className="studio-project-tools">
-            <summary><Settings size={17} /><strong>Exploration settings</strong></summary>
-            <div className="studio-project-tools-body">
+          <dialog className="exploration-settings-dialog" id={settingsDialogId}>
+            <header className="exploration-settings-dialog-header">
+              <h2>Exploration settings</h2>
+              <form method="dialog">
+                <button className="icon-button secondary" type="submit" title="Close settings" aria-label="Close settings"><X size={18} /></button>
+              </form>
+            </header>
+            <div className="studio-project-tools-body exploration-settings-dialog-body">
           <details className="studio-project-section">
             <summary><Settings size={17} /> Exploration details</summary>
-            <form action={updateExplorationMetadataAction.bind(null, exploration.id)} className="studio-metadata-form">
+            <AutoSaveForm action={updateExplorationMetadataAction.bind(null, exploration.id)} className="studio-metadata-form">
               <div className="grid gap-4 md:grid-cols-2">
                 <label><span>Title</span><input name="title" defaultValue={exploration.title} required /></label>
                 <label><span>Short summary</span><input name="summary" defaultValue={exploration.summary ?? ""} /></label>
@@ -393,8 +368,7 @@ export default async function EditExplorationPage({
               <label><span>Cover image URL</span><input name="coverImageUrl" defaultValue={exploration.coverImageUrl ?? ""} placeholder="https://..." /></label>
               <div className="grid gap-2"><span className="text-sm font-medium">Catalogue introduction</span><LazyMarkdownEditor name="descriptionMarkdown" initialValue={exploration.descriptionMarkdown} draftKey={`exploration:${exploration.id}:metadata:description`} minHeight="10rem" /></div>
               <div className="grid gap-2"><span className="text-sm font-medium">Prerequisites</span><LazyMarkdownEditor name="prerequisitesMarkdown" initialValue={exploration.prerequisitesMarkdown ?? ""} draftKey={`exploration:${exploration.id}:metadata:prerequisites`} minHeight="7rem" lineNumbers={false} /></div>
-              <button type="submit">Save exploration details</button>
-            </form>
+            </AutoSaveForm>
           </details>
           <section className="studio-collaborators">
             <div className="studio-section-heading"><h2>Collaborators</h2></div>
@@ -429,15 +403,15 @@ export default async function EditExplorationPage({
 
           {canDelete && (
             <section className="danger-zone">
-              <div><h2>Archive or delete exploration</h2><p>Archiving hides the exploration while preserving editions and reader history.</p></div>
+              <div><h2>Archive or delete exploration</h2><p>Archiving hides the exploration while preserving its change history and reader progress.</p></div>
               <div className="flex flex-wrap gap-2">
                 <form action={changeExplorationStatusAction.bind(null, exploration.id, ExplorationStatus.ARCHIVED)}><button type="submit" className="secondary">Archive</button></form>
                 <form action={deletePlaylistAction.bind(null, exploration.id)}><DeletePlaylistButton title={exploration.title} /></form>
               </div>
             </section>
-          )}
+            )}
             </div>
-          </details>
+          </dialog>
         </div>
       </div>
     </ForestPageLayout>

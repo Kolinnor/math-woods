@@ -91,7 +91,6 @@ function blockLabel(kind: string) {
 
 export function ExplorationReader({
   playlistId,
-  editionId,
   slug,
   pages,
   initialPageId,
@@ -103,7 +102,6 @@ export function ExplorationReader({
   canEdit = false
 }: {
   playlistId: number;
-  editionId: number | null;
   slug: string;
   pages: ReaderPage[];
   initialPageId: number;
@@ -178,7 +176,7 @@ export function ExplorationReader({
     startTransition(() => {
       const page = pages.find((candidate) => candidate.id === pageId);
       if (!page) return;
-      void saveExplorationProgressAction(playlistId, editionId, pageId, page.key, nextState, completed).catch((reason) => {
+      void saveExplorationProgressAction(playlistId, pageId, page.key, nextState, completed).catch((reason) => {
         setError(reason instanceof Error ? reason.message : "Progress could not be saved.");
       });
     });
@@ -232,7 +230,6 @@ export function ExplorationReader({
         const stableBlockKey = `${currentPage.key}:${block.key}`;
         const result = await submitExplorationResponseAction(
           playlistId,
-          editionId,
           currentPage.key,
           block.key,
           response,

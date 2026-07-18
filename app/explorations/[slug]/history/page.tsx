@@ -18,7 +18,8 @@ export default async function ExplorationHistoryPage({ params }: { params: Promi
       collaborators: true,
       editions: {
         include: { publishedBy: true },
-        orderBy: { version: "desc" }
+        orderBy: { publishedAt: "desc" },
+        take: 50
       }
     }
   });
@@ -26,28 +27,28 @@ export default async function ExplorationHistoryPage({ params }: { params: Promi
 
   return (
     <ForestPageLayout
-      title={`${exploration.title}: editions`}
-      eyebrow="Publication history"
+      title={`${exploration.title}: history`}
+      eyebrow="Change history"
       heroImage={exploration.coverImageUrl || "/art/playlists-forest-lodge.webp"}
-      heroAlt="Exploration edition history"
-      description="Every published edition is preserved so active reading sessions remain stable."
+      heroAlt="Exploration change history"
+      description="Recent changes are recorded automatically."
+      meta={<p>{exploration.editions.length} recent changes</p>}
       actions={<Link href={`/explorations/${exploration.slug}/start` as never} className="button secondary"><ArrowLeft size={16} /> Read</Link>}
     >
       <div className="exploration-edition-list">
-        {exploration.editions.map((edition) => (
-          <article key={edition.id}>
+        {exploration.editions.map((change) => (
+          <article key={change.id} id={`change-${change.id}`}>
             <FileClock size={20} />
             <div>
-              <h2>Edition {edition.version}</h2>
-              <p>{edition.changeSummary || "Published without a change summary."}</p>
+              <h2>{change.changeSummary || "Published exploration"}</h2>
               <span className="muted text-sm">
-                {edition.publishedAt.toLocaleString("en-US")}
-                {edition.publishedBy ? ` · ${displayNameForUser(edition.publishedBy)}` : ""}
+                {change.publishedAt.toLocaleString("en-US")}
+                {change.publishedBy ? ` / ${displayNameForUser(change.publishedBy)}` : ""}
               </span>
             </div>
           </article>
         ))}
-        {exploration.editions.length === 0 && <p className="muted">No versioned edition has been published yet.</p>}
+        {exploration.editions.length === 0 && <p className="muted">No changes have been recorded yet.</p>}
       </div>
     </ForestPageLayout>
   );

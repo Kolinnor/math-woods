@@ -33,7 +33,7 @@ import {
   canViewExploration,
   clampOptionalInteger
 } from "@/lib/explorations";
-import { explorationSnapshotPages, findSnapshotBlock } from "@/lib/exploration-snapshot";
+import { shouldCoalesceExplorationChange } from "@/lib/exploration-history";
 import { parseContentLanguage } from "@/lib/languages";
 import { createNotification } from "@/lib/notifications";
 import { hasAdminPrivileges } from "@/lib/permissions";
@@ -188,12 +188,13 @@ export async function createExplorationAction(formData: FormData) {
     return created;
   });
 
+  await recordExplorationChange(exploration.id, user.id, "Created exploration");
   revalidateExploration(exploration.slug);
   redirect(`/explorations/${exploration.slug}/edit` as Route);
 }
 
 export async function updateExplorationMetadataAction(playlistId: number, formData: FormData) {
-  const { exploration } = await requireExplorationEditor(playlistId);
+  const { user, exploration } = await requireExplorationEditor(playlistId);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const summary = boundedText(formData.get("summary"), CONTENT_LIMITS.shortText, "Summary") || null;
   const descriptionMarkdown = boundedText(formData.get("descriptionMarkdown"), CONTENT_LIMITS.markdown, "Introduction");
@@ -233,11 +234,12 @@ export async function updateExplorationMetadataAction(playlistId: number, formDa
     }
   });
 
-  revalidateExploration(exploration.slug);
+  await recordExplorationChange(playlistId, user.id, "Updated exploration details");
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function createExplorationPageAction(playlistId: number, formData: FormData) {
-  const { exploration } = await requireExplorationEditor(playlistId);
+  const { user, exploration } = await requireExplorationEditor(playlistId);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Page title");
   const summary = boundedText(formData.get("summary"), CONTENT_LIMITS.shortText, "Page summary") || null;
   const slug = await uniquePageSlug(playlistId, String(formData.get("slug") || title));
@@ -263,6 +265,7 @@ export async function createExplorationPageAction(playlistId: number, formData: 
     });
   });
 
+  await recordExplorationChange(playlistId, user.id, `Added page "${page.title}"`);
   // The editor is force-dynamic and the client navigates to the new page itself.
   // Avoid refreshing the current studio before that soft navigation completes.
   revalidateExploration(exploration.slug, { editor: false });
@@ -270,9 +273,8 @@ export async function createExplorationPageAction(playlistId: number, formData: 
 }
 
 export async function updateExplorationPageAction(pageId: number, formData: FormData) {
-  const { page, exploration } = await requirePageEditor(pageId);
+  const { user, page, exploration } = await requirePageEditor(pageId);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Page title");
-  const summary = boundedText(formData.get("summary"), CONTENT_LIMITS.shortText, "Page summary") || null;
   const slug = await uniquePageSlug(page.playlistId, String(formData.get("slug") || title), page.id);
   const isStart = formData.get("isStart") === "on";
   const isEnd = formData.get("isEnd") === "on";
@@ -285,7 +287,6 @@ export async function updateExplorationPageAction(pageId: number, formData: Form
       where: { id: pageId },
       data: {
         title,
-        summary,
         slug,
         isStart: isStart || page.isStart,
         isEnd: isEnd || page.isEnd,
@@ -293,11 +294,12 @@ export async function updateExplorationPageAction(pageId: number, formData: Form
       }
     });
   });
-  revalidateExploration(exploration.slug);
+  await recordExplorationChange(page.playlistId, user.id, `Updated page "${title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function setExplorationPagePositionAction(pageId: number, requestedPosition: number) {
-  const { page, exploration } = await requirePageEditor(pageId);
+  const { user, page, exploration } = await requirePageEditor(pageId);
   const pages = await prisma.explorationPage.findMany({
     where: { playlistId: page.playlistId },
     orderBy: [{ position: "asc" }, { id: "asc" }],
@@ -315,12 +317,13 @@ export async function setExplorationPagePositionAction(pageId: number, requested
       data: { position: index + 1 }
     }))
   );
+  await recordExplorationChange(page.playlistId, user.id, `Reordered page "${page.title}"`);
   revalidateExploration(exploration.slug, { editor: false });
   return { position };
 }
 
 export async function deleteExplorationPageAction(pageId: number) {
-  const { page, exploration } = await requirePageEditor(pageId);
+  const { user, page, exploration } = await requirePageEditor(pageId);
   const pages = await prisma.explorationPage.findMany({
     where: { playlistId: page.playlistId },
     orderBy: { position: "asc" },
@@ -335,12 +338,13 @@ export async function deleteExplorationPageAction(pageId: number) {
     if (page.isStart) await tx.explorationPage.update({ where: { id: replacement.id }, data: { isStart: true } });
     if (page.isEnd) await tx.explorationPage.update({ where: { id: endingReplacement.id }, data: { isEnd: true } });
   });
+  await recordExplorationChange(page.playlistId, user.id, `Deleted page "${page.title}"`);
   revalidateExploration(exploration.slug);
   redirect(`/explorations/${exploration.slug}/edit?page=${replacement.id}` as Route);
 }
 
 export async function createExplorationBlockAction(pageId: number, formData: FormData) {
-  const { page, exploration } = await requirePageEditor(pageId);
+  const { user, page, exploration } = await requirePageEditor(pageId);
   const kind = enumValue(Object.values(ExplorationBlockKind), formData.get("kind"), ExplorationBlockKind.MARKDOWN);
   const referenceSlug = ensureSlug(String(formData.get("referenceSlug") ?? ""));
   const [problem, concept, last] = await Promise.all([
@@ -383,13 +387,18 @@ export async function createExplorationBlockAction(pageId: number, formData: For
       ]
     });
   }
+  await recordExplorationChange(
+    page.playlistId,
+    user.id,
+    `Added ${kind.toLocaleLowerCase().replaceAll("_", " ")} block to "${page.title}"`
+  );
   // Keep the current studio mounted while its client form selects the new block.
   revalidateExploration(exploration.slug, { editor: false });
   return { blockId: block.id };
 }
 
 export async function updateExplorationBlockAction(blockId: number, formData: FormData) {
-  const { block, exploration } = await requireBlockEditor(blockId);
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
   const kind = enumValue(Object.values(ExplorationBlockKind), formData.get("kind"), block.kind);
   const quizType = kind === ExplorationBlockKind.QUIZ
     ? enumValue(Object.values(ExplorationQuizType), formData.get("quizType"), block.quizType ?? ExplorationQuizType.SINGLE_CHOICE)
@@ -412,12 +421,10 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
     : null;
   if (kind === ExplorationBlockKind.PROBLEM && block.kind === kind && !problem) throw new Error("Problem not found.");
   if (kind === ExplorationBlockKind.CONCEPT && block.kind === kind && !concept) throw new Error("Concept not found.");
-  const rule = ruleFromForm(formData);
-
   await prisma.explorationBlock.update({
     where: { id: blockId },
     data: {
-      kind,
+      ...(formData.has("kind") ? { kind } : {}),
       bodyMarkdown,
       bodyHtml: bodyMarkdown ? await renderMarkdownContent(bodyMarkdown) : null,
       explanationMarkdown,
@@ -425,17 +432,21 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
       problemId: problem?.id ?? null,
       conceptId: concept?.id ?? null,
       quizType,
-      settings: quizType ? jsonInput(blockSettings(formData)) : Prisma.JsonNull,
-      visibilityRule: rule ? jsonInput(rule) : Prisma.JsonNull,
-      required: formData.get("required") === "on",
-      points: clampOptionalInteger(formData.get("points"), 0, 10000) ?? 0
+      settings: quizType ? jsonInput(blockSettings(formData)) : Prisma.JsonNull
     }
   });
-  revalidateExploration(exploration.slug);
+  if (formData.get("skipHistory") !== "true") {
+    await recordExplorationChange(
+      page.playlistId,
+      user.id,
+      `Updated block ${block.position} on "${page.title}"`
+    );
+  }
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function setExplorationBlockPositionAction(blockId: number, requestedPosition: number) {
-  const { block, exploration } = await requireBlockEditor(blockId);
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
   const blocks = await prisma.explorationBlock.findMany({
     where: { pageId: block.pageId },
     orderBy: [{ position: "asc" }, { id: "asc" }],
@@ -453,32 +464,20 @@ export async function setExplorationBlockPositionAction(blockId: number, request
       data: { position: index + 1 }
     }))
   );
+  await recordExplorationChange(page.playlistId, user.id, `Reordered block on "${page.title}"`);
   revalidateExploration(exploration.slug, { editor: false });
   return { position };
 }
 
-export async function moveExplorationBlockAction(blockId: number, direction: "up" | "down") {
-  const { block, exploration } = await requireBlockEditor(blockId);
-  const sibling = await prisma.explorationBlock.findFirst({
-    where: { pageId: block.pageId, position: direction === "up" ? { lt: block.position } : { gt: block.position } },
-    orderBy: { position: direction === "up" ? "desc" : "asc" }
-  });
-  if (!sibling) return;
-  await prisma.$transaction([
-    prisma.explorationBlock.update({ where: { id: block.id }, data: { position: sibling.position } }),
-    prisma.explorationBlock.update({ where: { id: sibling.id }, data: { position: block.position } })
-  ]);
-  revalidateExploration(exploration.slug);
-}
-
 export async function deleteExplorationBlockAction(blockId: number) {
-  const { exploration } = await requireBlockEditor(blockId);
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
   await prisma.explorationBlock.delete({ where: { id: blockId } });
+  await recordExplorationChange(page.playlistId, user.id, `Deleted block ${block.position} from "${page.title}"`);
   revalidateExploration(exploration.slug);
 }
 
 export async function createExplorationOptionAction(blockId: number, formData: FormData) {
-  const { block, exploration } = await requireBlockEditor(blockId);
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
   if (block.kind !== ExplorationBlockKind.QUIZ && block.kind !== ExplorationBlockKind.CHOICE) {
     throw new Error("Only quiz and choice blocks accept options.");
   }
@@ -509,45 +508,40 @@ export async function createExplorationOptionAction(blockId: number, formData: F
       position: (last?.position ?? 0) + 1
     }
   });
+  await recordExplorationChange(page.playlistId, user.id, `Added an option to block ${block.position} on "${page.title}"`);
   revalidateExploration(exploration.slug);
 }
 
 export async function updateExplorationOptionAction(optionId: number, formData: FormData) {
   const option = await prisma.explorationBlockOption.findUnique({ where: { id: optionId }, select: { blockId: true } });
   if (!option) throw new Error("Option not found.");
-  const { block, exploration } = await requireBlockEditor(option.blockId);
+  const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
   const label = requiredBoundedText(formData.get("label"), CONTENT_LIMITS.shortText, "Option label");
-  const feedbackMarkdown = boundedText(formData.get("feedbackMarkdown"), CONTENT_LIMITS.longNote, "Feedback") || null;
   const toPageId = Number(formData.get("toPageId")) || null;
   if (toPageId) {
     const target = await prisma.explorationPage.findFirst({ where: { id: toPageId, playlistId: exploration.id } });
     if (!target) throw new Error("Target page does not belong to this exploration.");
   }
-  const effects = effectsFromFields(
-    formData.get("effectVariable"),
-    formData.get("effectOperation"),
-    formData.get("effectValue")
-  );
   await prisma.explorationBlockOption.update({
     where: { id: optionId },
     data: {
       label,
-      value: boundedText(formData.get("value"), CONTENT_LIMITS.shortText, "Option value") || null,
-      feedbackMarkdown,
-      feedbackHtml: feedbackMarkdown ? await renderMarkdownContent(feedbackMarkdown) : null,
-      isCorrect: block.kind === ExplorationBlockKind.QUIZ ? formData.get("isCorrect") === "on" : null,
-      toPageId,
-      effects: effects ? jsonInput(effects) : Prisma.JsonNull
+      ...(formData.get("isCorrectField") === "true"
+        ? { isCorrect: formData.get("isCorrect") === "on" }
+        : {}),
+      toPageId
     }
   });
-  revalidateExploration(exploration.slug);
+  await recordExplorationChange(page.playlistId, user.id, `Updated an option in block ${block.position} on "${page.title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function deleteExplorationOptionAction(optionId: number) {
   const option = await prisma.explorationBlockOption.findUnique({ where: { id: optionId }, select: { blockId: true } });
   if (!option) return;
-  const { exploration } = await requireBlockEditor(option.blockId);
+  const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
   await prisma.explorationBlockOption.delete({ where: { id: optionId } });
+  await recordExplorationChange(page.playlistId, user.id, `Deleted an option from block ${block.position} on "${page.title}"`);
   revalidateExploration(exploration.slug);
 }
 
@@ -762,30 +756,62 @@ async function explorationSnapshot(playlistId: number) {
   return exploration;
 }
 
-export async function publishExplorationAction(playlistId: number, formData: FormData) {
+async function recordExplorationChange(playlistId: number, userId: number, summary: string) {
+  const snapshot = await explorationSnapshot(playlistId);
+  const latest = await prisma.explorationEdition.findFirst({
+    where: { playlistId },
+    orderBy: { version: "desc" },
+    include: { _count: { select: { sessions: true } } }
+  });
+
+  if (latest && shouldCoalesceExplorationChange(
+    { ...latest, sessionCount: latest._count.sessions },
+    userId,
+    summary
+  )) {
+    await prisma.explorationEdition.update({
+      where: { id: latest.id },
+      data: { snapshot: jsonInput(snapshot), publishedAt: new Date() }
+    });
+    return;
+  }
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const newest = await prisma.explorationEdition.findFirst({
+      where: { playlistId },
+      orderBy: { version: "desc" },
+      select: { version: true }
+    });
+    try {
+      await prisma.explorationEdition.create({
+        data: {
+          playlistId,
+          version: (newest?.version ?? 0) + 1,
+          snapshot: jsonInput(snapshot),
+          changeSummary: summary,
+          publishedById: userId,
+          publishedAt: new Date()
+        }
+      });
+      return;
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002" || attempt === 2) throw error;
+    }
+  }
+}
+
+export async function publishExplorationAction(playlistId: number, _formData: FormData) {
   const { user, exploration } = await requireExplorationEditor(playlistId);
   const snapshot = await explorationSnapshot(playlistId);
   if (snapshot.pages.length === 0) throw new Error("Add at least one page before publishing.");
-  const changeSummary = boundedText(formData.get("changeSummary"), CONTENT_LIMITS.shortText, "Change summary") || null;
-  const latest = await prisma.explorationEdition.findFirst({ where: { playlistId }, orderBy: { version: "desc" } });
+  if (exploration.status === ExplorationStatus.PUBLISHED) return;
   const publishedAt = new Date();
 
-  await prisma.$transaction([
-    prisma.explorationEdition.create({
-      data: {
-        playlistId,
-        version: (latest?.version ?? 0) + 1,
-        snapshot: jsonInput(snapshot),
-        changeSummary,
-        publishedById: user.id,
-        publishedAt
-      }
-    }),
-    prisma.playlist.update({
-      where: { id: playlistId },
-      data: { status: ExplorationStatus.PUBLISHED, publishedAt }
-    })
-  ]);
+  await prisma.playlist.update({
+    where: { id: playlistId },
+    data: { status: ExplorationStatus.PUBLISHED, publishedAt }
+  });
+  await recordExplorationChange(playlistId, user.id, "Published exploration");
 
   const followers = await prisma.playlistFollow.findMany({ where: { playlistId }, select: { userId: true } });
   await Promise.all(
@@ -794,8 +820,8 @@ export async function publishExplorationAction(playlistId: number, formData: For
         userId,
         actorId: user.id,
         type: NotificationType.EXPLORATION_PUBLISHED,
-        title: `New edition of ${exploration.title}`,
-        body: changeSummary || "A new edition is ready to explore.",
+        title: `${exploration.title} was published`,
+        body: "The exploration is ready to read.",
         href: `/explorations/${exploration.slug}`
       })
     )
@@ -804,10 +830,11 @@ export async function publishExplorationAction(playlistId: number, formData: For
 }
 
 export async function changeExplorationStatusAction(playlistId: number, status: ExplorationStatus) {
-  const { exploration } = await requireExplorationEditor(playlistId);
-  if (status === ExplorationStatus.PUBLISHED) throw new Error("Use Publish to create a versioned edition.");
+  const { user, exploration } = await requireExplorationEditor(playlistId);
+  if (status === ExplorationStatus.PUBLISHED) throw new Error("Use Publish to publish this exploration.");
   if (!Object.values(ExplorationStatus).includes(status)) throw new Error("Invalid exploration status.");
   await prisma.playlist.update({ where: { id: playlistId }, data: { status } });
+  await recordExplorationChange(playlistId, user.id, `Changed status to ${status.toLocaleLowerCase().replaceAll("_", " ")}`);
   revalidateExploration(exploration.slug);
 }
 
@@ -815,7 +842,6 @@ type QuizSettings = { expectedAnswer?: unknown; tolerance?: unknown; caseSensiti
 
 export async function submitExplorationResponseAction(
   playlistId: number,
-  editionId: number | null,
   pageKey: string,
   blockKey: string,
   response: unknown,
@@ -833,20 +859,12 @@ export async function submitExplorationResponseAction(
         where: { playlistId_userId: { playlistId, userId: user.id } }
       })
     : null;
-  if (previousSession?.editionId && editionId && previousSession.editionId !== editionId) {
-    throw new Error("This response belongs to a different published edition.");
-  }
-
-  const edition = editionId
-    ? await prisma.explorationEdition.findFirst({ where: { id: editionId, playlistId } })
-    : null;
-  const snapshotMatch = edition ? findSnapshotBlock(edition.snapshot, pageKey, blockKey) : null;
   const liveBlock = await prisma.explorationBlock.findFirst({
     where: { key: blockKey, page: { key: pageKey, playlistId } },
     include: { options: { orderBy: { position: "asc" } }, page: true }
   });
-  const block = snapshotMatch?.block ?? liveBlock;
-  const sourcePage = snapshotMatch?.page ?? liveBlock?.page;
+  const block = liveBlock;
+  const sourcePage = liveBlock?.page;
   if (!block || !sourcePage) throw new Error("Exploration block not found.");
   if (block.kind !== ExplorationBlockKind.QUIZ && block.kind !== ExplorationBlockKind.CHOICE) {
     throw new Error("This block does not accept a response.");
@@ -880,24 +898,17 @@ export async function submitExplorationResponseAction(
 
   let score = isCorrect ? block.points : 0;
   if (user && persistResponse) {
-    const effectiveEditionId = previousSession?.editionId ?? edition?.id ?? null;
-    const sourcePages = edition ? explorationSnapshotPages(edition.snapshot) : [];
-    const maxScore = edition
-      ? sourcePages.reduce((total, page) => total + page.blocks.reduce((sum, item) => sum + (item.points || 0), 0), 0)
-      : (await prisma.explorationBlock.aggregate({
-          where: { page: { playlistId } },
-          _sum: { points: true }
-        }))._sum.points ?? 0;
-    const targetPage = selected?.toPageId
-      ? sourcePages.find((page) => page.id === selected.toPageId)
-      : null;
-    const selectedLivePage = !edition && selected?.toPageId
+    const maxScore = (await prisma.explorationBlock.aggregate({
+      where: { page: { playlistId } },
+      _sum: { points: true }
+    }))._sum.points ?? 0;
+    const selectedLivePage = selected?.toPageId
       ? await prisma.explorationPage.findFirst({
           where: { id: selected.toPageId, playlistId },
           select: { id: true, key: true }
         })
       : null;
-    const targetPageKey = targetPage?.key ?? selectedLivePage?.key ?? pageKey;
+    const targetPageKey = selectedLivePage?.key ?? pageKey;
     const targetLivePage = selectedLivePage ?? await prisma.explorationPage.findFirst({
       where: { playlistId, key: targetPageKey }, select: { id: true, key: true }
     });
@@ -916,6 +927,7 @@ export async function submitExplorationResponseAction(
     const session = await prisma.explorationSession.upsert({
       where: { playlistId_userId: { playlistId, userId: user.id } },
       update: {
+        editionId: null,
         currentPageId: targetLivePage?.id ?? liveBlock?.pageId ?? null,
         currentPageKey: targetPageKey,
         state: jsonInput(state),
@@ -927,7 +939,7 @@ export async function submitExplorationResponseAction(
       create: {
         playlistId,
         userId: user.id,
-        editionId: effectiveEditionId,
+        editionId: null,
         currentPageId: targetLivePage?.id ?? liveBlock?.pageId ?? null,
         currentPageKey: targetPageKey,
         state: jsonInput(state),
@@ -964,7 +976,6 @@ export async function submitExplorationResponseAction(
 
 export async function saveExplorationProgressAction(
   playlistId: number,
-  editionId: number | null,
   pageId: number,
   pageKey: string,
   rawState: ExplorationState,
@@ -980,15 +991,8 @@ export async function saveExplorationProgressAction(
   const existing = await prisma.explorationSession.findUnique({
     where: { playlistId_userId: { playlistId, userId: user.id } }
   });
-  const effectiveEditionId = existing?.editionId ?? editionId;
-  const edition = effectiveEditionId
-    ? await prisma.explorationEdition.findFirst({ where: { id: effectiveEditionId, playlistId } })
-    : null;
-  const validSnapshotPage = edition
-    ? explorationSnapshotPages(edition.snapshot).some((page) => page.id === pageId && page.key === pageKey)
-    : false;
   const livePage = exploration.pages.find((page) => page.key === pageKey);
-  if (!validSnapshotPage && !livePage) throw new Error("Invalid exploration page.");
+  if (!livePage) throw new Error("Invalid exploration page.");
   const visited = new Set<number>(
     Array.isArray(existing?.visitedPageIds) ? existing.visitedPageIds.map(Number).filter(Number.isInteger) : []
   );
@@ -997,12 +1001,10 @@ export async function saveExplorationProgressAction(
     Array.isArray(existing?.visitedPageKeys) ? existing.visitedPageKeys.map(String) : []
   );
   visitedKeys.add(pageKey);
-  const latestEdition = effectiveEditionId ? null : await prisma.explorationEdition.findFirst({
-    where: { playlistId }, orderBy: { version: "desc" }, select: { id: true }
-  });
   await prisma.explorationSession.upsert({
     where: { playlistId_userId: { playlistId, userId: user.id } },
     update: {
+      editionId: null,
       currentPageId: livePage?.id ?? null,
       currentPageKey: pageKey,
       state: jsonInput(asExplorationState(rawState)),
@@ -1014,7 +1016,7 @@ export async function saveExplorationProgressAction(
     create: {
       playlistId,
       userId: user.id,
-      editionId: effectiveEditionId ?? latestEdition?.id ?? null,
+      editionId: null,
       currentPageId: livePage?.id ?? null,
       currentPageKey: pageKey,
       state: jsonInput(asExplorationState(rawState)),
