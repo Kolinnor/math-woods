@@ -3,6 +3,7 @@ export type ExplorationQuizOutcomeCandidate = {
   kind: "ANSWER" | "CORRECT" | "INCORRECT" | "COMBINATION";
   optionIds: number[];
   position: number;
+  toBlockId?: number | null;
   toPageId: number | null;
 };
 

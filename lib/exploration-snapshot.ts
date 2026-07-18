@@ -6,6 +6,7 @@ export type ExplorationSnapshotOption = {
   feedbackHtml: string | null;
   isCorrect: boolean | null;
   revealBranchId: number | null;
+  toBlockId: number | null;
   toPageId: number | null;
   effects: unknown;
   position: number;
@@ -15,6 +16,7 @@ export type ExplorationSnapshotOutcome = {
   id: number;
   kind: "ANSWER" | "CORRECT" | "INCORRECT" | "COMBINATION";
   label: string;
+  toBlockId: number | null;
   toPageId: number | null;
   position: number;
   matches: Array<{ optionId: number }>;
@@ -23,6 +25,11 @@ export type ExplorationSnapshotOutcome = {
 export type ExplorationSnapshotBlock = {
   id: number;
   branchId: number | null;
+  canvasX: number | null;
+  canvasY: number | null;
+  isStart: boolean;
+  isEnd: boolean;
+  continueToBlockId: number | null;
   key: string;
   kind: string;
   title: string | null;
@@ -86,6 +93,11 @@ export function explorationSnapshotPages(snapshot: unknown): ExplorationSnapshot
     blocks: page.blocks.map((block) => ({
       ...block,
       branchId: typeof block.branchId === "number" ? block.branchId : null,
+      canvasX: typeof block.canvasX === "number" ? block.canvasX : null,
+      canvasY: typeof block.canvasY === "number" ? block.canvasY : null,
+      isStart: block.isStart === true,
+      isEnd: block.isEnd === true,
+      continueToBlockId: typeof block.continueToBlockId === "number" ? block.continueToBlockId : null,
       options: block.options.map((option) => ({
         ...option,
         action: option.action === "REVEAL" || option.action === "PAGE"
@@ -93,9 +105,13 @@ export function explorationSnapshotPages(snapshot: unknown): ExplorationSnapshot
           : option.toPageId !== null
             ? "PAGE"
             : "STAY",
-        revealBranchId: typeof option.revealBranchId === "number" ? option.revealBranchId : null
+        revealBranchId: typeof option.revealBranchId === "number" ? option.revealBranchId : null,
+        toBlockId: typeof option.toBlockId === "number" ? option.toBlockId : null
       })),
-      outcomes: Array.isArray(block.outcomes) ? block.outcomes : []
+      outcomes: Array.isArray(block.outcomes) ? block.outcomes.map((outcome) => ({
+        ...outcome,
+        toBlockId: typeof outcome.toBlockId === "number" ? outcome.toBlockId : null
+      })) : []
     })),
     canvasX: typeof page.canvasX === "number" ? page.canvasX : null,
     canvasY: typeof page.canvasY === "number" ? page.canvasY : null,

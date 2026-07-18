@@ -1,43 +1,24 @@
 "use client";
 
-import { useState } from "react";
-
-type ExplorationChoiceAction = "STAY" | "PAGE" | "REVEAL";
-
 export function ExplorationChoiceActionFields({
-  action: initialAction,
-  currentPageId,
-  pages,
-  toPageId
+  blocks,
+  currentBlockId,
+  toBlockId
 }: {
-  action: ExplorationChoiceAction;
-  currentPageId: number;
-  pages: Array<{ id: number; position: number; title: string }>;
-  toPageId: number | null;
+  blocks: Array<{ id: number; label: string }>;
+  currentBlockId: number;
+  toBlockId: number | null;
 }) {
-  const [action, setAction] = useState<ExplorationChoiceAction>(initialAction);
-
   return (
-    <>
-      <label>
-        <span>Action</span>
-        <select name="action" onChange={(event) => setAction(event.target.value as ExplorationChoiceAction)} value={action}>
-          <option value="STAY">Stay on page</option>
-          <option value="PAGE">Go to page</option>
-          <option value="REVEAL">Reveal blocks</option>
-        </select>
-      </label>
-      {action === "PAGE" && (
-        <label>
-          <span>Destination</span>
-          <select name="toPageId" defaultValue={toPageId ?? ""}>
-            <option value="">Choose a page</option>
-            {pages.filter((page) => page.id !== currentPageId).map((page) => (
-              <option key={page.id} value={page.id}>{page.position}. {page.title}</option>
-            ))}
-          </select>
-        </label>
-      )}
-    </>
+    <label>
+      <span>Next block</span>
+      <input name="action" type="hidden" value="PAGE" />
+      <select name="toBlockId" defaultValue={toBlockId ?? ""}>
+        <option value="">Use Continue</option>
+        {blocks.filter((block) => block.id !== currentBlockId).map((block) => (
+          <option key={block.id} value={block.id}>{block.label}</option>
+        ))}
+      </select>
+    </label>
   );
 }

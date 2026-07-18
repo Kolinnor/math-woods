@@ -43,13 +43,6 @@ export const explorationCatalogWhere = {
   visibility: PlaylistVisibility.PUBLIC
 } as const;
 
-export function explorationStatusLabel(status: ExplorationStatus) {
-  if (status === ExplorationStatus.DRAFT) return "Draft";
-  if (status === ExplorationStatus.IN_REVIEW) return "In review";
-  if (status === ExplorationStatus.ARCHIVED) return "Archived";
-  return "Published";
-}
-
 export function explorationBlockLabel(kind: ExplorationBlockKind) {
   const labels: Record<ExplorationBlockKind, string> = {
     MARKDOWN: "Text",

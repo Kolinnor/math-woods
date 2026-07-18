@@ -30,6 +30,7 @@ import {
   type ExplorationState
 } from "@/lib/exploration-engine";
 import { resolveExplorationQuizOutcome } from "@/lib/exploration-routing";
+import { nextExplorationBlockId } from "@/lib/exploration-block-graph";
 import {
   clearExplorationBranches,
   explorationBranchStateKey
@@ -212,7 +213,23 @@ export async function createExplorationAction(formData: FormData) {
           kind: ExplorationBlockKind.MARKDOWN,
           bodyMarkdown: descriptionMarkdown,
           bodyHtml: descriptionHtml,
-          position: 1
+          position: 1,
+          canvasX: 0,
+          canvasY: 0,
+          isStart: true,
+          isEnd: true
+        }
+      });
+    } else {
+      await tx.explorationBlock.create({
+        data: {
+          pageId: page.id,
+          kind: ExplorationBlockKind.MARKDOWN,
+          position: 1,
+          canvasX: 0,
+          canvasY: 0,
+          isStart: true,
+          isEnd: true
         }
       });
     }
@@ -364,6 +381,7 @@ export async function setExplorationPagePositionAction(pageId: number, requested
 }
 
 type ExplorationCanvasPosition = { pageId: number; x: number; y: number };
+type ExplorationBlockCanvasPosition = { blockId: number; x: number; y: number };
 
 function canvasCoordinate(value: number) {
   if (!Number.isFinite(value)) throw new Error("Invalid canvas position.");
@@ -399,6 +417,171 @@ export async function updateExplorationCanvasPositionsAction(
   await recordExplorationChange(playlistId, user.id, "Rearranged exploration map");
   revalidateExploration(exploration.slug, { editor: false });
   return normalized;
+}
+
+export async function createExplorationGraphBlockAction(playlistId: number, formData: FormData) {
+  const { exploration } = await requireExplorationEditor(playlistId);
+  let workspacePage = await prisma.explorationPage.findFirst({
+    where: { playlistId },
+    orderBy: [{ position: "asc" }, { id: "asc" }]
+  });
+  if (!workspacePage) {
+    workspacePage = await prisma.explorationPage.create({
+      data: {
+        playlistId,
+        slug: "blocks",
+        title: exploration.title,
+        position: 1,
+        isStart: true,
+        isEnd: true
+      }
+    });
+  }
+  const [terminal, count] = await Promise.all([
+    prisma.explorationBlock.findFirst({
+      where: { page: { playlistId }, isEnd: true },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }]
+    }),
+    prisma.explorationBlock.count({ where: { page: { playlistId } } })
+  ]);
+  const { blockId } = await createExplorationBlockAction(workspacePage.id, formData);
+  const column = count % 4;
+  const row = Math.floor(count / 4);
+  await prisma.$transaction(async (tx) => {
+    if (terminal) {
+      await tx.explorationBlock.update({
+        where: { id: terminal.id },
+        data: { continueToBlockId: blockId, isEnd: false }
+      });
+    }
+    await tx.explorationBlock.update({
+      where: { id: blockId },
+      data: {
+        canvasX: column * 320,
+        canvasY: row * 220,
+        isStart: count === 0,
+        isEnd: true
+      }
+    });
+  });
+  revalidateExploration(exploration.slug, { editor: false });
+  return { blockId };
+}
+
+export async function updateExplorationBlockCanvasPositionsAction(
+  playlistId: number,
+  positions: ExplorationBlockCanvasPosition[]
+) {
+  const { user, exploration } = await requireExplorationEditor(playlistId);
+  if (!Array.isArray(positions) || positions.length === 0 || positions.length > 2000) {
+    throw new Error("Invalid canvas positions.");
+  }
+  const normalized = positions.map((position) => ({
+    blockId: Number(position.blockId),
+    x: canvasCoordinate(Number(position.x)),
+    y: canvasCoordinate(Number(position.y))
+  }));
+  const blockIds = [...new Set(normalized.map((position) => position.blockId))];
+  if (blockIds.some((id) => !Number.isInteger(id))) throw new Error("Invalid exploration block.");
+  const matchingBlocks = await prisma.explorationBlock.count({
+    where: { id: { in: blockIds }, page: { playlistId } }
+  });
+  if (matchingBlocks !== blockIds.length) throw new Error("A block does not belong to this exploration.");
+  await prisma.$transaction(normalized.map((position) => prisma.explorationBlock.update({
+    where: { id: position.blockId },
+    data: { canvasX: position.x, canvasY: position.y }
+  })));
+  await recordExplorationChange(playlistId, user.id, "Moved exploration blocks");
+  revalidateExploration(exploration.slug, { editor: false });
+  return normalized;
+}
+
+export async function setExplorationBlockContinueAction(blockId: number, targetBlockId: number | null) {
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
+  const normalizedTarget = targetBlockId === null ? null : Number(targetBlockId);
+  if (normalizedTarget === blockId) throw new Error("A block cannot continue to itself.");
+  if (normalizedTarget !== null) {
+    const target = await prisma.explorationBlock.findFirst({
+      where: { id: normalizedTarget, page: { playlistId: page.playlistId } },
+      select: { id: true }
+    });
+    if (!target) throw new Error("The target block does not belong to this exploration.");
+  }
+  await prisma.explorationBlock.update({
+    where: { id: block.id },
+    data: { continueToBlockId: normalizedTarget, isEnd: normalizedTarget === null ? block.isEnd : false }
+  });
+  await recordExplorationChange(page.playlistId, user.id, "Updated a block link");
+  revalidateExploration(exploration.slug, { editor: false });
+  return { blockId, targetBlockId: normalizedTarget };
+}
+
+export async function updateExplorationBlockContinueFormAction(blockId: number, formData: FormData) {
+  const targetBlockId = Number(formData.get("continueToBlockId")) || null;
+  return setExplorationBlockContinueAction(blockId, targetBlockId);
+}
+
+export async function setExplorationBlockEndpointAction(blockId: number, endpoint: "start" | "end") {
+  const { user, page, exploration } = await requireBlockEditor(blockId);
+  await prisma.$transaction(async (tx) => {
+    await tx.explorationBlock.updateMany({
+      where: { page: { playlistId: page.playlistId } },
+      data: endpoint === "start" ? { isStart: false } : { isEnd: false }
+    });
+    await tx.explorationBlock.update({
+      where: { id: blockId },
+      data: endpoint === "start" ? { isStart: true } : { isEnd: true, continueToBlockId: null }
+    });
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Changed exploration ${endpoint} block`);
+  revalidateExploration(exploration.slug, { editor: false });
+}
+
+export async function setExplorationChoiceBlockTargetAction(optionId: number, targetBlockId: number | null) {
+  const option = await prisma.explorationBlockOption.findUnique({
+    where: { id: optionId },
+    select: { blockId: true }
+  });
+  if (!option) throw new Error("Choice not found.");
+  const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
+  if (block.kind !== ExplorationBlockKind.CHOICE) throw new Error("This option is not a choice path.");
+  const normalizedTarget = targetBlockId === null ? null : Number(targetBlockId);
+  if (normalizedTarget === block.id) throw new Error("A choice cannot link to its own block.");
+  if (normalizedTarget !== null) {
+    const target = await prisma.explorationBlock.findFirst({
+      where: { id: normalizedTarget, page: { playlistId: page.playlistId } },
+      select: { id: true }
+    });
+    if (!target) throw new Error("The target block does not belong to this exploration.");
+  }
+  await prisma.explorationBlockOption.update({
+    where: { id: optionId },
+    data: {
+      action: normalizedTarget === null ? ExplorationOptionAction.STAY : ExplorationOptionAction.PAGE,
+      toBlockId: normalizedTarget,
+      toPageId: null
+    }
+  });
+  await recordExplorationChange(page.playlistId, user.id, "Updated a choice link");
+  revalidateExploration(exploration.slug, { editor: false });
+}
+
+export async function setExplorationQuizOutcomeBlockTargetAction(outcomeId: number, targetBlockId: number | null) {
+  const { user, outcome, page, exploration } = await requireOutcomeEditor(outcomeId);
+  const normalizedTarget = targetBlockId === null ? null : Number(targetBlockId);
+  if (normalizedTarget !== null) {
+    const target = await prisma.explorationBlock.findFirst({
+      where: { id: normalizedTarget, page: { playlistId: page.playlistId } },
+      select: { id: true }
+    });
+    if (!target) throw new Error("The target block does not belong to this exploration.");
+  }
+  await prisma.explorationBlockOutcome.update({
+    where: { id: outcome.id },
+    data: { toBlockId: normalizedTarget, toPageId: null }
+  });
+  await recordExplorationChange(page.playlistId, user.id, "Updated a quiz link");
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function setExplorationContinueAction(pageId: number, targetPageId: number | null) {
@@ -864,17 +1047,38 @@ export async function setExplorationBlockPositionAction(blockId: number, request
 
 export async function deleteExplorationBlockAction(blockId: number) {
   const { user, block, page, exploration } = await requireBlockEditor(blockId);
-  const options = await prisma.explorationBlockOption.findMany({
-    where: { blockId },
-    select: { revealBranchId: true }
-  });
-  const branchIds = options.flatMap((option) => option.revealBranchId === null ? [] : [option.revealBranchId]);
+  const fallback = block.continueToBlockId ?? (await prisma.explorationBlock.findFirst({
+    where: { id: { not: blockId }, page: { playlistId: page.playlistId } },
+    orderBy: [{ isStart: "desc" }, { id: "asc" }],
+    select: { id: true }
+  }))?.id ?? null;
   await prisma.$transaction(async (tx) => {
-    if (branchIds.length) await tx.explorationBranch.deleteMany({ where: { id: { in: branchIds } } });
+    const replacement = block.continueToBlockId;
+    await tx.explorationBlock.updateMany({
+      where: { continueToBlockId: blockId },
+      data: { continueToBlockId: replacement }
+    });
+    await tx.explorationBlockOption.updateMany({
+      where: { toBlockId: blockId },
+      data: { toBlockId: replacement, action: replacement ? ExplorationOptionAction.PAGE : ExplorationOptionAction.STAY }
+    });
+    await tx.explorationBlockOutcome.updateMany({
+      where: { toBlockId: blockId },
+      data: { toBlockId: replacement }
+    });
     await tx.explorationBlock.delete({ where: { id: blockId } });
+    if ((block.isStart || block.isEnd) && fallback) {
+      await tx.explorationBlock.update({
+        where: { id: fallback },
+        data: {
+          ...(block.isStart ? { isStart: true } : {}),
+          ...(block.isEnd ? { isEnd: true } : {})
+        }
+      });
+    }
   });
-  await recordExplorationChange(page.playlistId, user.id, `Deleted block ${block.position} from "${page.title}"`);
-  revalidateExploration(exploration.slug);
+  await recordExplorationChange(page.playlistId, user.id, "Deleted an exploration block");
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function createExplorationOptionAction(blockId: number, formData: FormData) {
@@ -886,9 +1090,17 @@ export async function createExplorationOptionAction(blockId: number, formData: F
   const value = boundedText(formData.get("value"), CONTENT_LIMITS.shortText, "Option value") || null;
   const feedbackMarkdown = boundedText(formData.get("feedbackMarkdown"), CONTENT_LIMITS.longNote, "Feedback") || null;
   const toPageId = Number(formData.get("toPageId")) || null;
+  const toBlockId = Number(formData.get("toBlockId")) || null;
   if (toPageId) {
     const target = await prisma.explorationPage.findFirst({ where: { id: toPageId, playlistId: exploration.id } });
     if (!target) throw new Error("Target page does not belong to this exploration.");
+  }
+  if (toBlockId) {
+    const target = await prisma.explorationBlock.findFirst({
+      where: { id: toBlockId, page: { playlistId: exploration.id } },
+      select: { id: true }
+    });
+    if (!target) throw new Error("Target block does not belong to this exploration.");
   }
   const last = await prisma.explorationBlockOption.findFirst({ where: { blockId }, orderBy: { position: "desc" } });
   const effects = effectsFromFields(
@@ -899,7 +1111,7 @@ export async function createExplorationOptionAction(blockId: number, formData: F
   await prisma.explorationBlockOption.create({
     data: {
       blockId,
-      action: block.kind === ExplorationBlockKind.CHOICE && toPageId
+      action: block.kind === ExplorationBlockKind.CHOICE && (toPageId || toBlockId)
         ? ExplorationOptionAction.PAGE
         : ExplorationOptionAction.STAY,
       label,
@@ -908,6 +1120,7 @@ export async function createExplorationOptionAction(blockId: number, formData: F
       feedbackHtml: feedbackMarkdown ? await renderMarkdownContent(feedbackMarkdown) : null,
       isCorrect: block.kind === ExplorationBlockKind.QUIZ ? formData.get("isCorrect") === "on" : null,
       toPageId,
+      toBlockId,
       effects: effects ? jsonInput(effects) : Prisma.JsonNull,
       position: (last?.position ?? 0) + 1
     }
@@ -919,7 +1132,7 @@ export async function createExplorationOptionAction(blockId: number, formData: F
 export async function updateExplorationOptionAction(optionId: number, formData: FormData) {
   const option = await prisma.explorationBlockOption.findUnique({
     where: { id: optionId },
-    select: { action: true, blockId: true, revealBranchId: true, toPageId: true }
+    select: { action: true, blockId: true, revealBranchId: true, toBlockId: true, toPageId: true }
   });
   if (!option) throw new Error("Option not found.");
   const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
@@ -928,9 +1141,17 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
     ? enumValue(Object.values(ExplorationOptionAction), formData.get("action"), option.action)
     : option.action;
   const toPageId = formData.has("toPageId") ? Number(formData.get("toPageId")) || null : option.toPageId;
+  const toBlockId = formData.has("toBlockId") ? Number(formData.get("toBlockId")) || null : option.toBlockId;
   if (toPageId) {
     const target = await prisma.explorationPage.findFirst({ where: { id: toPageId, playlistId: exploration.id } });
     if (!target) throw new Error("Target page does not belong to this exploration.");
+  }
+  if (toBlockId) {
+    const target = await prisma.explorationBlock.findFirst({
+      where: { id: toBlockId, page: { playlistId: exploration.id } },
+      select: { id: true }
+    });
+    if (!target) throw new Error("Target block does not belong to this exploration.");
   }
   await prisma.$transaction(async (tx) => {
     let revealBranchId = option.revealBranchId;
@@ -966,7 +1187,8 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
         ...(formData.get("isCorrectField") === "true"
           ? { isCorrect: formData.get("isCorrect") === "on" }
           : {}),
-        toPageId
+        toPageId,
+        toBlockId
       }
     });
     await tx.explorationBlockOutcome.updateMany({
@@ -974,7 +1196,7 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
         kind: ExplorationOutcomeKind.ANSWER,
         matches: { some: { optionId } }
       },
-      data: { label, toPageId }
+      data: { label, toPageId, toBlockId }
     });
   });
   await recordExplorationChange(page.playlistId, user.id, `Updated an option in block ${block.position} on "${page.title}"`);
@@ -1167,6 +1389,10 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
             pageId: nextPage.id,
             branchId: block.branchId ? branchIds.get(block.branchId) ?? null : null,
             key: block.key,
+            canvasX: block.canvasX,
+            canvasY: block.canvasY,
+            isStart: block.isStart,
+            isEnd: block.isEnd,
             kind: block.kind,
             title: block.title,
             bodyMarkdown: block.bodyMarkdown,
@@ -1199,6 +1425,15 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
     }
     for (const page of source.pages) {
       for (const block of page.blocks) {
+        if (!block.continueToBlockId) continue;
+        await tx.explorationBlock.update({
+          where: { id: blockIds.get(block.id)! },
+          data: { continueToBlockId: blockIds.get(block.continueToBlockId) ?? null }
+        });
+      }
+    }
+    for (const page of source.pages) {
+      for (const block of page.blocks) {
         const nextBlockId = blockIds.get(block.id)!;
         for (const option of block.options) {
           const nextOption = await tx.explorationBlockOption.create({
@@ -1211,6 +1446,7 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
               isCorrect: option.isCorrect,
               action: option.action,
               toPageId: option.toPageId ? pageIds.get(option.toPageId) ?? null : null,
+              toBlockId: option.toBlockId ? blockIds.get(option.toBlockId) ?? null : null,
               revealBranchId: option.revealBranchId ? branchIds.get(option.revealBranchId) ?? null : null,
               effects: option.effects ? jsonInput(option.effects) : Prisma.JsonNull,
               position: option.position
@@ -1225,6 +1461,7 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
               kind: outcome.kind,
               label: outcome.label,
               toPageId: outcome.toPageId ? pageIds.get(outcome.toPageId) ?? null : null,
+              toBlockId: outcome.toBlockId ? blockIds.get(outcome.toBlockId) ?? null : null,
               position: outcome.position,
               matches: outcome.matches.length
                 ? {
@@ -1444,6 +1681,7 @@ export async function submitExplorationResponseAction(
           kind: outcome.kind,
           optionIds: outcome.matches.map((match) => match.optionId),
           position: outcome.position,
+          toBlockId: outcome.toBlockId,
           toPageId: outcome.toPageId
         })),
         optionIds,
@@ -1451,7 +1689,9 @@ export async function submitExplorationResponseAction(
       )
     : null;
   const selectedPageId = selected?.action === ExplorationOptionAction.PAGE ? selected.toPageId : null;
+  const selectedBlockId = selected?.toBlockId ?? null;
   const nextPageId = matchedOutcome?.toPageId ?? selectedPageId ?? null;
+  const nextBlockId = nextExplorationBlockId(matchedOutcome?.toBlockId, selectedBlockId, block.continueToBlockId);
   let state = asExplorationState(rawState ?? previousSession?.state);
   let clearedBlockKeys: string[] = [];
   let revealedBranchId: number | null = null;
@@ -1484,7 +1724,13 @@ export async function submitExplorationResponseAction(
           select: { id: true, key: true }
         })
       : null;
-    const targetPageKey = selectedLivePage?.key ?? pageKey;
+    const targetLiveBlock = nextBlockId
+      ? await prisma.explorationBlock.findFirst({
+          where: { id: nextBlockId, page: { playlistId } },
+          include: { page: { select: { id: true, key: true } } }
+        })
+      : null;
+    const targetPageKey = targetLiveBlock?.page.key ?? selectedLivePage?.key ?? pageKey;
     const targetLivePage = selectedLivePage ?? await prisma.explorationPage.findFirst({
       where: { playlistId, key: targetPageKey }, select: { id: true, key: true }
     });
@@ -1500,15 +1746,23 @@ export async function submitExplorationResponseAction(
         : []
     );
     visitedKeys.add(pageKey);
+    const visitedBlockKeys = new Set<string>(
+      Array.isArray(previousSession?.visitedBlockKeys)
+        ? previousSession.visitedBlockKeys.map(String)
+        : []
+    );
+    visitedBlockKeys.add(block.key);
     const session = await prisma.explorationSession.upsert({
       where: { playlistId_userId: { playlistId, userId: user.id } },
       update: {
         editionId: null,
-        currentPageId: targetLivePage?.id ?? liveBlock?.pageId ?? null,
+        currentPageId: targetLiveBlock?.page.id ?? targetLivePage?.id ?? liveBlock?.pageId ?? null,
         currentPageKey: targetPageKey,
+        currentBlockKey: targetLiveBlock?.key ?? block.key,
         state: jsonInput(state),
         visitedPageIds: jsonInput([...visited]),
         visitedPageKeys: jsonInput([...visitedKeys]),
+        visitedBlockKeys: jsonInput([...visitedBlockKeys]),
         maxScore,
         status: ExplorationSessionStatus.IN_PROGRESS
       },
@@ -1516,11 +1770,13 @@ export async function submitExplorationResponseAction(
         playlistId,
         userId: user.id,
         editionId: null,
-        currentPageId: targetLivePage?.id ?? liveBlock?.pageId ?? null,
+        currentPageId: targetLiveBlock?.page.id ?? targetLivePage?.id ?? liveBlock?.pageId ?? null,
         currentPageKey: targetPageKey,
+        currentBlockKey: targetLiveBlock?.key ?? block.key,
         state: jsonInput(state),
         visitedPageIds: jsonInput([...visited]),
         visitedPageKeys: jsonInput([...visitedKeys]),
+        visitedBlockKeys: jsonInput([...visitedBlockKeys]),
         maxScore
       }
     });
@@ -1551,10 +1807,65 @@ export async function submitExplorationResponseAction(
     feedbackHtml: selected?.feedbackHtml ?? block.explanationHtml ?? null,
     clearedBlockKeys,
     nextPageId,
+    nextBlockId,
     revealedBranchId,
     state,
     score
   };
+}
+
+export async function saveExplorationBlockProgressAction(
+  playlistId: number,
+  blockKey: string,
+  rawState: ExplorationState,
+  completed = false
+) {
+  const user = await getCurrentUser();
+  if (!user) return { saved: false };
+  const exploration = await prisma.playlist.findUnique({
+    where: { id: playlistId },
+    include: { collaborators: true }
+  });
+  if (!exploration || !canViewExploration(user, exploration)) throw new Error("Exploration not found.");
+  const block = await prisma.explorationBlock.findFirst({
+    where: { key: blockKey, page: { playlistId } },
+    include: { page: { select: { id: true, key: true } } }
+  });
+  if (!block) throw new Error("Invalid exploration block.");
+  const existing = await prisma.explorationSession.findUnique({
+    where: { playlistId_userId: { playlistId, userId: user.id } }
+  });
+  const visitedBlockKeys = new Set<string>(
+    Array.isArray(existing?.visitedBlockKeys) ? existing.visitedBlockKeys.map(String) : []
+  );
+  visitedBlockKeys.add(block.key);
+  await prisma.explorationSession.upsert({
+    where: { playlistId_userId: { playlistId, userId: user.id } },
+    update: {
+      editionId: null,
+      currentPageId: block.page.id,
+      currentPageKey: block.page.key,
+      currentBlockKey: block.key,
+      state: jsonInput(asExplorationState(rawState)),
+      visitedBlockKeys: jsonInput([...visitedBlockKeys]),
+      status: completed ? ExplorationSessionStatus.COMPLETED : ExplorationSessionStatus.IN_PROGRESS,
+      completedAt: completed ? new Date() : null
+    },
+    create: {
+      playlistId,
+      userId: user.id,
+      editionId: null,
+      currentPageId: block.page.id,
+      currentPageKey: block.page.key,
+      currentBlockKey: block.key,
+      state: jsonInput(asExplorationState(rawState)),
+      visitedBlockKeys: jsonInput([...visitedBlockKeys]),
+      status: completed ? ExplorationSessionStatus.COMPLETED : ExplorationSessionStatus.IN_PROGRESS,
+      completedAt: completed ? new Date() : null
+    }
+  });
+  revalidatePath(`/explorations/${exploration.slug}`);
+  return { saved: true };
 }
 
 export async function saveExplorationProgressAction(

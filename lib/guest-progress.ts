@@ -14,8 +14,8 @@ export function guestProgressContentKey(pathname: string, searchParams: URLSearc
   }
 
   if (parts.length === 3 && parts[0] === "explorations" && parts[2] === "start") {
-    const page = searchParams.get("page")?.trim() || "start";
-    return `exploration:${parts[1]}:${page}`;
+    const block = searchParams.get("block")?.trim() || "start";
+    return `exploration:${parts[1]}:${block}`;
   }
 
   return null;

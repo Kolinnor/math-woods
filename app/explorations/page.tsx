@@ -44,14 +44,14 @@ export default async function ExplorationsPage({
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     include: {
       author: true,
-      pages: { select: { id: true } },
+      pages: { select: { blocks: { select: { id: true } } } },
       _count: { select: { explorationSessions: true } }
     }
   });
   const sessions = user
     ? await prisma.explorationSession.findMany({
         where: { userId: user.id, playlistId: { in: explorations.map((exploration) => exploration.id) } },
-        select: { playlistId: true, visitedPageIds: true, status: true }
+        select: { playlistId: true, visitedBlockKeys: true, status: true }
       })
     : [];
   const sessionsByExploration = new Map(sessions.map((session) => [session.playlistId, session]));
@@ -87,8 +87,9 @@ export default async function ExplorationsPage({
       <div className="exploration-catalog-list">
         {explorations.map((exploration) => {
           const session = sessionsByExploration.get(exploration.id);
-          const visited = Array.isArray(session?.visitedPageIds) ? session.visitedPageIds.length : 0;
-          const progress = exploration.pages.length ? Math.min(100, Math.round((visited / exploration.pages.length) * 100)) : 0;
+          const blockCount = exploration.pages.reduce((count, page) => count + page.blocks.length, 0);
+          const visited = Array.isArray(session?.visitedBlockKeys) ? session.visitedBlockKeys.length : 0;
+          const progress = blockCount ? Math.min(100, Math.round((visited / blockCount) * 100)) : 0;
           return (
             <article key={exploration.id} className="exploration-catalog-item">
               <Link href={`/explorations/${exploration.slug}/start` as never} className="exploration-catalog-cover" aria-label={exploration.title}>
@@ -99,7 +100,7 @@ export default async function ExplorationsPage({
                 <h2><Link href={`/explorations/${exploration.slug}/start` as never}>{exploration.title}</Link></h2>
                 <p>{exploration.summary || "An interactive mathematical exploration."}</p>
                 <div className="exploration-catalog-meta">
-                  <span><BookOpen size={15} /> {exploration.pages.length} pages</span>
+                  <span><BookOpen size={15} /> {blockCount} blocks</span>
                   <span><Clock3 size={15} /> {exploration.estimatedMinutes ? `${exploration.estimatedMinutes} min` : "Open-ended"}</span>
                   <span><Users size={15} /> {exploration._count.explorationSessions} readers</span>
                   <span>by {displayNameForUser(exploration.author)}</span>

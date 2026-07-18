@@ -370,18 +370,29 @@ export async function createProblemAction(formData: FormData) {
           orderBy: [{ isStart: "desc" }, { position: "asc" }]
         });
         if (targetPage) {
-          const lastBlock = await tx.explorationBlock.findFirst({
-            where: { pageId: targetPage.id },
-            orderBy: { position: "desc" }
-          });
-          await tx.explorationBlock.create({
+          const [lastBlock, terminalBlock, blockCount] = await Promise.all([
+            tx.explorationBlock.findFirst({ where: { pageId: targetPage.id }, orderBy: { position: "desc" } }),
+            tx.explorationBlock.findFirst({ where: { page: { playlistId: playlist.id }, isEnd: true } }),
+            tx.explorationBlock.count({ where: { page: { playlistId: playlist.id } } })
+          ]);
+          const graphBlock = await tx.explorationBlock.create({
             data: {
               pageId: targetPage.id,
               kind: "PROBLEM",
               problemId: created.id,
-              position: (lastBlock?.position ?? 0) + 1
+              position: (lastBlock?.position ?? 0) + 1,
+              canvasX: (blockCount % 4) * 320,
+              canvasY: Math.floor(blockCount / 4) * 220,
+              isStart: blockCount === 0,
+              isEnd: true
             }
           });
+          if (terminalBlock) {
+            await tx.explorationBlock.update({
+              where: { id: terminalBlock.id },
+              data: { continueToBlockId: graphBlock.id, isEnd: false }
+            });
+          }
         }
       }
     }

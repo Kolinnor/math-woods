@@ -33,6 +33,7 @@ import { EXPLORATION_CHANGE_COALESCE_MS, shouldCoalesceExplorationChange } from 
 import { hasReachableExplorationExit } from "../lib/exploration-navigation.ts";
 import { resolveExplorationQuizOutcome } from "../lib/exploration-routing.ts";
 import { reachableExplorationPageIds } from "../lib/exploration-map-analysis.ts";
+import { nextExplorationBlockId, reachableExplorationBlockIds } from "../lib/exploration-block-graph.ts";
 import {
   clearExplorationBranches,
   descendantExplorationBranchIds,
@@ -652,7 +653,7 @@ assert.equal(guestProgressContentKey("/concepts/group", new URLSearchParams()), 
 assert.equal(guestProgressContentKey("/problems/new", new URLSearchParams()), null);
 assert.equal(guestProgressContentKey("/concepts/group/edit", new URLSearchParams()), null);
 assert.equal(
-  guestProgressContentKey("/explorations/space-rotations/start", new URLSearchParams("page=groups")),
+  guestProgressContentKey("/explorations/space-rotations/start", new URLSearchParams("block=groups")),
   "exploration:space-rotations:groups"
 );
 
@@ -748,6 +749,20 @@ assert.deepEqual(
     { id: 3, isStart: false, targetPageIds: [] }
   ])],
   [1, 2]
+);
+assert.equal(nextExplorationBlockId(9, 8, 7), 9);
+assert.equal(nextExplorationBlockId(null, 8, 7), 8);
+assert.equal(nextExplorationBlockId(null, null, 7), 7);
+assert.deepEqual(
+  [...reachableExplorationBlockIds([
+    { id: 1, isStart: true, continueToBlockId: 2, optionTargetBlockIds: [], outcomeTargetBlockIds: [] },
+    { id: 2, isStart: false, continueToBlockId: null, optionTargetBlockIds: [3, 4], outcomeTargetBlockIds: [] },
+    { id: 3, isStart: false, continueToBlockId: 5, optionTargetBlockIds: [], outcomeTargetBlockIds: [] },
+    { id: 4, isStart: false, continueToBlockId: 5, optionTargetBlockIds: [], outcomeTargetBlockIds: [] },
+    { id: 5, isStart: false, continueToBlockId: null, optionTargetBlockIds: [], outcomeTargetBlockIds: [] },
+    { id: 6, isStart: false, continueToBlockId: null, optionTargetBlockIds: [], outcomeTargetBlockIds: [] }
+  ])],
+  [1, 2, 3, 4, 5]
 );
 
 const branchBlocks = [

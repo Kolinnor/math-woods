@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { createExplorationBlockAction } from "@/lib/actions/exploration-actions";
+import { createExplorationGraphBlockAction } from "@/lib/actions/exploration-actions";
 
 type KindOption = {
   label: string;
@@ -11,14 +11,12 @@ type KindOption = {
 };
 
 export function ExplorationAddContentForm({
-  branchId,
+  explorationId,
   explorationSlug,
-  pageId,
   kinds
 }: {
-  branchId?: number;
+  explorationId: number;
   explorationSlug: string;
-  pageId: number;
   kinds: KindOption[];
 }) {
   const router = useRouter();
@@ -32,8 +30,8 @@ export function ExplorationAddContentForm({
     setError("");
     startTransition(async () => {
       try {
-        const { blockId } = await createExplorationBlockAction(pageId, formData);
-        router.replace(`/explorations/${explorationSlug}/edit?view=page&page=${pageId}#block-${blockId}` as never, { scroll: false });
+        const { blockId } = await createExplorationGraphBlockAction(explorationId, formData);
+        router.replace(`/explorations/${explorationSlug}/edit?view=block&block=${blockId}` as never, { scroll: false });
       } catch {
         setError("The content could not be added. Please try again.");
       }
@@ -42,7 +40,6 @@ export function ExplorationAddContentForm({
 
   return (
     <form action={createBlock} aria-busy={isPending} className="studio-add-content-form">
-      {branchId && <input name="branchId" type="hidden" value={branchId} />}
       <label>
         <span>Content type</span>
         <select name="kind" value={kind} onChange={(event) => setKind(event.target.value)} disabled={isPending}>

@@ -2023,7 +2023,7 @@ textarea {
   align-items: center;
   display: flex;
   justify-content: space-between;
-  padding: 0.6rem 1rem 0;
+  padding: 0.45rem 0.7rem 0;
 }
 
 .studio-block-heading {
@@ -2259,7 +2259,6 @@ textarea {
 .studio-page-settings > summary,
 .studio-add-block > summary,
 .studio-project-tools > summary,
-.studio-option-editor > summary,
 .studio-advanced-fields > summary,
 .studio-option-advanced > summary,
 .studio-reference-tools > summary {
@@ -2272,7 +2271,6 @@ textarea {
 .studio-page-settings > summary::-webkit-details-marker,
 .studio-add-block > summary::-webkit-details-marker,
 .studio-project-tools > summary::-webkit-details-marker,
-.studio-option-editor > summary::-webkit-details-marker,
 .studio-advanced-fields > summary::-webkit-details-marker,
 .studio-option-advanced > summary::-webkit-details-marker,
 .studio-reference-tools > summary::-webkit-details-marker {
@@ -2874,8 +2872,7 @@ textarea {
   font-size: 0.95rem;
 }
 
-.exploration-studio-sidebar-heading > span,
-.studio-option-editor > summary > span {
+.exploration-studio-sidebar-heading > span {
   background: #edf2ed;
   border-radius: 3px;
   color: #526158;
@@ -3122,8 +3119,12 @@ textarea {
 
 .studio-block-form {
   border-top: 0;
-  gap: 0.8rem;
-  padding: 0.3rem 1rem 1rem;
+  gap: 0.55rem;
+  padding: 0.2rem 0.7rem 0.7rem;
+}
+
+.studio-block-form .markdown-editor-toolbar {
+  margin-bottom: 0.35rem;
 }
 
 .autosave-status {
@@ -3174,20 +3175,20 @@ textarea {
   padding: 0;
 }
 
-.studio-option-editor > summary {
+.studio-option-editor-heading {
   align-items: center;
   display: flex;
   font-size: 0.8rem;
   font-weight: 700;
   gap: 0.45rem;
-  padding: 0.65rem 1rem;
+  padding: 0.5rem 0.7rem;
 }
 
 .studio-option-editor-body {
   border-top: 1px solid #dde2dd;
   display: grid;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem 1rem;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem 0.7rem;
 }
 
 .studio-option-row {
@@ -3195,9 +3196,9 @@ textarea {
   background: #fff;
   border: 1px solid #d8ded8;
   border-radius: 4px;
-  gap: 0.55rem;
+  gap: 0.45rem;
   grid-template-columns: minmax(10rem, 1.3fr) minmax(9rem, 0.8fr) minmax(10rem, 1fr) auto;
-  padding: 0.7rem;
+  padding: 0.55rem;
 }
 
 .studio-option-advanced {
@@ -3218,7 +3219,243 @@ textarea {
 
 .studio-new-option {
   border-top: 1px solid #d8ded8;
-  padding-top: 0.8rem;
+  padding-top: 0.55rem;
+}
+
+.studio-block-route {
+  background: #f5f7f5;
+  border-top: 1px solid #d8ded8;
+  padding: 0.55rem 0.7rem;
+}
+
+.studio-block-route label {
+  align-items: center;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: auto minmax(10rem, 1fr);
+}
+
+.studio-block-route label > span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.studio-block-row {
+  align-items: start;
+  color: var(--ink);
+  display: grid;
+  font-size: 0.82rem;
+  gap: 0.5rem;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  line-height: 1.3;
+  padding: 0.5rem 0.65rem;
+}
+
+.studio-block-row:hover,
+.studio-block-row.is-current {
+  background: #edf3ee;
+}
+
+.studio-block-row.is-current {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.studio-block-row > span:first-child {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.exploration-block-map {
+  background: #f6f9f6;
+  border: 1px solid #b7c4b9;
+  border-radius: 6px;
+  height: min(72vh, 760px);
+  min-height: 600px;
+  overflow: hidden;
+}
+
+.exploration-block-map .react-flow__edge-path {
+  stroke: #52665a;
+  stroke-width: 1.8;
+}
+
+.exploration-block-map .react-flow__edge.selected .react-flow__edge-path {
+  stroke: #b14e3f;
+  stroke-width: 2.7;
+}
+
+.exploration-block-map .react-flow__edge-text {
+  fill: #29352d;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.exploration-block-map .react-flow__edge-textbg {
+  fill: #fff;
+  fill-opacity: 0.94;
+}
+
+.exploration-block-node {
+  background: #fff;
+  border: 1px solid #9eafa1;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgb(27 47 33 / 0.1);
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem;
+  width: 14rem;
+}
+
+.exploration-block-node.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(34 106 70 / 0.15), 0 5px 14px rgb(27 47 33 / 0.13);
+}
+
+.exploration-block-node-meta,
+.exploration-block-node-markers,
+.exploration-block-node-edit {
+  align-items: center;
+  display: flex;
+}
+
+.exploration-block-node-meta {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  justify-content: space-between;
+  text-transform: uppercase;
+}
+
+.exploration-block-node-markers {
+  gap: 0.35rem;
+}
+
+.exploration-block-node-markers span {
+  align-items: center;
+  color: var(--accent);
+  display: inline-flex;
+  gap: 0.18rem;
+}
+
+.exploration-block-node > strong {
+  font-size: 0.9rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.exploration-block-node > p {
+  color: #59655d;
+  display: -webkit-box;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.exploration-block-node-routes {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.exploration-block-node-routes > div {
+  background: #eef4ef;
+  border-left: 2px solid var(--accent);
+  font-size: 0.68rem;
+  overflow: visible;
+  padding: 0.28rem 0.45rem;
+  position: relative;
+}
+
+.exploration-block-node-routes .react-flow__handle-right {
+  right: -0.95rem;
+}
+
+.exploration-block-node-edit {
+  color: var(--accent);
+  font-size: 0.7rem;
+  gap: 0.25rem;
+  width: max-content;
+}
+
+.exploration-block-node .react-flow__handle {
+  background: var(--accent);
+  border: 2px solid #fff;
+  height: 0.7rem;
+  width: 0.7rem;
+}
+
+.exploration-block-map-add {
+  margin: 0.6rem;
+}
+
+.exploration-block-map-add .studio-add-content-form {
+  align-items: end;
+  background: rgb(255 255 255 / 0.97);
+  border: 1px solid #b7c4b9;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgb(27 47 33 / 0.1);
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.45rem;
+}
+
+.exploration-block-map-add .studio-add-content-form label > span {
+  display: none;
+}
+
+.exploration-block-inspector {
+  background: rgb(255 255 255 / 0.97);
+  border: 1px solid #b7c4b9;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgb(27 47 33 / 0.1);
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.6rem;
+  padding: 0.65rem;
+  width: 13rem;
+}
+
+.exploration-block-inspector > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.exploration-block-inspector > div span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.exploration-block-inspector button,
+.exploration-block-inspector .button {
+  justify-content: flex-start;
+  min-height: 2rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.exploration-block-reader {
+  display: grid;
+  gap: 1rem;
+  margin: 0 auto;
+  max-width: 58rem;
+}
+
+.exploration-block-reader-header {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 0.6rem;
+}
+
+.exploration-block-reader-header p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 0;
 }
 
 .studio-add-block {

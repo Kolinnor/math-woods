@@ -42,7 +42,6 @@ export default async function NewExplorationPage({
             draftKey={`exploration:new:${draftSession}:description`}
           />
         </div>
-        <p className="muted text-sm">The exploration starts as a private draft. You can add pages, quizzes and collaborators before publishing.</p>
         <button type="submit">Open the Studio</button>
       </form>
     </ForestPageLayout>
