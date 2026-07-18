@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import {
   Background,
   BackgroundVariant,
   Controls,
   Handle,
   MarkerType,
-  MiniMap,
   Panel,
   Position,
   ReactFlow,
@@ -23,6 +22,7 @@ import {
 } from "@xyflow/react";
 import { ExternalLink, Flag, Signpost, Trash2 } from "lucide-react";
 import { ExplorationAddContentForm } from "@/components/ExplorationAddContentForm";
+import { ExplorationBlockNameHelp } from "@/components/ExplorationBlockNameHelp";
 import {
   deleteExplorationBlockAction,
   setExplorationBlockContinueAction,
@@ -337,12 +337,6 @@ export function ExplorationMapCanvas({
     });
   }
 
-  const nodeColor = useMemo(() => (node: Node<BlockNodeData>) => {
-    if (node.data.block.isStart) return "#2b744d";
-    if (node.data.block.isEnd) return "#7b6a36";
-    return "#9aab9d";
-  }, []);
-
   return (
     <div className="exploration-block-map" aria-busy={isPending}>
       <ReactFlow
@@ -367,8 +361,11 @@ export function ExplorationMapCanvas({
         </Panel>
         {selectedBlock && (
           <Panel className="exploration-block-inspector nodrag nopan" position="top-right">
-            <div>
-              <span>{selectedBlock.kind.toLocaleLowerCase().replaceAll("_", " ")}</span>
+            <div className="exploration-block-inspector-name">
+              <div className="exploration-block-inspector-label">
+                <span>{selectedBlock.kind.toLocaleLowerCase().replaceAll("_", " ")}</span>
+                <ExplorationBlockNameHelp />
+              </div>
               <input
                 key={selectedBlock.id}
                 aria-label="Block name"
@@ -392,7 +389,6 @@ export function ExplorationMapCanvas({
         {error && <Panel className="exploration-map-error" position="bottom-center">{error}</Panel>}
         <Background color="#c8d3ca" gap={20} size={1} variant={BackgroundVariant.Dots} />
         <Controls position="bottom-left" showInteractive={false} />
-        <MiniMap nodeColor={nodeColor} maskColor="rgb(237 243 238 / 0.76)" pannable zoomable />
       </ReactFlow>
     </div>
   );

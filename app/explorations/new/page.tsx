@@ -40,6 +40,7 @@ export default async function NewExplorationPage({
             name="descriptionMarkdown"
             initialValue={"Set the scene, state the central question, and invite the reader in.\n\nSee also [[polynomial]]."}
             draftKey={`exploration:new:${draftSession}:description`}
+            localDrafts={false}
           />
         </div>
         <button type="submit">Open the Studio</button>

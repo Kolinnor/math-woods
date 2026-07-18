@@ -459,6 +459,7 @@ export async function createExplorationGraphBlockAction(playlistId: number, form
       data: {
         canvasX: column * 320,
         canvasY: row * 220,
+        position: count + 1,
         isStart: count === 0,
         isEnd: true
       }
@@ -1039,7 +1040,7 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
 export async function setExplorationBlockPositionAction(blockId: number, requestedPosition: number) {
   const { user, block, page, exploration } = await requireBlockEditor(blockId);
   const blocks = await prisma.explorationBlock.findMany({
-    where: { pageId: block.pageId, branchId: block.branchId },
+    where: { page: { playlistId: page.playlistId } },
     orderBy: [{ position: "asc" }, { id: "asc" }],
     select: { id: true }
   });
@@ -1055,8 +1056,8 @@ export async function setExplorationBlockPositionAction(blockId: number, request
       data: { position: index + 1 }
     }))
   );
-  await recordExplorationChange(page.playlistId, user.id, `Reordered block on "${page.title}"`);
-  revalidateExploration(exploration.slug, { editor: false });
+  await recordExplorationChange(page.playlistId, user.id, "Reordered exploration blocks");
+  revalidateExploration(exploration.slug);
   return { position };
 }
 

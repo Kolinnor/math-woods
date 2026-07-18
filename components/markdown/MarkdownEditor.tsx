@@ -191,6 +191,7 @@ type MarkdownEditorProps = {
   minHeight?: string;
   lineNumbers?: boolean;
   draftKey?: string;
+  localDrafts?: boolean;
   resetSignal?: string | number | null;
 };
 
@@ -1346,6 +1347,7 @@ export function MarkdownEditor({
   minHeight = "14rem",
   lineNumbers: showLineNumbers = true,
   draftKey,
+  localDrafts = true,
   resetSignal = null
 }: MarkdownEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -1373,22 +1375,27 @@ export function MarkdownEditor({
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
     const resolvedDraftKey = `${DRAFT_PREFIX}:${draftKey ?? `${window.location.pathname}:${name}`}`;
-    draftKeyRef.current = resolvedDraftKey;
+    const activeDraftKey = localDrafts ? resolvedDraftKey : null;
+    draftKeyRef.current = activeDraftKey;
+    if (!activeDraftKey) {
+      removeMarkdownDraft(resolvedDraftKey);
+      removeDraftSubmit(resolvedDraftKey);
+    }
     const currentResetSignal = resetSignalValue(resetSignal);
-    if (currentResetSignal !== null) {
-      const submit = readDraftSubmit(resolvedDraftKey);
+    if (activeDraftKey && currentResetSignal !== null) {
+      const submit = readDraftSubmit(activeDraftKey);
       const submittedThenChanged =
         submit &&
         Date.now() - submit.submittedAt <= DRAFT_SUBMIT_TTL_MS &&
         submit.signal !== currentResetSignal;
       if (submittedThenChanged) {
-        removeMarkdownDraft(resolvedDraftKey);
+        removeMarkdownDraft(activeDraftKey);
       }
       if (submit && (submittedThenChanged || Date.now() - submit.submittedAt > DRAFT_SUBMIT_TTL_MS)) {
-        removeDraftSubmit(resolvedDraftKey);
+        removeDraftSubmit(activeDraftKey);
       }
     }
-    const savedDraft = readMarkdownDraft(resolvedDraftKey);
+    const savedDraft = activeDraftKey ? readMarkdownDraft(activeDraftKey) : null;
     const startValue = savedDraft && savedDraft.value !== initialValue ? savedDraft.value : initialValue;
 
     if (savedDraft && savedDraft.value === initialValue) {
@@ -1491,10 +1498,12 @@ export function MarkdownEditor({
               setRestoredDraftAt(null);
               hostRef.current?.closest("form")?.dispatchEvent(new Event("input", { bubbles: true }));
 
-              if (nextValue === initialValue) {
-                removeMarkdownDraft(resolvedDraftKey);
-              } else {
-                writeMarkdownDraft(resolvedDraftKey, nextValue);
+              if (activeDraftKey) {
+                if (nextValue === initialValue) {
+                  removeMarkdownDraft(activeDraftKey);
+                } else {
+                  writeMarkdownDraft(activeDraftKey, nextValue);
+                }
               }
             }
           })
@@ -1565,7 +1574,7 @@ export function MarkdownEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [draftKey, initialValue, minHeight, name, showLineNumbers]);
+  }, [draftKey, initialValue, localDrafts, minHeight, name, showLineNumbers]);
 
   useEffect(() => {
     if (!linkMenu) return;

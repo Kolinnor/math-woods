@@ -22,6 +22,8 @@ import { AutoSaveForm } from "@/components/AutoSaveForm";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DeletePlaylistButton } from "@/components/DeletePlaylistButton";
 import { ExplorationAddContentForm } from "@/components/ExplorationAddContentForm";
+import { ExplorationBlockList } from "@/components/ExplorationBlockList";
+import { ExplorationBlockNameHelp } from "@/components/ExplorationBlockNameHelp";
 import { ExplorationChoiceActionFields } from "@/components/ExplorationChoiceActionFields";
 import { ExplorationMapCanvas, type ExplorationMapBlock } from "@/components/ExplorationMapCanvas";
 import { ExplorationSettingsButton } from "@/components/ExplorationSettingsButton";
@@ -116,7 +118,9 @@ export default async function EditExplorationPage({
   });
   if (!exploration || !canEditExploration(user, exploration)) notFound();
 
-  const blocks = exploration.pages.flatMap((page) => page.blocks);
+  const blocks = exploration.pages
+    .flatMap((page) => page.blocks)
+    .sort((left, right) => left.position - right.position || left.id - right.id);
   const selectedBlockId = Number(selectedBlockRaw);
   const selectedBlock = blocks.find((block) => block.id === selectedBlockId) ?? blocks[0] ?? null;
   const mapMode = view !== "block" || !selectedBlockRaw;
@@ -186,17 +190,14 @@ export default async function EditExplorationPage({
         <div className="exploration-studio-shell">
           <aside className="exploration-studio-sidebar">
             <div className="exploration-studio-sidebar-heading"><h2>Blocks</h2><span>{blocks.length}</span></div>
-            <nav>
-              {blocks.map((block, index) => (
-                <Link
-                  key={block.id}
-                  className={selectedBlock?.id === block.id ? "studio-block-row is-current" : "studio-block-row"}
-                  href={`/explorations/${exploration.slug}/edit?view=block&block=${block.id}` as never}
-                >
-                  <span>{index + 1}</span><span>{blockDisplayLabel(block)}</span>
-                </Link>
-              ))}
-            </nav>
+            <ExplorationBlockList
+              currentBlockId={selectedBlock?.id ?? null}
+              initialBlocks={blocks.map((block) => ({
+                id: block.id,
+                href: `/explorations/${exploration.slug}/edit?view=block&block=${block.id}`,
+                label: blockDisplayLabel(block)
+              }))}
+            />
             <details className="studio-add-block">
               <summary><Plus size={16} /> New block</summary>
               <ExplorationAddContentForm explorationId={exploration.id} explorationSlug={exploration.slug} kinds={ADD_BLOCK_KINDS.map((kind) => ({ value: kind, label: editorBlockLabel(kind) }))} />
@@ -208,7 +209,7 @@ export default async function EditExplorationPage({
               const settings = objectValue(selectedBlock.settings);
               const blockFormId = `exploration-block-${selectedBlock.id}-form`;
               return (
-                <article id={`block-${selectedBlock.id}`} className="studio-block-editor">
+                <article key={selectedBlock.id} id={`block-${selectedBlock.id}`} className="studio-block-editor">
                   <div className="studio-block-topline">
                     <div className="studio-block-heading">
                       <strong>Block</strong><span aria-hidden="true">-</span>
@@ -219,6 +220,7 @@ export default async function EditExplorationPage({
                       <AutoSaveForm action={updateExplorationBlockNameAction.bind(null, selectedBlock.id)} className="studio-block-name-form" statusClassName="sr-only">
                         <input name="name" defaultValue={selectedBlock.name ?? ""} maxLength={160} placeholder="Name" aria-label="Block name" />
                       </AutoSaveForm>
+                      <ExplorationBlockNameHelp />
                     </div>
                     <form action={deleteExplorationBlockAction.bind(null, selectedBlock.id)}>
                       <ConfirmSubmitButton message="Delete this block?" className="icon-button danger" title="Delete block"><Trash2 size={15} /></ConfirmSubmitButton>
@@ -229,7 +231,7 @@ export default async function EditExplorationPage({
                       <label><span>{selectedBlock.kind === ExplorationBlockKind.PROBLEM ? "Problem" : "Concept"}</span><input name="referenceSlug" defaultValue={selectedBlock.problem?.slug ?? selectedBlock.concept?.slug ?? ""} required /></label>
                     )}
                     {selectedBlock.kind !== ExplorationBlockKind.DIVIDER && selectedBlock.kind !== ExplorationBlockKind.HEADING && (
-                      <LazyMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} minHeight={selectedBlock.kind === ExplorationBlockKind.CHOICE ? "5rem" : "7rem"} lineNumbers={false} />
+                      <LazyMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} localDrafts={false} minHeight={selectedBlock.kind === ExplorationBlockKind.CHOICE ? "5rem" : "7rem"} lineNumbers={false} />
                     )}
                     {selectedBlock.kind === ExplorationBlockKind.QUIZ && (
                       <div className="studio-quiz-settings">
@@ -239,14 +241,16 @@ export default async function EditExplorationPage({
                           <label><span>Tolerance</span><input name="tolerance" type="number" step="any" min={0} defaultValue={String(settings.tolerance ?? "")} /></label>
                         </div>
                         <label className="checkbox-field"><input name="caseSensitive" type="checkbox" defaultChecked={settings.caseSensitive === true} /><span><strong>Case-sensitive</strong></span></label>
-                        <div className="grid gap-2"><span className="text-sm font-medium">Explanation</span><LazyMarkdownEditor name="explanationMarkdown" initialValue={selectedBlock.explanationMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:explanation`} minHeight="5rem" lineNumbers={false} /></div>
+                        <div className="grid gap-2"><span className="text-sm font-medium">Explanation</span><LazyMarkdownEditor name="explanationMarkdown" initialValue={selectedBlock.explanationMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:explanation`} localDrafts={false} minHeight="5rem" lineNumbers={false} /></div>
                       </div>
                     )}
                   </AutoSaveForm>
 
-                  <AutoSaveForm action={updateExplorationBlockContinueFormAction.bind(null, selectedBlock.id)} className="studio-block-route" statusClassName="sr-only">
-                    <label><span>Continue to</span><select name="continueToBlockId" defaultValue={selectedBlock.continueToBlockId ?? ""}><option value="">End here</option>{blockLabels.filter((block) => block.id !== selectedBlock.id).map((block) => <option key={block.id} value={block.id}>{block.label}</option>)}</select></label>
-                  </AutoSaveForm>
+                  {selectedBlock.kind !== ExplorationBlockKind.CHOICE && (
+                    <AutoSaveForm action={updateExplorationBlockContinueFormAction.bind(null, selectedBlock.id)} className="studio-block-route" statusClassName="sr-only">
+                      <label><span>Continue to</span><select name="continueToBlockId" defaultValue={selectedBlock.continueToBlockId ?? ""}><option value="">End here</option>{blockLabels.filter((block) => block.id !== selectedBlock.id).map((block) => <option key={block.id} value={block.id}>{block.label}</option>)}</select></label>
+                    </AutoSaveForm>
+                  )}
 
                   {(selectedBlock.kind === ExplorationBlockKind.QUIZ || selectedBlock.kind === ExplorationBlockKind.CHOICE) && (
                     <section className="studio-option-editor">
@@ -294,8 +298,8 @@ export default async function EditExplorationPage({
                 <label><span>License</span><input name="license" defaultValue={exploration.license} /></label>
               </div>
               <label><span>Cover image URL</span><input name="coverImageUrl" defaultValue={exploration.coverImageUrl ?? ""} /></label>
-              <div className="grid gap-2"><span className="text-sm font-medium">Catalogue introduction</span><LazyMarkdownEditor name="descriptionMarkdown" initialValue={exploration.descriptionMarkdown} draftKey={`exploration:${exploration.id}:metadata:description`} minHeight="8rem" /></div>
-              <div className="grid gap-2"><span className="text-sm font-medium">Prerequisites</span><LazyMarkdownEditor name="prerequisitesMarkdown" initialValue={exploration.prerequisitesMarkdown ?? ""} draftKey={`exploration:${exploration.id}:metadata:prerequisites`} minHeight="6rem" lineNumbers={false} /></div>
+              <div className="grid gap-2"><span className="text-sm font-medium">Catalogue introduction</span><LazyMarkdownEditor name="descriptionMarkdown" initialValue={exploration.descriptionMarkdown} draftKey={`exploration:${exploration.id}:metadata:description`} localDrafts={false} minHeight="8rem" /></div>
+              <div className="grid gap-2"><span className="text-sm font-medium">Prerequisites</span><LazyMarkdownEditor name="prerequisitesMarkdown" initialValue={exploration.prerequisitesMarkdown ?? ""} draftKey={`exploration:${exploration.id}:metadata:prerequisites`} localDrafts={false} minHeight="6rem" lineNumbers={false} /></div>
             </AutoSaveForm>
             <section className="studio-collaborators"><div className="studio-section-heading"><h2>Collaborators</h2></div><div className="studio-collaborator-list"><div><strong>{exploration.author.displayName || exploration.author.username}</strong><span>Owner</span></div>{exploration.collaborators.map((collaborator) => <div key={collaborator.userId}><strong>{collaborator.user.displayName || collaborator.user.username}</strong><span>{collaborator.role.toLocaleLowerCase()}</span><form action={removeExplorationCollaboratorAction.bind(null, exploration.id, collaborator.userId)}><button className="icon-button danger" title="Remove collaborator"><Trash2 size={15} /></button></form></div>)}</div><form action={addExplorationCollaboratorAction.bind(null, exploration.id)} className="studio-add-collaborator"><input name="username" required placeholder="Username" /><select name="role"><option value="EDITOR">Editor</option><option value="REVIEWER">Reviewer</option></select><button type="submit" className="secondary"><Plus size={16} /> Add</button></form></section>
             <section className="studio-translation-tools"><div className="studio-section-heading"><h2>Translation</h2></div><form action={cloneExplorationTranslationAction.bind(null, exploration.id)}><select name="language" defaultValue="" required><option value="" disabled>Choose language</option>{SUPPORTED_CONTENT_LANGUAGES.filter((language) => language.code !== exploration.language).map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}</select><button type="submit" className="secondary"><Plus size={16} /> Create translation</button></form></section>
