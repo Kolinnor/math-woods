@@ -29,6 +29,7 @@ import {
 } from "../lib/latex-live-preview.ts";
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
 import { explorationSnapshotPages } from "../lib/exploration-snapshot.ts";
+import { guestProgressContentKey } from "../lib/guest-progress.ts";
 import {
   createDisplayMathLineBreakNormalizer,
   skipDisplayMathLineBreakNormalization
@@ -629,6 +630,15 @@ const configuredExplorationPages = explorationSnapshotPages({
   ]
 });
 assert.deepEqual(configuredExplorationPages.map((page) => page.isEnd), [true, false]);
+
+assert.equal(guestProgressContentKey("/problems/group-action", new URLSearchParams()), "problems:group-action");
+assert.equal(guestProgressContentKey("/concepts/group", new URLSearchParams()), "concepts:group");
+assert.equal(guestProgressContentKey("/problems/new", new URLSearchParams()), null);
+assert.equal(guestProgressContentKey("/concepts/group/edit", new URLSearchParams()), null);
+assert.equal(
+  guestProgressContentKey("/explorations/space-rotations/start", new URLSearchParams("page=groups")),
+  "exploration:space-rotations:groups"
+);
 
 const staleChunkError = new Error(
   "Loading chunk 7330 failed. (error: https://mathwoods.org/_next/static/chunks/d3ac728e-652fe3530429dda0.js)"

@@ -968,6 +968,57 @@ a {
   color: var(--ink);
 }
 
+.guest-progress-prompt {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--accent-border);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+  left: 50%;
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 0.8rem 0.85rem;
+  position: fixed;
+  transform: translateX(-50%);
+  width: max-content;
+  z-index: 60;
+}
+
+.guest-progress-prompt p {
+  line-height: 1.4;
+  margin: 0;
+}
+
+.guest-progress-prompt a {
+  color: var(--accent);
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.guest-progress-prompt button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 1.8rem;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+  width: 1.8rem;
+}
+
+.guest-progress-prompt button:hover {
+  background: var(--panel-muted);
+  color: var(--ink);
+}
+
 .achievement-grid {
   display: grid;
   gap: 0.8rem;

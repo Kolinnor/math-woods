@@ -10,6 +10,7 @@ import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { FriendsMenu } from "@/components/FriendsMenu";
+import { GuestProgressPrompt } from "@/components/GuestProgressPrompt";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { TimeZoneReporter } from "@/components/TimeZoneReporter";
@@ -189,6 +190,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <EmailVerificationBanner userId={user.id} resendAction={resendEmailVerificationAction} />
           )}
         </header>
+        {!user && <GuestProgressPrompt />}
         {user && <AchievementToast userId={user.id} />}
         {user && (
           <div className="floating-friends-menu">
