@@ -11,10 +11,12 @@ type KindOption = {
 };
 
 export function ExplorationAddContentForm({
+  branchId,
   explorationSlug,
   pageId,
   kinds
 }: {
+  branchId?: number;
   explorationSlug: string;
   pageId: number;
   kinds: KindOption[];
@@ -40,6 +42,7 @@ export function ExplorationAddContentForm({
 
   return (
     <form action={createBlock} aria-busy={isPending} className="studio-add-content-form">
+      {branchId && <input name="branchId" type="hidden" value={branchId} />}
       <label>
         <span>Content type</span>
         <select name="kind" value={kind} onChange={(event) => setKind(event.target.value)} disabled={isPending}>

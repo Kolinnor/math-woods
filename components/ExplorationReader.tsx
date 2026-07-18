@@ -24,13 +24,16 @@ import {
   conditionMatches,
   type ExplorationState
 } from "@/lib/exploration-engine";
+import { visibleExplorationBlocks } from "@/lib/exploration-branches";
 import { hasReachableExplorationExit } from "@/lib/exploration-navigation";
 
 type ReaderOption = {
+  action: "STAY" | "PAGE" | "REVEAL";
   id: number;
   label: string;
   value: string | null;
   feedbackHtml: string | null;
+  revealBranchId: number | null;
   toPageId: number | null;
 };
 
@@ -43,6 +46,7 @@ type ReaderOutcome = {
 };
 
 type ReaderBlock = {
+  branchId: number | null;
   id: number;
   key: string;
   kind: string;
@@ -81,9 +85,11 @@ type InitialAnswer = {
 };
 
 type ResponseResult = {
+  clearedBlockKeys?: string[];
   isCorrect: boolean | null;
   feedbackHtml: string | null;
   nextPageId: number | null;
+  revealedBranchId?: number | null;
 };
 
 type StoredProgress = {
@@ -165,7 +171,7 @@ export function ExplorationReader({
   );
   const currentPage = visiblePages.find((page) => page.id === currentPageId) ?? visiblePages[0] ?? pages[0];
   const currentIndex = visiblePages.findIndex((page) => page.id === currentPage?.id);
-  const visibleBlocks = currentPage?.blocks.filter((block) => conditionMatches(block.visibilityRule, state)) ?? [];
+  const visibleBlocks = currentPage ? visibleExplorationBlocks(currentPage.blocks, state) : [];
   const requiredBlocks = visibleBlocks.filter((block) => block.required && ["QUIZ", "CHOICE"].includes(block.kind));
   const requiredComplete = requiredBlocks.every((block) => results[`${currentPage.key}:${block.key}`]);
   const continuePage = currentPage?.continueToPageId
@@ -176,7 +182,7 @@ export function ExplorationReader({
     continueToPageId: currentPage?.continueToPageId ?? null,
     choiceTargetPageIds: visibleBlocks
       .flatMap((block) => block.kind === "CHOICE"
-        ? block.options.map((option) => option.toPageId)
+        ? block.options.map((option) => option.action === "PAGE" ? option.toPageId : null)
         : block.kind === "QUIZ"
           ? block.outcomes.map((outcome) => outcome.toPageId)
           : []),
@@ -255,22 +261,39 @@ export function ExplorationReader({
           currentPage.key,
           block.key,
           response,
-          !previewDraft
+          !previewDraft,
+          state
         );
-        const nextState = { ...state, ...asExplorationState(result.state) };
+        const nextState = asExplorationState(result.state);
         setState(nextState);
+        setResponses((items) => ({
+          ...Object.fromEntries(Object.entries(items).filter(([key]) => !result.clearedBlockKeys.includes(key))),
+          [stableBlockKey]: response
+        }));
         setResults((items) => ({
-          ...items,
+          ...Object.fromEntries(Object.entries(items).filter(([key]) => !result.clearedBlockKeys.includes(key))),
           [stableBlockKey]: {
+            clearedBlockKeys: result.clearedBlockKeys,
             isCorrect: result.isCorrect,
             feedbackHtml: result.feedbackHtml,
-            nextPageId: result.nextPageId
+            nextPageId: result.nextPageId,
+            revealedBranchId: result.revealedBranchId
           }
         }));
         if (block.kind === "CHOICE" && result.nextPageId) {
           setTimeout(() => goTo(result.nextPageId!), 0);
         } else {
           persist(currentPage.id, nextState);
+          if (result.revealedBranchId) {
+            const firstRevealedBlock = currentPage.blocks
+              .filter((candidate) => candidate.branchId === result.revealedBranchId)
+              .sort((left, right) => left.position - right.position)[0];
+            if (firstRevealedBlock) {
+              window.setTimeout(() => {
+                document.getElementById(`block-${firstRevealedBlock.key}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }, 0);
+            }
+          }
         }
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The response could not be checked.");
@@ -330,13 +353,13 @@ export function ExplorationReader({
             const result = results[stableBlockKey];
             const response = responses[stableBlockKey] ?? (block.quizType === "MULTIPLE_CHOICE" ? [] : "");
 
-            if (block.kind === "DIVIDER") return <hr key={block.id} className="exploration-divider" />;
+            if (block.kind === "DIVIDER") return <hr id={`block-${block.key}`} key={block.id} className="exploration-divider" />;
             if (block.kind === "HEADING") {
-              return <h2 key={block.id} className="exploration-section-heading">{block.title}</h2>;
+              return <h2 id={`block-${block.key}`} key={block.id} className="exploration-section-heading">{block.title}</h2>;
             }
             if (block.kind === "PROBLEM" && block.problem) {
               return (
-                <section key={block.id} className="exploration-reference-block exploration-problem-block">
+                <section id={`block-${block.key}`} key={block.id} className="exploration-reference-block exploration-problem-block">
                   <div>
                     <p className="eyebrow">Problem</p>
                     <h2><MarkdownInline html={block.problem.titleHtml} /></h2>
@@ -351,7 +374,7 @@ export function ExplorationReader({
             }
             if (block.kind === "CONCEPT" && block.concept) {
               return (
-                <section key={block.id} className="exploration-reference-block exploration-concept-block">
+                <section id={`block-${block.key}`} key={block.id} className="exploration-reference-block exploration-concept-block">
                   <div>
                     <p className="eyebrow">Concept</p>
                     <h2>{block.concept.title}</h2>
@@ -365,11 +388,18 @@ export function ExplorationReader({
             }
             if (block.kind === "CHOICE") {
               return (
-                <section key={block.id} className="exploration-interaction-block">
+                <section id={`block-${block.key}`} key={block.id} className="exploration-interaction-block">
                   {block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}
                   <div className="exploration-choice-grid">
                     {block.options.map((option) => (
-                      <button key={option.id} type="button" className="secondary" disabled={isPending} onClick={() => submitResponse(block, String(option.id))}>
+                      <button
+                        key={option.id}
+                        type="button"
+                        aria-pressed={responses[stableBlockKey] === String(option.id)}
+                        className={responses[stableBlockKey] === String(option.id) ? "secondary is-selected" : "secondary"}
+                        disabled={isPending}
+                        onClick={() => submitResponse(block, String(option.id))}
+                      >
                         {option.label}<ArrowRight size={16} />
                       </button>
                     ))}
@@ -381,7 +411,7 @@ export function ExplorationReader({
               const multiple = block.quizType === "MULTIPLE_CHOICE";
               const textEntry = block.quizType === "SHORT_TEXT" || block.quizType === "NUMBER";
               return (
-                <section key={block.id} className="exploration-interaction-block">
+                <section id={`block-${block.key}`} key={block.id} className="exploration-interaction-block">
                   <div className="exploration-interaction-heading">
                     <CircleHelp size={20} />
                     <div>

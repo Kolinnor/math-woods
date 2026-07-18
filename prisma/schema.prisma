@@ -148,6 +148,12 @@ enum ExplorationOutcomeKind {
   COMBINATION
 }
 
+enum ExplorationOptionAction {
+  STAY
+  PAGE
+  REVEAL
+}
+
 enum ExplorationSessionStatus {
   IN_PROGRESS
   COMPLETED
@@ -771,6 +777,7 @@ model ExplorationPage {
   updatedAt         DateTime                  @updatedAt
   playlist          Playlist                  @relation(fields: [playlistId], references: [id], onDelete: Cascade)
   blocks            ExplorationBlock[]
+  branches          ExplorationBranch[]
   incomingOptions   ExplorationBlockOption[]  @relation("ExplorationOptionTarget")
   incomingOutcomes  ExplorationBlockOutcome[] @relation("ExplorationOutcomeTarget")
   continueToPage    ExplorationPage?          @relation("ExplorationContinueTarget", fields: [continueToPageId], references: [id], onDelete: SetNull)
@@ -786,6 +793,7 @@ model ExplorationPage {
 model ExplorationBlock {
   id                  Int                       @id @default(autoincrement())
   pageId              Int
+  branchId            Int?
   key                 String                    @default(cuid())
   kind                ExplorationBlockKind      @default(MARKDOWN)
   title               String?
@@ -804,6 +812,7 @@ model ExplorationBlock {
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
   page                ExplorationPage           @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  branch              ExplorationBranch?        @relation(fields: [branchId], references: [id], onDelete: Cascade)
   problem             Problem?                  @relation(fields: [problemId], references: [id], onDelete: SetNull)
   concept             Concept?                  @relation(fields: [conceptId], references: [id], onDelete: SetNull)
   options             ExplorationBlockOption[]
@@ -812,6 +821,7 @@ model ExplorationBlock {
 
   @@unique([pageId, key])
   @@index([pageId, position])
+  @@index([branchId, position])
   @@index([problemId])
   @@index([conceptId])
 }
@@ -824,16 +834,38 @@ model ExplorationBlockOption {
   feedbackMarkdown String?
   feedbackHtml     String?
   isCorrect        Boolean?
+  action           ExplorationOptionAction    @default(STAY)
   toPageId         Int?
+  revealBranchId   Int?                       @unique
   effects          Json?
   position         Int
   createdAt        DateTime                   @default(now())
   block            ExplorationBlock           @relation(fields: [blockId], references: [id], onDelete: Cascade)
   toPage           ExplorationPage?           @relation("ExplorationOptionTarget", fields: [toPageId], references: [id], onDelete: SetNull)
+  revealBranch     ExplorationBranch?         @relation("ExplorationOptionReveal", fields: [revealBranchId], references: [id], onDelete: SetNull)
   outcomeMatches   ExplorationOutcomeOption[]
 
   @@index([blockId, position])
   @@index([toPageId])
+}
+
+model ExplorationBranch {
+  id             Int                     @id @default(autoincrement())
+  pageId         Int
+  parentBranchId Int?
+  key            String                  @default(cuid())
+  label          String
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  page           ExplorationPage         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  parentBranch   ExplorationBranch?      @relation("ExplorationBranchTree", fields: [parentBranchId], references: [id], onDelete: Cascade)
+  childBranches  ExplorationBranch[]     @relation("ExplorationBranchTree")
+  blocks         ExplorationBlock[]
+  sourceOption   ExplorationBlockOption? @relation("ExplorationOptionReveal")
+
+  @@unique([pageId, key])
+  @@index([pageId])
+  @@index([parentBranchId])
 }
 
 model ExplorationBlockOutcome {

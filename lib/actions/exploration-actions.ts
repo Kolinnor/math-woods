@@ -4,6 +4,7 @@ import {
   ExplorationBlockKind,
   ExplorationCollaboratorRole,
   ExplorationOutcomeKind,
+  ExplorationOptionAction,
   ExplorationQuizType,
   ExplorationSessionStatus,
   ExplorationStatus,
@@ -29,6 +30,10 @@ import {
   type ExplorationState
 } from "@/lib/exploration-engine";
 import { resolveExplorationQuizOutcome } from "@/lib/exploration-routing";
+import {
+  clearExplorationBranches,
+  explorationBranchStateKey
+} from "@/lib/exploration-branches";
 import {
   canEditExploration,
   canReviewExploration,
@@ -113,6 +118,20 @@ async function requireOutcomeEditor(outcomeId: number) {
   if (!outcome) throw new Error("Quiz route not found.");
   const context = await requireBlockEditor(outcome.blockId);
   return { ...context, outcome };
+}
+
+async function requireBranchEditor(branchId: number) {
+  const branch = await prisma.explorationBranch.findUnique({
+    where: { id: branchId },
+    include: {
+      page: { include: { playlist: { include: { collaborators: true } } } },
+      sourceOption: { select: { id: true } }
+    }
+  });
+  if (!branch) throw new Error("Exploration branch not found.");
+  const user = await requireVerifiedUser();
+  if (!canEditExploration(user, branch.page.playlist)) throw new Error("You cannot edit this exploration.");
+  return { user, branch, page: branch.page, exploration: branch.page.playlist };
 }
 
 async function uniquePageSlug(playlistId: number, source: string, exceptId?: number) {
@@ -431,6 +450,7 @@ export async function createExplorationCanvasChoiceAction(
         data: {
           pageId,
           kind: ExplorationBlockKind.CHOICE,
+          required: true,
           position: (lastBlock?.position ?? 0) + 1
         },
         select: { id: true }
@@ -443,6 +463,7 @@ export async function createExplorationCanvasChoiceAction(
     const option = await tx.explorationBlockOption.create({
       data: {
         blockId: block.id,
+        action: ExplorationOptionAction.PAGE,
         label,
         position: (lastOption?.position ?? 0) + 1,
         toPageId: target.id
@@ -458,16 +479,20 @@ export async function createExplorationCanvasChoiceAction(
 export async function updateExplorationCanvasChoiceAction(
   optionId: number,
   rawLabel: string,
-  targetPageId: number | null
+  targetPageId: number | null,
+  rawAction: string = ExplorationOptionAction.PAGE
 ) {
   const option = await prisma.explorationBlockOption.findUnique({
     where: { id: optionId },
-    select: { blockId: true }
+    select: { blockId: true, revealBranchId: true }
   });
   if (!option) throw new Error("Choice not found.");
   const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
   if (block.kind !== ExplorationBlockKind.CHOICE) throw new Error("This option is not an exploration path.");
   const label = requiredBoundedText(rawLabel, CONTENT_LIMITS.shortText, "Choice label");
+  const action = Object.values(ExplorationOptionAction).includes(rawAction as ExplorationOptionAction)
+    ? rawAction as ExplorationOptionAction
+    : ExplorationOptionAction.STAY;
   const normalizedTarget = targetPageId === null ? null : Number(targetPageId);
   if (normalizedTarget !== null) {
     if (!Number.isInteger(normalizedTarget)) throw new Error("Invalid target page.");
@@ -477,13 +502,34 @@ export async function updateExplorationCanvasChoiceAction(
     });
     if (!target) throw new Error("The target page does not belong to this exploration.");
   }
-  await prisma.explorationBlockOption.update({
-    where: { id: optionId },
-    data: { label, toPageId: normalizedTarget }
+  const result = await prisma.$transaction(async (tx) => {
+    let revealBranchId = option.revealBranchId;
+    let revealBlockCount = 0;
+    if (action === ExplorationOptionAction.REVEAL && revealBranchId === null) {
+      const branch = await tx.explorationBranch.create({
+        data: { pageId: page.id, parentBranchId: block.branchId, label: `After "${label}"` }
+      });
+      revealBranchId = branch.id;
+      await tx.explorationBlock.create({
+        data: { pageId: page.id, branchId: branch.id, kind: ExplorationBlockKind.MARKDOWN, position: 1 }
+      });
+      revealBlockCount = 1;
+    } else if (revealBranchId !== null) {
+      await tx.explorationBranch.update({
+        where: { id: revealBranchId },
+        data: { label: `After "${label}"` }
+      });
+      revealBlockCount = await tx.explorationBlock.count({ where: { branchId: revealBranchId } });
+    }
+    await tx.explorationBlockOption.update({
+      where: { id: optionId },
+      data: { action, label, revealBranchId, toPageId: normalizedTarget }
+    });
+    return { revealBlockCount, revealBranchId };
   });
   await recordExplorationChange(page.playlistId, user.id, `Updated a path from "${page.title}"`);
   revalidateExploration(exploration.slug, { editor: false });
-  return { optionId, pageId: page.id, targetPageId: normalizedTarget, label };
+  return { ...result, action, optionId, pageId: page.id, targetPageId: normalizedTarget, label };
 }
 
 export async function createExplorationQuizOutcomeAction(
@@ -625,6 +671,10 @@ async function deleteExplorationPageRecord(pageId: number) {
   const replacement = remainingPages[0]!;
   const endingReplacement = remainingPages.at(-1)!;
   await prisma.$transaction(async (tx) => {
+    await tx.explorationBlockOption.updateMany({
+      where: { toPageId: page.id },
+      data: { action: ExplorationOptionAction.STAY, toPageId: null }
+    });
     await tx.explorationPage.delete({ where: { id: page.id } });
     if (page.isStart) await tx.explorationPage.update({ where: { id: replacement.id }, data: { isStart: true } });
     if (page.isEnd) await tx.explorationPage.update({ where: { id: endingReplacement.id }, data: { isEnd: true } });
@@ -653,6 +703,11 @@ export async function deleteExplorationPageAction(pageId: number) {
 export async function createExplorationBlockAction(pageId: number, formData: FormData) {
   const { user, page, exploration } = await requirePageEditor(pageId);
   const kind = enumValue(Object.values(ExplorationBlockKind), formData.get("kind"), ExplorationBlockKind.MARKDOWN);
+  const requestedBranchId = Number(formData.get("branchId")) || null;
+  const branch = requestedBranchId
+    ? await prisma.explorationBranch.findFirst({ where: { id: requestedBranchId, pageId } })
+    : null;
+  if (requestedBranchId && !branch) throw new Error("This branch does not belong to the page.");
   const referenceSlug = ensureSlug(String(formData.get("referenceSlug") ?? ""));
   const [problem, concept, last] = await Promise.all([
     kind === ExplorationBlockKind.PROBLEM && referenceSlug
@@ -661,7 +716,10 @@ export async function createExplorationBlockAction(pageId: number, formData: For
     kind === ExplorationBlockKind.CONCEPT && referenceSlug
       ? prisma.concept.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
       : null,
-    prisma.explorationBlock.findFirst({ where: { pageId }, orderBy: { position: "desc" } })
+    prisma.explorationBlock.findFirst({
+      where: { pageId, branchId: requestedBranchId },
+      orderBy: { position: "desc" }
+    })
   ]);
   if (kind === ExplorationBlockKind.PROBLEM && !problem) throw new Error("Problem not found.");
   if (kind === ExplorationBlockKind.CONCEPT && !concept) throw new Error("Concept not found.");
@@ -673,6 +731,7 @@ export async function createExplorationBlockAction(pageId: number, formData: For
   const block = await prisma.explorationBlock.create({
     data: {
       pageId,
+      branchId: requestedBranchId,
       kind,
       bodyMarkdown,
       bodyHtml: bodyMarkdown ? await renderMarkdownContent(bodyMarkdown) : null,
@@ -681,7 +740,7 @@ export async function createExplorationBlockAction(pageId: number, formData: For
       conceptId: concept?.id ?? null,
       quizType,
       settings: quizType ? jsonInput(blockSettings(formData)) : Prisma.JsonNull,
-      required: formData.get("required") === "on",
+      required: kind === ExplorationBlockKind.CHOICE || formData.get("required") === "on",
       points: clampOptionalInteger(formData.get("points"), 0, 10000) ?? 0
     }
   });
@@ -739,6 +798,7 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
       problemId: problem?.id ?? null,
       conceptId: concept?.id ?? null,
       quizType,
+      ...(kind === ExplorationBlockKind.CHOICE && block.kind !== ExplorationBlockKind.CHOICE ? { required: true } : {}),
       settings: quizType ? jsonInput(blockSettings(formData)) : Prisma.JsonNull
     }
   });
@@ -781,7 +841,7 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
 export async function setExplorationBlockPositionAction(blockId: number, requestedPosition: number) {
   const { user, block, page, exploration } = await requireBlockEditor(blockId);
   const blocks = await prisma.explorationBlock.findMany({
-    where: { pageId: block.pageId },
+    where: { pageId: block.pageId, branchId: block.branchId },
     orderBy: [{ position: "asc" }, { id: "asc" }],
     select: { id: true }
   });
@@ -804,7 +864,15 @@ export async function setExplorationBlockPositionAction(blockId: number, request
 
 export async function deleteExplorationBlockAction(blockId: number) {
   const { user, block, page, exploration } = await requireBlockEditor(blockId);
-  await prisma.explorationBlock.delete({ where: { id: blockId } });
+  const options = await prisma.explorationBlockOption.findMany({
+    where: { blockId },
+    select: { revealBranchId: true }
+  });
+  const branchIds = options.flatMap((option) => option.revealBranchId === null ? [] : [option.revealBranchId]);
+  await prisma.$transaction(async (tx) => {
+    if (branchIds.length) await tx.explorationBranch.deleteMany({ where: { id: { in: branchIds } } });
+    await tx.explorationBlock.delete({ where: { id: blockId } });
+  });
   await recordExplorationChange(page.playlistId, user.id, `Deleted block ${block.position} from "${page.title}"`);
   revalidateExploration(exploration.slug);
 }
@@ -831,6 +899,9 @@ export async function createExplorationOptionAction(blockId: number, formData: F
   await prisma.explorationBlockOption.create({
     data: {
       blockId,
+      action: block.kind === ExplorationBlockKind.CHOICE && toPageId
+        ? ExplorationOptionAction.PAGE
+        : ExplorationOptionAction.STAY,
       label,
       value,
       feedbackMarkdown,
@@ -848,21 +919,50 @@ export async function createExplorationOptionAction(blockId: number, formData: F
 export async function updateExplorationOptionAction(optionId: number, formData: FormData) {
   const option = await prisma.explorationBlockOption.findUnique({
     where: { id: optionId },
-    select: { blockId: true, toPageId: true }
+    select: { action: true, blockId: true, revealBranchId: true, toPageId: true }
   });
   if (!option) throw new Error("Option not found.");
   const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
   const label = requiredBoundedText(formData.get("label"), CONTENT_LIMITS.shortText, "Option label");
+  const action = block.kind === ExplorationBlockKind.CHOICE
+    ? enumValue(Object.values(ExplorationOptionAction), formData.get("action"), option.action)
+    : option.action;
   const toPageId = formData.has("toPageId") ? Number(formData.get("toPageId")) || null : option.toPageId;
   if (toPageId) {
     const target = await prisma.explorationPage.findFirst({ where: { id: toPageId, playlistId: exploration.id } });
     if (!target) throw new Error("Target page does not belong to this exploration.");
   }
   await prisma.$transaction(async (tx) => {
+    let revealBranchId = option.revealBranchId;
+    if (action === ExplorationOptionAction.REVEAL && revealBranchId === null) {
+      const branch = await tx.explorationBranch.create({
+        data: {
+          pageId: page.id,
+          parentBranchId: block.branchId,
+          label: `After "${label}"`
+        }
+      });
+      revealBranchId = branch.id;
+      await tx.explorationBlock.create({
+        data: {
+          pageId: page.id,
+          branchId: branch.id,
+          kind: ExplorationBlockKind.MARKDOWN,
+          position: 1
+        }
+      });
+    } else if (revealBranchId !== null) {
+      await tx.explorationBranch.update({
+        where: { id: revealBranchId },
+        data: { label: `After "${label}"` }
+      });
+    }
     await tx.explorationBlockOption.update({
       where: { id: optionId },
       data: {
+        action,
         label,
+        revealBranchId,
         ...(formData.get("isCorrectField") === "true"
           ? { isCorrect: formData.get("isCorrect") === "on" }
           : {}),
@@ -878,7 +978,7 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
     });
   });
   await recordExplorationChange(page.playlistId, user.id, `Updated an option in block ${block.position} on "${page.title}"`);
-  revalidateExploration(exploration.slug, { editor: false });
+  revalidateExploration(exploration.slug);
 }
 
 export async function deleteExplorationOptionAction(optionId: number) {
@@ -886,12 +986,34 @@ export async function deleteExplorationOptionAction(optionId: number) {
   if (!option) return;
   const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
   await prisma.$transaction(async (tx) => {
+    const liveOption = await tx.explorationBlockOption.findUnique({
+      where: { id: optionId },
+      select: { revealBranchId: true }
+    });
     await tx.explorationBlockOutcome.deleteMany({
       where: { matches: { some: { optionId } } }
     });
+    if (liveOption?.revealBranchId) {
+      await tx.explorationBranch.delete({ where: { id: liveOption.revealBranchId } });
+    }
     await tx.explorationBlockOption.delete({ where: { id: optionId } });
   });
   await recordExplorationChange(page.playlistId, user.id, `Deleted an option from block ${block.position} on "${page.title}"`);
+  revalidateExploration(exploration.slug);
+}
+
+export async function deleteExplorationBranchAction(branchId: number) {
+  const { user, branch, page, exploration } = await requireBranchEditor(branchId);
+  await prisma.$transaction(async (tx) => {
+    if (branch.sourceOption) {
+      await tx.explorationBlockOption.update({
+        where: { id: branch.sourceOption.id },
+        data: { action: ExplorationOptionAction.STAY, revealBranchId: null }
+      });
+    }
+    await tx.explorationBranch.delete({ where: { id: branch.id } });
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Deleted inline branch "${branch.label}" from "${page.title}"`);
   revalidateExploration(exploration.slug);
 }
 
@@ -940,6 +1062,7 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
       pages: {
         orderBy: { position: "asc" },
         include: {
+          branches: { orderBy: { id: "asc" } },
           blocks: {
             orderBy: { position: "asc" },
             include: {
@@ -1001,6 +1124,7 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
       }
     });
     const pageIds = new Map<number, number>();
+    const branchIds = new Map<number, number>();
     const blockIds = new Map<number, number>();
     const optionIds = new Map<number, number>();
     for (const page of source.pages) {
@@ -1020,10 +1144,28 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
         }
       });
       pageIds.set(page.id, nextPage.id);
+      const pendingBranches = [...page.branches];
+      while (pendingBranches.length) {
+        const nextIndex = pendingBranches.findIndex((branch) =>
+          branch.parentBranchId === null || branchIds.has(branch.parentBranchId)
+        );
+        if (nextIndex < 0) throw new Error("Exploration branches contain an invalid cycle.");
+        const [branch] = pendingBranches.splice(nextIndex, 1);
+        const nextBranch = await tx.explorationBranch.create({
+          data: {
+            pageId: nextPage.id,
+            key: branch.key,
+            label: branch.label,
+            parentBranchId: branch.parentBranchId ? branchIds.get(branch.parentBranchId) ?? null : null
+          }
+        });
+        branchIds.set(branch.id, nextBranch.id);
+      }
       for (const block of page.blocks) {
         const nextBlock = await tx.explorationBlock.create({
           data: {
             pageId: nextPage.id,
+            branchId: block.branchId ? branchIds.get(block.branchId) ?? null : null,
             key: block.key,
             kind: block.kind,
             title: block.title,
@@ -1067,7 +1209,9 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
               feedbackMarkdown: option.feedbackMarkdown,
               feedbackHtml: option.feedbackHtml,
               isCorrect: option.isCorrect,
+              action: option.action,
               toPageId: option.toPageId ? pageIds.get(option.toPageId) ?? null : null,
+              revealBranchId: option.revealBranchId ? branchIds.get(option.revealBranchId) ?? null : null,
               effects: option.effects ? jsonInput(option.effects) : Prisma.JsonNull,
               position: option.position
             }
@@ -1111,6 +1255,7 @@ async function explorationSnapshot(playlistId: number) {
       pages: {
         orderBy: { position: "asc" },
         include: {
+          branches: { orderBy: { id: "asc" } },
           blocks: {
             orderBy: { position: "asc" },
             include: {
@@ -1227,7 +1372,8 @@ export async function submitExplorationResponseAction(
   pageKey: string,
   blockKey: string,
   response: unknown,
-  persistResponse = true
+  persistResponse = true,
+  rawState?: ExplorationState
 ) {
   const user = await getCurrentUser();
   const exploration = await prisma.playlist.findUnique({
@@ -1256,6 +1402,20 @@ export async function submitExplorationResponseAction(
     throw new Error("This block does not accept a response.");
   }
 
+  const pageBlocks = block.kind === ExplorationBlockKind.CHOICE
+    ? await prisma.explorationBlock.findMany({
+        where: { pageId: block.pageId },
+        select: {
+          branchId: true,
+          key: true,
+          kind: true,
+          position: true,
+          visibilityRule: true,
+          options: { select: { action: true, revealBranchId: true } }
+        }
+      })
+    : [];
+
   const optionIds = Array.isArray(response) ? response.map(Number).filter(Number.isInteger) : [Number(response)].filter(Number.isInteger);
   const selectedOptions = block.options.filter((option) => optionIds.includes(option.id));
   let isCorrect: boolean | null = null;
@@ -1276,6 +1436,7 @@ export async function submitExplorationResponseAction(
   }
 
   const selected = selectedOptions[0] ?? null;
+  if (block.kind === ExplorationBlockKind.CHOICE && !selected) throw new Error("Invalid choice.");
   const matchedOutcome = block.kind === ExplorationBlockKind.QUIZ
     ? resolveExplorationQuizOutcome(
         block.outcomes.map((outcome) => ({
@@ -1289,8 +1450,23 @@ export async function submitExplorationResponseAction(
         isCorrect
       )
     : null;
-  const nextPageId = matchedOutcome?.toPageId ?? selected?.toPageId ?? null;
-  let state = asExplorationState(previousSession?.state);
+  const selectedPageId = selected?.action === ExplorationOptionAction.PAGE ? selected.toPageId : null;
+  const nextPageId = matchedOutcome?.toPageId ?? selectedPageId ?? null;
+  let state = asExplorationState(rawState ?? previousSession?.state);
+  let clearedBlockKeys: string[] = [];
+  let revealedBranchId: number | null = null;
+  if (block.kind === ExplorationBlockKind.CHOICE) {
+    const rootBranchIds = block.options.flatMap((option) =>
+      option.revealBranchId === null ? [] : [option.revealBranchId]
+    );
+    const cleared = clearExplorationBranches(state, pageBlocks, rootBranchIds, pageKey);
+    state = cleared.state;
+    clearedBlockKeys = cleared.clearedBlockKeys;
+    if (selected?.action === ExplorationOptionAction.REVEAL && selected.revealBranchId !== null) {
+      revealedBranchId = selected.revealBranchId;
+      state[explorationBranchStateKey(selected.revealBranchId)] = true;
+    }
+  }
   state = applyEffects(state, selectedOptions.flatMap((option) => Array.isArray(option.effects) ? option.effects : []));
   const stableBlockKey = `${pageKey}:${blockKey}`;
   state[`block.${stableBlockKey}.answered`] = true;
@@ -1348,6 +1524,11 @@ export async function submitExplorationResponseAction(
         maxScore
       }
     });
+    if (clearedBlockKeys.length) {
+      await prisma.explorationAnswer.deleteMany({
+        where: { sessionId: session.id, blockKey: { in: clearedBlockKeys } }
+      });
+    }
     await prisma.explorationAnswer.upsert({
       where: { sessionId_blockKey: { sessionId: session.id, blockKey: stableBlockKey } },
       update: { blockId: liveBlock?.id ?? null, response: jsonInput(response ?? ""), isCorrect, score },
@@ -1368,7 +1549,9 @@ export async function submitExplorationResponseAction(
   return {
     isCorrect,
     feedbackHtml: selected?.feedbackHtml ?? block.explanationHtml ?? null,
+    clearedBlockKeys,
     nextPageId,
+    revealedBranchId,
     state,
     score
   };

@@ -33,6 +33,12 @@ import { EXPLORATION_CHANGE_COALESCE_MS, shouldCoalesceExplorationChange } from 
 import { hasReachableExplorationExit } from "../lib/exploration-navigation.ts";
 import { resolveExplorationQuizOutcome } from "../lib/exploration-routing.ts";
 import { reachableExplorationPageIds } from "../lib/exploration-map-analysis.ts";
+import {
+  clearExplorationBranches,
+  descendantExplorationBranchIds,
+  explorationBranchStateKey,
+  visibleExplorationBlocks
+} from "../lib/exploration-branches.ts";
 import { guestProgressContentKey } from "../lib/guest-progress.ts";
 import {
   createDisplayMathLineBreakNormalizer,
@@ -742,6 +748,35 @@ assert.deepEqual(
     { id: 3, isStart: false, targetPageIds: [] }
   ])],
   [1, 2]
+);
+
+const branchBlocks = [
+  { branchId: null, key: "first-choice", kind: "CHOICE", position: 1, visibilityRule: null, options: [{ action: "REVEAL", revealBranchId: 10 }] },
+  { branchId: null, key: "base-tail", kind: "MARKDOWN", position: 2, visibilityRule: null, options: [] },
+  { branchId: 10, key: "branch-text", kind: "MARKDOWN", position: 1, visibilityRule: null, options: [] },
+  { branchId: 10, key: "nested-choice", kind: "CHOICE", position: 2, visibilityRule: null, options: [{ action: "REVEAL", revealBranchId: 20 }] },
+  { branchId: 20, key: "nested-text", kind: "MARKDOWN", position: 1, visibilityRule: null, options: [] }
+];
+assert.deepEqual(visibleExplorationBlocks(branchBlocks, {}).map((block) => block.key), ["first-choice", "base-tail"]);
+assert.deepEqual(
+  visibleExplorationBlocks(branchBlocks, {
+    [explorationBranchStateKey(10)]: true,
+    [explorationBranchStateKey(20)]: true
+  }).map((block) => block.key),
+  ["first-choice", "branch-text", "nested-choice", "nested-text", "base-tail"]
+);
+assert.deepEqual([...descendantExplorationBranchIds(branchBlocks, [10])], [10, 20]);
+assert.deepEqual(
+  clearExplorationBranches({
+    [explorationBranchStateKey(10)]: true,
+    [explorationBranchStateKey(20)]: true,
+    "block.page:nested-choice.answered": true
+  }, branchBlocks, [10], "page"),
+  {
+    branchIds: [10, 20],
+    clearedBlockKeys: ["page:branch-text", "page:nested-choice", "page:nested-text"],
+    state: {}
+  }
 );
 
 const explorationChangeNow = new Date("2026-07-18T12:00:00.000Z").getTime();

@@ -1,9 +1,11 @@
 export type ExplorationSnapshotOption = {
   id: number;
+  action: "STAY" | "PAGE" | "REVEAL";
   label: string;
   value: string | null;
   feedbackHtml: string | null;
   isCorrect: boolean | null;
+  revealBranchId: number | null;
   toPageId: number | null;
   effects: unknown;
   position: number;
@@ -20,6 +22,7 @@ export type ExplorationSnapshotOutcome = {
 
 export type ExplorationSnapshotBlock = {
   id: number;
+  branchId: number | null;
   key: string;
   kind: string;
   title: string | null;
@@ -82,6 +85,16 @@ export function explorationSnapshotPages(snapshot: unknown): ExplorationSnapshot
     ...page,
     blocks: page.blocks.map((block) => ({
       ...block,
+      branchId: typeof block.branchId === "number" ? block.branchId : null,
+      options: block.options.map((option) => ({
+        ...option,
+        action: option.action === "REVEAL" || option.action === "PAGE"
+          ? option.action
+          : option.toPageId !== null
+            ? "PAGE"
+            : "STAY",
+        revealBranchId: typeof option.revealBranchId === "number" ? option.revealBranchId : null
+      })),
       outcomes: Array.isArray(block.outcomes) ? block.outcomes : []
     })),
     canvasX: typeof page.canvasX === "number" ? page.canvasX : null,

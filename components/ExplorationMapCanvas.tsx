@@ -35,10 +35,14 @@ import {
 import { reachableExplorationPageIds } from "@/lib/exploration-map-analysis";
 
 export type ExplorationMapChoice = {
+  action: "STAY" | "PAGE" | "REVEAL";
+  branchId: number | null;
   id: number;
   blockId: number;
   label: string;
   position: number;
+  revealBlockCount: number;
+  revealBranchId: number | null;
   toPageId: number | null;
 };
 
@@ -82,8 +86,9 @@ export type ExplorationMapPage = {
 };
 
 type PageNodeOutput = {
+  connectable: boolean;
   handleId: string;
-  kind: "choice" | "quiz";
+  kind: "choice" | "quiz" | "reveal" | "stay";
   label: string;
 };
 
@@ -115,7 +120,7 @@ function fallbackPosition(index: number) {
 
 function pageHasOutgoingLink(page: ExplorationMapPage) {
   return page.continueToPageId !== null
-    || page.choices.some((choice) => choice.toPageId !== null)
+    || page.choices.some((choice) => choice.action === "PAGE" && choice.toPageId !== null)
     || page.quizzes.some((quiz) => quiz.outcomes.some((outcome) => outcome.toPageId !== null));
 }
 
@@ -138,12 +143,14 @@ function PageNode({ data, id, selected }: NodeProps<PageFlowNode>) {
         {data.outputs.map((output) => (
           <div className={`exploration-map-node-output is-${output.kind}`} key={output.handleId}>
             <span>{output.label}</span>
-            <Handle
-              className="exploration-map-handle exploration-map-output-handle"
-              id={output.handleId}
-              position={Position.Right}
-              type="source"
-            />
+            {output.connectable && (
+              <Handle
+                className="exploration-map-handle exploration-map-output-handle"
+                id={output.handleId}
+                position={Position.Right}
+                type="source"
+              />
+            )}
           </div>
         ))}
       </div>
@@ -232,7 +239,7 @@ function pageNodes(pages: ExplorationMapPage[], slug: string): PageFlowNode[] {
     isStart: page.isStart,
     targetPageIds: [
       page.continueToPageId,
-      ...page.choices.map((choice) => choice.toPageId),
+      ...page.choices.map((choice) => choice.action === "PAGE" ? choice.toPageId : null),
       ...page.quizzes.flatMap((quiz) => quiz.outcomes.map((outcome) => outcome.toPageId))
     ]
   })));
@@ -246,8 +253,22 @@ function pageNodes(pages: ExplorationMapPage[], slug: string): PageFlowNode[] {
       editHref: `/explorations/${slug}/edit?view=page&page=${page.id}`,
       isStart: page.isStart,
       outputs: [
-        ...page.choices.map((choice) => ({ handleId: `choice-${choice.id}`, kind: "choice" as const, label: choice.label })),
+        ...page.choices.map((choice) => ({
+          connectable: choice.action === "PAGE",
+          handleId: `choice-${choice.id}`,
+          kind: choice.action === "REVEAL"
+            ? "reveal" as const
+            : choice.action === "STAY"
+              ? "stay" as const
+              : "choice" as const,
+          label: choice.action === "REVEAL"
+            ? `${choice.branchId === null ? "" : "Inside branch: "}${choice.label} - ${choice.revealBlockCount} revealed block${choice.revealBlockCount === 1 ? "" : "s"}`
+            : choice.action === "STAY"
+              ? `${choice.branchId === null ? "" : "Inside branch: "}${choice.label} - stays here`
+              : `${choice.branchId === null ? "" : "Inside branch: "}${choice.label}`
+        })),
         ...page.quizzes.flatMap((quiz) => quiz.outcomes.map((outcome) => ({
+          connectable: true,
           handleId: `quiz-${outcome.id}`,
           kind: "quiz" as const,
           label: `${quiz.title}: ${outcome.label}`
@@ -280,7 +301,7 @@ function pageEdges(pages: ExplorationMapPage[], selectedEdgeId: string | null, t
       });
     }
     for (const choice of page.choices) {
-      if (choice.toPageId === null) continue;
+      if (choice.action !== "PAGE" || choice.toPageId === null) continue;
       const id = `choice-${choice.id}`;
       edges.push({
         id,
@@ -364,7 +385,7 @@ export function ExplorationMapCanvas({
     isStart: page.isStart,
     targetPageIds: [
       page.continueToPageId,
-      ...page.choices.map((choice) => choice.toPageId),
+      ...page.choices.map((choice) => choice.action === "PAGE" ? choice.toPageId : null),
       ...page.quizzes.flatMap((quiz) => quiz.outcomes.map((outcome) => outcome.toPageId))
     ]
   }))), [pages]);
@@ -372,13 +393,14 @@ export function ExplorationMapCanvas({
   const tracePage = pages.find((page) => page.id === tracePageId) ?? null;
   const traceRoutes = tracePage ? [
     ...(tracePage.continueToPageId !== null ? [{ edgeId: `continue-${tracePage.id}`, label: "Continue", targetPageId: tracePage.continueToPageId }] : []),
-    ...tracePage.choices.flatMap((choice) => choice.toPageId !== null
+    ...tracePage.choices.flatMap((choice) => choice.action === "PAGE" && choice.toPageId !== null
       ? [{ edgeId: `choice-${choice.id}`, label: choice.label, targetPageId: choice.toPageId }]
       : []),
     ...tracePage.quizzes.flatMap((quiz) => quiz.outcomes.flatMap((outcome) => outcome.toPageId !== null
       ? [{ edgeId: `quiz-${outcome.id}`, label: `${quiz.title}: ${outcome.label}`, targetPageId: outcome.toPageId }]
       : []))
   ] : [];
+  const traceInlineChoices = tracePage?.choices.filter((choice) => choice.action !== "PAGE") ?? [];
   const availableTargets = pages;
 
   function startTrace() {
@@ -498,7 +520,7 @@ export function ExplorationMapCanvas({
       const choice = pages.flatMap((page) => page.choices).find((item) => item.id === optionId);
       if (!choice) return;
       setSelectedEdgeId(`choice-${optionId}`);
-      updatePath(optionId, choice.label, targetPageId);
+      updatePath(optionId, choice.label, targetPageId, "PAGE");
       return;
     }
     if (connection.sourceHandle?.startsWith("quiz-")) {
@@ -595,10 +617,14 @@ export function ExplorationMapCanvas({
               ...page,
               blockCount: result.blockCreated ? page.blockCount + 1 : page.blockCount,
               choices: [...page.choices, {
+                action: "PAGE",
+                branchId: null,
                 id: result.optionId,
                 blockId: result.blockId,
                 label: result.label,
                 position: page.choices.length + 1,
+                revealBlockCount: 0,
+                revealBranchId: null,
                 toPageId: result.targetPageId
               }]
             }
@@ -612,16 +638,34 @@ export function ExplorationMapCanvas({
     });
   }
 
-  function updatePath(optionId: number, label: string, targetPageId: number | null) {
+  function updatePath(
+    optionId: number,
+    label: string,
+    targetPageId: number | null,
+    action: ExplorationMapChoice["action"]
+  ) {
     const previous = pages.flatMap((page) => page.choices).find((choice) => choice.id === optionId);
     if (!previous || !label.trim()) return;
     setPages((items) => items.map((page) => ({
       ...page,
-      choices: page.choices.map((choice) => choice.id === optionId ? { ...choice, label, toPageId: targetPageId } : choice)
+      choices: page.choices.map((choice) => choice.id === optionId
+        ? { ...choice, action, label, toPageId: targetPageId }
+        : choice)
     })));
     startTransition(async () => {
       try {
-        await updateExplorationCanvasChoiceAction(optionId, label, targetPageId);
+        const result = await updateExplorationCanvasChoiceAction(optionId, label, targetPageId, action);
+        setPages((items) => items.map((page) => ({
+          ...page,
+          choices: page.choices.map((choice) => choice.id === optionId
+            ? {
+                ...choice,
+                action: result.action,
+                revealBlockCount: result.revealBlockCount,
+                revealBranchId: result.revealBranchId
+              }
+            : choice)
+        })));
       } catch (reason) {
         setPages((items) => items.map((page) => ({
           ...page,
@@ -715,11 +759,11 @@ export function ExplorationMapCanvas({
             ? { ...page, continueToPageId: null }
             : page));
         } else if (target.kind === "choice") {
-          await updateExplorationCanvasChoiceAction(target.optionId, target.label, null);
+          await updateExplorationCanvasChoiceAction(target.optionId, target.label, null, "STAY");
           setPages((items) => items.map((page) => ({
             ...page,
             choices: page.choices.map((choice) => choice.id === target.optionId
-              ? { ...choice, toPageId: null }
+              ? { ...choice, action: "STAY", toPageId: null }
               : choice)
           })));
         } else {
@@ -838,7 +882,14 @@ export function ExplorationMapCanvas({
                         {route.label}
                       </button>
                     ))}
-                    {traceRoutes.length === 0 && <p><CircleCheck size={15} /> End of this path</p>}
+                    {traceInlineChoices.map((choice) => (
+                      <p className="exploration-map-inline-route" key={choice.id}>
+                        <GitBranch size={14} />
+                        <span>{choice.label}</span>
+                        <small>{choice.action === "REVEAL" ? `reveals ${choice.revealBlockCount} blocks here` : "stays here"}</small>
+                      </p>
+                    ))}
+                    {traceRoutes.length === 0 && traceInlineChoices.length === 0 && <p><CircleCheck size={15} /> End of this path</p>}
                   </div>
                 </section>
               )}
@@ -864,18 +915,37 @@ export function ExplorationMapCanvas({
                         aria-label="Path label"
                         defaultValue={choice.label}
                         key={`${choice.id}-${choice.label}`}
-                        onBlur={(event) => updatePath(choice.id, event.target.value, choice.toPageId)}
+                        onBlur={(event) => updatePath(choice.id, event.target.value, choice.toPageId, choice.action)}
                       />
                       <select
-                        aria-label={`Destination for ${choice.label}`}
-                        onChange={(event) => updatePath(choice.id, choice.label, event.target.value ? Number(event.target.value) : null)}
-                        value={choice.toPageId ?? ""}
+                        aria-label={`Action for ${choice.label}`}
+                        onChange={(event) => updatePath(
+                          choice.id,
+                          choice.label,
+                          choice.toPageId,
+                          event.target.value as ExplorationMapChoice["action"]
+                        )}
+                        value={choice.action}
                       >
-                        <option value="">No destination</option>
-                        {availableTargets.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
+                        <option value="STAY">Stay on page</option>
+                        <option value="PAGE">Go to page</option>
+                        <option value="REVEAL">Reveal blocks</option>
                       </select>
-                      {choice.toPageId !== null && (
-                        <button className="icon-button secondary" onClick={() => updatePath(choice.id, choice.label, null)} title="Disconnect path" type="button"><Unlink size={15} /></button>
+                      {choice.action === "PAGE" && (
+                        <select
+                          aria-label={`Destination for ${choice.label}`}
+                          onChange={(event) => updatePath(choice.id, choice.label, event.target.value ? Number(event.target.value) : null, "PAGE")}
+                          value={choice.toPageId ?? ""}
+                        >
+                          <option value="">Choose a page</option>
+                          {availableTargets.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
+                        </select>
+                      )}
+                      {choice.action === "REVEAL" && (
+                        <span className="exploration-map-branch-status"><GitBranch size={14} /> {choice.revealBlockCount} blocks</span>
+                      )}
+                      {choice.action === "PAGE" && choice.toPageId !== null && (
+                        <button className="icon-button secondary" onClick={() => updatePath(choice.id, choice.label, null, "STAY")} title="Disconnect path" type="button"><Unlink size={15} /></button>
                       )}
                     </div>
                   ))}

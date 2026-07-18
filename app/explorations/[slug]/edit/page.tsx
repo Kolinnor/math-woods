@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import {
   ArrowLeft,
   Eye,
   FileClock,
+  GitBranch,
   Map,
   Pencil,
   Plus,
@@ -13,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   ExplorationBlockKind,
+  ExplorationOptionAction,
   ExplorationQuizType,
   ExplorationStatus,
   MathDomain,
@@ -24,6 +27,7 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DeletePlaylistButton } from "@/components/DeletePlaylistButton";
 import { ExplorationAddContentForm } from "@/components/ExplorationAddContentForm";
 import { ExplorationBlockHeaderControls } from "@/components/ExplorationBlockHeaderControls";
+import { ExplorationChoiceActionFields } from "@/components/ExplorationChoiceActionFields";
 import { ExplorationAddPageForm } from "@/components/ExplorationAddPageForm";
 import { ExplorationPagePositionInput } from "@/components/ExplorationPagePositionInput";
 import { ExplorationMapCanvas, type ExplorationMapPage } from "@/components/ExplorationMapCanvas";
@@ -35,6 +39,7 @@ import {
   changeExplorationStatusAction,
   cloneExplorationTranslationAction,
   createExplorationOptionAction,
+  deleteExplorationBranchAction,
   deleteExplorationBlockAction,
   deleteExplorationOptionAction,
   deleteExplorationPageAction,
@@ -111,25 +116,6 @@ function ConditionInputs({ value }: { value: unknown }) {
   );
 }
 
-function PageSelect({
-  pages,
-  name = "toPageId",
-  defaultValue,
-  excludePageId
-}: {
-  pages: Array<{ id: number; position: number; title: string }>;
-  name?: string;
-  defaultValue?: number | null;
-  excludePageId?: number;
-}) {
-  return (
-    <select name={name} defaultValue={defaultValue ?? ""}>
-      <option value="">Stay on this page</option>
-      {pages.filter((page) => page.id !== excludePageId).map((page) => <option key={page.id} value={page.id}>{page.position}. {page.title}</option>)}
-    </select>
-  );
-}
-
 export default async function EditExplorationPage({
   params,
   searchParams
@@ -148,6 +134,7 @@ export default async function EditExplorationPage({
       pages: {
         orderBy: { position: "asc" },
         include: {
+          branches: { orderBy: { id: "asc" } },
           blocks: {
             orderBy: { position: "asc" },
             include: {
@@ -172,7 +159,7 @@ export default async function EditExplorationPage({
     const lastBlockPosition = page.blocks.at(-1)?.position ?? 0;
     const warnings = page.blocks.flatMap((block) => {
       const leavesPage = block.kind === ExplorationBlockKind.CHOICE
-        ? block.options.some((option) => option.toPageId !== null)
+        ? block.options.some((option) => option.action === ExplorationOptionAction.PAGE && option.toPageId !== null)
         : block.kind === ExplorationBlockKind.QUIZ
           ? block.outcomes.some((outcome) => outcome.toPageId !== null)
           : false;
@@ -193,10 +180,16 @@ export default async function EditExplorationPage({
       choices: page.blocks
         .filter((block) => block.kind === ExplorationBlockKind.CHOICE)
         .flatMap((block) => block.options.map((option) => ({
+          action: option.action,
+          branchId: block.branchId,
           id: option.id,
           blockId: block.id,
           label: option.label,
           position: option.position,
+          revealBlockCount: option.revealBranchId === null
+            ? 0
+            : page.blocks.filter((candidate) => candidate.branchId === option.revealBranchId).length,
+          revealBranchId: option.revealBranchId,
           toPageId: option.toPageId
         }))),
       quizzes: page.blocks
@@ -223,6 +216,28 @@ export default async function EditExplorationPage({
       warnings
     };
   });
+  const orderedSelectedBlocks = selectedPage ? (() => {
+    const ordered: typeof selectedPage.blocks = [];
+    const visitedBranches = new Set<number>();
+    const appendBranch = (branchId: number | null) => {
+      if (branchId !== null) {
+        if (visitedBranches.has(branchId)) return;
+        visitedBranches.add(branchId);
+      }
+      const blocks = selectedPage.blocks
+        .filter((block) => block.branchId === branchId)
+        .sort((left, right) => left.position - right.position);
+      for (const block of blocks) {
+        ordered.push(block);
+        for (const option of block.options) {
+          if (option.revealBranchId !== null) appendBranch(option.revealBranchId);
+        }
+      }
+    };
+    appendBranch(null);
+    for (const branch of selectedPage.branches) appendBranch(branch.id);
+    return ordered;
+  })() : [];
 
   return (
     <ForestPageLayout
@@ -325,11 +340,20 @@ export default async function EditExplorationPage({
               </div>
 
               <section className="studio-block-list">
-                {selectedPage.blocks.map((block) => {
+                {orderedSelectedBlocks.map((block) => {
                   const settings = objectValue(block.settings);
                   const blockFormId = `exploration-block-${block.id}-form`;
+                  const branch = block.branchId === null
+                    ? null
+                    : selectedPage.branches.find((candidate) => candidate.id === block.branchId) ?? null;
+                  const sourceOption = branch
+                    ? selectedPage.blocks.flatMap((candidate) => candidate.options).find((option) => option.revealBranchId === branch.id)
+                    : null;
+                  const branchBlocks = selectedPage.blocks.filter((candidate) => candidate.branchId === block.branchId);
+                  const isLastInBranch = branch !== null && branchBlocks.at(-1)?.id === block.id;
                   return (
-                    <article key={block.id} id={`block-${block.id}`} className="studio-block-editor">
+                    <Fragment key={block.id}>
+                    <article id={`block-${block.id}`} className={branch ? "studio-block-editor is-inline-branch" : "studio-block-editor"}>
                       <div className="studio-block-topline">
                         <ExplorationBlockHeaderControls
                           blockId={block.id}
@@ -339,9 +363,10 @@ export default async function EditExplorationPage({
                             ...(EDITOR_BLOCK_KINDS.includes(block.kind) ? [] : [{ value: block.kind, label: editorBlockLabel(block.kind) }]),
                             ...EDITOR_BLOCK_KINDS.map((kind) => ({ value: kind, label: editorBlockLabel(kind) }))
                           ]}
-                          max={selectedPage.blocks.length}
+                          max={branchBlocks.length}
                           position={block.position}
                         />
+                        {branch && <span className="studio-branch-context"><GitBranch size={14} /> {sourceOption?.label ?? branch.label}</span>}
                         <div className="studio-block-actions">
                           <form action={deleteExplorationBlockAction.bind(null, block.id)}><ConfirmSubmitButton message="Delete this block?" className="icon-button danger" title="Delete block"><Trash2 size={15} /></ConfirmSubmitButton></form>
                         </div>
@@ -375,7 +400,14 @@ export default async function EditExplorationPage({
                               <div key={option.id} className="studio-option-row">
                                 <AutoSaveForm action={updateExplorationOptionAction.bind(null, option.id)} className="studio-option-autosave-form" statusClassName="sr-only">
                                 <label><span>Label</span><input name="label" defaultValue={option.label} required /></label>
-                                {block.kind === ExplorationBlockKind.CHOICE && <label><span>Send to</span><PageSelect pages={exploration.pages} defaultValue={option.toPageId} excludePageId={selectedPage.id} /></label>}
+                                {block.kind === ExplorationBlockKind.CHOICE && (
+                                  <ExplorationChoiceActionFields
+                                    action={option.action}
+                                    currentPageId={selectedPage.id}
+                                    pages={exploration.pages}
+                                    toPageId={option.toPageId}
+                                  />
+                                )}
                                 {block.kind === ExplorationBlockKind.QUIZ && <label className="checkbox-field"><input name="isCorrectField" type="hidden" value="true" /><input name="isCorrect" type="checkbox" defaultChecked={option.isCorrect === true} /><span><strong>Correct</strong></span></label>}
                                 </AutoSaveForm>
                                 <form action={deleteExplorationOptionAction.bind(null, option.id)} className="studio-option-delete">
@@ -386,7 +418,7 @@ export default async function EditExplorationPage({
                           })}
                           <form action={createExplorationOptionAction.bind(null, block.id)} className="studio-new-option">
                             <label><span>New label</span><input name="label" required placeholder={block.kind === ExplorationBlockKind.QUIZ ? "An answer" : "Take this path"} /></label>
-                            {block.kind === ExplorationBlockKind.CHOICE && <label><span>Send to</span><PageSelect pages={exploration.pages} excludePageId={selectedPage.id} /></label>}
+                            {block.kind === ExplorationBlockKind.CHOICE && <input name="action" type="hidden" value={ExplorationOptionAction.STAY} />}
                             {block.kind === ExplorationBlockKind.QUIZ && <label className="checkbox-field"><input name="isCorrect" type="checkbox" /><span><strong>Correct answer</strong></span></label>}
                             <button type="submit" className="secondary"><Plus size={15} /> Add option</button>
                           </form>
@@ -394,6 +426,30 @@ export default async function EditExplorationPage({
                         </details>
                       )}
                     </article>
+                    {branch && isLastInBranch && (
+                      <section className="studio-inline-branch-tools">
+                        <div><GitBranch size={16} /><strong>{branch.label}</strong></div>
+                        <details>
+                          <summary><Plus size={16} /> Add block to this branch</summary>
+                          <ExplorationAddContentForm
+                            branchId={branch.id}
+                            explorationSlug={exploration.slug}
+                            pageId={selectedPage.id}
+                            kinds={ADD_BLOCK_KINDS.map((kind) => ({ value: kind, label: editorBlockLabel(kind) }))}
+                          />
+                        </details>
+                        <form action={deleteExplorationBranchAction.bind(null, branch.id)}>
+                          <ConfirmSubmitButton
+                            className="secondary danger"
+                            message={`Delete ${branch.label} and all of its blocks?`}
+                            title="Delete revealed branch"
+                          >
+                            <Trash2 size={15} /> Delete branch
+                          </ConfirmSubmitButton>
+                        </form>
+                      </section>
+                    )}
+                    </Fragment>
                   );
                 })}
                 {selectedPage.blocks.length === 0 && <p className="muted studio-empty-state">This page is empty. Add its first block below.</p>}

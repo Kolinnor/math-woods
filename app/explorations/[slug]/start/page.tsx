@@ -82,6 +82,7 @@ export default async function StartExplorationPage({
       blocks: await Promise.all(
         page.blocks.filter((block) => !block.problem || canViewProblem(user, block.problem as never)).map(async (block) => ({
           id: block.id,
+          branchId: block.branchId,
           key: block.key,
           kind: block.kind,
           title: block.title,
@@ -101,10 +102,12 @@ export default async function StartExplorationPage({
             : null,
           concept: block.concept,
           options: block.options.map((option) => ({
+            action: option.action,
             id: option.id,
             label: option.label,
             value: option.value,
             feedbackHtml: null,
+            revealBranchId: option.revealBranchId,
             toPageId: option.toPageId
           })),
           outcomes: block.outcomes.map((outcome) => ({
