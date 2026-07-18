@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -20,17 +20,19 @@ import {
   type NodeProps,
   type OnSelectionChangeParams
 } from "@xyflow/react";
-import { ExternalLink, Flag, Signpost, Trash2 } from "lucide-react";
+import { ExternalLink, Flag, Redo2, Signpost, Trash2, Undo2 } from "lucide-react";
 import { ExplorationAddContentForm } from "@/components/ExplorationAddContentForm";
 import { ExplorationBlockNameHelp } from "@/components/ExplorationBlockNameHelp";
 import {
   deleteExplorationBlockAction,
+  restoreExplorationMapStateAction,
   setExplorationBlockContinueAction,
   setExplorationBlockEndpointAction,
   setExplorationChoiceBlockTargetAction,
   setExplorationQuizOutcomeBlockTargetAction,
   updateExplorationBlockCanvasPositionsAction,
-  updateExplorationBlockNameAction
+  updateExplorationBlockNameAction,
+  type ExplorationMapHistoryBlock
 } from "@/lib/actions/exploration-actions";
 
 export type ExplorationMapBlock = {
@@ -52,7 +54,6 @@ export type ExplorationMapBlock = {
 
 type BlockNodeData = {
   block: ExplorationMapBlock;
-  editHref: string;
 };
 
 type GraphEdgeData = {
@@ -60,12 +61,40 @@ type GraphEdgeData = {
   recordId: number;
 };
 
+const MAP_HISTORY_LIMIT = 50;
+
+function mapHistoryState(blocks: ExplorationMapBlock[]): ExplorationMapHistoryBlock[] {
+  return blocks.map((block) => ({
+    id: block.id,
+    canvasX: block.canvasX,
+    canvasY: block.canvasY,
+    isStart: block.isStart,
+    isEnd: block.isEnd,
+    continueToBlockId: block.continueToBlockId,
+    name: block.name,
+    options: block.options.map((option) => ({ id: option.id, toBlockId: option.toBlockId })),
+    outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, toBlockId: outcome.toBlockId }))
+  }));
+}
+
+function sameBlockStructure(left: ExplorationMapBlock[], right: ExplorationMapBlock[]) {
+  if (left.length !== right.length) return false;
+  return left.every((block, index) => block.id === right[index]?.id);
+}
+
+function isTypingTarget(target: EventTarget | null) {
+  return target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    (target instanceof HTMLElement && target.isContentEditable);
+}
+
 function fallbackPosition(index: number) {
   return { x: (index % 4) * 320, y: Math.floor(index / 4) * 220 };
 }
 
 function BlockNode({ data, selected }: NodeProps<Node<BlockNodeData>>) {
-  const { block, editHref } = data;
+  const { block } = data;
   return (
     <article className={selected ? "exploration-block-node is-selected" : "exploration-block-node"}>
       <Handle type="target" position={Position.Top} />
@@ -94,7 +123,6 @@ function BlockNode({ data, selected }: NodeProps<Node<BlockNodeData>>) {
           ))}
         </div>
       )}
-      <Link className="exploration-block-node-edit nodrag nopan" href={editHref as never}>Edit <ExternalLink size={12} /></Link>
       <Handle id="continue" type="source" position={Position.Bottom} />
     </article>
   );
@@ -102,17 +130,14 @@ function BlockNode({ data, selected }: NodeProps<Node<BlockNodeData>>) {
 
 const nodeTypes = { explorationBlock: BlockNode };
 
-function graphNodes(blocks: ExplorationMapBlock[], slug: string): Array<Node<BlockNodeData>> {
+function graphNodes(blocks: ExplorationMapBlock[]): Array<Node<BlockNodeData>> {
   return blocks.map((block, index) => ({
     id: String(block.id),
     type: "explorationBlock",
     position: block.canvasX === null || block.canvasY === null
       ? fallbackPosition(index)
       : { x: block.canvasX, y: block.canvasY },
-    data: {
-      block,
-      editHref: `/explorations/${slug}/edit?view=block&block=${block.id}`
-    }
+    data: { block }
   }));
 }
 
@@ -172,31 +197,47 @@ export function ExplorationMapCanvas({
 }) {
   const router = useRouter();
   const [blocks, setBlocks] = useState(initialBlocks);
-  const [nodes, setNodes, onNodesChange] = useNodesState(graphNodes(initialBlocks, explorationSlug));
+  const blocksRef = useRef(initialBlocks);
+  const [past, setPast] = useState<ExplorationMapBlock[][]>([]);
+  const [future, setFuture] = useState<ExplorationMapBlock[][]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(graphNodes(initialBlocks));
   const [edges, setEdges, onEdgesChange] = useEdgesState(graphEdges(initialBlocks));
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
+  const renderBlocks = useCallback((next: ExplorationMapBlock[]) => {
+    blocksRef.current = next;
+    setBlocks(next);
+    setNodes(graphNodes(next));
+    setEdges(graphEdges(next));
+  }, [setEdges, setNodes]);
+
+  const commitBlocks = useCallback((next: ExplorationMapBlock[]) => {
+    const current = blocksRef.current;
+    setPast((items) => [...items, current].slice(-MAP_HISTORY_LIMIT));
+    setFuture([]);
+    renderBlocks(next);
+  }, [renderBlocks]);
+
   useEffect(() => {
-    setBlocks(initialBlocks);
-    setNodes(graphNodes(initialBlocks, explorationSlug));
-    setEdges(graphEdges(initialBlocks));
-  }, [explorationSlug, initialBlocks, setEdges, setNodes]);
+    const structureChanged = !sameBlockStructure(blocksRef.current, initialBlocks);
+    renderBlocks(initialBlocks);
+    if (structureChanged) {
+      setPast([]);
+      setFuture([]);
+    }
+  }, [initialBlocks, renderBlocks]);
 
   const selectedBlock = blocks.find((block) => block.id === selectedNodeId) ?? null;
 
   const updateBlock = useCallback((blockId: number, update: (block: ExplorationMapBlock) => ExplorationMapBlock) => {
-    setBlocks((items) => {
-      const next = items.map((block) => block.id === blockId ? update(block) : block);
-      setNodes(graphNodes(next, explorationSlug));
-      setEdges(graphEdges(next));
-      return next;
-    });
-  }, [explorationSlug, setEdges, setNodes]);
+    commitBlocks(blocksRef.current.map((block) => block.id === blockId ? update(block) : block));
+  }, [commitBlocks]);
 
   const connect = useCallback((connection: Connection) => {
+    if (isPending) return;
     const sourceId = Number(connection.source);
     const targetId = Number(connection.target);
     if (!Number.isInteger(sourceId) || !Number.isInteger(targetId) || sourceId === targetId) return;
@@ -225,9 +266,10 @@ export function ExplorationMapCanvas({
         setError(reason instanceof Error ? reason.message : "The blocks could not be linked.");
       }
     });
-  }, [updateBlock]);
+  }, [isPending, updateBlock]);
 
   const deleteEdge = useCallback((edge: Edge<GraphEdgeData>) => {
+    if (isPending) return;
     if (!edge.data || !window.confirm(`Delete the link "${String(edge.label ?? "Path")}"?`)) return;
     setError("");
     startTransition(async () => {
@@ -255,42 +297,95 @@ export function ExplorationMapCanvas({
         setError(reason instanceof Error ? reason.message : "The link could not be deleted.");
       }
     });
-  }, [updateBlock]);
+  }, [isPending, updateBlock]);
 
   const deleteBlock = useCallback((blockId: number) => {
+    if (isPending) return;
     if (!window.confirm("Delete this block? Linked paths will be reconnected when possible.")) return;
     setError("");
     startTransition(async () => {
       try {
         await deleteExplorationBlockAction(blockId);
-        const next = blocks.filter((block) => block.id !== blockId).map((block) => ({
+        const next = blocksRef.current.filter((block) => block.id !== blockId).map((block) => ({
           ...block,
           continueToBlockId: block.continueToBlockId === blockId ? null : block.continueToBlockId,
           options: block.options.map((option) => option.toBlockId === blockId ? { ...option, toBlockId: null } : option),
           outcomes: block.outcomes.map((outcome) => outcome.toBlockId === blockId ? { ...outcome, toBlockId: null } : outcome)
         }));
-        setBlocks(next);
-        setNodes(graphNodes(next, explorationSlug));
-        setEdges(graphEdges(next));
+        renderBlocks(next);
+        setPast([]);
+        setFuture([]);
         setSelectedNodeId(null);
         router.refresh();
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The block could not be deleted.");
       }
     });
-  }, [blocks, explorationSlug, router, setEdges, setNodes]);
+  }, [isPending, renderBlocks, router]);
+
+  const undo = useCallback(() => {
+    const target = past.at(-1);
+    if (!target || isPending) return;
+    const current = blocksRef.current;
+    setError("");
+    startTransition(async () => {
+      try {
+        await restoreExplorationMapStateAction(explorationId, mapHistoryState(target), "undo");
+        setPast((items) => items.slice(0, -1));
+        setFuture((items) => [current, ...items].slice(0, MAP_HISTORY_LIMIT));
+        renderBlocks(target);
+      } catch (reason) {
+        setPast([]);
+        setFuture([]);
+        setError(reason instanceof Error ? reason.message : "The map change could not be undone.");
+      }
+    });
+  }, [explorationId, isPending, past, renderBlocks]);
+
+  const redo = useCallback(() => {
+    const target = future[0];
+    if (!target || isPending) return;
+    const current = blocksRef.current;
+    setError("");
+    startTransition(async () => {
+      try {
+        await restoreExplorationMapStateAction(explorationId, mapHistoryState(target), "redo");
+        setFuture((items) => items.slice(1));
+        setPast((items) => [...items, current].slice(-MAP_HISTORY_LIMIT));
+        renderBlocks(target);
+      } catch (reason) {
+        setPast([]);
+        setFuture([]);
+        setError(reason instanceof Error ? reason.message : "The map change could not be redone.");
+      }
+    });
+  }, [explorationId, future, isPending, renderBlocks]);
 
   useEffect(() => {
-    function handleDelete(event: KeyboardEvent) {
+    function handleMapShortcut(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && !isTypingTarget(event.target)) {
+        if (key === "z" && !event.shiftKey) {
+          event.preventDefault();
+          undo();
+          return;
+        }
+        if (key === "y" || (key === "z" && event.shiftKey)) {
+          event.preventDefault();
+          redo();
+          return;
+        }
+      }
+      if (isPending) return;
       if (event.key !== "Delete" && event.key !== "Backspace") return;
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) return;
+      if (isTypingTarget(event.target)) return;
       const edge = edges.find((candidate) => candidate.id === selectedEdgeId);
       if (edge) deleteEdge(edge);
       else if (selectedNodeId) deleteBlock(selectedNodeId);
     }
-    window.addEventListener("keydown", handleDelete);
-    return () => window.removeEventListener("keydown", handleDelete);
-  }, [deleteBlock, deleteEdge, edges, selectedEdgeId, selectedNodeId]);
+    window.addEventListener("keydown", handleMapShortcut);
+    return () => window.removeEventListener("keydown", handleMapShortcut);
+  }, [deleteBlock, deleteEdge, edges, isPending, redo, selectedEdgeId, selectedNodeId, undo]);
 
   function selectionChanged(selection: OnSelectionChangeParams) {
     setSelectedNodeId(selection.nodes[0] ? Number(selection.nodes[0].id) : null);
@@ -298,18 +393,16 @@ export function ExplorationMapCanvas({
   }
 
   function setEndpoint(endpoint: "start" | "end") {
-    if (!selectedBlock) return;
+    if (!selectedBlock || isPending) return;
     startTransition(async () => {
       try {
         await setExplorationBlockEndpointAction(selectedBlock.id, endpoint);
-        const next = blocks.map((block) => ({
+        const next = blocksRef.current.map((block) => ({
           ...block,
           ...(endpoint === "start" ? { isStart: block.id === selectedBlock.id } : { isEnd: block.id === selectedBlock.id }),
           ...(endpoint === "end" && block.id === selectedBlock.id ? { continueToBlockId: null } : {})
         }));
-        setBlocks(next);
-        setNodes(graphNodes(next, explorationSlug));
-        setEdges(graphEdges(next));
+        commitBlocks(next);
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The endpoint could not be changed.");
       }
@@ -317,8 +410,9 @@ export function ExplorationMapCanvas({
   }
 
   function saveBlockName(blockId: number, rawName: string) {
+    if (isPending) return;
     const name = rawName.trim();
-    const block = blocks.find((candidate) => candidate.id === blockId);
+    const block = blocksRef.current.find((candidate) => candidate.id === blockId);
     if (!block || (block.name ?? "") === name) return;
     setError("");
     startTransition(async () => {
@@ -348,8 +442,25 @@ export function ExplorationMapCanvas({
         onConnect={connect}
         onSelectionChange={selectionChanged}
         onNodeDragStop={(_, node) => {
-          void updateExplorationBlockCanvasPositionsAction(explorationId, [{ blockId: Number(node.id), x: node.position.x, y: node.position.y }]);
+          const blockId = Number(node.id);
+          const current = blocksRef.current;
+          const block = current.find((candidate) => candidate.id === blockId);
+          if (!block || (block.canvasX === node.position.x && block.canvasY === node.position.y)) return;
+          setError("");
+          startTransition(async () => {
+            try {
+              await updateExplorationBlockCanvasPositionsAction(explorationId, [{ blockId, x: node.position.x, y: node.position.y }]);
+              commitBlocks(current.map((candidate) => candidate.id === blockId
+                ? { ...candidate, canvasX: node.position.x, canvasY: node.position.y }
+                : candidate));
+            } catch (reason) {
+              renderBlocks(current);
+              setError(reason instanceof Error ? reason.message : "The block position could not be saved.");
+            }
+          });
         }}
+        nodesConnectable={!isPending}
+        nodesDraggable={!isPending}
         deleteKeyCode={null}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -357,7 +468,15 @@ export function ExplorationMapCanvas({
         maxZoom={1.5}
       >
         <Panel className="exploration-block-map-add nodrag nopan" position="top-left">
-          <ExplorationAddContentForm explorationId={explorationId} explorationSlug={explorationSlug} kinds={kinds} />
+          <ExplorationAddContentForm explorationId={explorationId} explorationSlug={explorationSlug} kinds={kinds} openEditorAfterCreate={false} />
+        </Panel>
+        <Panel className="exploration-map-history-controls nodrag nopan" position="bottom-right">
+          <button type="button" onClick={undo} disabled={isPending || past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo map change">
+            <Undo2 size={16} aria-hidden="true" />
+          </button>
+          <button type="button" onClick={redo} disabled={isPending || future.length === 0} title="Redo (Ctrl+Y)" aria-label="Redo map change">
+            <Redo2 size={16} aria-hidden="true" />
+          </button>
         </Panel>
         {selectedBlock && (
           <Panel className="exploration-block-inspector nodrag nopan" position="top-right">
@@ -367,7 +486,7 @@ export function ExplorationMapCanvas({
                 <ExplorationBlockNameHelp />
               </div>
               <input
-                key={selectedBlock.id}
+                key={`${selectedBlock.id}:${selectedBlock.name ?? ""}`}
                 aria-label="Block name"
                 defaultValue={selectedBlock.name ?? ""}
                 maxLength={160}
@@ -378,12 +497,13 @@ export function ExplorationMapCanvas({
                   event.currentTarget.blur();
                 }}
                 placeholder="Name"
+                disabled={isPending}
               />
             </div>
             <Link className="button secondary" href={`/explorations/${explorationSlug}/edit?view=block&block=${selectedBlock.id}` as never}>Edit <ExternalLink size={14} /></Link>
-            <button className="secondary" type="button" onClick={() => setEndpoint("start")}><Flag size={15} /> Set as start</button>
-            <button className="secondary" type="button" onClick={() => setEndpoint("end")}><Signpost size={15} /> Set as end</button>
-            <button className="danger" type="button" onClick={() => deleteBlock(selectedBlock.id)}><Trash2 size={15} /> Delete</button>
+            <button className="secondary" type="button" disabled={isPending} onClick={() => setEndpoint("start")}><Flag size={15} /> Set as start</button>
+            <button className="secondary" type="button" disabled={isPending} onClick={() => setEndpoint("end")}><Signpost size={15} /> Set as end</button>
+            <button className="danger" type="button" disabled={isPending} onClick={() => deleteBlock(selectedBlock.id)}><Trash2 size={15} /> Delete</button>
           </Panel>
         )}
         {error && <Panel className="exploration-map-error" position="bottom-center">{error}</Panel>}

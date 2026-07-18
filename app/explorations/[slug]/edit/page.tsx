@@ -165,7 +165,7 @@ export default async function EditExplorationPage({
       <section className="exploration-studio-toolbar">
         <nav className="exploration-studio-view-switch" aria-label="Exploration editor view">
           <Link className={mapMode ? "button is-current" : "button secondary"} href={`/explorations/${exploration.slug}/edit?view=map` as never}><Map size={16} /> Map</Link>
-          {selectedBlock && <Link className={!mapMode ? "button is-current" : "button secondary"} href={`/explorations/${exploration.slug}/edit?view=block&block=${selectedBlock.id}` as never}><Pencil size={16} /> Edit</Link>}
+          {selectedBlock && <Link className={!mapMode ? "button is-current" : "button secondary"} href={`/explorations/${exploration.slug}/edit?view=block&block=${selectedBlock.id}` as never}><Pencil size={16} /> Edit blocks</Link>}
         </nav>
         <div className="exploration-studio-actions">
           {exploration.status !== ExplorationStatus.IN_REVIEW && (
@@ -248,7 +248,7 @@ export default async function EditExplorationPage({
 
                   {selectedBlock.kind !== ExplorationBlockKind.CHOICE && (
                     <AutoSaveForm action={updateExplorationBlockContinueFormAction.bind(null, selectedBlock.id)} className="studio-block-route" statusClassName="sr-only">
-                      <label><span>Continue to</span><select name="continueToBlockId" defaultValue={selectedBlock.continueToBlockId ?? ""}><option value="">End here</option>{blockLabels.filter((block) => block.id !== selectedBlock.id).map((block) => <option key={block.id} value={block.id}>{block.label}</option>)}</select></label>
+                      <label><span>Next block</span><select name="continueToBlockId" defaultValue={selectedBlock.continueToBlockId ?? ""}><option value="">End here</option>{blockLabels.filter((block) => block.id !== selectedBlock.id).map((block) => <option key={block.id} value={block.id}>{block.label}</option>)}</select></label>
                     </AutoSaveForm>
                   )}
 

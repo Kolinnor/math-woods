@@ -382,6 +382,17 @@ export async function setExplorationPagePositionAction(pageId: number, requested
 
 type ExplorationCanvasPosition = { pageId: number; x: number; y: number };
 type ExplorationBlockCanvasPosition = { blockId: number; x: number; y: number };
+export type ExplorationMapHistoryBlock = {
+  id: number;
+  canvasX: number | null;
+  canvasY: number | null;
+  isStart: boolean;
+  isEnd: boolean;
+  continueToBlockId: number | null;
+  name: string | null;
+  options: Array<{ id: number; toBlockId: number | null }>;
+  outcomes: Array<{ id: number; toBlockId: number | null }>;
+};
 
 function canvasCoordinate(value: number) {
   if (!Number.isFinite(value)) throw new Error("Invalid canvas position.");
@@ -421,6 +432,7 @@ export async function updateExplorationCanvasPositionsAction(
 
 export async function createExplorationGraphBlockAction(playlistId: number, formData: FormData) {
   const { exploration } = await requireExplorationEditor(playlistId);
+  const mapPlacement = formData.get("mapPlacement") === "true";
   let workspacePage = await prisma.explorationPage.findFirst({
     where: { playlistId },
     orderBy: [{ position: "asc" }, { id: "asc" }]
@@ -438,7 +450,7 @@ export async function createExplorationGraphBlockAction(playlistId: number, form
     });
   }
   const [terminal, count] = await Promise.all([
-    prisma.explorationBlock.findFirst({
+    mapPlacement ? null : prisma.explorationBlock.findFirst({
       where: { page: { playlistId }, isEnd: true },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }]
     }),
@@ -461,7 +473,7 @@ export async function createExplorationGraphBlockAction(playlistId: number, form
         canvasY: row * 220,
         position: count + 1,
         isStart: count === 0,
-        isEnd: true
+        isEnd: mapPlacement ? count === 0 : true
       }
     });
   });
@@ -495,6 +507,109 @@ export async function updateExplorationBlockCanvasPositionsAction(
   await recordExplorationChange(playlistId, user.id, "Moved exploration blocks");
   revalidateExploration(exploration.slug, { editor: false });
   return normalized;
+}
+
+export async function restoreExplorationMapStateAction(
+  playlistId: number,
+  state: ExplorationMapHistoryBlock[],
+  direction: "undo" | "redo"
+) {
+  const { user, exploration } = await requireExplorationEditor(playlistId);
+  if (!Array.isArray(state) || state.length === 0 || state.length > 2000) {
+    throw new Error("Invalid exploration map history.");
+  }
+  const existing = await prisma.explorationBlock.findMany({
+    where: { page: { playlistId } },
+    select: {
+      id: true,
+      options: { select: { id: true } },
+      outcomes: { select: { id: true } }
+    }
+  });
+  const blockIds = new Set(existing.map((block) => block.id));
+  const existingById = new Map(existing.map((block) => [block.id, block]));
+  const submittedIds = state.map((block) => Number(block.id));
+  if (
+    state.length !== existing.length ||
+    new Set(submittedIds).size !== existing.length ||
+    submittedIds.some((id) => !blockIds.has(id))
+  ) {
+    throw new Error("The exploration structure changed. Undo history was cleared.");
+  }
+  if (state.filter((block) => block.isStart).length > 1 || state.filter((block) => block.isEnd).length > 1) {
+    throw new Error("Invalid exploration endpoints.");
+  }
+  const normalized = state.map((block) => {
+    const source = existingById.get(block.id);
+    if (!source) throw new Error("Invalid exploration block.");
+    if (!Array.isArray(block.options) || !Array.isArray(block.outcomes)) {
+      throw new Error("Invalid exploration paths.");
+    }
+    const optionIds = new Set(source.options.map((option) => option.id));
+    const outcomeIds = new Set(source.outcomes.map((outcome) => outcome.id));
+    if (
+      block.options.length !== optionIds.size ||
+      new Set(block.options.map((option) => option.id)).size !== optionIds.size ||
+      block.options.some((option) => !optionIds.has(option.id)) ||
+      block.outcomes.length !== outcomeIds.size ||
+      new Set(block.outcomes.map((outcome) => outcome.id)).size !== outcomeIds.size ||
+      block.outcomes.some((outcome) => !outcomeIds.has(outcome.id))
+    ) {
+      throw new Error("The exploration paths changed. Undo history was cleared.");
+    }
+    const target = (value: number | null, allowSelf = true) => {
+      if (value === null) return null;
+      const id = Number(value);
+      if (!Number.isInteger(id) || !blockIds.has(id)) throw new Error("Invalid map link.");
+      if (!allowSelf && id === block.id) throw new Error("A block cannot link to itself.");
+      return id;
+    };
+    return {
+      id: block.id,
+      canvasX: block.canvasX === null ? null : canvasCoordinate(Number(block.canvasX)),
+      canvasY: block.canvasY === null ? null : canvasCoordinate(Number(block.canvasY)),
+      isStart: block.isStart === true,
+      isEnd: block.isEnd === true,
+      continueToBlockId: block.isEnd ? null : target(block.continueToBlockId, false),
+      name: boundedText(block.name, CONTENT_LIMITS.title, "Block name") || null,
+      options: block.options.map((option) => ({ id: option.id, toBlockId: target(option.toBlockId, false) })),
+      outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, toBlockId: target(outcome.toBlockId) }))
+    };
+  });
+
+  await prisma.$transaction(async (tx) => {
+    for (const block of normalized) {
+      await tx.explorationBlock.update({
+        where: { id: block.id },
+        data: {
+          canvasX: block.canvasX,
+          canvasY: block.canvasY,
+          isStart: block.isStart,
+          isEnd: block.isEnd,
+          continueToBlockId: block.continueToBlockId,
+          name: block.name
+        }
+      });
+      for (const option of block.options) {
+        await tx.explorationBlockOption.update({
+          where: { id: option.id },
+          data: {
+            action: option.toBlockId === null ? ExplorationOptionAction.STAY : ExplorationOptionAction.PAGE,
+            toBlockId: option.toBlockId,
+            toPageId: null
+          }
+        });
+      }
+      for (const outcome of block.outcomes) {
+        await tx.explorationBlockOutcome.update({
+          where: { id: outcome.id },
+          data: { toBlockId: outcome.toBlockId, toPageId: null }
+        });
+      }
+    }
+  });
+  await recordExplorationChange(playlistId, user.id, direction === "undo" ? "Undid a map change" : "Redid a map change");
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function setExplorationBlockContinueAction(blockId: number, targetBlockId: number | null) {

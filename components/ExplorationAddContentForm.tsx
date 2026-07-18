@@ -13,11 +13,13 @@ type KindOption = {
 export function ExplorationAddContentForm({
   explorationId,
   explorationSlug,
-  kinds
+  kinds,
+  openEditorAfterCreate = true
 }: {
   explorationId: number;
   explorationSlug: string;
   kinds: KindOption[];
+  openEditorAfterCreate?: boolean;
 }) {
   const router = useRouter();
   const [kind, setKind] = useState("MARKDOWN");
@@ -30,8 +32,13 @@ export function ExplorationAddContentForm({
     setError("");
     startTransition(async () => {
       try {
+        if (!openEditorAfterCreate) formData.set("mapPlacement", "true");
         const { blockId } = await createExplorationGraphBlockAction(explorationId, formData);
-        router.replace(`/explorations/${explorationSlug}/edit?view=block&block=${blockId}` as never, { scroll: false });
+        if (openEditorAfterCreate) {
+          router.replace(`/explorations/${explorationSlug}/edit?view=block&block=${blockId}` as never, { scroll: false });
+        } else {
+          router.refresh();
+        }
       } catch {
         setError("The content could not be added. Please try again.");
       }
