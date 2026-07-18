@@ -3,6 +3,8 @@ import {
   ArrowLeft,
   Eye,
   FileClock,
+  Map,
+  Pencil,
   Plus,
   Send,
   Settings,
@@ -24,6 +26,7 @@ import { ExplorationAddContentForm } from "@/components/ExplorationAddContentFor
 import { ExplorationBlockHeaderControls } from "@/components/ExplorationBlockHeaderControls";
 import { ExplorationAddPageForm } from "@/components/ExplorationAddPageForm";
 import { ExplorationPagePositionInput } from "@/components/ExplorationPagePositionInput";
+import { ExplorationMapCanvas, type ExplorationMapPage } from "@/components/ExplorationMapCanvas";
 import { ExplorationSettingsButton } from "@/components/ExplorationSettingsButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
@@ -131,11 +134,11 @@ export default async function EditExplorationPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; view?: string }>;
 }) {
   const user = await requireVerifiedUser();
   const { slug } = await params;
-  const { page: selectedPageRaw } = await searchParams;
+  const { page: selectedPageRaw, view } = await searchParams;
   const exploration = await prisma.playlist.findUnique({
     where: { slug },
     include: {
@@ -162,6 +165,27 @@ export default async function EditExplorationPage({
   const selectedPage = exploration.pages.find((page) => page.id === requestedPageId) ?? exploration.pages[0] ?? null;
   const canDelete = canDeletePlaylist(user, exploration);
   const settingsDialogId = "exploration-settings-dialog";
+  const mapMode = view === "map" || !selectedPageRaw;
+  const mapPages: ExplorationMapPage[] = exploration.pages.map((page) => ({
+    id: page.id,
+    slug: page.slug,
+    title: page.title,
+    position: page.position,
+    isStart: page.isStart,
+    canvasX: page.canvasX,
+    canvasY: page.canvasY,
+    continueToPageId: page.continueToPageId,
+    blockCount: page.blocks.length,
+    choices: page.blocks
+      .filter((block) => block.kind === ExplorationBlockKind.CHOICE)
+      .flatMap((block) => block.options.map((option) => ({
+        id: option.id,
+        blockId: block.id,
+        label: option.label,
+        position: option.position,
+        toPageId: option.toPageId
+      })))
+  }));
 
   return (
     <ForestPageLayout
@@ -181,6 +205,10 @@ export default async function EditExplorationPage({
       <section className="exploration-studio-toolbar">
         <div className="exploration-studio-summary">
           <span className={`exploration-status status-${exploration.status.toLocaleLowerCase()}`}>{explorationStatusLabel(exploration.status)}</span>
+          <nav className="exploration-studio-view-switch" aria-label="Exploration editor view">
+            <Link className={mapMode ? "button is-current" : "button secondary"} href={`/explorations/${exploration.slug}/edit?view=map` as never}><Map size={16} /> Map</Link>
+            {selectedPage && <Link className={!mapMode ? "button is-current" : "button secondary"} href={`/explorations/${exploration.slug}/edit?view=page&page=${selectedPage.id}` as never}><Pencil size={16} /> Edit page</Link>}
+          </nav>
         </div>
         <div className="exploration-studio-actions">
           {exploration.status !== ExplorationStatus.IN_REVIEW && (
@@ -196,7 +224,11 @@ export default async function EditExplorationPage({
         </div>
       </section>
 
-      <div className="exploration-studio-shell">
+      <div className={mapMode ? "exploration-studio-shell is-map" : "exploration-studio-shell"}>
+        {mapMode ? (
+          <ExplorationMapCanvas explorationId={exploration.id} explorationSlug={exploration.slug} initialPages={mapPages} />
+        ) : (
+          <>
         <aside className="exploration-studio-sidebar">
           <div className="exploration-studio-sidebar-heading">
             <h2>Pages</h2>
@@ -210,7 +242,7 @@ export default async function EditExplorationPage({
                   pageTitle={page.title}
                   position={page.position}
                 />
-                <Link href={`/explorations/${exploration.slug}/edit?page=${page.id}` as never}>
+                <Link href={`/explorations/${exploration.slug}/edit?view=page&page=${page.id}` as never}>
                   <span className="studio-page-title">{page.title}</span>
                 </Link>
               </div>
@@ -237,7 +269,6 @@ export default async function EditExplorationPage({
                     <label><span>URL slug</span><input name="slug" defaultValue={selectedPage.slug} /></label>
                     <div className="studio-page-toggles md:col-span-2">
                       <label className="checkbox-field"><input name="isStart" type="checkbox" defaultChecked={selectedPage.isStart} /><span><strong>Starting page</strong></span></label>
-                      <label className="checkbox-field"><input name="isEnd" type="checkbox" defaultChecked={selectedPage.isEnd} /><span><strong>Ending page</strong></span></label>
                     </div>
                     <details className="studio-advanced-fields md:col-span-2">
                       <summary>Conditional visibility</summary>
@@ -343,8 +374,11 @@ export default async function EditExplorationPage({
           ) : (
             <p className="muted studio-empty-state">Add the first page to begin writing.</p>
           )}
+        </div>
+          </>
+        )}
 
-          <dialog className="exploration-settings-dialog" id={settingsDialogId}>
+        <dialog className="exploration-settings-dialog" id={settingsDialogId}>
             <header className="exploration-settings-dialog-header">
               <h2>Exploration settings</h2>
               <form method="dialog">
@@ -411,8 +445,7 @@ export default async function EditExplorationPage({
             </section>
             )}
             </div>
-          </dialog>
-        </div>
+        </dialog>
       </div>
     </ForestPageLayout>
   );

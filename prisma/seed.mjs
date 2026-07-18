@@ -748,6 +748,10 @@ async function main() {
       visibilityRule: { variable: "needsVietaReview", operator: "equals", value: true }
     }
   });
+  await prisma.explorationPage.update({
+    where: { id: exercisePage.id },
+    data: { continueToPageId: reviewPage.id }
+  });
   await prisma.explorationBlock.create({
     data: {
       pageId: introPage.id,

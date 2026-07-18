@@ -1,4 +1,5 @@
 @import "katex/dist/katex.min.css";
+@import "@xyflow/react/dist/style.css";
 
 @tailwind base;
 @tailwind components;
@@ -2164,6 +2165,23 @@ textarea {
   font-size: 0.8rem;
 }
 
+.exploration-studio-view-switch {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.exploration-studio-view-switch .button {
+  min-height: 2.2rem;
+  padding: 0.42rem 0.65rem;
+}
+
+.exploration-studio-view-switch .is-current {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .exploration-studio-actions button,
 .studio-publish-menu > summary {
   min-height: 2.35rem;
@@ -2223,6 +2241,254 @@ textarea {
 .exploration-studio-shell {
   gap: 1.15rem;
   grid-template-columns: 15rem minmax(0, 1fr);
+}
+
+.exploration-studio-shell.is-map {
+  display: block;
+}
+
+.exploration-map-workspace {
+  min-width: 0;
+}
+
+.exploration-map-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+  justify-content: space-between;
+  margin-bottom: 0.55rem;
+}
+
+.exploration-map-toolbar form {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.exploration-map-toolbar input {
+  min-width: min(18rem, 42vw);
+}
+
+.exploration-map-shell {
+  background: #edf3ee;
+  border: 1px solid #b7c4b9;
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  height: min(72vh, 760px);
+  min-height: 590px;
+  overflow: hidden;
+}
+
+.exploration-map-canvas {
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.exploration-map-canvas .react-flow {
+  background: #f6f9f6;
+}
+
+.exploration-map-node {
+  background: #fff;
+  border: 1px solid #9eafa1;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgb(27 47 33 / 0.1);
+  color: var(--ink);
+  min-height: 9.2rem;
+  padding: 0.75rem;
+  width: 13.5rem;
+}
+
+.exploration-map-node.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(34 106 70 / 0.15), 0 5px 14px rgb(27 47 33 / 0.13);
+}
+
+.exploration-map-node-heading,
+.exploration-map-node-meta {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.exploration-map-node-heading > span,
+.exploration-map-node-meta {
+  color: #68756c;
+  font-size: 0.68rem;
+}
+
+.exploration-map-node-heading strong {
+  align-items: center;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 0.66rem;
+  gap: 0.18rem;
+}
+
+.exploration-map-node-heading strong.is-terminal {
+  color: #59655d;
+}
+
+.exploration-map-node h3 {
+  font-size: 0.94rem;
+  line-height: 1.25;
+  margin: 0.65rem 0;
+  min-height: 2.35rem;
+  overflow-wrap: anywhere;
+}
+
+.exploration-map-node-edit {
+  align-items: center;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.25rem;
+  margin-top: 0.7rem;
+}
+
+.exploration-map-handle {
+  background: var(--accent);
+  border: 2px solid #fff;
+  height: 0.72rem;
+  width: 0.72rem;
+}
+
+.exploration-map-edge .react-flow__edge-path {
+  stroke: #52665a;
+  stroke-width: 1.8;
+}
+
+.exploration-map-edge.is-choice .react-flow__edge-path {
+  stroke: #2d7250;
+}
+
+.exploration-map-edge.selected .react-flow__edge-path {
+  stroke: #b14e3f;
+  stroke-width: 2.6;
+}
+
+.exploration-map-canvas .react-flow__edge-text {
+  fill: #2b372f;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.exploration-map-canvas .react-flow__edge-textbg {
+  fill: #fff;
+  fill-opacity: 0.94;
+}
+
+.exploration-map-canvas .react-flow__controls,
+.exploration-map-canvas .react-flow__minimap {
+  border: 1px solid #b9c5bb;
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgb(26 44 31 / 0.1);
+  overflow: hidden;
+}
+
+.exploration-map-canvas .react-flow__minimap {
+  height: 6rem;
+  width: 9rem;
+}
+
+.exploration-map-inspector {
+  background: #fff;
+  border-left: 1px solid #c6d0c8;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.9rem;
+}
+
+.exploration-map-inspector-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.7rem;
+  justify-content: space-between;
+}
+
+.exploration-map-inspector-heading span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.exploration-map-inspector-heading h2 {
+  font-size: 1rem;
+  line-height: 1.25;
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.exploration-map-inspector > section {
+  border-top: 1px solid #dce2dd;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+}
+
+.exploration-map-inspector label,
+.exploration-map-new-path {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.exploration-map-inspector label > span,
+.exploration-map-inspector-section-title {
+  align-items: center;
+  display: flex;
+  font-size: 0.76rem;
+  gap: 0.35rem;
+}
+
+.exploration-map-path-list {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.6rem;
+}
+
+.exploration-map-path {
+  background: #f4f7f4;
+  border: 1px solid #d0d9d1;
+  border-radius: 4px;
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.55rem;
+}
+
+.exploration-map-path.is-selected {
+  border-color: var(--accent);
+}
+
+.exploration-map-path input,
+.exploration-map-path select {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.exploration-map-path .icon-button {
+  grid-column: 2;
+  justify-self: end;
+}
+
+.exploration-map-new-path {
+  border-top: 1px solid #dce2dd;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+.exploration-map-inspector-empty {
+  align-items: center;
+  color: var(--muted);
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+  min-height: 12rem;
+  text-align: center;
 }
 
 .exploration-studio-sidebar {
@@ -3320,6 +3586,27 @@ button.danger,
     padding-bottom: 0.65rem;
   }
 
+  .exploration-map-shell {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .exploration-map-canvas {
+    height: 32rem;
+  }
+
+  .exploration-map-canvas .react-flow__minimap {
+    height: 4.5rem;
+    width: 6.5rem;
+  }
+
+  .exploration-map-inspector {
+    border-left: 0;
+    border-top: 1px solid #c6d0c8;
+    max-height: 26rem;
+  }
+
   .studio-page-row {
     flex: 0 0 12rem;
   }
@@ -3354,6 +3641,18 @@ button.danger,
   .studio-add-block > .studio-add-content-form {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .exploration-map-toolbar,
+  .exploration-map-toolbar form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .exploration-map-toolbar input,
+  .exploration-map-toolbar button {
+    min-width: 0;
+    width: 100%;
   }
 
   .studio-add-content-form > label,

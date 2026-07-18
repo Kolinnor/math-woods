@@ -756,17 +756,23 @@ model ExplorationPage {
   position        Int
   isStart         Boolean                  @default(false)
   isEnd           Boolean                  @default(false)
+  canvasX         Float?
+  canvasY         Float?
+  continueToPageId Int?
   visibilityRule  Json?
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
   playlist        Playlist                 @relation(fields: [playlistId], references: [id], onDelete: Cascade)
   blocks          ExplorationBlock[]
   incomingOptions ExplorationBlockOption[] @relation("ExplorationOptionTarget")
+  continueToPage  ExplorationPage?         @relation("ExplorationContinueTarget", fields: [continueToPageId], references: [id], onDelete: SetNull)
+  incomingContinues ExplorationPage[]      @relation("ExplorationContinueTarget")
   sessions        ExplorationSession[]
 
   @@unique([playlistId, key])
   @@unique([playlistId, slug])
   @@index([playlistId, position])
+  @@index([continueToPageId])
 }
 
 model ExplorationBlock {

@@ -260,6 +260,8 @@ export async function createExplorationPageAction(playlistId: number, formData: 
         position: (last?.position ?? 0) + 1,
         isStart,
         isEnd: true,
+        canvasX: last?.canvasX === null || last?.canvasX === undefined ? 0 : last.canvasX + 320,
+        canvasY: last?.canvasY ?? 0,
         visibilityRule: ruleFromForm(formData) ? jsonInput(ruleFromForm(formData)) : Prisma.JsonNull
       }
     });
@@ -269,7 +271,15 @@ export async function createExplorationPageAction(playlistId: number, formData: 
   // The editor is force-dynamic and the client navigates to the new page itself.
   // Avoid refreshing the current studio before that soft navigation completes.
   revalidateExploration(exploration.slug, { editor: false });
-  return { pageId: page.id };
+  return {
+    pageId: page.id,
+    slug: page.slug,
+    title: page.title,
+    position: page.position,
+    isStart: page.isStart,
+    canvasX: page.canvasX,
+    canvasY: page.canvasY
+  };
 }
 
 export async function updateExplorationPageAction(pageId: number, formData: FormData) {
@@ -320,6 +330,148 @@ export async function setExplorationPagePositionAction(pageId: number, requested
   await recordExplorationChange(page.playlistId, user.id, `Reordered page "${page.title}"`);
   revalidateExploration(exploration.slug, { editor: false });
   return { position };
+}
+
+type ExplorationCanvasPosition = { pageId: number; x: number; y: number };
+
+function canvasCoordinate(value: number) {
+  if (!Number.isFinite(value)) throw new Error("Invalid canvas position.");
+  return Math.max(-100000, Math.min(100000, Math.round(value * 10) / 10));
+}
+
+export async function updateExplorationCanvasPositionsAction(
+  playlistId: number,
+  positions: ExplorationCanvasPosition[]
+) {
+  const { user, exploration } = await requireExplorationEditor(playlistId);
+  if (!Array.isArray(positions) || positions.length === 0 || positions.length > 1000) {
+    throw new Error("Invalid canvas positions.");
+  }
+  const normalized = positions.map((position) => ({
+    pageId: Number(position.pageId),
+    x: canvasCoordinate(Number(position.x)),
+    y: canvasCoordinate(Number(position.y))
+  }));
+  const pageIds = [...new Set(normalized.map((position) => position.pageId))];
+  if (pageIds.some((id) => !Number.isInteger(id))) throw new Error("Invalid exploration page.");
+  const matchingPages = await prisma.explorationPage.count({
+    where: { playlistId, id: { in: pageIds } }
+  });
+  if (matchingPages !== pageIds.length) throw new Error("A page does not belong to this exploration.");
+
+  await prisma.$transaction(
+    normalized.map((position) => prisma.explorationPage.update({
+      where: { id: position.pageId },
+      data: { canvasX: position.x, canvasY: position.y }
+    }))
+  );
+  await recordExplorationChange(playlistId, user.id, "Rearranged exploration map");
+  revalidateExploration(exploration.slug, { editor: false });
+  return normalized;
+}
+
+export async function setExplorationContinueAction(pageId: number, targetPageId: number | null) {
+  const { user, page, exploration } = await requirePageEditor(pageId);
+  const normalizedTarget = targetPageId === null ? null : Number(targetPageId);
+  if (normalizedTarget !== null) {
+    if (!Number.isInteger(normalizedTarget)) throw new Error("Invalid target page.");
+    const target = await prisma.explorationPage.findFirst({
+      where: { id: normalizedTarget, playlistId: page.playlistId },
+      select: { id: true }
+    });
+    if (!target) throw new Error("The target page does not belong to this exploration.");
+  }
+  await prisma.explorationPage.update({
+    where: { id: pageId },
+    data: { continueToPageId: normalizedTarget }
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Updated Continue link from "${page.title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
+  return { pageId, targetPageId: normalizedTarget };
+}
+
+export async function createExplorationCanvasChoiceAction(
+  pageId: number,
+  targetPageId: number,
+  rawLabel: string
+) {
+  const { user, page, exploration } = await requirePageEditor(pageId);
+  const label = requiredBoundedText(rawLabel, CONTENT_LIMITS.shortText, "Choice label");
+  const normalizedTarget = Number(targetPageId);
+  if (!Number.isInteger(normalizedTarget)) throw new Error("Invalid target page.");
+  const target = await prisma.explorationPage.findFirst({
+    where: { id: normalizedTarget, playlistId: page.playlistId },
+    select: { id: true }
+  });
+  if (!target) throw new Error("The target page does not belong to this exploration.");
+
+  const result = await prisma.$transaction(async (tx) => {
+    let blockCreated = false;
+    let block = await tx.explorationBlock.findFirst({
+      where: { pageId, kind: ExplorationBlockKind.CHOICE },
+      orderBy: { position: "asc" },
+      select: { id: true }
+    });
+    if (!block) {
+      blockCreated = true;
+      const lastBlock = await tx.explorationBlock.findFirst({ where: { pageId }, orderBy: { position: "desc" } });
+      block = await tx.explorationBlock.create({
+        data: {
+          pageId,
+          kind: ExplorationBlockKind.CHOICE,
+          position: (lastBlock?.position ?? 0) + 1
+        },
+        select: { id: true }
+      });
+    }
+    const lastOption = await tx.explorationBlockOption.findFirst({
+      where: { blockId: block.id },
+      orderBy: { position: "desc" }
+    });
+    const option = await tx.explorationBlockOption.create({
+      data: {
+        blockId: block.id,
+        label,
+        position: (lastOption?.position ?? 0) + 1,
+        toPageId: target.id
+      }
+    });
+    return { blockCreated, blockId: block.id, optionId: option.id };
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Added path from "${page.title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
+  return { ...result, pageId, targetPageId: target.id, label };
+}
+
+export async function updateExplorationCanvasChoiceAction(
+  optionId: number,
+  rawLabel: string,
+  targetPageId: number | null
+) {
+  const option = await prisma.explorationBlockOption.findUnique({
+    where: { id: optionId },
+    select: { blockId: true }
+  });
+  if (!option) throw new Error("Choice not found.");
+  const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
+  if (block.kind !== ExplorationBlockKind.CHOICE) throw new Error("This option is not an exploration path.");
+  const label = requiredBoundedText(rawLabel, CONTENT_LIMITS.shortText, "Choice label");
+  const normalizedTarget = targetPageId === null ? null : Number(targetPageId);
+  if (normalizedTarget !== null) {
+    if (!Number.isInteger(normalizedTarget)) throw new Error("Invalid target page.");
+    const target = await prisma.explorationPage.findFirst({
+      where: { id: normalizedTarget, playlistId: page.playlistId },
+      select: { id: true }
+    });
+    if (!target) throw new Error("The target page does not belong to this exploration.");
+  }
+  await prisma.explorationBlockOption.update({
+    where: { id: optionId },
+    data: { label, toPageId: normalizedTarget }
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Updated a path from "${page.title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
+  return { optionId, pageId: page.id, targetPageId: normalizedTarget, label };
 }
 
 export async function deleteExplorationPageAction(pageId: number) {
@@ -662,6 +814,8 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
           position: page.position,
           isStart: page.isStart,
           isEnd: page.isEnd,
+          canvasX: page.canvasX,
+          canvasY: page.canvasY,
           visibilityRule: page.visibilityRule ? jsonInput(page.visibilityRule) : Prisma.JsonNull
         }
       });
@@ -693,6 +847,13 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
         });
         blockIds.set(block.id, nextBlock.id);
       }
+    }
+    for (const page of source.pages) {
+      if (!page.continueToPageId) continue;
+      await tx.explorationPage.update({
+        where: { id: pageIds.get(page.id)! },
+        data: { continueToPageId: pageIds.get(page.continueToPageId) ?? null }
+      });
     }
     for (const page of source.pages) {
       for (const block of page.blocks) {

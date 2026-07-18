@@ -30,6 +30,7 @@ import {
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
 import { explorationSnapshotPages } from "../lib/exploration-snapshot.ts";
 import { EXPLORATION_CHANGE_COALESCE_MS, shouldCoalesceExplorationChange } from "../lib/exploration-history.ts";
+import { hasReachableExplorationExit } from "../lib/exploration-navigation.ts";
 import { guestProgressContentKey } from "../lib/guest-progress.ts";
 import {
   createDisplayMathLineBreakNormalizer,
@@ -631,6 +632,12 @@ const configuredExplorationPages = explorationSnapshotPages({
   ]
 });
 assert.deepEqual(configuredExplorationPages.map((page) => page.isEnd), [true, false]);
+
+const readableExplorationPages = new Set([1, 2, 3]);
+assert.equal(hasReachableExplorationExit({ continueToPageId: null, choiceTargetPageIds: [], readablePageIds: readableExplorationPages }), false);
+assert.equal(hasReachableExplorationExit({ continueToPageId: 2, choiceTargetPageIds: [], readablePageIds: readableExplorationPages }), true);
+assert.equal(hasReachableExplorationExit({ continueToPageId: 4, choiceTargetPageIds: [], readablePageIds: readableExplorationPages }), false);
+assert.equal(hasReachableExplorationExit({ continueToPageId: null, choiceTargetPageIds: [null, 3], readablePageIds: readableExplorationPages }), true);
 
 assert.equal(guestProgressContentKey("/problems/group-action", new URLSearchParams()), "problems:group-action");
 assert.equal(guestProgressContentKey("/concepts/group", new URLSearchParams()), "concepts:group");

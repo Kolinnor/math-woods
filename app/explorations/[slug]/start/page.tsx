@@ -76,6 +76,7 @@ export default async function StartExplorationPage({
       position: page.position,
       isStart: page.isStart,
       isEnd: page.isEnd,
+      continueToPageId: page.continueToPageId,
       visibilityRule: page.visibilityRule,
       blocks: await Promise.all(
         page.blocks.filter((block) => !block.problem || canViewProblem(user, block.problem as never)).map(async (block) => ({

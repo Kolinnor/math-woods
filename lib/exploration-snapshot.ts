@@ -45,6 +45,9 @@ export type ExplorationSnapshotPage = {
   position: number;
   isStart: boolean;
   isEnd: boolean;
+  canvasX: number | null;
+  canvasY: number | null;
+  continueToPageId: number | null;
   visibilityRule: unknown;
   blocks: ExplorationSnapshotBlock[];
 };
@@ -67,6 +70,9 @@ export function explorationSnapshotPages(snapshot: unknown): ExplorationSnapshot
       );
   return validPages.map((page) => ({
     ...page,
+    canvasX: typeof page.canvasX === "number" ? page.canvasX : null,
+    canvasY: typeof page.canvasY === "number" ? page.canvasY : null,
+    continueToPageId: typeof page.continueToPageId === "number" ? page.continueToPageId : null,
     isEnd: page.id === (configuredEnd?.id ?? fallbackEnd?.id)
   }));
 }

@@ -31,7 +31,7 @@ export function ExplorationAddContentForm({
     startTransition(async () => {
       try {
         const { blockId } = await createExplorationBlockAction(pageId, formData);
-        router.replace(`/explorations/${explorationSlug}/edit?page=${pageId}#block-${blockId}` as never, { scroll: false });
+        router.replace(`/explorations/${explorationSlug}/edit?view=page&page=${pageId}#block-${blockId}` as never, { scroll: false });
       } catch {
         setError("The content could not be added. Please try again.");
       }

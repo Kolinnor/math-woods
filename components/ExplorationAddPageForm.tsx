@@ -20,7 +20,7 @@ export function ExplorationAddPageForm({
     startTransition(async () => {
       try {
         const { pageId } = await createExplorationPageAction(explorationId, formData);
-        router.replace(`/explorations/${explorationSlug}/edit?page=${pageId}` as never, { scroll: false });
+        router.replace(`/explorations/${explorationSlug}/edit?view=page&page=${pageId}` as never, { scroll: false });
       } catch {
         setError("The page could not be created. Please try again.");
       }
@@ -31,7 +31,7 @@ export function ExplorationAddPageForm({
     <form action={createPage} aria-busy={isPending} className="studio-add-page-form">
       <label>
         <span>Page title</span>
-        <input name="title" required placeholder="A surprising detour" disabled={isPending} />
+        <input name="title" required disabled={isPending} />
       </label>
       <button type="submit" disabled={isPending}>{isPending ? "Adding..." : "Add page"}</button>
       {error && <p className="form-error" role="alert">{error}</p>}

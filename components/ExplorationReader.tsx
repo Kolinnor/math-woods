@@ -24,6 +24,7 @@ import {
   conditionMatches,
   type ExplorationState
 } from "@/lib/exploration-engine";
+import { hasReachableExplorationExit } from "@/lib/exploration-navigation";
 
 type ReaderOption = {
   id: number;
@@ -59,6 +60,7 @@ type ReaderPage = {
   position: number;
   isStart: boolean;
   isEnd: boolean;
+  continueToPageId: number | null;
   visibilityRule: unknown;
   blocks: ReaderBlock[];
 };
@@ -157,9 +159,17 @@ export function ExplorationReader({
   const visibleBlocks = currentPage?.blocks.filter((block) => conditionMatches(block.visibilityRule, state)) ?? [];
   const requiredBlocks = visibleBlocks.filter((block) => block.required && ["QUIZ", "CHOICE"].includes(block.kind));
   const requiredComplete = requiredBlocks.every((block) => results[`${currentPage.key}:${block.key}`]);
-  const nextPage = currentIndex >= 0 ? visiblePages[currentIndex + 1] ?? null : null;
-  const configuredEndPage = pages.find((page) => page.isEnd) ?? pages.at(-1) ?? null;
-  const isEndPage = currentPage?.id === configuredEndPage?.id;
+  const continuePage = currentPage?.continueToPageId
+    ? visiblePages.find((page) => page.id === currentPage.continueToPageId) ?? null
+    : null;
+  const visiblePageIds = new Set(visiblePages.map((page) => page.id));
+  const isTerminalPage = !hasReachableExplorationExit({
+    continueToPageId: currentPage?.continueToPageId ?? null,
+    choiceTargetPageIds: visibleBlocks
+      .filter((block) => block.kind === "CHOICE")
+      .flatMap((block) => block.options.map((option) => option.toPageId)),
+    readablePageIds: visiblePageIds
+  });
   const progress = visiblePages.length ? Math.round((visited.size / visiblePages.length) * 100) : 0;
   const numberedKinds = new Set(["DEFINITION", "THEOREM", "LEMMA", "PROPOSITION", "COROLLARY", "EXAMPLE", "COUNTEREXAMPLE"]);
   const statementNumbers = new Map<string, string>();
@@ -294,7 +304,7 @@ export function ExplorationReader({
               <h1>{currentPage.title}</h1>
             </div>
             {canEdit && (
-              <Link href={`/explorations/${slug}/edit?page=${currentPage.id}`} className="button secondary">
+              <Link href={`/explorations/${slug}/edit?view=page&page=${currentPage.id}`} className="button secondary">
                 <Pencil size={16} /> Edit
               </Link>
             )}
@@ -439,7 +449,7 @@ export function ExplorationReader({
 
         {error && <p className="form-error" role="alert">{error}</p>}
         {!requiredComplete && <p className="muted text-sm">Complete the required interactions before continuing.</p>}
-        {isEndPage && state.explorationCompleted === true && (
+        {isTerminalPage && state.explorationCompleted === true && (
           <section className="exploration-completion-summary">
             <Flag size={22} />
             <div><h2>Exploration complete</h2><p>You visited {visited.size} pages. You can revisit any branch or restart with different choices.</p></div>
@@ -453,7 +463,7 @@ export function ExplorationReader({
           <button type="button" className="secondary" onClick={restart} title="Restart exploration">
             <RotateCcw size={17} /> Restart
           </button>
-          {isEndPage ? (
+          {isTerminalPage ? (
             <button
               type="button"
               disabled={!requiredComplete}
@@ -465,8 +475,8 @@ export function ExplorationReader({
             >
               <Flag size={17} /> Complete exploration
             </button>
-          ) : nextPage ? (
-            <button type="button" disabled={!requiredComplete} onClick={() => goTo(nextPage.id)}>
+          ) : continuePage ? (
+            <button type="button" disabled={!requiredComplete} onClick={() => goTo(continuePage.id)}>
               Continue <ArrowRight size={17} />
             </button>
           ) : null}
