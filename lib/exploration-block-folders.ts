@@ -3,6 +3,25 @@ export type FolderedExplorationBlock = {
   folderId: number | null;
 };
 
+export type OrderedExplorationBlockFolder = {
+  id: number;
+};
+
+export function moveExplorationBlockFolder<T extends OrderedExplorationBlockFolder>(
+  folders: T[],
+  folderId: number,
+  targetFolderId: number,
+  placement: "before" | "after"
+) {
+  if (folderId === targetFolderId) return folders;
+  const moving = folders.find((folder) => folder.id === folderId);
+  if (!moving || !folders.some((folder) => folder.id === targetFolderId)) return folders;
+  const remaining = folders.filter((folder) => folder.id !== folderId);
+  const targetIndex = remaining.findIndex((folder) => folder.id === targetFolderId);
+  remaining.splice(targetIndex + (placement === "after" ? 1 : 0), 0, moving);
+  return remaining;
+}
+
 export function explorationBlocksInFolder<T extends FolderedExplorationBlock>(
   blocks: T[],
   folderIds: number[],

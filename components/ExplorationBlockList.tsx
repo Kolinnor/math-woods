@@ -7,10 +7,12 @@ import {
   createExplorationBlockFolderAction,
   deleteExplorationBlockFolderAction,
   organizeExplorationBlocksAction,
+  reorderExplorationBlockFoldersAction,
   renameExplorationBlockFolderAction
 } from "@/lib/actions/exploration-actions";
 import {
   explorationBlocksInFolder,
+  moveExplorationBlockFolder,
   moveExplorationBlockToFolder,
   orderExplorationBlocksByFolders
 } from "@/lib/exploration-block-folders";
@@ -49,8 +51,10 @@ export function ExplorationBlockList({
   const [editingFolderId, setEditingFolderId] = useState<number | null>(null);
   const [folderName, setFolderName] = useState("");
   const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [draggedFolderId, setDraggedFolderId] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
   const [dropFolder, setDropFolder] = useState<string | null>(null);
+  const [folderDropTarget, setFolderDropTarget] = useState<{ id: number; placement: "before" | "after" } | null>(null);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -118,6 +122,42 @@ export function ExplorationBlockList({
     const targetIndex = index + (event.key === "ArrowUp" ? -1 : 1);
     if (targetIndex < 0 || targetIndex >= group.length) return;
     moveBlock(block.id, block.folderId, targetIndex);
+  }
+
+  function moveFolder(folderId: number, targetFolderId: number, placement: "before" | "after") {
+    const previous = folders;
+    const next = moveExplorationBlockFolder(folders, folderId, targetFolderId, placement);
+    if (next === folders || next.every((folder, index) => folder.id === folders[index]?.id)) return;
+    setFolders(next.map((folder, index) => ({ ...folder, position: index + 1 })));
+    setError("");
+    startTransition(async () => {
+      try {
+        await reorderExplorationBlockFoldersAction(explorationId, next.map((folder) => folder.id));
+      } catch {
+        setFolders(previous);
+        setError("The folder order could not be saved.");
+      }
+    });
+  }
+
+  function moveFolderWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, folder: ExplorationBlockFolderListItem) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const index = folders.findIndex((candidate) => candidate.id === folder.id);
+    const target = folders[index + (event.key === "ArrowUp" ? -1 : 1)];
+    if (!target) return;
+    moveFolder(folder.id, target.id, event.key === "ArrowUp" ? "before" : "after");
+  }
+
+  function dropFolderOnFolder(event: DragEvent<HTMLElement>, targetFolderId: number) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (draggedFolderId === null) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const placement = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+    moveFolder(draggedFolderId, targetFolderId, placement);
+    setDraggedFolderId(null);
+    setFolderDropTarget(null);
   }
 
   function createFolder() {
@@ -205,13 +245,16 @@ export function ExplorationBlockList({
           dropTargetId === block.id && draggedId !== block.id ? "is-drop-target" : ""
         ].filter(Boolean).join(" ")}
         onDragOver={(event) => {
+          if (draggedFolderId !== null) return;
           event.preventDefault();
           event.stopPropagation();
           event.dataTransfer.dropEffect = "move";
           setDropTargetId(block.id);
           setDropFolder(folderKey(block.folderId));
         }}
-        onDrop={(event) => dropOnBlock(event, block)}
+        onDrop={(event) => {
+          if (draggedFolderId === null) dropOnBlock(event, block);
+        }}
       >
         <button
           type="button"
@@ -255,14 +298,30 @@ export function ExplorationBlockList({
           return (
             <section
               key={id}
-              className={`studio-block-folder${dropFolder === id && draggedId !== null ? " is-drop-target" : ""}`}
+              className={[
+                "studio-block-folder",
+                dropFolder === id && draggedId !== null ? "is-drop-target" : "",
+                folder !== null && folderDropTarget?.id === folder.id ? `is-folder-drop-${folderDropTarget.placement}` : "",
+                folder !== null && draggedFolderId === folder.id ? "is-folder-dragging" : ""
+              ].filter(Boolean).join(" ")}
               onDragOver={(event) => {
                 event.preventDefault();
                 event.dataTransfer.dropEffect = "move";
+                if (draggedFolderId !== null && folder !== null) {
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  setFolderDropTarget({
+                    id: folder.id,
+                    placement: event.clientY < bounds.top + bounds.height / 2 ? "before" : "after"
+                  });
+                  return;
+                }
                 setDropFolder(id);
                 setDropTargetId(null);
               }}
-              onDrop={(event) => dropInFolder(event, folder?.id ?? null)}
+              onDrop={(event) => {
+                if (folder !== null && draggedFolderId !== null) dropFolderOnFolder(event, folder.id);
+                else dropInFolder(event, folder?.id ?? null);
+              }}
             >
               <div className="studio-block-folder-heading">
                 <button
@@ -274,6 +333,31 @@ export function ExplorationBlockList({
                 >
                   {collapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
                 </button>
+                {folder === null ? (
+                  <span className="studio-folder-drag-placeholder" />
+                ) : (
+                  <button
+                    type="button"
+                    className="studio-folder-drag-handle"
+                    draggable={!isPending}
+                    disabled={isPending}
+                    aria-label={`Move folder ${folder.name}. Use the up and down arrow keys to reorder it.`}
+                    title="Drag to reorder folder"
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", `folder:${folder.id}`);
+                      setDraggedFolderId(folder.id);
+                      setDraggedId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedFolderId(null);
+                      setFolderDropTarget(null);
+                    }}
+                    onKeyDown={(event) => moveFolderWithKeyboard(event, folder)}
+                  >
+                    <GripVertical size={15} aria-hidden="true" />
+                  </button>
+                )}
                 {collapsed ? <Folder size={15} aria-hidden="true" /> : <FolderOpen size={15} aria-hidden="true" />}
                 {folder === null ? (
                   <span className="studio-folder-static-name">Unsorted</span>

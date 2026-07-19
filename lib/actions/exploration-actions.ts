@@ -24,13 +24,10 @@ import {
   asExplorationState,
   conditionFromFields,
   effectsFromFields,
-  normalizedTextAnswer,
-  numericAnswerMatches,
   parseExplorationValue,
   type ExplorationState
 } from "@/lib/exploration-engine";
-import { resolveExplorationQuizOutcome } from "@/lib/exploration-routing";
-import { nextExplorationBlockId } from "@/lib/exploration-block-graph";
+import { evaluateExplorationQuizSelection } from "@/lib/exploration-quiz";
 import {
   clearExplorationBranches,
   explorationBranchStateKey
@@ -168,16 +165,6 @@ function ruleFromForm(formData: FormData) {
     formData.get("conditionOperator"),
     formData.get("conditionValue")
   );
-}
-
-function blockSettings(formData: FormData) {
-  const expectedAnswer = boundedText(formData.get("expectedAnswer"), CONTENT_LIMITS.mediumText, "Expected answer");
-  const tolerance = String(formData.get("tolerance") ?? "").trim();
-  return {
-    ...(expectedAnswer ? { expectedAnswer } : {}),
-    ...(tolerance ? { tolerance: Number(tolerance) || 0 } : {}),
-    caseSensitive: formData.get("caseSensitive") === "on"
-  };
 }
 
 export async function createExplorationAction(formData: FormData) {
@@ -1053,7 +1040,7 @@ export async function createExplorationBlockAction(pageId: number, formData: For
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Block content") || null;
   const name = boundedText(formData.get("name"), CONTENT_LIMITS.title, "Block name") || null;
   const quizType = kind === ExplorationBlockKind.QUIZ
-    ? enumValue(Object.values(ExplorationQuizType), formData.get("quizType"), ExplorationQuizType.SINGLE_CHOICE)
+    ? ExplorationQuizType.MULTIPLE_CHOICE
     : null;
 
   const block = await prisma.explorationBlock.create({
@@ -1068,20 +1055,12 @@ export async function createExplorationBlockAction(pageId: number, formData: For
       problemId: problem?.id ?? null,
       conceptId: concept?.id ?? null,
       quizType,
-      settings: quizType ? jsonInput(blockSettings(formData)) : Prisma.JsonNull,
-      required: kind === ExplorationBlockKind.CHOICE || formData.get("required") === "on",
+      settings: Prisma.JsonNull,
+      required: kind === ExplorationBlockKind.CHOICE || kind === ExplorationBlockKind.QUIZ || formData.get("required") === "on",
       points: clampOptionalInteger(formData.get("points"), 0, 10000) ?? 0
     }
   });
 
-  if (quizType === ExplorationQuizType.TRUE_FALSE) {
-    await prisma.explorationBlockOption.createMany({
-      data: [
-        { blockId: block.id, label: "True", value: "true", position: 1, isCorrect: true },
-        { blockId: block.id, label: "False", value: "false", position: 2, isCorrect: false }
-      ]
-    });
-  }
   await recordExplorationChange(
     page.playlistId,
     user.id,
@@ -1109,7 +1088,7 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
   const { user, block, page, exploration } = await requireBlockEditor(blockId);
   const kind = enumValue(Object.values(ExplorationBlockKind), formData.get("kind"), block.kind);
   const quizType = kind === ExplorationBlockKind.QUIZ
-    ? enumValue(Object.values(ExplorationQuizType), formData.get("quizType"), block.quizType ?? ExplorationQuizType.SINGLE_CHOICE)
+    ? ExplorationQuizType.MULTIPLE_CHOICE
     : null;
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Block content") || null;
   const explanationMarkdown = boundedText(
@@ -1141,7 +1120,8 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
       conceptId: concept?.id ?? null,
       quizType,
       ...(kind === ExplorationBlockKind.CHOICE && block.kind !== ExplorationBlockKind.CHOICE ? { required: true } : {}),
-      settings: quizType ? jsonInput(blockSettings(formData)) : Prisma.JsonNull
+      ...(kind === ExplorationBlockKind.QUIZ && block.kind !== ExplorationBlockKind.QUIZ ? { required: true } : {}),
+      settings: Prisma.JsonNull
     }
   });
   if (kind === ExplorationBlockKind.QUIZ && block.kind !== ExplorationBlockKind.QUIZ) {
@@ -1232,6 +1212,27 @@ export async function renameExplorationBlockFolderAction(folderId: number, value
   await recordExplorationChange(exploration.id, user.id, `Renamed block folder to "${name}"`);
   revalidateExploration(exploration.slug);
   return { name };
+}
+
+export async function reorderExplorationBlockFoldersAction(playlistId: number, requestedFolderIds: number[]) {
+  const { user, exploration } = await requireExplorationEditor(playlistId);
+  const existingFolders = await prisma.explorationBlockFolder.findMany({
+    where: { playlistId },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: { id: true }
+  });
+  const existingIds = new Set(existingFolders.map((folder) => folder.id));
+  const orderedIds = [...new Set(requestedFolderIds.filter((id) => Number.isInteger(id) && existingIds.has(id)))];
+  if (orderedIds.length !== existingIds.size) throw new Error("The folder order is incomplete.");
+
+  await prisma.$transaction(
+    orderedIds.map((id, index) => prisma.explorationBlockFolder.update({
+      where: { id },
+      data: { position: index + 1 }
+    }))
+  );
+  await recordExplorationChange(playlistId, user.id, "Reordered block folders");
+  revalidateExploration(exploration.slug);
 }
 
 export async function deleteExplorationBlockFolderAction(folderId: number) {
@@ -1371,6 +1372,12 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
   if (!option) throw new Error("Option not found.");
   const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
   const label = requiredBoundedText(formData.get("label"), CONTENT_LIMITS.shortText, "Option label");
+  const feedbackMarkdown = formData.has("feedbackMarkdown")
+    ? boundedText(formData.get("feedbackMarkdown"), CONTENT_LIMITS.longNote, "Feedback") || null
+    : undefined;
+  const feedbackHtml = feedbackMarkdown === undefined
+    ? undefined
+    : feedbackMarkdown ? await renderMarkdownContent(feedbackMarkdown) : null;
   const action = block.kind === ExplorationBlockKind.CHOICE
     ? enumValue(Object.values(ExplorationOptionAction), formData.get("action"), option.action)
     : option.action;
@@ -1420,6 +1427,12 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
         revealBranchId,
         ...(formData.get("isCorrectField") === "true"
           ? { isCorrect: formData.get("isCorrect") === "on" }
+          : {}),
+        ...(feedbackMarkdown !== undefined
+          ? {
+              feedbackMarkdown,
+              feedbackHtml
+            }
           : {}),
         toPageId,
         toBlockId
@@ -1868,8 +1881,6 @@ export async function changeExplorationStatusAction(playlistId: number, status: 
   revalidateExploration(exploration.slug);
 }
 
-type QuizSettings = { expectedAnswer?: unknown; tolerance?: unknown; caseSensitive?: boolean };
-
 export async function submitExplorationResponseAction(
   playlistId: number,
   pageKey: string,
@@ -1920,47 +1931,37 @@ export async function submitExplorationResponseAction(
       })
     : [];
 
-  const optionIds = Array.isArray(response) ? response.map(Number).filter(Number.isInteger) : [Number(response)].filter(Number.isInteger);
+  const optionIds = [...new Set(
+    (Array.isArray(response) ? response : [response]).map(Number).filter(Number.isInteger)
+  )];
+  const validOptionIds = new Set(block.options.map((option) => option.id));
+  if (optionIds.some((id) => !validOptionIds.has(id))) throw new Error("Invalid answer selection.");
+  if (block.kind === ExplorationBlockKind.QUIZ && block.options.length === 0) {
+    throw new Error("This quiz has no answers yet.");
+  }
+  if (block.kind === ExplorationBlockKind.QUIZ && optionIds.length === 0) {
+    throw new Error("Select at least one answer.");
+  }
   const selectedOptions = block.options.filter((option) => optionIds.includes(option.id));
   let isCorrect: boolean | null = null;
-  const settings = (block.settings && typeof block.settings === "object" ? block.settings : {}) as QuizSettings;
+  let failedOptionIds: number[] = [];
 
   if (block.kind === ExplorationBlockKind.QUIZ) {
-    if (block.quizType === ExplorationQuizType.SHORT_TEXT) {
-      isCorrect = normalizedTextAnswer(response, settings.caseSensitive) === normalizedTextAnswer(settings.expectedAnswer, settings.caseSensitive);
-    } else if (block.quizType === ExplorationQuizType.NUMBER) {
-      isCorrect = numericAnswerMatches(response, settings.expectedAnswer, settings.tolerance);
-    } else if (block.quizType === ExplorationQuizType.MULTIPLE_CHOICE) {
-      const correctIds = block.options.filter((option) => option.isCorrect).map((option) => option.id).sort((a, b) => a - b);
-      const selectedIds = [...optionIds].sort((a, b) => a - b);
-      isCorrect = correctIds.length === selectedIds.length && correctIds.every((id, index) => id === selectedIds[index]);
-    } else {
-      isCorrect = selectedOptions.length === 1 && selectedOptions[0]?.isCorrect === true;
-    }
+    const evaluation = evaluateExplorationQuizSelection(block.options, optionIds);
+    isCorrect = evaluation.isCorrect;
+    failedOptionIds = evaluation.failedOptionIds;
   }
 
   const selected = selectedOptions[0] ?? null;
   if (block.kind === ExplorationBlockKind.CHOICE && !selected) throw new Error("Invalid choice.");
-  const matchedOutcome = block.kind === ExplorationBlockKind.QUIZ
-    ? resolveExplorationQuizOutcome(
-        block.outcomes.map((outcome) => ({
-          id: outcome.id,
-          kind: outcome.kind,
-          optionIds: outcome.matches.map((match) => match.optionId),
-          position: outcome.position,
-          toBlockId: outcome.toBlockId,
-          toPageId: outcome.toPageId
-        })),
-        optionIds,
-        isCorrect
-      )
+  const selectedPageId = block.kind === ExplorationBlockKind.CHOICE && selected?.action === ExplorationOptionAction.PAGE
+    ? selected.toPageId
     : null;
-  const selectedPageId = selected?.action === ExplorationOptionAction.PAGE ? selected.toPageId : null;
-  const selectedBlockId = selected?.toBlockId ?? null;
-  const nextPageId = matchedOutcome?.toPageId ?? selectedPageId ?? null;
+  const selectedBlockId = block.kind === ExplorationBlockKind.CHOICE ? selected?.toBlockId ?? null : null;
+  const nextPageId = selectedPageId ?? null;
   const nextBlockId = block.kind === ExplorationBlockKind.CHOICE
     ? selectedBlockId
-    : nextExplorationBlockId(matchedOutcome?.toBlockId, selectedBlockId, block.continueToBlockId);
+    : block.continueToBlockId;
   let state = asExplorationState(rawState ?? previousSession?.state);
   let clearedBlockKeys: string[] = [];
   let revealedBranchId: number | null = null;
@@ -1976,7 +1977,12 @@ export async function submitExplorationResponseAction(
       state[explorationBranchStateKey(selected.revealBranchId)] = true;
     }
   }
-  state = applyEffects(state, selectedOptions.flatMap((option) => Array.isArray(option.effects) ? option.effects : []));
+  state = applyEffects(
+    state,
+    block.kind === ExplorationBlockKind.CHOICE
+      ? selectedOptions.flatMap((option) => Array.isArray(option.effects) ? option.effects : [])
+      : []
+  );
   state.explorationCompleted = false;
   const stableBlockKey = `${pageKey}:${blockKey}`;
   state[`block.${stableBlockKey}.answered`] = true;
@@ -2000,7 +2006,8 @@ export async function submitExplorationResponseAction(
           include: { page: { select: { id: true, key: true } } }
         })
       : null;
-    const responseAdvances = block.kind === ExplorationBlockKind.CHOICE || block.autoContinue;
+    const responseAdvances = block.kind === ExplorationBlockKind.CHOICE
+      || (block.autoContinue && (block.kind !== ExplorationBlockKind.QUIZ || isCorrect === true));
     const sessionTargetBlock = responseAdvances ? targetLiveBlock : null;
     const targetPageKey = sessionTargetBlock?.page.key ?? (responseAdvances ? selectedLivePage?.key : null) ?? pageKey;
     const targetLivePage = (responseAdvances ? selectedLivePage : null) ?? await prisma.explorationPage.findFirst({
@@ -2099,7 +2106,19 @@ export async function submitExplorationResponseAction(
 
   return {
     isCorrect,
-    feedbackHtml: selected?.feedbackHtml ?? block.explanationHtml ?? null,
+    feedbackHtml: block.kind === ExplorationBlockKind.QUIZ
+      ? isCorrect ? block.explanationHtml : null
+      : selected?.feedbackHtml ?? null,
+    feedbackItems: block.kind === ExplorationBlockKind.QUIZ && isCorrect === false
+      ? block.options
+          .filter((option) => failedOptionIds.includes(option.id))
+          .map((option) => ({
+            optionId: option.id,
+            label: option.label,
+            expectedSelected: option.isCorrect === true,
+            feedbackHtml: option.feedbackHtml
+          }))
+      : [],
     clearedBlockKeys,
     nextPageId,
     nextBlockId,

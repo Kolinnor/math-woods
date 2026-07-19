@@ -12,7 +12,6 @@ import {
 import {
   ExplorationBlockKind,
   ExplorationOptionAction,
-  ExplorationQuizType,
   ExplorationStatus,
   MathDomain,
   PlaylistVisibility
@@ -59,16 +58,13 @@ const ADD_BLOCK_KINDS: ExplorationBlockKind[] = [
   ExplorationBlockKind.MARKDOWN,
   ExplorationBlockKind.PROBLEM,
   ExplorationBlockKind.CONCEPT,
-  ExplorationBlockKind.CHOICE
+  ExplorationBlockKind.CHOICE,
+  ExplorationBlockKind.QUIZ
 ];
-const EDITOR_BLOCK_KINDS: ExplorationBlockKind[] = [...ADD_BLOCK_KINDS, ExplorationBlockKind.QUIZ];
+const EDITOR_BLOCK_KINDS: ExplorationBlockKind[] = ADD_BLOCK_KINDS;
 
 function editorBlockLabel(kind: ExplorationBlockKind) {
   return kind === ExplorationBlockKind.MARKDOWN ? "Text" : explorationBlockLabel(kind);
-}
-
-function objectValue(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function blockFallbackLabel(block: {
@@ -147,8 +143,12 @@ export default async function EditExplorationPage({
     isEnd: block.isEnd,
     continueToBlockId: block.continueToBlockId,
     autoContinue: block.autoContinue,
-    options: block.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId })),
-    outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, label: outcome.label, toBlockId: outcome.toBlockId }))
+    options: block.kind === ExplorationBlockKind.CHOICE
+      ? block.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId }))
+      : [],
+    outcomes: block.kind === ExplorationBlockKind.QUIZ
+      ? []
+      : block.outcomes.map((outcome) => ({ id: outcome.id, label: outcome.label, toBlockId: outcome.toBlockId }))
   }));
 
   return (
@@ -217,7 +217,6 @@ export default async function EditExplorationPage({
 
           <main className="exploration-studio-main">
             {selectedBlock ? (() => {
-              const settings = objectValue(selectedBlock.settings);
               const blockFormId = `exploration-block-${selectedBlock.id}-form`;
               return (
                 <article key={selectedBlock.id} id={`block-${selectedBlock.id}`} className="studio-block-editor">
@@ -247,14 +246,9 @@ export default async function EditExplorationPage({
                       <AutoSaveMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} localDrafts={false} minHeight={selectedBlock.kind === ExplorationBlockKind.CHOICE ? "5rem" : "7rem"} lineNumbers={false} />
                     )}
                     {selectedBlock.kind === ExplorationBlockKind.QUIZ && (
-                      <div className="studio-quiz-settings">
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <label><span>Answer type</span><select name="quizType" defaultValue={selectedBlock.quizType ?? ExplorationQuizType.SINGLE_CHOICE}>{Object.values(ExplorationQuizType).map((type) => <option key={type} value={type}>{type.toLocaleLowerCase().replaceAll("_", " ")}</option>)}</select></label>
-                          <label><span>Expected answer</span><input name="expectedAnswer" defaultValue={String(settings.expectedAnswer ?? "")} /></label>
-                          <label><span>Tolerance</span><input name="tolerance" type="number" step="any" min={0} defaultValue={String(settings.tolerance ?? "")} /></label>
-                        </div>
-                        <label className="checkbox-field"><input name="caseSensitive" type="checkbox" defaultChecked={settings.caseSensitive === true} /><span><strong>Case-sensitive</strong></span></label>
-                        <div className="grid gap-2"><span className="text-sm font-medium">Explanation</span><AutoSaveMarkdownEditor name="explanationMarkdown" initialValue={selectedBlock.explanationMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:explanation`} localDrafts={false} minHeight="5rem" lineNumbers={false} /></div>
+                      <div className="studio-quiz-success-message">
+                        <span className="text-sm font-medium">In case of success</span>
+                        <AutoSaveMarkdownEditor name="explanationMarkdown" initialValue={selectedBlock.explanationMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:success`} localDrafts={false} minHeight="5rem" lineNumbers={false} />
                       </div>
                     )}
                   </AutoSaveForm>
@@ -280,10 +274,15 @@ export default async function EditExplorationPage({
                             initialAnswers={selectedBlock.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId }))}
                           />
                         ) : selectedBlock.options.map((option) => (
-                          <div key={option.id} className="studio-option-row">
+                          <div key={option.id} className="studio-option-row studio-quiz-answer-row">
                             <AutoSaveForm action={updateExplorationOptionAction.bind(null, option.id)} className="studio-option-autosave-form" statusClassName="sr-only">
                               <label><span>Label</span><input name="label" defaultValue={option.label} required /></label>
                               <label className="checkbox-field"><input name="isCorrectField" type="hidden" value="true" /><input name="isCorrect" type="checkbox" defaultChecked={option.isCorrect === true} /><span><strong>Correct</strong></span></label>
+                              <div className="studio-quiz-answer-feedback">
+                                <span className="text-sm font-medium">Failure explanation</span>
+                                <small>Shown only when this answer is selected incorrectly or should have been selected.</small>
+                                <AutoSaveMarkdownEditor name="feedbackMarkdown" initialValue={option.feedbackMarkdown ?? ""} draftKey={`exploration:option:${option.id}:failure`} localDrafts={false} minHeight="4.5rem" lineNumbers={false} />
+                              </div>
                             </AutoSaveForm>
                             <form action={deleteExplorationOptionAction.bind(null, option.id)} className="studio-option-delete"><ConfirmSubmitButton message="Delete this option?" className="icon-button danger" title="Delete option"><Trash2 size={15} /></ConfirmSubmitButton></form>
                           </div>

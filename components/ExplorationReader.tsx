@@ -20,7 +20,6 @@ export type ExplorationReaderBlock = {
   title: string | null;
   bodyHtml: string | null;
   explanationHtml: string | null;
-  quizType: string | null;
   required: boolean;
   points: number;
   isStart: boolean;
@@ -34,7 +33,17 @@ export type ExplorationReaderBlock = {
 };
 
 type InitialAnswer = { blockKey: string; response: unknown; isCorrect: boolean | null };
-type ResponseResult = { isCorrect: boolean | null; feedbackHtml: string | null; nextBlockId: number | null };
+type ResponseResult = {
+  isCorrect: boolean | null;
+  feedbackHtml: string | null;
+  feedbackItems: Array<{
+    optionId: number;
+    label: string;
+    expectedSelected: boolean;
+    feedbackHtml: string | null;
+  }>;
+  nextBlockId: number | null;
+};
 type StoredProgress = { blockId?: number; path?: number[]; state?: ExplorationState; visited?: string[] };
 
 function storageKey(playlistId: number) {
@@ -81,7 +90,12 @@ export function ExplorationReader({
     Object.fromEntries(initialAnswers.map((answer) => [answer.blockKey, answer.response as string | string[]]))
   );
   const [results, setResults] = useState<Record<string, ResponseResult>>(() =>
-    Object.fromEntries(initialAnswers.map((answer) => [answer.blockKey, { isCorrect: answer.isCorrect, feedbackHtml: null, nextBlockId: null }]))
+    Object.fromEntries(initialAnswers.map((answer) => [answer.blockKey, {
+      isCorrect: answer.isCorrect,
+      feedbackHtml: null,
+      feedbackItems: [],
+      nextBlockId: null
+    }]))
   );
   const [guestProgressLoaded, setGuestProgressLoaded] = useState(signedIn);
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +226,12 @@ export function ExplorationReader({
 
   function setResponse(key: string, value: string | string[]) {
     setResponses((items) => ({ ...items, [key]: value }));
+    setResults((items) => {
+      if (!(key in items)) return items;
+      const next = { ...items };
+      delete next[key];
+      return next;
+    });
   }
 
   function submitResponse(block: ExplorationReaderBlock, response: string | string[], pathIndex: number) {
@@ -232,8 +252,13 @@ export function ExplorationReader({
         const nextState = asExplorationState(result.state);
         setState(nextState);
         setResponses((items) => ({ ...items, [key]: response }));
-        setResults((items) => ({ ...items, [key]: { isCorrect: result.isCorrect, feedbackHtml: result.feedbackHtml, nextBlockId: result.nextBlockId } }));
-        if (result.nextBlockId && (block.kind === "CHOICE" || block.autoContinue)) {
+        setResults((items) => ({ ...items, [key]: {
+          isCorrect: result.isCorrect,
+          feedbackHtml: result.feedbackHtml,
+          feedbackItems: result.feedbackItems,
+          nextBlockId: result.nextBlockId
+        } }));
+        if (result.nextBlockId && (block.kind === "CHOICE" || (block.autoContinue && result.isCorrect === true))) {
           window.setTimeout(() => revealAfter(pathIndex, result.nextBlockId!, nextState, false), 0);
         } else {
           truncateAfter(pathIndex);
@@ -248,7 +273,7 @@ export function ExplorationReader({
 
   function renderBlock(block: ExplorationReaderBlock, pathIndex: number) {
     const key = stableKey(block);
-    const response = responses[key] ?? (block.quizType === "MULTIPLE_CHOICE" ? [] : "");
+    const response = responses[key] ?? (block.kind === "QUIZ" ? [] : "");
     const result = results[key];
     if (block.kind === "PROBLEM" && block.problem) return (
       <section className="exploration-reference-block exploration-problem-block"><div><p className="eyebrow">Problem</p><h2><MarkdownInline html={block.problem.titleHtml} /></h2>{block.problem.difficulty !== null && <span className="muted">Difficulty {block.problem.difficulty}/100</span>}</div>{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<Link href={`/problems/${block.problem.slug}`} className="button secondary">Open problem <ExternalLink size={16} /></Link></section>
@@ -260,15 +285,53 @@ export function ExplorationReader({
       <section className="exploration-interaction-block">{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<div className="exploration-choice-grid">{block.options.map((option) => <button key={option.id} type="button" className={responses[key] === String(option.id) ? "secondary is-selected" : "secondary"} disabled={isPending} onClick={() => submitResponse(block, String(option.id), pathIndex)}>{option.label}<ArrowRight size={16} /></button>)}</div></section>
     );
     if (block.kind === "QUIZ") {
-      const multiple = block.quizType === "MULTIPLE_CHOICE";
-      const textEntry = block.quizType === "SHORT_TEXT" || block.quizType === "NUMBER";
+      const selectedIds = Array.isArray(response) ? response : [];
       return (
         <section className="exploration-interaction-block">
-          <div className="exploration-interaction-heading"><CircleHelp size={20} /><div><p className="eyebrow">Quiz{block.points ? ` · ${block.points} points` : ""}</p><h2>{block.title || "Check your understanding"}</h2></div></div>
+          <div className="exploration-interaction-heading"><CircleHelp size={20} /><div><p className="eyebrow">Quiz{block.points ? ` - ${block.points} points` : ""}</p><h2>{block.title || "Check your understanding"}</h2></div></div>
           {block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}
-          {textEntry ? <label className="grid gap-2"><span>Your answer</span><input inputMode={block.quizType === "NUMBER" ? "decimal" : undefined} value={typeof response === "string" ? response : ""} onChange={(event) => setResponse(key, event.target.value)} /></label> : <div className="exploration-quiz-options">{block.options.map((option) => { const selected = multiple ? Array.isArray(response) && response.includes(String(option.id)) : response === String(option.id); return <label key={option.id}><input type={multiple ? "checkbox" : "radio"} name={`quiz-${block.id}-${pathIndex}`} checked={selected} onChange={() => { if (multiple) { const values = Array.isArray(response) ? response : []; setResponse(key, selected ? values.filter((id) => id !== String(option.id)) : [...values, String(option.id)]); } else setResponse(key, String(option.id)); }} /><span>{option.label}</span></label>; })}</div>}
-          <button type="button" disabled={isPending} onClick={() => submitResponse(block, response, pathIndex)}>Check answer</button>
-          {result && <div className={`exploration-feedback ${result.isCorrect === true ? "is-correct" : result.isCorrect === false ? "is-incorrect" : ""}`}><strong>{result.isCorrect === true ? "Correct" : result.isCorrect === false ? "Not quite" : "Response saved"}</strong>{result.feedbackHtml && <MarkdownBlock html={result.feedbackHtml} />}</div>}
+          <p className="exploration-quiz-instruction">Select every answer that is correct.</p>
+          {block.options.length > 0 ? (
+            <div className="exploration-quiz-options">
+              {block.options.map((option) => {
+                const selected = selectedIds.includes(String(option.id));
+                return (
+                  <label key={option.id}>
+                    <input
+                      type="checkbox"
+                      name={`quiz-${block.id}-${pathIndex}`}
+                      checked={selected}
+                      onChange={() => setResponse(
+                        key,
+                        selected
+                          ? selectedIds.filter((id) => id !== String(option.id))
+                          : [...selectedIds, String(option.id)]
+                      )}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          ) : <p className="muted">This quiz has no answers yet.</p>}
+          <button type="button" disabled={isPending || selectedIds.length === 0 || block.options.length === 0} onClick={() => submitResponse(block, selectedIds, pathIndex)}>Check answers</button>
+          {result && (
+            <div className={`exploration-feedback ${result.isCorrect === true ? "is-correct" : "is-incorrect"}`}>
+              <strong>{result.isCorrect === true ? "Correct" : "Some answers need another look"}</strong>
+              {result.isCorrect === true && result.feedbackHtml && <MarkdownBlock html={result.feedbackHtml} />}
+              {result.isCorrect === false && result.feedbackItems.length > 0 && (
+                <div className="exploration-quiz-failures">
+                  {result.feedbackItems.map((item) => (
+                    <section key={item.optionId}>
+                      <strong>{item.label}</strong>
+                      <p>{item.expectedSelected ? "This answer should have been selected." : "This answer should not have been selected."}</p>
+                      {item.feedbackHtml && <MarkdownBlock html={item.feedbackHtml} />}
+                    </section>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       );
     }
@@ -281,15 +344,18 @@ export function ExplorationReader({
   const hasRoutedOutcome = currentBlock.outcomes.some((outcome) => outcome.toBlockId !== null);
   const terminal = currentBlock.isEnd || (!currentBlock.continueToBlockId && !hasRoutedChoice && !hasRoutedOutcome);
   const interactiveBlock = currentBlock.kind === "QUIZ" || currentBlock.kind === "CHOICE";
-  const canContinue = !interactiveBlock || !currentBlock.required || Boolean(currentResult);
+  const canContinue = currentBlock.kind === "QUIZ"
+    ? currentResult?.isCorrect === true
+    : !interactiveBlock || !currentBlock.required || Boolean(currentResult);
   const nextBlockId = currentResult?.nextBlockId ?? currentBlock.continueToBlockId;
 
   return (
     <main className="exploration-block-reader">
-      <header className="exploration-block-reader-header">
-        <p>{visited.size} block{visited.size === 1 ? "" : "s"} visited</p>
-        {canEdit && <Link href={`/explorations/${slug}/edit?view=block&block=${currentBlock.id}`} className="button secondary"><Pencil size={16} /> Edit</Link>}
-      </header>
+      {canEdit && (
+        <header className="exploration-block-reader-header">
+          <Link href={`/explorations/${slug}/edit?view=block&block=${currentBlock.id}`} className="button secondary"><Pencil size={16} /> Edit</Link>
+        </header>
+      )}
       <div className="exploration-reader-sequence">
         {path.map((blockId, pathIndex) => {
           const block = blockById.get(blockId);

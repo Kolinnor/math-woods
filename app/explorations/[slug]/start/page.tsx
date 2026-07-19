@@ -75,7 +75,6 @@ export default async function StartExplorationPage({
     title: block.title,
     bodyHtml: block.bodyHtml,
     explanationHtml: block.explanationHtml,
-    quizType: block.quizType,
     required: block.required,
     points: block.points,
     isStart: block.isStart,
@@ -89,7 +88,9 @@ export default async function StartExplorationPage({
     } : null,
     concept: block.concept,
     options: block.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId })),
-    outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, label: outcome.label, toBlockId: outcome.toBlockId }))
+    outcomes: block.kind === "QUIZ"
+      ? []
+      : block.outcomes.map((outcome) => ({ id: outcome.id, label: outcome.label, toBlockId: outcome.toBlockId }))
   })));
   const initialVisitedBlockKeys = Array.isArray(session?.visitedBlockKeys)
     ? session.visitedBlockKeys.map(String)

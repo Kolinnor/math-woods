@@ -41,6 +41,7 @@ import {
 } from "../lib/exploration-block-graph.ts";
 import {
   moveExplorationBlockToFolder,
+  moveExplorationBlockFolder,
   orderExplorationBlocksByFolders
 } from "../lib/exploration-block-folders.ts";
 import {
@@ -49,6 +50,7 @@ import {
   explorationBranchStateKey,
   visibleExplorationBlocks
 } from "../lib/exploration-branches.ts";
+import { evaluateExplorationQuizSelection } from "../lib/exploration-quiz.ts";
 import { guestProgressContentKey } from "../lib/guest-progress.ts";
 import {
   filterMathematicians,
@@ -825,6 +827,17 @@ assert.equal(movedIntoFolder.find((block) => block.id === 1)?.folderId, 10);
 const movedBackToUnsorted = moveExplorationBlockToFolder(movedIntoFolder, [10, 20], 4, null, 0);
 assert.deepEqual(movedBackToUnsorted.map((block) => block.id), [4, 3, 1, 2]);
 assert.equal(movedBackToUnsorted.find((block) => block.id === 4)?.folderId, null);
+const explorationFolders = [{ id: 10 }, { id: 20 }, { id: 30 }];
+assert.deepEqual(moveExplorationBlockFolder(explorationFolders, 30, 10, "before").map((folder) => folder.id), [30, 10, 20]);
+assert.deepEqual(moveExplorationBlockFolder(explorationFolders, 10, 20, "after").map((folder) => folder.id), [20, 10, 30]);
+const quizOptions = [
+  { id: 1, isCorrect: true },
+  { id: 2, isCorrect: false },
+  { id: 3, isCorrect: true }
+];
+assert.deepEqual(evaluateExplorationQuizSelection(quizOptions, [1, 3]), { failedOptionIds: [], isCorrect: true });
+assert.deepEqual(evaluateExplorationQuizSelection(quizOptions, [1, 2]), { failedOptionIds: [2, 3], isCorrect: false });
+assert.deepEqual(evaluateExplorationQuizSelection(quizOptions, []), { failedOptionIds: [1, 3], isCorrect: false });
 assert.deepEqual(
   [...reachableExplorationBlockIds([
     { id: 1, isStart: true, continueToBlockId: 2, optionTargetBlockIds: [], outcomeTargetBlockIds: [] },

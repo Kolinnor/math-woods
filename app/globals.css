@@ -2150,7 +2150,6 @@ textarea {
   margin: 0;
 }
 
-.studio-quiz-settings,
 .studio-option-editor {
   background: var(--panel-muted);
   border: 1px solid var(--line);
@@ -2376,7 +2375,7 @@ textarea {
 
 .exploration-studio-shell {
   gap: 1.15rem;
-  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-columns: 17rem minmax(0, 1fr);
 }
 
 .exploration-studio-shell.is-map {
@@ -3275,10 +3274,13 @@ textarea {
   min-width: 5.5rem;
 }
 
-.studio-quiz-settings {
+.studio-quiz-success-message {
   background: #f5f7f5;
-  border-color: #d7ddd7;
+  border: 1px solid #d7ddd7;
   border-radius: 4px;
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.6rem;
 }
 
 .studio-option-editor {
@@ -3313,6 +3315,32 @@ textarea {
   gap: 0.45rem;
   grid-template-columns: minmax(10rem, 1.3fr) minmax(9rem, 0.8fr) minmax(10rem, 1fr) auto;
   padding: 0.55rem;
+}
+
+.studio-quiz-answer-row {
+  align-items: start;
+  grid-template-columns: minmax(12rem, 1fr) auto auto;
+}
+
+.studio-quiz-answer-row .studio-option-delete {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.studio-quiz-answer-feedback {
+  display: grid;
+  gap: 0.3rem;
+  grid-column: 1 / 3;
+  grid-row: 2;
+}
+
+.studio-quiz-answer-feedback > small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.studio-quiz-answer-feedback .markdown-editor-toolbar {
+  margin-bottom: 0.25rem;
 }
 
 .studio-option-advanced {
@@ -3424,9 +3452,48 @@ textarea {
   color: #44574a;
   display: grid;
   gap: 0.3rem;
-  grid-template-columns: 1.5rem 1.1rem minmax(0, 1fr) auto auto;
+  grid-template-columns: 1.5rem 1.4rem 1.1rem minmax(0, 1fr) auto auto;
   min-height: 2.25rem;
   padding: 0.15rem 0.25rem;
+}
+
+.studio-folder-drag-handle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #7b887f;
+  cursor: grab;
+  display: flex;
+  height: 1.6rem;
+  justify-content: center;
+  padding: 0;
+  width: 1.4rem;
+}
+
+.studio-folder-drag-handle:active {
+  cursor: grabbing;
+}
+
+.studio-folder-drag-handle:hover,
+.studio-folder-drag-handle:focus-visible {
+  background: #edf3ee;
+  color: var(--accent);
+}
+
+.studio-folder-drag-placeholder {
+  width: 1.4rem;
+}
+
+.studio-block-folder.is-folder-dragging {
+  opacity: 0.45;
+}
+
+.studio-block-folder.is-folder-drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.studio-block-folder.is-folder-drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .studio-folder-toggle {
@@ -4213,6 +4280,12 @@ button.danger,
   padding: 0.55rem 0.7rem;
 }
 
+.exploration-quiz-instruction {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
 .exploration-feedback {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -4229,6 +4302,24 @@ button.danger,
 .exploration-feedback.is-incorrect {
   background: #fff0ed;
   border-color: #d9a29a;
+}
+
+.exploration-quiz-failures {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.exploration-quiz-failures > section {
+  background: rgb(255 255 255 / 0.65);
+  border-left: 3px solid #bd6256;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.exploration-quiz-failures p {
+  font-size: 0.88rem;
+  margin: 0;
 }
 
 .exploration-reader-controls {
@@ -4517,6 +4608,10 @@ button.danger,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .studio-quiz-answer-row {
+    grid-template-columns: minmax(12rem, 1fr) auto auto;
+  }
+
   .studio-choice-answer-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4645,6 +4740,20 @@ button.danger,
 
   .studio-choice-answer-fields .studio-option-delete {
     grid-column: 1;
+  }
+
+  .studio-quiz-answer-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .studio-quiz-answer-row .studio-option-delete {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .studio-quiz-answer-feedback {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .exploration-map-create-panel input {
