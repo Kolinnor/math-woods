@@ -296,8 +296,9 @@ export function ExplorationReader({
               {block.options.map((option) => {
                 const selected = selectedIds.includes(String(option.id));
                 return (
-                  <label key={option.id}>
+                  <label key={option.id} className="exploration-quiz-option">
                     <input
+                      className="exploration-quiz-option-input"
                       type="checkbox"
                       name={`quiz-${block.id}-${pathIndex}`}
                       checked={selected}
@@ -308,13 +309,13 @@ export function ExplorationReader({
                           : [...selectedIds, String(option.id)]
                       )}
                     />
-                    <span>{option.label}</span>
+                    <span className="exploration-quiz-option-label">{option.label}</span>
                   </label>
                 );
               })}
             </div>
           ) : <p className="muted">This quiz has no answers yet.</p>}
-          <button type="button" disabled={isPending || selectedIds.length === 0 || block.options.length === 0} onClick={() => submitResponse(block, selectedIds, pathIndex)}>Check answers</button>
+          <button className="exploration-quiz-submit" type="button" disabled={isPending || selectedIds.length === 0 || block.options.length === 0} onClick={() => submitResponse(block, selectedIds, pathIndex)}>Check answers</button>
           {result && (
             <div className={`exploration-feedback ${result.isCorrect === true ? "is-correct" : "is-incorrect"}`}>
               <strong>{result.isCorrect === true ? "Correct" : "Some answers need another look"}</strong>

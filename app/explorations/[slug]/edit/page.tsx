@@ -25,6 +25,7 @@ import { ExplorationBlockKindSelect } from "@/components/ExplorationBlockKindSel
 import { ExplorationBlockList } from "@/components/ExplorationBlockList";
 import { ExplorationBlockNameHelp } from "@/components/ExplorationBlockNameHelp";
 import { ExplorationChoiceAnswerList } from "@/components/ExplorationChoiceAnswerList";
+import { ExplorationHelpTooltip } from "@/components/ExplorationHelpTooltip";
 import { ExplorationMapCanvas, type ExplorationMapBlock } from "@/components/ExplorationMapCanvas";
 import { ExplorationNextBlockFields } from "@/components/ExplorationNextBlockFields";
 import { ExplorationSettingsButton } from "@/components/ExplorationSettingsButton";
@@ -42,6 +43,7 @@ import {
   updateExplorationBlockAction,
   updateExplorationBlockContinueFormAction,
   updateExplorationBlockNameAction,
+  updateExplorationQuizSuccessMessageAction,
   updateExplorationMetadataAction,
   updateExplorationOptionAction
 } from "@/lib/actions/exploration-actions";
@@ -219,7 +221,13 @@ export default async function EditExplorationPage({
             {selectedBlock ? (() => {
               const blockFormId = `exploration-block-${selectedBlock.id}-form`;
               return (
-                <article key={selectedBlock.id} id={`block-${selectedBlock.id}`} className="studio-block-editor">
+                <article
+                  key={selectedBlock.id}
+                  id={`block-${selectedBlock.id}`}
+                  className={selectedBlock.kind === ExplorationBlockKind.QUIZ
+                    ? "studio-block-editor studio-quiz-block-editor"
+                    : "studio-block-editor"}
+                >
                   <div className="studio-block-topline">
                     <div className="studio-block-heading">
                       <strong>Block</strong><span aria-hidden="true">-</span>
@@ -245,23 +253,7 @@ export default async function EditExplorationPage({
                     {selectedBlock.kind !== ExplorationBlockKind.DIVIDER && selectedBlock.kind !== ExplorationBlockKind.HEADING && (
                       <AutoSaveMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} localDrafts={false} minHeight={selectedBlock.kind === ExplorationBlockKind.CHOICE ? "5rem" : "7rem"} lineNumbers={false} />
                     )}
-                    {selectedBlock.kind === ExplorationBlockKind.QUIZ && (
-                      <div className="studio-quiz-success-message">
-                        <span className="text-sm font-medium">In case of success</span>
-                        <AutoSaveMarkdownEditor name="explanationMarkdown" initialValue={selectedBlock.explanationMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:success`} localDrafts={false} minHeight="5rem" lineNumbers={false} />
-                      </div>
-                    )}
                   </AutoSaveForm>
-
-                  {selectedBlock.kind !== ExplorationBlockKind.CHOICE && (
-                    <AutoSaveForm action={updateExplorationBlockContinueFormAction.bind(null, selectedBlock.id)} className="studio-block-route" statusClassName="sr-only">
-                      <ExplorationNextBlockFields
-                        blocks={blockLabels.filter((block) => block.id !== selectedBlock.id)}
-                        initialAutomatic={selectedBlock.autoContinue}
-                        initialBlockId={selectedBlock.continueToBlockId}
-                      />
-                    </AutoSaveForm>
-                  )}
 
                   {(selectedBlock.kind === ExplorationBlockKind.QUIZ || selectedBlock.kind === ExplorationBlockKind.CHOICE) && (
                     <section className="studio-option-editor">
@@ -279,8 +271,12 @@ export default async function EditExplorationPage({
                               <label><span>Label</span><input name="label" defaultValue={option.label} required /></label>
                               <label className="checkbox-field"><input name="isCorrectField" type="hidden" value="true" /><input name="isCorrect" type="checkbox" defaultChecked={option.isCorrect === true} /><span><strong>Correct</strong></span></label>
                               <div className="studio-quiz-answer-feedback">
-                                <span className="text-sm font-medium">Failure explanation</span>
-                                <small>Shown only when this answer is selected incorrectly or should have been selected.</small>
+                                <div className="studio-quiz-answer-feedback-heading">
+                                  <span className="text-sm font-medium">Failure explanation</span>
+                                  <ExplorationHelpTooltip label="About failure explanations">
+                                    Shown only when this answer is selected incorrectly or should have been selected.
+                                  </ExplorationHelpTooltip>
+                                </div>
                                 <AutoSaveMarkdownEditor name="feedbackMarkdown" initialValue={option.feedbackMarkdown ?? ""} draftKey={`exploration:option:${option.id}:failure`} localDrafts={false} minHeight="4.5rem" lineNumbers={false} />
                               </div>
                             </AutoSaveForm>
@@ -295,6 +291,27 @@ export default async function EditExplorationPage({
                         </form>
                       </div>
                     </section>
+                  )}
+
+                  {selectedBlock.kind === ExplorationBlockKind.QUIZ && (
+                    <AutoSaveForm
+                      action={updateExplorationQuizSuccessMessageAction.bind(null, selectedBlock.id)}
+                      className="studio-quiz-success-message"
+                      statusClassName="sr-only"
+                    >
+                      <span className="text-sm font-medium">In case of success</span>
+                      <AutoSaveMarkdownEditor name="explanationMarkdown" initialValue={selectedBlock.explanationMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:success`} localDrafts={false} minHeight="5rem" lineNumbers={false} />
+                    </AutoSaveForm>
+                  )}
+
+                  {selectedBlock.kind !== ExplorationBlockKind.CHOICE && (
+                    <AutoSaveForm action={updateExplorationBlockContinueFormAction.bind(null, selectedBlock.id)} className="studio-block-route" statusClassName="sr-only">
+                      <ExplorationNextBlockFields
+                        blocks={blockLabels.filter((block) => block.id !== selectedBlock.id)}
+                        initialAutomatic={selectedBlock.autoContinue}
+                        initialBlockId={selectedBlock.continueToBlockId}
+                      />
+                    </AutoSaveForm>
                   )}
                 </article>
               );

@@ -3289,7 +3289,12 @@ textarea {
   border-radius: 4px;
   display: grid;
   gap: 0.45rem;
+  margin: 0.7rem;
   padding: 0.6rem;
+}
+
+.studio-quiz-block-editor .markdown-editor-toolbar {
+  display: none;
 }
 
 .studio-option-editor {
@@ -3343,13 +3348,10 @@ textarea {
   grid-row: 2;
 }
 
-.studio-quiz-answer-feedback > small {
-  color: var(--muted);
-  font-size: 0.7rem;
-}
-
-.studio-quiz-answer-feedback .markdown-editor-toolbar {
-  margin-bottom: 0.25rem;
+.studio-quiz-answer-feedback-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
 }
 
 .studio-option-advanced {
@@ -3663,6 +3665,22 @@ textarea {
 .exploration-block-map .react-flow__edge.selected .react-flow__edge-path {
   stroke: #b14e3f;
   stroke-width: 2.7;
+}
+
+.exploration-block-map .react-flow__edgeupdater-target {
+  transform: translateY(var(--exploration-edge-reconnect-offset));
+}
+
+.exploration-block-map .react-flow__edgeupdater-target:hover,
+.exploration-block-map .react-flow__edge.selected .react-flow__edgeupdater-target {
+  cursor: grab;
+  fill: rgb(255 255 255 / 0.92);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.exploration-block-map .react-flow__edgeupdater-target:active {
+  cursor: grabbing;
 }
 
 .exploration-block-map .react-flow__edge-text {
@@ -4278,15 +4296,56 @@ button.danger,
   }
 }
 
-.exploration-quiz-options label {
+.exploration-quiz-options {
+  gap: 0.45rem;
+}
+
+.exploration-quiz-options .exploration-quiz-option {
   align-items: center;
   background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: 5px;
   cursor: pointer;
-  display: flex;
-  gap: 0.65rem;
-  min-height: 2.8rem;
-  padding: 0.55rem 0.7rem;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 1.05rem minmax(0, 1fr);
+  min-height: 3rem;
+  padding: 0.65rem 0.8rem;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.exploration-quiz-options .exploration-quiz-option:hover {
+  background: #f8fbf8;
+  border-color: #9dad9f;
+}
+
+.exploration-quiz-options .exploration-quiz-option:has(.exploration-quiz-option-input:focus-visible) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.exploration-quiz-options .exploration-quiz-option:has(.exploration-quiz-option-input:checked) {
+  background: #eaf2ec;
+  border-color: #6f9279;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.exploration-quiz-option-input {
+  accent-color: var(--accent);
+  height: 1.05rem;
+  margin: 0;
+  padding: 0;
+  width: 1.05rem;
+}
+
+.exploration-quiz-option-input:focus {
+  box-shadow: none;
+}
+
+.exploration-quiz-option-label {
+  line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .exploration-quiz-instruction {
@@ -4295,9 +4354,15 @@ button.danger,
   margin: 0;
 }
 
+.exploration-quiz-submit {
+  justify-self: start;
+  min-width: 10rem;
+}
+
 .exploration-feedback {
   background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: 5px;
   display: grid;
   gap: 0.5rem;
   padding: 0.75rem;
@@ -4321,6 +4386,7 @@ button.danger,
 .exploration-quiz-failures > section {
   background: rgb(255 255 255 / 0.65);
   border-left: 3px solid #bd6256;
+  border-radius: 3px;
   display: grid;
   gap: 0.3rem;
   padding: 0.55rem 0.65rem;

@@ -1091,11 +1091,11 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
     ? ExplorationQuizType.MULTIPLE_CHOICE
     : null;
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Block content") || null;
-  const explanationMarkdown = boundedText(
-    formData.get("explanationMarkdown"),
-    CONTENT_LIMITS.markdown,
-    "Explanation"
-  ) || null;
+  const explanationMarkdown = kind === ExplorationBlockKind.QUIZ
+    ? formData.has("explanationMarkdown")
+      ? boundedText(formData.get("explanationMarkdown"), CONTENT_LIMITS.markdown, "Explanation") || null
+      : block.explanationMarkdown
+    : null;
   // A newly selected reference type has no matching slug field until the editor rerenders.
   const referenceSlug = block.kind === kind
     ? ensureSlug(String(formData.get("referenceSlug") ?? ""))
@@ -1158,6 +1158,26 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
     );
   }
   revalidateExploration(exploration.slug, { editor: block.kind !== kind });
+}
+
+export async function updateExplorationQuizSuccessMessageAction(blockId: number, formData: FormData) {
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
+  if (block.kind !== ExplorationBlockKind.QUIZ) throw new Error("This block is not a quiz.");
+  const explanationMarkdown = boundedText(
+    formData.get("explanationMarkdown"),
+    CONTENT_LIMITS.markdown,
+    "Success message"
+  ) || null;
+  if (explanationMarkdown === block.explanationMarkdown) return;
+  await prisma.explorationBlock.update({
+    where: { id: blockId },
+    data: {
+      explanationMarkdown,
+      explanationHtml: explanationMarkdown ? await renderMarkdownContent(explanationMarkdown) : null
+    }
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Updated quiz success message on block ${block.position}`);
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function setExplorationBlockPositionAction(blockId: number, requestedPosition: number) {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -64,6 +64,7 @@ type GraphEdgeData = {
 
 const MAP_HISTORY_LIMIT = 50;
 const AUTOMATIC_EDGE_MARKER = "url(#exploration-automatic-edge-marker)";
+const EDGE_RECONNECT_RADIUS = 12;
 
 function mapHistoryState(blocks: ExplorationMapBlock[]): ExplorationMapHistoryBlock[] {
   return blocks.map((block) => ({
@@ -477,6 +478,7 @@ export function ExplorationMapCanvas({
   return (
     <div className="exploration-block-map" aria-busy={isPending}>
       <ReactFlow
+        style={{ "--exploration-edge-reconnect-offset": `${EDGE_RECONNECT_RADIUS}px` } as CSSProperties}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -484,7 +486,8 @@ export function ExplorationMapCanvas({
         onEdgesChange={onEdgesChange}
         onConnect={connect}
         onReconnect={reconnect}
-        reconnectRadius={18}
+        reconnectRadius={EDGE_RECONNECT_RADIUS}
+        connectionRadius={28}
         onSelectionChange={selectionChanged}
         onNodeClick={(_, node) => {
           setSelectedNodeId(Number(node.id));
