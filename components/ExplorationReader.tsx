@@ -258,7 +258,11 @@ export function ExplorationReader({
           feedbackItems: result.feedbackItems,
           nextBlockId: result.nextBlockId
         } }));
-        if (result.nextBlockId && (block.kind === "CHOICE" || (block.autoContinue && result.isCorrect === true))) {
+        if (
+          result.nextBlockId &&
+          result.nextBlockId !== block.id &&
+          (block.kind === "CHOICE" || (block.autoContinue && result.isCorrect === true))
+        ) {
           window.setTimeout(() => revealAfter(pathIndex, result.nextBlockId!, nextState, false), 0);
         } else {
           truncateAfter(pathIndex);

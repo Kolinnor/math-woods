@@ -572,7 +572,7 @@ export async function restoreExplorationMapStateAction(
       continueToBlockId: block.isEnd ? null : target(block.continueToBlockId, false),
       autoContinue: block.isEnd || block.continueToBlockId === null ? false : block.autoContinue === true,
       name: boundedText(block.name, CONTENT_LIMITS.title, "Block name") || null,
-      options: block.options.map((option) => ({ id: option.id, toBlockId: target(option.toBlockId, false) })),
+      options: block.options.map((option) => ({ id: option.id, toBlockId: target(option.toBlockId) })),
       outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, toBlockId: target(outcome.toBlockId) }))
     };
   });
@@ -677,7 +677,6 @@ export async function setExplorationChoiceBlockTargetAction(optionId: number, ta
   const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
   if (block.kind !== ExplorationBlockKind.CHOICE) throw new Error("This option is not a choice path.");
   const normalizedTarget = targetBlockId === null ? null : Number(targetBlockId);
-  if (normalizedTarget === block.id) throw new Error("A choice cannot link to its own block.");
   if (normalizedTarget !== null) {
     const target = await prisma.explorationBlock.findFirst({
       where: { id: normalizedTarget, page: { playlistId: page.playlistId } },

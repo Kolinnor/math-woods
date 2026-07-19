@@ -61,11 +61,13 @@ export default async function MathematiciansPage() {
             </div>
             <div className="historical-mathematician-body">
               <h2>{mathematician.name}</h2>
-              <p>{mathematician.lifespan}</p>
-              <dl>
-                <dt>{text.birthplace}</dt>
-                <dd>{mathematician.birthPlace}</dd>
-              </dl>
+              {mathematician.lifespan && <p>{mathematician.lifespan}</p>}
+              {mathematician.birthPlace && (
+                <dl>
+                  <dt>{text.birthplace}</dt>
+                  <dd>{mathematician.birthPlace}</dd>
+                </dl>
+              )}
             </div>
           </Link>
         ))}

@@ -30,8 +30,8 @@ export async function createMathematicianAction(formData: FormData) {
   await assertRateLimit(`mathematician:${user.id}`, 12, 60_000);
 
   const name = requiredBoundedText(formData.get("name"), CONTENT_LIMITS.title, "Name");
-  const lifespan = requiredBoundedText(formData.get("lifespan"), CONTENT_LIMITS.shortText, "Dates");
-  const birthPlace = requiredBoundedText(formData.get("birthPlace"), CONTENT_LIMITS.shortText, "Birthplace");
+  const lifespan = boundedText(formData.get("lifespan"), CONTENT_LIMITS.shortText, "Dates");
+  const birthPlace = boundedText(formData.get("birthPlace"), CONTENT_LIMITS.shortText, "Birthplace");
   const portraitUrl = normalizePortraitUrl(formData.get("portraitUrl"));
   const slug = await uniqueSlug("mathematician", name);
 

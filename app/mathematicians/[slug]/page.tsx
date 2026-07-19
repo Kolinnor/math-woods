@@ -44,6 +44,7 @@ export default async function MathematicianPage({ params }: PageProps) {
   ]);
   if (!mathematician) notFound();
   const text = copy[locale];
+  const hasFacts = Boolean(mathematician.lifespan || mathematician.birthPlace);
 
   return (
     <ForestPageLayout
@@ -59,7 +60,10 @@ export default async function MathematicianPage({ params }: PageProps) {
       ) : undefined}
     >
       <div className="historical-mathematician-page-content">
-        <article className="historical-mathematician-profile">
+        <article className={hasFacts
+          ? "historical-mathematician-profile"
+          : "historical-mathematician-profile historical-mathematician-profile-no-facts"}
+        >
           <div className="historical-mathematician-profile-portrait">
             {mathematician.portraitUrl ? (
               <img src={mathematician.portraitUrl} alt={text.portraitAlt(mathematician.name)} />
@@ -67,16 +71,22 @@ export default async function MathematicianPage({ params }: PageProps) {
               <span aria-hidden="true">{mathematician.name.charAt(0)}</span>
             )}
           </div>
-          <dl>
-            <div>
-              <dt>{text.dates}</dt>
-              <dd>{mathematician.lifespan}</dd>
-            </div>
-            <div>
-              <dt>{text.birthplace}</dt>
-              <dd>{mathematician.birthPlace}</dd>
-            </div>
-          </dl>
+          {hasFacts && (
+            <dl>
+              {mathematician.lifespan && (
+                <div>
+                  <dt>{text.dates}</dt>
+                  <dd>{mathematician.lifespan}</dd>
+                </div>
+              )}
+              {mathematician.birthPlace && (
+                <div>
+                  <dt>{text.birthplace}</dt>
+                  <dd>{mathematician.birthPlace}</dd>
+                </div>
+              )}
+            </dl>
+          )}
         </article>
         {mathematician.contentHtml && (
           <article

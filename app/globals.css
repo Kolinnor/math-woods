@@ -8813,6 +8813,11 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   overflow: hidden;
 }
 
+.historical-mathematician-profile-no-facts {
+  grid-template-columns: minmax(14rem, 21rem);
+  max-width: 21rem;
+}
+
 .historical-mathematician-page-content {
   display: grid;
   gap: 1rem;

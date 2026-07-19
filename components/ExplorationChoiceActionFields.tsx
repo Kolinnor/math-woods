@@ -15,8 +15,10 @@ export function ExplorationChoiceActionFields({
       <input name="action" type="hidden" value="PAGE" />
       <select name="toBlockId" defaultValue={toBlockId ?? ""}>
         <option value="">End here</option>
-        {blocks.filter((block) => block.id !== currentBlockId).map((block) => (
-          <option key={block.id} value={block.id}>{block.label}</option>
+        {blocks.map((block) => (
+          <option key={block.id} value={block.id}>
+            {block.label}{block.id === currentBlockId ? " (current block)" : ""}
+          </option>
         ))}
       </select>
     </label>

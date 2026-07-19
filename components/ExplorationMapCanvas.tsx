@@ -250,7 +250,12 @@ export function ExplorationMapCanvas({
     if (isPending) return;
     const sourceId = Number(connection.source);
     const targetId = Number(connection.target);
-    if (!Number.isInteger(sourceId) || !Number.isInteger(targetId) || sourceId === targetId) return;
+    const isChoiceConnection = connection.sourceHandle?.startsWith("choice-") === true;
+    if (
+      !Number.isInteger(sourceId) ||
+      !Number.isInteger(targetId) ||
+      (sourceId === targetId && !isChoiceConnection)
+    ) return;
     const previous = blocksRef.current;
     setError("");
     startTransition(async () => {
@@ -283,7 +288,11 @@ export function ExplorationMapCanvas({
     if (isPending || !edge.data) return;
     const sourceId = Number(edge.source);
     const targetId = Number(connection.target);
-    if (!Number.isInteger(sourceId) || !Number.isInteger(targetId) || sourceId === targetId) return;
+    if (
+      !Number.isInteger(sourceId) ||
+      !Number.isInteger(targetId) ||
+      (sourceId === targetId && edge.data.kind !== "choice")
+    ) return;
     const previous = blocksRef.current;
     setError("");
     startTransition(async () => {
