@@ -299,6 +299,8 @@ model Mathematician {
   lifespan    String
   birthPlace  String
   portraitUrl String?
+  contentMarkdown String @default("")
+  contentHtml     String @default("")
   createdById Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

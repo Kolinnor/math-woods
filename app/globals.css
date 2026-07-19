@@ -8813,6 +8813,11 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   overflow: hidden;
 }
 
+.historical-mathematician-page-content {
+  display: grid;
+  gap: 1rem;
+}
+
 .historical-mathematician-profile-portrait {
   align-items: center;
   aspect-ratio: 4 / 5;
@@ -8851,6 +8856,13 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   margin: 0;
 }
 
+.historical-mathematician-content {
+  margin: 0 auto;
+  max-width: 56rem;
+  padding: 1.5rem;
+  width: 100%;
+}
+
 .historical-mathematician-form {
   display: grid;
   gap: 1rem;
@@ -8863,6 +8875,17 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.historical-mathematician-form > .historical-mathematician-editor-field {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: 1fr;
+}
+
+.historical-mathematician-editor-field > span {
+  font-size: 0.84rem;
+  font-weight: 650;
 }
 
 .historical-mathematician-form label {

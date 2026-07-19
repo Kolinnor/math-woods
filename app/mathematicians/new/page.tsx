@@ -59,7 +59,7 @@ export default async function NewMathematicianPage() {
         </div>
         <label>
           <span>{text.portrait}</span>
-          <input name="portraitUrl" type="url" placeholder="https://..." autoComplete="url" />
+          <input name="portraitUrl" type="text" placeholder="https://..." autoComplete="url" />
           <small>{text.portraitHint}</small>
         </label>
         <button type="submit" className="primary">{text.submit}</button>
