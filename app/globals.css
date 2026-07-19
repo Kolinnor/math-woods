@@ -8716,6 +8716,208 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   font-variant-numeric: tabular-nums;
 }
 
+.historical-mathematicians-intro {
+  align-items: end;
+  border-bottom: 1px solid #cfc6b3;
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(14rem, 0.7fr) minmax(20rem, 1.3fr);
+  margin-bottom: 1.4rem;
+  padding: 0.35rem 0 1.35rem;
+}
+
+.historical-mathematicians-intro h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.75rem, 4vw, 2.45rem);
+  font-weight: 600;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.historical-mathematicians-intro p {
+  color: #4e594f;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 48rem;
+}
+
+.historical-mathematician-grid {
+  display: grid;
+  gap: 1.15rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.historical-mathematician-card {
+  background: #f8f4ea;
+  border: 1px solid #d8d0bd;
+  border-radius: 7px;
+  display: grid;
+  grid-template-columns: 11.5rem minmax(0, 1fr);
+  min-height: 23rem;
+  overflow: hidden;
+}
+
+.historical-mathematician-portrait {
+  background: #d8d1c1;
+  min-height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.historical-mathematician-portrait::after {
+  background: linear-gradient(180deg, transparent 58%, rgb(17 25 20 / 0.36));
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.historical-mathematician-portrait > img {
+  filter: saturate(0.68) sepia(0.12);
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  width: 100%;
+}
+
+.historical-mathematician-index {
+  bottom: 0.7rem;
+  color: #fff;
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 600;
+  left: 0.75rem;
+  position: absolute;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.7);
+  z-index: 1;
+}
+
+.historical-mathematician-source {
+  align-items: center;
+  background: rgb(248 244 234 / 0.92);
+  border: 1px solid rgb(255 255 255 / 0.6);
+  border-radius: 50%;
+  color: #314b3a;
+  display: flex;
+  height: 2rem;
+  justify-content: center;
+  position: absolute;
+  right: 0.65rem;
+  top: 0.65rem;
+  width: 2rem;
+  z-index: 1;
+}
+
+.historical-mathematician-source:hover {
+  background: #fff;
+  color: var(--accent);
+}
+
+.historical-mathematician-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1.15rem 1.2rem;
+}
+
+.historical-mathematician-heading {
+  align-items: start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.historical-mathematician-heading > div {
+  min-width: 0;
+}
+
+.historical-mathematician-heading p {
+  color: #687268;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.28rem;
+  text-transform: uppercase;
+}
+
+.historical-mathematician-heading h2 {
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.08;
+  margin: 0;
+}
+
+.historical-mathematician-heading > span {
+  color: #687268;
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.historical-mathematician-summary {
+  color: #3e493f;
+  font-size: 0.83rem;
+  line-height: 1.52;
+  margin: 0.9rem 0 0;
+}
+
+.historical-mathematician-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+  margin-top: 0.85rem;
+}
+
+.historical-mathematician-fields span {
+  border: 1px solid #c7cfbf;
+  border-radius: 3px;
+  color: #4f6253;
+  font-size: 0.64rem;
+  padding: 0.12rem 0.35rem;
+}
+
+.historical-mathematician-legacy {
+  border-top: 1px solid #d8d0bd;
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+}
+
+.historical-mathematician-legacy > span {
+  color: #2f6b45;
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.historical-mathematician-legacy p {
+  color: #4e594f;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.historical-mathematician-signature {
+  color: #7c725f;
+  font-family: var(--font-serif);
+  font-size: 0.8rem;
+  font-style: italic;
+  margin: auto 0 0;
+  padding-top: 0.85rem;
+  text-align: right;
+}
+
+.historical-mathematician-credits {
+  color: #687268;
+  font-size: 0.72rem;
+  margin: 1rem 0 0;
+  text-align: right;
+}
+
 .profile-domain-picker {
   border: 0;
   display: grid;
@@ -8819,8 +9021,28 @@ body:has(.forest-page-shell) .header-search input::placeholder {
     justify-items: start;
   }
 
+  .historical-mathematicians-intro,
+  .historical-mathematician-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .historical-mathematician-card {
+    grid-template-columns: minmax(8rem, 0.7fr) minmax(0, 1.3fr);
+  }
+
   .profile-domain-picker > div {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .historical-mathematician-card {
+    grid-template-columns: 1fr;
+  }
+
+  .historical-mathematician-portrait {
+    aspect-ratio: 4 / 3;
+    min-height: 0;
   }
 }
 
@@ -9725,16 +9947,27 @@ button.relation-remove-button {
   padding-bottom: 0.75rem;
 }
 
+.proof-list {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  padding-top: 1rem;
+}
+
 .proof-card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 7px;
+  max-width: 100%;
+  min-width: 0;
   padding: 1.25rem;
 }
 
 .proof-card .prose-math {
   font-size: 0.96rem;
   line-height: 1.68;
+  min-width: 0;
 }
 
 .proof-accepted {

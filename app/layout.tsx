@@ -93,6 +93,7 @@ try {
 `;
 
 const mathematiciansRoute = "/mathematicians" as Route;
+const usersRoute = "/users" as Route;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -153,6 +154,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/concepts">{t.nav.concepts}</Link>
               <Link href={"/explorations" as Route}>{t.nav.playlists}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
+              <Link href={usersRoute}>{t.nav.users}</Link>
               <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>
             </div>
             <div className="nav-tools">

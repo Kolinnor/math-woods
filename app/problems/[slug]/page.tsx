@@ -594,7 +594,7 @@ export default async function ProblemPage({
                 <span>{t.problemDetail.revealSolutions}</span>
                 <small>{t.problemDetail.revealWarning}</small>
               </summary>
-              <div className="grid gap-4 pt-4">
+              <div className="proof-list">
                 {proofs.map((proof) => {
                   const votes = proofVotes.get(proof.id) ?? 0;
                   const userVotedProof = ownProofVoteIds.has(proof.id);

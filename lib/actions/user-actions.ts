@@ -50,6 +50,6 @@ export async function updateProfileAction(formData: FormData) {
   });
 
   revalidatePath(`/profile/${user.username}`);
-  revalidatePath("/mathematicians");
+  revalidatePath("/users");
   redirect(`/profile/${user.username}`);
 }
