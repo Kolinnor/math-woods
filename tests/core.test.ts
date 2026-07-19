@@ -21,6 +21,7 @@ import {
   type ImageStorageConfig
 } from "../lib/image-storage.ts";
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
+import { chatDayKey } from "../lib/chat-dates.ts";
 import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
@@ -179,6 +180,8 @@ const unlock = unlockDate(start);
 assert.equal(unlock.toISOString(), "2026-06-04T10:00:00.000Z");
 assert.equal(discussionIsUnlocked(new Date("2099-01-01T00:00:00.000Z"), start), true);
 assert.equal(formatUnlockDistance(new Date("2026-06-04T11:30:00.000Z"), start), "1 h 30");
+assert.equal(chatDayKey("2026-07-19T00:30:00.000Z", "UTC"), "2026-07-19");
+assert.equal(chatDayKey("2026-07-19T00:30:00.000Z", "America/New_York"), "2026-07-18");
 
 const parsedDoc = parseMarkdownDocument(`---
 type: "problem"

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, Send } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { FriendsMenuData } from "@/lib/friends-menu";
 
@@ -12,10 +13,6 @@ const FRIENDS_MENU_POLL_MS = 5000;
 const CHAT_POLL_MS = 3000;
 
 type MenuFriend = FriendsMenuData["friends"][number];
-
-function messageTime(value: string) {
-  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-}
 
 export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuData }) {
   const [data, setData] = useState(initialData);
@@ -209,15 +206,28 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
 
             <div className="friends-mini-chat-thread" ref={threadRef} aria-live="polite">
               {!chatLoading && messages.length === 0 && !chatError && <p>{data.labels.noMessagesYet}</p>}
-              {messages.map((message) => (
-                <article
-                  key={message.id}
-                  className={message.authorId === data.currentUserId ? "friends-mini-message is-own" : "friends-mini-message"}
-                  title={messageTime(message.createdAt)}
-                >
-                  <MarkdownBlock html={message.bodyHtml} />
-                </article>
-              ))}
+              {messages.map((message, index) => {
+                const dayKey = chatDayKey(message.createdAt, data.timeZone);
+                const startsNewDay = index === 0
+                  || chatDayKey(messages[index - 1].createdAt, data.timeZone) !== dayKey;
+                return (
+                  <Fragment key={message.id}>
+                    {startsNewDay && (
+                      <div className="chat-day-separator" role="separator">
+                        <time dateTime={dayKey}>{formatChatDay(message.createdAt, data.locale, data.timeZone)}</time>
+                      </div>
+                    )}
+                    <article
+                      className={message.authorId === data.currentUserId ? "friends-mini-message is-own" : "friends-mini-message"}
+                    >
+                      <MarkdownBlock html={message.bodyHtml} />
+                      <time className="friends-mini-message-time" dateTime={message.createdAt}>
+                        {formatChatTime(message.createdAt, data.locale, data.timeZone)}
+                      </time>
+                    </article>
+                  </Fragment>
+                );
+              })}
             </div>
 
             {chatError && <p className="friends-mini-chat-error" role="alert">{chatError}</p>}

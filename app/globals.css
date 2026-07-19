@@ -721,6 +721,15 @@ a {
   margin-bottom: 0;
 }
 
+.friends-mini-message-time {
+  color: var(--muted);
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1;
+  margin-top: 0.35rem;
+  text-align: right;
+}
+
 .friends-menu-popover .friends-mini-chat-error {
   color: #a3342c;
   font-size: 0.75rem;
@@ -9314,6 +9323,26 @@ button.relation-remove-button {
   max-height: min(62vh, 42rem);
   overflow-y: auto;
   scroll-behavior: smooth;
+}
+
+.chat-day-separator {
+  align-items: center;
+  color: var(--muted);
+  display: grid;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.65rem;
+  grid-template-columns: minmax(1rem, 1fr) auto minmax(1rem, 1fr);
+  justify-self: stretch;
+  margin: 0.2rem 0;
+  text-align: center;
+}
+
+.chat-day-separator::before,
+.chat-day-separator::after {
+  background: var(--line);
+  content: "";
+  height: 1px;
 }
 
 .chat-live-status {

@@ -1,6 +1,8 @@
 import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { getTranslations } from "@/lib/i18n/server";
+import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
+import type { InterfaceLocale } from "@/lib/i18n/types";
+import { getRequestTimeZone } from "@/lib/server-time-zone";
 import { displayNameForUser } from "@/lib/user-display";
 
 const ONLINE_WINDOW_MS = 10 * 60 * 1000;
@@ -9,12 +11,14 @@ export type FriendsMenuData = {
   actionCount: number;
   currentUserId: number;
   incomingCount: number;
+  locale: InterfaceLocale;
   friends: Array<{
     id: number;
     name: string;
     online: boolean;
     username: string;
   }>;
+  timeZone: string | null;
   unreadChatCount: number;
   labels: {
     friends: string;
@@ -34,7 +38,8 @@ export type FriendsMenuData = {
 };
 
 export async function friendsMenuDataForUser(userId: number): Promise<FriendsMenuData> {
-  const t = await getTranslations();
+  const [locale, timeZone] = await Promise.all([getInterfaceLocale(), getRequestTimeZone()]);
+  const t = dictionaryForLocale(locale);
   const now = new Date();
   const onlineSince = new Date(now.getTime() - ONLINE_WINDOW_MS);
   const [friendships, incomingCount, unreadChatCount] = await Promise.all([
@@ -95,7 +100,9 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
     actionCount,
     currentUserId: userId,
     incomingCount,
+    locale,
     friends,
+    timeZone,
     unreadChatCount,
     labels: {
       friends: t.social.friends,

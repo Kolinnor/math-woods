@@ -8,9 +8,10 @@ import { createChatMessageAction, sendFriendRequestAction } from "@/lib/actions/
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { directChatPair } from "@/lib/direct-chat";
-import { getTranslations } from "@/lib/i18n/server";
+import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
+import { getRequestTimeZone } from "@/lib/server-time-zone";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,8 @@ const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
 
 export default async function ChatPage({ params }: { params: Promise<{ username: string }> }) {
   const user = await requireVerifiedUser();
-  const t = await getTranslations();
+  const [locale, timeZone] = await Promise.all([getInterfaceLocale(), getRequestTimeZone()]);
+  const t = dictionaryForLocale(locale);
   const { username } = await params;
   const otherUser = await prisma.user.findUnique({
     where: { username },
@@ -124,6 +126,8 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           currentUserId={user.id}
           otherUsername={otherUser.username}
           initialMessages={messages}
+          locale={locale}
+          timeZone={timeZone}
           labels={{
             live: t.social.live,
             livePaused: t.social.livePaused,
