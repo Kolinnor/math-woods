@@ -833,6 +833,11 @@ assert.equal(movedBackToUnsorted.find((block) => block.id === 4)?.folderId, null
 const explorationFolders = [{ id: 10 }, { id: 20 }, { id: 30 }];
 assert.deepEqual(moveExplorationBlockFolder(explorationFolders, 30, 10, "before").map((folder) => folder.id), [30, 10, 20]);
 assert.deepEqual(moveExplorationBlockFolder(explorationFolders, 10, 20, "after").map((folder) => folder.id), [20, 10, 30]);
+const reorderedFolders = moveExplorationBlockFolder(explorationFolders, 20, 10, "before");
+assert.deepEqual(
+  orderExplorationBlocksByFolders(folderedBlocks, reorderedFolders.map((folder) => folder.id)).map((block) => block.id),
+  [1, 2, 3, 4]
+);
 const quizOptions = [
   { id: 1, isCorrect: true },
   { id: 2, isCorrect: false },

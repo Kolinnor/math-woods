@@ -50,6 +50,7 @@ import {
 import { deletePlaylistAction } from "@/lib/actions/playlist-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { orderExplorationBlocksByFolders } from "@/lib/exploration-block-folders";
 import { canEditExploration, explorationBlockLabel } from "@/lib/explorations";
 import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { canDeletePlaylist } from "@/lib/permissions";
@@ -119,9 +120,12 @@ export default async function EditExplorationPage({
   });
   if (!exploration || !canEditExploration(user, exploration)) notFound();
 
-  const blocks = exploration.pages
-    .flatMap((page) => page.blocks)
-    .sort((left, right) => left.position - right.position || left.id - right.id);
+  const blocks = orderExplorationBlocksByFolders(
+    exploration.pages
+      .flatMap((page) => page.blocks)
+      .sort((left, right) => left.position - right.position || left.id - right.id),
+    exploration.blockFolders.map((folder) => folder.id)
+  );
   const selectedBlockId = Number(selectedBlockRaw);
   const selectedBlock = blocks.find((block) => block.id === selectedBlockId) ?? blocks[0] ?? null;
   const mapMode = view !== "block" || !selectedBlockRaw;

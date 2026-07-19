@@ -125,16 +125,21 @@ export function ExplorationBlockList({
   }
 
   function moveFolder(folderId: number, targetFolderId: number, placement: "before" | "after") {
-    const previous = folders;
+    const previousFolders = folders;
+    const previousBlocks = blocks;
     const next = moveExplorationBlockFolder(folders, folderId, targetFolderId, placement);
     if (next === folders || next.every((folder, index) => folder.id === folders[index]?.id)) return;
-    setFolders(next.map((folder, index) => ({ ...folder, position: index + 1 })));
+    const nextFolders = next.map((folder, index) => ({ ...folder, position: index + 1 }));
+    const nextBlocks = orderExplorationBlocksByFolders(blocks, nextFolders.map((folder) => folder.id));
+    setFolders(nextFolders);
+    setBlocks(nextBlocks);
     setError("");
     startTransition(async () => {
       try {
         await reorderExplorationBlockFoldersAction(explorationId, next.map((folder) => folder.id));
       } catch {
-        setFolders(previous);
+        setFolders(previousFolders);
+        setBlocks(previousBlocks);
         setError("The folder order could not be saved.");
       }
     });

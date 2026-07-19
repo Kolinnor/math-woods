@@ -39,6 +39,7 @@ import {
   clampOptionalInteger
 } from "@/lib/explorations";
 import { shouldCoalesceExplorationChange } from "@/lib/exploration-history";
+import { orderExplorationBlocksByFolders } from "@/lib/exploration-block-folders";
 import { parseContentLanguage } from "@/lib/languages";
 import { createNotification } from "@/lib/notifications";
 import { hasAdminPrivileges } from "@/lib/permissions";
@@ -1022,17 +1023,13 @@ export async function createExplorationBlockAction(pageId: number, formData: For
     : null;
   if (requestedBranchId && !branch) throw new Error("This branch does not belong to the page.");
   const referenceSlug = ensureSlug(String(formData.get("referenceSlug") ?? ""));
-  const [problem, concept, last] = await Promise.all([
+  const [problem, concept] = await Promise.all([
     kind === ExplorationBlockKind.PROBLEM && referenceSlug
       ? prisma.problem.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
       : null,
     kind === ExplorationBlockKind.CONCEPT && referenceSlug
       ? prisma.concept.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
-      : null,
-    prisma.explorationBlock.findFirst({
-      where: { pageId, branchId: requestedBranchId },
-      orderBy: { position: "desc" }
-    })
+      : null
   ]);
   if (kind === ExplorationBlockKind.PROBLEM && !problem) throw new Error("Problem not found.");
   if (kind === ExplorationBlockKind.CONCEPT && !concept) throw new Error("Concept not found.");
@@ -1042,22 +1039,50 @@ export async function createExplorationBlockAction(pageId: number, formData: For
     ? ExplorationQuizType.MULTIPLE_CHOICE
     : null;
 
-  const block = await prisma.explorationBlock.create({
-    data: {
-      pageId,
-      branchId: requestedBranchId,
-      kind,
-      name,
-      bodyMarkdown,
-      bodyHtml: bodyMarkdown ? await renderMarkdownContent(bodyMarkdown) : null,
-      position: (last?.position ?? 0) + 1,
-      problemId: problem?.id ?? null,
-      conceptId: concept?.id ?? null,
-      quizType,
-      settings: Prisma.JsonNull,
-      required: kind === ExplorationBlockKind.CHOICE || kind === ExplorationBlockKind.QUIZ || formData.get("required") === "on",
-      points: clampOptionalInteger(formData.get("points"), 0, 10000) ?? 0
+  const bodyHtml = bodyMarkdown ? await renderMarkdownContent(bodyMarkdown) : null;
+  const block = await prisma.$transaction(async (tx) => {
+    const [last, folders] = await Promise.all([
+      tx.explorationBlock.findFirst({
+        where: { page: { playlistId: page.playlistId } },
+        orderBy: [{ position: "desc" }, { id: "desc" }],
+        select: { position: true }
+      }),
+      tx.explorationBlockFolder.findMany({
+        where: { playlistId: page.playlistId },
+        orderBy: [{ position: "asc" }, { id: "asc" }],
+        select: { id: true }
+      })
+    ]);
+    const created = await tx.explorationBlock.create({
+      data: {
+        pageId,
+        branchId: requestedBranchId,
+        kind,
+        name,
+        bodyMarkdown,
+        bodyHtml,
+        position: (last?.position ?? 0) + 1,
+        problemId: problem?.id ?? null,
+        conceptId: concept?.id ?? null,
+        quizType,
+        settings: Prisma.JsonNull,
+        required: kind === ExplorationBlockKind.CHOICE || kind === ExplorationBlockKind.QUIZ || formData.get("required") === "on",
+        points: clampOptionalInteger(formData.get("points"), 0, 10000) ?? 0
+      }
+    });
+    const existingBlocks = await tx.explorationBlock.findMany({
+      where: { page: { playlistId: page.playlistId } },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+      select: { id: true, folderId: true }
+    });
+    const orderedBlocks = orderExplorationBlocksByFolders(existingBlocks, folders.map((folder) => folder.id));
+    for (const [index, orderedBlock] of orderedBlocks.entries()) {
+      await tx.explorationBlock.update({
+        where: { id: orderedBlock.id },
+        data: { position: index + 1 }
+      });
     }
+    return created;
   });
 
   await recordExplorationChange(
@@ -1243,12 +1268,24 @@ export async function reorderExplorationBlockFoldersAction(playlistId: number, r
   const existingIds = new Set(existingFolders.map((folder) => folder.id));
   const orderedIds = [...new Set(requestedFolderIds.filter((id) => Number.isInteger(id) && existingIds.has(id)))];
   if (orderedIds.length !== existingIds.size) throw new Error("The folder order is incomplete.");
+  const existingBlocks = await prisma.explorationBlock.findMany({
+    where: { page: { playlistId } },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: { id: true, folderId: true }
+  });
+  const orderedBlocks = orderExplorationBlocksByFolders(existingBlocks, orderedIds);
 
   await prisma.$transaction(
-    orderedIds.map((id, index) => prisma.explorationBlockFolder.update({
-      where: { id },
-      data: { position: index + 1 }
-    }))
+    [
+      ...orderedIds.map((id, index) => prisma.explorationBlockFolder.update({
+        where: { id },
+        data: { position: index + 1 }
+      })),
+      ...orderedBlocks.map((block, index) => prisma.explorationBlock.update({
+        where: { id: block.id },
+        data: { position: index + 1 }
+      }))
+    ]
   );
   await recordExplorationChange(playlistId, user.id, "Reordered block folders");
   revalidateExploration(exploration.slug);
@@ -1256,7 +1293,29 @@ export async function reorderExplorationBlockFoldersAction(playlistId: number, r
 
 export async function deleteExplorationBlockFolderAction(folderId: number) {
   const { user, folder, exploration } = await requireBlockFolderEditor(folderId);
-  await prisma.explorationBlockFolder.delete({ where: { id: folderId } });
+  const [remainingFolders, existingBlocks] = await Promise.all([
+    prisma.explorationBlockFolder.findMany({
+      where: { playlistId: exploration.id, id: { not: folderId } },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+      select: { id: true }
+    }),
+    prisma.explorationBlock.findMany({
+      where: { page: { playlistId: exploration.id } },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+      select: { id: true, folderId: true }
+    })
+  ]);
+  const orderedBlocks = orderExplorationBlocksByFolders(
+    existingBlocks.map((block) => block.folderId === folderId ? { ...block, folderId: null } : block),
+    remainingFolders.map((remainingFolder) => remainingFolder.id)
+  );
+  await prisma.$transaction([
+    prisma.explorationBlockFolder.delete({ where: { id: folderId } }),
+    ...orderedBlocks.map((block, index) => prisma.explorationBlock.update({
+      where: { id: block.id },
+      data: { position: index + 1 }
+    }))
+  ]);
   await recordExplorationChange(exploration.id, user.id, `Deleted block folder "${folder.name}"`);
   revalidateExploration(exploration.slug);
 }
@@ -1328,6 +1387,25 @@ export async function deleteExplorationBlockAction(blockId: number) {
           ...(block.isStart ? { isStart: true } : {}),
           ...(block.isEnd ? { isEnd: true } : {})
         }
+      });
+    }
+    const [folders, remainingBlocks] = await Promise.all([
+      tx.explorationBlockFolder.findMany({
+        where: { playlistId: page.playlistId },
+        orderBy: [{ position: "asc" }, { id: "asc" }],
+        select: { id: true }
+      }),
+      tx.explorationBlock.findMany({
+        where: { page: { playlistId: page.playlistId } },
+        orderBy: [{ position: "asc" }, { id: "asc" }],
+        select: { id: true, folderId: true }
+      })
+    ]);
+    const orderedBlocks = orderExplorationBlocksByFolders(remainingBlocks, folders.map((folder) => folder.id));
+    for (const [index, orderedBlock] of orderedBlocks.entries()) {
+      await tx.explorationBlock.update({
+        where: { id: orderedBlock.id },
+        data: { position: index + 1 }
       });
     }
   });
