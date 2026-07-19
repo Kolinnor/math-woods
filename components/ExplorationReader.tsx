@@ -194,6 +194,7 @@ export function ExplorationReader({
   }
 
   function restart() {
+    if (!window.confirm("Restart this exploration? Your current progress and answers will be cleared.")) return;
     const first = blocks.find((block) => block.isStart) ?? blocks[0];
     if (!first) return;
     const emptyState: ExplorationState = {};

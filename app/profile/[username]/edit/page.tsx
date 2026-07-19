@@ -1,3 +1,4 @@
+import { MathDomain } from "@prisma/client";
 import { notFound, redirect } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { updateProfileAction } from "@/lib/actions/user-actions";
@@ -43,6 +44,29 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
           <small className="muted">
             {t.profile.profileNameUrlHelp(user.username)}
           </small>
+        </label>
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">{t.profile.affiliation}</span>
+          <input name="affiliation" defaultValue={user.affiliation ?? ""} maxLength={160} placeholder={t.profile.affiliationPlaceholder} />
+        </label>
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">{t.profile.website}</span>
+          <input name="websiteUrl" type="url" defaultValue={user.websiteUrl ?? ""} placeholder="https://" />
+        </label>
+        <fieldset className="profile-domain-picker">
+          <legend>{t.profile.mathematicalInterests}</legend>
+          <div>
+            {Object.values(MathDomain).map((domain) => (
+              <label key={domain}>
+                <input type="checkbox" name="mathematicalDomains" value={domain} defaultChecked={user.mathematicalDomains.includes(domain)} />
+                <span>{t.home.domainLabels[domain]}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <label className="checkbox-field profile-collaboration-field">
+          <input name="openToCollaboration" type="checkbox" defaultChecked={user.openToCollaboration} />
+          <span><strong>{t.profile.openToCollaboration}</strong><small>{t.profile.openToCollaborationHelp}</small></span>
         </label>
         <label className="grid gap-2">
           <span className="field-label-with-help text-sm font-medium">

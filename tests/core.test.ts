@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ConceptStatus, QualityStatus, Role } from "@prisma/client";
+import { ConceptStatus, MathDomain, QualityStatus, Role, UserMathLevel } from "@prisma/client";
 import { EditorState, StateEffect } from "@codemirror/state";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import {
@@ -40,12 +40,22 @@ import {
   reachableExplorationBlockIds
 } from "../lib/exploration-block-graph.ts";
 import {
+  moveExplorationBlockToFolder,
+  orderExplorationBlocksByFolders
+} from "../lib/exploration-block-folders.ts";
+import {
   clearExplorationBranches,
   descendantExplorationBranchIds,
   explorationBranchStateKey,
   visibleExplorationBlocks
 } from "../lib/exploration-branches.ts";
 import { guestProgressContentKey } from "../lib/guest-progress.ts";
+import {
+  filterMathematicians,
+  mathematicianContributionCount,
+  sortMathematicians
+} from "../lib/mathematicians.ts";
+import type { UserReputationSummary } from "../lib/user-reputation.ts";
 import {
   createDisplayMathLineBreakNormalizer,
   skipDisplayMathLineBreakNormalization
@@ -802,6 +812,19 @@ assert.deepEqual(explorationPathAfter([1, 2, 3], 1, 4), [1, 2, 4]);
 assert.deepEqual(explorationPathAfter([1], 0, 2), [1, 2]);
 assert.equal(canAutomaticallyAdvance([1, 2], 3), true);
 assert.equal(canAutomaticallyAdvance([1, 2], 1), false);
+const folderedBlocks = [
+  { id: 1, folderId: null, label: "Loose" },
+  { id: 2, folderId: 20, label: "Second folder" },
+  { id: 3, folderId: 10, label: "First folder" },
+  { id: 4, folderId: 10, label: "First folder tail" }
+];
+assert.deepEqual(orderExplorationBlocksByFolders(folderedBlocks, [10, 20]).map((block) => block.id), [1, 3, 4, 2]);
+const movedIntoFolder = moveExplorationBlockToFolder(folderedBlocks, [10, 20], 1, 10, 1);
+assert.deepEqual(movedIntoFolder.map((block) => block.id), [3, 1, 4, 2]);
+assert.equal(movedIntoFolder.find((block) => block.id === 1)?.folderId, 10);
+const movedBackToUnsorted = moveExplorationBlockToFolder(movedIntoFolder, [10, 20], 4, null, 0);
+assert.deepEqual(movedBackToUnsorted.map((block) => block.id), [4, 3, 1, 2]);
+assert.equal(movedBackToUnsorted.find((block) => block.id === 4)?.folderId, null);
 assert.deepEqual(
   [...reachableExplorationBlockIds([
     { id: 1, isStart: true, continueToBlockId: 2, optionTargetBlockIds: [], outcomeTargetBlockIds: [] },
@@ -883,5 +906,54 @@ const rankedGroupMatches = rankSearchMatches(
 );
 assert.deepEqual(rankedGroupMatches.map((item) => item.title), ["Group", "Group action", "Abelian group", "Category of groups"]);
 assert.equal(searchMatchScore({ title: "Groupe", slug: "groupe", aliases: ["Group"] }, "group"), 1);
+
+const mathematicianFixtures = [
+  {
+    userId: 1,
+    username: "ada",
+    displayName: "Ada",
+    role: Role.USER,
+    mathLevel: UserMathLevel.RESEARCH,
+    bio: "Geometry and teaching",
+    affiliation: "Example University",
+    websiteUrl: null,
+    mathematicalDomains: [MathDomain.GEOMETRY],
+    openToCollaboration: true,
+    joinedAt: new Date("2026-01-01"),
+    reputation: 10,
+    problemCount: 2,
+    solvedCount: 3,
+    favoriteCount: 1,
+    engagementCount: 4,
+    conceptCount: 2,
+    explorationCount: 1
+  },
+  {
+    userId: 2,
+    username: "emmy",
+    displayName: "Emmy",
+    role: Role.MODERATOR,
+    mathLevel: UserMathLevel.GRADUATE_CONTEST,
+    bio: "Algebra",
+    affiliation: null,
+    websiteUrl: null,
+    mathematicalDomains: [MathDomain.ALGEBRA],
+    openToCollaboration: false,
+    joinedAt: new Date("2026-02-01"),
+    reputation: 20,
+    problemCount: 1,
+    solvedCount: 0,
+    favoriteCount: 0,
+    engagementCount: 0,
+    conceptCount: 0,
+    explorationCount: 0
+  }
+] satisfies UserReputationSummary[];
+assert.deepEqual(filterMathematicians(mathematicianFixtures, { query: "university" }).map((user) => user.username), ["ada"]);
+assert.deepEqual(filterMathematicians(mathematicianFixtures, { domain: MathDomain.ALGEBRA }).map((user) => user.username), ["emmy"]);
+assert.deepEqual(filterMathematicians(mathematicianFixtures, { collaborationOnly: true }).map((user) => user.username), ["ada"]);
+assert.equal(mathematicianContributionCount(mathematicianFixtures[0]), 5);
+assert.deepEqual(sortMathematicians(mathematicianFixtures, "reputation").map((user) => user.username), ["emmy", "ada"]);
+assert.deepEqual(sortMathematicians(mathematicianFixtures, "contributions").map((user) => user.username), ["ada", "emmy"]);
 
 console.log("core tests ok");

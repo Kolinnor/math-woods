@@ -111,6 +111,17 @@ async function requireBlockEditor(blockId: number) {
   return { user, block, page: block.page, exploration: block.page.playlist };
 }
 
+async function requireBlockFolderEditor(folderId: number) {
+  const folder = await prisma.explorationBlockFolder.findUnique({
+    where: { id: folderId },
+    include: { playlist: { include: { collaborators: true } } }
+  });
+  if (!folder) throw new Error("Block folder not found.");
+  const user = await requireVerifiedUser();
+  if (!canEditExploration(user, folder.playlist)) throw new Error("You cannot edit this exploration.");
+  return { user, folder, exploration: folder.playlist };
+}
+
 async function requireOutcomeEditor(outcomeId: number) {
   const outcome = await prisma.explorationBlockOutcome.findUnique({
     where: { id: outcomeId },
@@ -1193,6 +1204,79 @@ export async function setExplorationBlockPositionAction(blockId: number, request
   return { position };
 }
 
+export async function createExplorationBlockFolderAction(playlistId: number) {
+  const { user, exploration } = await requireExplorationEditor(playlistId);
+  const lastFolder = await prisma.explorationBlockFolder.findFirst({
+    where: { playlistId },
+    orderBy: [{ position: "desc" }, { id: "desc" }],
+    select: { position: true }
+  });
+  const folder = await prisma.explorationBlockFolder.create({
+    data: {
+      playlistId,
+      name: "New folder",
+      position: (lastFolder?.position ?? 0) + 1
+    },
+    select: { id: true, name: true, position: true }
+  });
+  await recordExplorationChange(playlistId, user.id, `Created block folder "${folder.name}"`);
+  revalidateExploration(exploration.slug);
+  return folder;
+}
+
+export async function renameExplorationBlockFolderAction(folderId: number, value: string) {
+  const { user, folder, exploration } = await requireBlockFolderEditor(folderId);
+  const name = requiredBoundedText(value, CONTENT_LIMITS.title, "Folder name");
+  if (name === folder.name) return { name };
+  await prisma.explorationBlockFolder.update({ where: { id: folderId }, data: { name } });
+  await recordExplorationChange(exploration.id, user.id, `Renamed block folder to "${name}"`);
+  revalidateExploration(exploration.slug);
+  return { name };
+}
+
+export async function deleteExplorationBlockFolderAction(folderId: number) {
+  const { user, folder, exploration } = await requireBlockFolderEditor(folderId);
+  await prisma.explorationBlockFolder.delete({ where: { id: folderId } });
+  await recordExplorationChange(exploration.id, user.id, `Deleted block folder "${folder.name}"`);
+  revalidateExploration(exploration.slug);
+}
+
+export async function organizeExplorationBlocksAction(
+  blockId: number,
+  folderId: number | null,
+  requestedBlockIds: number[]
+) {
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
+  if (folderId !== null) {
+    const folder = await prisma.explorationBlockFolder.findFirst({
+      where: { id: folderId, playlistId: page.playlistId },
+      select: { id: true }
+    });
+    if (!folder) throw new Error("Target folder does not belong to this exploration.");
+  }
+
+  const existingBlocks = await prisma.explorationBlock.findMany({
+    where: { page: { playlistId: page.playlistId } },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: { id: true }
+  });
+  const existingIds = new Set(existingBlocks.map((candidate) => candidate.id));
+  const orderedIds = [...new Set(requestedBlockIds.filter((id) => Number.isInteger(id) && existingIds.has(id)))];
+  if (orderedIds.length !== existingIds.size) throw new Error("The block order is incomplete.");
+
+  await prisma.$transaction(
+    orderedIds.map((id, index) => prisma.explorationBlock.update({
+      where: { id },
+      data: {
+        position: index + 1,
+        ...(id === block.id ? { folderId } : {})
+      }
+    }))
+  );
+  await recordExplorationChange(page.playlistId, user.id, "Organized exploration blocks");
+  revalidateExploration(exploration.slug);
+}
+
 export async function deleteExplorationBlockAction(blockId: number) {
   const { user, block, page, exploration } = await requireBlockEditor(blockId);
   const fallback = block.continueToBlockId ?? (await prisma.explorationBlock.findFirst({
@@ -1874,7 +1958,9 @@ export async function submitExplorationResponseAction(
   const selectedPageId = selected?.action === ExplorationOptionAction.PAGE ? selected.toPageId : null;
   const selectedBlockId = selected?.toBlockId ?? null;
   const nextPageId = matchedOutcome?.toPageId ?? selectedPageId ?? null;
-  const nextBlockId = nextExplorationBlockId(matchedOutcome?.toBlockId, selectedBlockId, block.continueToBlockId);
+  const nextBlockId = block.kind === ExplorationBlockKind.CHOICE
+    ? selectedBlockId
+    : nextExplorationBlockId(matchedOutcome?.toBlockId, selectedBlockId, block.continueToBlockId);
   let state = asExplorationState(rawState ?? previousSession?.state);
   let clearedBlockKeys: string[] = [];
   let revealedBranchId: number | null = null;

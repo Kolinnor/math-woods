@@ -1,5 +1,6 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { FriendshipStatus } from "@prisma/client";
+import { ExternalLink, Handshake } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -314,6 +315,24 @@ export default async function ProfilePage({
       </article>
 
       <aside className="grid content-start gap-5">
+        {(user.affiliation || user.websiteUrl || user.mathematicalDomains.length > 0 || user.openToCollaboration) && (
+          <section className="panel mathematician-profile-details p-5">
+            <h2 className="mb-3 font-semibold">{t.profile.mathematicalProfile}</h2>
+            {user.affiliation && <p><strong>{t.profile.affiliation}</strong><span>{user.affiliation}</span></p>}
+            {user.websiteUrl && (
+              <p>
+                <strong>{t.profile.website}</strong>
+                <a href={user.websiteUrl} target="_blank" rel="noreferrer">{t.profile.visitWebsite} <ExternalLink size={14} /></a>
+              </p>
+            )}
+            {user.mathematicalDomains.length > 0 && (
+              <div className="mathematician-domains">
+                {user.mathematicalDomains.map((domain) => <span className="tag" key={domain}>{t.home.domainLabels[domain]}</span>)}
+              </div>
+            )}
+            {user.openToCollaboration && <div className="mathematician-profile-collaboration"><Handshake size={16} /> {t.profile.openToCollaboration}</div>}
+          </section>
+        )}
         <section className="panel p-5">
           <h2 className="mb-3 font-semibold">{t.profile.contributions}</h2>
           <div className="grid gap-2 text-sm">

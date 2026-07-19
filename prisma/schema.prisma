@@ -241,6 +241,10 @@ model User {
   emailVerifiedAt              DateTime?
   passwordHash                 String?
   bio                          String?
+  affiliation                  String?
+  websiteUrl                   String?
+  mathematicalDomains         MathDomain[]                 @default([])
+  openToCollaboration          Boolean                      @default(false)
   mathLevel                    UserMathLevel?
   reputation                   Int                          @default(0)
   role                         Role                         @default(USER)
@@ -750,6 +754,7 @@ model Playlist {
   followers             PlaylistFollow[]
   circuitNodes          PlaylistNode[]
   pages                 ExplorationPage[]
+  blockFolders          ExplorationBlockFolder[]
   collaborators         ExplorationCollaborator[]
   editions              ExplorationEdition[]
   explorationSessions   ExplorationSession[]
@@ -790,9 +795,23 @@ model ExplorationPage {
   @@index([continueToPageId])
 }
 
+model ExplorationBlockFolder {
+  id         Int                @id @default(autoincrement())
+  playlistId Int
+  name       String
+  position   Int
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  playlist   Playlist           @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  blocks     ExplorationBlock[]
+
+  @@index([playlistId, position])
+}
+
 model ExplorationBlock {
   id                  Int                       @id @default(autoincrement())
   pageId              Int
+  folderId            Int?
   branchId            Int?
   key                 String                    @default(cuid())
   canvasX             Float?
@@ -819,19 +838,21 @@ model ExplorationBlock {
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
   page                ExplorationPage           @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  folder              ExplorationBlockFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
   branch              ExplorationBranch?        @relation(fields: [branchId], references: [id], onDelete: Cascade)
   problem             Problem?                  @relation(fields: [problemId], references: [id], onDelete: SetNull)
   concept             Concept?                  @relation(fields: [conceptId], references: [id], onDelete: SetNull)
-  continueToBlock     ExplorationBlock?          @relation("ExplorationBlockContinue", fields: [continueToBlockId], references: [id], onDelete: SetNull)
-  incomingContinues   ExplorationBlock[]         @relation("ExplorationBlockContinue")
-  incomingOptions     ExplorationBlockOption[]   @relation("ExplorationOptionBlockTarget")
-  incomingOutcomes    ExplorationBlockOutcome[]  @relation("ExplorationOutcomeBlockTarget")
+  continueToBlock     ExplorationBlock?         @relation("ExplorationBlockContinue", fields: [continueToBlockId], references: [id], onDelete: SetNull)
+  incomingContinues   ExplorationBlock[]        @relation("ExplorationBlockContinue")
+  incomingOptions     ExplorationBlockOption[]  @relation("ExplorationOptionBlockTarget")
+  incomingOutcomes    ExplorationBlockOutcome[] @relation("ExplorationOutcomeBlockTarget")
   options             ExplorationBlockOption[]
   outcomes            ExplorationBlockOutcome[]
   answers             ExplorationAnswer[]
 
   @@unique([pageId, key])
   @@index([pageId, position])
+  @@index([folderId])
   @@index([branchId, position])
   @@index([continueToBlockId])
   @@index([problemId])

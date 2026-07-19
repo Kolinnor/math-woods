@@ -14,7 +14,7 @@ export function ExplorationChoiceActionFields({
       <span>Next block</span>
       <input name="action" type="hidden" value="PAGE" />
       <select name="toBlockId" defaultValue={toBlockId ?? ""}>
-        <option value="">Use Continue</option>
+        <option value="">End here</option>
         {blocks.filter((block) => block.id !== currentBlockId).map((block) => (
           <option key={block.id} value={block.id}>{block.label}</option>
         ))}

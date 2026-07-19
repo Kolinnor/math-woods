@@ -3384,6 +3384,119 @@ textarea {
   transition: background 100ms ease, opacity 100ms ease;
 }
 
+.studio-block-organizer {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.studio-new-folder-button {
+  font-size: 0.78rem;
+  justify-content: center;
+  min-height: 2.25rem;
+  width: 100%;
+}
+
+.exploration-studio-sidebar .studio-block-list-nav {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.studio-block-folder {
+  border-top: 1px solid #d9dfd9;
+  min-width: 0;
+  padding-top: 0.2rem;
+  transition: background 100ms ease, box-shadow 100ms ease;
+}
+
+.studio-block-folder:first-child {
+  border-top: 0;
+}
+
+.studio-block-folder.is-drop-target {
+  background: #edf5ef;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.studio-block-folder-heading {
+  align-items: center;
+  color: #44574a;
+  display: grid;
+  gap: 0.3rem;
+  grid-template-columns: 1.5rem 1.1rem minmax(0, 1fr) auto auto;
+  min-height: 2.25rem;
+  padding: 0.15rem 0.25rem;
+}
+
+.studio-folder-toggle {
+  color: #65756a;
+  min-height: 1.5rem;
+  padding: 0;
+  width: 1.5rem;
+}
+
+.studio-folder-static-name,
+.studio-folder-name-button {
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-folder-name-button {
+  background: transparent;
+  border: 0;
+  min-height: 1.75rem;
+  padding: 0 0.2rem;
+}
+
+.studio-folder-name-button:hover,
+.studio-folder-name-button:focus-visible {
+  background: #fff;
+  color: var(--accent);
+}
+
+.studio-folder-name-input {
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-height: 1.9rem;
+  min-width: 0;
+  padding: 0.25rem 0.35rem;
+  width: 100%;
+}
+
+.studio-folder-count {
+  color: var(--muted);
+  font-size: 0.68rem;
+  min-width: 1rem;
+  text-align: center;
+}
+
+.studio-folder-delete {
+  min-height: 1.7rem;
+  padding: 0;
+  width: 1.7rem;
+}
+
+.studio-block-folder-content {
+  display: grid;
+  gap: 0.08rem;
+  min-height: 0.5rem;
+  padding: 0.05rem 0 0.25rem 0.25rem;
+}
+
+.studio-block-folder-content > p {
+  color: #849087;
+  font-size: 0.7rem;
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+}
+
 .studio-block-row:hover,
 .studio-block-row.is-current {
   background: #edf3ee;
@@ -3453,6 +3566,21 @@ textarea {
 
 .exploration-block-map .react-flow__edge-path {
   stroke: #52665a;
+  stroke-width: 1.8;
+}
+
+.exploration-map-marker-definitions {
+  height: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 0;
+}
+
+#exploration-automatic-edge-marker path {
+  fill: none;
+  stroke: #52665a;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   stroke-width: 1.8;
 }
 
@@ -4445,8 +4573,13 @@ button.danger,
     padding-bottom: 0.65rem;
   }
 
+  .exploration-studio-sidebar .studio-block-list-nav {
+    display: grid;
+    overflow-x: visible;
+  }
+
   .studio-block-list-nav .studio-block-row {
-    flex: 0 0 min(18rem, 80vw);
+    width: 100%;
   }
 
   .exploration-map-shell {
@@ -7534,19 +7667,23 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 .forest-page-shell .tip-card,
 .forest-page-shell .tip-search,
 .forest-page-shell .quote-search,
-.forest-page-shell .users-list {
+.forest-page-shell .users-list,
+.forest-page-shell .mathematician-filters,
+.forest-page-shell .mathematician-directory {
   background: #f8f4ea;
   border-color: #d8d0bd;
   box-shadow: none;
 }
 
 .forest-page-shell .list-row,
-.forest-page-shell .users-row {
+.forest-page-shell .users-row,
+.forest-page-shell .mathematician-row {
   border-color: #d8d0bd;
 }
 
 .forest-page-shell .list-row:hover,
 .forest-page-shell .users-row:hover,
+.forest-page-shell .mathematician-row:hover,
 .forest-page-shell .quote-card:hover,
 .forest-page-shell .tip-card:hover {
   background: rgb(248 244 234 / 0.72);
@@ -8176,6 +8313,249 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   font-variant-numeric: tabular-nums;
 }
 
+.mathematician-filters {
+  align-items: end;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(14rem, 1.5fr) repeat(3, minmax(9rem, 0.8fr));
+  padding: 1rem;
+}
+
+.mathematician-filters > label:not(.mathematician-collaboration-filter) {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mathematician-filters label > span {
+  color: #455349;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.mathematician-search-field > div {
+  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  position: relative;
+}
+
+.mathematician-search-field svg {
+  color: var(--muted);
+  left: 0.75rem;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.mathematician-search-field input {
+  padding-left: 2.25rem;
+}
+
+.mathematician-collaboration-filter {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  min-height: 2.65rem;
+}
+
+.mathematician-collaboration-filter input {
+  flex: 0 0 auto;
+}
+
+.mathematician-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mathematician-filter-actions > * {
+  flex: 1;
+}
+
+.mathematician-directory {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.mathematician-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: minmax(12rem, 0.8fr) minmax(16rem, 1.7fr) auto;
+  min-height: 8rem;
+  padding: 1rem 1.1rem;
+}
+
+.mathematician-row:last-child {
+  border-bottom: 0;
+}
+
+.mathematician-row:hover {
+  background: var(--panel-muted);
+}
+
+.mathematician-identity {
+  align-items: center;
+  color: inherit;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  min-width: 0;
+}
+
+.mathematician-avatar {
+  align-items: center;
+  background: #e2ebe4;
+  border: 1px solid #afc0b2;
+  border-radius: 50%;
+  color: #285d3d;
+  display: flex;
+  font-size: 0.76rem;
+  font-weight: 800;
+  height: 2.75rem;
+  justify-content: center;
+  width: 2.75rem;
+}
+
+.mathematician-identity > span:last-child {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.mathematician-identity strong {
+  overflow-wrap: anywhere;
+}
+
+.mathematician-identity small,
+.mathematician-stats small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.mathematician-summary {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.mathematician-summary > p {
+  color: #465249;
+  display: -webkit-box;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mathematician-byline,
+.mathematician-domains {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
+}
+
+.mathematician-byline {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.mathematician-trusted,
+.mathematician-collaboration,
+.mathematician-profile-collaboration {
+  align-items: center;
+  color: #28623f;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 0.25rem;
+}
+
+.mathematician-stats {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(4.5rem, auto));
+}
+
+.mathematician-stats > span {
+  display: grid;
+  gap: 0.1rem;
+  justify-items: end;
+}
+
+.mathematician-stats strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-domain-picker {
+  border: 0;
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+}
+
+.profile-domain-picker legend {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.profile-domain-picker > div {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-domain-picker label {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.profile-collaboration-field span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.profile-collaboration-field small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.mathematician-profile-details {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mathematician-profile-details > p {
+  display: grid;
+  font-size: 0.82rem;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.mathematician-profile-details a {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.mathematician-profile-collaboration {
+  font-size: 0.78rem;
+}
+
 .tag {
   background: var(--panel-muted);
   border: 1px solid var(--line);
@@ -8201,6 +8581,39 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 
   .users-row .users-stat:nth-of-type(n + 4) {
     display: none;
+  }
+
+  .mathematician-filters,
+  .mathematician-row {
+    grid-template-columns: 1fr;
+  }
+
+  .mathematician-stats {
+    border-top: 1px solid var(--line);
+    padding-top: 0.75rem;
+  }
+
+  .mathematician-stats > span {
+    justify-items: start;
+  }
+
+  .profile-domain-picker > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1050px) {
+  .mathematician-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mathematician-row {
+    grid-template-columns: minmax(12rem, 0.8fr) minmax(15rem, 1.5fr);
+  }
+
+  .mathematician-stats {
+    grid-column: 1 / -1;
+    justify-content: end;
   }
 }
 

@@ -102,6 +102,7 @@ export default async function EditExplorationPage({
     include: {
       author: true,
       collaborators: { include: { user: true }, orderBy: { createdAt: "asc" } },
+      blockFolders: { orderBy: [{ position: "asc" }, { id: "asc" }] },
       pages: {
         orderBy: [{ position: "asc" }, { id: "asc" }],
         include: {
@@ -194,9 +195,16 @@ export default async function EditExplorationPage({
           <aside className="exploration-studio-sidebar">
             <div className="exploration-studio-sidebar-heading"><h2>Blocks</h2><span>{blocks.length}</span></div>
             <ExplorationBlockList
+              explorationId={exploration.id}
               currentBlockId={selectedBlock?.id ?? null}
+              initialFolders={exploration.blockFolders.map((folder) => ({
+                id: folder.id,
+                name: folder.name,
+                position: folder.position
+              }))}
               initialBlocks={blocks.map((block) => ({
                 id: block.id,
+                folderId: block.folderId,
                 href: `/explorations/${exploration.slug}/edit?view=block&block=${block.id}`,
                 label: blockDisplayLabel(block)
               }))}
@@ -281,7 +289,7 @@ export default async function EditExplorationPage({
                           </div>
                         ))}
                         <form action={createExplorationOptionAction.bind(null, selectedBlock.id)} className="studio-new-option">
-                          <label><span>New option</span><input name="label" required placeholder={selectedBlock.kind === ExplorationBlockKind.QUIZ ? "An answer" : "A choice"} /></label>
+                          <label><span>New answer</span><input name="label" required placeholder={selectedBlock.kind === ExplorationBlockKind.QUIZ ? "An answer" : "A choice"} /></label>
                           {selectedBlock.kind === ExplorationBlockKind.CHOICE && <input name="action" type="hidden" value={ExplorationOptionAction.PAGE} />}
                           {selectedBlock.kind === ExplorationBlockKind.QUIZ && <label className="checkbox-field"><input name="isCorrect" type="checkbox" /><span><strong>Correct</strong></span></label>}
                           <button type="submit" className="secondary"><Plus size={15} /> Add</button>

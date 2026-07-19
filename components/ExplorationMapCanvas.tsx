@@ -63,6 +63,7 @@ type GraphEdgeData = {
 };
 
 const MAP_HISTORY_LIMIT = 50;
+const AUTOMATIC_EDGE_MARKER = "url(#exploration-automatic-edge-marker)";
 
 function mapHistoryState(blocks: ExplorationMapBlock[]): ExplorationMapHistoryBlock[] {
   return blocks.map((block) => ({
@@ -155,9 +156,7 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
         target: String(block.continueToBlockId),
         reconnectable: "target",
         label: block.autoContinue ? "Automatic" : "Continue",
-        animated: block.autoContinue,
-        style: block.autoContinue ? { strokeDasharray: "5 4" } : undefined,
-        markerEnd: { type: MarkerType.ArrowClosed },
+        markerEnd: block.autoContinue ? AUTOMATIC_EDGE_MARKER : { type: MarkerType.ArrowClosed },
         data: { kind: "continue", recordId: block.id }
       });
     }
@@ -527,6 +526,22 @@ export function ExplorationMapCanvas({
         minZoom={0.25}
         maxZoom={1.5}
       >
+        <svg className="exploration-map-marker-definitions" aria-hidden="true">
+          <defs>
+            <marker
+              id="exploration-automatic-edge-marker"
+              markerWidth="15"
+              markerHeight="12"
+              refX="13"
+              refY="6"
+              orient="auto"
+              markerUnits="userSpaceOnUse"
+              viewBox="0 0 15 12"
+            >
+              <path d="M1 1 L6 6 L1 11 M7 1 L12 6 L7 11" />
+            </marker>
+          </defs>
+        </svg>
         <Panel className="exploration-block-map-add nodrag nopan" position="top-left">
           <ExplorationAddContentForm explorationId={explorationId} explorationSlug={explorationSlug} kinds={kinds} openEditorAfterCreate={false} />
         </Panel>

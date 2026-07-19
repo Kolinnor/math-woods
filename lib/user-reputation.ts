@@ -1,4 +1,4 @@
-import { Role, UserMathLevel } from "@prisma/client";
+import { MathDomain, Role, UserMathLevel } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hasTrustedPrivileges } from "@/lib/permissions";
 import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
@@ -43,12 +43,19 @@ export type UserReputationSummary = {
   displayName: string | null;
   role: Role;
   mathLevel: UserMathLevel | null;
+  bio: string | null;
+  affiliation: string | null;
+  websiteUrl: string | null;
+  mathematicalDomains: MathDomain[];
+  openToCollaboration: boolean;
   joinedAt: Date;
   reputation: number;
   problemCount: number;
   solvedCount: number;
   favoriteCount: number;
   engagementCount: number;
+  conceptCount: number;
+  explorationCount: number;
 };
 
 function interactionWeight(role: Role, regularWeight: number, trustedWeight: number) {
@@ -88,7 +95,13 @@ function summarizeUser(
     displayName: string | null;
     role: Role;
     mathLevel: UserMathLevel | null;
+    bio: string | null;
+    affiliation: string | null;
+    websiteUrl: string | null;
+    mathematicalDomains: MathDomain[];
+    openToCollaboration: boolean;
     createdAt: Date;
+    _count: { conceptsCreated: number; playlists: number };
   },
   problems: ReputationProblem[]
 ): UserReputationSummary {
@@ -98,12 +111,19 @@ function summarizeUser(
     displayName: user.displayName,
     role: user.role,
     mathLevel: user.mathLevel,
+    bio: user.bio,
+    affiliation: user.affiliation,
+    websiteUrl: user.websiteUrl,
+    mathematicalDomains: user.mathematicalDomains,
+    openToCollaboration: user.openToCollaboration,
     joinedAt: user.createdAt,
     reputation: problems.reduce((total, problem) => total + scoreProblem(problem), 0),
     problemCount: problems.length,
     solvedCount: problems.reduce((total, problem) => total + solvedCount(problem), 0),
     favoriteCount: problems.reduce((total, problem) => total + favoriteCount(problem), 0),
-    engagementCount: problems.reduce((total, problem) => total + engagementCount(problem), 0)
+    engagementCount: problems.reduce((total, problem) => total + engagementCount(problem), 0),
+    conceptCount: user._count.conceptsCreated,
+    explorationCount: user._count.playlists
   };
 }
 
@@ -122,6 +142,17 @@ export async function getReputationLeaderboard() {
       displayName: true,
       role: true,
       mathLevel: true,
+      bio: true,
+      affiliation: true,
+      websiteUrl: true,
+      mathematicalDomains: true,
+      openToCollaboration: true,
+      _count: {
+        select: {
+          conceptsCreated: { where: { canAppearInConceptBrowser: true } },
+          playlists: { where: { status: "PUBLISHED", visibility: "PUBLIC" } }
+        }
+      },
       createdAt: true
     }
   });
