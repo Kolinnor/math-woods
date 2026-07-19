@@ -25,7 +25,7 @@ import { ExplorationAddContentForm } from "@/components/ExplorationAddContentFor
 import { ExplorationBlockKindSelect } from "@/components/ExplorationBlockKindSelect";
 import { ExplorationBlockList } from "@/components/ExplorationBlockList";
 import { ExplorationBlockNameHelp } from "@/components/ExplorationBlockNameHelp";
-import { ExplorationChoiceActionFields } from "@/components/ExplorationChoiceActionFields";
+import { ExplorationChoiceAnswerList } from "@/components/ExplorationChoiceAnswerList";
 import { ExplorationMapCanvas, type ExplorationMapBlock } from "@/components/ExplorationMapCanvas";
 import { ExplorationNextBlockFields } from "@/components/ExplorationNextBlockFields";
 import { ExplorationSettingsButton } from "@/components/ExplorationSettingsButton";
@@ -265,12 +265,17 @@ export default async function EditExplorationPage({
                     <section className="studio-option-editor">
                       <div className="studio-option-editor-heading">Answers</div>
                       <div className="studio-option-editor-body">
-                        {selectedBlock.options.map((option) => (
+                        {selectedBlock.kind === ExplorationBlockKind.CHOICE ? (
+                          <ExplorationChoiceAnswerList
+                            blocks={blockLabels}
+                            currentBlockId={selectedBlock.id}
+                            initialAnswers={selectedBlock.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId }))}
+                          />
+                        ) : selectedBlock.options.map((option) => (
                           <div key={option.id} className="studio-option-row">
                             <AutoSaveForm action={updateExplorationOptionAction.bind(null, option.id)} className="studio-option-autosave-form" statusClassName="sr-only">
                               <label><span>Label</span><input name="label" defaultValue={option.label} required /></label>
-                              {selectedBlock.kind === ExplorationBlockKind.CHOICE && <ExplorationChoiceActionFields blocks={blockLabels} currentBlockId={selectedBlock.id} toBlockId={option.toBlockId} />}
-                              {selectedBlock.kind === ExplorationBlockKind.QUIZ && <label className="checkbox-field"><input name="isCorrectField" type="hidden" value="true" /><input name="isCorrect" type="checkbox" defaultChecked={option.isCorrect === true} /><span><strong>Correct</strong></span></label>}
+                              <label className="checkbox-field"><input name="isCorrectField" type="hidden" value="true" /><input name="isCorrect" type="checkbox" defaultChecked={option.isCorrect === true} /><span><strong>Correct</strong></span></label>
                             </AutoSaveForm>
                             <form action={deleteExplorationOptionAction.bind(null, option.id)} className="studio-option-delete"><ConfirmSubmitButton message="Delete this option?" className="icon-button danger" title="Delete option"><Trash2 size={15} /></ConfirmSubmitButton></form>
                           </div>

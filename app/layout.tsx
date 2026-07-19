@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Inter, Spectral } from "next/font/google";
 import { Menu } from "lucide-react";
 import { cookies } from "next/headers";
+import "../node_modules/jsxgraph/distrib/jsxgraph.css";
 import "./globals.css";
 import { AchievementToast } from "@/components/AchievementToast";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";

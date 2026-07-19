@@ -1,3 +1,5 @@
+import { JsxGraphMarkdown } from "@/components/JsxGraphMarkdown";
+
 export function MarkdownBlock({ html }: { html: string }) {
-  return <div className="prose-math max-w-none" dangerouslySetInnerHTML={{ __html: html }} />;
+  return <JsxGraphMarkdown html={html} />;
 }

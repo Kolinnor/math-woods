@@ -1353,6 +1353,36 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
   revalidateExploration(exploration.slug);
 }
 
+export async function setExplorationOptionPositionAction(optionId: number, requestedPosition: number) {
+  const option = await prisma.explorationBlockOption.findUnique({
+    where: { id: optionId },
+    select: { blockId: true }
+  });
+  if (!option) throw new Error("Option not found.");
+  const { user, block, page, exploration } = await requireBlockEditor(option.blockId);
+  if (block.kind !== ExplorationBlockKind.CHOICE) throw new Error("Only choice answers can be reordered.");
+  const options = await prisma.explorationBlockOption.findMany({
+    where: { blockId: block.id },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    select: { id: true }
+  });
+  const position = Number.isFinite(requestedPosition)
+    ? Math.max(1, Math.min(options.length, Math.trunc(requestedPosition)))
+    : options.findIndex((candidate) => candidate.id === optionId) + 1;
+  const reordered = options.filter((candidate) => candidate.id !== optionId);
+  reordered.splice(position - 1, 0, { id: optionId });
+
+  await prisma.$transaction(
+    reordered.map((candidate, index) => prisma.explorationBlockOption.update({
+      where: { id: candidate.id },
+      data: { position: index + 1 }
+    }))
+  );
+  await recordExplorationChange(page.playlistId, user.id, `Reordered answers in block ${block.position} on "${page.title}"`);
+  revalidateExploration(exploration.slug, { editor: false });
+  return { position };
+}
+
 export async function deleteExplorationOptionAction(optionId: number) {
   const option = await prisma.explorationBlockOption.findUnique({ where: { id: optionId }, select: { blockId: true } });
   if (!option) return;

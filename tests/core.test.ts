@@ -68,6 +68,11 @@ import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
 import { renderInlineMarkdown, renderMarkdown } from "../lib/markdown.ts";
 import {
+  decodeJsxGraphConfig,
+  encodeJsxGraphConfig,
+  parseJsxGraphConfig
+} from "../lib/jsxgraph.ts";
+import {
   assignableRolesFor,
   canAssignRole,
   canDeletePlaylist,
@@ -589,6 +594,41 @@ assert.equal(renderedUnsafeMarkdown.includes("<img"), false);
 
 const renderedUnsafeLink = await renderMarkdown("[bad](javascript:alert(1))");
 assert.equal(renderedUnsafeLink.includes('href="javascript:'), false);
+
+const parsedGraph = parseJsxGraphConfig(JSON.stringify({
+  boundingBox: [-4, 4, 4, -4],
+  axis: true,
+  elements: [
+    { id: "a", type: "slider", parents: [[-3, 3], [1, 3], [0, 1, 2]], attributes: { name: "a" } },
+    { type: "functiongraph", parents: ["a*x^2"], attributes: { strokeColor: "#2f6f4e" } }
+  ],
+  animation: { target: "a", steps: 90, delay: 40, rounds: 2 }
+}));
+assert.equal(parsedGraph.ok, true);
+if (parsedGraph.ok) {
+  const decodedGraph = decodeJsxGraphConfig(encodeJsxGraphConfig(parsedGraph.config));
+  assert.deepEqual(decodedGraph, parsedGraph);
+}
+
+const renderedGraph = await renderMarkdown(`\`\`\`jsxgraph
+{
+  "axis": true,
+  "elements": [{ "id": "A", "type": "point", "parents": [1, 2], "attributes": { "name": "A" } }]
+}
+\`\`\``);
+assert.match(renderedGraph, /class="jsxgraph-embed"/);
+assert.match(renderedGraph, /data-jsxgraph="[^"]+"/);
+assert.equal(renderedGraph.includes('"parents"'), false);
+
+const rejectedGraph = parseJsxGraphConfig(JSON.stringify({
+  elements: [{ type: "text", parents: [0, 0, "<script>alert(1)</script>"], attributes: {} }]
+}));
+assert.equal(rejectedGraph.ok, false);
+const renderedRejectedGraph = await renderMarkdown(`\`\`\`jsxgraph
+{"elements":[{"type":"text","parents":[0,0,"bad"],"attributes":{}}]}
+\`\`\``);
+assert.match(renderedRejectedGraph, /Graph could not be rendered/);
+assert.equal(renderedRejectedGraph.includes("data-jsxgraph"), false);
 
 const renderedMarkdownImage = await renderMarkdown("![diagram](https://images.mathwoods.org/uploads/diagram.png)");
 assert.equal(renderedMarkdownImage.includes('<img src="https://images.mathwoods.org/uploads/diagram.png"'), true);

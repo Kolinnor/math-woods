@@ -317,3 +317,30 @@ Guardrail:
   and use only compact padding so consecutive display lines remain close without touching.
 - Do not put `overflow-x: auto` on the shrink-to-fit display widget itself: some browsers expose a tiny native
   scrollbar under short formulas. Let the editor scroller handle genuinely oversized content.
+
+## 2026-07-19 - KaTeX should follow compact text sizing
+
+Symptom:
+
+- Markdown and live LaTeX could stay visually large inside compact UI, even when the surrounding text used a smaller
+  font size.
+
+Root cause:
+
+- The shared rendered Markdown wrapper used an absolute `rem` size, so it ignored its container's local text scale.
+- KaTeX's default `1.21em` size also enlarged live previews relative to CodeMirror's source text.
+
+Guardrail:
+
+- Keep rendered Markdown font sizing relative to its container (`em` or `inherit`) so its KaTeX scales with compact UI.
+- Keep live KaTeX previews at the editor line's inherited font size. Do not restore KaTeX's default enlargement inside
+  CodeMirror.
+
+## 2026-07-19 - JSXGraph fences stay source-editable
+
+Guardrail:
+
+- The shared Graph toolbar inserts a fenced `jsxgraph` JSON block at the selection with clean surrounding line breaks.
+- Keep JSXGraph fences as ordinary source in CodeMirror. Do not turn them into block decorations or normalize their
+  internal lines; the interactive board is mounted only in rendered Markdown.
+- LaTeX detection must continue to ignore fenced code, including JSXGraph expression strings.

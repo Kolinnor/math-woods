@@ -1,7 +1,8 @@
 import katex from "katex";
-import { marked } from "marked";
+import { marked, Renderer } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { findLatexRanges } from "./latex-ranges.ts";
+import { jsxGraphCodeBlockHtml } from "./jsxgraph.ts";
 import { markdownImageSizingFromSrc } from "./markdown-images.ts";
 import { replaceWikiLinks } from "./wikilinks.ts";
 
@@ -84,6 +85,13 @@ function normalizeLatexLists(markdown: string) {
   );
 }
 
+const markdownRenderer = new Renderer();
+const defaultCodeRenderer = markdownRenderer.code.bind(markdownRenderer);
+markdownRenderer.code = (token) => {
+  const language = token.lang?.trim().split(/\s+/)[0]?.toLowerCase();
+  return language === "jsxgraph" ? jsxGraphCodeBlockHtml(token.text) : defaultCodeRenderer(token);
+};
+
 export async function renderMarkdown(
   markdown: string,
   missingSlugs = new Set<string>(),
@@ -100,7 +108,8 @@ export async function renderMarkdown(
   const html = await marked.parse(withWikiLinks, {
     async: true,
     breaks: true,
-    gfm: true
+    gfm: true,
+    renderer: markdownRenderer
   });
   const htmlWithLatex = restoreLatex(html, replacements);
 
@@ -142,6 +151,7 @@ export async function renderMarkdown(
     allowedAttributes: {
       a: ["href", "class", "rel", "target"],
       code: ["class"],
+      div: ["aria-busy", "aria-label", "class", "data-jsxgraph", "role"],
       img: ["src", "alt", "title", "loading", "decoding", "style"],
       ol: ["start"],
       span: ["class", "style"],

@@ -15,7 +15,7 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
-import { ImageIcon, Loader2 } from "lucide-react";
+import { ImageIcon, Loader2, Orbit } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import {
   DEFAULT_LATEX_PREFERENCES,
@@ -64,6 +64,7 @@ import {
 import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownPreviewClass } from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
+import { JSXGRAPH_MARKDOWN_TEMPLATE } from "@/lib/jsxgraph";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
@@ -1830,6 +1831,20 @@ export function MarkdownEditor({
     imageInputRef.current?.click();
   }
 
+  function insertJsxGraph() {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const insertion = imageInsertText(view, JSXGRAPH_MARKDOWN_TEMPLATE);
+    view.dispatch({
+      changes: insertion,
+      selection: { anchor: insertion.from + insertion.insert.length },
+      effects: setPreviewFocus.of(true),
+      scrollIntoView: true
+    });
+    view.focus();
+  }
+
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
   const cleanLinkText = cleanWikiLinkLabel(linkText || linkMenu?.selectedText || "");
   const hasExactSuggestion = linkSuggestions.some((suggestion) => {
@@ -1859,6 +1874,15 @@ export function MarkdownEditor({
         >
           {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
           <span>{imageUploading ? "Uploading" : "Image"}</span>
+        </button>
+        <button
+          type="button"
+          className="secondary markdown-editor-tool-button"
+          onClick={insertJsxGraph}
+          title="Insert interactive JSXGraph"
+        >
+          <Orbit size={14} aria-hidden="true" />
+          <span>Graph</span>
         </button>
         {imageUploadMessage && (
           <span className="markdown-editor-toolbar-status">
