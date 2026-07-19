@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -64,7 +64,7 @@ type GraphEdgeData = {
 
 const MAP_HISTORY_LIMIT = 50;
 const AUTOMATIC_EDGE_MARKER = "url(#exploration-automatic-edge-marker)";
-const EDGE_RECONNECT_RADIUS = 12;
+const EDGE_RECONNECT_RADIUS = 18;
 
 function mapHistoryState(blocks: ExplorationMapBlock[]): ExplorationMapHistoryBlock[] {
   return blocks.map((block) => ({
@@ -221,9 +221,8 @@ export function ExplorationMapCanvas({
     setEdges(graphEdges(next));
   }, [setEdges, setNodes]);
 
-  const commitBlocks = useCallback((next: ExplorationMapBlock[]) => {
-    const current = blocksRef.current;
-    setPast((items) => [...items, current].slice(-MAP_HISTORY_LIMIT));
+  const commitBlocks = useCallback((next: ExplorationMapBlock[], previous = blocksRef.current) => {
+    setPast((items) => [...items, previous].slice(-MAP_HISTORY_LIMIT));
     setFuture([]);
     renderBlocks(next);
   }, [renderBlocks]);
@@ -239,8 +238,12 @@ export function ExplorationMapCanvas({
 
   const selectedBlock = blocks.find((block) => block.id === selectedNodeId) ?? null;
 
-  const updateBlock = useCallback((blockId: number, update: (block: ExplorationMapBlock) => ExplorationMapBlock) => {
-    commitBlocks(blocksRef.current.map((block) => block.id === blockId ? update(block) : block));
+  const updateBlock = useCallback((
+    blockId: number,
+    update: (block: ExplorationMapBlock) => ExplorationMapBlock,
+    previous = blocksRef.current
+  ) => {
+    commitBlocks(previous.map((block) => block.id === blockId ? update(block) : block), previous);
   }, [commitBlocks]);
 
   const connect = useCallback((connection: Connection) => {
@@ -248,26 +251,27 @@ export function ExplorationMapCanvas({
     const sourceId = Number(connection.source);
     const targetId = Number(connection.target);
     if (!Number.isInteger(sourceId) || !Number.isInteger(targetId) || sourceId === targetId) return;
+    const previous = blocksRef.current;
     setError("");
     startTransition(async () => {
       try {
         if (connection.sourceHandle === "continue") {
           await setExplorationBlockContinueAction(sourceId, targetId);
-          updateBlock(sourceId, (block) => ({ ...block, continueToBlockId: targetId, isEnd: false }));
+          updateBlock(sourceId, (block) => ({ ...block, continueToBlockId: targetId, isEnd: false }), previous);
         } else if (connection.sourceHandle?.startsWith("choice-")) {
           const optionId = Number(connection.sourceHandle.slice(7));
           await setExplorationChoiceBlockTargetAction(optionId, targetId);
           updateBlock(sourceId, (block) => ({
             ...block,
             options: block.options.map((option) => option.id === optionId ? { ...option, toBlockId: targetId } : option)
-          }));
+          }), previous);
         } else if (connection.sourceHandle?.startsWith("quiz-")) {
           const outcomeId = Number(connection.sourceHandle.slice(5));
           await setExplorationQuizOutcomeBlockTargetAction(outcomeId, targetId);
           updateBlock(sourceId, (block) => ({
             ...block,
             outcomes: block.outcomes.map((outcome) => outcome.id === outcomeId ? { ...outcome, toBlockId: targetId } : outcome)
-          }));
+          }), previous);
         }
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The blocks could not be linked.");
@@ -280,24 +284,25 @@ export function ExplorationMapCanvas({
     const sourceId = Number(edge.source);
     const targetId = Number(connection.target);
     if (!Number.isInteger(sourceId) || !Number.isInteger(targetId) || sourceId === targetId) return;
+    const previous = blocksRef.current;
     setError("");
     startTransition(async () => {
       try {
         if (edge.data!.kind === "continue") {
           await setExplorationBlockContinueAction(edge.data!.recordId, targetId);
-          updateBlock(edge.data!.recordId, (block) => ({ ...block, continueToBlockId: targetId, isEnd: false }));
+          updateBlock(edge.data!.recordId, (block) => ({ ...block, continueToBlockId: targetId, isEnd: false }), previous);
         } else if (edge.data!.kind === "choice") {
           await setExplorationChoiceBlockTargetAction(edge.data!.recordId, targetId);
           updateBlock(sourceId, (block) => ({
             ...block,
             options: block.options.map((option) => option.id === edge.data!.recordId ? { ...option, toBlockId: targetId } : option)
-          }));
+          }), previous);
         } else {
           await setExplorationQuizOutcomeBlockTargetAction(edge.data!.recordId, targetId);
           updateBlock(sourceId, (block) => ({
             ...block,
             outcomes: block.outcomes.map((outcome) => outcome.id === edge.data!.recordId ? { ...outcome, toBlockId: targetId } : outcome)
-          }));
+          }), previous);
         }
         setSelectedEdgeId(edge.id);
       } catch (reason) {
@@ -478,7 +483,6 @@ export function ExplorationMapCanvas({
   return (
     <div className="exploration-block-map" aria-busy={isPending}>
       <ReactFlow
-        style={{ "--exploration-edge-reconnect-offset": `${EDGE_RECONNECT_RADIUS}px` } as CSSProperties}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -486,6 +490,14 @@ export function ExplorationMapCanvas({
         onEdgesChange={onEdgesChange}
         onConnect={connect}
         onReconnect={reconnect}
+        onReconnectStart={(_, edge) => {
+          setSelectedNodeId(null);
+          setSelectedEdgeId(edge.id);
+        }}
+        onReconnectEnd={(_, edge) => {
+          setSelectedNodeId(null);
+          setSelectedEdgeId(edge.id);
+        }}
         reconnectRadius={EDGE_RECONNECT_RADIUS}
         connectionRadius={28}
         onSelectionChange={selectionChanged}
@@ -531,6 +543,14 @@ export function ExplorationMapCanvas({
       >
         <svg className="exploration-map-marker-definitions" aria-hidden="true">
           <defs>
+            <radialGradient id="exploration-edge-reconnect-handle">
+              <stop offset="0%" stopColor="#226a46" />
+              <stop offset="24%" stopColor="#226a46" />
+              <stop offset="27%" stopColor="#fff" />
+              <stop offset="38%" stopColor="#fff" />
+              <stop offset="41%" stopColor="#226a46" stopOpacity="0.3" />
+              <stop offset="52%" stopColor="#226a46" stopOpacity="0" />
+            </radialGradient>
             <marker
               id="exploration-automatic-edge-marker"
               markerWidth="15"

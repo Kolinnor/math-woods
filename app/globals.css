@@ -3668,15 +3668,12 @@ textarea {
 }
 
 .exploration-block-map .react-flow__edgeupdater-target {
-  transform: translateY(var(--exploration-edge-reconnect-offset));
+  cursor: grab;
 }
 
 .exploration-block-map .react-flow__edgeupdater-target:hover,
 .exploration-block-map .react-flow__edge.selected .react-flow__edgeupdater-target {
-  cursor: grab;
-  fill: rgb(255 255 255 / 0.92);
-  stroke: var(--accent);
-  stroke-width: 2;
+  fill: url("#exploration-edge-reconnect-handle");
 }
 
 .exploration-block-map .react-flow__edgeupdater-target:active {
@@ -3874,7 +3871,7 @@ textarea {
 
 .exploration-block-reader {
   display: grid;
-  gap: 1rem;
+  gap: 1.15rem;
   margin: 0 auto;
   max-width: 58rem;
 }
@@ -3895,18 +3892,14 @@ textarea {
 
 .exploration-reader-sequence {
   display: grid;
-  gap: 1.4rem;
+  gap: 1rem;
 }
 
 .exploration-reader-step {
-  border-bottom: 1px solid var(--line);
   min-width: 0;
-  padding-bottom: 1.4rem;
 }
 
 .exploration-reader-step.is-current {
-  border-bottom: 0;
-  padding-bottom: 0;
   scroll-margin-top: 5rem;
 }
 
@@ -4178,6 +4171,33 @@ button.danger,
   min-width: 0;
 }
 
+.exploration-prose-block {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  box-shadow: var(--shadow);
+  padding: clamp(1.25rem, 3vw, 2rem) clamp(1.15rem, 4vw, 2.5rem);
+}
+
+.exploration-prose-block > h2:first-child {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0 0 0.9rem;
+}
+
+.exploration-prose-block > .prose-math > :first-child,
+.exploration-reference-block > .prose-math > :first-child,
+.exploration-interaction-block > .prose-math > :first-child {
+  margin-top: 0;
+}
+
+.exploration-prose-block > .prose-math > :last-child,
+.exploration-reference-block > .prose-math > :last-child,
+.exploration-interaction-block > .prose-math > :last-child {
+  margin-bottom: 0;
+}
+
 .exploration-section-heading {
   font-family: var(--font-serif);
   font-size: 1.8rem;
@@ -4194,35 +4214,37 @@ button.danger,
 .exploration-math-block,
 .exploration-reference-block,
 .exploration-interaction-block {
+  background: #fff;
   border: 1px solid var(--line);
   border-left: 4px solid #657f6b;
-  border-radius: 6px;
+  border-radius: 7px;
+  box-shadow: var(--shadow);
   display: grid;
   gap: 0.8rem;
-  padding: 1.1rem 1.25rem;
+  padding: clamp(1.1rem, 3vw, 1.5rem) clamp(1rem, 4vw, 1.75rem);
 }
 
 .exploration-math-block.kind-theorem,
 .exploration-math-block.kind-lemma,
 .exploration-math-block.kind-proposition,
 .exploration-math-block.kind-corollary {
-  background: #eef3f0;
+  background: #fff;
   border-left-color: #365f49;
 }
 
 .exploration-math-block.kind-definition {
-  background: #eef2f8;
+  background: #fff;
   border-left-color: #46658f;
 }
 
 .exploration-math-block.kind-proof {
-  background: #f7f6f2;
+  background: #fff;
   border-left-color: #81765d;
 }
 
 .exploration-math-block.kind-example,
 .exploration-math-block.kind-counterexample {
-  background: #fff7e8;
+  background: #fff;
   border-left-color: #b1822f;
 }
 
@@ -4237,7 +4259,7 @@ button.danger,
 
 .exploration-reference-block {
   align-items: start;
-  background: var(--panel);
+  background: #fff;
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
@@ -4254,7 +4276,7 @@ button.danger,
 }
 
 .exploration-interaction-block {
-  background: #f5f8f5;
+  background: #fff;
   border-left-color: #49745a;
 }
 
@@ -4360,8 +4382,9 @@ button.danger,
 }
 
 .exploration-feedback {
-  background: var(--panel);
+  background: #fff;
   border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
   border-radius: 5px;
   display: grid;
   gap: 0.5rem;
@@ -4369,13 +4392,15 @@ button.danger,
 }
 
 .exploration-feedback.is-correct {
-  background: #e7f3e8;
+  background: #fff;
   border-color: #91b494;
+  border-left-color: #4f8358;
 }
 
 .exploration-feedback.is-incorrect {
-  background: #fff0ed;
+  background: #fff;
   border-color: #d9a29a;
+  border-left-color: #bd6256;
 }
 
 .exploration-quiz-failures {
@@ -4384,7 +4409,7 @@ button.danger,
 }
 
 .exploration-quiz-failures > section {
-  background: rgb(255 255 255 / 0.65);
+  background: #fff;
   border-left: 3px solid #bd6256;
   border-radius: 3px;
   display: grid;
@@ -4414,8 +4439,11 @@ button.danger,
 
 .exploration-completion-summary {
   align-items: start;
-  background: #e7f3e8;
+  background: #fff;
   border: 1px solid #91b494;
+  border-left: 4px solid #4f8358;
+  border-radius: 7px;
+  box-shadow: var(--shadow);
   display: grid;
   gap: 0.8rem;
   grid-template-columns: auto minmax(0, 1fr);
@@ -4432,6 +4460,16 @@ button.danger,
   color: #385b3d;
   font-size: 0.88rem;
   margin-top: 0.2rem;
+}
+
+@media (max-width: 640px) {
+  .exploration-reference-block {
+    grid-template-columns: 1fr;
+  }
+
+  .exploration-reference-block > .button {
+    justify-self: start;
+  }
 }
 
 .exploration-overview-layout {
