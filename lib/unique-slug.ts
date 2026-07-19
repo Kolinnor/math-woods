@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
+import { historicalMathematicianSlugExists } from "@/lib/historical-mathematicians";
 import { ensureSlug } from "@/lib/slug";
 
-type SlugModel = "problem" | "concept" | "playlist" | "quote";
+type SlugModel = "problem" | "concept" | "playlist" | "quote" | "mathematician";
 
 export async function uniqueSlug(model: SlugModel, title: string): Promise<string> {
   const base = ensureSlug(title);
@@ -25,6 +26,9 @@ async function findBySlug(model: SlugModel, slug: string) {
   }
   if (model === "quote") {
     return prisma.quote.findUnique({ where: { slug }, select: { id: true } });
+  }
+  if (model === "mathematician") {
+    return historicalMathematicianSlugExists(slug);
   }
   return prisma.playlist.findUnique({ where: { slug }, select: { id: true } });
 }

@@ -114,10 +114,8 @@ export default async function TipsPage({
   return (
     <ForestPageLayout
       title="Tips"
-      eyebrow="Admin library"
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      description="A compact library of problem-solving prompts and practice links."
       meta={
         <>
           <p>{tips.length ? `${tips.length} tips shown` : "No tips match this search."}</p>

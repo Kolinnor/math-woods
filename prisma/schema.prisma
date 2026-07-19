@@ -289,6 +289,22 @@ model User {
   explorationCollaborations    ExplorationCollaborator[]
   explorationEditionsPublished ExplorationEdition[]         @relation("ExplorationEditionPublisher")
   explorationSessions          ExplorationSession[]
+  mathematiciansCreated        Mathematician[]                @relation("MathematicianCreatedBy")
+}
+
+model Mathematician {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique
+  name        String
+  lifespan    String
+  birthPlace  String
+  portraitUrl String?
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   User?    @relation("MathematicianCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([name])
 }
 
 model EmailVerificationToken {

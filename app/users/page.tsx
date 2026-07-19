@@ -47,7 +47,6 @@ export default async function UsersPage({
   return (
     <ForestPageLayout
       title={t.users.title}
-      eyebrow={t.users.community}
       heroImage="/art/users-forest.webp"
       heroAlt="Ivan Shishkin, The Forest Clearing"
       meta={
