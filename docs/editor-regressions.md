@@ -344,3 +344,42 @@ Guardrail:
 - Keep JSXGraph fences as ordinary source in CodeMirror. Do not turn them into block decorations or normalize their
   internal lines; the interactive board is mounted only in rendered Markdown.
 - LaTeX detection must continue to ignore fenced code, including JSXGraph expression strings.
+
+## 2026-07-20 - Rendered display math must not add a blank line after itself
+
+Symptom:
+
+- Markdown with three consecutive source lines (`text`, `$$...$$`, `text`) rendered a large empty vertical gap
+  between the displayed equation and the following text, even though the source contained no blank line.
+
+Root cause:
+
+- With `breaks: true`, Marked emitted a `<br />` after the protected display-math token.
+- KaTeX already renders `.katex-display` as a block, so that trailing break created an additional empty line and its
+  default display margin made the gap more noticeable.
+
+Guardrail:
+
+- Remove only the generated `<br />` immediately following a display-math token before restoring its KaTeX HTML.
+- Keep inline math and explicit Markdown paragraph breaks unchanged.
+- Keep rendered `.prose-math .katex-display` margins compact; do not change CodeMirror display decorations for this
+  viewer-only issue.
+
+## 2026-07-20 - Backspace at a rendered wiki-link boundary must delete one bracket
+
+Symptom:
+
+- Pressing Backspace immediately after a rendered `[[target|label]]` preview did nothing, making the link appear
+  undeletable from its right edge.
+
+Root cause:
+
+- The complete wiki-link source was hidden behind a CodeMirror replacement widget.
+- Boundary-aware deletion existed for rendered LaTeX ranges, but not for rendered wiki-links.
+
+Guardrail:
+
+- Backspace immediately after a rendered wiki-link must delete only its final `]`.
+- Delete immediately before a rendered wiki-link must delete only its first `[`. Selections and ordinary cursor
+  positions must keep CodeMirror's native deletion behavior.
+- Wiki-link-like text inside Markdown code spans or fences must not receive this special handling.

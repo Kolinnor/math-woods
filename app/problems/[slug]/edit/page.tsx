@@ -8,6 +8,7 @@ import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
 import { ProblemDetailsDisclosure } from "@/components/ProblemDetailsDisclosure";
+import { ProblemConcurrentEditForm } from "@/components/ProblemConcurrentEditForm";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
 import { ProblemVerificationFields } from "@/components/ProblemVerificationFields";
@@ -111,7 +112,12 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
     >
       <div className={problem.translatedFromProblem ? "translation-compose-page" : ""}>
         <div className="translation-compose-main">
-          <form action={updateProblemAction.bind(null, problem.id)} className="problem-compose-form">
+          <ProblemConcurrentEditForm
+            action={updateProblemAction.bind(null, problem.id)}
+            baseVersion={problem.version}
+            latestHref={`/problems/${problem.slug}`}
+            historyHref={`/problems/${problem.slug}/history`}
+          >
             <section className="problem-compose-card">
               <div className="problem-compose-section-title">Essential information</div>
               <label className="grid gap-2">
@@ -120,7 +126,12 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
               </label>
               <div className="grid gap-2">
                 <span className="text-sm font-medium">Statement</span>
-                <MarkdownEditor name="bodyMarkdown" initialValue={problem.bodyMarkdown} />
+                <MarkdownEditor
+                  name="bodyMarkdown"
+                  initialValue={problem.bodyMarkdown}
+                  draftKey={`problem:${problem.id}:statement`}
+                  resetSignal={problem.version}
+                />
               </div>
               <div className="grid gap-4 md:grid-cols-[1fr_0.85fr]">
                 <LanguageField
@@ -270,7 +281,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                   </section>
               </ProblemDetailsDisclosure>
             </div>
-          </form>
+          </ProblemConcurrentEditForm>
 
           {canManageProblemHints && (
             <section className="problem-hint-admin panel mt-6 grid gap-5 p-5">

@@ -382,6 +382,7 @@ model ChatMessage {
 
 model Problem {
   id                       Int                          @id @default(autoincrement())
+  version                  Int                          @default(1)
   slug                     String                       @unique
   language                 String                       @default("en")
   translationGroupId       String                       @default(cuid())
@@ -484,16 +485,21 @@ model Concept {
 }
 
 model PageRevision {
-  id          Int        @id @default(autoincrement())
-  pageType    SourceType
-  pageId      Int
-  markdown    String
-  editedById  Int?
-  editSummary String?
-  createdAt   DateTime   @default(now())
-  editedBy    User?      @relation(fields: [editedById], references: [id], onDelete: SetNull)
+  id              Int        @id @default(autoincrement())
+  pageType        SourceType
+  pageId          Int
+  markdown        String
+  problemVersion  Int?
+  problemSnapshot Json?
+  isCreation      Boolean     @default(false)
+  editedById      Int?
+  editSummary     String?
+  createdAt       DateTime   @default(now())
+  editedBy        User?      @relation(fields: [editedById], references: [id], onDelete: SetNull)
 
   @@index([pageType, pageId, createdAt])
+  @@index([pageType, pageId, problemVersion])
+  @@index([editedById, isCreation, createdAt])
 }
 
 model Tag {

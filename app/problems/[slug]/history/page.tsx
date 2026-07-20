@@ -184,7 +184,7 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
                     {revision.editedBy ? ` / ${displayNameForUser(revision.editedBy)}` : ""}
                   </p>
                 </div>
-                <form action={rollbackProblemRevisionAction.bind(null, problem.id, revision.id)}>
+                <form action={rollbackProblemRevisionAction.bind(null, problem.id, revision.id, problem.version)}>
                   <button type="submit" className="secondary">
                     Roll back
                   </button>

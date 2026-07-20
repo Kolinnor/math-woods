@@ -66,6 +66,7 @@ import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
 import { JSXGRAPH_MARKDOWN_TEMPLATE } from "@/lib/jsxgraph";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
+import { wikiLinkDeleteChange } from "@/lib/wiki-link-deletion";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
 const DRAFT_SUBMIT_PREFIX = `${DRAFT_PREFIX}:submit`;
@@ -757,12 +758,13 @@ function latexOpeningDelimiterLength(text: string, position: number) {
   return text.startsWith("$$", position) || text.startsWith("\\(", position) || text.startsWith("\\[", position) ? 2 : 1;
 }
 
-function deleteLatexBoundaryCharacter(view: EditorView, direction: LatexDeleteDirection) {
+function deletePreviewBoundaryCharacter(view: EditorView, direction: LatexDeleteDirection) {
   const selection = view.state.selection.main;
   if (!selection.empty) return false;
 
   const text = view.state.doc.toString();
-  const change = latexDeleteChange(text, selection.from, direction);
+  const change =
+    wikiLinkDeleteChange(text, selection.from, direction) ?? latexDeleteChange(text, selection.from, direction);
   if (!change) return false;
 
   view.dispatch({
@@ -1418,11 +1420,11 @@ export function MarkdownEditor({
             keymap.of([
               {
                 key: "Backspace",
-                run: (view) => deleteLatexBoundaryCharacter(view, "backward")
+                run: (view) => deletePreviewBoundaryCharacter(view, "backward")
               },
               {
                 key: "Delete",
-                run: (view) => deleteLatexBoundaryCharacter(view, "forward")
+                run: (view) => deletePreviewBoundaryCharacter(view, "forward")
               },
               {
                 key: "ArrowLeft",

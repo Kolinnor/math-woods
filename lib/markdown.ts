@@ -56,6 +56,10 @@ function restoreLatex(html: string, replacements: Map<string, string>) {
   let output = html;
 
   for (const [token, latexHtml] of replacements) {
+    if (latexHtml.startsWith('<span class="katex-display"')) {
+      const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      output = output.replace(new RegExp(`${escapedToken}\\s*<br\\s*\\/?>`, "g"), token);
+    }
     output = output.replaceAll(token, latexHtml);
   }
 

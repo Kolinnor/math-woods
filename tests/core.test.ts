@@ -14,6 +14,7 @@ import {
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { extractWikiLinks, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
+import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
 import {
   buildImageObjectKey,
   createPresignedImageUpload,
@@ -22,6 +23,12 @@ import {
 } from "../lib/image-storage.ts";
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
+import {
+  CONTENT_CREATION_WINDOW_MS,
+  assertDailyContentCreationQuota,
+  contentCreationWindowStart,
+  dailyContentCreationLimitForRole
+} from "../lib/content-creation-quota.ts";
 import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
@@ -112,6 +119,10 @@ import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownP
 import { markdownExcerpt } from "../lib/metadata-text.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
+import {
+  mergeProblemRevisionSnapshots,
+  type ProblemRevisionSnapshot
+} from "../lib/problem-revisions.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
 import { rankSearchMatches, searchMatchScore } from "../lib/search-ranking.ts";
@@ -174,6 +185,55 @@ assert.equal(
 assert.equal(wikiLinkMarkup("Category", "this is a category"), "[[Category|this is a category]]");
 assert.equal(wikiLinkMarkup("Category", "Category"), "[[Category|Category]]");
 assert.equal(markdownExcerpt("Use [[polynomial|polynomials]] and $x^2$.", "fallback"), "Use polynomials and formula .");
+
+const baseProblemSnapshot: ProblemRevisionSnapshot = {
+  schemaVersion: 1,
+  title: "Original title",
+  language: "en",
+  bodyMarkdown: "Original statement",
+  difficulty: 20,
+  domains: [{ domain: MathDomain.ALGEBRA, mscCode: MathDomain.ALGEBRA, spoiler: false }],
+  origin: "Unknown",
+  originChapter: null,
+  originPage: null,
+  originNote: null,
+  listed: true,
+  canAppearOnFrontPage: false,
+  status: "PUBLISHED",
+  qualityStatus: QualityStatus.UNREVIEWED,
+  verificationMode: "NONE",
+  verificationPrompt: null,
+  verificationAnswer: null,
+  translatedFromRevisionId: null,
+  tags: [],
+  spoilerTags: [],
+  relatedProblemGroups: []
+};
+const independentlyEditedSnapshot = mergeProblemRevisionSnapshots(
+  baseProblemSnapshot,
+  { ...baseProblemSnapshot, title: "Title from Alice" },
+  { ...baseProblemSnapshot, bodyMarkdown: "Statement from Bob" }
+);
+assert.deepEqual(independentlyEditedSnapshot.conflicts, []);
+assert.equal(independentlyEditedSnapshot.merged.title, "Title from Alice");
+assert.equal(independentlyEditedSnapshot.merged.bodyMarkdown, "Statement from Bob");
+
+const conflictingProblemSnapshot = mergeProblemRevisionSnapshots(
+  baseProblemSnapshot,
+  { ...baseProblemSnapshot, title: "Title from Alice", bodyMarkdown: "Statement from Alice" },
+  { ...baseProblemSnapshot, title: "Title from Bob" }
+);
+assert.deepEqual(conflictingProblemSnapshot.conflicts, ["title"]);
+assert.equal(conflictingProblemSnapshot.merged.title, "Title from Bob");
+assert.equal(conflictingProblemSnapshot.merged.bodyMarkdown, "Statement from Alice");
+
+const identicalProblemSnapshot = mergeProblemRevisionSnapshots(
+  baseProblemSnapshot,
+  { ...baseProblemSnapshot, difficulty: 30 },
+  { ...baseProblemSnapshot, difficulty: 30 }
+);
+assert.deepEqual(identicalProblemSnapshot.conflicts, []);
+assert.equal(identicalProblemSnapshot.merged.difficulty, 30);
 
 const start = new Date("2026-06-04T10:00:00.000Z");
 const unlock = unlockDate(start);
@@ -366,6 +426,49 @@ assert.equal(parseContributorQualityStatus("EXCELLENT", Role.MODERATOR), Quality
 assert.equal(parseContributorQualityStatus("EXCELLENT", Role.OWNER), QualityStatus.EXCELLENT);
 assert.equal(hasTrustedPrivileges(Role.USER), false);
 assert.equal(hasTrustedPrivileges(Role.MODERATOR), true);
+assert.equal(dailyContentCreationLimitForRole(Role.USER), 20);
+assert.equal(dailyContentCreationLimitForRole(Role.MODERATOR), 100);
+assert.equal(dailyContentCreationLimitForRole(Role.ADMIN), null);
+assert.equal(dailyContentCreationLimitForRole(Role.OWNER), null);
+assert.equal(
+  contentCreationWindowStart(new Date("2026-07-20T18:00:00.000Z")).toISOString(),
+  new Date(Date.parse("2026-07-20T18:00:00.000Z") - CONTENT_CREATION_WINDOW_MS).toISOString()
+);
+let quotaCreationCount = 19;
+let quotaLockCount = 0;
+let observedQuotaWhere: unknown;
+const quotaTransaction = {
+  $queryRaw: async () => {
+    quotaLockCount += 1;
+  },
+  pageRevision: {
+    count: async ({ where }: { where: unknown }) => {
+      observedQuotaWhere = where;
+      return quotaCreationCount;
+    }
+  }
+} as unknown as Parameters<typeof assertDailyContentCreationQuota>[0];
+await assertDailyContentCreationQuota(quotaTransaction, { id: 7, role: Role.USER }, new Date("2026-07-20T18:00:00.000Z"));
+assert.equal(quotaLockCount, 1);
+assert.deepEqual(observedQuotaWhere, {
+  editedById: 7,
+  isCreation: true,
+  pageType: { in: ["PROBLEM", "CONCEPT"] },
+  createdAt: { gte: new Date("2026-07-19T18:00:00.000Z") }
+});
+quotaCreationCount = 20;
+await assert.rejects(
+  () => assertDailyContentCreationQuota(quotaTransaction, { id: 7, role: Role.USER }),
+  /up to 20 problems and concepts combined/
+);
+await assertDailyContentCreationQuota(
+  {
+    $queryRaw: async () => {
+      throw new Error("Admins should bypass the daily quota.");
+    }
+  } as unknown as Parameters<typeof assertDailyContentCreationQuota>[0],
+  { id: 8, role: Role.ADMIN }
+);
 assert.equal(canUseModerationTools(Role.MODERATOR), true);
 assert.equal(canUseAdminTools(Role.MODERATOR), false);
 assert.equal(canUseAdminTools(Role.ADMIN), true);
@@ -539,6 +642,23 @@ assert.deepEqual(findWikiLinkRanges("See [[polynomial]] and [[vieta-relations|Vi
 assert.deepEqual(findWikiLinkRanges("Code `[[skip]]` then [[polynomial]]."), [
   { from: 21, to: 35, label: "polynomial" }
 ]);
+const wikiLinkBoundaryText = "See [[Eulerian path|eulerian path]] now";
+const wikiLinkBoundaryFrom = wikiLinkBoundaryText.indexOf("[[");
+const wikiLinkBoundaryTo = wikiLinkBoundaryText.indexOf("]]", wikiLinkBoundaryFrom) + 2;
+assert.deepEqual(wikiLinkDeleteChange(wikiLinkBoundaryText, wikiLinkBoundaryTo, "backward"), {
+  from: wikiLinkBoundaryTo - 1,
+  to: wikiLinkBoundaryTo,
+  anchor: wikiLinkBoundaryTo - 1
+});
+assert.deepEqual(wikiLinkDeleteChange(wikiLinkBoundaryText, wikiLinkBoundaryFrom, "forward"), {
+  from: wikiLinkBoundaryFrom,
+  to: wikiLinkBoundaryFrom + 1,
+  anchor: wikiLinkBoundaryFrom
+});
+assert.equal(wikiLinkDeleteChange(wikiLinkBoundaryText, wikiLinkBoundaryTo + 1, "backward"), null);
+const codedWikiLink = "Code `[[Eulerian path]]`";
+const codedWikiLinkBoundary = codedWikiLink.indexOf("]]", codedWikiLink.indexOf("[[")) + 2;
+assert.equal(wikiLinkDeleteChange(codedWikiLink, codedWikiLinkBoundary, "backward"), null);
 
 const renderedLatex = await renderMarkdown(
   "A real sequence $(u_n)_{n\\geq 0}$ satisfies $u_{n+1}=u_n$ for every $n\\geq 0$."
@@ -560,6 +680,11 @@ const renderedMixedDisplayLatex = await renderMarkdown("Before $$x^2 + 1$$ after
 assert.match(renderedMixedDisplayLatex, /<p>Before\s*<\/p>\s*<p><span class="katex-display"/);
 assert.match(renderedMixedDisplayLatex, /<\/span><\/p>\s*<p>\s*after<\/p>/);
 assert.equal(/<p>Before\s*<span class="katex-display"/.test(renderedMixedDisplayLatex), false);
+
+const renderedStandaloneDisplayLatex = await renderMarkdown("Before\n$$x^2 + 1$$\nafter");
+assert.match(renderedStandaloneDisplayLatex, /Before<br \/><span class="katex-display"/);
+assert.equal(renderedStandaloneDisplayLatex.includes("<br />after"), false);
+assert.match(renderedStandaloneDisplayLatex, /<\/span>after<\/p>\s*$/);
 
 const renderedInlineDisplayLatex = await renderInlineMarkdown("Title $$x^2 + 1$$");
 assert.match(renderedInlineDisplayLatex, /^Title <span class="katex-display"/);
@@ -682,6 +807,7 @@ assert.match(latexDisplayRule, /display:\s*inline-block/);
 assert.doesNotMatch(latexDisplayRule, /display:\s*block/);
 assert.doesNotMatch(latexDisplayRule, /overflow-x:\s*auto/);
 assert.match(editorCssSource, /\.markdown-editor \.cm-latex-display-line \{\s*text-align:\s*center;/);
+assert.match(editorCssSource, /\.prose-math \.katex-display \{\s*margin:\s*0\.4em 0;/);
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");

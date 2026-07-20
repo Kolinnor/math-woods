@@ -4,6 +4,7 @@ import { MathDomain, SourceType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import {
   getBooleanAttribute,
   getNumberAttribute,
@@ -48,6 +49,7 @@ export async function importMarkdownAction(formData: FormData) {
   if (importType === "concept") {
     const slug = await uniqueSlug("concept", safeTitle);
     const concept = await prisma.$transaction(async (tx) => {
+      await assertDailyContentCreationQuota(tx, user);
       const created = await tx.concept.create({
         data: {
           slug,
@@ -74,6 +76,7 @@ export async function importMarkdownAction(formData: FormData) {
           pageId: created.id,
           markdown: bodyMarkdown,
           editedById: user.id,
+          isCreation: true,
           editSummary: "Imported from Markdown"
         }
       });
@@ -100,6 +103,7 @@ export async function importMarkdownAction(formData: FormData) {
       ? importedDifficulty
       : null;
   const problem = await prisma.$transaction(async (tx) => {
+    await assertDailyContentCreationQuota(tx, user);
     const created = await tx.problem.create({
       data: {
         slug,
@@ -142,6 +146,7 @@ export async function importMarkdownAction(formData: FormData) {
         pageId: created.id,
         markdown: bodyMarkdown,
         editedById: user.id,
+        isCreation: true,
         editSummary: "Imported from Markdown"
       }
     });

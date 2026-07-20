@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { prisma } from "@/lib/db";
 import { notifyConceptAuthor, notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
@@ -45,6 +46,7 @@ export async function createConceptAction(formData: FormData) {
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const concept = await prisma.$transaction(async (tx) => {
+    await assertDailyContentCreationQuota(tx, user);
     const existingTitle = await tx.concept.findFirst({
       where: {
         language,
@@ -107,6 +109,7 @@ export async function createConceptAction(formData: FormData) {
         pageId: created.id,
         markdown: bodyMarkdown,
         editedById: user.id,
+        isCreation: true,
         editSummary: "Concept created"
       }
     });

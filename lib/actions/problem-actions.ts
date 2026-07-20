@@ -7,6 +7,7 @@ import {
   PostType,
   ProblemStatus,
   ProblemVerificationMode,
+  Prisma,
   QualityStatus,
   MathDomain,
   SourceType,
@@ -25,6 +26,7 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
+import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { syncInternalLinks } from "@/lib/internal-links";
 import { canEditExploration } from "@/lib/explorations";
 import {
@@ -35,7 +37,18 @@ import {
 } from "@/lib/notifications";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
-import { linkSpecificProblem, syncProblemRelationGroups } from "@/lib/problem-relations";
+import { linkSpecificProblem, parseProblemRelationGroups, syncProblemRelationGroups } from "@/lib/problem-relations";
+import {
+  PROBLEM_SNAPSHOT_FIELD_LABELS,
+  buildProblemRevisionSnapshot,
+  changedProblemSnapshotFields,
+  mergeProblemRevisionSnapshots,
+  parseProblemRevisionSnapshot,
+  problemRevisionSnapshotJson,
+  problemSnapshotRelationInput,
+  problemSnapshotTagInput,
+  type ProblemRevisionSnapshot
+} from "@/lib/problem-revisions";
 import {
   parseProblemVerificationMode,
   verificationMatches
@@ -61,6 +74,91 @@ import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
 
+export type ProblemEditActionState =
+  | { status: "idle" }
+  | {
+      status: "conflict";
+      currentVersion: number;
+      editorName: string | null;
+      editedAt: string | null;
+      conflictingFields: string[];
+    };
+
+class ProblemEditConflictError extends Error {
+  constructor(
+    readonly currentVersion: number,
+    readonly conflictingFields: string[] = []
+  ) {
+    super("This problem changed while you were editing it.");
+  }
+}
+
+const problemRevisionSnapshotInclude = {
+  domains: { orderBy: { position: "asc" as const } },
+  tags: { include: { tag: { select: { name: true, slug: true } } } },
+  spoilerTags: { include: { tag: { select: { name: true, slug: true } } } },
+  relatedGroups: {
+    orderBy: { position: "asc" as const },
+    include: {
+      relations: {
+        orderBy: { position: "asc" as const },
+        include: { targetProblem: { select: { slug: true } } }
+      }
+    }
+  }
+} satisfies Prisma.ProblemInclude;
+
+async function problemSnapshotSource(tx: Prisma.TransactionClient, problemId: number) {
+  const problem = await tx.problem.findUnique({
+    where: { id: problemId },
+    include: problemRevisionSnapshotInclude
+  });
+  if (!problem) throw new Error("Problem not found.");
+  return problem;
+}
+
+async function ensureProblemSnapshotRevision(
+  tx: Prisma.TransactionClient,
+  problem: Awaited<ReturnType<typeof problemSnapshotSource>>
+) {
+  const snapshot = buildProblemRevisionSnapshot(problem);
+  const matchingRevision = await tx.pageRevision.findFirst({
+    where: {
+      pageType: SourceType.PROBLEM,
+      pageId: problem.id,
+      problemVersion: problem.version
+    },
+    orderBy: { id: "desc" }
+  });
+  if (matchingRevision?.problemSnapshot) return;
+
+  const latestRevision = await tx.pageRevision.findFirst({
+    where: { pageType: SourceType.PROBLEM, pageId: problem.id },
+    orderBy: { id: "desc" }
+  });
+  if (problem.version === 1 && latestRevision && latestRevision.problemVersion === null) {
+    await tx.pageRevision.update({
+      where: { id: latestRevision.id },
+      data: {
+        problemVersion: problem.version,
+        problemSnapshot: problemRevisionSnapshotJson(snapshot)
+      }
+    });
+    return;
+  }
+
+  await tx.pageRevision.create({
+    data: {
+      pageType: SourceType.PROBLEM,
+      pageId: problem.id,
+      markdown: problem.bodyMarkdown,
+      problemVersion: problem.version,
+      problemSnapshot: problemRevisionSnapshotJson(snapshot),
+      editSummary: "Problem state captured"
+    }
+  });
+}
+
 async function renderMarkdownContent(markdown: string) {
   const { renderMarkdown } = await import("@/lib/markdown");
   return renderMarkdown(markdown);
@@ -71,14 +169,6 @@ function intField(value: FormDataEntryValue | null, fallback: number) {
   return Number.isInteger(parsed) ? parsed : fallback;
 }
 
-function listFingerprint(values: string[]) {
-  return [...new Set(values.filter(Boolean))].sort().join("|");
-}
-
-function parsedTagFingerprint(input: string) {
-  return listFingerprint(parseTagInput(input).map((tag) => tag.slug));
-}
-
 function mergedAttemptStatus(left: AttemptStatus, right: AttemptStatus) {
   const rank: Record<AttemptStatus, number> = {
     STARTED: 0,
@@ -87,18 +177,6 @@ function mergedAttemptStatus(left: AttemptStatus, right: AttemptStatus) {
     SOLVED: 3
   };
   return rank[right] > rank[left] ? right : left;
-}
-
-function storedTagFingerprint(items: Array<{ tag: { slug: string } }>) {
-  return listFingerprint(items.map((item) => item.tag.slug));
-}
-
-function domainFingerprint(items: Array<{ mscCode: string; spoiler: boolean }>) {
-  return listFingerprint(items.map((item) => `${item.mscCode}${item.spoiler ? ":spoiler" : ""}`));
-}
-
-function pushChange(changes: string[], changed: boolean, label: string) {
-  if (changed) changes.push(label);
 }
 
 function problemEditNotificationBody({
@@ -225,6 +303,7 @@ export async function createProblemAction(formData: FormData) {
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const problem = await prisma.$transaction(async (tx) => {
+    await assertDailyContentCreationQuota(tx, user);
     if (translationGroupId) {
       const existingTranslation = await tx.problem.findFirst({
         where: { translationGroupId, language },
@@ -410,12 +489,16 @@ export async function createProblemAction(formData: FormData) {
     await syncProblemRelationGroups(tx, created.id, relatedProblemGroups);
     await syncProblemTags(created.id, tags, tx);
     await syncProblemSpoilerTags(created.id, spoilerTags, tx);
+    const createdSnapshotSource = await problemSnapshotSource(tx, created.id);
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.PROBLEM,
         pageId: created.id,
         markdown: bodyMarkdown,
+        problemVersion: createdSnapshotSource.version,
+        problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(createdSnapshotSource)),
         editedById: user.id,
+        isCreation: true,
         editSummary: "Problem created"
       }
     });
@@ -433,36 +516,19 @@ export async function createProblemAction(formData: FormData) {
   redirect(contentLanguageViewHref("/problems", problem.slug, problem.language) as Route);
 }
 
-export async function updateProblemAction(problemId: number, formData: FormData) {
+export async function updateProblemAction(
+  problemId: number,
+  _state: ProblemEditActionState,
+  formData: FormData
+): Promise<ProblemEditActionState> {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:update:${user.id}`, 20, 60_000);
+  const baseVersion = Number(formData.get("baseVersion"));
+  if (!Number.isInteger(baseVersion) || baseVersion < 1) throw new Error("Invalid problem version.");
+  const acceptedConflictVersion = Number(formData.get("acceptedConflictVersion"));
   const previous = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: {
-      authorId: true,
-      slug: true,
-      title: true,
-      bodyMarkdown: true,
-      difficulty: true,
-      domain: true,
-      origin: true,
-      originChapter: true,
-      originPage: true,
-      originNote: true,
-      listed: true,
-      canAppearOnFrontPage: true,
-      qualityStatus: true,
-      verificationMode: true,
-      verificationPrompt: true,
-      verificationAnswer: true,
-      language: true,
-      translationGroupId: true,
-      translatedFromProblemId: true,
-      translatedFromRevisionId: true,
-      domains: { select: { mscCode: true, spoiler: true } },
-      tags: { include: { tag: { select: { slug: true } } } },
-      spoilerTags: { include: { tag: { select: { slug: true } } } }
-    }
+    include: problemRevisionSnapshotInclude
   });
   if (!previous) throw new Error("Problem not found.");
   if (!canEditProblem(user, previous)) {
@@ -475,7 +541,6 @@ export async function updateProblemAction(problemId: number, formData: FormData)
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
-  const domain = domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER;
   const origin = boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin") || "Unknown";
   const originChapter = optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter");
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
@@ -513,132 +578,220 @@ export async function updateProblemAction(problemId: number, formData: FormData)
     throw new Error("Short answer verification requires an expected answer.");
   }
 
-  const changedFields: string[] = [];
-  pushChange(changedFields, previous.title !== title, "title");
-  pushChange(changedFields, previous.bodyMarkdown !== bodyMarkdown, "statement");
-  pushChange(changedFields, previous.language !== language, "language");
-  pushChange(changedFields, previous.difficulty !== difficulty, "difficulty");
-  pushChange(changedFields, domainFingerprint(previous.domains) !== domainFingerprint(domains), "domains");
-  pushChange(
-    changedFields,
-    previous.origin !== origin ||
-      previous.originChapter !== originChapter ||
-      previous.originPage !== originPage ||
-      previous.originNote !== originNote,
-    "source"
-  );
-  pushChange(changedFields, previous.listed !== listed, "visibility");
-  pushChange(changedFields, previous.canAppearOnFrontPage !== canAppearOnFrontPage, "front page eligibility");
-  pushChange(changedFields, previous.qualityStatus !== qualityStatus, "quality");
-  pushChange(
-    changedFields,
-    previous.verificationMode !== verificationMode ||
-      previous.verificationPrompt !== (verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt) ||
-      previous.verificationAnswer !== (verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null),
-    "verification"
-  );
-  pushChange(changedFields, storedTagFingerprint(previous.tags) !== parsedTagFingerprint(tags), "tags");
-  pushChange(changedFields, storedTagFingerprint(previous.spoilerTags) !== parsedTagFingerprint(spoilerTags), "spoiler tags");
+  const submittedSnapshot: ProblemRevisionSnapshot = {
+    schemaVersion: 1,
+    title,
+    language,
+    bodyMarkdown,
+    difficulty,
+    domains,
+    origin,
+    originChapter,
+    originPage,
+    originNote,
+    listed,
+    canAppearOnFrontPage,
+    status: previous.status,
+    qualityStatus,
+    verificationMode,
+    verificationPrompt: verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt,
+    verificationAnswer: verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null,
+    translatedFromRevisionId: previous.translatedFromRevisionId,
+    tags: parseTagInput(tags)
+      .map((tag) => ({ name: tag.name, slug: tag.slug }))
+      .sort((left, right) => left.slug.localeCompare(right.slug)),
+    spoilerTags: parseTagInput(spoilerTags)
+      .map((tag) => ({ name: tag.name, slug: tag.slug }))
+      .sort((left, right) => left.slug.localeCompare(right.slug)),
+    relatedProblemGroups: parseProblemRelationGroups(relatedProblemGroups)
+  };
 
-  const bodyHtml = await renderMarkdownContent(bodyMarkdown);
-  const problem = await prisma.$transaction(async (tx) => {
-    if (language !== previous.language) {
-      const existingTranslation = await tx.problem.findFirst({
-        where: {
-          id: { not: problemId },
-          translationGroupId: previous.translationGroupId,
-          language
-        },
-        select: { slug: true }
+  let problem;
+  try {
+    problem = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`problem-edit:${previous.translationGroupId}`}))`;
+      const current = await problemSnapshotSource(tx, problemId);
+      await ensureProblemSnapshotRevision(tx, current);
+      const currentSnapshot = buildProblemRevisionSnapshot(current);
+      let resolvedSnapshot = submittedSnapshot;
+      let autoMerged = false;
+
+      if (current.version !== baseVersion) {
+        const baseRevision = await tx.pageRevision.findFirst({
+          where: {
+            pageType: SourceType.PROBLEM,
+            pageId: problemId,
+            problemVersion: baseVersion,
+            problemSnapshot: { not: Prisma.JsonNull }
+          },
+          orderBy: { id: "desc" }
+        });
+        const baseSnapshot = parseProblemRevisionSnapshot(baseRevision?.problemSnapshot ?? null);
+        if (!baseSnapshot) throw new ProblemEditConflictError(current.version);
+        const merge = mergeProblemRevisionSnapshots(baseSnapshot, currentSnapshot, submittedSnapshot);
+        if (merge.conflicts.length && acceptedConflictVersion !== current.version) {
+          throw new ProblemEditConflictError(
+            current.version,
+            merge.conflicts.map((field) => PROBLEM_SNAPSHOT_FIELD_LABELS[field])
+          );
+        }
+        resolvedSnapshot = merge.merged;
+        autoMerged = true;
+      }
+
+      resolvedSnapshot.status = current.status;
+      resolvedSnapshot.translatedFromRevisionId = current.translatedFromRevisionId;
+      if (resolvedSnapshot.language !== current.language) {
+        const existingTranslation = await tx.problem.findFirst({
+          where: {
+            id: { not: problemId },
+            translationGroupId: current.translationGroupId,
+            language: resolvedSnapshot.language
+          },
+          select: { slug: true }
+        });
+        if (existingTranslation) throw new Error("A problem translation already exists in this language.");
+      }
+
+      if (markTranslationFresh && current.translatedFromProblemId) {
+        const refreshedSourceRevision = await tx.pageRevision.findFirst({
+          where: { pageType: SourceType.PROBLEM, pageId: current.translatedFromProblemId },
+          orderBy: { id: "desc" },
+          select: { id: true }
+        });
+        if (refreshedSourceRevision) resolvedSnapshot.translatedFromRevisionId = refreshedSourceRevision.id;
+      }
+
+      const bodyHtml = await renderMarkdownContent(resolvedSnapshot.bodyMarkdown);
+      const updateResult = await tx.problem.updateMany({
+        where: { id: problemId, version: current.version },
+        data: {
+          title: resolvedSnapshot.title,
+          language: resolvedSnapshot.language,
+          bodyMarkdown: resolvedSnapshot.bodyMarkdown,
+          bodyHtml,
+          difficulty: resolvedSnapshot.difficulty,
+          domain: resolvedSnapshot.domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER,
+          origin: resolvedSnapshot.origin,
+          originChapter: resolvedSnapshot.originChapter,
+          originPage: resolvedSnapshot.originPage,
+          originNote: resolvedSnapshot.originNote,
+          listed: resolvedSnapshot.listed,
+          canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage,
+          qualityStatus: resolvedSnapshot.qualityStatus,
+          verificationMode: resolvedSnapshot.verificationMode,
+          verificationPrompt: resolvedSnapshot.verificationPrompt,
+          verificationAnswer: resolvedSnapshot.verificationAnswer,
+          translatedFromRevisionId: resolvedSnapshot.translatedFromRevisionId,
+          version: { increment: 1 }
+        }
       });
-      if (existingTranslation) {
-        throw new Error("A problem translation already exists in this language.");
-      }
-    }
+      if (updateResult.count !== 1) throw new ProblemEditConflictError(current.version + 1);
 
-    const refreshedSourceRevision =
-      markTranslationFresh && previous.translatedFromProblemId
-        ? await tx.pageRevision.findFirst({
-            where: { pageType: SourceType.PROBLEM, pageId: previous.translatedFromProblemId },
-            orderBy: { id: "desc" },
-            select: { id: true }
-          })
-        : null;
-
-    const updated = await tx.problem.update({
-      where: { id: problemId },
-      data: {
-        title,
-        language,
-        bodyMarkdown,
-        bodyHtml,
-        difficulty,
-        domain,
-        origin,
-        originChapter,
-        originPage,
-        originNote,
-        listed,
-        canAppearOnFrontPage,
-        qualityStatus,
-        verificationMode,
-        verificationPrompt: verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt,
-        verificationAnswer: verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null,
-        ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {})
-      }
-    });
-    const siblingDifficultyWhere =
-      difficulty === null
-        ? { difficulty: { not: null } }
-        : { OR: [{ difficulty: null }, { difficulty: { not: difficulty } }] };
-    await tx.problem.updateMany({
-      where: {
-        translationGroupId: previous.translationGroupId,
-        id: { not: problemId },
-        ...siblingDifficultyWhere
-      },
-      data: { difficulty }
-    });
-    if (canAppearOnFrontPage !== previous.canAppearOnFrontPage) {
-      await tx.problem.updateMany({
+      const syncFrontPage = resolvedSnapshot.canAppearOnFrontPage !== current.canAppearOnFrontPage;
+      const siblingCandidates = await tx.problem.findMany({
         where: {
-          translationGroupId: previous.translationGroupId,
+          translationGroupId: current.translationGroupId,
           id: { not: problemId },
-          canAppearOnFrontPage: { not: canAppearOnFrontPage }
+          OR: [
+            resolvedSnapshot.difficulty === null
+              ? { difficulty: { not: null } }
+              : { OR: [{ difficulty: null }, { difficulty: { not: resolvedSnapshot.difficulty } }] },
+            ...(syncFrontPage
+              ? [{ canAppearOnFrontPage: { not: resolvedSnapshot.canAppearOnFrontPage } }]
+              : [])
+          ]
         },
-        data: { canAppearOnFrontPage }
+        select: { id: true }
       });
-    }
-
-    await syncInternalLinks(SourceType.PROBLEM, updated.id, bodyMarkdown, tx, language);
-    await syncProblemDomains(tx, updated.id, domains);
-    await syncProblemRelationGroups(tx, updated.id, relatedProblemGroups);
-    await syncProblemTags(updated.id, tags, tx);
-    await syncProblemSpoilerTags(updated.id, spoilerTags, tx);
-    const revision = await tx.pageRevision.create({
-      data: {
-        pageType: SourceType.PROBLEM,
-        pageId: updated.id,
-        markdown: bodyMarkdown,
-        editedById: user.id,
-        editSummary
+      for (const sibling of siblingCandidates) {
+        await ensureProblemSnapshotRevision(tx, await problemSnapshotSource(tx, sibling.id));
       }
-    });
+      if (siblingCandidates.length) {
+        await tx.problem.updateMany({
+          where: { id: { in: siblingCandidates.map((item) => item.id) } },
+          data: {
+            difficulty: resolvedSnapshot.difficulty,
+            ...(syncFrontPage ? { canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage } : {}),
+            version: { increment: 1 }
+          }
+        });
+      }
 
-    return { updated, revisionId: revision.id };
-  });
+      await syncInternalLinks(SourceType.PROBLEM, problemId, resolvedSnapshot.bodyMarkdown, tx, resolvedSnapshot.language);
+      await syncProblemDomains(tx, problemId, resolvedSnapshot.domains);
+      await syncProblemRelationGroups(tx, problemId, problemSnapshotRelationInput(resolvedSnapshot));
+      await syncProblemTags(problemId, problemSnapshotTagInput(resolvedSnapshot.tags), tx);
+      await syncProblemSpoilerTags(problemId, problemSnapshotTagInput(resolvedSnapshot.spoilerTags), tx);
+
+      const updated = await problemSnapshotSource(tx, problemId);
+      const revision = await tx.pageRevision.create({
+        data: {
+          pageType: SourceType.PROBLEM,
+          pageId: updated.id,
+          markdown: updated.bodyMarkdown,
+          problemVersion: updated.version,
+          problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(updated)),
+          editedById: user.id,
+          editSummary: autoMerged ? `${editSummary} (merged with concurrent changes)` : editSummary
+        },
+        select: { id: true }
+      });
+
+      const siblingSlugs: string[] = [];
+      for (const sibling of siblingCandidates) {
+        const siblingAfter = await problemSnapshotSource(tx, sibling.id);
+        siblingSlugs.push(siblingAfter.slug);
+        await tx.pageRevision.create({
+          data: {
+            pageType: SourceType.PROBLEM,
+            pageId: siblingAfter.id,
+            markdown: siblingAfter.bodyMarkdown,
+            problemVersion: siblingAfter.version,
+            problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(siblingAfter)),
+            editedById: user.id,
+            editSummary: `Shared settings updated from ${updated.language} translation`
+          }
+        });
+      }
+
+      const changedFields = changedProblemSnapshotFields(currentSnapshot, buildProblemRevisionSnapshot(updated)).map(
+        (field) => PROBLEM_SNAPSHOT_FIELD_LABELS[field]
+      );
+      return { updated, revisionId: revision.id, changedFields, siblingSlugs, previousTitle: current.title };
+    });
+  } catch (error) {
+    if (!(error instanceof ProblemEditConflictError)) throw error;
+    const latestRevision = await prisma.pageRevision.findFirst({
+      where: { pageType: SourceType.PROBLEM, pageId: problemId },
+      orderBy: { id: "desc" },
+      include: { editedBy: true }
+    });
+    return {
+      status: "conflict",
+      currentVersion: error.currentVersion,
+      editorName: latestRevision?.editedBy ? displayNameForUser(latestRevision.editedBy) : null,
+      editedAt: latestRevision?.createdAt.toISOString() ?? null,
+      conflictingFields: error.conflictingFields
+    };
+  }
 
   revalidatePath("/");
   revalidatePath(`/problems/${problem.updated.slug}`);
   revalidatePath(`/problems/${problem.updated.slug}/history`);
+  for (const siblingSlug of problem.siblingSlugs) {
+    revalidatePath(`/problems/${siblingSlug}`);
+    revalidatePath(`/problems/${siblingSlug}/edit`);
+    revalidatePath(`/problems/${siblingSlug}/history`);
+  }
   await notifyProblemEditSubscribers({
     problemId,
     actorId: user.id,
     title: "Problem edited",
     body: problemEditNotificationBody({
       actorName: displayNameForUser(user),
-      title: previous.title,
-      changedFields,
+      title: problem.previousTitle,
+      changedFields: problem.changedFields,
       editSummary
     }),
     href: `/problems/${problem.updated.slug}/history#revision-${problem.revisionId}`
@@ -688,7 +841,7 @@ export async function deleteProblemAction(problemId: number) {
   await assertRateLimit(`problem:delete:${user.id}`, 10, 60_000);
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { id: true, slug: true, authorId: true, bodyMarkdown: true, status: true }
+    select: { id: true, slug: true, authorId: true, translationGroupId: true, status: true }
   });
 
   if (!problem) throw new Error("Problem not found.");
@@ -697,11 +850,15 @@ export async function deleteProblemAction(problemId: number) {
   }
 
   await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`problem-edit:${problem.translationGroupId}`}))`;
+    const current = await problemSnapshotSource(tx, problem.id);
+    await ensureProblemSnapshotRevision(tx, current);
     await tx.problem.update({
       where: { id: problem.id },
       data: {
         status: ProblemStatus.ARCHIVED,
-        listed: false
+        listed: false,
+        version: { increment: 1 }
       }
     });
     await tx.internalLink.deleteMany({
@@ -710,11 +867,14 @@ export async function deleteProblemAction(problemId: number) {
         sourceId: problem.id
       }
     });
+    const archived = await problemSnapshotSource(tx, problem.id);
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.PROBLEM,
         pageId: problem.id,
-        markdown: problem.bodyMarkdown,
+        markdown: archived.bodyMarkdown,
+        problemVersion: archived.version,
+        problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(archived)),
         editedById: user.id,
         editSummary: "Problem deleted"
       }
@@ -734,16 +894,36 @@ export async function markProblemGoodAction(problemId: number, problemSlug: stri
     throw new Error("You cannot review this problem.");
   }
 
-  await prisma.problem.update({
-    where: { id: problemId },
-    data: { qualityStatus: QualityStatus.GOOD }
+  await prisma.$transaction(async (tx) => {
+    const problem = await problemSnapshotSource(tx, problemId);
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`problem-edit:${problem.translationGroupId}`}))`;
+    const current = await problemSnapshotSource(tx, problemId);
+    await ensureProblemSnapshotRevision(tx, current);
+    const reviewed = await tx.problem.update({
+      where: { id: problemId },
+      data: { qualityStatus: QualityStatus.GOOD, version: { increment: 1 } }
+    });
+    const reviewedSnapshot = await problemSnapshotSource(tx, reviewed.id);
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.PROBLEM,
+        pageId: reviewed.id,
+        markdown: reviewedSnapshot.bodyMarkdown,
+        problemVersion: reviewedSnapshot.version,
+        problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(reviewedSnapshot)),
+        editedById: user.id,
+        editSummary: "Problem marked good"
+      }
+    });
   });
 
   revalidatePath("/problems");
   revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/edit`);
+  revalidatePath(`/problems/${problemSlug}/history`);
 }
 
-export async function rollbackProblemRevisionAction(problemId: number, revisionId: number) {
+export async function rollbackProblemRevisionAction(problemId: number, revisionId: number, expectedVersion: number) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:rollback:${user.id}`, 8, 60_000);
   const [revision, existingProblem] = await Promise.all([
@@ -756,7 +936,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
     }),
     prisma.problem.findUnique({
       where: { id: problemId },
-      select: { authorId: true }
+      select: { authorId: true, translationGroupId: true }
     })
   ]);
 
@@ -767,30 +947,124 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
   }
 
   const problem = await prisma.$transaction(async (tx) => {
-    const current = await tx.problem.update({
-      where: { id: problemId },
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`problem-edit:${existingProblem.translationGroupId}`}))`;
+    const current = await problemSnapshotSource(tx, problemId);
+    if (current.version !== expectedVersion) {
+      throw new Error("This problem changed after the history page was opened. Reload before rolling back.");
+    }
+    await ensureProblemSnapshotRevision(tx, current);
+
+    const snapshot = parseProblemRevisionSnapshot(revision.problemSnapshot);
+    const markdown = snapshot?.bodyMarkdown ?? revision.markdown;
+    const updateResult = await tx.problem.updateMany({
+      where: { id: problemId, version: expectedVersion },
       data: {
-        bodyMarkdown: revision.markdown,
-        bodyHtml: await renderMarkdownContent(revision.markdown)
+        ...(snapshot
+          ? {
+              title: snapshot.title,
+              language: snapshot.language,
+              difficulty: snapshot.difficulty,
+              domain: snapshot.domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER,
+              origin: snapshot.origin,
+              originChapter: snapshot.originChapter,
+              originPage: snapshot.originPage,
+              originNote: snapshot.originNote,
+              listed: snapshot.listed,
+              canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
+              status: snapshot.status,
+              qualityStatus: snapshot.qualityStatus,
+              verificationMode: snapshot.verificationMode,
+              verificationPrompt: snapshot.verificationPrompt,
+              verificationAnswer: snapshot.verificationAnswer,
+              translatedFromRevisionId: snapshot.translatedFromRevisionId
+            }
+          : {}),
+        bodyMarkdown: markdown,
+        bodyHtml: await renderMarkdownContent(markdown),
+        version: { increment: 1 }
       }
     });
+    if (updateResult.count !== 1) throw new Error("This problem changed while the rollback was being applied.");
 
-    await syncInternalLinks(SourceType.PROBLEM, problemId, revision.markdown, tx);
+    await syncInternalLinks(SourceType.PROBLEM, problemId, markdown, tx, snapshot?.language ?? current.language);
+    if (snapshot) {
+      await syncProblemDomains(tx, problemId, snapshot.domains);
+      await syncProblemRelationGroups(tx, problemId, problemSnapshotRelationInput(snapshot));
+      await syncProblemTags(problemId, problemSnapshotTagInput(snapshot.tags), tx);
+      await syncProblemSpoilerTags(problemId, problemSnapshotTagInput(snapshot.spoilerTags), tx);
+    }
+
+    const siblingCandidates = snapshot
+      ? await tx.problem.findMany({
+          where: {
+            translationGroupId: current.translationGroupId,
+            id: { not: problemId },
+            OR: [
+              snapshot.difficulty === null
+                ? { difficulty: { not: null } }
+                : { OR: [{ difficulty: null }, { difficulty: { not: snapshot.difficulty } }] },
+              { canAppearOnFrontPage: { not: snapshot.canAppearOnFrontPage } }
+            ]
+          },
+          select: { id: true }
+        })
+      : [];
+    for (const sibling of siblingCandidates) {
+      await ensureProblemSnapshotRevision(tx, await problemSnapshotSource(tx, sibling.id));
+    }
+    if (snapshot && siblingCandidates.length) {
+      await tx.problem.updateMany({
+        where: { id: { in: siblingCandidates.map((item) => item.id) } },
+        data: {
+          difficulty: snapshot.difficulty,
+          canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
+          version: { increment: 1 }
+        }
+      });
+    }
+
+    const restored = await problemSnapshotSource(tx, problemId);
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.PROBLEM,
         pageId: problemId,
-        markdown: revision.markdown,
+        markdown: restored.bodyMarkdown,
+        problemVersion: restored.version,
+        problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(restored)),
         editedById: user.id,
         editSummary: `Rolled back to revision ${revision.id}`
       }
     });
 
-    return current;
+    const siblingSlugs: string[] = [];
+    for (const sibling of siblingCandidates) {
+      const siblingAfter = await problemSnapshotSource(tx, sibling.id);
+      siblingSlugs.push(siblingAfter.slug);
+      await tx.pageRevision.create({
+        data: {
+          pageType: SourceType.PROBLEM,
+          pageId: siblingAfter.id,
+          markdown: siblingAfter.bodyMarkdown,
+          problemVersion: siblingAfter.version,
+          problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(siblingAfter)),
+          editedById: user.id,
+          editSummary: `Shared settings restored from ${restored.language} translation`
+        }
+      });
+    }
+
+    return { restored, siblingSlugs };
   });
 
-  revalidatePath(`/problems/${problem.slug}`);
-  redirect(contentLanguageViewHref("/problems", problem.slug, problem.language) as Route);
+  revalidatePath(`/problems/${problem.restored.slug}`);
+  revalidatePath(`/problems/${problem.restored.slug}/edit`);
+  revalidatePath(`/problems/${problem.restored.slug}/history`);
+  for (const siblingSlug of problem.siblingSlugs) {
+    revalidatePath(`/problems/${siblingSlug}`);
+    revalidatePath(`/problems/${siblingSlug}/edit`);
+    revalidatePath(`/problems/${siblingSlug}/history`);
+  }
+  redirect(contentLanguageViewHref("/problems", problem.restored.slug, problem.restored.language) as Route);
 }
 
 export async function startAttemptAction(problemId: number, problemSlug: string) {

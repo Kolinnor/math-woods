@@ -1552,6 +1552,34 @@ textarea {
   padding: 0;
 }
 
+.problem-edit-conflict {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #c77a35;
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: #fff8ec;
+}
+
+.problem-edit-conflict p {
+  margin-top: 0.35rem;
+}
+
+.problem-edit-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+@media (max-width: 700px) {
+  .problem-edit-conflict {
+    flex-direction: column;
+  }
+}
+
 .problem-compose-card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -6374,7 +6402,7 @@ button.danger:hover,
 }
 
 .prose-math .katex-display {
-  margin: 0.75rem 0 1rem;
+  margin: 0.4em 0;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 0.15rem;
@@ -6860,13 +6888,21 @@ button.domain-picker-tile > span:last-child {
   grid-template-columns: 1fr;
 }
 
+.concept-search-bar > * {
+  min-width: 0;
+}
+
 @media (min-width: 768px) {
   .concept-search-bar {
     grid-template-columns: minmax(14rem, 1.45fr) minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(9rem, 1fr) auto;
   }
 
   .concept-search-bar-admin {
-    grid-template-columns: minmax(14rem, 1.45fr) repeat(4, minmax(8rem, 1fr)) auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  }
+
+  .concept-search-bar-admin > :first-child {
+    grid-column: 1 / -1;
   }
 }
 
