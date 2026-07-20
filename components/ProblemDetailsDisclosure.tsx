@@ -15,11 +15,9 @@ export function ProblemDetailsDisclosure({ children }: { children: ReactNode }) 
       >
         Add details
       </button>
-      {open && (
-        <div className="problem-compose-details-body problem-compose-card">
-          {children}
-        </div>
-      )}
+      <div className="problem-compose-details-body problem-compose-card" hidden={!open}>
+        {children}
+      </div>
     </>
   );
 }

@@ -129,7 +129,13 @@ export function ExplorationReader({
     });
   }
 
-  function revealAfter(pathIndex: number, blockId: number, nextState = state, saveProgress = true) {
+  function revealAfter(
+    pathIndex: number,
+    blockId: number,
+    nextState = state,
+    saveProgress = true,
+    scrollToBlock = true
+  ) {
     const target = blockById.get(blockId);
     if (!target) return;
     const progressingState = nextState.explorationCompleted === true
@@ -141,7 +147,7 @@ export function ExplorationReader({
     setVisited((items) => new Set([...items, target.key]));
     window.history.replaceState(null, "", `/explorations/${slug}/start?block=${target.key}`);
     if (saveProgress) persist(target, progressingState, false, nextPath);
-    scrollToLatest(target.id);
+    if (scrollToBlock) scrollToLatest(target.id);
   }
 
   function truncateAfter(pathIndex: number) {
@@ -185,7 +191,7 @@ export function ExplorationReader({
       return;
     }
     const timer = window.setTimeout(() => {
-      revealAfter(path.length - 1, currentBlock.continueToBlockId!);
+      revealAfter(path.length - 1, currentBlock.continueToBlockId!, state, true, false);
     }, 120);
     return () => window.clearTimeout(timer);
   // The path itself is the progression trigger; revealAfter intentionally uses its latest snapshot.

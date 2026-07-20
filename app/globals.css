@@ -1599,6 +1599,10 @@ textarea {
   gap: 1rem;
 }
 
+.problem-compose-details-body[hidden] {
+  display: none;
+}
+
 .problem-compose-subsection {
   background: var(--panel-muted);
   border: 1px solid var(--line);
