@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { registerUser, signInWithPassword, signOutUser } from "@/lib/auth";
 import { boundedText } from "@/lib/content-limits";
@@ -54,5 +55,6 @@ export async function registerAction(formData: FormData) {
 
 export async function logoutAction() {
   await signOutUser();
+  revalidatePath("/", "layout");
   redirect("/");
 }
