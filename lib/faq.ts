@@ -172,12 +172,18 @@ export const DEFAULT_FAQ_SECTIONS: FaqSectionContent[] = [
       },
       {
         position: 3,
+        question: "Is it a problem if some pages overlap?",
+        answerMarkdown:
+          "No. A little repetition is fine. Mathematics cannot be divided perfectly into one exact page for every problem or concept: formulations, audiences, and useful levels of detail naturally overlap. Search first and avoid exact duplicates, but do not let partial overlap stop you from creating a useful page. Related pages can be linked, clarified, or merged later."
+      },
+      {
+        position: 4,
         question: "Do new problems need to be polished?",
         answerMarkdown:
           "Although we value high quality to problems, contrary to websites such as Stack Exchange, there is no hard rule to enforce that new problems are immediately polished. We want people to be able to rely on the community to improve and filter problems over time."
       },
       {
-        position: 4,
+        position: 5,
         question: "How should I use the difficulty score?",
         answerMarkdown:
           "The 1-100 score is a rough signal. Difficulty depends heavily on what the reader already knows, how recently they saw the topic, and whether the problem uses a familiar trick. As a loose convention: 1-10 is pre-university or warm-up material; 11-25 is early undergraduate; 26-45 is solid undergraduate; 46-65 is advanced undergraduate or beginning graduate; 66-85 is graduate or contest-level hard; 86-100 is research-flavored, very technical, or even a conjecture that is still open."
