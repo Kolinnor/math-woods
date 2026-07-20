@@ -6864,6 +6864,10 @@ button.domain-picker-tile > span:last-child {
   .concept-search-bar {
     grid-template-columns: minmax(14rem, 1.45fr) minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(9rem, 1fr) auto;
   }
+
+  .concept-search-bar-admin {
+    grid-template-columns: minmax(14rem, 1.45fr) repeat(4, minmax(8rem, 1fr)) auto;
+  }
 }
 
 .problem-search-shell {

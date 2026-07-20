@@ -5,6 +5,7 @@ import { ContributionRequestDialog } from "@/components/ContributionRequestDialo
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   coarseDomainForCode,
@@ -17,6 +18,7 @@ import {
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { missingConcepts } from "@/lib/internal-links";
+import { canUseAdminTools } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
@@ -37,21 +39,30 @@ function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
 }
 
 type ConceptSort = "updated" | "linked";
+type ProblemLinkFilter = "all" | "with" | "without";
 
 function parseConceptSort(value: string | undefined): ConceptSort {
   return value === "linked" ? "linked" : "updated";
 }
 
+function parseProblemLinkFilter(value: string | undefined): ProblemLinkFilter {
+  if (value === "with" || value === "without") return value;
+  return "all";
+}
+
 export default async function ConceptsPage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; domain?: string; status?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string; domain?: string; status?: string; sort?: string; problemLinks?: string }>;
 }) {
+  const user = await getCurrentUser();
   const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
-  const { q = "", domain = "", status = "", sort = "" } = await searchParams;
+  const { q = "", domain = "", status = "", sort = "", problemLinks = "" } = await searchParams;
   const query = q.trim();
   const sortValue = parseConceptSort(sort);
+  const canFilterByProblemLinks = Boolean(user && canUseAdminTools(user));
+  const problemLinkFilter = canFilterByProblemLinks ? parseProblemLinkFilter(problemLinks) : "all";
   const domainValue = domain ? parseDomainCode(domain) : undefined;
   const domainFilterValues = domainValue
     ? [
@@ -64,6 +75,20 @@ export default async function ConceptsPage({
   const statusValue = Object.values(ConceptStatus).includes(status as ConceptStatus)
     ? (status as ConceptStatus)
     : undefined;
+  const linkedConceptSlugs =
+    problemLinkFilter === "all"
+      ? []
+      : (
+          await prisma.internalLink.findMany({
+            where: {
+              sourceType: "PROBLEM",
+              targetType: "CONCEPT",
+              exists: true
+            },
+            distinct: ["targetSlug"],
+            select: { targetSlug: true }
+          })
+        ).map((link) => link.targetSlug);
   const where: Prisma.ConceptWhereInput = {
     language: preferredLanguage,
     ...(query
@@ -76,7 +101,12 @@ export default async function ConceptsPage({
         }
       : {}),
     ...(domainValue ? { domain: { in: [...new Set(domainFilterValues)] } } : {}),
-    ...(statusValue ? { status: statusValue } : {})
+    ...(statusValue ? { status: statusValue } : {}),
+    ...(problemLinkFilter === "with"
+      ? { slug: { in: linkedConceptSlugs } }
+      : problemLinkFilter === "without"
+        ? { slug: { notIn: linkedConceptSlugs } }
+        : {})
   };
 
   const conceptCandidates = await prisma.concept.findMany({
@@ -215,7 +245,10 @@ export default async function ConceptsPage({
         </>
       }
     >
-      <LiveSearchForm className="filter-bar concept-search-bar mb-6 grid gap-3 p-4" persistKey="concepts">
+      <LiveSearchForm
+        className={`filter-bar concept-search-bar${canFilterByProblemLinks ? " concept-search-bar-admin" : ""} mb-6 grid gap-3 p-4`}
+        persistKey="concepts"
+      >
         <input name="q" defaultValue={query} placeholder={t.concepts.searchPlaceholder} />
         <select name="domain" defaultValue={domainValue ?? ""}>
           <option value="">{t.concepts.anyDomain}</option>
@@ -233,6 +266,13 @@ export default async function ConceptsPage({
           <option value="EXCELLENT">{t.concepts.statuses.EXCELLENT}</option>
           <option value="CONTROVERSIAL">{t.concepts.statuses.CONTROVERSIAL}</option>
         </select>
+        {canFilterByProblemLinks && (
+          <select name="problemLinks" defaultValue={problemLinkFilter} aria-label={t.concepts.problemLinksFilter}>
+            <option value="all">{t.concepts.allProblemLinks}</option>
+            <option value="with">{t.concepts.withLinkedProblems}</option>
+            <option value="without">{t.concepts.withoutLinkedProblems}</option>
+          </select>
+        )}
         <select name="sort" defaultValue={sortValue === "linked" ? "linked" : ""} aria-label={t.concepts.sortAriaLabel}>
           <option value="">{t.concepts.sortUpdated}</option>
           <option value="linked">{t.concepts.sortMostLinked}</option>
