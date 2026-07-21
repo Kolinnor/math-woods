@@ -1,5 +1,6 @@
 import { Role, SourceType, type Prisma } from "@prisma/client";
 import { hasAdminPrivileges, hasTrustedPrivileges } from "./permissions.ts";
+import { acquireTransactionLock } from "./transaction-lock.ts";
 
 export const REGULAR_DAILY_CONTENT_CREATION_LIMIT = 20;
 export const TRUSTED_DAILY_CONTENT_CREATION_LIMIT = 100;
@@ -23,7 +24,7 @@ export async function assertDailyContentCreationQuota(
   const limit = dailyContentCreationLimitForRole(user.role);
   if (limit === null) return;
 
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`content-create:${user.id}`}))`;
+  await acquireTransactionLock(tx, `content-create:${user.id}`);
   const creationCount = await tx.pageRevision.count({
     where: {
       editedById: user.id,

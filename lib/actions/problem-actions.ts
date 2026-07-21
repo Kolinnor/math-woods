@@ -73,6 +73,7 @@ import { parseTagInput, syncProblemSpoilerTags, syncProblemTags } from "@/lib/ta
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
+import { acquireTransactionLock } from "@/lib/transaction-lock";
 
 export type ProblemEditActionState =
   | { status: "idle" }
@@ -609,7 +610,7 @@ export async function updateProblemAction(
   let problem;
   try {
     problem = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`problem-edit:${previous.translationGroupId}`}))`;
+      await acquireTransactionLock(tx, `problem-edit:${previous.translationGroupId}`);
       const current = await problemSnapshotSource(tx, problemId);
       await ensureProblemSnapshotRevision(tx, current);
       const currentSnapshot = buildProblemRevisionSnapshot(current);
@@ -850,7 +851,7 @@ export async function deleteProblemAction(problemId: number) {
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`problem-edit:${problem.translationGroupId}`}))`;
+    await acquireTransactionLock(tx, `problem-edit:${problem.translationGroupId}`);
     const current = await problemSnapshotSource(tx, problem.id);
     await ensureProblemSnapshotRevision(tx, current);
     await tx.problem.update({
@@ -896,7 +897,7 @@ export async function markProblemGoodAction(problemId: number, problemSlug: stri
 
   await prisma.$transaction(async (tx) => {
     const problem = await problemSnapshotSource(tx, problemId);
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`problem-edit:${problem.translationGroupId}`}))`;
+    await acquireTransactionLock(tx, `problem-edit:${problem.translationGroupId}`);
     const current = await problemSnapshotSource(tx, problemId);
     await ensureProblemSnapshotRevision(tx, current);
     const reviewed = await tx.problem.update({
@@ -947,7 +948,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
   }
 
   const problem = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`problem-edit:${existingProblem.translationGroupId}`}))`;
+    await acquireTransactionLock(tx, `problem-edit:${existingProblem.translationGroupId}`);
     const current = await problemSnapshotSource(tx, problemId);
     if (current.version !== expectedVersion) {
       throw new Error("This problem changed after the history page was opened. Reload before rolling back.");
