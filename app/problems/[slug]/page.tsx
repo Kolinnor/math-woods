@@ -39,6 +39,7 @@ import {
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { heroArtForProblemDomain } from "@/lib/problem-hero-art";
+import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
@@ -97,22 +98,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description
     }
   };
-}
-
-function difficultyColor(difficulty: number | null) {
-  if (!difficulty) return "#8a9184";
-  if (difficulty <= 19) return "#5d7a4c";
-  if (difficulty <= 39) return "#a07a2c";
-  if (difficulty <= 64) return "#b05f2c";
-  return "#8c3b22";
-}
-
-function difficultyBars(difficulty: number | null) {
-  if (!difficulty) return 0;
-  if (difficulty <= 19) return 1;
-  if (difficulty <= 39) return 2;
-  if (difficulty <= 64) return 3;
-  return 4;
 }
 
 function verificationStatusLabel(status: string) {
@@ -372,8 +357,8 @@ export default async function ProblemPage({
     queryParams.verification === "incorrect" ? t.problemDetail.verificationIncorrect : null;
   const heroDomain = problemDomains[0] ?? (problem.domains.length ? "other" : problem.domain);
   const heroImage = heroArtForProblemDomain(heroDomain);
-  const difficultyTone = difficultyColor(problem.difficulty ?? null);
-  const difficultyLevel = difficultyBars(problem.difficulty ?? null);
+  const difficultyTone = problemDifficultyTone(problem.difficulty ?? null);
+  const difficultyLevel = problemDifficultyBars(problem.difficulty ?? null);
 
   return (
     <div className="problem-detail-shell">

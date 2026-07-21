@@ -4,18 +4,12 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
 import { FieldHelp } from "@/components/FieldHelp";
+import { problemDifficultyTone } from "@/lib/problem-difficulty";
 
 type ProblemDifficultyFieldProps = {
   defaultValue?: number | null;
   help?: string;
 };
-
-function difficultyTone(value: number) {
-  if (value <= 19) return "#5d7a4c";
-  if (value <= 39) return "#a07a2c";
-  if (value <= 64) return "#b05f2c";
-  return "#8c3b22";
-}
 
 export function ProblemDifficultyField({ defaultValue, help }: ProblemDifficultyFieldProps) {
   const [value, setValue] = useState(defaultValue ?? 50);
@@ -37,10 +31,10 @@ export function ProblemDifficultyField({ defaultValue, help }: ProblemDifficulty
           onChange={(event) => setValue(Number(event.target.value))}
           style={{
             "--difficulty-value": `${position}%`,
-            "--difficulty-tone": difficultyTone(value)
+            "--difficulty-tone": problemDifficultyTone(value)
           } as CSSProperties}
         />
-        <strong style={{ color: difficultyTone(value) }}>{value}</strong>
+        <strong style={{ color: problemDifficultyTone(value) }}>{value}</strong>
       </span>
     </label>
   );

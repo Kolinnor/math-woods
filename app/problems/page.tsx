@@ -22,6 +22,7 @@ import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
 import { canViewUnreviewedProblems, visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
@@ -134,22 +135,6 @@ function languagePreferenceRank(language: string, preferredLanguage: string, sel
   if (language === preferredLanguage) return 0;
   const selectedIndex = selectedLanguages.indexOf(language);
   return selectedIndex >= 0 ? selectedIndex + 1 : selectedLanguages.length + 1;
-}
-
-function difficultyColor(difficulty: number | null) {
-  if (!difficulty) return "#8a9184";
-  if (difficulty <= 19) return "#5d7a4c";
-  if (difficulty <= 39) return "#a07a2c";
-  if (difficulty <= 64) return "#b05f2c";
-  return "#8c3b22";
-}
-
-function difficultyBars(difficulty: number | null) {
-  if (!difficulty) return 0;
-  if (difficulty <= 19) return 1;
-  if (difficulty <= 39) return 2;
-  if (difficulty <= 64) return 3;
-  return 4;
 }
 
 function parseAdvancedFilters(fields: SearchValue, ops: SearchValue, values: SearchValue): ProblemFilterRow[] {
@@ -780,8 +765,8 @@ export default async function ProblemsPage({
                 : [problem.domain];
               const hiddenDomainCount = revealSpoilerDomains ? 0 : problem.domains.filter((item) => item.spoiler).length;
               const difficulty = problem.difficulty ?? null;
-              const difficultyLevel = difficultyBars(difficulty);
-              const tone = difficultyColor(difficulty);
+              const difficultyLevel = problemDifficultyBars(difficulty);
+              const tone = problemDifficultyTone(difficulty);
               const authorName = displayNameForUser(problem.author);
               const showLanguageBadge = problem.language !== preferredLanguage;
 

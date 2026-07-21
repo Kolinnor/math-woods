@@ -13,6 +13,7 @@ import {
 } from "../lib/frontmatter.ts";
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
+import { problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import { extractWikiLinks, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
 import {
@@ -142,6 +143,15 @@ import {
 
 assert.equal(slugify("Relations de Viète"), "relations-de-viete");
 assert.equal(slugify("  L'espace vectoriel ! "), "lespace-vectoriel");
+assert.equal(problemDifficultyTone(20), problemDifficultyTone(25));
+assert.notEqual(problemDifficultyTone(25), problemDifficultyTone(26));
+assert.notEqual(problemDifficultyTone(45), problemDifficultyTone(46));
+assert.notEqual(problemDifficultyTone(65), problemDifficultyTone(66));
+assert.notEqual(problemDifficultyTone(85), problemDifficultyTone(86));
+assert.equal(problemDifficultyBars(25), 1);
+assert.equal(problemDifficultyBars(45), 2);
+assert.equal(problemDifficultyBars(65), 3);
+assert.equal(problemDifficultyBars(100), 4);
 
 const groupedTranslations = [
   { language: "fr", slug: "relations-de-viete" },
