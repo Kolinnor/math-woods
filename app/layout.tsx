@@ -155,7 +155,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href={"/explorations" as Route}>{t.nav.playlists}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
               <Link href={usersRoute}>{t.nav.users}</Link>
-              <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>
+              {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}
             </div>
             <div className="nav-tools">
               <LanguageSelector initialLanguage={initialLanguage} />
