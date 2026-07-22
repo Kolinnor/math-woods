@@ -25,14 +25,13 @@ export function ExplorationAddContentForm({
   const [kind, setKind] = useState("MARKDOWN");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const isReference = kind === "PROBLEM" || kind === "CONCEPT";
+  const isReference = kind === "CONCEPT";
   const selectedLabel = kinds.find((option) => option.value === kind)?.label.toLocaleLowerCase() ?? "content";
 
   function createBlock(formData: FormData) {
     setError("");
     startTransition(async () => {
       try {
-        if (!openEditorAfterCreate) formData.set("mapPlacement", "true");
         const { blockId } = await createExplorationGraphBlockAction(explorationId, formData);
         if (openEditorAfterCreate) {
           router.replace(`/explorations/${explorationSlug}/edit?view=block&block=${blockId}` as never, { scroll: false });
@@ -56,12 +55,12 @@ export function ExplorationAddContentForm({
 
       {isReference && (
         <label className="studio-add-content-title">
-          <span>{kind === "PROBLEM" ? "Problem slug" : "Concept slug"}</span>
+          <span>Concept slug</span>
           <input
             key={kind}
             name="referenceSlug"
             required
-            placeholder={kind === "PROBLEM" ? "problem-slug" : "concept-slug"}
+            placeholder="concept-slug"
             disabled={isPending}
           />
         </label>

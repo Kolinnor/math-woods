@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, ExternalLink, Flag, Pencil, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, Flag, Pencil, RotateCcw } from "lucide-react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownInline } from "@/components/MarkdownInline";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/exploration-actions";
 import { asExplorationState, type ExplorationState } from "@/lib/exploration-engine";
 import { canAutomaticallyAdvance, explorationPathAfter } from "@/lib/exploration-block-graph";
+import { problemLinkClass } from "@/lib/problem-link";
 
 export type ExplorationReaderBlock = {
   id: number;
@@ -27,6 +28,19 @@ export type ExplorationReaderBlock = {
   continueToBlockId: number | null;
   autoContinue: boolean;
   problem: { slug: string; titleHtml: string; difficulty: number | null } | null;
+  problemGroups: Array<{
+    id: number;
+    title: string;
+    problems: Array<{
+      id: number;
+      slug: string;
+      titleHtml: string;
+      difficulty: number | null;
+      listed: boolean;
+      language: string;
+      solved: boolean;
+    }>;
+  }>;
   concept: { slug: string; title: string } | null;
   options: Array<{ id: number; label: string; toBlockId: number | null }>;
   outcomes: Array<{ id: number; label: string; toBlockId: number | null }>;
@@ -285,8 +299,34 @@ export function ExplorationReader({
     const key = stableKey(block);
     const response = responses[key] ?? (block.kind === "QUIZ" ? [] : "");
     const result = results[key];
-    if (block.kind === "PROBLEM" && block.problem) return (
-      <section className="exploration-reference-block exploration-problem-block"><div><p className="eyebrow">Problem</p><h2><MarkdownInline html={block.problem.titleHtml} /></h2>{block.problem.difficulty !== null && <span className="muted">Difficulty {block.problem.difficulty}/100</span>}</div>{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<Link href={`/problems/${block.problem.slug}`} className="button secondary">Open problem <ExternalLink size={16} /></Link></section>
+    if (block.kind === "PROBLEM") return (
+      <section className="exploration-reference-block exploration-problem-block exploration-problem-collection">
+        {block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}
+        {block.problemGroups.length > 0 && (
+          <div className="exploration-problem-groups">
+            {block.problemGroups.map((group) => (
+              <section key={group.id} className="related-problem-group">
+                <h2>{group.title}</h2>
+                <div className="grid gap-2">
+                  {group.problems.map((problem) => (
+                    <Link
+                      key={problem.id}
+                      href={`/problems/${problem.slug}`}
+                      className={problemLinkClass("related-problem-link block", problem.solved)}
+                    >
+                      <strong><MarkdownInline html={problem.titleHtml} /></strong>
+                      <span>
+                        {problem.difficulty !== null ? `Difficulty ${problem.difficulty}/100` : "Unrated"}
+                        {!problem.listed ? " - Exploration-specific" : ""}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </section>
     );
     if (block.kind === "CONCEPT" && block.concept) return (
       <section className="exploration-reference-block exploration-concept-block"><div><p className="eyebrow">Concept</p><h2>{block.concept.title}</h2></div>{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<Link href={`/concepts/${block.concept.slug}`} className="button secondary">Open concept <BookOpen size={16} /></Link></section>

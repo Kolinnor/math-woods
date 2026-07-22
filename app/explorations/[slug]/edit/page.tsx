@@ -31,6 +31,7 @@ import { ExplorationNextBlockFields } from "@/components/ExplorationNextBlockFie
 import { ExplorationSettingsButton } from "@/components/ExplorationSettingsButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { AutoSaveMarkdownEditor } from "@/components/markdown/AutoSaveMarkdownEditor";
+import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
 import {
   addExplorationCollaboratorAction,
   changeExplorationStatusAction,
@@ -43,6 +44,7 @@ import {
   updateExplorationBlockAction,
   updateExplorationBlockContinueFormAction,
   updateExplorationBlockNameAction,
+  updateExplorationProblemGroupsAction,
   updateExplorationQuizSuccessMessageAction,
   updateExplorationMetadataAction,
   updateExplorationOptionAction
@@ -108,8 +110,19 @@ export default async function EditExplorationPage({
           blocks: {
             orderBy: [{ position: "asc" }, { id: "asc" }],
             include: {
-              problem: { select: { slug: true, title: true } },
+              problem: { select: { slug: true, title: true, difficulty: true, listed: true, language: true } },
               concept: { select: { slug: true, title: true } },
+              problemGroups: {
+                orderBy: { position: "asc" },
+                include: {
+                  problems: {
+                    orderBy: { position: "asc" },
+                    include: {
+                      problem: { select: { slug: true, title: true, difficulty: true, listed: true, language: true } }
+                    }
+                  }
+                }
+              },
               options: { orderBy: { position: "asc" } },
               outcomes: { include: { matches: true }, orderBy: { position: "asc" } }
             }
@@ -148,13 +161,24 @@ export default async function EditExplorationPage({
     isStart: block.isStart,
     isEnd: block.isEnd,
     continueToBlockId: block.continueToBlockId,
+    continueTargetHandle: block.continueTargetHandle,
     autoContinue: block.autoContinue,
     options: block.kind === ExplorationBlockKind.CHOICE
-      ? block.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId }))
+      ? block.options.map((option) => ({
+          id: option.id,
+          label: option.label,
+          toBlockId: option.toBlockId,
+          targetHandle: option.targetHandle
+        }))
       : [],
     outcomes: block.kind === ExplorationBlockKind.QUIZ
       ? []
-      : block.outcomes.map((outcome) => ({ id: outcome.id, label: outcome.label, toBlockId: outcome.toBlockId }))
+      : block.outcomes.map((outcome) => ({
+          id: outcome.id,
+          label: outcome.label,
+          toBlockId: outcome.toBlockId,
+          targetHandle: outcome.targetHandle
+        }))
   }));
 
   return (
@@ -224,6 +248,14 @@ export default async function EditExplorationPage({
           <main className="exploration-studio-main">
             {selectedBlock ? (() => {
               const blockFormId = `exploration-block-${selectedBlock.id}-form`;
+              const initialProblemGroups = selectedBlock.problemGroups.length > 0
+                ? selectedBlock.problemGroups.map((group) => ({
+                    title: group.title,
+                    problems: group.problems.map(({ problem }) => problem)
+                  }))
+                : selectedBlock.problem
+                  ? [{ title: "Problems", problems: [selectedBlock.problem] }]
+                  : [];
               return (
                 <article
                   key={selectedBlock.id}
@@ -251,13 +283,32 @@ export default async function EditExplorationPage({
                     </form>
                   </div>
                   <AutoSaveForm action={updateExplorationBlockAction.bind(null, selectedBlock.id)} className="studio-block-form" id={blockFormId} statusClassName="sr-only">
-                    {(selectedBlock.kind === ExplorationBlockKind.PROBLEM || selectedBlock.kind === ExplorationBlockKind.CONCEPT) && (
-                      <label><span>{selectedBlock.kind === ExplorationBlockKind.PROBLEM ? "Problem" : "Concept"}</span><input name="referenceSlug" defaultValue={selectedBlock.problem?.slug ?? selectedBlock.concept?.slug ?? ""} required /></label>
+                    {selectedBlock.kind === ExplorationBlockKind.CONCEPT && (
+                      <label><span>Concept</span><input name="referenceSlug" defaultValue={selectedBlock.concept?.slug ?? ""} required /></label>
                     )}
                     {selectedBlock.kind !== ExplorationBlockKind.DIVIDER && selectedBlock.kind !== ExplorationBlockKind.HEADING && (
-                      <AutoSaveMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} localDrafts={false} minHeight={selectedBlock.kind === ExplorationBlockKind.CHOICE ? "5rem" : "7rem"} lineNumbers={false} />
+                      selectedBlock.kind === ExplorationBlockKind.PROBLEM ? (
+                        <div className="studio-problem-block-text">
+                          <span className="text-sm font-medium">Text</span>
+                          <AutoSaveMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} localDrafts={false} minHeight="7rem" lineNumbers={false} />
+                        </div>
+                      ) : (
+                        <AutoSaveMarkdownEditor name="bodyMarkdown" initialValue={selectedBlock.bodyMarkdown ?? ""} draftKey={`exploration:block:${selectedBlock.id}:body`} localDrafts={false} minHeight={selectedBlock.kind === ExplorationBlockKind.CHOICE ? "5rem" : "7rem"} lineNumbers={false} />
+                      )
                     )}
                   </AutoSaveForm>
+
+                  {selectedBlock.kind === ExplorationBlockKind.PROBLEM && (
+                    <AutoSaveForm action={updateExplorationProblemGroupsAction.bind(null, selectedBlock.id)} className="studio-problem-boxes-form" statusClassName="sr-only">
+                      <ProblemRelationPicker
+                        inputName="problemGroups"
+                        heading="Problem boxes"
+                        description="Give each box a title, then choose the problems it contains."
+                        defaultGroupTitle="Problems"
+                        initialGroups={initialProblemGroups}
+                      />
+                    </AutoSaveForm>
+                  )}
 
                   {(selectedBlock.kind === ExplorationBlockKind.QUIZ || selectedBlock.kind === ExplorationBlockKind.CHOICE) && (
                     <section className="studio-option-editor">

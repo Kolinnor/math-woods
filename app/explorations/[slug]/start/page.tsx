@@ -34,8 +34,43 @@ export default async function StartExplorationPage({
           blocks: {
             orderBy: [{ position: "asc" }, { id: "asc" }],
             include: {
-              problem: { select: { slug: true, title: true, difficulty: true, authorId: true, qualityStatus: true } },
+              problem: {
+                select: {
+                  slug: true,
+                  title: true,
+                  difficulty: true,
+                  listed: true,
+                  language: true,
+                  translationGroupId: true,
+                  authorId: true,
+                  qualityStatus: true,
+                  status: true
+                }
+              },
               concept: { select: { slug: true, title: true } },
+              problemGroups: {
+                orderBy: { position: "asc" },
+                include: {
+                  problems: {
+                    orderBy: { position: "asc" },
+                    include: {
+                      problem: {
+                        select: {
+                          slug: true,
+                          title: true,
+                          difficulty: true,
+                          listed: true,
+                          language: true,
+                          translationGroupId: true,
+                          authorId: true,
+                          qualityStatus: true,
+                          status: true
+                        }
+                      }
+                    }
+                  }
+                }
+              },
               options: { orderBy: { position: "asc" } },
               outcomes: { include: { matches: true }, orderBy: { position: "asc" } }
             }
@@ -53,6 +88,44 @@ export default async function StartExplorationPage({
   }) : null;
   const liveBlocks = exploration.pages.flatMap((page) => page.blocks.map((block) => ({ ...block, pageKey: page.key })));
   const readableBlocks = liveBlocks.filter((block) => !block.problem || canViewProblem(user, block.problem as never));
+  type VisibleProblem = NonNullable<(typeof readableBlocks)[number]["problem"]>;
+  type VisibleProblemGroup = {
+    id: number;
+    title: string;
+    problems: Array<{ id: number; problem: VisibleProblem }>;
+  };
+  const visibleProblemGroupsByBlockId = new Map<number, VisibleProblemGroup[]>();
+  for (const block of readableBlocks) {
+    const groups: VisibleProblemGroup[] = block.problemGroups
+      .map((group) => ({
+        id: group.id,
+        title: group.title,
+        problems: group.problems.filter(({ problem }) =>
+          problem.status !== "ARCHIVED" && canViewProblem(user, problem)
+        )
+      }))
+      .filter((group) => group.problems.length > 0);
+    if (groups.length === 0 && block.problem && block.problem.status !== "ARCHIVED") {
+      groups.push({ id: -block.id, title: "Problems", problems: [{ id: -block.id, problem: block.problem }] });
+    }
+    visibleProblemGroupsByBlockId.set(block.id, groups);
+  }
+  const visibleProblemTranslationGroups = Array.from(new Set(
+    Array.from(visibleProblemGroupsByBlockId.values()).flatMap((groups) =>
+      groups.flatMap((group) => group.problems.map(({ problem }) => problem.translationGroupId))
+    )
+  ));
+  const solvedAttempts = user && visibleProblemTranslationGroups.length > 0
+    ? await prisma.problemAttempt.findMany({
+        where: {
+          userId: user.id,
+          status: "SOLVED",
+          problem: { translationGroupId: { in: visibleProblemTranslationGroups } }
+        },
+        select: { problem: { select: { translationGroupId: true } } }
+      })
+    : [];
+  const solvedProblemGroups = new Set(solvedAttempts.map((attempt) => attempt.problem.translationGroupId));
   const requestedBlock = readableBlocks.find((block) => block.key === requestedBlockKey);
   const resumedBlock = readableBlocks.find((block) => block.key === session?.currentBlockKey);
   const startBlock = readableBlocks.find((block) => block.isStart) ?? readableBlocks[0];
@@ -86,6 +159,19 @@ export default async function StartExplorationPage({
       titleHtml: await renderInlineMarkdown(block.problem.title),
       difficulty: block.problem.difficulty
     } : null,
+    problemGroups: await Promise.all((visibleProblemGroupsByBlockId.get(block.id) ?? []).map(async (group) => ({
+      id: group.id,
+      title: group.title,
+      problems: await Promise.all(group.problems.map(async ({ id, problem }) => ({
+        id,
+        slug: problem.slug,
+        titleHtml: await renderInlineMarkdown(problem.title),
+        difficulty: problem.difficulty,
+        listed: problem.listed,
+        language: problem.language,
+        solved: solvedProblemGroups.has(problem.translationGroupId)
+      })))
+    }))),
     concept: block.concept,
     options: block.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId })),
     outcomes: block.kind === "QUIZ"

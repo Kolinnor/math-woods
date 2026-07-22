@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   Handle,
   MarkerType,
@@ -16,6 +17,7 @@ import {
   useNodesState,
   type Connection,
   type Edge,
+  type IsValidConnection,
   type Node,
   type NodeProps,
   type OnSelectionChangeParams
@@ -25,6 +27,7 @@ import { ExplorationAddContentForm } from "@/components/ExplorationAddContentFor
 import { ExplorationBlockNameHelp } from "@/components/ExplorationBlockNameHelp";
 import {
   deleteExplorationBlockAction,
+  reconnectExplorationMapLinkAction,
   restoreExplorationMapStateAction,
   setExplorationBlockContinueAction,
   setExplorationBlockEndpointAction,
@@ -32,7 +35,8 @@ import {
   setExplorationQuizOutcomeBlockTargetAction,
   updateExplorationBlockCanvasPositionsAction,
   updateExplorationBlockNameAction,
-  type ExplorationMapHistoryBlock
+  type ExplorationMapHistoryBlock,
+  type ExplorationMapLinkSource
 } from "@/lib/actions/exploration-actions";
 
 export type ExplorationMapBlock = {
@@ -48,9 +52,10 @@ export type ExplorationMapBlock = {
   isStart: boolean;
   isEnd: boolean;
   continueToBlockId: number | null;
+  continueTargetHandle: string | null;
   autoContinue: boolean;
-  options: Array<{ id: number; label: string; toBlockId: number | null }>;
-  outcomes: Array<{ id: number; label: string; toBlockId: number | null }>;
+  options: Array<{ id: number; label: string; toBlockId: number | null; targetHandle: string | null }>;
+  outcomes: Array<{ id: number; label: string; toBlockId: number | null; targetHandle: string | null }>;
 };
 
 type BlockNodeData = {
@@ -74,10 +79,19 @@ function mapHistoryState(blocks: ExplorationMapBlock[]): ExplorationMapHistoryBl
     isStart: block.isStart,
     isEnd: block.isEnd,
     continueToBlockId: block.continueToBlockId,
+    continueTargetHandle: block.continueTargetHandle,
     autoContinue: block.autoContinue,
     name: block.name,
-    options: block.options.map((option) => ({ id: option.id, toBlockId: option.toBlockId })),
-    outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, toBlockId: outcome.toBlockId }))
+    options: block.options.map((option) => ({
+      id: option.id,
+      toBlockId: option.toBlockId,
+      targetHandle: option.targetHandle
+    })),
+    outcomes: block.outcomes.map((outcome) => ({
+      id: outcome.id,
+      toBlockId: outcome.toBlockId,
+      targetHandle: outcome.targetHandle
+    }))
   }));
 }
 
@@ -101,7 +115,7 @@ function BlockNode({ data, selected }: NodeProps<Node<BlockNodeData>>) {
   const { block } = data;
   return (
     <article className={selected ? "exploration-block-node is-selected" : "exploration-block-node"}>
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Top} isConnectableStart={false} />
       <div className="exploration-block-node-meta">
         <span>{block.kind.toLocaleLowerCase().replaceAll("_", " ")}</span>
         <span className="exploration-block-node-markers">
@@ -155,7 +169,8 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
         source: String(block.id),
         sourceHandle: "continue",
         target: String(block.continueToBlockId),
-        reconnectable: "target",
+        targetHandle: block.continueTargetHandle,
+        reconnectable: true,
         label: block.autoContinue ? "Automatic" : "Continue",
         markerEnd: block.autoContinue ? AUTOMATIC_EDGE_MARKER : { type: MarkerType.ArrowClosed },
         data: { kind: "continue", recordId: block.id }
@@ -168,7 +183,8 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
         source: String(block.id),
         sourceHandle: `choice-${option.id}`,
         target: String(option.toBlockId),
-        reconnectable: "target",
+        targetHandle: option.targetHandle,
+        reconnectable: true,
         label: option.label,
         markerEnd: { type: MarkerType.ArrowClosed },
         data: { kind: "choice", recordId: option.id }
@@ -181,7 +197,8 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
         source: String(block.id),
         sourceHandle: `quiz-${outcome.id}`,
         target: String(outcome.toBlockId),
-        reconnectable: "target",
+        targetHandle: outcome.targetHandle,
+        reconnectable: true,
         label: outcome.label,
         markerEnd: { type: MarkerType.ArrowClosed },
         data: { kind: "quiz", recordId: outcome.id }
@@ -189,6 +206,110 @@ function graphEdges(blocks: ExplorationMapBlock[]): Array<Edge<GraphEdgeData>> {
     }
   }
   return edges;
+}
+
+function sameLinkSource(left: ExplorationMapLinkSource, right: ExplorationMapLinkSource) {
+  return left.kind === right.kind && left.recordId === right.recordId;
+}
+
+function linkSourceForHandle(
+  blocks: ExplorationMapBlock[],
+  sourceId: number,
+  sourceHandle: string | null
+): ExplorationMapLinkSource | null {
+  const block = blocks.find((item) => item.id === sourceId);
+  if (!block || !sourceHandle) return null;
+  if (sourceHandle === "continue") return { kind: "continue", recordId: block.id };
+  if (sourceHandle.startsWith("choice-")) {
+    const recordId = Number(sourceHandle.slice(7));
+    return block.options.some((option) => option.id === recordId) ? { kind: "choice", recordId } : null;
+  }
+  if (sourceHandle.startsWith("quiz-")) {
+    const recordId = Number(sourceHandle.slice(5));
+    return block.outcomes.some((outcome) => outcome.id === recordId) ? { kind: "quiz", recordId } : null;
+  }
+  return null;
+}
+
+function linkSourceState(blocks: ExplorationMapBlock[], source: ExplorationMapLinkSource) {
+  if (source.kind === "continue") {
+    const block = blocks.find((item) => item.id === source.recordId);
+    return block && { sourceBlockId: block.id, targetBlockId: block.continueToBlockId };
+  }
+  for (const block of blocks) {
+    const route = source.kind === "choice"
+      ? block.options.find((option) => option.id === source.recordId)
+      : block.outcomes.find((outcome) => outcome.id === source.recordId);
+    if (route) return { sourceBlockId: block.id, targetBlockId: route.toBlockId };
+  }
+  return null;
+}
+
+function targetHandleBelongsToBlock(block: ExplorationMapBlock | undefined, targetHandle: string | null) {
+  if (!block) return false;
+  if (!targetHandle || targetHandle === "continue") return true;
+  if (targetHandle.startsWith("choice-")) {
+    const optionId = Number(targetHandle.slice(7));
+    return block.options.some((option) => option.id === optionId);
+  }
+  if (targetHandle.startsWith("quiz-")) {
+    const outcomeId = Number(targetHandle.slice(5));
+    return block.outcomes.some((outcome) => outcome.id === outcomeId);
+  }
+  return false;
+}
+
+function edgeIdForSource(source: ExplorationMapLinkSource) {
+  return `${source.kind}-${source.recordId}`;
+}
+
+function writeLinkSource(
+  blocks: ExplorationMapBlock[],
+  source: ExplorationMapLinkSource,
+  targetBlockId: number | null,
+  targetHandle: string | null
+) {
+  return blocks.map((block) => {
+    if (source.kind === "continue" && block.id === source.recordId) {
+      return {
+        ...block,
+        continueToBlockId: targetBlockId,
+        continueTargetHandle: targetBlockId === null ? null : targetHandle,
+        autoContinue: targetBlockId === null ? false : block.autoContinue,
+        isEnd: targetBlockId === null ? block.isEnd : false
+      };
+    }
+    if (source.kind === "choice" && block.options.some((option) => option.id === source.recordId)) {
+      return {
+        ...block,
+        options: block.options.map((option) => option.id === source.recordId
+          ? { ...option, toBlockId: targetBlockId, targetHandle: targetBlockId === null ? null : targetHandle }
+          : option)
+      };
+    }
+    if (source.kind === "quiz" && block.outcomes.some((outcome) => outcome.id === source.recordId)) {
+      return {
+        ...block,
+        outcomes: block.outcomes.map((outcome) => outcome.id === source.recordId
+          ? { ...outcome, toBlockId: targetBlockId, targetHandle: targetBlockId === null ? null : targetHandle }
+          : outcome)
+      };
+    }
+    return block;
+  });
+}
+
+function reconnectMapBlocks(
+  blocks: ExplorationMapBlock[],
+  previousSource: ExplorationMapLinkSource,
+  nextSource: ExplorationMapLinkSource,
+  targetBlockId: number,
+  targetHandle: string | null
+) {
+  const cleared = sameLinkSource(previousSource, nextSource)
+    ? blocks
+    : writeLinkSource(blocks, previousSource, null, null);
+  return writeLinkSource(cleared, nextSource, targetBlockId, targetHandle);
 }
 
 export function ExplorationMapCanvas({
@@ -213,6 +334,7 @@ export function ExplorationMapCanvas({
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const reconnectingEdgeRef = useRef<Edge<GraphEdgeData> | null>(null);
 
   const renderBlocks = useCallback((next: ExplorationMapBlock[]) => {
     blocksRef.current = next;
@@ -246,79 +368,78 @@ export function ExplorationMapCanvas({
     commitBlocks(previous.map((block) => block.id === blockId ? update(block) : block), previous);
   }, [commitBlocks]);
 
+  const isValidMapConnection = useCallback<IsValidConnection<Edge<GraphEdgeData>>>((connection) => {
+    const sourceId = Number(connection.source);
+    const targetId = Number(connection.target);
+    if (!Number.isInteger(sourceId) || !Number.isInteger(targetId)) return false;
+    const source = linkSourceForHandle(blocksRef.current, sourceId, connection.sourceHandle ?? null);
+    if (!source || (sourceId === targetId && source.kind !== "choice")) return false;
+    const sourceState = linkSourceState(blocksRef.current, source);
+    const reconnectingSource = reconnectingEdgeRef.current?.data;
+    if (
+      sourceState?.targetBlockId !== null &&
+      (!reconnectingSource || !sameLinkSource(source, reconnectingSource))
+    ) return false;
+    return targetHandleBelongsToBlock(
+      blocksRef.current.find((block) => block.id === targetId),
+      connection.targetHandle ?? null
+    );
+  }, []);
+
   const connect = useCallback((connection: Connection) => {
     if (isPending) return;
     const sourceId = Number(connection.source);
     const targetId = Number(connection.target);
-    const isChoiceConnection = connection.sourceHandle?.startsWith("choice-") === true;
+    const source = linkSourceForHandle(blocksRef.current, sourceId, connection.sourceHandle);
     if (
       !Number.isInteger(sourceId) ||
       !Number.isInteger(targetId) ||
-      (sourceId === targetId && !isChoiceConnection)
+      !source ||
+      (sourceId === targetId && source.kind !== "choice")
     ) return;
+    const targetHandle = connection.targetHandle ?? null;
     const previous = blocksRef.current;
     setError("");
     startTransition(async () => {
       try {
-        if (connection.sourceHandle === "continue") {
-          await setExplorationBlockContinueAction(sourceId, targetId);
-          updateBlock(sourceId, (block) => ({ ...block, continueToBlockId: targetId, isEnd: false }), previous);
-        } else if (connection.sourceHandle?.startsWith("choice-")) {
-          const optionId = Number(connection.sourceHandle.slice(7));
-          await setExplorationChoiceBlockTargetAction(optionId, targetId);
-          updateBlock(sourceId, (block) => ({
-            ...block,
-            options: block.options.map((option) => option.id === optionId ? { ...option, toBlockId: targetId } : option)
-          }), previous);
-        } else if (connection.sourceHandle?.startsWith("quiz-")) {
-          const outcomeId = Number(connection.sourceHandle.slice(5));
-          await setExplorationQuizOutcomeBlockTargetAction(outcomeId, targetId);
-          updateBlock(sourceId, (block) => ({
-            ...block,
-            outcomes: block.outcomes.map((outcome) => outcome.id === outcomeId ? { ...outcome, toBlockId: targetId } : outcome)
-          }), previous);
+        if (source.kind === "continue") {
+          await setExplorationBlockContinueAction(source.recordId, targetId, undefined, targetHandle);
+        } else if (source.kind === "choice") {
+          await setExplorationChoiceBlockTargetAction(source.recordId, targetId, targetHandle);
+        } else {
+          await setExplorationQuizOutcomeBlockTargetAction(source.recordId, targetId, targetHandle);
         }
+        commitBlocks(writeLinkSource(previous, source, targetId, targetHandle), previous);
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The blocks could not be linked.");
       }
     });
-  }, [isPending, updateBlock]);
+  }, [commitBlocks, isPending]);
 
   const reconnect = useCallback((edge: Edge<GraphEdgeData>, connection: Connection) => {
     if (isPending || !edge.data) return;
-    const sourceId = Number(edge.source);
+    const sourceId = Number(connection.source);
     const targetId = Number(connection.target);
+    const nextSource = linkSourceForHandle(blocksRef.current, sourceId, connection.sourceHandle);
     if (
       !Number.isInteger(sourceId) ||
       !Number.isInteger(targetId) ||
-      (sourceId === targetId && edge.data.kind !== "choice")
+      !nextSource ||
+      (sourceId === targetId && nextSource.kind !== "choice")
     ) return;
+    const targetHandle = connection.targetHandle ?? null;
     const previous = blocksRef.current;
     setError("");
     startTransition(async () => {
       try {
-        if (edge.data!.kind === "continue") {
-          await setExplorationBlockContinueAction(edge.data!.recordId, targetId);
-          updateBlock(edge.data!.recordId, (block) => ({ ...block, continueToBlockId: targetId, isEnd: false }), previous);
-        } else if (edge.data!.kind === "choice") {
-          await setExplorationChoiceBlockTargetAction(edge.data!.recordId, targetId);
-          updateBlock(sourceId, (block) => ({
-            ...block,
-            options: block.options.map((option) => option.id === edge.data!.recordId ? { ...option, toBlockId: targetId } : option)
-          }), previous);
-        } else {
-          await setExplorationQuizOutcomeBlockTargetAction(edge.data!.recordId, targetId);
-          updateBlock(sourceId, (block) => ({
-            ...block,
-            outcomes: block.outcomes.map((outcome) => outcome.id === edge.data!.recordId ? { ...outcome, toBlockId: targetId } : outcome)
-          }), previous);
-        }
-        setSelectedEdgeId(edge.id);
+        await reconnectExplorationMapLinkAction(edge.data!, nextSource, targetId, targetHandle);
+        commitBlocks(reconnectMapBlocks(previous, edge.data!, nextSource, targetId, targetHandle), previous);
+        setSelectedEdgeId(edgeIdForSource(nextSource));
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The link could not be reconnected.");
       }
     });
-  }, [isPending, updateBlock]);
+  }, [commitBlocks, isPending]);
 
   const deleteEdge = useCallback((edge: Edge<GraphEdgeData>) => {
     if (isPending) return;
@@ -328,20 +449,29 @@ export function ExplorationMapCanvas({
       try {
         if (edge.data!.kind === "continue") {
           await setExplorationBlockContinueAction(edge.data!.recordId, null);
-          updateBlock(edge.data!.recordId, (block) => ({ ...block, continueToBlockId: null, autoContinue: false }));
+          updateBlock(edge.data!.recordId, (block) => ({
+            ...block,
+            continueToBlockId: null,
+            continueTargetHandle: null,
+            autoContinue: false
+          }));
         } else if (edge.data!.kind === "choice") {
           await setExplorationChoiceBlockTargetAction(edge.data!.recordId, null);
           const sourceId = Number(edge.source);
           updateBlock(sourceId, (block) => ({
             ...block,
-            options: block.options.map((option) => option.id === edge.data!.recordId ? { ...option, toBlockId: null } : option)
+            options: block.options.map((option) => option.id === edge.data!.recordId
+              ? { ...option, toBlockId: null, targetHandle: null }
+              : option)
           }));
         } else {
           await setExplorationQuizOutcomeBlockTargetAction(edge.data!.recordId, null);
           const sourceId = Number(edge.source);
           updateBlock(sourceId, (block) => ({
             ...block,
-            outcomes: block.outcomes.map((outcome) => outcome.id === edge.data!.recordId ? { ...outcome, toBlockId: null } : outcome)
+            outcomes: block.outcomes.map((outcome) => outcome.id === edge.data!.recordId
+              ? { ...outcome, toBlockId: null, targetHandle: null }
+              : outcome)
           }));
         }
         setSelectedEdgeId(null);
@@ -361,9 +491,14 @@ export function ExplorationMapCanvas({
         const next = blocksRef.current.filter((block) => block.id !== blockId).map((block) => ({
           ...block,
           continueToBlockId: block.continueToBlockId === blockId ? null : block.continueToBlockId,
+          continueTargetHandle: block.continueToBlockId === blockId ? null : block.continueTargetHandle,
           autoContinue: block.continueToBlockId === blockId ? false : block.autoContinue,
-          options: block.options.map((option) => option.toBlockId === blockId ? { ...option, toBlockId: null } : option),
-          outcomes: block.outcomes.map((outcome) => outcome.toBlockId === blockId ? { ...outcome, toBlockId: null } : outcome)
+          options: block.options.map((option) => option.toBlockId === blockId
+            ? { ...option, toBlockId: null, targetHandle: null }
+            : option),
+          outcomes: block.outcomes.map((outcome) => outcome.toBlockId === blockId
+            ? { ...outcome, toBlockId: null, targetHandle: null }
+            : outcome)
         }));
         renderBlocks(next);
         setPast([]);
@@ -498,14 +633,18 @@ export function ExplorationMapCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={connect}
+        connectionMode={ConnectionMode.Loose}
+        isValidConnection={isValidMapConnection}
         onReconnect={reconnect}
         onReconnectStart={(_, edge) => {
+          reconnectingEdgeRef.current = edge;
           setSelectedNodeId(null);
           setSelectedEdgeId(edge.id);
         }}
         onReconnectEnd={(_, edge) => {
+          reconnectingEdgeRef.current = null;
           setSelectedNodeId(null);
-          setSelectedEdgeId(edge.id);
+          setSelectedEdgeId((current) => current === null || current === edge.id ? edge.id : current);
         }}
         reconnectRadius={EDGE_RECONNECT_RADIUS}
         connectionRadius={28}

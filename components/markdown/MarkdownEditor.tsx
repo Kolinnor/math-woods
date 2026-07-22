@@ -17,6 +17,7 @@ import {
 import katex from "katex";
 import { ImageIcon, Loader2, Orbit } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
+import { FieldHelp } from "@/components/FieldHelp";
 import {
   DEFAULT_LATEX_PREFERENCES,
   type LatexPreferenceValues
@@ -1921,7 +1922,10 @@ export function MarkdownEditor({
             <strong>Add link</strong>
           </div>
           <label>
-            Text shown
+            <span className="field-label-with-help">
+              Text shown
+              <FieldHelp text="Text that will appear on the page." />
+            </span>
             <input
               value={linkText}
               onChange={(event) => setLinkText(event.target.value)}
@@ -1939,7 +1943,10 @@ export function MarkdownEditor({
             />
           </label>
           <label>
-            Concept page
+            <span className="field-label-with-help">
+              Links to
+              <FieldHelp text="Page that will open when the link is clicked." />
+            </span>
             <input
               ref={linkTargetInputRef}
               value={linkTarget}

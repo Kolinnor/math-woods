@@ -20,6 +20,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
             include: {
               problem: { select: { slug: true, title: true } },
               concept: { select: { slug: true, title: true } },
+              problemGroups: {
+                orderBy: { position: "asc" },
+                include: {
+                  problems: {
+                    orderBy: { position: "asc" },
+                    include: { problem: { select: { slug: true, title: true } } }
+                  }
+                }
+              },
               options: { include: { toPage: { select: { title: true } } }, orderBy: { position: "asc" } }
             }
           }
@@ -33,8 +42,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     const blocks = page.blocks.map((block) => {
       if (block.kind === "DIVIDER") return "---";
       if (block.kind === "HEADING") return `### ${block.title || "Section"}`;
-      if (block.kind === "PROBLEM" && block.problem) {
-        return `### Problem: ${block.problem.title}\n\n[Open problem](/problems/${block.problem.slug})${block.bodyMarkdown ? `\n\n${block.bodyMarkdown}` : ""}`;
+      if (block.kind === "PROBLEM") {
+        const groups = block.problemGroups.length > 0
+          ? block.problemGroups
+          : block.problem
+            ? [{ title: "Problems", problems: [{ problem: block.problem }] }]
+            : [];
+        const boxes = groups.map((group) => [
+          `### ${group.title}`,
+          ...group.problems.map(({ problem }) => `- [${problem.title}](/problems/${problem.slug})`)
+        ].join("\n")).join("\n\n");
+        return [block.bodyMarkdown, boxes].filter(Boolean).join("\n\n");
       }
       if (block.kind === "CONCEPT" && block.concept) {
         return `### Concept: ${block.concept.title}\n\n[Open concept](/concepts/${block.concept.slug})${block.bodyMarkdown ? `\n\n${block.bodyMarkdown}` : ""}`;

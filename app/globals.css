@@ -3699,15 +3699,19 @@ textarea {
   stroke-width: 2.7;
 }
 
+.exploration-block-map .react-flow__edgeupdater-source,
 .exploration-block-map .react-flow__edgeupdater-target {
   cursor: grab;
 }
 
+.exploration-block-map .react-flow__edgeupdater-source:hover,
+.exploration-block-map .react-flow__edge.selected .react-flow__edgeupdater-source,
 .exploration-block-map .react-flow__edgeupdater-target:hover,
 .exploration-block-map .react-flow__edge.selected .react-flow__edgeupdater-target {
   fill: url("#exploration-edge-reconnect-handle");
 }
 
+.exploration-block-map .react-flow__edgeupdater-source:active,
 .exploration-block-map .react-flow__edgeupdater-target:active {
   cursor: grabbing;
 }
@@ -4301,6 +4305,24 @@ button.danger,
 
 .exploration-problem-block {
   border-left-color: #9d5c42;
+}
+
+.exploration-problem-collection {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.exploration-problem-collection > .prose-math {
+  grid-column: auto;
+}
+
+.exploration-problem-groups {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.exploration-problem-groups .related-problem-group + .related-problem-group {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
 }
 
 .exploration-concept-block {
@@ -9336,6 +9358,11 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   display: grid;
   gap: 0.9rem;
   padding: 1rem;
+}
+
+.studio-problem-block-text {
+  display: grid;
+  gap: 0.4rem;
 }
 
 .problem-relation-picker-header {

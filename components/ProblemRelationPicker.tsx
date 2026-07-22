@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Search, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type RelatedProblem = {
   title: string;
@@ -19,6 +19,10 @@ type RelationGroup = {
 type ProblemRelationPickerProps = {
   initialGroups?: RelationGroup[];
   excludeSlug?: string;
+  inputName?: string;
+  heading?: string;
+  description?: string;
+  defaultGroupTitle?: string;
 };
 
 type SuggestResponse = {
@@ -38,8 +42,8 @@ function serializeGroups(groups: RelationGroup[]) {
     .join("\n");
 }
 
-function emptyGroup(): RelationGroup {
-  return { title: DEFAULT_GROUP_TITLE, problems: [] };
+function emptyGroup(title: string): RelationGroup {
+  return { title, problems: [] };
 }
 
 function problemMeta(problem: RelatedProblem) {
@@ -53,20 +57,39 @@ function problemMeta(problem: RelatedProblem) {
     .join(" · ");
 }
 
-export function ProblemRelationPicker({ initialGroups = [], excludeSlug = "" }: ProblemRelationPickerProps) {
+export function ProblemRelationPicker({
+  initialGroups = [],
+  excludeSlug = "",
+  inputName = "relatedProblemGroups",
+  heading = "Related problem boxes",
+  description = "Give each box a short label, then add problems by title or slug.",
+  defaultGroupTitle = DEFAULT_GROUP_TITLE
+}: ProblemRelationPickerProps) {
   const [groups, setGroups] = useState<RelationGroup[]>(
-    initialGroups.length ? initialGroups.map((group) => ({ ...group, problems: [...group.problems] })) : [emptyGroup()]
+    initialGroups.length
+      ? initialGroups.map((group) => ({ ...group, problems: [...group.problems] }))
+      : [emptyGroup(defaultGroupTitle)]
   );
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<RelatedProblem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const serializedInputRef = useRef<HTMLInputElement | null>(null);
+  const mountedRef = useRef(false);
 
   const serializedGroups = useMemo(() => serializeGroups(groups), [groups]);
   const selectedSlugs = useMemo(
     () => new Set(groups.flatMap((group) => group.problems.map((problem) => problem.slug))),
     [groups]
   );
+
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    serializedInputRef.current?.dispatchEvent(new Event("input", { bubbles: true }));
+  }, [serializedGroups]);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -100,14 +123,14 @@ export function ProblemRelationPicker({ initialGroups = [], excludeSlug = "" }: 
   }
 
   function addGroup() {
-    setGroups((current) => [...current, emptyGroup()]);
+    setGroups((current) => [...current, emptyGroup(defaultGroupTitle)]);
     setActiveGroupIndex(groups.length);
   }
 
   function removeGroup(index: number) {
     setGroups((current) => {
       const next = current.filter((_, groupIndex) => groupIndex !== index);
-      return next.length ? next : [emptyGroup()];
+      return next.length ? next : [emptyGroup(defaultGroupTitle)];
     });
     setActiveGroupIndex((current) => Math.max(0, Math.min(current, groups.length - 2)));
   }
@@ -135,11 +158,11 @@ export function ProblemRelationPicker({ initialGroups = [], excludeSlug = "" }: 
 
   return (
     <div className="problem-relation-picker">
-      <input type="hidden" name="relatedProblemGroups" value={serializedGroups} />
+      <input ref={serializedInputRef} type="hidden" name={inputName} value={serializedGroups} readOnly />
       <div className="problem-relation-picker-header">
         <div>
-          <span className="text-sm font-medium">Related problem boxes</span>
-          <p className="muted text-xs">Give each box a short label, then add problems by title or slug.</p>
+          <span className="text-sm font-medium">{heading}</span>
+          <p className="muted text-xs">{description}</p>
         </div>
         <button type="button" className="secondary relation-add-group-button" onClick={addGroup}>
           <Plus size={15} aria-hidden="true" />
@@ -200,8 +223,12 @@ export function ProblemRelationPicker({ initialGroups = [], excludeSlug = "" }: 
             <Search size={16} aria-hidden="true" />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={`Search for a problem to add to "${groups[activeGroupIndex]?.title || DEFAULT_GROUP_TITLE}"`}
+              onChange={(event) => {
+                event.stopPropagation();
+                setQuery(event.target.value);
+              }}
+              onInput={(event) => event.stopPropagation()}
+              placeholder={`Search for a problem to add to "${groups[activeGroupIndex]?.title || defaultGroupTitle}"`}
             />
           </div>
         </label>

@@ -420,6 +420,7 @@ model Problem {
   proofs                   ProblemProof[]
   circuitNodes             PlaylistNode[]
   explorationBlocks        ExplorationBlock[]
+  explorationProblemLinks  ExplorationBlockProblem[]
   quoteLinks               QuoteProblem[]
   relatedGroups            ProblemRelationGroup[]       @relation("ProblemRelationSource")
   incomingRelations        ProblemRelation[]            @relation("ProblemRelationTarget")
@@ -846,6 +847,7 @@ model ExplorationBlock {
   isStart             Boolean                   @default(false)
   isEnd               Boolean                   @default(false)
   continueToBlockId   Int?
+  continueTargetHandle String?
   autoContinue        Boolean                   @default(false)
   kind                ExplorationBlockKind      @default(MARKDOWN)
   name                String?
@@ -876,6 +878,7 @@ model ExplorationBlock {
   options             ExplorationBlockOption[]
   outcomes            ExplorationBlockOutcome[]
   answers             ExplorationAnswer[]
+  problemGroups       ExplorationBlockProblemGroup[]
 
   @@unique([pageId, key])
   @@index([pageId, position])
@@ -884,6 +887,33 @@ model ExplorationBlock {
   @@index([continueToBlockId])
   @@index([problemId])
   @@index([conceptId])
+}
+
+model ExplorationBlockProblemGroup {
+  id        Int                       @id @default(autoincrement())
+  blockId   Int
+  title     String
+  position  Int
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+  block     ExplorationBlock          @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  problems  ExplorationBlockProblem[]
+
+  @@index([blockId, position])
+}
+
+model ExplorationBlockProblem {
+  id        Int                          @id @default(autoincrement())
+  groupId   Int
+  problemId Int
+  position  Int
+  createdAt DateTime                     @default(now())
+  group     ExplorationBlockProblemGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  problem   Problem                      @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, problemId])
+  @@index([groupId, position])
+  @@index([problemId])
 }
 
 model ExplorationBlockOption {
@@ -897,6 +927,7 @@ model ExplorationBlockOption {
   action           ExplorationOptionAction    @default(STAY)
   toPageId         Int?
   toBlockId        Int?
+  targetHandle     String?
   revealBranchId   Int?                       @unique
   effects          Json?
   position         Int
@@ -938,6 +969,7 @@ model ExplorationBlockOutcome {
   label     String
   toPageId  Int?
   toBlockId Int?
+  targetHandle String?
   position  Int
   createdAt DateTime                   @default(now())
   updatedAt DateTime                   @updatedAt

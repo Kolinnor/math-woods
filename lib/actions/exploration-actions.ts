@@ -40,6 +40,7 @@ import {
 } from "@/lib/explorations";
 import { shouldCoalesceExplorationChange } from "@/lib/exploration-history";
 import { orderExplorationBlocksByFolders } from "@/lib/exploration-block-folders";
+import { syncExplorationProblemGroups } from "@/lib/exploration-problem-groups";
 import { parseContentLanguage } from "@/lib/languages";
 import { createNotification } from "@/lib/notifications";
 import { hasAdminPrivileges } from "@/lib/permissions";
@@ -388,10 +389,11 @@ export type ExplorationMapHistoryBlock = {
   isStart: boolean;
   isEnd: boolean;
   continueToBlockId: number | null;
+  continueTargetHandle: string | null;
   autoContinue: boolean;
   name: string | null;
-  options: Array<{ id: number; toBlockId: number | null }>;
-  outcomes: Array<{ id: number; toBlockId: number | null }>;
+  options: Array<{ id: number; toBlockId: number | null; targetHandle: string | null }>;
+  outcomes: Array<{ id: number; toBlockId: number | null; targetHandle: string | null }>;
 };
 
 function canvasCoordinate(value: number) {
@@ -432,7 +434,6 @@ export async function updateExplorationCanvasPositionsAction(
 
 export async function createExplorationGraphBlockAction(playlistId: number, formData: FormData) {
   const { exploration } = await requireExplorationEditor(playlistId);
-  const mapPlacement = formData.get("mapPlacement") === "true";
   let workspacePage = await prisma.explorationPage.findFirst({
     where: { playlistId },
     orderBy: [{ position: "asc" }, { id: "asc" }]
@@ -449,33 +450,22 @@ export async function createExplorationGraphBlockAction(playlistId: number, form
       }
     });
   }
-  const [terminal, count] = await Promise.all([
-    mapPlacement ? null : prisma.explorationBlock.findFirst({
-      where: { page: { playlistId }, isEnd: true },
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }]
-    }),
-    prisma.explorationBlock.count({ where: { page: { playlistId } } })
-  ]);
+  const count = await prisma.explorationBlock.count({ where: { page: { playlistId } } });
   const { blockId } = await createExplorationBlockAction(workspacePage.id, formData);
   const column = count % 4;
   const row = Math.floor(count / 4);
-  await prisma.$transaction(async (tx) => {
-    if (terminal) {
-      await tx.explorationBlock.update({
-        where: { id: terminal.id },
-        data: { continueToBlockId: blockId, isEnd: false }
-      });
+  await prisma.explorationBlock.update({
+    where: { id: blockId },
+    data: {
+      canvasX: column * 320,
+      canvasY: row * 220,
+      position: count + 1,
+      isStart: count === 0,
+      isEnd: false,
+      continueToBlockId: null,
+      continueTargetHandle: null,
+      autoContinue: false
     }
-    await tx.explorationBlock.update({
-      where: { id: blockId },
-      data: {
-        canvasX: column * 320,
-        canvasY: row * 220,
-        position: count + 1,
-        isStart: count === 0,
-        isEnd: mapPlacement ? count === 0 : true
-      }
-    });
   });
   revalidateExploration(exploration.slug, { editor: false });
   return { blockId };
@@ -564,17 +554,38 @@ export async function restoreExplorationMapStateAction(
       if (!allowSelf && id === block.id) throw new Error("A block cannot link to itself.");
       return id;
     };
+    const targetHandle = (value: string | null, targetBlockId: number | null) => {
+      if (targetBlockId === null || value === null || value === "") return null;
+      if (value === "continue") return value;
+      const targetBlock = existingById.get(targetBlockId);
+      if (!targetBlock) throw new Error("Invalid map link target.");
+      if (value.startsWith("choice-") && targetBlock.options.some((option) => `choice-${option.id}` === value)) {
+        return value;
+      }
+      if (value.startsWith("quiz-") && targetBlock.outcomes.some((outcome) => `quiz-${outcome.id}` === value)) {
+        return value;
+      }
+      throw new Error("Invalid map link socket.");
+    };
+    const continueToBlockId = block.isEnd ? null : target(block.continueToBlockId, false);
     return {
       id: block.id,
       canvasX: block.canvasX === null ? null : canvasCoordinate(Number(block.canvasX)),
       canvasY: block.canvasY === null ? null : canvasCoordinate(Number(block.canvasY)),
       isStart: block.isStart === true,
       isEnd: block.isEnd === true,
-      continueToBlockId: block.isEnd ? null : target(block.continueToBlockId, false),
+      continueToBlockId,
+      continueTargetHandle: targetHandle(block.continueTargetHandle, continueToBlockId),
       autoContinue: block.isEnd || block.continueToBlockId === null ? false : block.autoContinue === true,
       name: boundedText(block.name, CONTENT_LIMITS.title, "Block name") || null,
-      options: block.options.map((option) => ({ id: option.id, toBlockId: target(option.toBlockId) })),
-      outcomes: block.outcomes.map((outcome) => ({ id: outcome.id, toBlockId: target(outcome.toBlockId) }))
+      options: block.options.map((option) => {
+        const toBlockId = target(option.toBlockId);
+        return { id: option.id, toBlockId, targetHandle: targetHandle(option.targetHandle, toBlockId) };
+      }),
+      outcomes: block.outcomes.map((outcome) => {
+        const toBlockId = target(outcome.toBlockId);
+        return { id: outcome.id, toBlockId, targetHandle: targetHandle(outcome.targetHandle, toBlockId) };
+      })
     };
   });
 
@@ -588,6 +599,7 @@ export async function restoreExplorationMapStateAction(
           isStart: block.isStart,
           isEnd: block.isEnd,
           continueToBlockId: block.continueToBlockId,
+          continueTargetHandle: block.continueTargetHandle,
           autoContinue: block.autoContinue,
           name: block.name
         }
@@ -598,6 +610,7 @@ export async function restoreExplorationMapStateAction(
           data: {
             action: option.toBlockId === null ? ExplorationOptionAction.STAY : ExplorationOptionAction.PAGE,
             toBlockId: option.toBlockId,
+            targetHandle: option.targetHandle,
             toPageId: null
           }
         });
@@ -605,7 +618,7 @@ export async function restoreExplorationMapStateAction(
       for (const outcome of block.outcomes) {
         await tx.explorationBlockOutcome.update({
           where: { id: outcome.id },
-          data: { toBlockId: outcome.toBlockId, toPageId: null }
+          data: { toBlockId: outcome.toBlockId, targetHandle: outcome.targetHandle, toPageId: null }
         });
       }
     }
@@ -614,10 +627,186 @@ export async function restoreExplorationMapStateAction(
   revalidateExploration(exploration.slug, { editor: false });
 }
 
+type ExplorationMapTargetBlock = {
+  id: number;
+  options: Array<{ id: number }>;
+  outcomes: Array<{ id: number }>;
+};
+
+export type ExplorationMapLinkSource = {
+  kind: "continue" | "choice" | "quiz";
+  recordId: number;
+};
+
+function normalizeExplorationMapTargetHandle(
+  target: ExplorationMapTargetBlock,
+  value: string | null | undefined
+) {
+  const handle = String(value ?? "").trim();
+  if (!handle) return null;
+  if (handle === "continue") return handle;
+  if (handle.startsWith("choice-") && target.options.some((option) => `choice-${option.id}` === handle)) {
+    return handle;
+  }
+  if (handle.startsWith("quiz-") && target.outcomes.some((outcome) => `quiz-${outcome.id}` === handle)) {
+    return handle;
+  }
+  throw new Error("The selected socket does not belong to the target block.");
+}
+
+async function explorationMapLinkSource(source: ExplorationMapLinkSource) {
+  const recordId = Number(source.recordId);
+  if (!Number.isInteger(recordId)) throw new Error("Invalid map link.");
+  if (source.kind === "continue") {
+    const block = await prisma.explorationBlock.findUnique({
+      where: { id: recordId },
+      select: { id: true, continueToBlockId: true, page: { select: { playlistId: true } } }
+    });
+    return block && {
+      sourceBlockId: block.id,
+      playlistId: block.page.playlistId,
+      targetBlockId: block.continueToBlockId
+    };
+  }
+  if (source.kind === "choice") {
+    const option = await prisma.explorationBlockOption.findUnique({
+      where: { id: recordId },
+      select: { blockId: true, toBlockId: true, block: { select: { page: { select: { playlistId: true } } } } }
+    });
+    return option && {
+      sourceBlockId: option.blockId,
+      playlistId: option.block.page.playlistId,
+      targetBlockId: option.toBlockId
+    };
+  }
+  const outcome = await prisma.explorationBlockOutcome.findUnique({
+    where: { id: recordId },
+    select: { blockId: true, toBlockId: true, block: { select: { page: { select: { playlistId: true } } } } }
+  });
+  return outcome && {
+    sourceBlockId: outcome.blockId,
+    playlistId: outcome.block.page.playlistId,
+    targetBlockId: outcome.toBlockId
+  };
+}
+
+async function clearExplorationMapLinkSource(tx: Prisma.TransactionClient, source: ExplorationMapLinkSource) {
+  if (source.kind === "continue") {
+    await tx.explorationBlock.update({
+      where: { id: source.recordId },
+      data: { continueToBlockId: null, continueTargetHandle: null, autoContinue: false }
+    });
+  } else if (source.kind === "choice") {
+    await tx.explorationBlockOption.update({
+      where: { id: source.recordId },
+      data: {
+        action: ExplorationOptionAction.STAY,
+        toBlockId: null,
+        targetHandle: null,
+        toPageId: null
+      }
+    });
+  } else {
+    await tx.explorationBlockOutcome.update({
+      where: { id: source.recordId },
+      data: { toBlockId: null, targetHandle: null, toPageId: null }
+    });
+  }
+}
+
+async function clearExplorationMapTargetHandles(tx: Prisma.TransactionClient, handles: string[]) {
+  if (handles.length === 0) return;
+  await Promise.all([
+    tx.explorationBlock.updateMany({
+      where: { continueTargetHandle: { in: handles } },
+      data: { continueTargetHandle: null }
+    }),
+    tx.explorationBlockOption.updateMany({
+      where: { targetHandle: { in: handles } },
+      data: { targetHandle: null }
+    }),
+    tx.explorationBlockOutcome.updateMany({
+      where: { targetHandle: { in: handles } },
+      data: { targetHandle: null }
+    })
+  ]);
+}
+
+async function setExplorationMapLinkSource(
+  tx: Prisma.TransactionClient,
+  source: ExplorationMapLinkSource,
+  targetBlockId: number,
+  targetHandle: string | null,
+  requireEmpty: boolean
+) {
+  if (source.kind === "continue") {
+    const result = await tx.explorationBlock.updateMany({
+      where: { id: source.recordId, ...(requireEmpty ? { continueToBlockId: null } : {}) },
+      data: { continueToBlockId: targetBlockId, continueTargetHandle: targetHandle, isEnd: false }
+    });
+    if (result.count !== 1) throw new Error("That socket already has a link.");
+  } else if (source.kind === "choice") {
+    const result = await tx.explorationBlockOption.updateMany({
+      where: { id: source.recordId, ...(requireEmpty ? { toBlockId: null } : {}) },
+      data: {
+        action: ExplorationOptionAction.PAGE,
+        toBlockId: targetBlockId,
+        targetHandle,
+        toPageId: null
+      }
+    });
+    if (result.count !== 1) throw new Error("That socket already has a link.");
+  } else {
+    const result = await tx.explorationBlockOutcome.updateMany({
+      where: { id: source.recordId, ...(requireEmpty ? { toBlockId: null } : {}) },
+      data: { toBlockId: targetBlockId, targetHandle, toPageId: null }
+    });
+    if (result.count !== 1) throw new Error("That socket already has a link.");
+  }
+}
+
+export async function reconnectExplorationMapLinkAction(
+  previousSource: ExplorationMapLinkSource,
+  nextSource: ExplorationMapLinkSource,
+  targetBlockId: number,
+  targetHandle: string | null
+) {
+  const [previous, next] = await Promise.all([
+    explorationMapLinkSource(previousSource),
+    explorationMapLinkSource(nextSource)
+  ]);
+  if (!previous || !next || previous.targetBlockId === null) throw new Error("The map link no longer exists.");
+  if (previous.playlistId !== next.playlistId) throw new Error("Links cannot cross explorations.");
+  const { user, exploration } = await requireExplorationEditor(previous.playlistId);
+  const normalizedTarget = Number(targetBlockId);
+  if (!Number.isInteger(normalizedTarget)) throw new Error("Invalid target block.");
+  if (next.sourceBlockId === normalizedTarget && nextSource.kind !== "choice") {
+    throw new Error("Only choices can link back to their current block.");
+  }
+  const sameSource = previousSource.kind === nextSource.kind && previousSource.recordId === nextSource.recordId;
+  await prisma.$transaction(async (tx) => {
+    const target = await tx.explorationBlock.findFirst({
+      where: { id: normalizedTarget, page: { playlistId: previous.playlistId } },
+      select: {
+        id: true,
+        options: { select: { id: true } },
+        outcomes: { select: { id: true } }
+      }
+    });
+    if (!target) throw new Error("The target block does not belong to this exploration.");
+    const normalizedHandle = normalizeExplorationMapTargetHandle(target, targetHandle);
+    if (!sameSource) await clearExplorationMapLinkSource(tx, previousSource);
+    await setExplorationMapLinkSource(tx, nextSource, normalizedTarget, normalizedHandle, !sameSource);
+  });
+  await recordExplorationChange(previous.playlistId, user.id, "Reconnected a map link");
+  revalidateExploration(exploration.slug, { editor: false });
+}
+
 export async function setExplorationBlockContinueAction(
   blockId: number,
   targetBlockId: number | null,
-  autoContinue?: boolean
+  autoContinue?: boolean,
+  targetHandle?: string | null
 ) {
   const { user, block, page, exploration } = await requireBlockEditor(blockId);
   const normalizedTarget = targetBlockId === null ? null : Number(targetBlockId);
@@ -625,14 +814,20 @@ export async function setExplorationBlockContinueAction(
   if (normalizedTarget !== null) {
     const target = await prisma.explorationBlock.findFirst({
       where: { id: normalizedTarget, page: { playlistId: page.playlistId } },
-      select: { id: true }
+      select: {
+        id: true,
+        options: { select: { id: true } },
+        outcomes: { select: { id: true } }
+      }
     });
     if (!target) throw new Error("The target block does not belong to this exploration.");
+    targetHandle = normalizeExplorationMapTargetHandle(target, targetHandle);
   }
   await prisma.explorationBlock.update({
     where: { id: block.id },
     data: {
       continueToBlockId: normalizedTarget,
+      continueTargetHandle: normalizedTarget === null ? null : targetHandle ?? null,
       isEnd: normalizedTarget === null ? block.isEnd : false,
       ...(normalizedTarget === null
         ? { autoContinue: false }
@@ -662,14 +857,18 @@ export async function setExplorationBlockEndpointAction(blockId: number, endpoin
       where: { id: blockId },
       data: endpoint === "start"
         ? { isStart: true }
-        : { isEnd: true, continueToBlockId: null, autoContinue: false }
+        : { isEnd: true, continueToBlockId: null, continueTargetHandle: null, autoContinue: false }
     });
   });
   await recordExplorationChange(page.playlistId, user.id, `Changed exploration ${endpoint} block`);
   revalidateExploration(exploration.slug, { editor: false });
 }
 
-export async function setExplorationChoiceBlockTargetAction(optionId: number, targetBlockId: number | null) {
+export async function setExplorationChoiceBlockTargetAction(
+  optionId: number,
+  targetBlockId: number | null,
+  targetHandle?: string | null
+) {
   const option = await prisma.explorationBlockOption.findUnique({
     where: { id: optionId },
     select: { blockId: true }
@@ -681,15 +880,21 @@ export async function setExplorationChoiceBlockTargetAction(optionId: number, ta
   if (normalizedTarget !== null) {
     const target = await prisma.explorationBlock.findFirst({
       where: { id: normalizedTarget, page: { playlistId: page.playlistId } },
-      select: { id: true }
+      select: {
+        id: true,
+        options: { select: { id: true } },
+        outcomes: { select: { id: true } }
+      }
     });
     if (!target) throw new Error("The target block does not belong to this exploration.");
+    targetHandle = normalizeExplorationMapTargetHandle(target, targetHandle);
   }
   await prisma.explorationBlockOption.update({
     where: { id: optionId },
     data: {
       action: normalizedTarget === null ? ExplorationOptionAction.STAY : ExplorationOptionAction.PAGE,
       toBlockId: normalizedTarget,
+      targetHandle: normalizedTarget === null ? null : targetHandle ?? null,
       toPageId: null
     }
   });
@@ -697,19 +902,32 @@ export async function setExplorationChoiceBlockTargetAction(optionId: number, ta
   revalidateExploration(exploration.slug, { editor: false });
 }
 
-export async function setExplorationQuizOutcomeBlockTargetAction(outcomeId: number, targetBlockId: number | null) {
+export async function setExplorationQuizOutcomeBlockTargetAction(
+  outcomeId: number,
+  targetBlockId: number | null,
+  targetHandle?: string | null
+) {
   const { user, outcome, page, exploration } = await requireOutcomeEditor(outcomeId);
   const normalizedTarget = targetBlockId === null ? null : Number(targetBlockId);
   if (normalizedTarget !== null) {
     const target = await prisma.explorationBlock.findFirst({
       where: { id: normalizedTarget, page: { playlistId: page.playlistId } },
-      select: { id: true }
+      select: {
+        id: true,
+        options: { select: { id: true } },
+        outcomes: { select: { id: true } }
+      }
     });
     if (!target) throw new Error("The target block does not belong to this exploration.");
+    targetHandle = normalizeExplorationMapTargetHandle(target, targetHandle);
   }
   await prisma.explorationBlockOutcome.update({
     where: { id: outcome.id },
-    data: { toBlockId: normalizedTarget, toPageId: null }
+    data: {
+      toBlockId: normalizedTarget,
+      targetHandle: normalizedTarget === null ? null : targetHandle ?? null,
+      toPageId: null
+    }
   });
   await recordExplorationChange(page.playlistId, user.id, "Updated a quiz link");
   revalidateExploration(exploration.slug, { editor: false });
@@ -967,7 +1185,10 @@ export async function updateExplorationQuizOutcomeAction(
 
 export async function deleteExplorationQuizOutcomeAction(outcomeId: number) {
   const { user, outcome, page, exploration } = await requireOutcomeEditor(outcomeId);
-  await prisma.explorationBlockOutcome.delete({ where: { id: outcome.id } });
+  await prisma.$transaction(async (tx) => {
+    await clearExplorationMapTargetHandles(tx, [`quiz-${outcome.id}`]);
+    await tx.explorationBlockOutcome.delete({ where: { id: outcome.id } });
+  });
   await recordExplorationChange(page.playlistId, user.id, `Deleted a quiz route from "${page.title}"`);
   revalidateExploration(exploration.slug, { editor: false });
   return { outcomeId: outcome.id };
@@ -1023,15 +1244,9 @@ export async function createExplorationBlockAction(pageId: number, formData: For
     : null;
   if (requestedBranchId && !branch) throw new Error("This branch does not belong to the page.");
   const referenceSlug = ensureSlug(String(formData.get("referenceSlug") ?? ""));
-  const [problem, concept] = await Promise.all([
-    kind === ExplorationBlockKind.PROBLEM && referenceSlug
-      ? prisma.problem.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
-      : null,
-    kind === ExplorationBlockKind.CONCEPT && referenceSlug
-      ? prisma.concept.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
-      : null
-  ]);
-  if (kind === ExplorationBlockKind.PROBLEM && !problem) throw new Error("Problem not found.");
+  const concept = kind === ExplorationBlockKind.CONCEPT && referenceSlug
+    ? await prisma.concept.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
+    : null;
   if (kind === ExplorationBlockKind.CONCEPT && !concept) throw new Error("Concept not found.");
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Block content") || null;
   const name = boundedText(formData.get("name"), CONTENT_LIMITS.title, "Block name") || null;
@@ -1062,7 +1277,7 @@ export async function createExplorationBlockAction(pageId: number, formData: For
         bodyMarkdown,
         bodyHtml,
         position: (last?.position ?? 0) + 1,
-        problemId: problem?.id ?? null,
+        problemId: null,
         conceptId: concept?.id ?? null,
         quizType,
         settings: Prisma.JsonNull,
@@ -1124,28 +1339,49 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
   const referenceSlug = block.kind === kind
     ? ensureSlug(String(formData.get("referenceSlug") ?? ""))
     : "";
-  const problem = kind === ExplorationBlockKind.PROBLEM && referenceSlug
-    ? await prisma.problem.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
-    : null;
   const concept = kind === ExplorationBlockKind.CONCEPT && referenceSlug
     ? await prisma.concept.findUnique({ where: { slug: referenceSlug }, select: { id: true } })
     : null;
-  if (kind === ExplorationBlockKind.PROBLEM && block.kind === kind && !problem) throw new Error("Problem not found.");
   if (kind === ExplorationBlockKind.CONCEPT && block.kind === kind && !concept) throw new Error("Concept not found.");
-  await prisma.explorationBlock.update({
-    where: { id: blockId },
-    data: {
-      ...(formData.has("kind") ? { kind } : {}),
-      bodyMarkdown,
-      bodyHtml: bodyMarkdown ? await renderMarkdownContent(bodyMarkdown) : null,
-      explanationMarkdown,
-      explanationHtml: explanationMarkdown ? await renderMarkdownContent(explanationMarkdown) : null,
-      problemId: problem?.id ?? null,
-      conceptId: concept?.id ?? null,
-      quizType,
-      ...(kind === ExplorationBlockKind.CHOICE && block.kind !== ExplorationBlockKind.CHOICE ? { required: true } : {}),
-      ...(kind === ExplorationBlockKind.QUIZ && block.kind !== ExplorationBlockKind.QUIZ ? { required: true } : {}),
-      settings: Prisma.JsonNull
+  const [bodyHtml, explanationHtml] = await Promise.all([
+    bodyMarkdown ? renderMarkdownContent(bodyMarkdown) : null,
+    explanationMarkdown ? renderMarkdownContent(explanationMarkdown) : null
+  ]);
+  await prisma.$transaction(async (tx) => {
+    await tx.explorationBlock.update({
+      where: { id: blockId },
+      data: {
+        ...(formData.has("kind") ? { kind } : {}),
+        bodyMarkdown,
+        bodyHtml,
+        explanationMarkdown,
+        explanationHtml,
+        problemId: kind === ExplorationBlockKind.PROBLEM ? block.problemId : null,
+        conceptId: concept?.id ?? null,
+        quizType,
+        ...(kind === ExplorationBlockKind.CHOICE && block.kind !== ExplorationBlockKind.CHOICE ? { required: true } : {}),
+        ...(kind === ExplorationBlockKind.QUIZ && block.kind !== ExplorationBlockKind.QUIZ ? { required: true } : {}),
+        settings: Prisma.JsonNull
+      }
+    });
+    if (kind !== block.kind) {
+      await Promise.all([
+        tx.explorationBlock.updateMany({
+          where: { continueToBlockId: blockId },
+          data: { continueTargetHandle: null }
+        }),
+        tx.explorationBlockOption.updateMany({
+          where: { toBlockId: blockId },
+          data: { targetHandle: null }
+        }),
+        tx.explorationBlockOutcome.updateMany({
+          where: { toBlockId: blockId },
+          data: { targetHandle: null }
+        })
+      ]);
+    }
+    if (kind !== ExplorationBlockKind.PROBLEM && block.kind === ExplorationBlockKind.PROBLEM) {
+      await tx.explorationBlockProblemGroup.deleteMany({ where: { blockId } });
     }
   });
   if (kind === ExplorationBlockKind.QUIZ && block.kind !== ExplorationBlockKind.QUIZ) {
@@ -1182,6 +1418,18 @@ export async function updateExplorationBlockAction(blockId: number, formData: Fo
     );
   }
   revalidateExploration(exploration.slug, { editor: block.kind !== kind });
+}
+
+export async function updateExplorationProblemGroupsAction(blockId: number, formData: FormData) {
+  const { user, block, page, exploration } = await requireBlockEditor(blockId);
+  if (block.kind !== ExplorationBlockKind.PROBLEM) throw new Error("This is not a problem block.");
+  const groups = boundedText(formData.get("problemGroups"), CONTENT_LIMITS.relationGroups, "Problem boxes");
+  await prisma.$transaction(async (tx) => {
+    await tx.explorationBlock.update({ where: { id: blockId }, data: { problemId: null } });
+    await syncExplorationProblemGroups(tx, blockId, groups);
+  });
+  await recordExplorationChange(page.playlistId, user.id, `Updated problem boxes in block ${block.position}`);
+  revalidateExploration(exploration.slug, { editor: false });
 }
 
 export async function updateExplorationQuizSuccessMessageAction(blockId: number, formData: FormData) {
@@ -1368,16 +1616,20 @@ export async function deleteExplorationBlockAction(blockId: number) {
     await tx.explorationBlock.updateMany({
       where: { continueToBlockId: blockId },
       data: replacement === null
-        ? { continueToBlockId: null, autoContinue: false }
-        : { continueToBlockId: replacement }
+        ? { continueToBlockId: null, continueTargetHandle: null, autoContinue: false }
+        : { continueToBlockId: replacement, continueTargetHandle: null }
     });
     await tx.explorationBlockOption.updateMany({
       where: { toBlockId: blockId },
-      data: { toBlockId: replacement, action: replacement ? ExplorationOptionAction.PAGE : ExplorationOptionAction.STAY }
+      data: {
+        toBlockId: replacement,
+        targetHandle: null,
+        action: replacement ? ExplorationOptionAction.PAGE : ExplorationOptionAction.STAY
+      }
     });
     await tx.explorationBlockOutcome.updateMany({
       where: { toBlockId: blockId },
-      data: { toBlockId: replacement }
+      data: { toBlockId: replacement, targetHandle: null }
     });
     await tx.explorationBlock.delete({ where: { id: blockId } });
     if ((block.isStart || block.isEnd) && fallback) {
@@ -1532,7 +1784,8 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
             }
           : {}),
         toPageId,
-        toBlockId
+        toBlockId,
+        ...(formData.has("toBlockId") ? { targetHandle: null } : {})
       }
     });
     await tx.explorationBlockOutcome.updateMany({
@@ -1540,7 +1793,12 @@ export async function updateExplorationOptionAction(optionId: number, formData: 
         kind: ExplorationOutcomeKind.ANSWER,
         matches: { some: { optionId } }
       },
-      data: { label, toPageId, toBlockId }
+      data: {
+        label,
+        toPageId,
+        toBlockId,
+        ...(formData.has("toBlockId") ? { targetHandle: null } : {})
+      }
     });
   });
   await recordExplorationChange(page.playlistId, user.id, `Updated an option in block ${block.position} on "${page.title}"`);
@@ -1586,6 +1844,14 @@ export async function deleteExplorationOptionAction(optionId: number) {
       where: { id: optionId },
       select: { revealBranchId: true }
     });
+    const removedOutcomes = await tx.explorationBlockOutcome.findMany({
+      where: { matches: { some: { optionId } } },
+      select: { id: true }
+    });
+    await clearExplorationMapTargetHandles(tx, [
+      `choice-${optionId}`,
+      ...removedOutcomes.map((outcome) => `quiz-${outcome.id}`)
+    ]);
     await tx.explorationBlockOutcome.deleteMany({
       where: { matches: { some: { optionId } } }
     });
@@ -1664,6 +1930,15 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
             include: {
               problem: { select: { id: true, translationGroupId: true } },
               concept: { select: { id: true, translationGroupId: true } },
+              problemGroups: {
+                orderBy: { position: "asc" },
+                include: {
+                  problems: {
+                    orderBy: { position: "asc" },
+                    include: { problem: { select: { id: true, translationGroupId: true } } }
+                  }
+                }
+              },
               options: { orderBy: { position: "asc" } },
               outcomes: { include: { matches: true }, orderBy: { position: "asc" } }
             }
@@ -1680,7 +1955,10 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
   });
   if (existing) redirect(`/explorations/${existing.slug}` as Route);
 
-  const problemGroups = source.pages.flatMap((page) => page.blocks.flatMap((block) => block.problem?.translationGroupId ?? []));
+  const problemGroups = source.pages.flatMap((page) => page.blocks.flatMap((block) => [
+    ...(block.problem ? [block.problem.translationGroupId] : []),
+    ...block.problemGroups.flatMap((group) => group.problems.map(({ problem }) => problem.translationGroupId))
+  ]));
   const conceptGroups = source.pages.flatMap((page) => page.blocks.flatMap((block) => block.concept?.translationGroupId ?? []));
   const [translatedProblems, translatedConcepts] = await Promise.all([
     prisma.problem.findMany({
@@ -1790,6 +2068,22 @@ export async function cloneExplorationTranslationAction(playlistId: number, form
           }
         });
         blockIds.set(block.id, nextBlock.id);
+        for (const group of block.problemGroups) {
+          const targetProblemIds = Array.from(new Set(group.problems.map(({ problem }) =>
+            problemByGroup.get(problem.translationGroupId) ?? problem.id
+          )));
+          if (targetProblemIds.length === 0) continue;
+          await tx.explorationBlockProblemGroup.create({
+            data: {
+              blockId: nextBlock.id,
+              title: group.title,
+              position: group.position,
+              problems: {
+                create: targetProblemIds.map((problemId, position) => ({ problemId, position: position + 1 }))
+              }
+            }
+          });
+        }
       }
     }
     for (const page of source.pages) {
