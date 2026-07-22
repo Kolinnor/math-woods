@@ -14,12 +14,14 @@ export function ExplorationAddContentForm({
   explorationId,
   explorationSlug,
   kinds,
-  openEditorAfterCreate = true
+  openEditorAfterCreate = true,
+  getCanvasPosition
 }: {
   explorationId: number;
   explorationSlug: string;
   kinds: KindOption[];
   openEditorAfterCreate?: boolean;
+  getCanvasPosition?: () => { x: number; y: number } | null;
 }) {
   const router = useRouter();
   const [kind, setKind] = useState("MARKDOWN");
@@ -32,6 +34,11 @@ export function ExplorationAddContentForm({
     setError("");
     startTransition(async () => {
       try {
+        const canvasPosition = getCanvasPosition?.();
+        if (canvasPosition) {
+          formData.set("canvasX", String(canvasPosition.x));
+          formData.set("canvasY", String(canvasPosition.y));
+        }
         const { blockId } = await createExplorationGraphBlockAction(explorationId, formData);
         if (openEditorAfterCreate) {
           router.replace(`/explorations/${explorationSlug}/edit?view=block&block=${blockId}` as never, { scroll: false });

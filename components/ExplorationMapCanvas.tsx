@@ -20,7 +20,8 @@ import {
   type IsValidConnection,
   type Node,
   type NodeProps,
-  type OnSelectionChangeParams
+  type OnSelectionChangeParams,
+  type ReactFlowInstance
 } from "@xyflow/react";
 import { ExternalLink, Flag, Redo2, Signpost, Trash2, Undo2 } from "lucide-react";
 import { ExplorationAddContentForm } from "@/components/ExplorationAddContentForm";
@@ -70,6 +71,7 @@ type GraphEdgeData = {
 const MAP_HISTORY_LIMIT = 50;
 const AUTOMATIC_EDGE_MARKER = "url(#exploration-automatic-edge-marker)";
 const EDGE_RECONNECT_RADIUS = 18;
+const BLOCK_CENTER_OFFSET = { x: 112, y: 70 };
 
 function mapHistoryState(blocks: ExplorationMapBlock[]): ExplorationMapHistoryBlock[] {
   return blocks.map((block) => ({
@@ -334,7 +336,24 @@ export function ExplorationMapCanvas({
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const flowInstanceRef = useRef<ReactFlowInstance<Node<BlockNodeData>, Edge<GraphEdgeData>> | null>(null);
   const reconnectingEdgeRef = useRef<Edge<GraphEdgeData> | null>(null);
+
+  const canvasViewportCenter = useCallback(() => {
+    const map = mapRef.current;
+    const flow = flowInstanceRef.current;
+    if (!map || !flow) return null;
+    const bounds = map.getBoundingClientRect();
+    const center = flow.screenToFlowPosition({
+      x: bounds.left + bounds.width / 2,
+      y: bounds.top + bounds.height / 2
+    });
+    return {
+      x: center.x - BLOCK_CENTER_OFFSET.x,
+      y: center.y - BLOCK_CENTER_OFFSET.y
+    };
+  }, []);
 
   const renderBlocks = useCallback((next: ExplorationMapBlock[]) => {
     blocksRef.current = next;
@@ -625,11 +644,14 @@ export function ExplorationMapCanvas({
   }
 
   return (
-    <div className="exploration-block-map" aria-busy={isPending}>
+    <div ref={mapRef} className="exploration-block-map" aria-busy={isPending}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        onInit={(instance) => {
+          flowInstanceRef.current = instance;
+        }}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={connect}
@@ -714,7 +736,13 @@ export function ExplorationMapCanvas({
           </defs>
         </svg>
         <Panel className="exploration-block-map-add nodrag nopan" position="top-left">
-          <ExplorationAddContentForm explorationId={explorationId} explorationSlug={explorationSlug} kinds={kinds} openEditorAfterCreate={false} />
+          <ExplorationAddContentForm
+            explorationId={explorationId}
+            explorationSlug={explorationSlug}
+            kinds={kinds}
+            openEditorAfterCreate={false}
+            getCanvasPosition={canvasViewportCenter}
+          />
         </Panel>
         <Panel className="exploration-map-history-controls nodrag nopan" position="bottom-right">
           <button type="button" onClick={undo} disabled={isPending || past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo map change">

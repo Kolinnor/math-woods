@@ -454,11 +454,14 @@ export async function createExplorationGraphBlockAction(playlistId: number, form
   const { blockId } = await createExplorationBlockAction(workspacePage.id, formData);
   const column = count % 4;
   const row = Math.floor(count / 4);
+  const requestedCanvasX = formData.get("canvasX");
+  const requestedCanvasY = formData.get("canvasY");
+  const hasRequestedCanvasPosition = requestedCanvasX !== null && requestedCanvasY !== null;
   await prisma.explorationBlock.update({
     where: { id: blockId },
     data: {
-      canvasX: column * 320,
-      canvasY: row * 220,
+      canvasX: hasRequestedCanvasPosition ? canvasCoordinate(Number(requestedCanvasX)) : column * 320,
+      canvasY: hasRequestedCanvasPosition ? canvasCoordinate(Number(requestedCanvasY)) : row * 220,
       position: count + 1,
       isStart: count === 0,
       isEnd: false,
