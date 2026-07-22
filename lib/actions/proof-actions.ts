@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { NotificationType, TargetType, VoteType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { checkProofAchievements } from "@/lib/achievements";
+import { checkHintAchievements, checkProofAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
@@ -12,6 +12,7 @@ import { notifyProblemAuthor } from "@/lib/notifications";
 import { canDeleteSolution, canEditSolution } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
+import { acquireTransactionLock } from "@/lib/transaction-lock";
 import { displayNameForUser } from "@/lib/user-display";
 
 async function renderMarkdownContent(markdown: string) {
@@ -51,6 +52,67 @@ export async function createProofAction(problemId: number, problemSlug: string, 
     href: `/problems/${problemSlug}`
   });
   redirect(contentLanguageViewHref("/problems", problemSlug, problem.language) as Route);
+}
+
+export async function saveSolutionHintAction(problemId: number, proofId: number, formData: FormData) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`solution-hint:${user.id}`, 12, 60_000);
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
+  const bodyHtml = await renderMarkdownContent(bodyMarkdown);
+
+  const problem = await prisma.$transaction(async (tx) => {
+    await acquireTransactionLock(tx, `solution-hint:${proofId}`);
+    const proof = await tx.problemProof.findFirst({
+      where: { id: proofId, problemId, authorId: user.id },
+      select: {
+        id: true,
+        problem: { select: { id: true, slug: true, language: true, translationGroupId: true } }
+      }
+    });
+    if (!proof) throw new Error("Solution not found.");
+
+    const solvedAttempt = await tx.problemAttempt.findFirst({
+      where: {
+        userId: user.id,
+        status: "SOLVED",
+        problem: { translationGroupId: proof.problem.translationGroupId }
+      },
+      select: { id: true }
+    });
+    if (!solvedAttempt) throw new Error("Solve this problem before adding a hint for your solution.");
+
+    const existingHint = await tx.problemHint.findUnique({ where: { proofId: proof.id } });
+    if (existingHint) {
+      if (existingHint.authorId !== user.id) throw new Error("You cannot edit this hint.");
+      await tx.problemHint.update({
+        where: { id: existingHint.id },
+        data: { bodyMarkdown, bodyHtml }
+      });
+    } else {
+      const lastHint = await tx.problemHint.findFirst({
+        where: { problemId: proof.problem.id },
+        orderBy: { position: "desc" },
+        select: { position: true }
+      });
+      await tx.problemHint.create({
+        data: {
+          problemId: proof.problem.id,
+          proofId: proof.id,
+          authorId: user.id,
+          bodyMarkdown,
+          bodyHtml,
+          position: (lastHint?.position ?? -1) + 1
+        }
+      });
+    }
+    return proof.problem;
+  });
+
+  await checkHintAchievements(user.id);
+  revalidatePath(`/problems/${problem.slug}`);
+  const problemHref = contentLanguageViewHref("/problems", problem.slug, problem.language);
+  const separator = problemHref.includes("?") ? "&" : "?";
+  redirect(`${problemHref}${separator}hint=saved#solution-hint` as Route);
 }
 
 export async function updateProofAction(proofId: number, problemSlug: string, formData: FormData) {

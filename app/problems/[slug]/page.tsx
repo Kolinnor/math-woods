@@ -4,7 +4,7 @@ import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { NotificationType } from "@prisma/client";
 import { QualityStatus } from "@prisma/client";
-import { Check, Heart, House, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
+import { Check, Heart, House, Lightbulb, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/actions/problem-actions";
 import {
   createProofAction,
+  saveSolutionHintAction,
   voteProofAction
 } from "@/lib/actions/proof-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -109,7 +110,7 @@ export default async function ProblemPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ solution?: string; verification?: string; viewLanguage?: string }>;
+  searchParams?: Promise<{ hint?: string; solution?: string; verification?: string; viewLanguage?: string }>;
 }) {
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
@@ -320,6 +321,10 @@ export default async function ProblemPage({
     (a, b) => (proofVotes.get(b.id) ?? 0) - (proofVotes.get(a.id) ?? 0) || a.createdAt.getTime() - b.createdAt.getTime()
   );
   const ownProofResetSignal = user ? problem.proofs.filter((proof) => proof.authorId === user.id).at(-1)?.id ?? 0 : 0;
+  const ownProofForHint = user ? problem.proofs.filter((proof) => proof.authorId === user.id).at(-1) ?? null : null;
+  const ownSolutionHint = ownProofForHint
+    ? problem.hints.find((hint) => hint.proofId === ownProofForHint.id) ?? null
+    : null;
   const acceptedProofId =
     proofs.length > 0 && (proofVotes.get(proofs[0].id) ?? 0) >= COMMUNITY_ACCEPTED_PROOF_VOTES ? proofs[0].id : null;
   const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
@@ -630,6 +635,33 @@ export default async function ProblemPage({
                     </article>
                   );
                 })}
+              </div>
+            </details>
+          )}
+          {user && attempt?.status === "SOLVED" && ownProofForHint && (
+            <details
+              id="solution-hint"
+              className="solution-hint-callout"
+              open={queryParams.hint === "saved"}
+            >
+              <summary>
+                <Lightbulb size={17} />
+                <span>{ownSolutionHint ? t.problemDetail.editSolutionHint : t.problemDetail.addSolutionHint}</span>
+              </summary>
+              <div className="solution-hint-body">
+                {queryParams.hint === "saved" && <p className="success-text">{t.problemDetail.solutionHintSaved}</p>}
+                <p>{t.problemDetail.solutionHintDescription}</p>
+                <form action={saveSolutionHintAction.bind(null, problem.id, ownProofForHint.id)} className="grid gap-3">
+                  <MarkdownEditor
+                    name="bodyMarkdown"
+                    initialValue={ownSolutionHint?.bodyMarkdown}
+                    minHeight="8rem"
+                    lineNumbers={false}
+                    draftKey={`problem:${problem.id}:proof:${ownProofForHint.id}:hint`}
+                    resetSignal={ownSolutionHint?.updatedAt.getTime() ?? 0}
+                  />
+                  <button type="submit">{t.problemDetail.saveSolutionHint}</button>
+                </form>
               </div>
             </details>
           )}

@@ -608,16 +608,18 @@ model ProblemFavorite {
 }
 
 model ProblemHint {
-  id           Int      @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   problemId    Int
+  proofId      Int?          @unique
   authorId     Int?
-  position     Int      @default(0)
+  position     Int           @default(0)
   bodyMarkdown String
   bodyHtml     String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  problem      Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  author       User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  problem      Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  proof        ProblemProof? @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  author       User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([problemId, position])
   @@index([authorId])
@@ -634,6 +636,7 @@ model ProblemProof {
   problem      Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
   author       User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments     ProofComment[]
+  hint         ProblemHint?
 
   @@index([problemId, createdAt])
 }

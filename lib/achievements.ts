@@ -98,11 +98,14 @@ export async function checkSolveAchievements(userId: number) {
 }
 
 export async function checkHintAchievements(userId: number) {
-  const hintCount = await prisma.discussionPost.count({
-    where: { authorId: userId, type: "HINT", deletedAt: null }
-  });
+  const [discussionHintCount, solutionHintCount] = await Promise.all([
+    prisma.discussionPost.count({
+      where: { authorId: userId, type: "HINT", deletedAt: null }
+    }),
+    prisma.problemHint.count({ where: { authorId: userId } })
+  ]);
 
-  if (hintCount >= 1) await unlockAchievement(userId, "lantern-bearer");
+  if (discussionHintCount + solutionHintCount >= 1) await unlockAchievement(userId, "lantern-bearer");
 }
 
 export async function checkUsefulPostAchievements(userId: number) {

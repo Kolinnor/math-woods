@@ -10064,6 +10064,42 @@ button.relation-remove-button {
   padding-top: 1rem;
 }
 
+.solution-hint-callout {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: 7px;
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+.solution-hint-callout > summary {
+  align-items: center;
+  color: var(--accent-strong);
+  cursor: pointer;
+  display: flex;
+  font-weight: 750;
+  gap: 0.55rem;
+}
+
+.solution-hint-body {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.8rem;
+  padding-top: 0.9rem;
+}
+
+.solution-hint-body > p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.solution-hint-body > .success-text {
+  color: var(--problem-solved);
+  font-weight: 700;
+}
+
 .action-surface {
   background: var(--panel);
   border: 1px solid var(--line);
