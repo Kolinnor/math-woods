@@ -143,11 +143,14 @@ import {
 
 assert.equal(slugify("Relations de Viète"), "relations-de-viete");
 assert.equal(slugify("  L'espace vectoriel ! "), "lespace-vectoriel");
-assert.equal(problemDifficultyTone(20), problemDifficultyTone(25));
-assert.notEqual(problemDifficultyTone(25), problemDifficultyTone(26));
-assert.notEqual(problemDifficultyTone(45), problemDifficultyTone(46));
-assert.notEqual(problemDifficultyTone(65), problemDifficultyTone(66));
-assert.notEqual(problemDifficultyTone(85), problemDifficultyTone(86));
+assert.equal(problemDifficultyTone(null), "#8a9184");
+assert.equal(problemDifficultyTone(1), "#4f7955");
+assert.equal(problemDifficultyTone(20), "#617a42");
+assert.equal(problemDifficultyTone(40), "#857a35");
+assert.equal(problemDifficultyTone(100), "#87342d");
+assert.notEqual(problemDifficultyTone(19), problemDifficultyTone(20));
+assert.notEqual(problemDifficultyTone(20), problemDifficultyTone(21));
+assert.notEqual(problemDifficultyTone(39), problemDifficultyTone(40));
 assert.equal(problemDifficultyBars(25), 1);
 assert.equal(problemDifficultyBars(45), 2);
 assert.equal(problemDifficultyBars(65), 3);
