@@ -75,6 +75,10 @@ function appOrigin() {
   return domain ? `https://${domain}` : "http://localhost:3000";
 }
 
+export function oauthAppUrl(path: string) {
+  return new URL(path, `${appOrigin()}/`);
+}
+
 function callbackUrl(provider: OAuthProviderKey) {
   return `${appOrigin()}/api/auth/${provider}/callback`;
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { beginOAuth, parseOAuthProvider, safeReturnTo } from "@/lib/oauth";
+import { beginOAuth, oauthAppUrl, parseOAuthProvider, safeReturnTo } from "@/lib/oauth";
 import { assertRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ provider: string }> }
 ) {
   const provider = parseOAuthProvider((await params).provider);
-  if (!provider) return NextResponse.redirect(new URL("/login?oauthError=provider", request.url));
+  if (!provider) return NextResponse.redirect(oauthAppUrl("/login?oauthError=provider"));
   const mode = request.nextUrl.searchParams.get("mode") === "link" ? "link" : "login";
   const returnTo = safeReturnTo(request.nextUrl.searchParams.get("returnTo"), mode === "link" ? "/settings" : "/");
   try {
@@ -18,6 +18,6 @@ export async function GET(
   } catch (error) {
     console.error("OAuth start failed", provider, error);
     const destination = mode === "link" ? "/settings?oauth=failed" : "/login?oauthError=unavailable";
-    return NextResponse.redirect(new URL(destination, request.url));
+    return NextResponse.redirect(oauthAppUrl(destination));
   }
 }
