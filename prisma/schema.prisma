@@ -14,6 +14,11 @@ enum Role {
   OWNER
 }
 
+enum ExternalAuthProvider {
+  GOOGLE
+  ORCID
+}
+
 enum ProblemStatus {
   DRAFT
   PUBLISHED
@@ -262,6 +267,8 @@ model User {
   votes                        Vote[]
   reports                      Report[]
   sessions                     Session[]
+  externalIdentities           ExternalIdentity[]
+  oauthLinkAttempts            OAuthAttempt[]             @relation("OAuthAttemptLinkUser")
   emailVerificationTokens      EmailVerificationToken[]
   favorites                    ProblemFavorite[]
   problemHints                 ProblemHint[]
@@ -290,6 +297,42 @@ model User {
   explorationEditionsPublished ExplorationEdition[]         @relation("ExplorationEditionPublisher")
   explorationSessions          ExplorationSession[]
   mathematiciansCreated        Mathematician[]                @relation("MathematicianCreatedBy")
+}
+
+model ExternalIdentity {
+  id                Int                  @id @default(autoincrement())
+  userId            Int
+  provider          ExternalAuthProvider
+  providerAccountId String
+  providerEmail     String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+model OAuthAttempt {
+  id                    Int                  @id @default(autoincrement())
+  tokenHash             String               @unique
+  provider              ExternalAuthProvider
+  codeVerifier          String
+  state                 String
+  nonce                 String
+  returnTo              String
+  linkUserId            Int?
+  providerAccountId     String?
+  providerEmail         String?
+  providerEmailVerified Boolean              @default(false)
+  providerDisplayName   String?
+  expiresAt             DateTime
+  createdAt             DateTime             @default(now())
+  linkUser              User?                @relation("OAuthAttemptLinkUser", fields: [linkUserId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([linkUserId])
 }
 
 model Mathematician {

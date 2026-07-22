@@ -12,11 +12,13 @@ import {
 } from "@/lib/actions/account-actions";
 import { resetLatexPreferencesAction, updateLatexPreferencesAction } from "@/lib/actions/latex-preference-actions";
 import { updateNotificationPreferencesAction } from "@/lib/actions/notification-actions";
+import { disconnectExternalIdentityAction, setInitialPasswordAction } from "@/lib/actions/oauth-actions";
 import { getCurrentSession, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { mailStatusLabel } from "@/lib/email-verification";
 import { mergeLatexPreferences, type LatexPreferenceValues } from "@/lib/latex-preferences";
 import { contentLanguageLabel } from "@/lib/languages";
+import { configuredOAuthProviders, oauthProviderKey, oauthProviderLabel } from "@/lib/oauth";
 import { assignableRolesFor, canAssignRole, canManageUserRoles, canUseOwnerTools } from "@/lib/permissions";
 import { roleLabel } from "@/lib/roles";
 import { translationDashboard } from "@/lib/translation-dashboard";
@@ -336,6 +338,7 @@ export default async function SettingsPage({
     verify?: string;
     deleteAccount?: string;
     adminUsers?: string;
+    oauth?: string;
   }>;
 }) {
   const user = await requireUser();
@@ -354,7 +357,7 @@ export default async function SettingsPage({
       : requestedTab;
   const adminUsersTab = params.adminUsers === "deleted" ? "deleted" : "active";
   const verifyStatus = params.verify;
-  const [sessions, notificationPreferences, savedLatexPreferences] = await Promise.all([
+  const [sessions, notificationPreferences, savedLatexPreferences, externalIdentities] = await Promise.all([
     prisma.session.findMany({
       where: {
         userId: user.id,
@@ -367,8 +370,14 @@ export default async function SettingsPage({
     }),
     prisma.latexPreference.findUnique({
       where: { userId: user.id }
+    }),
+    prisma.externalIdentity.findMany({
+      where: { userId: user.id },
+      orderBy: { provider: "asc" }
     })
   ]);
+  const oauthProviders = configuredOAuthProviders();
+  const connectedProviders = new Set(externalIdentities.map((identity) => identity.provider));
   const latexPreferences = mergeLatexPreferences(savedLatexPreferences);
   const notificationPreferenceMap = new Map(
     notificationPreferences.map((preference) => [preference.type, preference.enabled])
@@ -427,6 +436,22 @@ export default async function SettingsPage({
       {params.updated === "latex-reset" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
           Editor preferences reset to default.
+        </p>
+      )}
+      {params.oauth === "connected" && (
+        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">Account connected.</p>
+      )}
+      {params.oauth === "disconnected" && (
+        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">Connected account removed.</p>
+      )}
+      {params.oauth === "last-method" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          Add a password or another connected account before removing your only sign-in method.
+        </p>
+      )}
+      {params.oauth === "failed" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          The connected account could not be updated. Please try again.
         </p>
       )}
       {params.deleteAccount === "confirm" && (
@@ -510,18 +535,52 @@ export default async function SettingsPage({
             )}
           </section>
 
+          {(externalIdentities.length > 0 || oauthProviders.length > 0) && (
           <section className="panel p-5">
-            <h2 className="mb-4 text-lg font-semibold">Change password</h2>
-            <form action={changePasswordAction} className="grid gap-4">
+            <h2 className="mb-2 text-lg font-semibold">Connected accounts</h2>
+            <p className="muted mb-4 text-sm">Use Google or ORCID to sign in without entering your Math Woods password.</p>
+            <div className="grid gap-3">
+              {externalIdentities.map((identity) => (
+                <div key={identity.id} className="oauth-connected-account">
+                  <div>
+                    <strong>{oauthProviderLabel(identity.provider)}</strong>
+                    {identity.providerEmail && <p className="muted text-sm">{identity.providerEmail}</p>}
+                  </div>
+                  <form action={disconnectExternalIdentityAction}>
+                    <input type="hidden" name="provider" value={identity.provider} />
+                    <button type="submit" className="secondary">Disconnect</button>
+                  </form>
+                </div>
+              ))}
+              {oauthProviders
+                .filter((provider) => !connectedProviders.has(provider.provider))
+                .map((provider) => (
+                  <Link
+                    key={provider.key}
+                    href={`/api/auth/${oauthProviderKey(provider.provider)}/start?mode=link&returnTo=%2Fsettings` as never}
+                    className="button secondary oauth-connect-button"
+                  >
+                    Connect {provider.label}
+                  </Link>
+                ))}
+            </div>
+          </section>
+          )}
+
+          <section className="panel p-5">
+            <h2 className="mb-4 text-lg font-semibold">{user.passwordHash ? "Change password" : "Add a password"}</h2>
+            <form action={user.passwordHash ? changePasswordAction : setInitialPasswordAction} className="grid gap-4">
+              {user.passwordHash && (
+                <label className="grid gap-2">
+                  <span className="text-sm font-medium">Current password</span>
+                  <input name="currentPassword" type="password" required />
+                </label>
+              )}
               <label className="grid gap-2">
-                <span className="text-sm font-medium">Current password</span>
-                <input name="currentPassword" type="password" required />
-              </label>
-              <label className="grid gap-2">
-                <span className="text-sm font-medium">New password</span>
+                <span className="text-sm font-medium">{user.passwordHash ? "New password" : "Add a password"}</span>
                 <input name="newPassword" type="password" minLength={8} required />
               </label>
-              <button type="submit">Update password</button>
+              <button type="submit">{user.passwordHash ? "Update password" : "Set password"}</button>
             </form>
           </section>
 

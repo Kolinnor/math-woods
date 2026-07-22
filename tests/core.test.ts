@@ -61,6 +61,7 @@ import {
 } from "../lib/exploration-branches.ts";
 import { evaluateExplorationQuizSelection } from "../lib/exploration-quiz.ts";
 import { guestProgressContentKey } from "../lib/guest-progress.ts";
+import { parseOAuthProvider, safeReturnTo } from "../lib/oauth-utils.ts";
 import {
   filterMathematicians,
   mathematicianContributionCount,
@@ -851,6 +852,14 @@ assert.equal(guestProgressContentKey("/problems/group-action", new URLSearchPara
 assert.equal(guestProgressContentKey("/concepts/group", new URLSearchParams()), "concepts:group");
 assert.equal(guestProgressContentKey("/problems/new", new URLSearchParams()), null);
 assert.equal(guestProgressContentKey("/concepts/group/edit", new URLSearchParams()), null);
+assert.equal(parseOAuthProvider("google"), "google");
+assert.equal(parseOAuthProvider("orcid"), "orcid");
+assert.equal(parseOAuthProvider("unknown"), null);
+assert.equal(safeReturnTo("/explorations/geometry/start"), "/explorations/geometry/start");
+assert.equal(safeReturnTo("https://malicious.example"), "/");
+assert.equal(safeReturnTo("//malicious.example"), "/");
+assert.equal(safeReturnTo("/\\malicious.example"), "/");
+assert.equal(safeReturnTo(null, "/settings"), "/settings");
 assert.equal(
   guestProgressContentKey("/explorations/space-rotations/start", new URLSearchParams("block=groups")),
   "exploration:space-rotations:groups"

@@ -208,6 +208,18 @@ export async function updatePasswordForCurrentUser(currentPassword: string, newP
   ]);
 }
 
+export async function setPasswordForCurrentUser(newPassword: string) {
+  const session = await getCurrentSession();
+  if (!session) redirect("/login");
+  if (session.user.passwordHash) throw new Error("This account already has a password.");
+  if (newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: session.userId }, data: { passwordHash: hashPassword(newPassword) } }),
+    prisma.session.deleteMany({ where: { userId: session.userId, id: { not: session.id } } })
+  ]);
+}
+
 export async function revokeOtherSessionsForCurrentUser() {
   const session = await getCurrentSession();
   if (!session) redirect("/login");
@@ -220,7 +232,7 @@ export async function revokeOtherSessionsForCurrentUser() {
   });
 }
 
-async function createSession(userId: number) {
+export async function createSession(userId: number) {
   const store = await cookies();
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);

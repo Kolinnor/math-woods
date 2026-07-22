@@ -63,6 +63,8 @@ export async function deleteAccountAction(formData: FormData) {
 
   await prisma.$transaction([
     prisma.session.deleteMany({ where: { userId: user.id } }),
+    prisma.externalIdentity.deleteMany({ where: { userId: user.id } }),
+    prisma.oAuthAttempt.deleteMany({ where: { linkUserId: user.id } }),
     prisma.emailVerificationToken.deleteMany({ where: { userId: user.id } }),
     prisma.notification.deleteMany({ where: { userId: user.id } }),
     prisma.notification.updateMany({ where: { actorId: user.id }, data: { actorId: null } }),

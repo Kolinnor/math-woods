@@ -37,6 +37,7 @@
     "lucide-react": "^0.511.0",
     "marked": "^15.0.12",
     "next": "^15.3.0",
+    "openid-client": "^6.8.4",
     "prisma": "^6.8.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

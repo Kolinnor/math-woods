@@ -1,12 +1,22 @@
+import Link from "next/link";
+import { LogIn } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { loginAction, registerAction } from "@/lib/actions/auth-actions";
 import { getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
+import { configuredOAuthProviders, safeReturnTo } from "@/lib/oauth";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/user-display";
 
 function loginErrorMessage(reason: string | undefined, t: Awaited<ReturnType<typeof getTranslations>>) {
   if (reason === "rate-limited") return t.auth.errors.tooManySignIns;
   if (reason === "invalid") return t.auth.errors.invalidSignIn;
+  return null;
+}
+
+function oauthErrorMessage(reason: string | undefined) {
+  if (reason === "unavailable") return "This sign-in provider is not available right now.";
+  if (reason === "failed") return "The external sign-in could not be completed. Please try again.";
+  if (reason === "provider") return "Unknown sign-in provider.";
   return null;
 }
 
@@ -20,12 +30,15 @@ function registerErrorMessage(reason: string | undefined, t: Awaited<ReturnType<
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams?: Promise<{ loginError?: string; registerError?: string }>;
+  searchParams?: Promise<{ loginError?: string; registerError?: string; oauthError?: string; returnTo?: string }>;
 }) {
   const t = await getTranslations();
   const params = searchParams ? await searchParams : {};
   const loginError = loginErrorMessage(params.loginError, t);
   const registerError = registerErrorMessage(params.registerError, t);
+  const oauthError = oauthErrorMessage(params.oauthError);
+  const providers = configuredOAuthProviders();
+  const returnTo = safeReturnTo(params.returnTo);
 
   return (
     <ForestPageLayout
@@ -34,11 +47,33 @@ export default async function LoginPage({
       heroAlt="Ivan Shishkin, Morning in a Pine Forest"
       description={t.auth.description}
     >
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid gap-6">
+      {oauthError && <p className="quality-banner quality-needs-work">{oauthError}</p>}
+      {providers.length > 0 && (
+        <section className="panel grid gap-4 p-5">
+          <div>
+            <h1 className="text-xl font-semibold">Continue with an account</h1>
+            <p className="muted mt-1 text-sm">Use a trusted identity provider without creating another password.</p>
+          </div>
+          <div className="oauth-provider-buttons">
+            {providers.map((provider) => (
+              <Link
+                key={provider.key}
+                href={`/api/auth/${provider.key}/start?returnTo=${encodeURIComponent(returnTo)}` as never}
+                className="button secondary"
+              >
+                <LogIn size={17} aria-hidden="true" /> Continue with {provider.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+      <div className="grid gap-6 md:grid-cols-2">
       <section>
         <h1 className="mb-2 text-2xl font-bold">{t.auth.signIn}</h1>
         {loginError && <p className="quality-banner quality-needs-work mb-4">{loginError}</p>}
         <form action={loginAction} className="panel grid gap-4 p-5">
+          <input type="hidden" name="returnTo" value={returnTo} />
           <label className="grid gap-2">
             <span className="text-sm font-medium">{t.auth.usernameOrEmail}</span>
             <input name="identifier" required />
@@ -90,6 +125,7 @@ export default async function LoginPage({
           <button type="submit">{t.auth.createAccount}</button>
         </form>
       </section>
+      </div>
     </div>
     </ForestPageLayout>
   );

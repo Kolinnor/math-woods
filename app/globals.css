@@ -1523,6 +1523,40 @@ textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.oauth-provider-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.oauth-provider-buttons .button,
+.oauth-connect-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+  justify-content: center;
+}
+
+.oauth-connected-account {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.8rem;
+}
+
+.oauth-connected-account > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.oauth-connected-account form,
+.oauth-connected-account button {
+  flex: 0 0 auto;
+}
+
 .field-label-with-help {
   align-items: center;
   display: inline-flex;

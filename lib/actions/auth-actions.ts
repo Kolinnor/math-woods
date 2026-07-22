@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { registerUser, signInWithPassword, signOutUser } from "@/lib/auth";
 import { boundedText } from "@/lib/content-limits";
 import { createAndSendEmailVerification } from "@/lib/email-verification";
+import { safeReturnTo } from "@/lib/oauth-utils";
 import { assertRateLimit } from "@/lib/rate-limit";
 
 function errorMessage(error: unknown) {
@@ -18,16 +19,17 @@ function prismaErrorCode(error: unknown) {
 export async function loginAction(formData: FormData) {
   const identifier = boundedText(formData.get("identifier"), 320, "Identifier");
   const password = boundedText(formData.get("password"), 512, "Password", { trim: false });
+  const returnTo = safeReturnTo(String(formData.get("returnTo") ?? ""));
 
   try {
     await assertRateLimit(`login:${identifier.toLowerCase()}`, 8, 60_000);
     await signInWithPassword(identifier, password);
   } catch (error) {
     const reason = errorMessage(error).startsWith("Too many requests") ? "rate-limited" : "invalid";
-    redirect(`/login?loginError=${reason}`);
+    redirect(`/login?loginError=${reason}&returnTo=${encodeURIComponent(returnTo)}` as never);
   }
 
-  redirect("/");
+  redirect(returnTo as never);
 }
 
 export async function registerAction(formData: FormData) {

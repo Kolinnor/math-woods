@@ -40,12 +40,19 @@ Set real values for:
 - `STATUS_DOMAIN`
 - `LETSENCRYPT_EMAIL`
 - `AUTH_SECRET`
+- `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` (optional)
+- `ORCID_OAUTH_CLIENT_ID` and `ORCID_OAUTH_CLIENT_SECRET` (optional)
 - `POSTGRES_PASSWORD`
 - `SMTP_HOST`
 - `SMTP_USER`
 - `SMTP_PASSWORD`
 - `SMTP_FROM`
 - `SMTP_AUTH_REQUIRED`
+
+OAuth callback URLs must be registered exactly as:
+
+- `https://APP_DOMAIN/api/auth/google/callback`
+- `https://APP_DOMAIN/api/auth/orcid/callback`
 
 For an Infomaniak mailbox such as `contact@APP_DOMAIN`, use:
 
