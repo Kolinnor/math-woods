@@ -125,6 +125,7 @@ import {
   mergeProblemRevisionSnapshots,
   type ProblemRevisionSnapshot
 } from "../lib/problem-revisions.ts";
+import { buildRevisionDiff } from "../lib/revision-diff.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
 import { rankSearchMatches, searchMatchScore } from "../lib/search-ranking.ts";
@@ -153,6 +154,19 @@ assert.notEqual(problemDifficultyTone(19), problemDifficultyTone(20));
 assert.notEqual(problemDifficultyTone(20), problemDifficultyTone(21));
 assert.notEqual(problemDifficultyTone(39), problemDifficultyTone(40));
 assert.equal(problemDifficultyBars(25), 1);
+const revisionDiff = buildRevisionDiff(
+  "Let $G$ be finite.\nThe first statement.",
+  "Let $G$ be finite.\nThe revised statement.\nA new line."
+);
+assert.deepEqual(revisionDiff.map((row) => row.kind), ["context", "removed", "added", "added"]);
+assert.equal(
+  revisionDiff
+    .find((row) => row.kind === "added")
+    ?.parts.filter((part) => part.changed)
+    .map((part) => part.value)
+    .join(""),
+  "revised"
+);
 assert.equal(problemDifficultyBars(45), 2);
 assert.equal(problemDifficultyBars(65), 3);
 assert.equal(problemDifficultyBars(100), 4);

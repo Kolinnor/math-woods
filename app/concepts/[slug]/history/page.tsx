@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { RevisionDiff } from "@/components/RevisionDiff";
 import { rollbackConceptRevisionAction } from "@/lib/actions/concept-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -38,8 +39,11 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
       }
     >
       <div className="grid gap-3">
-        {revisions.map((revision) => (
-          <section key={revision.id} className="panel p-4">
+        {revisions.map((revision, index) => {
+          const previousRevision = revisions[index + 1];
+
+          return (
+            <section key={revision.id} id={`revision-${revision.id}`} className="revision-card panel p-4 scroll-mt-24">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="font-semibold">Revision {revision.id}</h2>
@@ -57,9 +61,20 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
               )}
             </div>
             <p className="mt-3">{revision.editSummary || "No edit summary."}</p>
-            <pre className="revision-preview mt-3 max-h-48 overflow-auto rounded p-3 text-xs">{revision.markdown}</pre>
-          </section>
-        ))}
+            {previousRevision ? (
+              <RevisionDiff
+                afterMarkdown={revision.markdown}
+                beforeMarkdown={previousRevision.markdown}
+                beforeRevisionId={previousRevision.id}
+                defaultOpen={index === 0}
+                revisionId={revision.id}
+              />
+            ) : (
+              <pre className="revision-preview mt-3 max-h-48 overflow-auto rounded p-3 text-xs">{revision.markdown}</pre>
+            )}
+            </section>
+          );
+        })}
       </div>
     </ForestPageLayout>
   );
