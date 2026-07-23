@@ -40,7 +40,7 @@ type DifficultyRange = {
   max?: number;
 };
 type ProgressFilter = "unsolved" | "solved" | "all";
-type OwnershipFilter = "all" | "others";
+type OwnershipFilter = "all" | "mine" | "others";
 type SolutionFilter = "with" | "without" | "all";
 
 const SUPPORTED_LANGUAGE_CODES = SUPPORTED_CONTENT_LANGUAGES.map((language) => language.code);
@@ -73,7 +73,7 @@ function parseProgressFilter(value: string | undefined): ProgressFilter {
 }
 
 function parseOwnershipFilter(value: string | undefined): OwnershipFilter {
-  return value === "others" ? "others" : "all";
+  return value === "mine" || value === "others" ? value : "all";
 }
 
 function canDefaultToAllSolutions(user: Awaited<ReturnType<typeof getCurrentUser>>) {
@@ -393,7 +393,11 @@ export default async function ProblemsPage({
         ? { translationGroupId: { in: solvedTranslationGroupIds } }
         : null;
   const ownershipWhere: Prisma.ProblemWhereInput | null =
-    user && ownershipValue === "others" ? { authorId: { not: user.id } } : null;
+    user && ownershipValue === "mine"
+      ? { authorId: user.id }
+      : user && ownershipValue === "others"
+        ? { authorId: { not: user.id } }
+        : null;
   const normalizedSort = sort === "attempted" ? "solved" : sort;
   const sortValue = ["newest", "solved", "favorited", "difficulty", "easiest"].includes(normalizedSort)
     ? normalizedSort
@@ -688,6 +692,7 @@ export default async function ProblemsPage({
               {user && (
                 <select name="ownership" defaultValue={ownershipValue} aria-label={t.problems.ownershipStatus}>
                   <option value="all">{t.problems.includeOwnProblems}</option>
+                  <option value="mine">{t.problems.onlyOwnProblems}</option>
                   <option value="others">{t.problems.onlyOtherProblems}</option>
                 </select>
               )}

@@ -417,6 +417,7 @@ export const en = {
     allProblems: "All problems",
     ownershipStatus: "Problem authors",
     includeOwnProblems: "Others and mine",
+    onlyOwnProblems: "Only my problems",
     onlyOtherProblems: "Only other people's problems",
     author: "Author",
     authorPlaceholder: "Username or display name",

@@ -421,6 +421,7 @@ export const fr = {
     allProblems: "Tous les problèmes",
     ownershipStatus: "Auteurs des problèmes",
     includeOwnProblems: "Les autres et les miens",
+    onlyOwnProblems: "Seulement mes problèmes",
     onlyOtherProblems: "Seulement les problèmes des autres",
     author: "Auteur",
     authorPlaceholder: "Nom d'utilisateur ou nom affiché",
