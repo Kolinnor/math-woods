@@ -254,6 +254,10 @@ body {
   transition: background 140ms ease, color 140ms ease;
 }
 
+.katex {
+  font-size: 1em;
+}
+
 a {
   color: inherit;
 }

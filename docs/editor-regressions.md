@@ -336,6 +336,24 @@ Guardrail:
 - Keep live KaTeX previews at the editor line's inherited font size. Do not restore KaTeX's default enlargement inside
   CodeMirror.
 
+## 2026-07-23 - Inline KaTeX should share the surrounding text scale
+
+Symptom:
+
+- Inline variables in rendered content appeared raised and oversized beside ordinary prose, especially lowercase
+  symbols such as `$d$` after text set in Spectral.
+
+Root cause:
+
+- KaTeX's bundled stylesheet applies `font-size: 1.21em` to every `.katex` root. Compact editor and title contexts
+  already overrode that enlargement, but full rendered Markdown did not, so its math was 21% larger than its prose.
+
+Guardrail:
+
+- Keep the global `.katex` root at `font-size: 1em` so inline and display formulas inherit the scale of their context.
+- Do not compensate with a global `vertical-align` nudge; that can misalign fractions, subscripts, display math, and
+  live editor widgets. Let KaTeX's own struts handle the baseline after the font sizes match.
+
 ## 2026-07-19 - JSXGraph fences stay source-editable
 
 Guardrail:
