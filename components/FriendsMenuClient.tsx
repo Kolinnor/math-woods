@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink, Send } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { CHAT_READ_EVENT, chatUnreadDocumentTitle } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { FriendsMenuData } from "@/lib/friends-menu";
@@ -26,44 +27,72 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   const threadRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    function updateTitle() {
+      const nextTitle = chatUnreadDocumentTitle(document.title, data.unreadChatCount);
+      if (document.title !== nextTitle) document.title = nextTitle;
+    }
+
+    updateTitle();
+    const observer = new MutationObserver(updateTitle);
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+
+    return () => observer.disconnect();
+  }, [data.unreadChatCount]);
+
+  useEffect(() => {
     let stopped = false;
     let timeoutId: number | undefined;
     let controller: AbortController | null = null;
 
     async function refresh() {
       controller?.abort();
-      controller = new AbortController();
+      const requestController = new AbortController();
+      controller = requestController;
 
       try {
         const response = await fetch("/api/friends/menu", {
           cache: "no-store",
-          signal: controller.signal
+          signal: requestController.signal
         });
         if (response.ok) {
           const nextData = (await response.json()) as FriendsMenuData;
           if (!stopped) setData(nextData);
         }
       } catch (error) {
-        if (!controller.signal.aborted) {
+        if (!requestController.signal.aborted) {
           // Keep the last known state. The next poll will try again.
         }
       }
 
-      if (!stopped) timeoutId = window.setTimeout(refresh, FRIENDS_MENU_POLL_MS);
+      if (!stopped && controller === requestController) {
+        timeoutId = window.setTimeout(refresh, FRIENDS_MENU_POLL_MS);
+      }
+    }
+
+    function refreshNow() {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = undefined;
+      void refresh();
     }
 
     function refreshOnVisible() {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") refreshNow();
+    }
+
+    function refreshAfterChatRead() {
+      refreshNow();
     }
 
     timeoutId = window.setTimeout(refresh, FRIENDS_MENU_POLL_MS);
     document.addEventListener("visibilitychange", refreshOnVisible);
+    window.addEventListener(CHAT_READ_EVENT, refreshAfterChatRead);
 
     return () => {
       stopped = true;
       controller?.abort();
       if (timeoutId) window.clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", refreshOnVisible);
+      window.removeEventListener(CHAT_READ_EVENT, refreshAfterChatRead);
     };
   }, []);
 
@@ -91,6 +120,11 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     setChatLoading(true);
 
     async function refresh(initial = false) {
+      if (document.visibilityState === "hidden") {
+        if (!stopped) timeoutId = window.setTimeout(() => void refresh(false), CHAT_POLL_MS);
+        return;
+      }
+
       try {
         const afterId = initial ? 0 : latestMessageIdRef.current;
         const response = await fetch(
@@ -106,6 +140,9 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
             return [...current, ...result.messages!.filter((message) => !seen.has(message.id))];
           });
           latestMessageIdRef.current = result.messages.at(-1)?.id ?? latestMessageIdRef.current;
+        }
+        if (!stopped && (initial || (result.messages?.length ?? 0) > 0)) {
+          window.dispatchEvent(new Event(CHAT_READ_EVENT));
         }
         if (!stopped) setChatError(null);
       } catch (error) {

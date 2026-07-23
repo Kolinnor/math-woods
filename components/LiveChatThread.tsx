@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { CHAT_READ_EVENT } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { InterfaceLocale } from "@/lib/i18n/types";
@@ -47,6 +48,7 @@ export function LiveChatThread({
 
   useEffect(() => {
     scrollToEnd();
+    window.dispatchEvent(new Event(CHAT_READ_EVENT));
   }, [scrollToEnd]);
 
   useEffect(() => {
@@ -81,6 +83,7 @@ export function LiveChatThread({
               return [...current, ...data.messages!.filter((message) => !seen.has(message.id))];
             });
             window.setTimeout(scrollToEnd, 0);
+            window.dispatchEvent(new Event(CHAT_READ_EVENT));
           }
           setStatus("live");
         }

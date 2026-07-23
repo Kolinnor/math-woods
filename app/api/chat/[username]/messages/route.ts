@@ -33,9 +33,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
   if (!friendship) {
     return NextResponse.json({ error: "You can only chat with accepted friends." }, { status: 403 });
   }
-  if (afterId === 0) {
-    await markNotificationsReadForHref(user.id, `/chat/${otherUser.username}`, NotificationType.CHAT_MESSAGE);
-  }
+  await markNotificationsReadForHref(user.id, `/chat/${otherUser.username}`, NotificationType.CHAT_MESSAGE);
 
   const pair = directChatPair(user.id, otherUser.id);
   const chat = await prisma.directChat.findUnique({

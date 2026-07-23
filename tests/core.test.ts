@@ -24,6 +24,7 @@ import {
 } from "../lib/image-storage.ts";
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
+import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
 import {
   CONTENT_CREATION_WINDOW_MS,
   assertDailyContentCreationQuota,
@@ -277,6 +278,10 @@ assert.equal(discussionIsUnlocked(new Date("2099-01-01T00:00:00.000Z"), start), 
 assert.equal(formatUnlockDistance(new Date("2026-06-04T11:30:00.000Z"), start), "1 h 30");
 assert.equal(chatDayKey("2026-07-19T00:30:00.000Z", "UTC"), "2026-07-19");
 assert.equal(chatDayKey("2026-07-19T00:30:00.000Z", "America/New_York"), "2026-07-18");
+assert.equal(chatUnreadDocumentTitle("Math Woods", 1), "(1) Math Woods");
+assert.equal(chatUnreadDocumentTitle("(1) Math Woods", 3), "(3) Math Woods");
+assert.equal(chatUnreadDocumentTitle("(99+) Math Woods", 0), "Math Woods");
+assert.equal(chatUnreadDocumentTitle("A problem - Math Woods", 120), "(99+) A problem - Math Woods");
 
 const parsedDoc = parseMarkdownDocument(`---
 type: "problem"
