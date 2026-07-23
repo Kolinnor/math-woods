@@ -25,6 +25,28 @@ export type WikiLinkRange = {
   label: string;
 };
 
+export type ProblemLinkRange = {
+  from: number;
+  to: number;
+};
+
+export function findProblemLinkRanges(text: string): ProblemLinkRange[] {
+  const ranges: ProblemLinkRange[] = [];
+  const pattern = /\[([^\]\n]+)\]\(\/problems\/[^)\s]+\)/g;
+  const excluded = findMarkdownCodeRanges(text);
+
+  for (const match of text.matchAll(pattern)) {
+    const matchFrom = match.index ?? 0;
+    const matchTo = matchFrom + match[0].length;
+    if (overlapsRanges(matchFrom, matchTo, excluded)) continue;
+
+    const from = matchFrom + 1;
+    ranges.push({ from, to: from + match[1].length });
+  }
+
+  return ranges;
+}
+
 export function findWikiLinkRanges(text: string): WikiLinkRange[] {
   const ranges: WikiLinkRange[] = [];
   const pattern = /\[\[([^\]\n]+)\]\]/g;

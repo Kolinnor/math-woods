@@ -5359,6 +5359,10 @@ button.markdown-editor-tool-button:disabled svg {
   text-underline-offset: 2px;
 }
 
+.markdown-editor .cm-md-problem-link {
+  color: var(--notice-orange-stripe);
+}
+
 .markdown-editor .cm-md-wikilink {
   color: var(--link);
   cursor: text;
@@ -6587,6 +6591,19 @@ button.danger:hover,
 .prose-math .wiki-link:hover,
 .wiki-link:hover {
   color: var(--accent);
+}
+
+.prose-math .markdown-problem-link,
+.markdown-problem-link {
+  color: var(--notice-orange-stripe);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.prose-math .markdown-problem-link:hover,
+.markdown-problem-link:hover {
+  color: var(--notice-red-stripe);
 }
 
 .prose-math .wiki-link.missing,

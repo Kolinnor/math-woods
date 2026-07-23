@@ -62,7 +62,13 @@ import {
   normalizeMarkdownImageWidth,
   type MarkdownImageWidth
 } from "@/lib/markdown-images";
-import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownPreviewClass } from "@/lib/markdown-preview";
+import {
+  findProblemLinkRanges,
+  findWikiLinkRanges,
+  headingLevel,
+  markdownHeadingPreviewText,
+  markdownPreviewClass
+} from "@/lib/markdown-preview";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
 import { JSXGRAPH_MARKDOWN_TEMPLATE } from "@/lib/jsxgraph";
@@ -1203,6 +1209,7 @@ function buildLivePreviewDecorations(state: EditorState) {
   const text = state.doc.toString();
   const latexRanges = findLatexRanges(text);
   const wikiLinks = findWikiLinkRanges(text);
+  const problemLinks = findProblemLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
   const suppressJoinedLinePreview = state.field(suppressLatexPreviewOnJoinedLine);
   const decorations = latexRanges.flatMap((range) => {
@@ -1255,6 +1262,12 @@ function buildLivePreviewDecorations(state: EditorState) {
       }).range(range.from, range.to)
     ];
   });
+
+  decorations.push(
+    ...problemLinks.map((range) =>
+      Decoration.mark({ class: "cm-md-problem-link" }).range(range.from, range.to)
+    )
+  );
 
   decorations.push(
     ...wikiLinks

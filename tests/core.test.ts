@@ -117,7 +117,13 @@ import {
   markdownHeadingLevelForEvent,
   markdownHeadingLineText
 } from "../lib/markdown-shortcuts.ts";
-import { findWikiLinkRanges, headingLevel, markdownHeadingPreviewText, markdownPreviewClass } from "../lib/markdown-preview.ts";
+import {
+  findProblemLinkRanges,
+  findWikiLinkRanges,
+  headingLevel,
+  markdownHeadingPreviewText,
+  markdownPreviewClass
+} from "../lib/markdown-preview.ts";
 import { markdownExcerpt } from "../lib/metadata-text.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
@@ -671,6 +677,12 @@ assert.deepEqual(findWikiLinkRanges("See [[polynomial]] and [[vieta-relations|Vi
 assert.deepEqual(findWikiLinkRanges("Code `[[skip]]` then [[polynomial]]."), [
   { from: 21, to: 35, label: "polynomial" }
 ]);
+assert.deepEqual(findProblemLinkRanges("See [this problem](/problems/finite-groups)."), [
+  { from: 5, to: 17 }
+]);
+assert.deepEqual(findProblemLinkRanges("Code `[skip](/problems/skip)` then [open](/problems/finite-groups)."), [
+  { from: 36, to: 40 }
+]);
 const wikiLinkBoundaryText = "See [[Eulerian path|eulerian path]] now";
 const wikiLinkBoundaryFrom = wikiLinkBoundaryText.indexOf("[[");
 const wikiLinkBoundaryTo = wikiLinkBoundaryText.indexOf("]]", wikiLinkBoundaryFrom) + 2;
@@ -755,8 +767,10 @@ const renderedTranslatedWikiLink = await renderMarkdown(
   (link) => `/concepts/fr-${link.targetSlug}`
 );
 assert.equal(renderedTranslatedWikiLink.includes('href="/concepts/fr-polynomial"'), true);
+assert.equal(renderedTranslatedWikiLink.includes("markdown-problem-link"), false);
 const renderedProblemLink = await renderMarkdown(problemLinkMarkup("finite-groups", "this problem"));
 assert.equal(renderedProblemLink.includes('href="/problems/finite-groups"'), true);
+assert.equal(renderedProblemLink.includes('class="markdown-problem-link"'), true);
 
 const renderedUnsafeMarkdown = await renderMarkdown("<script>alert(1)</script><img src=x onerror=alert(1)>");
 assert.equal(renderedUnsafeMarkdown.includes("<script"), false);

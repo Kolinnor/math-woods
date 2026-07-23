@@ -166,13 +166,20 @@ export async function renderMarkdown(
       "*": ["aria-hidden"]
     },
     transformTags: {
-      a: (_tagName, attribs) => ({
-        tagName: "a",
-        attribs: {
-          ...attribs,
-          ...externalLinkAttributes(attribs.href)
-        }
-      }),
+      a: (_tagName, attribs) => {
+        const isProblemLink = /^\/problems\/[^/?#]+(?:[/?#]|$)/.test(attribs.href ?? "");
+        const classes = new Set((attribs.class ?? "").split(/\s+/).filter(Boolean));
+        if (isProblemLink) classes.add("markdown-problem-link");
+
+        return {
+          tagName: "a",
+          attribs: {
+            ...attribs,
+            ...(classes.size ? { class: [...classes].join(" ") } : {}),
+            ...externalLinkAttributes(attribs.href)
+          }
+        };
+      },
       img: (_tagName, attribs) => {
         const sizing = markdownImageSizingFromSrc(attribs.src ?? "");
         const imageAttribs: Record<string, string> = {

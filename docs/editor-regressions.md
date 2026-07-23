@@ -363,6 +363,8 @@ Expected behavior:
   translation routing.
 - Problem links use an internal Markdown link, `[label](/problems/slug)`, so a concept and a problem may share a slug
   without resolving to the wrong content type.
+- Concept links remain blue. Problem links use the site's orange-red accent in rendered Markdown and on their visible
+  label in the live editor, while keeping ordinary Markdown-link editing behavior.
 - Problem mode must resolve an existing suggestion before enabling insertion. It must not offer the concept-specific
   missing-page creation flow.
 
