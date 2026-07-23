@@ -27,6 +27,14 @@ export function wikiLinkMarkup(target: string, label: string) {
   return `[[${cleanTarget}|${cleanLabel}]]`;
 }
 
+export function problemLinkMarkup(slug: string, label: string) {
+  const targetSlug = ensureSlug(slug, "");
+  const cleanLabel = cleanWikiLinkLabel(label || slug);
+
+  if (!targetSlug) return cleanLabel;
+  return `[${cleanLabel || targetSlug}](/problems/${targetSlug})`;
+}
+
 function parseWikiLink(raw: string, inner: string): WikiLink | null {
   const [targetPart, labelPart] = inner.split("|", 2);
   const target = targetPart.trim();

@@ -5535,6 +5535,30 @@ button.markdown-editor-tool-button:disabled svg {
   gap: 0.45rem;
 }
 
+.markdown-link-menu-type {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 0.2rem;
+}
+
+.markdown-link-menu-type button {
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  min-height: 2.2rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.markdown-link-menu-type button.active {
+  background: var(--panel);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--shadow) 22%, transparent);
+  color: var(--ink);
+}
+
 .markdown-link-menu-icon {
   display: inline-block;
   height: 1rem;

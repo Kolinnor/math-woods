@@ -354,6 +354,24 @@ Guardrail:
 - Do not compensate with a global `vertical-align` nudge; that can misalign fractions, subscripts, display math, and
   live editor widgets. Let KaTeX's own struts handle the baseline after the font sizes match.
 
+## 2026-07-23 - Link targets must keep concepts and problems distinct
+
+Expected behavior:
+
+- The editor link menu defaults to concepts and can switch explicitly to existing problems.
+- Concept links keep the `[[target|label]]` syntax used by concept backlinks, aliases, missing-page links, and
+  translation routing.
+- Problem links use an internal Markdown link, `[label](/problems/slug)`, so a concept and a problem may share a slug
+  without resolving to the wrong content type.
+- Problem mode must resolve an existing suggestion before enabling insertion. It must not offer the concept-specific
+  missing-page creation flow.
+
+Guardrail:
+
+- Do not make every wiki-link target infer its type from the slug. That would be ambiguous and would change existing
+  concept-link semantics.
+- Switching the menu type must not remount CodeMirror or alter the selected source range before the user confirms.
+
 ## 2026-07-19 - JSXGraph fences stay source-editable
 
 Guardrail:

@@ -14,7 +14,7 @@ import {
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
-import { extractWikiLinks, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
+import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
 import {
   buildImageObjectKey,
@@ -212,6 +212,7 @@ assert.equal(
 );
 assert.equal(wikiLinkMarkup("Category", "this is a category"), "[[Category|this is a category]]");
 assert.equal(wikiLinkMarkup("Category", "Category"), "[[Category|Category]]");
+assert.equal(problemLinkMarkup("A problem slug", "this problem"), "[this problem](/problems/a-problem-slug)");
 assert.equal(markdownExcerpt("Use [[polynomial|polynomials]] and $x^2$.", "fallback"), "Use polynomials and formula .");
 
 const baseProblemSnapshot: ProblemRevisionSnapshot = {
@@ -754,6 +755,8 @@ const renderedTranslatedWikiLink = await renderMarkdown(
   (link) => `/concepts/fr-${link.targetSlug}`
 );
 assert.equal(renderedTranslatedWikiLink.includes('href="/concepts/fr-polynomial"'), true);
+const renderedProblemLink = await renderMarkdown(problemLinkMarkup("finite-groups", "this problem"));
+assert.equal(renderedProblemLink.includes('href="/problems/finite-groups"'), true);
 
 const renderedUnsafeMarkdown = await renderMarkdown("<script>alert(1)</script><img src=x onerror=alert(1)>");
 assert.equal(renderedUnsafeMarkdown.includes("<script"), false);
