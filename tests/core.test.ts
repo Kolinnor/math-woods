@@ -128,7 +128,7 @@ import {
 import { buildRevisionDiff } from "../lib/revision-diff.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
-import { rankSearchMatches, searchMatchScore } from "../lib/search-ranking.ts";
+import { rankSearchMatches, searchMatchScore, searchMorphologyVariants } from "../lib/search-ranking.ts";
 import { parseTagInput } from "../lib/tags.ts";
 import {
   nextMissingTranslationLanguage,
@@ -1092,6 +1092,26 @@ const rankedGroupMatches = rankSearchMatches(
 );
 assert.deepEqual(rankedGroupMatches.map((item) => item.title), ["Group", "Group action", "Abelian group", "Category of groups"]);
 assert.equal(searchMatchScore({ title: "Groupe", slug: "groupe", aliases: ["Group"] }, "group"), 1);
+assert.deepEqual(searchMorphologyVariants("Rings", "en"), ["rings", "ring"]);
+assert.deepEqual(searchMorphologyVariants("Finite rings", "en"), ["finite rings", "finite ring"]);
+assert.deepEqual(searchMorphologyVariants("Rung", "en"), ["rung"]);
+assert.deepEqual(searchMorphologyVariants("Lens", "en"), ["lens"]);
+assert.deepEqual(searchMorphologyVariants("Anneaux commutatifs", "fr"), ["anneaux commutatifs", "anneau commutatif"]);
+const ringMorphologyVariants = searchMorphologyVariants("Rings", "en");
+const rankedRingMatches = rankSearchMatches(
+  [
+    { title: "Category of rings", slug: "category-of-rings", aliases: [] },
+    { title: "Ring", slug: "ring", aliases: [] }
+  ],
+  "Rings",
+  undefined,
+  ringMorphologyVariants
+);
+assert.deepEqual(rankedRingMatches.map((item) => item.title), ["Ring", "Category of rings"]);
+assert.equal(
+  searchMatchScore({ title: "Ring", slug: "ring" }, "Rung", searchMorphologyVariants("Rung", "en")),
+  10
+);
 
 const mathematicianFixtures = [
   {

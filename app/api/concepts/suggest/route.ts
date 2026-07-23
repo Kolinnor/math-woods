@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { rankSearchMatches } from "@/lib/search-ranking";
+import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
+import { ensureSlug } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
   }
 
   const language = await getPreferredContentLanguage();
+  const morphologyVariants = searchMorphologyVariants(query, language);
+  const morphologySlugs = [...new Set(morphologyVariants.map((variant) => ensureSlug(variant, "")).filter(Boolean))];
   const conceptSelect = {
     title: true,
     slug: true,
@@ -24,9 +27,9 @@ export async function GET(request: Request) {
       where: {
         language,
         OR: [
-          { title: { equals: query, mode: "insensitive" } },
-          { slug: { equals: query.toLowerCase(), mode: "insensitive" } },
-          { aliases: { some: { alias: { equals: query, mode: "insensitive" } } } }
+          { title: { in: morphologyVariants, mode: "insensitive" } },
+          { slug: { in: morphologySlugs, mode: "insensitive" } },
+          { aliases: { some: { alias: { in: morphologyVariants, mode: "insensitive" } } } }
         ]
       },
       select: conceptSelect,
@@ -51,7 +54,9 @@ export async function GET(request: Request) {
       ...concept,
       aliases: concept.aliases.map((alias) => alias.alias)
     })),
-    query
+    query,
+    undefined,
+    morphologyVariants
   ).slice(0, 20);
 
   return NextResponse.json({
