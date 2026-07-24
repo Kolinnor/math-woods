@@ -17,6 +17,7 @@ enum Role {
 enum ExternalAuthProvider {
   GOOGLE
   ORCID
+  GITHUB
 }
 
 enum ProblemStatus {

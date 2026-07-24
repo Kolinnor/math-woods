@@ -139,7 +139,9 @@ export async function disconnectExternalIdentityAction(formData: FormData) {
   const user = await requireUser();
   await assertRateLimit(`oauth-disconnect:${user.id}`, 10, 60_000);
   const providerValue = String(formData.get("provider") ?? "");
-  const provider = providerValue === ExternalAuthProvider.GOOGLE || providerValue === ExternalAuthProvider.ORCID
+  const provider = providerValue === ExternalAuthProvider.GOOGLE
+    || providerValue === ExternalAuthProvider.ORCID
+    || providerValue === ExternalAuthProvider.GITHUB
     ? providerValue
     : null;
   if (!provider) redirect("/settings?oauth=failed");

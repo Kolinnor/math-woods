@@ -4,7 +4,13 @@ import { cookies } from "next/headers";
 import * as oidc from "openid-client";
 import { createSession, getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { parseOAuthProvider, safeReturnTo, type OAuthProviderKey } from "@/lib/oauth-utils";
+import {
+  parseOAuthProvider,
+  safeReturnTo,
+  selectVerifiedGithubEmail,
+  type GithubEmail,
+  type OAuthProviderKey
+} from "@/lib/oauth-utils";
 
 export { parseOAuthProvider, safeReturnTo } from "@/lib/oauth-utils";
 export type { OAuthProviderKey } from "@/lib/oauth-utils";
@@ -12,16 +18,26 @@ export type { OAuthProviderKey } from "@/lib/oauth-utils";
 const OAUTH_COOKIE = "math_woods_oauth";
 const OAUTH_ATTEMPT_MAX_AGE_SECONDS = 10 * 60;
 
-type ProviderDefinition = {
+type ProviderDefinitionBase = {
   key: OAuthProviderKey;
   provider: ExternalAuthProvider;
   label: string;
-  issuer: string;
   clientId: string;
   clientSecret: string;
   scope: string;
   prompt?: string;
 };
+
+type OidcProviderDefinition = ProviderDefinitionBase & {
+  protocol: "oidc";
+  issuer: string;
+};
+
+type GithubProviderDefinition = ProviderDefinitionBase & {
+  protocol: "github";
+};
+
+type ProviderDefinition = OidcProviderDefinition | GithubProviderDefinition;
 
 function providerDefinition(key: OAuthProviderKey): ProviderDefinition {
   if (key === "google") {
@@ -29,6 +45,7 @@ function providerDefinition(key: OAuthProviderKey): ProviderDefinition {
       key,
       provider: ExternalAuthProvider.GOOGLE,
       label: "Google",
+      protocol: "oidc",
       issuer: "https://accounts.google.com",
       clientId: process.env.GOOGLE_OAUTH_CLIENT_ID?.trim() ?? "",
       clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim() ?? "",
@@ -36,30 +53,53 @@ function providerDefinition(key: OAuthProviderKey): ProviderDefinition {
       prompt: "select_account"
     };
   }
+  if (key === "orcid") {
+    return {
+      key,
+      provider: ExternalAuthProvider.ORCID,
+      label: "ORCID",
+      protocol: "oidc",
+      issuer: "https://orcid.org",
+      clientId: process.env.ORCID_OAUTH_CLIENT_ID?.trim() ?? "",
+      clientSecret: process.env.ORCID_OAUTH_CLIENT_SECRET?.trim() ?? "",
+      scope: "openid"
+    };
+  }
   return {
     key,
-    provider: ExternalAuthProvider.ORCID,
-    label: "ORCID",
-    issuer: "https://orcid.org",
-    clientId: process.env.ORCID_OAUTH_CLIENT_ID?.trim() ?? "",
-    clientSecret: process.env.ORCID_OAUTH_CLIENT_SECRET?.trim() ?? "",
-    scope: "openid"
+    provider: ExternalAuthProvider.GITHUB,
+    label: "GitHub",
+    protocol: "github",
+    clientId: process.env.GITHUB_OAUTH_CLIENT_ID?.trim() ?? "",
+    clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET?.trim() ?? "",
+    scope: "read:user user:email",
+    prompt: "select_account"
   };
 }
 
 export function configuredOAuthProviders() {
-  return (["google", "orcid"] as const)
+  return (["google", "orcid", "github"] as const)
     .map(providerDefinition)
     .filter((provider) => provider.clientId && provider.clientSecret)
     .map(({ key, provider, label }) => ({ key, provider, label }));
 }
 
 export function oauthProviderLabel(provider: ExternalAuthProvider) {
-  return provider === ExternalAuthProvider.GOOGLE ? "Google" : "ORCID";
+  const labels: Record<ExternalAuthProvider, string> = {
+    [ExternalAuthProvider.GOOGLE]: "Google",
+    [ExternalAuthProvider.ORCID]: "ORCID",
+    [ExternalAuthProvider.GITHUB]: "GitHub"
+  };
+  return labels[provider];
 }
 
 export function oauthProviderKey(provider: ExternalAuthProvider): OAuthProviderKey {
-  return provider === ExternalAuthProvider.GOOGLE ? "google" : "orcid";
+  const keys: Record<ExternalAuthProvider, OAuthProviderKey> = {
+    [ExternalAuthProvider.GOOGLE]: "google",
+    [ExternalAuthProvider.ORCID]: "orcid",
+    [ExternalAuthProvider.GITHUB]: "github"
+  };
+  return keys[provider];
 }
 
 function configuredProvider(key: OAuthProviderKey) {
@@ -89,7 +129,7 @@ function hashToken(token: string) {
 
 const configurationCache = new Map<OAuthProviderKey, Promise<oidc.Configuration>>();
 
-function providerConfiguration(provider: ProviderDefinition) {
+function providerConfiguration(provider: OidcProviderDefinition) {
   let configuration = configurationCache.get(provider.key);
   if (!configuration) {
     configuration = oidc.discovery(new URL(provider.issuer), provider.clientId, provider.clientSecret);
@@ -122,10 +162,7 @@ export async function beginOAuth(
   const currentUser = options.mode === "link" ? await getCurrentUser() : null;
   if (options.mode === "link" && !currentUser) throw new Error("Sign in before connecting an account.");
 
-  const [configuration, codeVerifier] = await Promise.all([
-    providerConfiguration(provider),
-    Promise.resolve(oidc.randomPKCECodeVerifier())
-  ]);
+  const codeVerifier = oidc.randomPKCECodeVerifier();
   const [codeChallenge, state, nonce] = await Promise.all([
     oidc.calculatePKCECodeChallenge(codeVerifier),
     Promise.resolve(oidc.randomState()),
@@ -151,15 +188,30 @@ export async function beginOAuth(
   ]);
   await setOAuthCookie(token);
 
-  const authorizationUrl = oidc.buildAuthorizationUrl(configuration, {
-    redirect_uri: callbackUrl(providerKey),
-    scope: provider.scope,
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256",
-    state,
-    nonce,
-    ...(provider.prompt ? { prompt: provider.prompt } : {})
-  });
+  let authorizationUrl: URL;
+  if (provider.protocol === "github") {
+    authorizationUrl = new URL("https://github.com/login/oauth/authorize");
+    authorizationUrl.search = new URLSearchParams({
+      client_id: provider.clientId,
+      redirect_uri: callbackUrl(providerKey),
+      scope: provider.scope,
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
+      ...(provider.prompt ? { prompt: provider.prompt } : {})
+    }).toString();
+  } else {
+    const configuration = await providerConfiguration(provider);
+    authorizationUrl = oidc.buildAuthorizationUrl(configuration, {
+      redirect_uri: callbackUrl(providerKey),
+      scope: provider.scope,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
+      state,
+      nonce,
+      ...(provider.prompt ? { prompt: provider.prompt } : {})
+    });
+  }
   return authorizationUrl;
 }
 
@@ -180,14 +232,20 @@ export async function pendingOAuthAttempt() {
   return attempt?.providerAccountId ? attempt : null;
 }
 
-export async function finishOAuthCallback(providerKey: OAuthProviderKey, currentUrl: URL) {
-  const provider = configuredProvider(providerKey);
-  const attempt = await attemptFromCookie(provider.provider);
-  if (!attempt) throw new Error("OAuth attempt expired.");
-  if (attempt.providerAccountId) return "/login/complete";
+type OAuthProfile = {
+  providerAccountId: string;
+  providerEmail: string | null;
+  providerEmailVerified: boolean;
+  providerDisplayName: string | null;
+};
 
+async function finishOidcCallback(
+  provider: OidcProviderDefinition,
+  attempt: NonNullable<Awaited<ReturnType<typeof attemptFromCookie>>>,
+  currentUrl: URL
+): Promise<OAuthProfile> {
   const configuration = await providerConfiguration(provider);
-  const callback = new URL(callbackUrl(providerKey));
+  const callback = new URL(callbackUrl(provider.key));
   callback.search = currentUrl.search;
   const tokens = await oidc.authorizationCodeGrant(configuration, callback, {
     pkceCodeVerifier: attempt.codeVerifier,
@@ -199,12 +257,93 @@ export async function finishOAuthCallback(providerKey: OAuthProviderKey, current
   const subject = claims?.sub;
   if (!subject) throw new Error("The identity provider did not return an account identifier.");
   const userInfo = await oidc.fetchUserInfo(configuration, tokens.access_token, subject);
-  const providerAccountId = String(userInfo.sub || subject);
-  const providerEmail = typeof userInfo.email === "string" ? userInfo.email.trim().toLowerCase() : null;
-  const providerEmailVerified = userInfo.email_verified === true;
-  const providerDisplayName = typeof userInfo.name === "string" && userInfo.name.trim()
-    ? userInfo.name.trim()
-    : [userInfo.given_name, userInfo.family_name].filter((value) => typeof value === "string").join(" ").trim() || null;
+
+  return {
+    providerAccountId: String(userInfo.sub || subject),
+    providerEmail: typeof userInfo.email === "string" ? userInfo.email.trim().toLowerCase() : null,
+    providerEmailVerified: userInfo.email_verified === true,
+    providerDisplayName: typeof userInfo.name === "string" && userInfo.name.trim()
+      ? userInfo.name.trim()
+      : [userInfo.given_name, userInfo.family_name].filter((value) => typeof value === "string").join(" ").trim() || null
+  };
+}
+
+const GITHUB_API_HEADERS = {
+  Accept: "application/vnd.github+json",
+  "X-GitHub-Api-Version": "2026-03-10",
+  "User-Agent": "Math-Woods"
+};
+
+async function finishGithubCallback(
+  provider: GithubProviderDefinition,
+  attempt: NonNullable<Awaited<ReturnType<typeof attemptFromCookie>>>,
+  currentUrl: URL
+): Promise<OAuthProfile> {
+  const code = currentUrl.searchParams.get("code");
+  const state = currentUrl.searchParams.get("state");
+  if (!code || !state || state !== attempt.state) throw new Error("GitHub returned an invalid OAuth response.");
+
+  const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
+    method: "POST",
+    headers: { Accept: "application/json" },
+    body: new URLSearchParams({
+      client_id: provider.clientId,
+      client_secret: provider.clientSecret,
+      code,
+      redirect_uri: callbackUrl(provider.key),
+      code_verifier: attempt.codeVerifier
+    }),
+    cache: "no-store"
+  });
+  const tokenPayload = await tokenResponse.json() as { access_token?: unknown };
+  if (!tokenResponse.ok || typeof tokenPayload.access_token !== "string") {
+    throw new Error("GitHub did not issue an access token.");
+  }
+
+  const authenticatedHeaders = {
+    ...GITHUB_API_HEADERS,
+    Authorization: `Bearer ${tokenPayload.access_token}`
+  };
+  const [profileResponse, emailsResponse] = await Promise.all([
+    fetch("https://api.github.com/user", { headers: authenticatedHeaders, cache: "no-store" }),
+    fetch("https://api.github.com/user/emails", { headers: authenticatedHeaders, cache: "no-store" })
+  ]);
+  if (!profileResponse.ok || !emailsResponse.ok) throw new Error("GitHub profile lookup failed.");
+
+  const profile = await profileResponse.json() as {
+    id?: unknown;
+    login?: unknown;
+    name?: unknown;
+  };
+  const emails = await emailsResponse.json() as GithubEmail[];
+  if ((typeof profile.id !== "number" && typeof profile.id !== "string") || typeof profile.login !== "string") {
+    throw new Error("GitHub did not return an account identifier.");
+  }
+  const name = typeof profile.name === "string" ? profile.name.trim() : "";
+  const email = Array.isArray(emails) ? selectVerifiedGithubEmail(emails) : null;
+
+  return {
+    providerAccountId: String(profile.id),
+    providerEmail: email,
+    providerEmailVerified: email !== null,
+    providerDisplayName: name || profile.login.trim() || null
+  };
+}
+
+export async function finishOAuthCallback(providerKey: OAuthProviderKey, currentUrl: URL) {
+  const provider = configuredProvider(providerKey);
+  const attempt = await attemptFromCookie(provider.provider);
+  if (!attempt) throw new Error("OAuth attempt expired.");
+  if (attempt.providerAccountId) return "/login/complete";
+
+  const {
+    providerAccountId,
+    providerEmail,
+    providerEmailVerified,
+    providerDisplayName
+  } = provider.protocol === "github"
+    ? await finishGithubCallback(provider, attempt, currentUrl)
+    : await finishOidcCallback(provider, attempt, currentUrl);
 
   const identity = await prisma.externalIdentity.findUnique({
     where: { provider_providerAccountId: { provider: provider.provider, providerAccountId } },

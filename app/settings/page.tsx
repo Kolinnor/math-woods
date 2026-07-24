@@ -539,7 +539,7 @@ export default async function SettingsPage({
           {(externalIdentities.length > 0 || oauthProviders.length > 0) && (
           <section className="panel p-5">
             <h2 className="mb-2 text-lg font-semibold">Connected accounts</h2>
-            <p className="muted mb-4 text-sm">Use Google or ORCID to sign in without entering your Math Woods password.</p>
+            <p className="muted mb-4 text-sm">Use a connected account to sign in without entering your Math Woods password.</p>
             <div className="grid gap-3">
               {externalIdentities.map((identity) => (
                 <div key={identity.id} className="oauth-connected-account">

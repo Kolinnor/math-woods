@@ -1570,6 +1570,11 @@ textarea {
   width: 22px;
 }
 
+.oauth-provider-icon-github svg {
+  height: 21px;
+  width: 21px;
+}
+
 .oauth-connected-account {
   align-items: center;
   border: 1px solid var(--line);

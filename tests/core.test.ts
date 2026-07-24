@@ -62,7 +62,7 @@ import {
 } from "../lib/exploration-branches.ts";
 import { evaluateExplorationQuizSelection } from "../lib/exploration-quiz.ts";
 import { guestProgressContentKey } from "../lib/guest-progress.ts";
-import { parseOAuthProvider, safeReturnTo } from "../lib/oauth-utils.ts";
+import { parseOAuthProvider, safeReturnTo, selectVerifiedGithubEmail } from "../lib/oauth-utils.ts";
 import {
   filterMathematicians,
   mathematicianContributionCount,
@@ -890,7 +890,17 @@ assert.equal(guestProgressContentKey("/problems/new", new URLSearchParams()), nu
 assert.equal(guestProgressContentKey("/concepts/group/edit", new URLSearchParams()), null);
 assert.equal(parseOAuthProvider("google"), "google");
 assert.equal(parseOAuthProvider("orcid"), "orcid");
+assert.equal(parseOAuthProvider("github"), "github");
 assert.equal(parseOAuthProvider("unknown"), null);
+assert.equal(selectVerifiedGithubEmail([
+  { email: "secondary@example.com", primary: false, verified: true },
+  { email: "Primary@Example.com", primary: true, verified: true }
+]), "primary@example.com");
+assert.equal(selectVerifiedGithubEmail([
+  { email: "unverified@example.com", primary: true, verified: false },
+  { email: "verified@example.com", primary: false, verified: true }
+]), "verified@example.com");
+assert.equal(selectVerifiedGithubEmail([{ email: "unverified@example.com", primary: true, verified: false }]), null);
 assert.equal(safeReturnTo("/explorations/geometry/start"), "/explorations/geometry/start");
 assert.equal(safeReturnTo("https://malicious.example"), "/");
 assert.equal(safeReturnTo("//malicious.example"), "/");
