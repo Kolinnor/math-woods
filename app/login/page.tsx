@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { LogIn } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { OAuthProviderIcon } from "@/components/OAuthProviderIcon";
 import { loginAction, registerAction } from "@/lib/actions/auth-actions";
 import { getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
@@ -62,7 +62,8 @@ export default async function LoginPage({
                 href={`/api/auth/${provider.key}/start?returnTo=${encodeURIComponent(returnTo)}` as never}
                 className="button secondary"
               >
-                <LogIn size={17} aria-hidden="true" /> Continue with {provider.label}
+                <OAuthProviderIcon provider={provider.key} />
+                <span>Continue with {provider.label}</span>
               </Link>
             ))}
           </div>

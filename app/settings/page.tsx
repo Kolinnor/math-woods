@@ -2,6 +2,7 @@ import { NotificationType, Role } from "@prisma/client";
 import Link from "next/link";
 import { EditorSettingsVisitedMarker } from "@/components/EditorSettingsVisitedMarker";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { OAuthProviderIcon } from "@/components/OAuthProviderIcon";
 import {
   changePasswordAction,
   deleteAccountAction,
@@ -542,9 +543,12 @@ export default async function SettingsPage({
             <div className="grid gap-3">
               {externalIdentities.map((identity) => (
                 <div key={identity.id} className="oauth-connected-account">
-                  <div>
-                    <strong>{oauthProviderLabel(identity.provider)}</strong>
-                    {identity.providerEmail && <p className="muted text-sm">{identity.providerEmail}</p>}
+                  <div className="oauth-connected-account-identity">
+                    <OAuthProviderIcon provider={oauthProviderKey(identity.provider)} />
+                    <div>
+                      <strong>{oauthProviderLabel(identity.provider)}</strong>
+                      {identity.providerEmail && <p className="muted text-sm">{identity.providerEmail}</p>}
+                    </div>
                   </div>
                   <form action={disconnectExternalIdentityAction}>
                     <input type="hidden" name="provider" value={identity.provider} />
@@ -560,7 +564,8 @@ export default async function SettingsPage({
                     href={`/api/auth/${oauthProviderKey(provider.provider)}/start?mode=link&returnTo=%2Fsettings` as never}
                     className="button secondary oauth-connect-button"
                   >
-                    Connect {provider.label}
+                    <OAuthProviderIcon provider={provider.key} />
+                    <span>Connect {provider.label}</span>
                   </Link>
                 ))}
             </div>

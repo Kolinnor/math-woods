@@ -1541,6 +1541,35 @@ textarea {
   justify-content: center;
 }
 
+.oauth-provider-icon {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 24px;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.oauth-provider-icon-google {
+  background: #fff;
+  border-radius: 3px;
+}
+
+.oauth-provider-icon img {
+  display: block;
+  object-fit: contain;
+}
+
+.oauth-provider-icon-google img {
+  height: 18px;
+  width: 18px;
+}
+
+.oauth-provider-icon-orcid img {
+  height: 22px;
+  width: 22px;
+}
+
 .oauth-connected-account {
   align-items: center;
   border: 1px solid var(--line);
@@ -1554,6 +1583,16 @@ textarea {
 .oauth-connected-account > div {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.oauth-connected-account-identity {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+}
+
+.oauth-connected-account-identity > div {
+  min-width: 0;
 }
 
 .oauth-connected-account form,
