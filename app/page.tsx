@@ -213,6 +213,7 @@ function HomeFooter({ t }: { t: HomeTranslations["footer"] }) {
           <Link href="/about">{t.about}</Link>
           <Link href="/suggestions">{t.suggestions}</Link>
           <Link href="/contributing">{t.contribute}</Link>
+          <Link href={"/legal" as never}>{t.legalAndBrand}</Link>
         </nav>
       </div>
     </footer>

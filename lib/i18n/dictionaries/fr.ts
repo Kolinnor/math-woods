@@ -247,10 +247,11 @@ export const fr = {
   },
   footer: {
     legal:
-      "Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire. Le nom Math Woods, le logo, le domaine et l'identité visuelle sont des éléments de marque protégés.",
+      "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire.",
     about: "À propos",
     suggestions: "Suggestions",
-    contribute: "Contribuer"
+    contribute: "Contribuer",
+    legalAndBrand: "Mentions légales et marque"
   },
   home: {
     hero: {
@@ -391,10 +392,11 @@ export const fr = {
     },
     footer: {
       legal:
-        "Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire. Œuvres d'Ivan Shishkin (1832-1898), domaine public via Wikimedia Commons. Le nom Math Woods, le logo et l'identité visuelle sont des éléments de marque protégés.",
+        "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire. Œuvres d'Ivan Shishkin (1832-1898), domaine public via Wikimedia Commons.",
       about: "À propos",
       suggestions: "Suggestions",
-      contribute: "Contribuer"
+      contribute: "Contribuer",
+      legalAndBrand: "Mentions légales et marque"
     }
   },
   problems: {

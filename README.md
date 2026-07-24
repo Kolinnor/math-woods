@@ -1,5 +1,11 @@
 # Math Woods
 
+> [!IMPORTANT]
+> **Licensing:** software code is available under
+> [AGPL-3.0-or-later](./LICENSE), educational content is available under
+> [CC BY-NC-SA 4.0](./CONTENT_LICENSE.md) unless otherwise stated, and official brand assets are governed by the
+> [Brand Policy](./TRADEMARK.md). See [LICENSING.md](./LICENSING.md) for the complete overview.
+
 Next.js prototype for an open-source math problem site inspired by lichess, Obsidian, and Math StackExchange.
 
 Math Woods' core promise is to remain 100% free and free of advertising. Application code is licensed under

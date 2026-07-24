@@ -1166,6 +1166,145 @@ a {
   max-width: 52rem;
 }
 
+.legal-page {
+  max-width: 60rem;
+}
+
+.legal-jump-links {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.5rem;
+  padding: 0 0 1rem;
+}
+
+.legal-jump-links a {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.legal-jump-links a:hover,
+.legal-section > a:hover,
+.legal-contact-links a:hover {
+  color: var(--accent);
+}
+
+.legal-summary {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.legal-summary > div {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.5rem 1.5rem 1.5rem 0;
+}
+
+.legal-summary > div + div {
+  border-left: 1px solid var(--line);
+  padding-left: 1.5rem;
+}
+
+.legal-summary span,
+.legal-section-label {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.legal-summary strong {
+  font-size: 1rem;
+}
+
+.legal-summary a,
+.legal-section > a,
+.legal-contact-links a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legal-summary a {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.legal-section {
+  border-bottom: 1px solid var(--line);
+  padding: 2.4rem 0;
+  scroll-margin-top: 5.5rem;
+}
+
+.legal-section h2,
+.legal-contact h2 {
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
+  font-weight: 650;
+  line-height: 1.2;
+  margin: 0.45rem 0 1rem;
+}
+
+.legal-section p:not(.legal-section-label) {
+  line-height: 1.75;
+  margin: 0 0 1rem;
+  max-width: 50rem;
+}
+
+.legal-section > a,
+.legal-contact-links a {
+  font-weight: 700;
+}
+
+.legal-contact {
+  align-items: center;
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  padding: 2.4rem 0 0;
+}
+
+.legal-contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .legal-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .legal-summary > div {
+    padding: 1.15rem 0;
+  }
+
+  .legal-summary > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+  }
+
+  .legal-section h2,
+  .legal-contact h2 {
+    font-size: 1.55rem;
+  }
+
+  .legal-contact {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .legal-contact-links {
+    justify-content: flex-start;
+  }
+}
+
 .about-principles {
   border-bottom: 1px solid var(--line);
   display: grid;

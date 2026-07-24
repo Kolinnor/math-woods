@@ -204,10 +204,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="site-footer">
           <div className="mx-auto grid max-w-6xl gap-3 px-4 py-6 text-sm md:grid-cols-[1fr_auto] md:items-center">
             <p>{t.footer.legal}</p>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap justify-end gap-4">
               <Link href="/about">{t.footer.about}</Link>
               <Link href="/suggestions">{t.footer.suggestions}</Link>
               <Link href="/contributing">{t.footer.contribute}</Link>
+              <Link href={"/legal" as Route}>{t.footer.legalAndBrand}</Link>
               <a
                 href="https://github.com/Kolinnor/math-woods"
                 className="inline-flex items-center gap-1.5"
