@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { Route } from "next";
 import Link from "next/link";
 import { Inter, Spectral } from "next/font/google";
-import { Menu } from "lucide-react";
+import { Github, Menu } from "lucide-react";
 import { cookies } from "next/headers";
 import "../node_modules/jsxgraph/distrib/jsxgraph.css";
 import "./globals.css";
@@ -208,6 +208,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/about">{t.footer.about}</Link>
               <Link href="/suggestions">{t.footer.suggestions}</Link>
               <Link href="/contributing">{t.footer.contribute}</Link>
+              <a
+                href="https://github.com/Kolinnor/math-woods"
+                className="inline-flex items-center gap-1.5"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Github size={15} aria-hidden="true" />
+                <span>GitHub</span>
+              </a>
             </div>
           </div>
         </footer>
