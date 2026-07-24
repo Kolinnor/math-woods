@@ -37,8 +37,15 @@ export default async function AboutPage() {
       }
     >
       <section className="about-promise">
-        <p className="about-eyebrow">Math Woods' first promise</p>
-        <h1>Free forever. No ads.</h1>
+        <p className="about-eyebrow">Math Woods</p>
+        <h1>
+          The{" "}
+          <a href="https://github.com/Kolinnor/math-woods" target="_blank" rel="noopener noreferrer">
+            Free
+          </a>{" "}
+          Math Knowledge Graph.
+        </h1>
+        <p>An open-source, community-curated database of mathematical concepts.</p>
       </section>
 
       {faqSections.map((section) => (

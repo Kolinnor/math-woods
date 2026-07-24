@@ -27,11 +27,16 @@ export type RenderedFaqSection = Omit<FaqSectionContent, "items"> & {
 export const DEFAULT_FAQ_SECTIONS: FaqSectionContent[] = [
   {
     position: 0,
-    title: "Mission and funding",
+    title: "Organization",
     anchorId: "",
     items: [
       {
         position: 0,
+        question: "Will the site remain forever free, without any kind of subscription or ads ?",
+        answerMarkdown: "Yes."
+      },
+      {
+        position: 1,
         question: "How can the site be funded without ads or subscriptions?",
         answerMarkdown:
           "The website will work with donations. Thank you for your support, which allows the site to continue existing !"
