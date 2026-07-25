@@ -28,7 +28,7 @@ export default async function NewConceptPage({
   const sourceConcept = translateOf
     ? await prisma.concept.findUnique({
         where: { slug: translateOf },
-        select: { slug: true, title: true, bodyMarkdown: true, language: true, translationGroupId: true }
+        select: { slug: true, title: true, bodyMarkdown: true, domainCode: true, language: true, translationGroupId: true }
       })
     : null;
   const sourceTranslationLanguages = sourceConcept
@@ -85,10 +85,11 @@ export default async function NewConceptPage({
           <ProblemDomainPicker
             domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
             helpText={null}
-            initialValues={["OTHER"]}
+            initialValues={[sourceConcept?.domainCode ?? "other"]}
             inputName="domain"
             label="Domain"
             maxDomains={1}
+            showSubdomains
             showSpoilerToggle={false}
           />
           <label className="grid gap-2">

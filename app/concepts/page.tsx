@@ -10,7 +10,7 @@ import { prisma } from "@/lib/db";
 import {
   coarseDomainForCode,
   domainCodeAliases,
-  domainLabel,
+  parentProblemDomainForCode,
   parseDomainCode,
   PROBLEM_DOMAINS,
   translatedDomainLabel as translatedDomainOptionLabel
@@ -64,14 +64,16 @@ export default async function ConceptsPage({
   const canFilterByProblemLinks = Boolean(user && canUseAdminTools(user));
   const problemLinkFilter = canFilterByProblemLinks ? parseProblemLinkFilter(problemLinks) : "all";
   const domainValue = domain ? parseDomainCode(domain) : undefined;
-  const domainFilterValues = domainValue
-    ? [
-        coarseDomainForCode(domainValue),
-        ...domainCodeAliases(domainValue).filter((value): value is MathDomain =>
-          Object.values(MathDomain).includes(value as MathDomain)
-        )
-      ]
-    : [];
+  const domainWhere: Prisma.ConceptWhereInput = domainValue
+    ? {
+        OR: [
+          { domainCode: { in: domainCodeAliases(domainValue) } },
+          ...(parentProblemDomainForCode(domainValue)?.value === domainValue
+            ? [{ domain: coarseDomainForCode(domainValue) }]
+            : [])
+        ]
+      }
+    : {};
   const statusValue = Object.values(ConceptStatus).includes(status as ConceptStatus)
     ? (status as ConceptStatus)
     : undefined;
@@ -100,7 +102,7 @@ export default async function ConceptsPage({
           ]
         }
       : {}),
-    ...(domainValue ? { domain: { in: [...new Set(domainFilterValues)] } } : {}),
+    ...domainWhere,
     ...(statusValue ? { status: statusValue } : {}),
     ...(problemLinkFilter === "with"
       ? { slug: { in: linkedConceptSlugs } }
@@ -141,6 +143,7 @@ export default async function ConceptsPage({
         slug: true,
         title: true,
         domain: true,
+        domainCode: true,
         status: true
       }
     })
@@ -202,7 +205,7 @@ export default async function ConceptsPage({
                   <Link key={concept.id} href={`/concepts/${concept.slug}`} className="featured-concept-link">
                     <strong>{concept.title}</strong>
                     <span>
-                      {translatedDomainLabel(concept.domain, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
+                      {translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
                     </span>
                   </Link>
                 ))}
@@ -252,11 +255,16 @@ export default async function ConceptsPage({
         <input name="q" defaultValue={query} placeholder={t.concepts.searchPlaceholder} />
         <select name="domain" defaultValue={domainValue ?? ""}>
           <option value="">{t.concepts.anyDomain}</option>
-          {PROBLEM_DOMAINS.map((item) => (
+          {PROBLEM_DOMAINS.flatMap((item) => [
             <option key={item.value} value={item.value}>
               {translatedDomainLabel(item.value, t)}
-            </option>
-          ))}
+            </option>,
+            ...(item.children ?? []).map((subdomain) => (
+              <option key={subdomain.value} value={subdomain.value}>
+                {"  - "}{translatedDomainLabel(subdomain.value, t)}
+              </option>
+            ))
+          ])}
         </select>
         <select name="status" defaultValue={statusValue ?? ""}>
           <option value="">{t.concepts.anyStatus}</option>
@@ -287,7 +295,7 @@ export default async function ConceptsPage({
               <div>
                 <h2 className="font-semibold">{concept.title}</h2>
                 <p className="meta">
-                  {translatedDomainLabel(concept.domain, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()} /{" "}
+                  {translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()} /{" "}
                   {t.concepts.incomingLinks(incomingLinkCountBySlug.get(concept.slug) ?? 0)} / {t.concepts.sources(concept._count.references)} /{" "}
                   {t.concepts.talkPosts(concept._count.talkPosts)}
                 </p>

@@ -104,10 +104,11 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           <ProblemDomainPicker
             domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
             helpText="Choose one Math Woods domain."
-            initialValues={[concept.domain]}
+            initialValues={[concept.domainCode]}
             inputName="domain"
             label="Domain"
             maxDomains={1}
+            showSubdomains
             showSpoilerToggle={false}
           />
           <label className="grid gap-2">

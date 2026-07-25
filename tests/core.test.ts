@@ -13,7 +13,7 @@ import {
 } from "../lib/frontmatter.ts";
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
-import { problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
+import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
 import {
@@ -111,7 +111,16 @@ import {
 import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
 import { parseProblemDomains } from "../lib/problem-domains.ts";
 import { heroArtForProblemDomain, PROBLEM_DOMAIN_HERO_ART } from "../lib/problem-hero-art.ts";
-import { domainLabel, FLAT_DOMAIN_OPTIONS, parseDomainCode, PROBLEM_DOMAINS } from "../lib/domains.ts";
+import {
+  coarseDomainForCode,
+  domainCodeAliases,
+  domainLabel,
+  FLAT_DOMAIN_OPTIONS,
+  FLAT_PROBLEM_DOMAIN_OPTIONS,
+  parseDomainCode,
+  PROBLEM_DOMAINS,
+  translatedDomainLabel
+} from "../lib/domains.ts";
 import {
   DEFAULT_MARKDOWN_HEADING_SHORTCUTS,
   keyboardEventMatchesShortcut,
@@ -436,19 +445,35 @@ assert.deepEqual(
 );
 assert.equal(parseProblemDifficulty("72"), 72);
 assert.equal(parseProblemDifficulty("101"), null);
+for (const range of ["1-5", "6-19", "20-39", "40-64", "65-84", "85-100"]) {
+  assert.equal(PROBLEM_DIFFICULTY_HELP.includes(range), true);
+}
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
 assert.equal(FLAT_DOMAIN_OPTIONS.some((option) => /^\d{2}\s/.test(option.label)), false);
 assert.equal(PROBLEM_DOMAINS.length, 21);
 assert.equal(PROBLEM_DOMAINS.some((option) => /^\d{2}-XX$/.test(option.value)), false);
+assert.equal(new Set(FLAT_PROBLEM_DOMAIN_OPTIONS.map((option) => option.value)).size, FLAT_PROBLEM_DOMAIN_OPTIONS.length);
 assert.equal(Object.keys(PROBLEM_DOMAIN_HERO_ART).length, PROBLEM_DOMAINS.length);
 assert.equal(parseDomainCode("26"), "real-analysis");
 assert.equal(parseDomainCode("52-XX"), "geometry");
 assert.equal(parseDomainCode("GEOMETRY"), "geometry");
+assert.equal(parseDomainCode("algebra-groups"), "algebra-groups");
+assert.equal(domainLabel("algebra-groups"), "Groups");
+assert.equal(coarseDomainForCode("algebra-groups"), MathDomain.ALGEBRA);
+assert.equal(domainCodeAliases("algebra").includes("algebra-groups"), true);
+assert.equal(translatedDomainLabel("algebra", { [MathDomain.ALGEBRA]: "Algèbre" }), "Algèbre");
+assert.equal(translatedDomainLabel("algebra-groups", { [MathDomain.ALGEBRA]: "Algèbre" }), "Groups");
+const algebraSubdomains = PROBLEM_DOMAINS.find((domain) => domain.value === "algebra")?.children ?? [];
+assert.deepEqual(
+  algebraSubdomains.map((domain) => domain.label),
+  [...algebraSubdomains].map((domain) => domain.label).sort((left, right) => left.localeCompare(right, "en"))
+);
 assert.equal(domainLabel("26"), "Real analysis");
 assert.equal(domainLabel("26-XX"), "Real analysis");
 assert.equal(domainLabel("52-XX"), "Geometry");
 assert.equal(heroArtForProblemDomain("60-XX").painting, "At the Edge of the Pine Forest");
 assert.equal(heroArtForProblemDomain("46").painting, "Branches. A Study");
+assert.equal(heroArtForProblemDomain("algebra-groups"), PROBLEM_DOMAIN_HERO_ART.algebra);
 assert.equal(heroArtForProblemDomain(undefined), PROBLEM_DOMAIN_HERO_ART.other);
 assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
   { domain: "ARITHMETIC", mscCode: "number-theory", spoiler: false },

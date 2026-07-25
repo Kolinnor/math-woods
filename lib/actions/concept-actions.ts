@@ -11,7 +11,7 @@ import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { prisma } from "@/lib/db";
 import { notifyConceptAuthor, notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
-import { parseMathDomain } from "@/lib/domains";
+import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import { refreshLinksForConcept, refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import { canDeleteConcept, canEditConcept, canRollbackConcept, canSetConceptStatus, canUseAdminTools } from "@/lib/permissions";
@@ -38,7 +38,8 @@ export async function createConceptAction(formData: FormData) {
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
-  const domain = parseMathDomain(formData.get("domain"));
+  const domainCode = parseDomainCode(formData.get("domain"));
+  const domain = coarseDomainForCode(domainCode);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
 
@@ -95,6 +96,7 @@ export async function createConceptAction(formData: FormData) {
         bodyMarkdown,
         bodyHtml,
         domain,
+        domainCode,
         createdById: user.id,
         lastEditedById: user.id
       }
@@ -144,7 +146,8 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const language = parseContentLanguage(formData.get("language"));
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
-  const domain = parseMathDomain(formData.get("domain"));
+  const domainCode = parseDomainCode(formData.get("domain"));
+  const domain = coarseDomainForCode(domainCode);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Concept edited";
@@ -202,6 +205,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         bodyMarkdown,
         bodyHtml,
         domain,
+        domainCode,
         ...(status ? { status } : {}),
         ...(canAppearInConceptBrowser !== undefined ? { canAppearInConceptBrowser } : {}),
         ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {}),

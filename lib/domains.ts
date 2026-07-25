@@ -164,31 +164,131 @@ function problemDomain(
   return { ...option(value, label, domain, aliases), glyph, family, diff, year };
 }
 
+function withSubdomains(domain: ProblemDomainOption, entries: Array<[value: string, label: string]>): ProblemDomainOption {
+  const children = entries
+    .map(([value, label]) => option(value, label, domain.domain))
+    .sort((left, right) => left.label.localeCompare(right.label, "en"));
+
+  return { ...domain, children };
+}
+
 export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
-  problemDomain("logic", "Logic", MathDomain.LOGIC, "∴", "found", 2, 1847, [MathDomain.LOGIC, "03", "03-XX"]),
-  problemDomain("category-theory", "Category theory", MathDomain.ALGEBRA, "→", "found", 4, 1945, ["18", "18-XX"]),
-  problemDomain("algebra", "Algebra", MathDomain.ALGEBRA, "x", "found", 2, 820, [MathDomain.ALGEBRA, "06", "06-XX", "08", "08-XX", "12", "12-XX", "13", "13-XX", "16", "16-XX", "17", "17-XX", "19", "19-XX", "22", "22-XX"]),
-  problemDomain("linear-algebra", "Linear algebra", MathDomain.ALGEBRA, "⊕", "found", 2, 1850, ["15", "15-XX"]),
+  withSubdomains(
+    problemDomain("logic", "Logic", MathDomain.LOGIC, "∴", "found", 2, 1847, [MathDomain.LOGIC, "03", "03-XX"]),
+    [
+      ["logic-model-theory", "Model theory"],
+      ["logic-set-theory", "Set theory"]
+    ]
+  ),
+  withSubdomains(
+    problemDomain("category-theory", "Category theory", MathDomain.ALGEBRA, "→", "found", 4, 1945, ["18", "18-XX"]),
+    [["category-theory-categories", "Categories"]]
+  ),
+  withSubdomains(
+    problemDomain("algebra", "Algebra", MathDomain.ALGEBRA, "x", "found", 2, 820, [MathDomain.ALGEBRA, "06", "06-XX", "08", "08-XX", "12", "12-XX", "13", "13-XX", "16", "16-XX", "17", "17-XX", "19", "19-XX", "22", "22-XX"]),
+    [
+      ["algebra-group-actions", "Group actions"],
+      ["algebra-fields", "Fields"],
+      ["algebra-galois-theory", "Galois theory"],
+      ["algebra-groups", "Groups"],
+      ["algebra-modules", "Modules"],
+      ["algebra-rings", "Rings"]
+    ]
+  ),
+  withSubdomains(
+    problemDomain("linear-algebra", "Linear algebra", MathDomain.ALGEBRA, "⊕", "found", 2, 1850, ["15", "15-XX"]),
+    [
+      ["linear-algebra-euclidean-spaces", "Euclidean vector spaces"],
+      ["linear-algebra-geometry", "Geometry"],
+      ["linear-algebra-hilbert-spaces", "Hilbert and pre-Hilbert spaces"],
+      ["linear-algebra-lie-algebras", "Lie algebras"],
+      ["linear-algebra-endomorphism-reduction", "Reduction of endomorphisms"],
+      ["linear-algebra-representations-characters", "Representations and characters"]
+    ]
+  ),
   problemDomain("number-theory", "Number theory", MathDomain.ARITHMETIC, "ℤ", "found", 3, -300, [MathDomain.ARITHMETIC, "11", "11-XX"]),
   problemDomain("representation-theory", "Representation theory", MathDomain.ALGEBRA, "ρ", "found", 4, 1896, ["20", "20-XX"]),
   problemDomain("algebraic-geometry", "Algebraic geometry", MathDomain.ALGEBRA, "⊙", "geom", 4, 1900, ["14", "14-XX"]),
   problemDomain("geometry", "Geometry", MathDomain.GEOMETRY, "△", "geom", 2, -300, [MathDomain.GEOMETRY, "51", "51-XX", "52", "52-XX"]),
   problemDomain("differential-geometry", "Differential geometry", MathDomain.GEOMETRY, "∂", "geom", 4, 1827, ["53", "53-XX", "58", "58-XX"]),
-  problemDomain("general-topology", "General topology", MathDomain.TOPOLOGY, "∞", "geom", 3, 1895, [MathDomain.TOPOLOGY, "54", "54-XX", "57", "57-XX"]),
+  withSubdomains(
+    problemDomain("general-topology", "General topology", MathDomain.TOPOLOGY, "∞", "geom", 3, 1895, [MathDomain.TOPOLOGY, "54", "54-XX", "57", "57-XX"]),
+    [
+      ["topology-algebraic-geometry", "Algebraic geometry"],
+      ["topology-algebraic-topology", "Algebraic topology"],
+      ["topology-compact-sets", "Compact sets"],
+      ["topology-connectedness", "Connectedness"],
+      ["topology-differential-geometry", "Differential geometry"],
+      ["topology-general-topology", "General topology"],
+      ["topology-metric-spaces", "Metric spaces"],
+      ["topology-normed-vector-spaces", "Normed vector spaces"],
+      ["topology-riemann-surfaces", "Riemann surfaces"]
+    ]
+  ),
   problemDomain("algebraic-topology", "Algebraic topology", MathDomain.TOPOLOGY, "π", "geom", 4, 1900, ["55", "55-XX"]),
-  problemDomain("real-analysis", "Real analysis", MathDomain.ANALYSIS, "ℝ", "ana", 3, 1700, [MathDomain.ANALYSIS, "26", "26-XX", "28", "28-XX", "40", "40-XX"]),
+  withSubdomains(
+    problemDomain("real-analysis", "Real analysis", MathDomain.ANALYSIS, "ℝ", "ana", 3, 1700, [MathDomain.ANALYSIS, "26", "26-XX", "28", "28-XX", "40", "40-XX"]),
+    [
+      ["real-analysis-fourier-series", "Fourier series"],
+      ["real-analysis-ordinary-differential-equations", "Ordinary differential equations"],
+      ["real-analysis-power-series", "Power series"],
+      ["real-analysis-real-functions", "Real functions"],
+      ["real-analysis-riemann-integration", "Riemann integration"],
+      ["real-analysis-sequences-series", "Sequences and series"],
+      ["real-analysis-sequences-series-functions", "Sequences and series of functions"]
+    ]
+  ),
   problemDomain("complex-analysis", "Complex analysis", MathDomain.ANALYSIS, "ℂ", "ana", 3, 1825, ["30", "30-XX", "31", "31-XX", "32", "32-XX"]),
-  problemDomain("functional-analysis", "Functional analysis", MathDomain.ANALYSIS, "ƒ", "ana", 4, 1900, ["46", "46-XX", "47", "47-XX"]),
-  problemDomain("differential-equations", "Differential equations", MathDomain.ANALYSIS, "∇", "ana", 3, 1690, ["34", "34-XX", "35", "35-XX", "37", "37-XX", "39", "39-XX"]),
-  problemDomain("probability-statistics", "Probability and statistics", MathDomain.PROBABILITY, "ℙ", "prob", 2, 1654, [MathDomain.PROBABILITY, "60", "60-XX", "62", "62-XX"]),
-  problemDomain("combinatorics", "Combinatorics", MathDomain.COMBINATORICS, "∑", "prob", 2, 1666, ["05", "05-XX"]),
-  problemDomain("graphs-discrete-math", "Graphs and discrete math", MathDomain.COMBINATORICS, "◇", "prob", 2, 1736, [MathDomain.COMBINATORICS, "68", "68-XX", "90", "90-XX", "94", "94-XX"]),
+  withSubdomains(
+    problemDomain("functional-analysis", "Functional analysis", MathDomain.ANALYSIS, "ƒ", "ana", 4, 1900, ["46", "46-XX", "47", "47-XX"]),
+    [
+      ["multivariable-analysis-complex-analysis", "Complex analysis"],
+      ["multivariable-analysis-differentiation", "Differentiation"],
+      ["multivariable-analysis-distributions", "Distributions"],
+      ["multivariable-analysis-fourier-integration", "Fourier integration"],
+      ["multivariable-analysis-functional-analysis", "Functional analysis"],
+      ["multivariable-analysis-lebesgue-integration", "Lebesgue integration"],
+      ["multivariable-analysis-measure-theory", "Measure theory"]
+    ]
+  ),
+  withSubdomains(
+    problemDomain("differential-equations", "Differential equations", MathDomain.ANALYSIS, "∇", "ana", 3, 1690, ["34", "34-XX", "35", "35-XX", "37", "37-XX", "39", "39-XX"]),
+    [
+      ["differential-equations-ordinary", "Ordinary differential equations"],
+      ["differential-equations-partial", "Partial differential equations"]
+    ]
+  ),
+  withSubdomains(
+    problemDomain("probability-statistics", "Probability and statistics", MathDomain.PROBABILITY, "ℙ", "prob", 2, 1654, [MathDomain.PROBABILITY, "60", "60-XX", "62", "62-XX"]),
+    [
+      ["probability-finite-spaces", "Probability on finite spaces"],
+      ["probability-random-variables", "Random variables"],
+      ["probability-statistical-methods", "Statistics"],
+      ["probability-stochastic-processes", "Stochastic processes"]
+    ]
+  ),
+  withSubdomains(
+    problemDomain("combinatorics", "Combinatorics", MathDomain.COMBINATORICS, "∑", "prob", 2, 1666, ["05", "05-XX"]),
+    [["discrete-mathematics-combinatorics", "Combinatorics"]]
+  ),
+  withSubdomains(
+    problemDomain("graphs-discrete-math", "Graphs and discrete math", MathDomain.COMBINATORICS, "◇", "prob", 2, 1736, [MathDomain.COMBINATORICS, "68", "68-XX", "90", "90-XX", "94", "94-XX"]),
+    [["discrete-mathematics-graph-theory", "Graph theory"]]
+  ),
   problemDomain("scientific-computing", "Scientific computing", MathDomain.OTHER, "≈", "app", 3, 1947, ["65", "65-XX"]),
   problemDomain("mathematical-physics", "Mathematical physics", MathDomain.OTHER, "Ψ", "app", 3, 1687, ["70", "70-XX", "74", "74-XX", "76", "76-XX", "78", "78-XX", "80", "80-XX", "81", "81-XX", "82", "82-XX", "83", "83-XX"]),
-  problemDomain("other", "Other", MathDomain.OTHER, "⋯", "other", 1, 9999, [MathDomain.OTHER, "00", "00-XX", "01", "01-XX", "33", "33-XX", "41", "41-XX", "42", "42-XX", "43", "43-XX", "44", "44-XX", "45", "45-XX", "49", "49-XX", "85", "85-XX", "86", "86-XX", "91", "91-XX", "92", "92-XX", "93", "93-XX", "97", "97-XX"])
+  withSubdomains(
+    problemDomain("other", "Other", MathDomain.OTHER, "⋯", "other", 1, 9999, [MathDomain.OTHER, "00", "00-XX", "01", "01-XX", "33", "33-XX", "41", "41-XX", "42", "42-XX", "43", "43-XX", "44", "44-XX", "45", "45-XX", "49", "49-XX", "85", "85-XX", "86", "86-XX", "91", "91-XX", "92", "92-XX", "93", "93-XX", "97", "97-XX"]),
+    [
+      ["other-biology", "Biology"],
+      ["other-chemistry", "Chemistry"],
+      ["other-computing", "Computing"],
+      ["other-physics", "Physics"]
+    ]
+  )
 ];
 
-export const FLAT_PROBLEM_DOMAIN_OPTIONS = PROBLEM_DOMAINS;
+export const FLAT_PROBLEM_DOMAIN_OPTIONS = PROBLEM_DOMAINS.flatMap((domain) => [domain, ...(domain.children ?? [])]);
 
 const DOMAIN_DESCRIPTIONS: Partial<Record<string, string>> = {
   [MathDomain.COMBINATORICS]:
@@ -205,20 +305,29 @@ export function findDomainOption(value: string | MathDomain | null | undefined) 
   if (!value) return undefined;
   const raw = String(value).trim();
   const normalized = raw.toUpperCase().replace(/\s+/g, "_");
+  const options = [...FLAT_PROBLEM_DOMAIN_OPTIONS, ...FLAT_DOMAIN_OPTIONS];
 
-  return [...FLAT_PROBLEM_DOMAIN_OPTIONS, ...FLAT_DOMAIN_OPTIONS].find((item) => {
+  const codeMatch = options.find((item) => {
     const itemValue = item.value.toUpperCase();
     const aliases = item.aliases?.map((alias) => alias.toUpperCase()) ?? [];
-    return (
-      itemValue === normalized ||
-      aliases.includes(normalized) ||
-      item.label.toLowerCase() === raw.toLowerCase()
-    );
+    return itemValue === normalized || aliases.includes(normalized);
   });
+  if (codeMatch) return codeMatch;
+
+  return options.find((item) => item.label.toLowerCase() === raw.toLowerCase());
 }
 
 export function domainLabel(domain: MathDomain | string) {
   return findDomainOption(domain)?.label ?? "Other";
+}
+
+export function parentProblemDomainForCode(value: string | MathDomain | null | undefined) {
+  const option = findDomainOption(value);
+  if (!option) return undefined;
+
+  return PROBLEM_DOMAINS.find(
+    (domain) => domain.value === option.value || domain.children?.some((child) => child.value === option.value)
+  );
 }
 
 export function translatedDomainLabel(
@@ -227,6 +336,10 @@ export function translatedDomainLabel(
 ) {
   const option = findDomainOption(domain);
   if (!option) return labels[MathDomain.OTHER] ?? "Other";
+  const parent = parentProblemDomainForCode(option.value);
+  if (parent && parent.value !== option.value) {
+    return labels[option.value] ?? option.label;
+  }
   return labels[option.value] ?? labels[option.domain] ?? option.label;
 }
 
@@ -269,5 +382,11 @@ export function parseDomainCode(value: FormDataEntryValue | string | null | unde
 
 export function domainCodeAliases(value: string | MathDomain | null | undefined) {
   const option = findDomainOption(value);
-  return option ? [option.value, ...(option.aliases ?? [])] : [String(value ?? "")].filter(Boolean);
+  return option
+    ? [
+        option.value,
+        ...(option.aliases ?? []),
+        ...(option.children?.flatMap((child) => [child.value, ...(child.aliases ?? [])]) ?? [])
+      ]
+    : [String(value ?? "")].filter(Boolean);
 }

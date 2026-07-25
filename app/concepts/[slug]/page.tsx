@@ -205,7 +205,7 @@ export default async function ConceptPage({
   ]);
   const isLanguageFallback = targetViewLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
-  const conceptDomainLabel = translatedDomainLabel(concept.domain, t);
+  const conceptDomainLabel = translatedDomainLabel(concept.domainCode, t);
   const hasReadingHeader =
     isLanguageFallback ||
     Boolean(translationFreshness?.stale) ||

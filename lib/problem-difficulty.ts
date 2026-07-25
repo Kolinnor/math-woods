@@ -1,4 +1,7 @@
 const UNSET_DIFFICULTY_TONE = "#8a9184";
+export const PROBLEM_DIFFICULTY_HELP =
+  "The 1-100 score is a rough guide, not an objective measure. 1-5: Just started. 6-19: Beginner / high school. 20-39: Intermediate / undergraduate. 40-64: Advanced / graduate. 65-84: Expert / specialized. 85-100: Research-level.";
+
 const DIFFICULTY_TONE_STOPS = [
   { value: 1, rgb: [79, 121, 85] },
   { value: 20, rgb: [97, 122, 66] },

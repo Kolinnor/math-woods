@@ -4,7 +4,7 @@ type FieldHelpProps = {
 
 export function FieldHelp({ text }: FieldHelpProps) {
   return (
-    <span className="field-help" tabIndex={0} title={text} aria-label={text}>
+    <span className="field-help" tabIndex={0} aria-label={text} data-tooltip={text}>
       ?
     </span>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import type { DomainOption, ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
 
@@ -20,6 +21,7 @@ type ProblemDomainPickerProps = {
   inputName?: string;
   label?: string;
   maxDomains?: number;
+  showSubdomains?: boolean;
   showSpoilerToggle?: boolean;
   helpText?: string | null;
 };
@@ -42,6 +44,7 @@ export function ProblemDomainPicker({
   inputName = "domains",
   label = "Domains",
   maxDomains = MAX_PROBLEM_DOMAINS,
+  showSubdomains = false,
   showSpoilerToggle = true,
   helpText
 }: ProblemDomainPickerProps) {
@@ -50,8 +53,14 @@ export function ProblemDomainPicker({
     : [domains[0]?.value];
   const [values, setValues] = useState(initial.filter(Boolean));
   const [spoilers, setSpoilers] = useState(() => new Set(initialSpoilers.map((value) => findOption(domains, value)?.value ?? value)));
+  const [expandedDomain, setExpandedDomain] = useState<string | null>(
+    showSubdomains
+      ? domains.find((domain) => domain.children?.some((child) => initial.includes(child.value)))?.value ?? null
+      : null
+  );
   const selectedOptions = values.map((value) => findOption(domains, value)).filter(Boolean) as DomainOption[];
   const selectedSet = new Set(values);
+  const expandedDomainOption = domains.find((domain) => domain.value === expandedDomain);
 
   function pruneSpoilers(nextValues: string[]) {
     setSpoilers((current) => {
@@ -104,24 +113,65 @@ export function ProblemDomainPicker({
       <div className="domain-picker-grid">
         {domains.map((domain) => {
           const selected = selectedSet.has(domain.value);
+          const hasSelectedChild = domain.children?.some((child) => selectedSet.has(child.value)) ?? false;
+          const hasChildren = showSubdomains && Boolean(domain.children?.length);
           const color = isProblemDomainOption(domain) ? DOMAIN_FAMILY_COLORS[domain.family] : undefined;
           const glyph = isProblemDomainOption(domain) ? domain.glyph : domain.label.charAt(0);
           return (
-            <button
-              key={domain.value}
-              type="button"
-              className={selected ? "domain-picker-tile selected" : "domain-picker-tile"}
-              aria-pressed={selected}
-              onClick={() => selectDomain(domain.value)}
-            >
-              <span className="domain-picker-glyph" style={color ? { backgroundColor: color } : undefined}>
-                {glyph}
-              </span>
-              <span>{domain.label}</span>
-            </button>
+            <div key={domain.value} className="domain-picker-tile-shell">
+              <button
+                type="button"
+                className={
+                  selected
+                    ? "domain-picker-tile selected"
+                    : hasSelectedChild
+                      ? "domain-picker-tile has-selected-child"
+                      : "domain-picker-tile"
+                }
+                aria-pressed={selected}
+                onClick={() => selectDomain(domain.value)}
+              >
+                <span className="domain-picker-glyph" style={color ? { backgroundColor: color } : undefined}>
+                  {glyph}
+                </span>
+                <span>{domain.label}</span>
+              </button>
+              {hasChildren && (
+                <button
+                  type="button"
+                  className={expandedDomain === domain.value ? "domain-picker-expand active" : "domain-picker-expand"}
+                  aria-expanded={expandedDomain === domain.value}
+                  aria-label={`Show ${domain.label} subdomains`}
+                  title={`Show ${domain.label} subdomains`}
+                  onClick={() => setExpandedDomain((current) => current === domain.value ? null : domain.value)}
+                >
+                  <ChevronDown size={12} aria-hidden="true" />
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
+      {showSubdomains && expandedDomainOption?.children?.length ? (
+        <div className="domain-picker-subdomains">
+          <p>{expandedDomainOption.label} subdomains</p>
+          <div className="domain-picker-subdomain-grid">
+            {[...expandedDomainOption.children]
+              .sort((left, right) => left.label.localeCompare(right.label, "en"))
+              .map((subdomain) => (
+                <button
+                  key={subdomain.value}
+                  type="button"
+                  className={selectedSet.has(subdomain.value) ? "selected" : undefined}
+                  aria-pressed={selectedSet.has(subdomain.value)}
+                  onClick={() => selectDomain(subdomain.value)}
+                >
+                  {subdomain.label}
+                </button>
+              ))}
+          </div>
+        </div>
+      ) : null}
       {showSpoilerToggle && selectedOptions.length > 0 && (
         <div className="domain-spoiler-grid">
           {selectedOptions.map((selected) => (

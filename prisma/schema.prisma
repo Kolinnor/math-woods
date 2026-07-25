@@ -505,6 +505,7 @@ model Concept {
   bodyMarkdown              String
   bodyHtml                  String
   domain                    MathDomain         @default(OTHER)
+  domainCode                String             @default("other")
   status                    ConceptStatus      @default(STUB)
   canAppearInConceptBrowser Boolean            @default(false)
   createdAt                 DateTime           @default(now())
@@ -525,6 +526,7 @@ model Concept {
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
   @@index([language, canAppearInConceptBrowser, updatedAt])
+  @@index([domainCode])
   @@index([translationGroupId])
   @@index([translatedFromConceptId])
 }

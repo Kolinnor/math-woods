@@ -14,7 +14,7 @@ import {
 } from "@/lib/frontmatter";
 import { prisma } from "@/lib/db";
 import { parseAliases, syncConceptAliases } from "@/lib/concept-metadata";
-import { parseMathDomain } from "@/lib/domains";
+import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import { refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
@@ -48,6 +48,7 @@ export async function importMarkdownAction(formData: FormData) {
 
   if (importType === "concept") {
     const slug = await uniqueSlug("concept", safeTitle);
+    const domainCode = parseDomainCode(getStringAttribute(parsed.attributes, "domain") ?? null);
     const concept = await prisma.$transaction(async (tx) => {
       await assertDailyContentCreationQuota(tx, user);
       const created = await tx.concept.create({
@@ -57,7 +58,8 @@ export async function importMarkdownAction(formData: FormData) {
           title: safeTitle,
           bodyMarkdown,
           bodyHtml: await renderMarkdownContent(bodyMarkdown),
-          domain: parseMathDomain(getStringAttribute(parsed.attributes, "domain") ?? null),
+          domain: coarseDomainForCode(domainCode),
+          domainCode,
           createdById: user.id,
           lastEditedById: user.id
         }

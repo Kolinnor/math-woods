@@ -23,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       slug: concept.slug,
       language: concept.language,
       translationGroupId: concept.translationGroupId,
-      domain: domainLabel(concept.domain),
+      domain: domainLabel(concept.domainCode),
       status: concept.status.toLowerCase(),
       aliases: concept.aliases.map((alias) => alias.alias),
       lastEditedBy: concept.lastEditedBy?.username

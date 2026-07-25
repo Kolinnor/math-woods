@@ -286,6 +286,7 @@ async function main() {
     update: {
       title: "Polynomial",
       domain: "ALGEBRA",
+      domainCode: "algebra",
       status: "USABLE",
       bodyMarkdown:
         "## Definition\n\nA polynomial is an expression built from an indeterminate and coefficients.\n\n## See also\n\n[[Vieta relations]]",
@@ -297,6 +298,7 @@ async function main() {
       slug: "polynomial",
       title: "Polynomial",
       domain: "ALGEBRA",
+      domainCode: "algebra",
       status: "USABLE",
       bodyMarkdown:
         "## Definition\n\nA polynomial is an expression built from an indeterminate and coefficients.\n\n## See also\n\n[[Vieta relations]]",
@@ -313,6 +315,7 @@ async function main() {
     update: {
       title: "Vieta Relations",
       domain: "ALGEBRA",
+      domainCode: "algebra",
       status: "REVIEWED",
       bodyMarkdown:
         "## Idea\n\nVieta relations connect the coefficients of a [[polynomial]] to sums and products of its roots.",
@@ -324,6 +327,7 @@ async function main() {
       slug: "vieta-relations",
       title: "Vieta Relations",
       domain: "ALGEBRA",
+      domainCode: "algebra",
       status: "REVIEWED",
       bodyMarkdown:
         "## Idea\n\nVieta relations connect the coefficients of a [[polynomial]] to sums and products of its roots.",

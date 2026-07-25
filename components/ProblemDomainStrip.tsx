@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
+import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import type { ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
 
 type SortKey = "family" | "name" | "diff" | "date";
@@ -21,6 +23,10 @@ const SORT_LABELS: Record<SortKey, string> = {
 
 function normalized(value: string | undefined) {
   return (value ?? "").toUpperCase();
+}
+
+function matchesDomain(value: string, aliases: string[] | undefined, activeDomain: string) {
+  return [value, ...(aliases ?? [])].map(normalized).includes(activeDomain);
 }
 
 export function ProblemDomainStrip({ domains, families, selectedDomain }: ProblemDomainStripProps) {
@@ -76,20 +82,47 @@ export function ProblemDomainStrip({ domains, families, selectedDomain }: Proble
       </div>
       <div className="problem-domain-tile-grid">
         {sortedDomains.map((domain) => {
-          const activeValues = [domain.value, ...(domain.aliases ?? [])].map(normalized);
-          const active = activeValues.includes(activeDomain);
+          const subdomains = [...(domain.children ?? [])].sort((left, right) => left.label.localeCompare(right.label, "en"));
+          const activeSubdomain = subdomains.find((subdomain) =>
+            matchesDomain(subdomain.value, subdomain.aliases, activeDomain)
+          );
+          const active = matchesDomain(domain.value, domain.aliases, activeDomain) || Boolean(activeSubdomain);
+
           return (
-            <Link
-              key={domain.value}
-              href={`/problems?domain=${domain.value}` as never}
-              className={active ? "problem-domain-tile active" : "problem-domain-tile"}
-              scroll={false}
-            >
-              <span className="problem-domain-glyph" style={{ backgroundColor: families[domain.family].color }}>
-                {domain.glyph}
-              </span>
-              <span>{domain.label}</span>
-            </Link>
+            <div key={domain.value} className="problem-domain-tile-shell">
+              <Link
+                href={`/problems?domain=${domain.value}` as never}
+                className={active ? "problem-domain-tile active" : "problem-domain-tile"}
+                scroll={false}
+              >
+                <span className="problem-domain-glyph" style={{ backgroundColor: families[domain.family].color }}>
+                  {domain.glyph}
+                </span>
+                <span>{domain.label}</span>
+              </Link>
+              {subdomains.length > 0 && (
+                <AutoClosingDetails className="problem-domain-subdomains">
+                  <summary
+                    aria-label={`Show ${domain.label} subdomains`}
+                    title={`Show ${domain.label} subdomains`}
+                  >
+                    <ChevronDown size={12} aria-hidden="true" />
+                  </summary>
+                  <div className="problem-domain-subdomain-menu">
+                    {subdomains.map((subdomain) => (
+                      <Link
+                        key={subdomain.value}
+                        href={`/problems?domain=${subdomain.value}` as never}
+                        className={activeSubdomain?.value === subdomain.value ? "active" : undefined}
+                        scroll={false}
+                      >
+                        {subdomain.label}
+                      </Link>
+                    ))}
+                  </div>
+                </AutoClosingDetails>
+              )}
+            </div>
           );
         })}
       </div>

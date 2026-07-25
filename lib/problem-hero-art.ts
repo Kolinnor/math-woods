@@ -1,4 +1,4 @@
-import { findDomainOption } from "./domains.ts";
+import { parentProblemDomainForCode } from "./domains.ts";
 
 const IMAGE_BASE =
   "https://s3.pub2.infomaniak.cloud/object/v1/AUTH_7cc517879b0040959f7d12abb1f0e72d/mathwoods-images/site-art";
@@ -118,6 +118,6 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
 };
 
 export function heroArtForProblemDomain(domain: string | null | undefined): ProblemHeroArt {
-  const domainKey = findDomainOption(domain)?.value ?? "other";
+  const domainKey = parentProblemDomainForCode(domain)?.value ?? "other";
   return PROBLEM_DOMAIN_HERO_ART[domainKey] ?? PROBLEM_DOMAIN_HERO_ART.other;
 }

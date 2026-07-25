@@ -122,16 +122,14 @@ export default async function NewProblemPage({
                     : "Each translation is its own page."
                 }
               />
-              <ProblemDifficultyField
-                defaultValue={sourceProblem?.difficulty}
-                help="A rough 1-100 estimate used for browsing and recommendations."
-              />
+              <ProblemDifficultyField defaultValue={sourceProblem?.difficulty} />
             </div>
 
             <ProblemDomainPicker
               domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
               initialValues={initialDomains}
               initialSpoilers={initialDomainSpoilers}
+              showSubdomains
             />
           </section>
 

@@ -139,15 +139,13 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                   disabledValues={siblingTranslations.map((translation) => translation.language)}
                   help="Changing this moves the page inside the same translation group."
                 />
-                <ProblemDifficultyField
-                  defaultValue={problem.difficulty}
-                  help="A rough 1-100 estimate used for browsing and recommendations."
-                />
+                <ProblemDifficultyField defaultValue={problem.difficulty} />
               </div>
               <ProblemDomainPicker
                 domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
                 initialValues={problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain]}
                 initialSpoilers={problem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)}
+                showSubdomains
               />
             </section>
 

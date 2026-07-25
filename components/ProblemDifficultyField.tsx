@@ -4,14 +4,14 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
 import { FieldHelp } from "@/components/FieldHelp";
-import { problemDifficultyTone } from "@/lib/problem-difficulty";
+import { PROBLEM_DIFFICULTY_HELP, problemDifficultyTone } from "@/lib/problem-difficulty";
 
 type ProblemDifficultyFieldProps = {
   defaultValue?: number | null;
   help?: string;
 };
 
-export function ProblemDifficultyField({ defaultValue, help }: ProblemDifficultyFieldProps) {
+export function ProblemDifficultyField({ defaultValue, help = PROBLEM_DIFFICULTY_HELP }: ProblemDifficultyFieldProps) {
   const [value, setValue] = useState(defaultValue ?? 50);
   const position = ((value - MIN_PROBLEM_DIFFICULTY) / (MAX_PROBLEM_DIFFICULTY - MIN_PROBLEM_DIFFICULTY)) * 100;
 
