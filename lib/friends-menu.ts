@@ -23,6 +23,7 @@ export type FriendsMenuData = {
   labels: {
     friends: string;
     backToFriends: string;
+    closeChat: string;
     noFriendsYet: string;
     noMessagesYet: string;
     offline: string;
@@ -107,6 +108,7 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
     labels: {
       friends: t.social.friends,
       backToFriends: t.social.backToFriends,
+      closeChat: t.social.closeChat,
       noFriendsYet: t.social.noFriendsYet,
       noMessagesYet: t.social.noMessagesYet,
       offline: t.social.offline,

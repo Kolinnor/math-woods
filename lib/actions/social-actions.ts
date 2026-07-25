@@ -32,6 +32,23 @@ function isNextRedirectError(error: unknown) {
   );
 }
 
+async function notifyFriendRequestAccepted({
+  requesterId,
+  accepter
+}: {
+  requesterId: number;
+  accepter: { id: number; username: string; displayName?: string | null };
+}) {
+  await createNotification({
+    userId: requesterId,
+    actorId: accepter.id,
+    type: NotificationType.FRIEND_REQUEST,
+    title: "Friend request accepted",
+    body: `${displayNameForUser(accepter)} accepted your friend request.`,
+    href: `/chat/${accepter.username}`
+  });
+}
+
 export async function sendFriendRequestAction(username: string) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`friend-request:${user.id}`, 20, 60_000);
@@ -51,6 +68,10 @@ export async function sendFriendRequestAction(username: string) {
         data: { status: FriendshipStatus.ACCEPTED }
       });
       await clearFriendRequestNotifications(user.id, target.id);
+      await notifyFriendRequestAccepted({
+        requesterId: target.id,
+        accepter: user
+      });
       revalidatePath("/friends");
       revalidatePath("/", "layout");
       revalidatePath(`/profile/${target.username}`);
@@ -104,13 +125,9 @@ export async function acceptFriendRequestAction(friendshipId: number) {
   });
   await clearFriendRequestNotifications(user.id, friendship.requesterId);
 
-  await createNotification({
-    userId: friendship.requesterId,
-    actorId: user.id,
-    type: NotificationType.FRIEND_REQUEST,
-    title: "Friend request accepted",
-    body: `${displayNameForUser(user)} accepted your friend request.`,
-    href: `/chat/${user.username}`
+  await notifyFriendRequestAccepted({
+    requesterId: friendship.requesterId,
+    accepter: user
   });
 
   revalidatePath("/friends");

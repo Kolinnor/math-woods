@@ -662,7 +662,7 @@ a {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 0.55rem;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   padding: 0.25rem 0.2rem 0.55rem;
 }
 
@@ -1156,6 +1156,13 @@ a {
   font-weight: 600;
   line-height: 1.1;
   margin: 0;
+}
+
+.about-promise-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.12em;
 }
 
 .about-promise > p:last-child {

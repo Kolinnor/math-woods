@@ -40,12 +40,17 @@ export default async function AboutPage() {
         <p className="about-eyebrow">Math Woods</p>
         <h1>
           The{" "}
-          <a href="https://github.com/Kolinnor/math-woods" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://github.com/Kolinnor/math-woods"
+            className="about-promise-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Free
           </a>{" "}
           Math Knowledge Graph.
         </h1>
-        <p>An open-source, community-curated database of mathematical concepts.</p>
+        <p>An open-source, community-curated database of mathematical problems and concepts.</p>
       </section>
 
       {faqSections.map((section) => (

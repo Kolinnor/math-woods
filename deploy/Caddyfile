@@ -22,6 +22,18 @@
   }
 
   reverse_proxy app:3000
+
+  handle_errors 502 503 504 {
+    header {
+      Cache-Control "no-store"
+      Retry-After "60"
+    }
+    root * /srv
+    rewrite * /maintenance.html
+    file_server {
+      status 503
+    }
+  }
 }
 
 {$STATUS_DOMAIN} {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Send } from "lucide-react";
+import { ArrowLeft, ExternalLink, Send, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -239,6 +239,19 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
               >
                 <ExternalLink size={16} />
               </Link>
+              <button
+                type="button"
+                className="icon-button secondary"
+                title={data.labels.closeChat}
+                aria-label={data.labels.closeChat}
+                onClick={(event) => {
+                  setSelectedFriend(null);
+                  const details = event.currentTarget.closest("details");
+                  if (details) details.open = false;
+                }}
+              >
+                <X size={16} />
+              </button>
             </header>
 
             <div className="friends-mini-chat-thread" ref={threadRef} aria-live="polite">

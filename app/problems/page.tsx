@@ -4,6 +4,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { Heart, House } from "lucide-react";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
+import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
@@ -16,6 +17,8 @@ import {
   domainLabel,
   FLAT_PROBLEM_DOMAIN_OPTIONS,
   parseDomainCode,
+  PROBLEM_DOMAIN_FAMILIES,
+  PROBLEM_DOMAINS,
   translatedDomainLabel as translatedDomainOptionLabel
 } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
@@ -636,6 +639,8 @@ export default async function ProblemsPage({
           </div>
         </div>
       </section>
+
+      <ProblemDomainStrip domains={PROBLEM_DOMAINS} families={PROBLEM_DOMAIN_FAMILIES} selectedDomain={domainValue} />
 
       <div className="problems-workspace">
         <aside className="problems-filter-panel">

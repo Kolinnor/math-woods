@@ -88,6 +88,7 @@ export const fr = {
     online: "En ligne",
     offline: "Hors ligne",
     backToFriends: "Retour aux amis",
+    closeChat: "Fermer la discussion",
     openFullChat: "Ouvrir la conversation complète",
     writeMessage: "Écrire un message...",
     addFriend: "Ajouter un ami",
@@ -247,7 +248,7 @@ export const fr = {
   },
   footer: {
     legal:
-      "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire.",
+      "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire. Œuvres d'Ivan Shishkin (1832-1898), domaine public via Wikimedia Commons.",
     about: "À propos",
     suggestions: "Suggestions",
     contribute: "Contribuer",

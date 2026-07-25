@@ -86,6 +86,7 @@ export const en = {
     online: "Online",
     offline: "Offline",
     backToFriends: "Back to friends",
+    closeChat: "Close chat",
     openFullChat: "Open full conversation",
     writeMessage: "Write a message...",
     addFriend: "Add friend",
@@ -244,7 +245,7 @@ export const en = {
   },
   footer: {
     legal:
-      "© 2026 Math Woods. Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated.",
+      "© 2026 Math Woods. Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated. Artwork by Ivan Shishkin (1832-1898), public domain via Wikimedia Commons.",
     about: "About",
     suggestions: "Suggestions",
     contribute: "Contribute",
