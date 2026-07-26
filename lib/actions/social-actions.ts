@@ -224,10 +224,25 @@ export async function sendFriendRequestByUsernameFormAction(
   }
 }
 
-export async function createChatMessageAction(otherUsername: string, formData: FormData) {
-  const user = await requireVerifiedUser();
-  await assertRateLimit(`chat-message:${user.id}`, 30, 60_000);
-  await sendDirectChatMessage(user, otherUsername, formData.get("bodyMarkdown"));
+export type ChatMessageActionState = {
+  error: string | null;
+};
+
+export async function createChatMessageAction(
+  otherUsername: string,
+  _state: ChatMessageActionState,
+  formData: FormData
+): Promise<ChatMessageActionState> {
+  try {
+    const user = await requireVerifiedUser();
+    await assertRateLimit(`chat-message:${user.id}`, 30, 60_000);
+    await sendDirectChatMessage(user, otherUsername, formData.get("bodyMarkdown"));
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    return {
+      error: error instanceof Error ? error.message : "Message could not be sent."
+    };
+  }
 
   revalidatePath("/friends");
   revalidatePath(`/chat/${otherUsername}`);

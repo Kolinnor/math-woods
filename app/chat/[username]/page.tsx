@@ -1,10 +1,10 @@
 import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChatMessageForm } from "@/components/ChatMessageForm";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
-import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
-import { createChatMessageAction, sendFriendRequestAction } from "@/lib/actions/social-actions";
+import { sendFriendRequestAction } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { directChatPair } from "@/lib/direct-chat";
@@ -135,17 +135,16 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           }}
         />
 
-        <form action={createChatMessageAction.bind(null, otherUser.username)} className="panel mt-5 grid gap-3 p-5">
-          <h2 className="font-semibold">{t.social.message}</h2>
-          <LazyMarkdownEditor
-            name="bodyMarkdown"
-            minHeight="9rem"
-            lineNumbers={false}
-            draftKey={`chat:${otherUser.id}:message`}
-            resetSignal={ownMessageResetSignal}
-          />
-          <button type="submit">{t.social.send}</button>
-        </form>
+        <ChatMessageForm
+          editorDraftKey={`chat:${otherUser.id}:message`}
+          editorResetSignal={ownMessageResetSignal}
+          labels={{
+            message: t.social.message,
+            send: t.social.send,
+            sending: t.social.sending
+          }}
+          otherUsername={otherUser.username}
+        />
       </div>
     </ForestPageLayout>
   );
