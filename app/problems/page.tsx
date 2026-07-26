@@ -1,4 +1,4 @@
-import { MathDomain, Prisma, QualityStatus, UserMathLevel } from "@prisma/client";
+import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
@@ -29,7 +29,6 @@ import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-diff
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
-import { hasAdminPrivileges } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -71,21 +70,11 @@ function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
 }
 
 function parseProgressFilter(value: string | undefined): ProgressFilter {
-  return value === "solved" || value === "all" ? value : "unsolved";
+  return value === "unsolved" || value === "solved" ? value : "all";
 }
 
 function parseOwnershipFilter(value: string | undefined): OwnershipFilter {
   return value === "mine" || value === "others" ? value : "all";
-}
-
-function canDefaultToAllSolutions(user: Awaited<ReturnType<typeof getCurrentUser>>) {
-  if (!user) return false;
-  if (hasAdminPrivileges(user.role)) return true;
-  return (
-    user.mathLevel === UserMathLevel.ADVANCED_UNDERGRAD ||
-    user.mathLevel === UserMathLevel.GRADUATE_CONTEST ||
-    user.mathLevel === UserMathLevel.RESEARCH
-  );
 }
 
 function parseSolutionFilter(value: string | undefined, defaultValue: SolutionFilter): SolutionFilter {
@@ -357,7 +346,7 @@ export default async function ProblemsPage({
   const languageValues = parseLanguageFilters(language);
   const includesEveryLanguage = languageValues.length === SUPPORTED_LANGUAGE_CODES.length;
   const languageWhere: Prisma.ProblemWhereInput | null = includesEveryLanguage ? null : { language: { in: languageValues } };
-  const defaultSolutionValue: SolutionFilter = canDefaultToAllSolutions(user) ? "all" : "with";
+  const defaultSolutionValue: SolutionFilter = "all";
   const solutionValue = parseSolutionFilter(solutions, defaultSolutionValue);
   const solutionWhere: Prisma.ProblemWhereInput | null =
     solutionValue === "with"
@@ -581,7 +570,7 @@ export default async function ProblemsPage({
     difficultyMax: manualDifficultyMax ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : undefined),
     domain: domainValue,
     quality: qualityValue,
-    progress: user && progressValue !== "unsolved" ? progressValue : undefined,
+    progress: user && progressValue !== "all" ? progressValue : undefined,
     ownership: user && ownershipValue !== "all" ? ownershipValue : undefined,
     solutions: solutionValue !== defaultSolutionValue ? solutionValue : undefined,
     language: includesEveryLanguage ? undefined : languageValues,
