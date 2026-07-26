@@ -1825,6 +1825,29 @@ textarea {
   border-left-width: 4px;
   border-radius: 6px;
   background: #fff8ec;
+  scroll-margin-block: 5rem;
+}
+
+.problem-edit-conflict:focus {
+  outline: none;
+}
+
+.problem-edit-conflict-highlight {
+  animation: problem-edit-conflict-highlight 1.8s ease-out;
+}
+
+@keyframes problem-edit-conflict-highlight {
+  0%,
+  100% {
+    background: #fff8ec;
+    box-shadow: 0 0 0 0 rgb(199 122 53 / 0);
+  }
+
+  20%,
+  62% {
+    background: #fff0d7;
+    box-shadow: 0 0 0 5px rgb(199 122 53 / 0.22);
+  }
 }
 
 .problem-edit-conflict p {
@@ -1840,6 +1863,12 @@ textarea {
 @media (max-width: 700px) {
   .problem-edit-conflict {
     flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .problem-edit-conflict-highlight {
+    animation: none;
   }
 }
 

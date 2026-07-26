@@ -26,7 +26,6 @@ import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
-import { canViewUnreviewedProblems, visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -360,8 +359,6 @@ export default async function ProblemsPage({
   const languageWhere: Prisma.ProblemWhereInput | null = includesEveryLanguage ? null : { language: { in: languageValues } };
   const defaultSolutionValue: SolutionFilter = canDefaultToAllSolutions(user) ? "all" : "with";
   const solutionValue = parseSolutionFilter(solutions, defaultSolutionValue);
-  const problemVisibilityWhere = visibleProblemWhere(user);
-  const canSeeUnreviewedProblems = canViewUnreviewedProblems(user);
   const solutionWhere: Prisma.ProblemWhereInput | null =
     solutionValue === "with"
       ? { proofs: { some: {} } }
@@ -442,7 +439,6 @@ export default async function ProblemsPage({
   const baseWhereClauses: Prisma.ProblemWhereInput[] = [
     { status: "PUBLISHED" },
     { listed: true },
-    problemVisibilityWhere,
     ...(queryClauses.length ? [{ OR: queryClauses } satisfies Prisma.ProblemWhereInput] : []),
     ...(tagSlug ? [tagWhere(tagSlug, showSpoilerTags)].filter((item): item is Prisma.ProblemWhereInput => Boolean(item)) : []),
     ...(difficultyWhere ? [difficultyWhere] : []),
@@ -462,7 +458,6 @@ export default async function ProblemsPage({
   const progressWhere: Prisma.ProblemWhereInput = {
     status: "PUBLISHED",
     listed: true,
-    ...problemVisibilityWhere,
     ...(languageWhere ?? {}),
     ...(ownershipWhere ?? {}),
     ...(authorWhere ?? {}),
@@ -704,7 +699,7 @@ export default async function ProblemsPage({
               <select name="quality" defaultValue={qualityValue ?? ""}>
                 <option value="">{t.problems.anyQuality}</option>
                 <option value="NEEDS_WORK">{t.problems.needsWork}</option>
-                {canSeeUnreviewedProblems && <option value="UNREVIEWED">{t.problems.unreviewed}</option>}
+                <option value="UNREVIEWED">{t.problems.unreviewed}</option>
                 <option value="GOOD">{t.problems.good}</option>
                 <option value="EXCELLENT">{t.problems.excellent}</option>
               </select>
@@ -733,7 +728,6 @@ export default async function ProblemsPage({
               initialLogic={advancedLogic}
               labels={t.problems.advancedFilters}
               statuses={Object.values(QualityStatus)
-                .filter((status) => canSeeUnreviewedProblems || status !== QualityStatus.UNREVIEWED)
                 .map((status) => ({ value: status, label: t.quality[status] }))}
               tags={tags.map((item) => ({ value: item.slug, label: item.name }))}
             />

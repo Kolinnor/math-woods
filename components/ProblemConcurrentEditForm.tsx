@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import type { ProblemEditActionState } from "@/lib/actions/problem-actions";
 
 type ProblemConcurrentEditFormProps = {
@@ -23,6 +23,28 @@ export function ProblemConcurrentEditForm({
 }: ProblemConcurrentEditFormProps) {
   const [state, formAction] = useActionState(action, initialState);
   const [acceptedConflictVersion, setAcceptedConflictVersion] = useState<number | null>(null);
+  const conflictRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (state.status !== "conflict") return;
+    const conflict = conflictRef.current;
+    if (!conflict) return;
+
+    conflict.classList.remove("problem-edit-conflict-highlight");
+    void conflict.offsetWidth;
+    conflict.classList.add("problem-edit-conflict-highlight");
+    conflict.focus({ preventScroll: true });
+    conflict.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "center"
+    });
+
+    const timeout = window.setTimeout(() => {
+      conflict.classList.remove("problem-edit-conflict-highlight");
+    }, 1800);
+
+    return () => window.clearTimeout(timeout);
+  }, [state]);
 
   function reloadLatest() {
     if (window.confirm("Reload the latest version? Your unsaved form changes will be discarded.")) {
@@ -37,7 +59,13 @@ export function ProblemConcurrentEditForm({
         <input type="hidden" name="acceptedConflictVersion" value={acceptedConflictVersion} />
       )}
       {state.status === "conflict" && (
-        <section className="problem-edit-conflict" role="alert">
+        <section
+          ref={conflictRef}
+          className="problem-edit-conflict"
+          role="alert"
+          aria-atomic="true"
+          tabIndex={-1}
+        >
           <div>
             <strong>This problem changed while you were editing it.</strong>
             <p>
