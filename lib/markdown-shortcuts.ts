@@ -1,11 +1,11 @@
 export const DEFAULT_MARKDOWN_HEADING_SHORTCUTS = {
   markdownHeadingShortcuts: true,
-  markdownHeading1Shortcut: "Shift+1",
-  markdownHeading2Shortcut: "Shift+2",
-  markdownHeading3Shortcut: "Shift+3",
-  markdownHeading4Shortcut: "Shift+4",
-  markdownHeading5Shortcut: "Shift+5",
-  markdownHeading6Shortcut: "Shift+6"
+  markdownHeading1Shortcut: "Ctrl+1",
+  markdownHeading2Shortcut: "Ctrl+2",
+  markdownHeading3Shortcut: "Ctrl+3",
+  markdownHeading4Shortcut: "Ctrl+4",
+  markdownHeading5Shortcut: "Ctrl+5",
+  markdownHeading6Shortcut: "Ctrl+6"
 };
 
 export type MarkdownHeadingShortcutKey =
