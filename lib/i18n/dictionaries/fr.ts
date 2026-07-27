@@ -125,7 +125,7 @@ export const fr = {
     challenge: {
       button: "Défier",
       cancel: "Annuler",
-      challengeProblem: "Défier quelqu'un",
+      challengeProblem: "Défier un utilisateur Math Woods",
       challengeSomeone: "Défier quelqu'un",
       challengeUser: "Défier {name}",
       close: "Fermer",
@@ -147,6 +147,38 @@ export const fr = {
         rateLimited: "Trop de défis ont été envoyés. Veuillez patienter un instant.",
         selfChallenge: "Vous ne pouvez pas vous défier vous-même.",
         userUnavailable: "Cet utilisateur n'est plus disponible."
+      }
+    },
+    challengeLink: {
+      button: "Créer un lien de défi",
+      title: "Défier par lien",
+      close: "Fermer",
+      description: "Créez un lien privé pour quelqu'un qui n'a pas encore de compte Math Woods.",
+      problem: "Problème du défi",
+      messagePlaceholder: "message (facultatif)",
+      expiryNotice: "Le lien ne peut être accepté qu'une fois et expire après 30 jours.",
+      generate: "Créer le lien",
+      generating: "Création...",
+      ready: "Votre lien de défi est prêt.",
+      linkLabel: "Lien de défi",
+      copy: "Copier le lien",
+      copied: "Copié",
+      createAnother: "Créer un autre lien",
+      done: "Terminer",
+      cancel: "Annuler",
+      invitationTitle: "Vous avez reçu un défi",
+      invitationDescription: "Un défi mathématique vous attend sur Math Woods.",
+      challengedBy: (name: string) => `${name} vous défie de résoudre ce problème.`,
+      accept: "Accepter le défi",
+      signInToAccept: "Créer un compte ou se connecter pour accepter",
+      viewProblem: "Voir le problème",
+      accepted: "Défi accepté. Le problème est prêt.",
+      claimed: "Ce lien de défi a déjà été accepté.",
+      unavailable: "Ce lien de défi est invalide ou a expiré.",
+      ownLink: "Ceci est votre propre lien de défi. Envoyez-le à la personne que vous souhaitez défier.",
+      errors: {
+        problemUnavailable: "Ce problème n'est pas disponible pour un lien de défi.",
+        rateLimited: "Trop de liens de défi ont été créés. Veuillez réessayer plus tard."
       }
     }
   },

@@ -294,6 +294,8 @@ model User {
   chatMessages                 ChatMessage[]
   problemChallengesSent        ProblemChallenge[]            @relation("ProblemChallengeChallenger")
   problemChallengesReceived    ProblemChallenge[]            @relation("ProblemChallengeRecipient")
+  problemChallengeInvitesSent  ProblemChallengeInvite[]      @relation("ProblemChallengeInviteChallenger")
+  problemChallengeInvitesAccepted ProblemChallengeInvite[]   @relation("ProblemChallengeInviteAcceptedBy")
   contributionRequestsCreated  ContributionRequest[]        @relation("ContributionRequestRequester")
   contributionRequestsClaimed  ContributionRequest[]        @relation("ContributionRequestClaimedBy")
   explorationCollaborations    ExplorationCollaborator[]
@@ -473,6 +475,7 @@ model Problem {
   verificationRequests     ProblemVerificationRequest[]
   tipLinks                 TipProblem[]
   challenges               ProblemChallenge[]
+  challengeInvites         ProblemChallengeInvite[]
   translatedFromProblem    Problem?                     @relation("ProblemTranslationSource", fields: [translatedFromProblemId], references: [id], onDelete: SetNull)
   derivedTranslations      Problem[]                    @relation("ProblemTranslationSource")
 
@@ -497,6 +500,26 @@ model ProblemChallenge {
   @@index([recipientId, createdAt])
   @@index([challengerId, createdAt])
   @@index([problemId])
+}
+
+model ProblemChallengeInvite {
+  id           Int       @id @default(autoincrement())
+  tokenHash    String    @unique
+  challengerId Int
+  problemId    Int
+  message      String?
+  expiresAt    DateTime
+  acceptedById Int?
+  acceptedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  challenger   User      @relation("ProblemChallengeInviteChallenger", fields: [challengerId], references: [id], onDelete: Cascade)
+  acceptedBy   User?     @relation("ProblemChallengeInviteAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+  problem      Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([challengerId, createdAt])
+  @@index([problemId])
+  @@index([expiresAt])
+  @@index([acceptedById])
 }
 
 model ProblemDomain {

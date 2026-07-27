@@ -11,6 +11,7 @@ import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
+import { ProblemChallengeLinkDialog } from "@/components/ProblemChallengeLinkDialog";
 import { ProblemHintReveal } from "@/components/ProblemHintReveal";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
@@ -111,7 +112,7 @@ export default async function ProblemPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ hint?: string; solution?: string; verification?: string; viewLanguage?: string }>;
+  searchParams?: Promise<{ challenge?: string; hint?: string; solution?: string; verification?: string; viewLanguage?: string }>;
 }) {
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
@@ -394,6 +395,11 @@ export default async function ProblemPage({
 
       <div className="problem-detail-body">
         <article className="problem-detail-article">
+        {queryParams.challenge === "accepted" && (
+          <p className="quality-banner challenge-accepted-banner mb-4" role="status">
+            {t.social.challengeLink.accepted}
+          </p>
+        )}
         {verificationMessage && (
           <p className="quality-banner quality-needs-work mb-4" role="status">
             {verificationMessage}
@@ -884,6 +890,16 @@ export default async function ProblemPage({
 
         {user && problem.status === "PUBLISHED" && problem.listed && (
           <section className="sidebar-section problem-rail-challenge">
+            <ProblemChallengeLinkDialog
+              buttonClassName="w-full"
+              labels={t.social.challengeLink}
+              problem={{
+                difficulty: problem.difficulty,
+                domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
+                slug: problem.slug,
+                title: problem.title
+              }}
+            />
             <ProblemChallengeDialog
               buttonClassName="secondary w-full"
               buttonLabel={t.social.challenge.challengeProblem}

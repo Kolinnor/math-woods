@@ -33,6 +33,11 @@ import {
   PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH
 } from "../lib/problem-challenges.ts";
 import {
+  normalizeProblemChallengeInviteToken,
+  problemChallengeInvitePath,
+  problemChallengeInviteTokenHash
+} from "../lib/problem-challenge-invites.ts";
+import {
   CONTENT_CREATION_WINDOW_MS,
   assertDailyContentCreationQuota,
   contentCreationWindowStart,
@@ -1363,5 +1368,10 @@ assert.equal(
   }),
   'Emmy challenged you to solve "A short proof".'
 );
+const challengeInviteToken = "a".repeat(43);
+assert.equal(normalizeProblemChallengeInviteToken(challengeInviteToken), challengeInviteToken);
+assert.equal(normalizeProblemChallengeInviteToken("../not-a-token"), null);
+assert.equal(problemChallengeInviteTokenHash(challengeInviteToken).length, 64);
+assert.equal(problemChallengeInvitePath(challengeInviteToken), `/challenge/${challengeInviteToken}`);
 
 console.log("core tests ok");

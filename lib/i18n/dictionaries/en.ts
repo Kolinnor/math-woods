@@ -123,7 +123,7 @@ export const en = {
     challenge: {
       button: "Challenge",
       cancel: "Cancel",
-      challengeProblem: "Challenge someone",
+      challengeProblem: "Challenge a Math Woods user",
       challengeSomeone: "Challenge someone",
       challengeUser: "Challenge {name}",
       close: "Close",
@@ -145,6 +145,38 @@ export const en = {
         rateLimited: "Too many challenges were sent. Please wait a moment.",
         selfChallenge: "You cannot challenge yourself.",
         userUnavailable: "This user is no longer available."
+      }
+    },
+    challengeLink: {
+      button: "Create a challenge link",
+      title: "Challenge by link",
+      close: "Close",
+      description: "Create a private link for someone who does not have a Math Woods account yet.",
+      problem: "Challenge problem",
+      messagePlaceholder: "Message (optional)",
+      expiryNotice: "The link can be accepted once and expires after 30 days.",
+      generate: "Create link",
+      generating: "Creating...",
+      ready: "Your challenge link is ready.",
+      linkLabel: "Challenge link",
+      copy: "Copy link",
+      copied: "Copied",
+      createAnother: "Create another link",
+      done: "Done",
+      cancel: "Cancel",
+      invitationTitle: "You have been challenged",
+      invitationDescription: "A mathematical challenge is waiting for you on Math Woods.",
+      challengedBy: (name: string) => `${name} challenged you to solve this problem.`,
+      accept: "Accept challenge",
+      signInToAccept: "Create an account or sign in to accept",
+      viewProblem: "View problem",
+      accepted: "Challenge accepted. The problem is ready.",
+      claimed: "This challenge link has already been accepted.",
+      unavailable: "This challenge link is invalid or has expired.",
+      ownLink: "This is your own challenge link. Share it with the person you want to challenge.",
+      errors: {
+        problemUnavailable: "This problem is not available for a challenge link.",
+        rateLimited: "Too many challenge links were created. Please try again later."
       }
     }
   },

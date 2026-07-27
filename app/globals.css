@@ -1709,6 +1709,138 @@ a {
   justify-content: center;
 }
 
+.problem-rail-challenge {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.problem-challenge-link-result {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.problem-challenge-link-result > p {
+  margin: 0;
+}
+
+.problem-challenge-link-copy {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.problem-challenge-link-copy input {
+  min-width: 0;
+  width: 100%;
+}
+
+.problem-challenge-link-copy button,
+.problem-challenge-link-result footer {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.problem-challenge-link-result footer {
+  justify-content: flex-end;
+}
+
+.challenge-invite-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.challenge-invite-card > header {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding-bottom: 1rem;
+}
+
+.challenge-invite-card > header p,
+.challenge-invite-card > header h2 {
+  margin: 0;
+}
+
+.challenge-invite-card > header p {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.challenge-invite-card > header h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.3rem, 4vw, 1.8rem);
+  line-height: 1.2;
+  margin-top: 0.25rem;
+}
+
+.challenge-invite-card blockquote {
+  background: var(--panel-muted);
+  border-left: 3px solid var(--accent);
+  margin: 0;
+  padding: 0.85rem 1rem;
+  white-space: pre-wrap;
+}
+
+.challenge-invite-problem-meta {
+  color: var(--muted);
+  display: flex;
+  font-size: 0.85rem;
+  gap: 0.5rem;
+}
+
+.challenge-invite-actions,
+.challenge-invite-status {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.challenge-invite-actions form {
+  margin: 0;
+}
+
+.challenge-invite-actions button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.challenge-invite-status {
+  justify-content: space-between;
+}
+
+.challenge-invite-status p {
+  margin: 0;
+}
+
+.challenge-invite-unavailable {
+  align-items: center;
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  padding: 1.5rem;
+}
+
+.challenge-invite-unavailable p {
+  margin: 0;
+}
+
+.challenge-accepted-banner {
+  background: var(--problem-solved-bg);
+  border-color: var(--problem-solved-border);
+  border-left-color: var(--problem-solved);
+}
+
 @media (max-width: 520px) {
   .problem-challenge-dialog {
     max-height: calc(100dvh - 1rem);
@@ -1717,6 +1849,26 @@ a {
 
   .problem-challenge-form footer > button {
     flex: 1;
+    justify-content: center;
+  }
+
+  .problem-challenge-link-copy {
+    grid-template-columns: 1fr;
+  }
+
+  .problem-challenge-link-copy button {
+    justify-content: center;
+  }
+
+  .problem-challenge-link-result footer > button,
+  .challenge-invite-actions > *,
+  .challenge-invite-actions form > button,
+  .challenge-invite-status > * {
+    width: 100%;
+  }
+
+  .challenge-invite-actions > .button,
+  .challenge-invite-status > .button {
     justify-content: center;
   }
 }

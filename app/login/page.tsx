@@ -91,6 +91,7 @@ export default async function LoginPage({
         <h2 className="mb-2 text-2xl font-bold">{t.auth.createAccount}</h2>
         {registerError && <p className="quality-banner quality-needs-work mb-4">{registerError}</p>}
         <form action={registerAction} className="panel grid gap-4 p-5">
+          <input type="hidden" name="returnTo" value={returnTo} />
           <label className="grid gap-2">
             <span className="text-sm font-medium">{t.auth.profileName}</span>
             <input name="displayName" minLength={2} maxLength={DISPLAY_NAME_MAX_LENGTH} required />

@@ -37,6 +37,8 @@ export async function registerAction(formData: FormData) {
   const email = boundedText(formData.get("email"), 320, "Email");
   const password = boundedText(formData.get("password"), 512, "Password", { trim: false });
   const mathLevel = formData.get("mathLevel");
+  const returnTo = safeReturnTo(String(formData.get("returnTo") ?? ""));
+  const hasCustomReturnTo = returnTo !== "/";
 
   let user;
   try {
@@ -48,10 +50,11 @@ export async function registerAction(formData: FormData) {
       : prismaErrorCode(error) === "P2002"
         ? "already-used"
         : "invalid";
-    redirect(`/login?registerError=${reason}`);
+    redirect(`/login?registerError=${reason}&returnTo=${encodeURIComponent(returnTo)}` as never);
   }
 
   const delivery = await createAndSendEmailVerification(user.id);
+  if (hasCustomReturnTo) redirect(returnTo as never);
   redirect(delivery.sent ? "/settings?verify=sent" : `/settings?verify=${delivery.reason}`);
 }
 
