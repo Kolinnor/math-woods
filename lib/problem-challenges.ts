@@ -2,6 +2,7 @@ export const PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH = 500;
 
 export type ProblemChallengeError =
   | "chooseProblem"
+  | "chooseUser"
   | "duplicate"
   | "problemUnavailable"
   | "rateLimited"
@@ -11,12 +12,17 @@ export type ProblemChallengeError =
 export type ProblemChallengeLabels = {
   button: string;
   cancel: string;
+  challengeProblem: string;
+  challengeSomeone: string;
   challengeUser: string;
   close: string;
   messagePlaceholder: string;
   noResults: string;
+  noUsersFound: string;
   problem: string;
+  recipient: string;
   searchPlaceholder: string;
+  searchUserPlaceholder: string;
   searching: string;
   send: string;
   sending: string;

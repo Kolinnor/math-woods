@@ -12,7 +12,7 @@ import {
   type ProblemChallengeLabels
 } from "@/lib/problem-challenges";
 
-type SuggestedProblem = {
+export type ProblemChallengeProblem = {
   difficulty: number | null;
   domainLabel: string;
   language: string;
@@ -21,12 +21,19 @@ type SuggestedProblem = {
   title: string;
 };
 
+type SuggestedUser = {
+  name: string;
+  username: string;
+};
+
 type ProblemChallengeDialogProps = {
+  buttonLabel?: string;
   buttonClassName?: string;
   iconOnly?: boolean;
+  initialProblem?: ProblemChallengeProblem;
   labels: ProblemChallengeLabels;
-  recipientName: string;
-  recipientUsername: string;
+  recipientName?: string;
+  recipientUsername?: string;
 };
 
 const initialState: ProblemChallengeActionState = { error: null, ok: false };
@@ -47,23 +54,41 @@ function ChallengeSubmitButton({ labels, disabled }: { labels: ProblemChallengeL
 }
 
 export function ProblemChallengeDialog({
+  buttonLabel,
   buttonClassName = "secondary",
   iconOnly = false,
+  initialProblem,
   labels,
   recipientName,
   recipientUsername
 }: ProblemChallengeDialogProps) {
+  const fixedProblem = Boolean(initialProblem);
+  const fixedRecipient = Boolean(recipientUsername);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState(
-    createProblemChallengeAction.bind(null, recipientUsername),
+    createProblemChallengeAction.bind(null, recipientUsername ?? null),
     initialState
   );
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<SuggestedProblem[]>([]);
-  const [selectedProblem, setSelectedProblem] = useState<SuggestedProblem | null>(null);
+  const [suggestions, setSuggestions] = useState<ProblemChallengeProblem[]>([]);
+  const [selectedProblem, setSelectedProblem] = useState<ProblemChallengeProblem | null>(initialProblem ?? null);
+  const [userQuery, setUserQuery] = useState("");
+  const [userSuggestions, setUserSuggestions] = useState<SuggestedUser[]>([]);
+  const [selectedRecipient, setSelectedRecipient] = useState<SuggestedUser | null>(
+    recipientUsername && recipientName ? { name: recipientName, username: recipientUsername } : null
+  );
   const [searching, setSearching] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
   const [visibleError, setVisibleError] = useState<ProblemChallengeActionState["error"]>(null);
+  const activeRecipient = fixedRecipient
+    ? { name: recipientName ?? recipientUsername ?? "", username: recipientUsername ?? "" }
+    : selectedRecipient;
+  const triggerLabel = buttonLabel ?? labels.button;
+
+  useEffect(() => {
+    if (fixedProblem) setSelectedProblem(initialProblem ?? null);
+  }, [fixedProblem, initialProblem]);
 
   useEffect(() => {
     setVisibleError(state.error);
@@ -71,14 +96,17 @@ export function ProblemChallengeDialog({
       formRef.current?.reset();
       setQuery("");
       setSuggestions([]);
-      setSelectedProblem(null);
+      setSelectedProblem(initialProblem ?? null);
+      setUserQuery("");
+      setUserSuggestions([]);
+      if (!fixedRecipient) setSelectedRecipient(null);
       dialogRef.current?.close();
     }
-  }, [state]);
+  }, [fixedRecipient, initialProblem, state]);
 
   useEffect(() => {
     const trimmed = query.trim();
-    if (selectedProblem || trimmed.length < 2) {
+    if (fixedProblem || selectedProblem || trimmed.length < 2) {
       setSuggestions([]);
       setSearching(false);
       return;
@@ -92,7 +120,7 @@ export function ProblemChallengeDialog({
           cache: "no-store",
           signal: controller.signal
         });
-        const data = response.ok ? await response.json() as { problems?: SuggestedProblem[] } : {};
+        const data = response.ok ? await response.json() as { problems?: ProblemChallengeProblem[] } : {};
         if (!controller.signal.aborted) setSuggestions(data.problems ?? []);
       } catch {
         if (!controller.signal.aborted) setSuggestions([]);
@@ -105,7 +133,38 @@ export function ProblemChallengeDialog({
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [query, selectedProblem]);
+  }, [fixedProblem, query, selectedProblem]);
+
+  useEffect(() => {
+    const trimmed = userQuery.trim();
+    if (fixedRecipient || selectedRecipient || trimmed.length < 2) {
+      setUserSuggestions([]);
+      setSearchingUsers(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      setSearchingUsers(true);
+      try {
+        const response = await fetch(`/api/users/suggest?q=${encodeURIComponent(trimmed)}`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+        const data = response.ok ? await response.json() as { users?: SuggestedUser[] } : {};
+        if (!controller.signal.aborted) setUserSuggestions(data.users ?? []);
+      } catch {
+        if (!controller.signal.aborted) setUserSuggestions([]);
+      } finally {
+        if (!controller.signal.aborted) setSearchingUsers(false);
+      }
+    }, 180);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [fixedRecipient, selectedRecipient, userQuery]);
 
   function closeDialog() {
     dialogRef.current?.close();
@@ -116,15 +175,15 @@ export function ProblemChallengeDialog({
       <button
         type="button"
         className={iconOnly ? `icon-button ${buttonClassName}`.trim() : `button challenge-button ${buttonClassName}`.trim()}
-        title={labels.button}
-        aria-label={labels.button}
+        title={triggerLabel}
+        aria-label={triggerLabel}
         onClick={() => {
           setVisibleError(null);
           dialogRef.current?.showModal();
         }}
       >
         <Swords size={iconOnly ? 16 : 17} aria-hidden="true" />
-        {!iconOnly && <span>{labels.button}</span>}
+        {!iconOnly && <span>{triggerLabel}</span>}
       </button>
 
       <dialog ref={dialogRef} className="problem-challenge-dialog">
@@ -133,7 +192,11 @@ export function ProblemChallengeDialog({
             <Swords size={27} />
           </div>
           <div>
-            <h2>{template(labels.challengeUser, "name", recipientName)}</h2>
+            <h2>
+              {activeRecipient
+                ? template(labels.challengeUser, "name", activeRecipient.name)
+                : labels.challengeSomeone}
+            </h2>
           </div>
           <button type="button" className="icon-button secondary" onClick={closeDialog} title={labels.close} aria-label={labels.close}>
             <X size={17} aria-hidden="true" />
@@ -142,6 +205,68 @@ export function ProblemChallengeDialog({
 
         <form ref={formRef} action={formAction} className="problem-challenge-form">
           <input type="hidden" name="problemSlug" value={selectedProblem?.slug ?? ""} />
+          <input type="hidden" name="recipientUsername" value={activeRecipient?.username ?? ""} />
+
+          {!fixedRecipient && (
+            <div className="problem-challenge-recipient-field">
+              <span className="text-sm font-medium">{labels.recipient}</span>
+              {selectedRecipient ? (
+                <div className="problem-challenge-selected">
+                  <div>
+                    <strong>{selectedRecipient.name}</strong>
+                    <span>@{selectedRecipient.username}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="icon-button secondary"
+                    onClick={() => {
+                      setVisibleError(null);
+                      setSelectedRecipient(null);
+                    }}
+                    title={labels.close}
+                    aria-label={labels.close}
+                  >
+                    <X size={15} aria-hidden="true" />
+                  </button>
+                </div>
+              ) : (
+                <div className="problem-challenge-search">
+                  <Search size={17} aria-hidden="true" />
+                  <input
+                    value={userQuery}
+                    onChange={(event) => {
+                      setVisibleError(null);
+                      setUserQuery(event.target.value);
+                    }}
+                    placeholder={labels.searchUserPlaceholder}
+                    aria-label={labels.searchUserPlaceholder}
+                    autoComplete="off"
+                  />
+                  {(searchingUsers || userSuggestions.length > 0 || userQuery.trim().length >= 2) && (
+                    <div className="problem-challenge-suggestions">
+                      {searchingUsers && <p>{labels.searching}</p>}
+                      {!searchingUsers && userSuggestions.map((suggestedUser) => (
+                        <button
+                          key={suggestedUser.username}
+                          type="button"
+                          onClick={() => {
+                            setVisibleError(null);
+                            setSelectedRecipient(suggestedUser);
+                            setUserQuery("");
+                            setUserSuggestions([]);
+                          }}
+                        >
+                          <strong>{suggestedUser.name}</strong>
+                          <span>@{suggestedUser.username}</span>
+                        </button>
+                      ))}
+                      {!searchingUsers && userSuggestions.length === 0 && <p>{labels.noUsersFound}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="problem-challenge-problem-field">
             <span className="text-sm font-medium">{labels.problem}</span>
@@ -154,15 +279,17 @@ export function ProblemChallengeDialog({
                     {selectedProblem.difficulty !== null ? ` · ${selectedProblem.difficulty}/100` : ""}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="icon-button secondary"
-                  onClick={() => setSelectedProblem(null)}
-                  title={labels.close}
-                  aria-label={labels.close}
-                >
-                  <X size={15} aria-hidden="true" />
-                </button>
+                {!fixedProblem && (
+                  <button
+                    type="button"
+                    className="icon-button secondary"
+                    onClick={() => setSelectedProblem(null)}
+                    title={labels.close}
+                    aria-label={labels.close}
+                  >
+                    <X size={15} aria-hidden="true" />
+                  </button>
+                )}
               </div>
             ) : (
               <div className="problem-challenge-search">
@@ -216,7 +343,7 @@ export function ProblemChallengeDialog({
 
           <footer>
             <button type="button" className="secondary" onClick={closeDialog}>{labels.cancel}</button>
-            <ChallengeSubmitButton labels={labels} disabled={!selectedProblem} />
+            <ChallengeSubmitButton labels={labels} disabled={!selectedProblem || !activeRecipient} />
           </footer>
         </form>
       </dialog>

@@ -19,7 +19,7 @@ export type ProblemChallengeActionState = {
 };
 
 export async function createProblemChallengeAction(
-  recipientUsername: string,
+  fixedRecipientUsername: string | null,
   _state: ProblemChallengeActionState,
   formData: FormData
 ): Promise<ProblemChallengeActionState> {
@@ -31,8 +31,11 @@ export async function createProblemChallengeAction(
   }
 
   const problemSlug = String(formData.get("problemSlug") ?? "").trim();
+  const recipientUsername =
+    fixedRecipientUsername ?? String(formData.get("recipientUsername") ?? "").trim();
   const message = normalizeProblemChallengeMessage(formData.get("message"));
   if (!problemSlug) return { error: "chooseProblem", ok: false };
+  if (!recipientUsername) return { error: "chooseUser", ok: false };
 
   const [recipient, problem] = await Promise.all([
     prisma.user.findUnique({

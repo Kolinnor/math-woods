@@ -10,6 +10,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { ProblemHintReveal } from "@/components/ProblemHintReveal";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
@@ -27,7 +28,7 @@ import {
 } from "@/lib/actions/proof-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { domainLabel } from "@/lib/domains";
+import { translatedDomainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
 import { getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
@@ -878,6 +879,24 @@ export default async function ProblemPage({
                 </Link>
               ))}
             </div>
+          </section>
+        )}
+
+        {user && problem.status === "PUBLISHED" && problem.listed && (
+          <section className="sidebar-section problem-rail-challenge">
+            <ProblemChallengeDialog
+              buttonClassName="secondary w-full"
+              buttonLabel={t.social.challenge.challengeProblem}
+              initialProblem={{
+                difficulty: problem.difficulty,
+                domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
+                language: problem.language,
+                listed: problem.listed,
+                slug: problem.slug,
+                title: problem.title
+              }}
+              labels={t.social.challenge}
+            />
           </section>
         )}
       </aside>

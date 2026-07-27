@@ -1591,7 +1591,8 @@ a {
   padding: 1rem;
 }
 
-.problem-challenge-problem-field {
+.problem-challenge-problem-field,
+.problem-challenge-recipient-field {
   display: grid;
   gap: 0.45rem;
   min-width: 0;
@@ -1702,6 +1703,10 @@ a {
   align-items: center;
   display: inline-flex;
   gap: 0.45rem;
+}
+
+.problem-rail-challenge .challenge-button {
+  justify-content: center;
 }
 
 @media (max-width: 520px) {
