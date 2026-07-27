@@ -5,20 +5,16 @@ import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import type { ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
+import type { Dictionary, InterfaceLocale } from "@/lib/i18n/types";
 
 type SortKey = "family" | "name" | "diff" | "date";
 
 type ProblemDomainStripProps = {
   domains: ProblemDomainOption[];
   families: Record<ProblemDomainFamily, { label: string; color: string; order: number }>;
+  labels: Dictionary["problems"]["domainBrowser"];
+  locale: InterfaceLocale;
   selectedDomain?: string;
-};
-
-const SORT_LABELS: Record<SortKey, string> = {
-  family: "theme",
-  name: "A-Z",
-  diff: "difficulty",
-  date: "date"
 };
 
 function normalized(value: string | undefined) {
@@ -29,18 +25,30 @@ function matchesDomain(value: string, aliases: string[] | undefined, activeDomai
   return [value, ...(aliases ?? [])].map(normalized).includes(activeDomain);
 }
 
-export function ProblemDomainStrip({ domains, families, selectedDomain }: ProblemDomainStripProps) {
+function template(value: string, key: string, replacement: string) {
+  return value.replace(`{${key}}`, replacement);
+}
+
+export function ProblemDomainStrip({ domains, families, labels, locale, selectedDomain }: ProblemDomainStripProps) {
   const [sort, setSort] = useState<SortKey>("family");
   const [open, setOpen] = useState(false);
   const activeDomain = normalized(selectedDomain);
   const sortedDomains = useMemo(() => {
     return [...domains].sort((a, b) => {
-      if (sort === "name") return a.label.localeCompare(b.label, "fr");
-      if (sort === "diff") return a.diff - b.diff || a.label.localeCompare(b.label, "fr");
-      if (sort === "date") return a.year - b.year || a.label.localeCompare(b.label, "fr");
-      return families[a.family].order - families[b.family].order || a.label.localeCompare(b.label, "fr");
+      if (sort === "name") return a.label.localeCompare(b.label, locale);
+      if (sort === "diff") return a.diff - b.diff || a.label.localeCompare(b.label, locale);
+      if (sort === "date") return a.year - b.year || a.label.localeCompare(b.label, locale);
+      return families[a.family].order - families[b.family].order || a.label.localeCompare(b.label, locale);
     });
-  }, [domains, families, sort]);
+  }, [domains, families, locale, sort]);
+  const activeSortLabel =
+    sort === "family"
+      ? labels.sortLabels.family
+      : sort === "name"
+        ? labels.sortLabels.name
+        : sort === "diff"
+          ? labels.sortLabels.difficulty
+          : labels.sortLabels.date;
 
   function choose(nextSort: SortKey) {
     setSort(nextSort);
@@ -51,29 +59,29 @@ export function ProblemDomainStrip({ domains, families, selectedDomain }: Proble
     <section className="problem-domain-strip" aria-labelledby="problem-domain-strip-title">
       <div className="problem-domain-strip-header">
         <div className="problem-domain-strip-title-row">
-          <h2 id="problem-domain-strip-title">Browse by domain</h2>
+          <h2 id="problem-domain-strip-title">{labels.title}</h2>
           <Link href="/problems" scroll={false}>
-            all domains
+            {labels.allDomains}
           </Link>
         </div>
         <div className="problem-domain-strip-actions">
           <div className="problem-domain-sort">
             <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-              by {SORT_LABELS[sort]} <span aria-hidden="true">▾</span>
+              {template(labels.sortBy, "label", activeSortLabel)} <span aria-hidden="true">▾</span>
             </button>
             {open && (
               <div className="problem-domain-sort-menu">
                 <button type="button" onClick={() => choose("family")}>
-                  Theme
+                  {labels.sortOptions.family}
                 </button>
                 <button type="button" onClick={() => choose("name")}>
-                  Alphabetical
+                  {labels.sortOptions.name}
                 </button>
                 <button type="button" onClick={() => choose("diff")}>
-                  Difficulty
+                  {labels.sortOptions.difficulty}
                 </button>
                 <button type="button" onClick={() => choose("date")}>
-                  Historical date
+                  {labels.sortOptions.date}
                 </button>
               </div>
             )}
@@ -82,7 +90,7 @@ export function ProblemDomainStrip({ domains, families, selectedDomain }: Proble
       </div>
       <div className="problem-domain-tile-grid">
         {sortedDomains.map((domain) => {
-          const subdomains = [...(domain.children ?? [])].sort((left, right) => left.label.localeCompare(right.label, "en"));
+          const subdomains = [...(domain.children ?? [])].sort((left, right) => left.label.localeCompare(right.label, locale));
           const activeSubdomain = subdomains.find((subdomain) =>
             matchesDomain(subdomain.value, subdomain.aliases, activeDomain)
           );
@@ -103,8 +111,8 @@ export function ProblemDomainStrip({ domains, families, selectedDomain }: Proble
               {subdomains.length > 0 && (
                 <AutoClosingDetails className="problem-domain-subdomains">
                   <summary
-                    aria-label={`Show ${domain.label} subdomains`}
-                    title={`Show ${domain.label} subdomains`}
+                    aria-label={template(labels.showSubdomains, "domain", domain.label)}
+                    title={template(labels.showSubdomains, "domain", domain.label)}
                   >
                     <ChevronDown size={12} aria-hidden="true" />
                   </summary>

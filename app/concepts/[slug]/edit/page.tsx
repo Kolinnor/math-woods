@@ -10,14 +10,14 @@ import { deleteConceptAction, updateConceptAction } from "@/lib/actions/concept-
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canChangeConceptStatus, canDeleteConcept, canEditConcept, canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditConceptPage({ params }: { params: Promise<{ slug: string }> }) {
   const user = await requireVerifiedUser();
-  const t = await getTranslations();
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
   const concept = await prisma.concept.findUnique({
     where: { slug },
@@ -103,10 +103,12 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
         <div className="grid gap-4">
           <ProblemDomainPicker
             domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
-            helpText="Choose one Math Woods domain."
+            helpText={t.problems.domainPicker.chooseOne}
             initialValues={[concept.domainCode]}
             inputName="domain"
-            label="Domain"
+            label={t.problems.domainPicker.domain}
+            labels={t.problems.domainPicker}
+            locale={interfaceLocale}
             maxDomains={1}
             showSubdomains
             showSpoilerToggle={false}

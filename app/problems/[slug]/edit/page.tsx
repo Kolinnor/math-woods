@@ -23,7 +23,7 @@ import {
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canDeleteProblem, canEditProblem, canSetProblemQualityStatus, canUseAdminTools } from "@/lib/permissions";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 
@@ -31,7 +31,7 @@ export const dynamic = "force-dynamic";
 
 export default async function EditProblemPage({ params }: { params: Promise<{ slug: string }> }) {
   const user = await requireVerifiedUser();
-  const t = await getTranslations();
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
   const problem = await prisma.problem.findUnique({
     where: { slug },
@@ -146,6 +146,8 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                 domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
                 initialValues={problem.domains.length ? problem.domains.map((item) => item.mscCode) : [problem.domain]}
                 initialSpoilers={problem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)}
+                labels={t.problems.domainPicker}
+                locale={interfaceLocale}
                 showSubdomains
               />
             </section>

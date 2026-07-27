@@ -2,6 +2,7 @@ import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
 import type { InterfaceLocale } from "@/lib/i18n/types";
+import type { ProblemChallengeLabels } from "@/lib/problem-challenges";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -16,6 +17,8 @@ export type FriendsMenuData = {
     id: number;
     name: string;
     online: boolean;
+    unreadCount: number;
+    unreadLabel: string | null;
     username: string;
   }>;
   timeZone: string | null;
@@ -23,6 +26,7 @@ export type FriendsMenuData = {
   labels: {
     friends: string;
     backToFriends: string;
+    challenge: ProblemChallengeLabels;
     closeChat: string;
     noFriendsYet: string;
     noMessagesYet: string;
@@ -43,7 +47,7 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
   const t = dictionaryForLocale(locale);
   const now = new Date();
   const onlineSince = new Date(now.getTime() - ONLINE_WINDOW_MS);
-  const [friendships, incomingCount, unreadChatCount] = await Promise.all([
+  const [friendships, incomingCount, unreadChatGroups] = await Promise.all([
     prisma.friendship.findMany({
       where: {
         status: FriendshipStatus.ACCEPTED,
@@ -62,14 +66,22 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
         status: FriendshipStatus.PENDING
       }
     }),
-    prisma.notification.count({
+    prisma.notification.groupBy({
+      by: ["actorId"],
       where: {
         userId,
         readAt: null,
         type: NotificationType.CHAT_MESSAGE
-      }
+      },
+      _count: { _all: true }
     })
   ]);
+  const unreadChatCount = unreadChatGroups.reduce((total, group) => total + group._count._all, 0);
+  const unreadByFriendId = new Map<number, number>();
+  for (const group of unreadChatGroups) {
+    if (group.actorId === null) continue;
+    unreadByFriendId.set(group.actorId, group._count._all);
+  }
   const friendIds = friendships.map((friendship) =>
     friendship.requesterId === userId ? friendship.addresseeId : friendship.requesterId
   );
@@ -87,13 +99,24 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
   const onlineIds = new Set(onlineSessions.map((session) => session.userId));
   const friends = friendships
     .map((friendship) => (friendship.requesterId === userId ? friendship.addressee : friendship.requester))
-    .map((friend) => ({
-      id: friend.id,
-      name: displayNameForUser(friend),
-      online: onlineIds.has(friend.id),
-      username: friend.username
-    }))
-    .sort((left, right) => Number(right.online) - Number(left.online) || left.name.localeCompare(right.name));
+    .map((friend) => {
+      const unreadCount = unreadByFriendId.get(friend.id) ?? 0;
+      return {
+        id: friend.id,
+        name: displayNameForUser(friend),
+        online: onlineIds.has(friend.id),
+        unreadCount,
+        unreadLabel: unreadCount > 0 ? t.social.unreadMessages(unreadCount) : null,
+        username: friend.username
+      };
+    })
+    .sort(
+      (left, right) =>
+        Number(right.unreadCount > 0) - Number(left.unreadCount > 0) ||
+        right.unreadCount - left.unreadCount ||
+        Number(right.online) - Number(left.online) ||
+        left.name.localeCompare(right.name)
+    );
   const onlineCount = friends.filter((friend) => friend.online).length;
   const actionCount = incomingCount + unreadChatCount;
 
@@ -108,6 +131,7 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
     labels: {
       friends: t.social.friends,
       backToFriends: t.social.backToFriends,
+      challenge: t.social.challenge,
       closeChat: t.social.closeChat,
       noFriendsYet: t.social.noFriendsYet,
       noMessagesYet: t.social.noMessagesYet,

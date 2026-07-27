@@ -31,7 +31,7 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
   return (
     <AutoClosingDetails className="notification-menu">
       <summary aria-label={t.notifications.openMenu} title={t.notifications.title}>
-        <Bell size={18} />
+        <Bell size={20} />
         {unreadCount > 0 && <span className="notification-badge">{Math.min(unreadCount, 99)}</span>}
       </summary>
       <div className="notification-popover">

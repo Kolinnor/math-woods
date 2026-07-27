@@ -142,6 +142,11 @@ const notificationOptions = [
     description: "When a friend sends you a private message."
   },
   {
+    type: NotificationType.PROBLEM_CHALLENGE,
+    title: "Problem challenges",
+    description: "When another user challenges you to solve a problem."
+  },
+  {
     type: NotificationType.EXPLORATION_PUBLISHED,
     title: "Exploration publications",
     description: "When an exploration you follow is published."

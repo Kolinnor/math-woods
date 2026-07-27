@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ChatMessageForm } from "@/components/ChatMessageForm";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
+import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { sendFriendRequestAction } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -117,6 +118,11 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           <Link href={`/profile/${otherUser.username}`} className="button secondary">
             {t.social.profile}
           </Link>
+          <ProblemChallengeDialog
+            labels={t.social.challenge}
+            recipientName={displayNameForUser(otherUser)}
+            recipientUsername={otherUser.username}
+          />
         </>
       }
     >

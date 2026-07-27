@@ -343,17 +343,17 @@ export function translatedDomainLabel(
   return labels[option.value] ?? labels[option.domain] ?? option.label;
 }
 
-export function translatedDomainOptions(
-  domains: readonly DomainOption[],
+export function translatedDomainOptions<T extends DomainOption>(
+  domains: readonly T[],
   labels: Partial<Record<string, string>>
-): DomainOption[] {
+): T[] {
   return domains.map((domain) => ({
     ...domain,
     label: translatedDomainLabel(domain.value, labels),
     ...(domain.children
       ? { children: translatedDomainOptions(domain.children, labels) }
       : {})
-  }));
+  })) as T[];
 }
 
 export function domainDescription(domain: MathDomain | string | null | undefined) {

@@ -26,6 +26,7 @@ const configurableNotificationTypes = [
   NotificationType.CONTRIBUTION_REQUEST_REMINDER,
   NotificationType.FRIEND_REQUEST,
   NotificationType.CHAT_MESSAGE,
+  NotificationType.PROBLEM_CHALLENGE,
   NotificationType.EXPLORATION_PUBLISHED
 ] as const;
 

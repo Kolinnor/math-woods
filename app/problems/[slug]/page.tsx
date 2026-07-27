@@ -164,7 +164,8 @@ export default async function ProblemPage({
     await markNotificationsReadForHref(user.id, `/problems/${problem.slug}`, [
       NotificationType.PROOF_ADDED,
       NotificationType.PROBLEM_SOLVED,
-      NotificationType.PROBLEM_CREATED
+      NotificationType.PROBLEM_CREATED,
+      NotificationType.PROBLEM_CHALLENGE
     ]);
   }
   const hasSpecifiedOrigin =

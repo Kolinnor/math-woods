@@ -4,7 +4,9 @@ import { MathDomain } from "@prisma/client";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { translatedDomainLabel } from "@/lib/domains";
 import { explorationCatalogWhere } from "@/lib/explorations";
+import { getTranslations } from "@/lib/i18n/server";
 import { contentLanguageLabel } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
@@ -17,6 +19,7 @@ export default async function ExplorationsPage({
   searchParams: Promise<{ q?: string; domain?: string; duration?: string; difficulty?: string }>;
 }) {
   const preferredLanguage = await getPreferredContentLanguage();
+  const t = await getTranslations();
   const user = await getCurrentUser();
   const filters = await searchParams;
   const query = String(filters.q ?? "").trim();
@@ -73,7 +76,9 @@ export default async function ExplorationsPage({
         <label className="exploration-catalog-search"><Search size={17} /><input name="q" defaultValue={query} placeholder="Search title, topic or audience" aria-label="Search explorations" /></label>
         <select name="domain" defaultValue={domain ?? ""} aria-label="Mathematics domain">
           <option value="">All domains</option>
-          {Object.values(MathDomain).map((item) => <option key={item} value={item}>{item.toLocaleLowerCase()}</option>)}
+          {Object.values(MathDomain).map((item) => (
+            <option key={item} value={item}>{translatedDomainLabel(item, t.home.domainLabels)}</option>
+          ))}
         </select>
         <select name="duration" defaultValue={maxDuration ?? ""} aria-label="Maximum duration">
           <option value="">Any duration</option><option value="15">15 min or less</option><option value="30">30 min or less</option><option value="60">1 hour or less</option><option value="180">3 hours or less</option>
@@ -96,7 +101,7 @@ export default async function ExplorationsPage({
                 <img src={exploration.coverImageUrl || "/art/playlists-forest-lodge.webp"} alt="" loading="lazy" />
               </Link>
               <div className="exploration-catalog-copy">
-                <p className="eyebrow">{exploration.domain.toLocaleLowerCase()}</p>
+                <p className="eyebrow">{translatedDomainLabel(exploration.domain, t.home.domainLabels)}</p>
                 <h2><Link href={`/explorations/${exploration.slug}/start` as never}>{exploration.title}</Link></h2>
                 <p>{exploration.summary || "An interactive mathematical exploration."}</p>
                 <div className="exploration-catalog-meta">

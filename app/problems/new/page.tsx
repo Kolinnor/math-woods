@@ -12,7 +12,7 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseContentLanguage } from "@/lib/languages";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -32,7 +32,7 @@ export default async function NewProblemPage({
   }>;
 }) {
   await requireVerifiedUser();
-  const t = await getTranslations();
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const queryParams = await searchParams;
   const draftSession = requireDraftSession("/problems/new", queryParams);
   const { playlist = "", exploration = "", listed = "1", parent = "", translateOf = "", language = "" } = queryParams;
@@ -129,6 +129,8 @@ export default async function NewProblemPage({
               domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
               initialValues={initialDomains}
               initialSpoilers={initialDomainSpoilers}
+              labels={t.problems.domainPicker}
+              locale={interfaceLocale}
               showSubdomains
             />
           </section>

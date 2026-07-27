@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink, Send, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { CHAT_READ_EVENT, chatUnreadDocumentTitle } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
@@ -226,6 +227,13 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 <strong>{selectedFriend.name}</strong>
                 <span><i className={selectedFriend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />{selectedFriend.online ? data.labels.online : data.labels.offline}</span>
               </div>
+              <ProblemChallengeDialog
+                buttonClassName="secondary"
+                iconOnly
+                labels={data.labels.challenge}
+                recipientName={selectedFriend.name}
+                recipientUsername={selectedFriend.username}
+              />
               <Link
                 href={`/chat/${selectedFriend.username}` as never}
                 className="icon-button secondary"
@@ -316,7 +324,17 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 <button key={friend.id} type="button" className="friends-menu-row" onClick={() => setSelectedFriend(friend)}>
                   <span className={friend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
                   <span>{friend.name}</span>
-                  <small>{friend.online ? data.labels.online : data.labels.offline}</small>
+                  {friend.unreadCount > 0 ? (
+                    <small
+                      className="friends-menu-unread-count"
+                      aria-label={friend.unreadLabel ?? undefined}
+                      title={friend.unreadLabel ?? undefined}
+                    >
+                      {friend.unreadCount > 99 ? "99+" : friend.unreadCount}
+                    </small>
+                  ) : (
+                    <small>{friend.online ? data.labels.online : data.labels.offline}</small>
+                  )}
                 </button>
               ))}
               {data.friends.length === 0 && <p>{data.labels.noFriendsYet}</p>}

@@ -4,6 +4,7 @@ import { ExternalLink, Handshake } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import {
   acceptFriendRequestAction,
@@ -151,12 +152,8 @@ export default async function ProfilePage({
   const isSelf = currentUser?.id === user.id;
   const currentUserSolvedIds = new Set(currentUserSolved.map((attempt) => attempt.problemId));
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
-  const profileActions = isSelf ? (
-    <Link href={`/profile/${user.username}/edit`} className="button secondary">
-      {t.profile.editProfile}
-    </Link>
-  ) : currentUser && friendship?.status === FriendshipStatus.ACCEPTED ? (
-    <div className="flex flex-wrap gap-2">
+  const friendshipActions = friendship?.status === FriendshipStatus.ACCEPTED ? (
+    <>
       <Link href={`/chat/${user.username}` as never} className="button">
         {t.profile.message}
       </Link>
@@ -165,9 +162,9 @@ export default async function ProfilePage({
           {t.profile.removeFriend}
         </button>
       </form>
-    </div>
-  ) : currentUser && friendship?.status === FriendshipStatus.PENDING && friendship.addresseeId === currentUser.id ? (
-    <div className="flex flex-wrap gap-2">
+    </>
+  ) : friendship?.status === FriendshipStatus.PENDING && friendship.addresseeId === currentUser?.id ? (
+    <>
       <form action={acceptFriendRequestAction.bind(null, friendship.id)}>
         <button type="submit">{t.profile.acceptFriendRequest}</button>
       </form>
@@ -176,8 +173,8 @@ export default async function ProfilePage({
           {t.social.decline}
         </button>
       </form>
-    </div>
-  ) : currentUser && friendship?.status === FriendshipStatus.PENDING ? (
+    </>
+  ) : friendship?.status === FriendshipStatus.PENDING ? (
     <form action={cancelFriendRequestAction.bind(null, friendship.id)}>
       <button type="submit" className="secondary">
         {t.profile.friendRequestSent}
@@ -187,6 +184,20 @@ export default async function ProfilePage({
     <form action={sendFriendRequestAction.bind(null, user.username)}>
       <button type="submit">{t.social.addFriend}</button>
     </form>
+  ) : null;
+  const profileActions = isSelf ? (
+    <Link href={`/profile/${user.username}/edit`} className="button secondary">
+      {t.profile.editProfile}
+    </Link>
+  ) : currentUser ? (
+    <div className="flex flex-wrap gap-2">
+      <ProblemChallengeDialog
+        labels={t.social.challenge}
+        recipientName={displayNameForUser(user)}
+        recipientUsername={user.username}
+      />
+      {friendshipActions}
+    </div>
   ) : null;
 
   return (

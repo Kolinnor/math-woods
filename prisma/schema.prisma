@@ -208,6 +208,7 @@ enum NotificationType {
   CONTRIBUTION_REQUEST_REMINDER
   FRIEND_REQUEST
   CHAT_MESSAGE
+  PROBLEM_CHALLENGE
   EXPLORATION_PUBLISHED
 }
 
@@ -291,6 +292,8 @@ model User {
   directChatsAsA               DirectChat[]                 @relation("DirectChatUserA")
   directChatsAsB               DirectChat[]                 @relation("DirectChatUserB")
   chatMessages                 ChatMessage[]
+  problemChallengesSent        ProblemChallenge[]            @relation("ProblemChallengeChallenger")
+  problemChallengesReceived    ProblemChallenge[]            @relation("ProblemChallengeRecipient")
   contributionRequestsCreated  ContributionRequest[]        @relation("ContributionRequestRequester")
   contributionRequestsClaimed  ContributionRequest[]        @relation("ContributionRequestClaimedBy")
   explorationCollaborations    ExplorationCollaborator[]
@@ -469,6 +472,7 @@ model Problem {
   incomingRelations        ProblemRelation[]            @relation("ProblemRelationTarget")
   verificationRequests     ProblemVerificationRequest[]
   tipLinks                 TipProblem[]
+  challenges               ProblemChallenge[]
   translatedFromProblem    Problem?                     @relation("ProblemTranslationSource", fields: [translatedFromProblemId], references: [id], onDelete: SetNull)
   derivedTranslations      Problem[]                    @relation("ProblemTranslationSource")
 
@@ -477,6 +481,22 @@ model Problem {
   @@index([language, status, createdAt])
   @@index([translationGroupId])
   @@index([translatedFromProblemId])
+}
+
+model ProblemChallenge {
+  id           Int      @id @default(autoincrement())
+  challengerId Int
+  recipientId  Int
+  problemId    Int
+  message      String?
+  createdAt    DateTime @default(now())
+  challenger   User     @relation("ProblemChallengeChallenger", fields: [challengerId], references: [id], onDelete: Cascade)
+  recipient    User     @relation("ProblemChallengeRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  problem      Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt])
+  @@index([challengerId, createdAt])
+  @@index([problemId])
 }
 
 model ProblemDomain {

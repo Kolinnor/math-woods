@@ -3,6 +3,7 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import type { DomainOption, ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
+import type { Dictionary, InterfaceLocale } from "@/lib/i18n/types";
 
 const MAX_PROBLEM_DOMAINS = 3;
 const DOMAIN_FAMILY_COLORS: Record<ProblemDomainFamily, string> = {
@@ -19,7 +20,9 @@ type ProblemDomainPickerProps = {
   initialValues: string[];
   initialSpoilers?: string[];
   inputName?: string;
+  labels: Dictionary["problems"]["domainPicker"];
   label?: string;
+  locale: InterfaceLocale;
   maxDomains?: number;
   showSubdomains?: boolean;
   showSpoilerToggle?: boolean;
@@ -37,12 +40,18 @@ function findOption(domains: DomainOption[], value: string) {
     .find((domain) => domain.value.toUpperCase() === normalized || domain.aliases?.some((alias) => alias.toUpperCase() === normalized));
 }
 
+function template(value: string, key: string, replacement: string | number) {
+  return value.replace(`{${key}}`, String(replacement));
+}
+
 export function ProblemDomainPicker({
   domains,
   initialValues,
   initialSpoilers = [],
   inputName = "domains",
-  label = "Domains",
+  labels,
+  label,
+  locale,
   maxDomains = MAX_PROBLEM_DOMAINS,
   showSubdomains = false,
   showSpoilerToggle = true,
@@ -104,7 +113,7 @@ export function ProblemDomainPicker({
   return (
     <div className="domain-picker">
       <div className="domain-picker-header">
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-sm font-medium">{label ?? labels.domains}</span>
         {maxDomains > 1 && <span className="domain-picker-count">{values.length}/{maxDomains}</span>}
       </div>
       {values.map((value) => (
@@ -141,8 +150,8 @@ export function ProblemDomainPicker({
                   type="button"
                   className={expandedDomain === domain.value ? "domain-picker-expand active" : "domain-picker-expand"}
                   aria-expanded={expandedDomain === domain.value}
-                  aria-label={`Show ${domain.label} subdomains`}
-                  title={`Show ${domain.label} subdomains`}
+                  aria-label={template(labels.showSubdomains, "domain", domain.label)}
+                  title={template(labels.showSubdomains, "domain", domain.label)}
                   onClick={() => setExpandedDomain((current) => current === domain.value ? null : domain.value)}
                 >
                   <ChevronDown size={12} aria-hidden="true" />
@@ -154,10 +163,10 @@ export function ProblemDomainPicker({
       </div>
       {showSubdomains && expandedDomainOption?.children?.length ? (
         <div className="domain-picker-subdomains">
-          <p>{expandedDomainOption.label} subdomains</p>
+          <p>{template(labels.subdomains, "domain", expandedDomainOption.label)}</p>
           <div className="domain-picker-subdomain-grid">
             {[...expandedDomainOption.children]
-              .sort((left, right) => left.label.localeCompare(right.label, "en"))
+              .sort((left, right) => left.label.localeCompare(right.label, locale))
               .map((subdomain) => (
                 <button
                   key={subdomain.value}
@@ -183,12 +192,14 @@ export function ProblemDomainPicker({
                 checked={spoilers.has(selected.value)}
                 onChange={(event) => toggleSpoiler(selected.value, event.target.checked)}
               />
-              <span>{selected.label} hidden until solved</span>
+              <span>{template(labels.hiddenUntilSolved, "domain", selected.label)}</span>
             </label>
           ))}
         </div>
       )}
-      {helpText !== null && <p className="muted text-xs">{helpText ?? `Choose up to ${maxDomains} domains.`}</p>}
+      {helpText !== null && (
+        <p className="muted text-xs">{helpText ?? template(labels.chooseUpTo, "count", maxDomains)}</p>
+      )}
     </div>
   );
 }

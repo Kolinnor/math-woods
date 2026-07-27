@@ -52,8 +52,10 @@ import {
 import { deletePlaylistAction } from "@/lib/actions/playlist-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { translatedDomainLabel } from "@/lib/domains";
 import { orderExplorationBlocksByFolders } from "@/lib/exploration-block-folders";
 import { canEditExploration, explorationBlockLabel } from "@/lib/explorations";
+import { getTranslations } from "@/lib/i18n/server";
 import { SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { canDeletePlaylist } from "@/lib/permissions";
 
@@ -96,6 +98,7 @@ export default async function EditExplorationPage({
   searchParams: Promise<{ block?: string; view?: string }>;
 }) {
   const user = await requireVerifiedUser();
+  const t = await getTranslations();
   const { slug } = await params;
   const { block: selectedBlockRaw, view } = await searchParams;
   const exploration = await prisma.playlist.findUnique({
@@ -383,7 +386,7 @@ export default async function EditExplorationPage({
               <div className="grid gap-4 md:grid-cols-2">
                 <label><span>Title</span><input name="title" defaultValue={exploration.title} required /></label>
                 <label><span>Short summary</span><input name="summary" defaultValue={exploration.summary ?? ""} /></label>
-                <label><span>Domain</span><select name="domain" defaultValue={exploration.domain}>{Object.values(MathDomain).map((domain) => <option key={domain} value={domain}>{domain.toLocaleLowerCase()}</option>)}</select></label>
+                <label><span>Domain</span><select name="domain" defaultValue={exploration.domain}>{Object.values(MathDomain).map((domain) => <option key={domain} value={domain}>{translatedDomainLabel(domain, t.home.domainLabels)}</option>)}</select></label>
                 <label><span>Audience</span><input name="audience" defaultValue={exploration.audience ?? ""} /></label>
                 <label><span>Estimated minutes</span><input name="estimatedMinutes" type="number" min={1} defaultValue={exploration.estimatedMinutes ?? ""} /></label>
                 <label><span>Difficulty / 100</span><input name="difficulty" type="number" min={0} max={100} defaultValue={exploration.difficulty ?? ""} /></label>

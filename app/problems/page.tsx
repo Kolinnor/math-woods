@@ -19,9 +19,10 @@ import {
   parseDomainCode,
   PROBLEM_DOMAIN_FAMILIES,
   PROBLEM_DOMAINS,
-  translatedDomainLabel as translatedDomainOptionLabel
+  translatedDomainLabel as translatedDomainOptionLabel,
+  translatedDomainOptions
 } from "@/lib/domains";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
@@ -283,7 +284,7 @@ export default async function ProblemsPage({
   }>;
 }) {
   const user = await getCurrentUser();
-  const t = await getTranslations();
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const {
     q = "",
     tag = "",
@@ -624,7 +625,13 @@ export default async function ProblemsPage({
         </div>
       </section>
 
-      <ProblemDomainStrip domains={PROBLEM_DOMAINS} families={PROBLEM_DOMAIN_FAMILIES} selectedDomain={domainValue} />
+      <ProblemDomainStrip
+        domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
+        families={PROBLEM_DOMAIN_FAMILIES}
+        labels={t.problems.domainBrowser}
+        locale={interfaceLocale}
+        selectedDomain={domainValue}
+      />
 
       <div className="problems-workspace">
         <aside className="problems-filter-panel">

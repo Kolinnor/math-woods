@@ -25,6 +25,13 @@ import {
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
 import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
+import { en } from "../lib/i18n/dictionaries/en.ts";
+import { fr } from "../lib/i18n/dictionaries/fr.ts";
+import {
+  normalizeProblemChallengeMessage,
+  problemChallengeNotificationBody,
+  PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH
+} from "../lib/problem-challenges.ts";
 import {
   CONTENT_CREATION_WINDOW_MS,
   assertDailyContentCreationQuota,
@@ -123,7 +130,8 @@ import {
   FLAT_PROBLEM_DOMAIN_OPTIONS,
   parseDomainCode,
   PROBLEM_DOMAINS,
-  translatedDomainLabel
+  translatedDomainLabel,
+  translatedDomainOptions
 } from "../lib/domains.ts";
 import {
   DEFAULT_MARKDOWN_HEADING_SHORTCUTS,
@@ -1315,5 +1323,45 @@ assert.deepEqual(filterMathematicians(mathematicianFixtures, { collaborationOnly
 assert.equal(mathematicianContributionCount(mathematicianFixtures[0]), 5);
 assert.deepEqual(sortMathematicians(mathematicianFixtures, "reputation").map((user) => user.username), ["emmy", "ada"]);
 assert.deepEqual(sortMathematicians(mathematicianFixtures, "contributions").map((user) => user.username), ["ada", "emmy"]);
+
+const problemDomainValues = PROBLEM_DOMAINS.flatMap((domain) => [
+  domain.value,
+  ...(domain.children ?? []).map((child) => child.value)
+]);
+const englishDomainLabels = en.home.domainLabels as Record<string, string>;
+const frenchDomainLabels = fr.home?.domainLabels as Record<string, string>;
+for (const domainValue of problemDomainValues) {
+  assert.equal(typeof englishDomainLabels[domainValue], "string", `Missing English domain label for ${domainValue}`);
+  assert.equal(typeof frenchDomainLabels[domainValue], "string", `Missing French domain label for ${domainValue}`);
+}
+const frenchProblemDomains = translatedDomainOptions(PROBLEM_DOMAINS, frenchDomainLabels);
+assert.equal(frenchProblemDomains.find((domain) => domain.value === "linear-algebra")?.label, "Algèbre linéaire");
+assert.equal(
+  frenchProblemDomains
+    .find((domain) => domain.value === "linear-algebra")
+    ?.children?.find((domain) => domain.value === "linear-algebra-lie-algebras")?.label,
+  "Algèbres de Lie"
+);
+
+assert.equal(normalizeProblemChallengeMessage("  Try this one!  "), "Try this one!");
+assert.equal(
+  normalizeProblemChallengeMessage("x".repeat(PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH + 20)).length,
+  PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH
+);
+assert.equal(
+  problemChallengeNotificationBody({
+    challengerName: "Emmy",
+    problemTitle: "A short proof",
+    message: "I think you will like it."
+  }),
+  'Emmy challenged you to solve "A short proof". I think you will like it.'
+);
+assert.equal(
+  problemChallengeNotificationBody({
+    challengerName: "Emmy",
+    problemTitle: "A short proof"
+  }),
+  'Emmy challenged you to solve "A short proof".'
+);
 
 console.log("core tests ok");

@@ -159,7 +159,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
             <div className="nav-tools">
               <LanguageSelector initialLanguage={initialLanguage} />
-              {user && <NotificationsMenu userId={user.id} />}
               <AutoClosingDetails className="nav-menu">
                 <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle}>
                   <Menu size={18} />
@@ -197,6 +196,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {user && <AchievementToast userId={user.id} />}
         {user && (
           <div className="floating-friends-menu">
+            <NotificationsMenu userId={user.id} />
             <FriendsMenu userId={user.id} />
           </div>
         )}

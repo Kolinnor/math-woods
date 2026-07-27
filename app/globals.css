@@ -503,7 +503,10 @@ a {
 }
 
 .floating-friends-menu {
+  align-items: center;
   bottom: max(1rem, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 0.65rem;
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
   z-index: 70;
@@ -517,12 +520,12 @@ a {
   color: var(--muted);
   cursor: pointer;
   display: flex;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  gap: 0.35rem;
-  height: 2.4rem;
+  gap: 0.45rem;
+  height: 3rem;
   list-style: none;
-  padding: 0 0.65rem;
+  padding: 0 0.85rem;
 }
 
 .friends-menu summary::-webkit-details-marker {
@@ -566,6 +569,17 @@ a {
 
 .floating-friends-menu .friends-menu summary {
   box-shadow: var(--shadow);
+}
+
+.floating-friends-menu .notification-menu summary {
+  box-shadow: var(--shadow);
+  height: 3rem;
+  width: 3rem;
+}
+
+.floating-friends-menu .notification-popover {
+  bottom: calc(100% + 0.5rem);
+  top: auto;
 }
 
 .floating-friends-menu .friends-menu-popover {
@@ -629,6 +643,20 @@ a {
   font-weight: 500;
 }
 
+.friends-menu-row .friends-menu-unread-count {
+  align-items: center;
+  background: var(--notice-red-stripe);
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 800;
+  height: 1.25rem;
+  justify-content: center;
+  min-width: 1.25rem;
+  padding: 0 0.3rem;
+}
+
 .friends-menu-popover p {
   color: var(--muted);
   font-size: 0.85rem;
@@ -662,7 +690,7 @@ a {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 0.55rem;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   padding: 0.25rem 0.2rem 0.55rem;
 }
 
@@ -920,6 +948,34 @@ a {
   color: var(--muted);
   margin: 0;
   padding: 1rem;
+}
+
+@media (max-width: 640px) {
+  .floating-friends-menu {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    gap: 0.5rem;
+    right: max(0.75rem, env(safe-area-inset-right));
+  }
+
+  .floating-friends-menu .friends-menu summary {
+    font-size: 0.78rem;
+    height: 2.75rem;
+    padding: 0 0.6rem;
+  }
+
+  .floating-friends-menu .notification-menu summary {
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+
+  .floating-friends-menu .notification-popover {
+    bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 3.25rem);
+    left: max(0.75rem, env(safe-area-inset-left));
+    min-width: 0;
+    position: fixed;
+    right: max(0.75rem, env(safe-area-inset-right));
+    width: auto;
+  }
 }
 
 .achievement-toast {
@@ -1481,6 +1537,183 @@ a {
 
 .contribution-request-dialog textarea {
   min-height: 10rem;
+}
+
+.problem-challenge-dialog {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  margin: auto;
+  max-height: min(46rem, calc(100dvh - 2rem));
+  max-width: calc(100vw - 2rem);
+  overflow: auto;
+  padding: 0;
+  width: 34rem;
+}
+
+.problem-challenge-dialog::backdrop {
+  background: color-mix(in srgb, #111 42%, transparent);
+}
+
+.problem-challenge-header {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 1rem;
+}
+
+.problem-challenge-header h2 {
+  font-size: 1.1rem;
+  font-weight: 760;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.problem-challenge-mark {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 7px;
+  color: var(--accent);
+  display: flex;
+  height: 2.8rem;
+  justify-content: center;
+  width: 2.8rem;
+}
+
+.problem-challenge-form {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.problem-challenge-problem-field {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.problem-challenge-search {
+  position: relative;
+}
+
+.problem-challenge-search > svg {
+  color: var(--muted);
+  left: 0.75rem;
+  pointer-events: none;
+  position: absolute;
+  top: 0.85rem;
+  z-index: 1;
+}
+
+.problem-challenge-search > input {
+  padding-left: 2.25rem;
+  width: 100%;
+}
+
+.problem-challenge-suggestions {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  max-height: min(18rem, 42dvh);
+  overflow-y: auto;
+  padding: 0.4rem;
+  position: static;
+}
+
+.problem-challenge-suggestions button {
+  align-items: start;
+  background: var(--panel-muted);
+  border-color: var(--line);
+  box-shadow: none;
+  color: var(--ink);
+  display: grid;
+  gap: 0.15rem;
+  justify-items: start;
+  text-align: left;
+  width: 100%;
+}
+
+.problem-challenge-suggestions button:hover {
+  border-color: var(--accent-border);
+}
+
+.problem-challenge-suggestions strong,
+.problem-challenge-selected strong {
+  overflow-wrap: anywhere;
+}
+
+.problem-challenge-suggestions span,
+.problem-challenge-selected span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.problem-challenge-suggestions p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0;
+  padding: 0.65rem;
+}
+
+.problem-challenge-selected {
+  align-items: center;
+  background: var(--panel-muted);
+  border: 1px solid var(--accent-border);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.75rem;
+}
+
+.problem-challenge-selected > div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.problem-challenge-form textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+}
+
+.problem-challenge-form footer {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+.problem-challenge-form footer button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.challenge-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+@media (max-width: 520px) {
+  .problem-challenge-dialog {
+    max-height: calc(100dvh - 1rem);
+    max-width: calc(100vw - 1rem);
+  }
+
+  .problem-challenge-form footer > button {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 .contribution-request-board {
