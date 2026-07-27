@@ -35,7 +35,8 @@ import {
   latexPreviewDiagnosticsForRange,
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
-  latexPreviewUsesCenteredLine
+  latexPreviewUsesCenteredLine,
+  selectionSpansLineBreakInsideLatexRange
 } from "../lib/latex-live-preview.ts";
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
 import { explorationSnapshotPages } from "../lib/exploration-snapshot.ts";
@@ -388,6 +389,38 @@ assert.equal(latexPreviewRenderMode(standaloneDoubleDollarText, standaloneDouble
 assert.equal(latexPreviewUsesBlockDecoration(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), false);
 assert.equal(latexPreviewUsesCenteredLine(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0]), true);
 assert.deepEqual(latexPreviewDiagnosticsForRange(standaloneDoubleDollarText, standaloneDoubleDollarRanges[0], true, false), []);
+const multilineDisplayText = String.raw`$$\begin{array}{rlrl}
+G \times G & \longrightarrow G & G & \longrightarrow G \\
+(g, h) & \longmapsto g h & g & \longmapsto g^{-1}
+\end{array}$$`;
+const multilineDisplayRange = findLatexRanges(multilineDisplayText)[0];
+assert.equal(
+  selectionSpansLineBreakInsideLatexRange(
+    multilineDisplayText,
+    multilineDisplayRange,
+    multilineDisplayRange.from + 2,
+    multilineDisplayRange.to - 2
+  ),
+  true
+);
+assert.equal(
+  selectionSpansLineBreakInsideLatexRange(
+    multilineDisplayText,
+    multilineDisplayRange,
+    multilineDisplayRange.from + 2,
+    multilineDisplayText.indexOf("\n")
+  ),
+  false
+);
+assert.equal(
+  selectionSpansLineBreakInsideLatexRange(
+    multilineDisplayText,
+    multilineDisplayRange,
+    multilineDisplayRange.to,
+    multilineDisplayRange.to
+  ),
+  false
+);
 const centeredDoubleDollarText = "$$2x+1=3x+2$$";
 const centeredDoubleDollarRanges = findLatexRanges(centeredDoubleDollarText);
 assert.equal(centeredDoubleDollarRanges[0]?.displayMode, true);

@@ -56,6 +56,17 @@ export function latexPreviewUsesCenteredLine(text: string, range: LatexRange) {
   return range.displayMode && rangeIsStandaloneLine(text, range.from, range.to);
 }
 
+export function selectionSpansLineBreakInsideLatexRange(
+  text: string,
+  range: LatexRange,
+  selectionFrom: number,
+  selectionTo: number
+) {
+  const from = Math.max(range.from, Math.min(selectionFrom, selectionTo));
+  const to = Math.min(range.to, Math.max(selectionFrom, selectionTo));
+  return from < to && text.slice(from, to).includes("\n");
+}
+
 export function latexPreviewLayoutKind(renderDisplayMode: boolean, useBlockLayout: boolean): LatexPreviewLayoutKind {
   if (useBlockLayout) return "block-display";
   return renderDisplayMode ? "inline-display" : "inline";

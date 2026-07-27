@@ -436,3 +436,26 @@ Guardrail:
 - Delete immediately before a rendered wiki-link must delete only its first `[`. Selections and ordinary cursor
   positions must keep CodeMirror's native deletion behavior.
 - Wiki-link-like text inside Markdown code spans or fences must not receive this special handling.
+
+## 2026-07-27 - Multi-line display selections must remove the active preview before deletion
+
+Symptom:
+
+- Selecting everything inside a multi-line `$$...$$` range, while leaving both delimiters in place, then pressing
+  Backspace could leave the old KaTeX preview squeezed into a one-character-wide column.
+- The Markdown deletion itself was correct: the document became `$$$$`. The corruption was a stale editor layout,
+  not saved text.
+
+Root cause:
+
+- An active display-math range intentionally showed raw source plus a secondary KaTeX widget anchored at the closing
+  delimiter.
+- That secondary widget remained mounted while the multi-line selection was deleted. CodeMirror could measure it
+  against the collapsed post-deletion line before removing it.
+
+Guardrail:
+
+- While a non-empty selection crosses a line break inside a LaTeX range, keep only the raw highlighted source and do
+  not mount the secondary active display preview.
+- Keep the active preview for cursor-only edits and single-line selections.
+- Preserve the existing one-state global preview suppression after transactions that remove line breaks.

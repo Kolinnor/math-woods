@@ -40,6 +40,7 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
   latexPreviewUsesCenteredLine,
+  selectionSpansLineBreakInsideLatexRange,
   type LatexPreviewDiagnostic
 } from "@/lib/latex-live-preview";
 import {
@@ -1232,13 +1233,16 @@ function buildLivePreviewDecorations(state: EditorState) {
     const suppressPreview =
       suppressJoinedLinePreview &&
       !selectionOverlapsRange(state, range.from, range.to);
+    const selectionSpansLineBreak = state.selection.ranges.some((selection) =>
+      selectionSpansLineBreakInsideLatexRange(text, range, selection.from, selection.to)
+    );
 
     if (selectionOverlapsRange(state, range.from, range.to) || suppressPreview) {
       const activeDecorations = findLatexSyntaxTokens(text, range).map((token) =>
         Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
       );
 
-      if (renderDisplayMode && !suppressPreview) {
+      if (renderDisplayMode && !suppressPreview && !selectionSpansLineBreak) {
         activeDecorations.push(
           Decoration.widget({
             widget,
