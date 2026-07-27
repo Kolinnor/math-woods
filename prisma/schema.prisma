@@ -41,8 +41,7 @@ enum MathDomain {
 
 enum QualityStatus {
   UNREVIEWED
-  GOOD
-  EXCELLENT
+  REVIEWED
   NEEDS_WORK
 }
 

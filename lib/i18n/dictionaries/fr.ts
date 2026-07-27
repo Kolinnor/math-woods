@@ -21,8 +21,7 @@ export const fr = {
   },
   quality: {
     NEEDS_WORK: "À retravailler",
-    GOOD: "Bon",
-    EXCELLENT: "Excellent",
+    REVIEWED: "Relu",
     UNREVIEWED: "Non relu"
   },
   nav: {
@@ -437,8 +436,8 @@ export const fr = {
     languages: "Langues",
     needsWork: "À retravailler",
     unreviewed: "Non relu",
-    good: "Bon",
-    excellent: "Excellent",
+    reviewed: "Relu",
+    featured: "Mis en avant",
     includeSpoilers: "Inclure les spoilers",
     ariaLabel: "Problèmes",
     showingResults: (total: number) => `${total} problème${total > 1 ? "s" : ""} affiché${total > 1 ? "s" : ""}`,
@@ -516,7 +515,7 @@ export const fr = {
     editedBy: (name: string) => `modifié par ${name}`,
     needsWorkNotice: "Ce problème a été marqué comme à retravailler.",
     unreviewedNotice: "Ce problème n'a pas encore été relu par des utilisateurs de confiance.",
-    markGoodEnough: "Ce problème me semble suffisamment bon",
+    markReviewed: "Marquer comme relu",
     playlistSpecific: "Spécifique à une exploration / non listé",
     spoilerDomainHiddenUntilSolved: "domaine spoiler masqué jusqu'à résolution",
     origin: "Origine :",

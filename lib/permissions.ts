@@ -106,9 +106,15 @@ export function canDeleteProblem(user: PermissionUser, problem: ProblemPermissio
 
 export function canSetProblemQualityStatus(role: Role, status: QualityStatus) {
   if (status === QualityStatus.UNREVIEWED || status === QualityStatus.NEEDS_WORK) return true;
-  if (status === QualityStatus.GOOD) return hasTrustedPrivileges(role);
-  if (status === QualityStatus.EXCELLENT) return hasAdminPrivileges(role);
+  if (status === QualityStatus.REVIEWED) return hasTrustedPrivileges(role);
   return false;
+}
+
+export function canReviewProblem(user: PermissionUser, problem: ProblemPermissionTarget) {
+  return (
+    problem.authorId !== user.id &&
+    canSetProblemQualityStatus(user.role, QualityStatus.REVIEWED)
+  );
 }
 
 export function canEditSolution(user: PermissionUser, solution: AuthoredResource) {

@@ -64,6 +64,7 @@ import {
   canJoinProblemDiscussion,
   canJoinVerificationDiscussion,
   canReviewProblemVerification,
+  canReviewProblem,
   canRollbackProblem,
   canSetProblemQualityStatus,
   canUseAdminTools
@@ -562,9 +563,14 @@ export async function updateProblemAction(
     "Verification answer"
   );
   const qualityStatusInput = formData.get("qualityStatus");
-  const qualityStatus = qualityStatusInput
+  const requestedQualityStatus = qualityStatusInput
     ? parseContributorQualityStatus(qualityStatusInput, user.role)
     : previous.qualityStatus;
+  const qualityStatus =
+    requestedQualityStatus === QualityStatus.REVIEWED &&
+    previous.qualityStatus !== QualityStatus.REVIEWED
+      ? previous.qualityStatus
+      : requestedQualityStatus;
   const tags = tagsWithConjecture(boundedText(formData.get("tags"), CONTENT_LIMITS.tagList, "Tags"), formData.get("conjecture"));
   const spoilerTags = boundedText(formData.get("spoilerTags"), CONTENT_LIMITS.tagList, "Spoiler tags");
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Problem edited";
@@ -642,6 +648,18 @@ export async function updateProblemAction(
 
       resolvedSnapshot.status = current.status;
       resolvedSnapshot.translatedFromRevisionId = current.translatedFromRevisionId;
+      const reviewSensitiveChanges = changedProblemSnapshotFields(currentSnapshot, resolvedSnapshot).filter(
+        (field) =>
+          field !== "qualityStatus" &&
+          field !== "canAppearOnFrontPage" &&
+          field !== "translatedFromRevisionId"
+      );
+      if (
+        current.qualityStatus === QualityStatus.REVIEWED &&
+        reviewSensitiveChanges.length > 0
+      ) {
+        resolvedSnapshot.qualityStatus = QualityStatus.UNREVIEWED;
+      }
       if (resolvedSnapshot.language !== current.language) {
         const existingTranslation = await tx.problem.findFirst({
           where: {
@@ -888,21 +906,23 @@ export async function deleteProblemAction(problemId: number) {
   redirect("/problems");
 }
 
-export async function markProblemGoodAction(problemId: number, problemSlug: string) {
+export async function markProblemReviewedAction(problemId: number, problemSlug: string) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:review:${user.id}`, 30, 60_000);
-  if (!canSetProblemQualityStatus(user.role, QualityStatus.GOOD)) {
-    throw new Error("You cannot review this problem.");
-  }
-
   await prisma.$transaction(async (tx) => {
     const problem = await problemSnapshotSource(tx, problemId);
+    if (!canReviewProblem(user, problem)) {
+      throw new Error("You cannot review this problem.");
+    }
     await acquireTransactionLock(tx, `problem-edit:${problem.translationGroupId}`);
     const current = await problemSnapshotSource(tx, problemId);
+    if (!canReviewProblem(user, current)) {
+      throw new Error("You cannot review this problem.");
+    }
     await ensureProblemSnapshotRevision(tx, current);
     const reviewed = await tx.problem.update({
       where: { id: problemId },
-      data: { qualityStatus: QualityStatus.GOOD, version: { increment: 1 } }
+      data: { qualityStatus: QualityStatus.REVIEWED, version: { increment: 1 } }
     });
     const reviewedSnapshot = await problemSnapshotSource(tx, reviewed.id);
     await tx.pageRevision.create({
@@ -913,7 +933,7 @@ export async function markProblemGoodAction(problemId: number, problemSlug: stri
         problemVersion: reviewedSnapshot.version,
         problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(reviewedSnapshot)),
         editedById: user.id,
-        editSummary: "Problem marked good"
+        editSummary: "Problem reviewed"
       }
     });
   });
@@ -973,7 +993,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               listed: snapshot.listed,
               canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
               status: snapshot.status,
-              qualityStatus: snapshot.qualityStatus,
+              qualityStatus: QualityStatus.UNREVIEWED,
               verificationMode: snapshot.verificationMode,
               verificationPrompt: snapshot.verificationPrompt,
               verificationAnswer: snapshot.verificationAnswer,

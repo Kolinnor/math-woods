@@ -134,7 +134,19 @@ export function parseProblemRevisionSnapshot(value: Prisma.JsonValue | null): Pr
   if (typeof candidate.title !== "string" || typeof candidate.bodyMarkdown !== "string") return null;
   if (!Array.isArray(candidate.domains) || !Array.isArray(candidate.tags) || !Array.isArray(candidate.spoilerTags)) return null;
   if (!Array.isArray(candidate.relatedProblemGroups)) return null;
-  return candidate as unknown as ProblemRevisionSnapshot;
+  const legacyQualityStatus = String(candidate.qualityStatus ?? "");
+  const qualityStatus = Object.values(QualityStatus).includes(legacyQualityStatus as QualityStatus)
+    ? (legacyQualityStatus as QualityStatus)
+    : legacyQualityStatus === "GOOD" || legacyQualityStatus === "EXCELLENT"
+      ? QualityStatus.REVIEWED
+      : QualityStatus.UNREVIEWED;
+
+  return {
+    ...candidate,
+    qualityStatus,
+    canAppearOnFrontPage:
+      candidate.canAppearOnFrontPage === true || legacyQualityStatus === "EXCELLENT"
+  } as unknown as ProblemRevisionSnapshot;
 }
 
 export function changedProblemSnapshotFields(

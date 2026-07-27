@@ -101,6 +101,7 @@ import {
   canDeletePlaylist,
   canEditProblem,
   canManageUserRoles,
+  canReviewProblem,
   canSetConceptStatus,
   canSetProblemQualityStatus,
   canUseAdminTools,
@@ -139,6 +140,7 @@ import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-n
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
 import {
   mergeProblemRevisionSnapshots,
+  parseProblemRevisionSnapshot,
   type ProblemRevisionSnapshot
 } from "../lib/problem-revisions.ts";
 import { buildRevisionDiff } from "../lib/revision-diff.ts";
@@ -279,6 +281,12 @@ const identicalProblemSnapshot = mergeProblemRevisionSnapshots(
 );
 assert.deepEqual(identicalProblemSnapshot.conflicts, []);
 assert.equal(identicalProblemSnapshot.merged.difficulty, 30);
+const legacyExcellentSnapshot = parseProblemRevisionSnapshot({
+  ...baseProblemSnapshot,
+  qualityStatus: "EXCELLENT"
+});
+assert.equal(legacyExcellentSnapshot?.qualityStatus, QualityStatus.REVIEWED);
+assert.equal(legacyExcellentSnapshot?.canAppearOnFrontPage, true);
 
 const start = new Date("2026-06-04T10:00:00.000Z");
 const unlock = unlockDate(start);
@@ -486,9 +494,13 @@ assert.deepEqual(parseTagInput("easy, facile, linear algebra, vectors").map((tag
   "vectors"
 ]);
 assert.equal(qualityLabel(QualityStatus.NEEDS_WORK), "Needs work");
+assert.equal(qualityLabel(QualityStatus.REVIEWED), "Reviewed");
 assert.equal(parseContributorQualityStatus("EXCELLENT", Role.USER), QualityStatus.UNREVIEWED);
 assert.equal(parseContributorQualityStatus("EXCELLENT", Role.MODERATOR), QualityStatus.UNREVIEWED);
-assert.equal(parseContributorQualityStatus("EXCELLENT", Role.OWNER), QualityStatus.EXCELLENT);
+assert.equal(parseContributorQualityStatus("EXCELLENT", Role.OWNER), QualityStatus.UNREVIEWED);
+assert.equal(parseContributorQualityStatus("REVIEWED", Role.USER), QualityStatus.UNREVIEWED);
+assert.equal(parseContributorQualityStatus("REVIEWED", Role.MODERATOR), QualityStatus.REVIEWED);
+assert.equal(parseContributorQualityStatus("REVIEWED", Role.OWNER), QualityStatus.REVIEWED);
 assert.equal(hasTrustedPrivileges(Role.USER), false);
 assert.equal(hasTrustedPrivileges(Role.MODERATOR), true);
 assert.equal(dailyContentCreationLimitForRole(Role.USER), 20);
@@ -559,9 +571,12 @@ assert.equal(
   canAssignRole({ id: 1, role: Role.OWNER }, { id: 2, role: Role.USER }, Role.ADMIN),
   true
 );
-assert.equal(canSetProblemQualityStatus(Role.MODERATOR, QualityStatus.GOOD), true);
-assert.equal(canSetProblemQualityStatus(Role.MODERATOR, QualityStatus.EXCELLENT), false);
-assert.equal(canSetProblemQualityStatus(Role.ADMIN, QualityStatus.EXCELLENT), true);
+assert.equal(canSetProblemQualityStatus(Role.USER, QualityStatus.REVIEWED), false);
+assert.equal(canSetProblemQualityStatus(Role.MODERATOR, QualityStatus.REVIEWED), true);
+assert.equal(canSetProblemQualityStatus(Role.ADMIN, QualityStatus.REVIEWED), true);
+assert.equal(canReviewProblem({ id: 1, role: Role.MODERATOR }, { authorId: 1 }), false);
+assert.equal(canReviewProblem({ id: 1, role: Role.MODERATOR }, { authorId: 2 }), true);
+assert.equal(canReviewProblem({ id: 1, role: Role.USER }, { authorId: 2 }), false);
 assert.equal(canSetConceptStatus(Role.MODERATOR, ConceptStatus.REVIEWED), true);
 assert.equal(canSetConceptStatus(Role.MODERATOR, ConceptStatus.EXCELLENT), false);
 assert.equal(canSetConceptStatus(Role.ADMIN, ConceptStatus.EXCELLENT), true);

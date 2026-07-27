@@ -19,8 +19,7 @@ export const en = {
   },
   quality: {
     NEEDS_WORK: "Needs work",
-    GOOD: "Good",
-    EXCELLENT: "Excellent",
+    REVIEWED: "Reviewed",
     UNREVIEWED: "Unreviewed"
   },
   nav: {
@@ -433,8 +432,8 @@ export const en = {
     languages: "Languages",
     needsWork: "Needs work",
     unreviewed: "Unreviewed",
-    good: "Good",
-    excellent: "Excellent",
+    reviewed: "Reviewed",
+    featured: "Featured",
     includeSpoilers: "Include spoilers",
     ariaLabel: "Problems",
     showingResults: (total: number) => `Showing ${total} ${total === 1 ? "problem" : "problems"}`,
@@ -511,7 +510,7 @@ export const en = {
     editedBy: (name: string) => `edited by ${name}`,
     needsWorkNotice: "This problem has been marked as needing work.",
     unreviewedNotice: "This problem has not been reviewed by trusted users yet.",
-    markGoodEnough: "This problem is good enough for me",
+    markReviewed: "Mark as reviewed",
     playlistSpecific: "Exploration-specific / unlisted",
     spoilerDomainHiddenUntilSolved: "spoiler domain hidden until solved",
     origin: "Origin:",

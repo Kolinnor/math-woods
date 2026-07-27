@@ -14,7 +14,7 @@ import { ProblemHintReveal } from "@/components/ProblemHintReveal";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
   dismissProblemTranslationStaleNoticeAction,
-  markProblemGoodAction,
+  markProblemReviewedAction,
   markProblemSolvedAction,
   startAttemptAction,
   toggleProblemFavoriteAction,
@@ -35,7 +35,7 @@ import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import {
   canEditProblem,
   canEditSolution,
-  canSetProblemQualityStatus,
+  canReviewProblem,
   canUseAdminTools,
   canViewArchivedProblem
 } from "@/lib/permissions";
@@ -381,6 +381,7 @@ export default async function ProblemPage({
           </div>
           <div className="problem-hero-meta">
             <p>{t.quality[problem.qualityStatus]}</p>
+            {problem.canAppearOnFrontPage && <p>{t.problems.featured}</p>}
             {hiddenDomainCount > 0 && problemDomains.length > 0 && <p>{t.problemDetail.spoilerDomainHiddenUntilSolved}</p>}
             {!problem.listed && <p>{t.problemDetail.playlistSpecific}</p>}
           </div>
@@ -478,10 +479,10 @@ export default async function ProblemPage({
             {problem.qualityStatus === "NEEDS_WORK"
               ? t.problemDetail.needsWorkNotice
               : t.problemDetail.unreviewedNotice}
-            {user && canSetProblemQualityStatus(user.role, QualityStatus.GOOD) && (
-              <form action={markProblemGoodAction.bind(null, problem.id, problem.slug)} className="mt-2">
+            {user && canReviewProblem(user, problem) && (
+              <form action={markProblemReviewedAction.bind(null, problem.id, problem.slug)} className="mt-2">
                 <button type="submit" className="secondary">
-                  {t.problemDetail.markGoodEnough}
+                  {t.problemDetail.markReviewed}
                 </button>
               </form>
             )}

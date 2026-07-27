@@ -68,8 +68,9 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const canSetCurrentQualityStatus = canSetProblemQualityStatus(user.role, problem.qualityStatus);
   const canSetUnreviewedStatus = canSetProblemQualityStatus(user.role, QualityStatus.UNREVIEWED);
   const canSetNeedsWorkStatus = canSetProblemQualityStatus(user.role, QualityStatus.NEEDS_WORK);
-  const canSetGoodStatus = canSetProblemQualityStatus(user.role, QualityStatus.GOOD);
-  const canSetExcellentStatus = canSetProblemQualityStatus(user.role, QualityStatus.EXCELLENT);
+  const canKeepReviewedStatus =
+    problem.qualityStatus === QualityStatus.REVIEWED &&
+    canSetProblemQualityStatus(user.role, QualityStatus.REVIEWED);
   if (problem.status === "ARCHIVED" && !canEditArchivedProblem) notFound();
   const [siblingTranslations, sourceRevision] = await Promise.all([
     prisma.problem.findMany({
@@ -226,7 +227,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                       <label className="checkbox-field">
                         <input name="canAppearOnFrontPage" type="checkbox" defaultChecked={problem.canAppearOnFrontPage} />
                         <span>
-                          <strong>Can appear on the front page</strong>
+                          <strong>Featured on the front page</strong>
                         </span>
                       </label>
                     )}
@@ -239,8 +240,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                         <select name="qualityStatus" defaultValue={problem.qualityStatus}>
                           {canSetUnreviewedStatus && <option value="UNREVIEWED">Unreviewed (default)</option>}
                           {canSetNeedsWorkStatus && <option value="NEEDS_WORK">Needs work</option>}
-                          {canSetGoodStatus && <option value="GOOD">Good</option>}
-                          {canSetExcellentStatus && <option value="EXCELLENT">Excellent</option>}
+                          {canKeepReviewedStatus && <option value="REVIEWED">Reviewed</option>}
                         </select>
                       </label>
                     )}

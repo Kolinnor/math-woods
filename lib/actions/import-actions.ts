@@ -1,6 +1,6 @@
 "use server";
 
-import { MathDomain, SourceType } from "@prisma/client";
+import { MathDomain, QualityStatus, SourceType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
@@ -19,7 +19,6 @@ import { refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-link
 import { parseContentLanguage } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
-import { parseContributorQualityStatus } from "@/lib/quality";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -126,7 +125,7 @@ export async function importMarkdownAction(formData: FormData) {
         originPage: boundedText(getStringAttribute(parsed.attributes, "originPage"), CONTENT_LIMITS.shortText, "Origin page") || null,
         originNote: boundedText(getStringAttribute(parsed.attributes, "originNote"), CONTENT_LIMITS.longNote, "Origin note") || null,
         listed: getBooleanAttribute(parsed.attributes, "listed") ?? true,
-        qualityStatus: parseContributorQualityStatus(getStringAttribute(parsed.attributes, "qualityStatus") ?? null, user.role),
+        qualityStatus: QualityStatus.UNREVIEWED,
         authorId: user.id,
         thread: { create: {} }
       }

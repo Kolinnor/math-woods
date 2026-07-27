@@ -5,10 +5,8 @@ export function qualityLabel(status: QualityStatus) {
   switch (status) {
     case QualityStatus.NEEDS_WORK:
       return "Needs work";
-    case QualityStatus.GOOD:
-      return "Good";
-    case QualityStatus.EXCELLENT:
-      return "Excellent";
+    case QualityStatus.REVIEWED:
+      return "Reviewed";
     case QualityStatus.UNREVIEWED:
     default:
       return "Unreviewed";

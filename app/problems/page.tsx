@@ -689,8 +689,7 @@ export default async function ProblemsPage({
                 <option value="">{t.problems.anyQuality}</option>
                 <option value="NEEDS_WORK">{t.problems.needsWork}</option>
                 <option value="UNREVIEWED">{t.problems.unreviewed}</option>
-                <option value="GOOD">{t.problems.good}</option>
-                <option value="EXCELLENT">{t.problems.excellent}</option>
+                <option value="REVIEWED">{t.problems.reviewed}</option>
               </select>
               <select name="solutions" defaultValue={solutionValue} aria-label={t.problems.solutionStatus}>
                 <option value="with">{t.problems.withSolutions}</option>
@@ -789,6 +788,7 @@ export default async function ProblemsPage({
                           {problem.language.toUpperCase()}
                         </span>
                       )}
+                      {problem.canAppearOnFrontPage && <span className="problem-language-badge">{t.problems.featured}</span>}
                     </h3>
                     <p>
                       {visibleDomainCodes.length
