@@ -593,10 +593,17 @@ assert.equal(
 );
 assert.equal(
   markdownHeadingLevelForEvent(
-    { altKey: false, ctrlKey: false, metaKey: false, shiftKey: true, code: "Digit6", key: "6" },
+    { altKey: false, ctrlKey: true, metaKey: false, shiftKey: false, code: "Digit6", key: "6" },
     DEFAULT_MARKDOWN_HEADING_SHORTCUTS
   ),
   6
+);
+assert.equal(
+  markdownHeadingLevelForEvent(
+    { altKey: false, ctrlKey: false, metaKey: false, shiftKey: true, code: "Digit4", key: "$" },
+    DEFAULT_MARKDOWN_HEADING_SHORTCUTS
+  ),
+  null
 );
 assert.equal(latexEditorPreferencesFromApi({ autocloseDollars: false }).autocloseDollars, false);
 assert.deepEqual(parseLatexCustomCommands("RR => \\mathbb{R}\n% ignored\nbad line"), [

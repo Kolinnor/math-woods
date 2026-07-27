@@ -6,6 +6,21 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-07-27 - Heading shortcuts must not capture Shift-only symbols
+
+Symptom:
+
+- The default heading shortcuts used `Shift+1` through `Shift+6`.
+- On common QWERTY layouts, those combinations type `!`, `@`, `#`, `$`, `%`, and `^`, so the editor intercepted
+  essential symbols. In particular, `Shift+4` could not type the dollar delimiter needed for LaTeX.
+
+Guardrail:
+
+- Default heading shortcuts must use `Ctrl+1` through `Ctrl+6`, never a Shift-only combination.
+- Keep application defaults, Prisma defaults, and existing saved default values aligned through a migration.
+- Tests must verify that `Ctrl+number` selects the heading level and that `Shift+4` remains available for `$`.
+- Users may still configure a different explicit shortcut in settings.
+
 ## 2026-07-18 - Autosave responses must not remount an active editor
 
 Symptom:
