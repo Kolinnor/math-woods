@@ -12,7 +12,7 @@ import { PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH } from "@/lib/problem-challenges";
 
 type ProblemChallengeLinkDialogProps = {
   buttonClassName?: string;
-  labels: Dictionary["social"]["challengeLink"];
+  labels: ProblemChallengeLinkDialogLabels;
   problem: {
     difficulty: number | null;
     domainLabel: string;
@@ -21,12 +21,33 @@ type ProblemChallengeLinkDialogProps = {
   };
 };
 
+type ProblemChallengeLinkDialogLabels = Pick<
+  Dictionary["social"]["challengeLink"],
+  | "button"
+  | "cancel"
+  | "close"
+  | "copied"
+  | "copy"
+  | "createAnother"
+  | "description"
+  | "done"
+  | "errors"
+  | "expiryNotice"
+  | "generate"
+  | "generating"
+  | "linkLabel"
+  | "messagePlaceholder"
+  | "problem"
+  | "ready"
+  | "title"
+>;
+
 const initialState: ProblemChallengeInviteActionState = {
   error: null,
   linkPath: null
 };
 
-function GenerateLinkButton({ labels }: { labels: Dictionary["social"]["challengeLink"] }) {
+function GenerateLinkButton({ labels }: { labels: ProblemChallengeLinkDialogLabels }) {
   const { pending } = useFormStatus();
 
   return (

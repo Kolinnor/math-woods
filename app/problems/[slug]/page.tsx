@@ -892,7 +892,25 @@ export default async function ProblemPage({
           <section className="sidebar-section problem-rail-challenge">
             <ProblemChallengeLinkDialog
               buttonClassName="w-full"
-              labels={t.social.challengeLink}
+              labels={{
+                button: t.social.challengeLink.button,
+                cancel: t.social.challengeLink.cancel,
+                close: t.social.challengeLink.close,
+                copied: t.social.challengeLink.copied,
+                copy: t.social.challengeLink.copy,
+                createAnother: t.social.challengeLink.createAnother,
+                description: t.social.challengeLink.description,
+                done: t.social.challengeLink.done,
+                errors: t.social.challengeLink.errors,
+                expiryNotice: t.social.challengeLink.expiryNotice,
+                generate: t.social.challengeLink.generate,
+                generating: t.social.challengeLink.generating,
+                linkLabel: t.social.challengeLink.linkLabel,
+                messagePlaceholder: t.social.challengeLink.messagePlaceholder,
+                problem: t.social.challengeLink.problem,
+                ready: t.social.challengeLink.ready,
+                title: t.social.challengeLink.title
+              }}
               problem={{
                 difficulty: problem.difficulty,
                 domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
