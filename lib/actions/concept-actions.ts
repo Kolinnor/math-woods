@@ -14,7 +14,7 @@ import { parseAliases, parseReferences, syncConceptAliases, syncConceptReference
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import { refreshLinksForConcept, refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
-import { canDeleteConcept, canEditConcept, canRollbackConcept, canSetConceptStatus, canUseAdminTools } from "@/lib/permissions";
+import { canChangeConceptStatus, canDeleteConcept, canEditConcept, canRollbackConcept, canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
@@ -136,7 +136,14 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   await assertRateLimit(`concept:update:${user.id}`, 20, 60_000);
   const existingConcept = await prisma.concept.findUnique({
     where: { id: conceptId },
-    select: { createdById: true, language: true, title: true, translationGroupId: true, translatedFromConceptId: true }
+    select: {
+      createdById: true,
+      language: true,
+      title: true,
+      translationGroupId: true,
+      translatedFromConceptId: true,
+      status: true
+    }
   });
   if (!existingConcept) throw new Error("Concept not found.");
   if (!canEditConcept(user, existingConcept)) {
@@ -154,7 +161,13 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const markTranslationFresh = formData.get("markTranslationFresh") === "on";
   const statusInput = formData.get("status");
   const requestedStatus = String(statusInput ?? "") as ConceptStatus;
-  const status = statusInput && canSetConceptStatus(user.role, requestedStatus) ? requestedStatus : undefined;
+  const status =
+    statusInput && canChangeConceptStatus(user, existingConcept, requestedStatus)
+      ? requestedStatus
+      : undefined;
+  if (statusInput && !status) {
+    throw new Error("A concept must be reviewed by another trusted user.");
+  }
   const canAppearInConceptBrowser = canUseAdminTools(user)
     ? formData.get("canAppearInConceptBrowser") === "on"
     : undefined;

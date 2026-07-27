@@ -795,7 +795,12 @@ export default async function ProblemsPage({
                         ? visibleDomainCodes.map((code) => translatedDomainLabel(code, t)).join(" · ")
                         : t.problems.domainHidden}
                       {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""} ·{" "}
-                      {t.problems.solvedCount(externalSolveCount)} · {t.quality[problem.qualityStatus]}
+                      {t.problems.solvedCount(externalSolveCount)} ·{" "}
+                      <span
+                        className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}
+                      >
+                        {t.quality[problem.qualityStatus]}
+                      </span>
                     </p>
                     {problem.tags.length > 0 && (
                       <div className="problem-ledger-tags">

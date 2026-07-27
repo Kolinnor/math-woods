@@ -144,6 +144,23 @@ export function canSetConceptStatus(role: Role, status: ConceptStatus) {
   return status !== ConceptStatus.EXCELLENT;
 }
 
+export function canReviewConcept(user: PermissionUser, concept: CreatedResource) {
+  return concept.createdById !== user.id && canSetConceptStatus(user.role, ConceptStatus.REVIEWED);
+}
+
+export function canChangeConceptStatus(
+  user: PermissionUser,
+  concept: CreatedResource & { status: ConceptStatus },
+  nextStatus: ConceptStatus
+) {
+  if (!canSetConceptStatus(user.role, nextStatus)) return false;
+  if (nextStatus === concept.status) return true;
+  if (nextStatus === ConceptStatus.REVIEWED || nextStatus === ConceptStatus.EXCELLENT) {
+    return canReviewConcept(user, concept);
+  }
+  return true;
+}
+
 export function canEditPlaylist(user: PermissionUser, playlist: PlaylistPermissionTarget) {
   return playlist.authorId === user.id || hasTrustedPrivileges(user.role);
 }

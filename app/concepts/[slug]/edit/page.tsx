@@ -11,7 +11,7 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
-import { canDeleteConcept, canEditConcept, canSetConceptStatus, canUseAdminTools } from "@/lib/permissions";
+import { canChangeConceptStatus, canDeleteConcept, canEditConcept, canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +34,12 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
   if (!canEditConcept(user, concept)) notFound();
   const canFeatureConcept = canUseAdminTools(user);
   const canDeleteCurrentConcept = canDeleteConcept(user, concept);
-  const canSetStubStatus = canSetConceptStatus(user.role, ConceptStatus.STUB);
-  const canSetUsableStatus = canSetConceptStatus(user.role, ConceptStatus.USABLE);
-  const canSetReviewedStatus = canSetConceptStatus(user.role, ConceptStatus.REVIEWED);
-  const canSetExcellentStatus = canSetConceptStatus(user.role, ConceptStatus.EXCELLENT);
-  const canSetControversialStatus = canSetConceptStatus(user.role, ConceptStatus.CONTROVERSIAL);
-  const canSetCurrentStatus = canSetConceptStatus(user.role, concept.status);
+  const canSetStubStatus = canChangeConceptStatus(user, concept, ConceptStatus.STUB);
+  const canSetUsableStatus = canChangeConceptStatus(user, concept, ConceptStatus.USABLE);
+  const canSetReviewedStatus = canChangeConceptStatus(user, concept, ConceptStatus.REVIEWED);
+  const canSetExcellentStatus = canChangeConceptStatus(user, concept, ConceptStatus.EXCELLENT);
+  const canSetControversialStatus = canChangeConceptStatus(user, concept, ConceptStatus.CONTROVERSIAL);
+  const canSetCurrentStatus = canChangeConceptStatus(user, concept, concept.status);
   const canSetAnyStatus =
     canSetCurrentStatus &&
     (canSetStubStatus ||

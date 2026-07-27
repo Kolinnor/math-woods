@@ -99,9 +99,11 @@ import {
 import {
   assignableRolesFor,
   canAssignRole,
+  canChangeConceptStatus,
   canDeletePlaylist,
   canEditProblem,
   canManageUserRoles,
+  canReviewConcept,
   canReviewProblem,
   canSetConceptStatus,
   canSetProblemQualityStatus,
@@ -613,6 +615,49 @@ assert.equal(canReviewProblem({ id: 1, role: Role.USER }, { authorId: 2 }), fals
 assert.equal(canSetConceptStatus(Role.MODERATOR, ConceptStatus.REVIEWED), true);
 assert.equal(canSetConceptStatus(Role.MODERATOR, ConceptStatus.EXCELLENT), false);
 assert.equal(canSetConceptStatus(Role.ADMIN, ConceptStatus.EXCELLENT), true);
+assert.equal(canReviewConcept({ id: 1, role: Role.MODERATOR }, { createdById: 1 }), false);
+assert.equal(canReviewConcept({ id: 1, role: Role.MODERATOR }, { createdById: 2 }), true);
+assert.equal(canReviewConcept({ id: 1, role: Role.USER }, { createdById: 2 }), false);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.MODERATOR },
+    { createdById: 1, status: ConceptStatus.STUB },
+    ConceptStatus.REVIEWED
+  ),
+  false
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.MODERATOR },
+    { createdById: 2, status: ConceptStatus.STUB },
+    ConceptStatus.REVIEWED
+  ),
+  true
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.MODERATOR },
+    { createdById: 1, status: ConceptStatus.REVIEWED },
+    ConceptStatus.REVIEWED
+  ),
+  true
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.ADMIN },
+    { createdById: 1, status: ConceptStatus.REVIEWED },
+    ConceptStatus.EXCELLENT
+  ),
+  false
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.ADMIN },
+    { createdById: 2, status: ConceptStatus.REVIEWED },
+    ConceptStatus.EXCELLENT
+  ),
+  true
+);
 assert.equal(isVerifiedContributor({ id: 1, role: Role.USER, emailVerifiedAt: null }), false);
 assert.equal(isVerifiedContributor({ id: 1, role: Role.USER, emailVerifiedAt: new Date(0) }), true);
 assert.equal(isVerifiedContributor({ id: 1, role: Role.MODERATOR, emailVerifiedAt: null }), true);

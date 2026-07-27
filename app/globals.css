@@ -8990,6 +8990,37 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   padding: 0.18rem 0.34rem;
 }
 
+.problem-review-badge {
+  align-items: center;
+  border: 1px solid;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.22rem 0.42rem;
+  vertical-align: 0.08em;
+  white-space: nowrap;
+}
+
+.problem-review-reviewed {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.problem-review-unreviewed {
+  background: var(--notice-amber-bg);
+  border-color: var(--notice-amber-border);
+  color: var(--notice-text);
+}
+
+.problem-review-needs_work {
+  background: var(--notice-orange-bg);
+  border-color: var(--notice-orange-border);
+  color: var(--notice-text);
+}
+
 .problem-ledger-main p,
 .problem-ledger-side {
   color: #8a9184;
@@ -12236,6 +12267,10 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
 
 .problem-hero-meta p {
   margin: 0;
+}
+
+.problem-hero-meta .problem-review-badge {
+  text-shadow: none;
 }
 
 .problem-detail-body {
