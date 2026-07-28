@@ -1,7 +1,11 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
-import { parseAvatarBackground } from "@/lib/avatar-presets";
+import {
+  defaultAvatarPath,
+  parseAvatarBackground,
+  parseDefaultAvatarPreset
+} from "@/lib/avatar-presets";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -115,18 +119,30 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Too many profile image changes. Please try again later." }, { status: 429 });
   }
 
-  const body = await request.json().catch(() => null) as { background?: unknown } | null;
+  const body = await request.json().catch(() => null) as { background?: unknown; preset?: unknown } | null;
   const avatarBackground = parseAvatarBackground(body?.background);
   if (!avatarBackground) {
     return NextResponse.json({ error: "Choose one of the available background colors." }, { status: 400 });
   }
+  const avatarPreset = body?.preset === undefined ? null : parseDefaultAvatarPreset(body.preset);
+  if (body?.preset !== undefined && !avatarPreset) {
+    return NextResponse.json({ error: "Choose one of the available Math Woods avatars." }, { status: 400 });
+  }
+  const avatarUrl = avatarPreset ? defaultAvatarPath(avatarPreset) : user.avatarUrl;
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { avatarBackground }
+    data: {
+      avatarBackground,
+      ...(avatarPreset ? { avatarUrl } : {})
+    }
   });
+  if (avatarPreset) {
+    const config = getImageStorageConfig();
+    if (config) await deleteStoredAvatar(config, user.id, user.avatarUrl, true);
+  }
   revalidateAvatarSurfaces(user.username);
-  return NextResponse.json({ avatarBackground });
+  return NextResponse.json({ avatarBackground, avatarUrl });
 }
 
 async function deleteStoredAvatar(

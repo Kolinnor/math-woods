@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { AvatarArtworkCredit } from "@/components/AvatarArtworkCredit";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { getCurrentUser } from "@/lib/auth";
@@ -74,6 +75,24 @@ export default async function AboutPage() {
           <Link href="/suggestions" className="button secondary">
             Suggest an improvement
           </Link>
+        </div>
+      </section>
+
+      <section className="about-credit" id="credits">
+        <h2>Credits</h2>
+        <div className="about-credit-list">
+          <p>
+            Forest paintings by Ivan Shishkin (1832-1898), public domain via{" "}
+            <a
+              href="https://commons.wikimedia.org/wiki/Category:Ivan_Shishkin"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Wikimedia Commons
+            </a>
+            .
+          </p>
+          <AvatarArtworkCredit label="Default avatar artwork" />
         </div>
       </section>
     </ForestPageLayout>

@@ -299,12 +299,20 @@ export const fr = {
     profileImage: "Image de profil",
     chooseProfileImage: "Choisir une image",
     removeProfileImage: "Retirer",
-    profileImageHelp: "JPEG, PNG, WebP ou AVIF jusqu'à 5 Mo. L'image est recadrée en carré et ses métadonnées sont supprimées.",
+    profileImageHelp: "Téléversez votre propre image ou choisissez un avatar animal Math Woods.",
+    profileImageUploadOption: "Téléverser une image",
+    profileImageUploadHelp: "JPEG, PNG, WebP ou AVIF jusqu'à 5 Mo. L'image est recadrée en carré et ses métadonnées sont supprimées.",
     profileImageUploading: "Envoi en cours...",
     profileImageUploaded: "Image de profil mise à jour.",
     profileImageRemoved: "Image de profil retirée.",
     profileImageInvalid: "Choisissez une image JPEG, PNG, WebP ou AVIF de moins de 5 Mo.",
     profileImageUploadFailed: "L'image de profil n'a pas pu être mise à jour.",
+    profileImageDefaultOption: "Avatar Math Woods",
+    profileImageDefault: "Choisir un animal",
+    profileImageDefaultHelp: "Cet avatar est affiché partout sur le site. Vous pourrez le modifier à tout moment.",
+    profileImageDefaultUpdated: "Avatar Math Woods mis à jour.",
+    profileImageDefaultFailed: "L'avatar Math Woods n'a pas pu être mis à jour.",
+    profileImagePresetLabel: (preset: string) => `Choisir l'avatar ${preset}`,
     profileImageBackground: "Fond de l'avatar par défaut",
     profileImageBackgroundHelp: "Choisissez la couleur douce affichée derrière votre avatar animal par défaut.",
     profileImageBackgroundUpdated: "Fond de l'avatar mis à jour.",
@@ -329,12 +337,11 @@ export const fr = {
   },
   footer: {
     legal:
-      "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire. Œuvres d'Ivan Shishkin (1832-1898), domaine public via Wikimedia Commons.",
+      "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire.",
     about: "À propos",
     suggestions: "Suggestions",
     contribute: "Contribuer",
-    legalAndBrand: "Mentions légales et marque",
-    avatarArtwork: "Illustrations des avatars par défaut"
+    legalAndBrand: "Mentions légales et marque"
   },
   home: {
     hero: {
@@ -525,7 +532,7 @@ export const fr = {
     },
     footer: {
       legal:
-        "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire. Œuvres d'Ivan Shishkin (1832-1898), domaine public via Wikimedia Commons.",
+        "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire.",
       about: "À propos",
       suggestions: "Suggestions",
       contribute: "Contribuer",

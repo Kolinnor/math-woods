@@ -38,17 +38,24 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
         user={{ username: user.username, displayName: user.displayName }}
         labels={{
           backgroundColors: t.profile.profileImageBackgroundColors,
-          backgroundFailed: t.profile.profileImageBackgroundFailed,
           backgroundHelp: t.profile.profileImageBackgroundHelp,
           backgroundTitle: t.profile.profileImageBackground,
           backgroundUpdated: t.profile.profileImageBackgroundUpdated,
           choose: t.profile.chooseProfileImage,
+          defaultFailed: t.profile.profileImageDefaultFailed,
+          defaultHelp: t.profile.profileImageDefaultHelp,
+          defaultOption: t.profile.profileImageDefaultOption,
+          defaultTitle: t.profile.profileImageDefault,
+          defaultUpdated: t.profile.profileImageDefaultUpdated,
           help: t.profile.profileImageHelp,
           invalid: t.profile.profileImageInvalid,
+          presetLabel: t.profile.profileImagePresetLabel,
           remove: t.profile.removeProfileImage,
           removed: t.profile.profileImageRemoved,
           title: t.profile.profileImage,
+          uploadHelp: t.profile.profileImageUploadHelp,
           uploadFailed: t.profile.profileImageUploadFailed,
+          uploadOption: t.profile.profileImageUploadOption,
           uploading: t.profile.profileImageUploading,
           uploaded: t.profile.profileImageUploaded
         }}

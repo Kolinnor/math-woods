@@ -1,6 +1,8 @@
 import { displayNameForUser } from "@/lib/user-display";
 import {
   avatarBackgroundOption,
+  avatarPresetFromUrl,
+  defaultAvatarPath,
   defaultAvatarPresetForUsername
 } from "@/lib/avatar-presets";
 
@@ -18,12 +20,14 @@ type UserAvatarProps = {
 };
 
 export function UserAvatar({ className, size = "md", user }: UserAvatarProps) {
-  const defaultPreset = defaultAvatarPresetForUsername(user.username);
+  const savedDefaultPreset = avatarPresetFromUrl(user.avatarUrl);
+  const defaultPreset = savedDefaultPreset ?? defaultAvatarPresetForUsername(user.username);
+  const uploadedAvatarUrl = user.avatarUrl && !savedDefaultPreset ? user.avatarUrl : null;
   const background = avatarBackgroundOption(user.username, user.avatarBackground);
   const classes = [
     "user-avatar",
     `user-avatar-${size}`,
-    user.avatarUrl ? null : "user-avatar-default",
+    uploadedAvatarUrl ? null : "user-avatar-default",
     className
   ]
     .filter(Boolean)
@@ -34,13 +38,13 @@ export function UserAvatar({ className, size = "md", user }: UserAvatarProps) {
       className={classes}
       title={displayNameForUser(user)}
       aria-hidden="true"
-      style={user.avatarUrl ? undefined : { backgroundColor: background.color }}
+      style={uploadedAvatarUrl ? undefined : { backgroundColor: background.color }}
     >
-      {user.avatarUrl ? (
-        <img src={user.avatarUrl} alt="" loading={size === "xl" ? "eager" : "lazy"} referrerPolicy="no-referrer" />
+      {uploadedAvatarUrl ? (
+        <img src={uploadedAvatarUrl} alt="" loading={size === "xl" ? "eager" : "lazy"} referrerPolicy="no-referrer" />
       ) : (
         <img
-          src={`/avatars/default/${defaultPreset}.svg`}
+          src={defaultAvatarPath(defaultPreset)}
           alt=""
           loading={size === "xl" ? "eager" : "lazy"}
         />

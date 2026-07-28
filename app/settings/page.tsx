@@ -708,7 +708,7 @@ export default async function SettingsPage({
                 />
                 <span>
                   <strong>Enable heading shortcuts</strong>
-                  <small>Use shortcuts such as Shift+1 through Shift+6 to write # through ###### headings.</small>
+                  <small>Use Ctrl+1 through Ctrl+6 to write # through ###### headings by default.</small>
                 </span>
               </label>
               <div className="latex-text-grid">
@@ -716,7 +716,7 @@ export default async function SettingsPage({
                   <label key={option.name} className="latex-text-field">
                     <span>
                       <strong>{option.title}</strong>
-                      <small>Examples: Shift+1, Ctrl+Alt+1, Meta+1.</small>
+                      <small>Examples: Ctrl+1, Ctrl+Alt+1, Meta+1.</small>
                     </span>
                     <input name={option.name} defaultValue={String(latexPreferences[option.name])} />
                   </label>

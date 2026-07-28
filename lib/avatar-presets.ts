@@ -16,6 +16,8 @@ export const DEFAULT_AVATAR_PRESETS = [
   "toucan"
 ] as const;
 
+export type DefaultAvatarPreset = (typeof DEFAULT_AVATAR_PRESETS)[number];
+
 export const AVATAR_BACKGROUND_OPTIONS = [
   { id: "moss", color: "#dce9dc" },
   { id: "butter", color: "#f5e8b8" },
@@ -29,6 +31,8 @@ export const AVATAR_BACKGROUND_OPTIONS = [
 
 export type AvatarBackgroundId = (typeof AVATAR_BACKGROUND_OPTIONS)[number]["id"];
 
+const DEFAULT_AVATAR_PATH_PATTERN = /^\/avatars\/default\/([a-z]+)\.svg$/;
+
 function stableUsernameHash(username: string) {
   let hash = 2166136261;
   for (const character of username.toLocaleLowerCase()) {
@@ -40,6 +44,23 @@ function stableUsernameHash(username: string) {
 
 export function defaultAvatarPresetForUsername(username: string) {
   return DEFAULT_AVATAR_PRESETS[stableUsernameHash(username) % DEFAULT_AVATAR_PRESETS.length];
+}
+
+export function parseDefaultAvatarPreset(value: unknown): DefaultAvatarPreset | null {
+  if (typeof value !== "string") return null;
+  return DEFAULT_AVATAR_PRESETS.includes(value as DefaultAvatarPreset)
+    ? value as DefaultAvatarPreset
+    : null;
+}
+
+export function defaultAvatarPath(preset: DefaultAvatarPreset) {
+  return `/avatars/default/${preset}.svg`;
+}
+
+export function avatarPresetFromUrl(value: unknown): DefaultAvatarPreset | null {
+  if (typeof value !== "string") return null;
+  const match = DEFAULT_AVATAR_PATH_PATTERN.exec(value);
+  return parseDefaultAvatarPreset(match?.[1]);
 }
 
 export function defaultAvatarBackgroundForUsername(username: string) {

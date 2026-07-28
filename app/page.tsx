@@ -2,7 +2,6 @@ import { MathDomain } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { MarkdownInline } from "@/components/MarkdownInline";
-import { AvatarArtworkCredit } from "@/components/AvatarArtworkCredit";
 import { getCurrentUser } from "@/lib/auth";
 import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
@@ -205,13 +204,7 @@ function TrailCta({ t }: { t: HomeTranslations["cta"] }) {
   );
 }
 
-function HomeFooter({
-  avatarArtworkLabel,
-  t
-}: {
-  avatarArtworkLabel: string;
-  t: HomeTranslations["footer"];
-}) {
+function HomeFooter({ t }: { t: HomeTranslations["footer"] }) {
   return (
     <footer className="home-footer">
       <div>
@@ -222,7 +215,6 @@ function HomeFooter({
           <Link href="/contributing">{t.contribute}</Link>
           <Link href={"/legal" as never}>{t.legalAndBrand}</Link>
         </nav>
-        <AvatarArtworkCredit label={avatarArtworkLabel} />
       </div>
     </footer>
   );
@@ -340,7 +332,7 @@ export default async function HomePage() {
         <ProblemToTry problem={featured} t={t.home} />
       </main>
       {!homeUser && <TrailCta t={t.home.cta} />}
-      <HomeFooter avatarArtworkLabel={t.footer.avatarArtwork} t={t.home.footer} />
+      <HomeFooter t={t.home.footer} />
     </div>
   );
 }

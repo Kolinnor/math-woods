@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ConceptStatus, MathDomain, QualityStatus, Role, UserMathLevel } from "@prisma/client";
+import { ConceptStatus, MathDomain, Prisma, QualityStatus, Role, UserMathLevel } from "@prisma/client";
 import { EditorState, StateEffect } from "@codemirror/state";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import {
@@ -32,8 +32,11 @@ import {
   AVATAR_BACKGROUND_OPTIONS,
   DEFAULT_AVATAR_PRESETS,
   avatarBackgroundOption,
+  avatarPresetFromUrl,
+  defaultAvatarPath,
   defaultAvatarPresetForUsername,
-  parseAvatarBackground
+  parseAvatarBackground,
+  parseDefaultAvatarPreset
 } from "../lib/avatar-presets.ts";
 import { en } from "../lib/i18n/dictionaries/en.ts";
 import { fr } from "../lib/i18n/dictionaries/fr.ts";
@@ -700,6 +703,21 @@ assert.equal(markdownHeadingLineText("## Existing title", 4), "#### Existing tit
 assert.equal(markdownHeadingLineText("", 5), "##### ");
 assert.equal(markdownHeadingPreviewText("##### "), null);
 assert.equal(markdownHeadingPreviewText("##### Title"), "Title");
+const latexPreferenceModel = Prisma.dmmf.datamodel.models.find((model) => model.name === "LatexPreference");
+assert.ok(latexPreferenceModel, "Prisma must expose the LatexPreference model");
+type PrismaDmmfField = (typeof Prisma.dmmf.datamodel.models)[number]["fields"][number];
+for (const [fieldName, expectedDefault] of Object.entries(DEFAULT_MARKDOWN_HEADING_SHORTCUTS)) {
+  const field: PrismaDmmfField | undefined = latexPreferenceModel.fields.find(
+    (candidate) => candidate.name === fieldName
+  );
+  assert.ok(field, `LatexPreference.${fieldName} must exist`);
+  assert.equal(field.hasDefaultValue, true, `LatexPreference.${fieldName} must have a database default`);
+  assert.equal(
+    field.default,
+    expectedDefault,
+    `LatexPreference.${fieldName} must match DEFAULT_MARKDOWN_HEADING_SHORTCUTS`
+  );
+}
 assert.equal(
   keyboardEventMatchesShortcut(
     { altKey: false, ctrlKey: false, metaKey: false, shiftKey: true, code: "Digit4", key: "$" },
@@ -1358,6 +1376,12 @@ const mathematicianFixtures = [
 
 assert.equal(defaultAvatarPresetForUsername("ada"), defaultAvatarPresetForUsername("Ada"));
 assert.ok(DEFAULT_AVATAR_PRESETS.includes(defaultAvatarPresetForUsername("emmy")));
+assert.equal(parseDefaultAvatarPreset("owl"), "owl");
+assert.equal(parseDefaultAvatarPreset("dragon"), null);
+assert.equal(defaultAvatarPath("owl"), "/avatars/default/owl.svg");
+assert.equal(avatarPresetFromUrl("/avatars/default/owl.svg"), "owl");
+assert.equal(avatarPresetFromUrl("/avatars/default/dragon.svg"), null);
+assert.equal(avatarPresetFromUrl("https://example.com/avatars/default/owl.svg"), null);
 assert.equal(parseAvatarBackground("moss"), "moss");
 assert.equal(parseAvatarBackground("#ff0000"), null);
 assert.equal(avatarBackgroundOption("ada", "rose").id, "rose");

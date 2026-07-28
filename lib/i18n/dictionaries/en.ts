@@ -297,12 +297,20 @@ export const en = {
     profileImage: "Profile image",
     chooseProfileImage: "Choose image",
     removeProfileImage: "Remove",
-    profileImageHelp: "JPEG, PNG, WebP, or AVIF up to 5 MB. The image is cropped to a square and metadata is removed.",
+    profileImageHelp: "Upload your own image or choose a Math Woods animal avatar.",
+    profileImageUploadOption: "Upload image",
+    profileImageUploadHelp: "JPEG, PNG, WebP, or AVIF up to 5 MB. The image is cropped to a square and metadata is removed.",
     profileImageUploading: "Uploading...",
     profileImageUploaded: "Profile image updated.",
     profileImageRemoved: "Profile image removed.",
     profileImageInvalid: "Choose a JPEG, PNG, WebP, or AVIF image smaller than 5 MB.",
     profileImageUploadFailed: "Profile image could not be updated.",
+    profileImageDefaultOption: "Math Woods avatar",
+    profileImageDefault: "Choose an animal",
+    profileImageDefaultHelp: "This avatar is shown across the site. You can change it again at any time.",
+    profileImageDefaultUpdated: "Math Woods avatar updated.",
+    profileImageDefaultFailed: "The Math Woods avatar could not be updated.",
+    profileImagePresetLabel: (preset: string) => `Choose the ${preset} avatar`,
     profileImageBackground: "Default avatar background",
     profileImageBackgroundHelp: "Choose the soft color shown behind your default animal avatar.",
     profileImageBackgroundUpdated: "Avatar background updated.",
@@ -326,12 +334,11 @@ export const en = {
   },
   footer: {
     legal:
-      "© 2026 Math Woods. Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated. Artwork by Ivan Shishkin (1832-1898), public domain via Wikimedia Commons.",
+      "© 2026 Math Woods. Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated.",
     about: "About",
     suggestions: "Suggestions",
     contribute: "Contribute",
-    legalAndBrand: "Legal & brand",
-    avatarArtwork: "Default avatar artwork"
+    legalAndBrand: "Legal & brand"
   },
   home: {
     hero: {
@@ -522,7 +529,7 @@ export const en = {
     },
     footer: {
       legal:
-        "© 2026 Math Woods. Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated. Artwork by Ivan Shishkin (1832-1898), public domain via Wikimedia Commons.",
+        "© 2026 Math Woods. Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated.",
       about: "About",
       suggestions: "Suggestions",
       contribute: "Contribute",
