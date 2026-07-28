@@ -30,7 +30,8 @@ export async function GET(request: Request) {
     select: {
       id: true,
       username: true,
-      displayName: true
+      displayName: true,
+      avatarUrl: true
     },
     orderBy: { username: "asc" },
     take: 100
@@ -48,7 +49,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     users: users.map((user) => ({
       name: user.title,
-      username: user.username
+      username: user.username,
+      avatarUrl: user.avatarUrl
     }))
   });
 }

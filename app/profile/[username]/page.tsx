@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
+import { UserAvatar } from "@/components/UserAvatar";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import {
   acceptFriendRequestAction,
@@ -207,7 +208,12 @@ export default async function ProfilePage({
       heroImage={SOCIAL_HERO_ART.src}
       heroAlt={SOCIAL_HERO_ART.alt}
       description={`${user.mathLevel ? t.auth.mathLevels[user.mathLevel] : t.profile.notSet} / ${t.profile.reputation} ${reputation}`}
-      meta={<p>{user.role.toLowerCase()}</p>}
+      meta={
+        <div className="profile-hero-identity">
+          <UserAvatar user={user} size="xl" />
+          <p>{user.role.toLowerCase()}</p>
+        </div>
+      }
       actions={profileActions}
     >
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">

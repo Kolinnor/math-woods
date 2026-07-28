@@ -11,6 +11,7 @@ import {
   PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH,
   type ProblemChallengeLabels
 } from "@/lib/problem-challenges";
+import { UserAvatar } from "@/components/UserAvatar";
 
 export type ProblemChallengeProblem = {
   difficulty: number | null;
@@ -22,6 +23,7 @@ export type ProblemChallengeProblem = {
 };
 
 type SuggestedUser = {
+  avatarUrl: string | null;
   name: string;
   username: string;
 };
@@ -83,13 +85,13 @@ function ProblemChallengeDialog({
   const [userQuery, setUserQuery] = useState("");
   const [userSuggestions, setUserSuggestions] = useState<SuggestedUser[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<SuggestedUser | null>(
-    recipientUsername && recipientName ? { name: recipientName, username: recipientUsername } : null
+    recipientUsername && recipientName ? { avatarUrl: null, name: recipientName, username: recipientUsername } : null
   );
   const [searching, setSearching] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [visibleError, setVisibleError] = useState<ProblemChallengeActionState["error"]>(null);
   const activeRecipient = fixedRecipient
-    ? { name: recipientName ?? recipientUsername ?? "", username: recipientUsername ?? "" }
+    ? { avatarUrl: null, name: recipientName ?? recipientUsername ?? "", username: recipientUsername ?? "" }
     : selectedRecipient;
   const triggerLabel = buttonLabel ?? labels.button;
 
@@ -228,9 +230,15 @@ function ProblemChallengeDialog({
               <span className="text-sm font-medium">{labels.recipient}</span>
               {selectedRecipient ? (
                 <div className="problem-challenge-selected">
-                  <div>
-                    <strong>{selectedRecipient.name}</strong>
-                    <span>@{selectedRecipient.username}</span>
+                  <div className="problem-challenge-selected-person">
+                    <UserAvatar
+                      user={{ ...selectedRecipient, displayName: selectedRecipient.name }}
+                      size="sm"
+                    />
+                    <div>
+                      <strong>{selectedRecipient.name}</strong>
+                      <span>@{selectedRecipient.username}</span>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -271,9 +279,16 @@ function ProblemChallengeDialog({
                             setUserQuery("");
                             setUserSuggestions([]);
                           }}
+                          className="problem-challenge-user-suggestion"
                         >
-                          <strong>{suggestedUser.name}</strong>
-                          <span>@{suggestedUser.username}</span>
+                          <UserAvatar
+                            user={{ ...suggestedUser, displayName: suggestedUser.name }}
+                            size="sm"
+                          />
+                          <span>
+                            <strong>{suggestedUser.name}</strong>
+                            <small>@{suggestedUser.username}</small>
+                          </span>
                         </button>
                       ))}
                       {!searchingUsers && userSuggestions.length === 0 && <p>{labels.noUsersFound}</p>}

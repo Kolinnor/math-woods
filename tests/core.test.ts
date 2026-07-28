@@ -17,8 +17,11 @@ import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone }
 import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
 import {
+  buildAvatarObjectKey,
   buildImageObjectKey,
+  createPresignedImageDelete,
   createPresignedImageUpload,
+  imageObjectKeyFromPublicUrl,
   validateImageUploadInput,
   type ImageStorageConfig
 } from "../lib/image-storage.ts";
@@ -1062,6 +1065,14 @@ assert.equal(isChunkLoadError(new Error("Ordinary render failure")), false);
 
 const imageKeyDate = new Date("2026-07-01T12:00:00.000Z");
 assert.equal(
+  buildAvatarObjectKey({
+    userId: 7,
+    now: imageKeyDate,
+    randomSuffix: "abc123"
+  }),
+  `avatars/user-7/${imageKeyDate.getTime()}-abc123.webp`
+);
+assert.equal(
   buildImageObjectKey({
     userId: 7,
     filename: "Jolie equation finale.png",
@@ -1094,6 +1105,17 @@ const presignedUpload = createPresignedImageUpload(
   imageKeyDate
 );
 assert.equal(presignedUpload.method, "PUT");
+assert.equal(
+  imageObjectKeyFromPublicUrl(testImageStorageConfig, "https://images.mathwoods.org/avatars/user-7/example.webp"),
+  "avatars/user-7/example.webp"
+);
+assert.equal(imageObjectKeyFromPublicUrl(testImageStorageConfig, "https://malicious.example/avatar.webp"), null);
+const presignedDelete = createPresignedImageDelete(
+  testImageStorageConfig,
+  "avatars/user-7/example.webp",
+  imageKeyDate
+);
+assert.equal(presignedDelete.method, "DELETE");
 assert.equal(presignedUpload.headers["Cache-Control"], "public, max-age=31536000, immutable");
 assert.equal(presignedUpload.publicUrl, "https://images.mathwoods.org/uploads/2026/07/user-7/example.webp");
 assert.match(presignedUpload.url, /^https:\/\/s3\.example\.test\/mathwoods-images\/uploads\/2026\/07\/user-7\/example\.webp\?/);
@@ -1285,6 +1307,7 @@ const mathematicianFixtures = [
     userId: 1,
     username: "ada",
     displayName: "Ada",
+    avatarUrl: null,
     role: Role.USER,
     mathLevel: UserMathLevel.RESEARCH,
     bio: "Geometry and teaching",
@@ -1305,6 +1328,7 @@ const mathematicianFixtures = [
     userId: 2,
     username: "emmy",
     displayName: "Emmy",
+    avatarUrl: null,
     role: Role.MODERATOR,
     mathLevel: UserMathLevel.GRADUATE_CONTEST,
     bio: "Algebra",

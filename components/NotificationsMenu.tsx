@@ -2,6 +2,7 @@ import { NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { Bell, Trash2 } from "lucide-react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
+import { UserAvatar } from "@/components/UserAvatar";
 import { clearNotificationsAction } from "@/lib/actions/notification-actions";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
@@ -18,7 +19,7 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       where: { userId, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
       take: 8,
-      include: { actor: { select: { username: true } } }
+      include: { actor: { select: { username: true, displayName: true, avatarUrl: true } } }
     }),
     prisma.notification.count({
       where: { userId, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } }
@@ -57,11 +58,16 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
               href={notificationOpenHref(notification.id) as never}
               className="notification-item notification-unread"
             >
-              <span>
-                <strong>{notification.title}</strong>
-                <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
-              </span>
-              <p>{notification.body}</p>
+              <div className="notification-item-main">
+                {notification.actor && <UserAvatar user={notification.actor} size="sm" />}
+                <div>
+                  <span>
+                    <strong>{notification.title}</strong>
+                    <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
+                  </span>
+                  <p>{notification.body}</p>
+                </div>
+              </div>
             </Link>
           ))}
           {unreadNotifications.length === 0 && <p className="notification-empty">{t.notifications.noUnread}</p>}

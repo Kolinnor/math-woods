@@ -35,6 +35,12 @@ type ImageObjectKeyInput = {
   randomSuffix?: string;
 };
 
+type AvatarObjectKeyInput = {
+  userId: number;
+  now?: Date;
+  randomSuffix?: string;
+};
+
 export function getImageStorageConfig(): ImageStorageConfig | null {
   const endpoint = process.env.IMAGE_STORAGE_ENDPOINT?.trim();
   const region = process.env.IMAGE_STORAGE_REGION?.trim();
@@ -97,10 +103,42 @@ export function buildImageObjectKey({ userId, filename, contentType, now = new D
   return `uploads/${year}/${month}/user-${userId}/${now.getTime()}-${suffix}-${safeName}.${extension}`;
 }
 
+export function buildAvatarObjectKey({
+  userId,
+  now = new Date(),
+  randomSuffix
+}: AvatarObjectKeyInput) {
+  const suffix = randomSuffix ?? randomBytes(8).toString("hex");
+  return `avatars/user-${userId}/${now.getTime()}-${suffix}.webp`;
+}
+
 export function publicImageUrl(config: ImageStorageConfig, key: string) {
   const url = new URL(config.publicBaseUrl);
   url.pathname = joinUrlPath(url.pathname, key);
   return url.toString();
+}
+
+export function imageObjectKeyFromPublicUrl(config: ImageStorageConfig, value: string | null | undefined) {
+  if (!value) return null;
+
+  try {
+    const candidate = new URL(value);
+    const base = new URL(config.publicBaseUrl);
+    if (candidate.origin !== base.origin) return null;
+
+    const basePath = base.pathname.replace(/\/+$/, "");
+    const prefix = basePath ? `${basePath}/` : "/";
+    if (!candidate.pathname.startsWith(prefix)) return null;
+
+    return candidate.pathname
+      .slice(prefix.length)
+      .split("/")
+      .filter(Boolean)
+      .map(decodeURIComponent)
+      .join("/");
+  } catch {
+    return null;
+  }
 }
 
 export function createPresignedImageUpload(config: ImageStorageConfig, key: string, contentType: string, now = new Date()) {
@@ -145,6 +183,44 @@ export function createPresignedImageUpload(config: ImageStorageConfig, key: stri
       "Cache-Control": IMAGE_CACHE_CONTROL,
       "Content-Type": contentType
     }
+  };
+}
+
+export function createPresignedImageDelete(config: ImageStorageConfig, key: string, now = new Date()) {
+  const deleteUrl = objectStorageUrl(config, key);
+  const amzDate = awsDate(now);
+  const dateStamp = amzDate.slice(0, 8);
+  const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
+  const signedHeaders = "host";
+  const expires = String(IMAGE_UPLOAD_EXPIRES_SECONDS);
+
+  deleteUrl.searchParams.set("X-Amz-Algorithm", "AWS4-HMAC-SHA256");
+  deleteUrl.searchParams.set("X-Amz-Credential", `${config.accessKeyId}/${credentialScope}`);
+  deleteUrl.searchParams.set("X-Amz-Date", amzDate);
+  deleteUrl.searchParams.set("X-Amz-Expires", expires);
+  deleteUrl.searchParams.set("X-Amz-SignedHeaders", signedHeaders);
+
+  const canonicalRequest = [
+    "DELETE",
+    canonicalUri(deleteUrl.pathname),
+    canonicalQueryString(deleteUrl.searchParams),
+    `host:${deleteUrl.host}\n`,
+    signedHeaders,
+    "UNSIGNED-PAYLOAD"
+  ].join("\n");
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    sha256Hex(canonicalRequest)
+  ].join("\n");
+  const signature = hmacHex(signingKey(config.secretAccessKey, dateStamp, config.region), stringToSign);
+  deleteUrl.searchParams.set("X-Amz-Signature", signature);
+
+  return {
+    url: deleteUrl.toString(),
+    method: "DELETE" as const,
+    expiresAt: new Date(now.getTime() + IMAGE_UPLOAD_EXPIRES_SECONDS * 1000).toISOString()
   };
 }
 

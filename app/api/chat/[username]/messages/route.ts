@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
 
   const otherUser = await prisma.user.findUnique({
     where: { username },
-    select: { id: true, username: true, displayName: true, deletedAt: true }
+    select: { id: true, username: true, displayName: true, avatarUrl: true, deletedAt: true }
   });
 
   if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) {
@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
       directChatId: chat.id,
       id: { gt: afterId }
     },
-    include: { author: { select: { id: true, username: true, displayName: true } } },
+    include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
     orderBy: { id: afterId > 0 ? "asc" : "desc" },
     take: 50
   });
@@ -63,6 +63,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
         authorId: message.authorId,
         authorUsername: message.author.username,
         authorName: displayNameForUser(message.author),
+        authorAvatarUrl: message.author.avatarUrl,
         bodyHtml: message.bodyHtml,
         createdAt: message.createdAt.toISOString()
       }))

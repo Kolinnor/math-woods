@@ -2,6 +2,7 @@ import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { AddFriendForm } from "@/components/AddFriendForm";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserAvatar } from "@/components/UserAvatar";
 import {
   acceptFriendRequestAction,
   cancelFriendRequestAction,
@@ -27,8 +28,8 @@ async function acceptedFriendshipsForUser(userId: number) {
       OR: [{ requesterId: userId }, { addresseeId: userId }]
     },
     include: {
-      requester: { select: { id: true, username: true, displayName: true } },
-      addressee: { select: { id: true, username: true, displayName: true } }
+      requester: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+      addressee: { select: { id: true, username: true, displayName: true, avatarUrl: true } }
     },
     orderBy: { updatedAt: "desc" }
   });
@@ -50,12 +51,12 @@ export default async function FriendsPage() {
     acceptedFriendshipsForUser(user.id),
     prisma.friendship.findMany({
       where: { addresseeId: user.id, status: FriendshipStatus.PENDING },
-      include: { requester: { select: { id: true, username: true, displayName: true } } },
+      include: { requester: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
       orderBy: { createdAt: "desc" }
     }),
     prisma.friendship.findMany({
       where: { requesterId: user.id, status: FriendshipStatus.PENDING },
-      include: { addressee: { select: { id: true, username: true, displayName: true } } },
+      include: { addressee: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
       orderBy: { createdAt: "desc" }
     }),
     prisma.directChat.findMany({
@@ -63,8 +64,8 @@ export default async function FriendsPage() {
         OR: [{ userAId: user.id }, { userBId: user.id }]
       },
       include: {
-        userA: { select: { id: true, username: true, displayName: true } },
-        userB: { select: { id: true, username: true, displayName: true } },
+        userA: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+        userB: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
         messages: {
           include: { author: { select: { id: true, username: true, displayName: true } } },
           orderBy: { createdAt: "desc" },
@@ -121,7 +122,10 @@ export default async function FriendsPage() {
               const friend = otherFriend(friendship, user.id);
               return (
                 <div key={friend.id} className="friend-row">
-                  <span className="friend-online-dot" aria-hidden="true" />
+                  <span className="friend-avatar-status">
+                    <UserAvatar user={friend} size="md" />
+                    <i className="friend-online-dot" aria-hidden="true" />
+                  </span>
                   <Link href={`/profile/${friend.username}`}>{displayNameForUser(friend)}</Link>
                   <Link href={`/chat/${friend.username}` as never} className="button secondary">
                     {t.social.chat}
@@ -138,6 +142,7 @@ export default async function FriendsPage() {
           <div className="friend-list">
             {incomingRequests.map((request) => (
               <div key={request.id} className="friend-row">
+                <UserAvatar user={request.requester} size="md" />
                 <Link href={`/profile/${request.requester.username}`}>{displayNameForUser(request.requester)}</Link>
                 <form action={acceptFriendRequestAction.bind(null, request.id)}>
                   <button type="submit">{t.social.accept}</button>
@@ -157,6 +162,7 @@ export default async function FriendsPage() {
               <div className="friend-list">
                 {outgoingRequests.map((request) => (
                   <div key={request.id} className="friend-row">
+                    <UserAvatar user={request.addressee} size="md" />
                     <Link href={`/profile/${request.addressee.username}`}>{displayNameForUser(request.addressee)}</Link>
                     <span className="muted text-sm">{t.social.pending}</span>
                     <form action={cancelFriendRequestAction.bind(null, request.id)}>
@@ -179,7 +185,10 @@ export default async function FriendsPage() {
               const online = onlineIds.has(friend.id);
               return (
                 <div key={friend.id} className="friend-row">
-                  <span className={online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
+                  <span className="friend-avatar-status">
+                    <UserAvatar user={friend} size="md" />
+                    <i className={online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
+                  </span>
                   <Link href={`/profile/${friend.username}`}>{displayNameForUser(friend)}</Link>
                   <Link href={`/chat/${friend.username}` as never} className="button secondary">
                     {t.social.chat}
@@ -204,11 +213,14 @@ export default async function FriendsPage() {
               const latest = chat.messages[0];
               return (
                 <Link key={chat.id} href={`/chat/${friend.username}` as never} className="chat-preview-row">
-                  <strong>{displayNameForUser(friend)}</strong>
-                  <span>
-                    {latest
-                      ? `${displayNameForUser(latest.author)}: ${latest.bodyMarkdown.slice(0, 120)}`
-                      : t.social.noMessagesYet}
+                  <UserAvatar user={friend} size="md" />
+                  <span className="chat-preview-copy">
+                    <strong>{displayNameForUser(friend)}</strong>
+                    <span>
+                      {latest
+                        ? `${displayNameForUser(latest.author)}: ${latest.bodyMarkdown.slice(0, 120)}`
+                        : t.social.noMessagesYet}
+                    </span>
                   </span>
                 </Link>
               );

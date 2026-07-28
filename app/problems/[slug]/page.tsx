@@ -4,7 +4,7 @@ import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { NotificationType } from "@prisma/client";
 import { QualityStatus } from "@prisma/client";
-import { Check, Heart, House, Lightbulb, MessageSquare, Pencil, ThumbsUp } from "lucide-react";
+import { Check, Heart, House, Lightbulb, MessageSquare, Pencil, Swords, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
@@ -188,6 +188,7 @@ export default async function ProblemPage({
     translations,
     links,
     attemptsInTranslationGroup,
+    receivedChallenge,
     playlists,
     ownVerificationRequests,
     pendingVerificationRequests,
@@ -217,6 +218,23 @@ export default async function ProblemPage({
           orderBy: { discussionUnlockAt: "asc" }
         })
       : Promise.resolve([]),
+    user
+      ? prisma.problemChallenge.findFirst({
+          where: {
+            recipientId: user.id,
+            problem: { translationGroupId: problem.translationGroupId }
+          },
+          orderBy: { createdAt: "desc" },
+          select: {
+            challenger: {
+              select: {
+                username: true,
+                displayName: true
+              }
+            }
+          }
+        })
+      : null,
     prisma.playlistItem.findMany({
       where: { problemId: problem.id },
       include: { playlist: true },
@@ -716,8 +734,17 @@ export default async function ProblemPage({
               </button>
             ) : (
               <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
-                <button type="submit" className="secondary attempt-action-button w-full">
-                  {t.problemDetail.startAttempting}
+                <button
+                  type="submit"
+                  className={receivedChallenge ? "challenge-attempt-button w-full" : "secondary attempt-action-button w-full"}
+                  title={
+                    receivedChallenge
+                      ? t.social.challengeLink.challengedBy(displayNameForUser(receivedChallenge.challenger))
+                      : undefined
+                  }
+                >
+                  {receivedChallenge && <Swords size={17} aria-hidden="true" />}
+                  {receivedChallenge ? t.problemDetail.challenged : t.problemDetail.startAttempting}
                 </button>
               </form>
             )

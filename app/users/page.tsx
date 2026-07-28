@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserAvatar } from "@/components/UserAvatar";
 import { getTranslations } from "@/lib/i18n/server";
 import { getReputationLeaderboard, type UserReputationSummary } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
@@ -70,6 +71,7 @@ export default async function UsersPage({
           {users.map((user, index) => (
             <Link key={user.userId} href={`/profile/${user.username}`} className="users-row">
               <span className="users-rank">#{index + 1}</span>
+              <UserAvatar user={user} size="md" />
               <span className="users-main">
                 <strong>{displayNameForUser(user)}</strong>
                 <small>{t.users.roles[user.role]}</small>

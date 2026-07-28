@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { UserAvatar } from "@/components/UserAvatar";
 import { CHAT_READ_EVENT } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
@@ -121,12 +122,22 @@ export function LiveChatThread({
               </div>
             )}
             <article className={ownMessage ? "chat-message chat-message-own" : "chat-message"}>
-              <p className="meta">
-                <Link href={`/profile/${message.authorUsername}`}>{message.authorName}</Link>
-                {" \u00b7 "}
-                <time dateTime={message.createdAt}>{formatChatTime(message.createdAt, locale, timeZone)}</time>
-              </p>
-              <MarkdownBlock html={message.bodyHtml} />
+              <UserAvatar
+                user={{
+                  username: message.authorUsername,
+                  displayName: message.authorName,
+                  avatarUrl: message.authorAvatarUrl
+                }}
+                size="sm"
+              />
+              <div>
+                <p className="meta">
+                  <Link href={`/profile/${message.authorUsername}`}>{message.authorName}</Link>
+                  {" \u00b7 "}
+                  <time dateTime={message.createdAt}>{formatChatTime(message.createdAt, locale, timeZone)}</time>
+                </p>
+                <MarkdownBlock html={message.bodyHtml} />
+              </div>
             </article>
           </Fragment>
         );

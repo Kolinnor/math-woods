@@ -1,5 +1,6 @@
 import { MathDomain } from "@prisma/client";
 import { notFound, redirect } from "next/navigation";
+import { AvatarUploader } from "@/components/AvatarUploader";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { updateProfileAction } from "@/lib/actions/user-actions";
 import { requireUser } from "@/lib/auth";
@@ -31,6 +32,21 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
       description={t.profile.editDescription}
       workspaceClassName="forest-page-workspace-narrow"
     >
+      <AvatarUploader
+        initialAvatarUrl={user.avatarUrl}
+        user={{ username: user.username, displayName: user.displayName }}
+        labels={{
+          choose: t.profile.chooseProfileImage,
+          help: t.profile.profileImageHelp,
+          invalid: t.profile.profileImageInvalid,
+          remove: t.profile.removeProfileImage,
+          removed: t.profile.profileImageRemoved,
+          title: t.profile.profileImage,
+          uploadFailed: t.profile.profileImageUploadFailed,
+          uploading: t.profile.profileImageUploading,
+          uploaded: t.profile.profileImageUploaded
+        }}
+      />
       <form action={updateProfileAction} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.auth.profileName}</span>

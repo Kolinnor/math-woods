@@ -15,6 +15,7 @@ import { GuestProgressPrompt } from "@/components/GuestProgressPrompt";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { TimeZoneReporter } from "@/components/TimeZoneReporter";
+import { UserAvatar } from "@/components/UserAvatar";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -169,7 +170,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/suggestions">{t.nav.suggestions}</Link>
                   <Link href="/about">{t.nav.about}</Link>
                   {user && <div className="nav-menu-divider" />}
-                  {user && <Link href={`/profile/${user.username}`}>{displayNameForUser(user)}</Link>}
+                  {user && (
+                    <Link href={`/profile/${user.username}`} className="nav-menu-user">
+                      <UserAvatar user={user} size="sm" />
+                      <span>{displayNameForUser(user)}</span>
+                    </Link>
+                  )}
                   {user && <Link href={"/friends" as never}>{t.nav.friends}</Link>}
                   {user && <Link href="/settings">{t.nav.settings}</Link>}
                   {user && canUseModerationTools(user) && <Link href="/moderation">{t.nav.moderation}</Link>}

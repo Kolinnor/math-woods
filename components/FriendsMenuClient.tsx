@@ -6,6 +6,7 @@ import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEve
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
+import { UserAvatar } from "@/components/UserAvatar";
 import { CHAT_READ_EVENT, chatUnreadDocumentTitle } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
@@ -224,8 +225,11 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 <ArrowLeft size={16} />
               </button>
               <div>
-                <strong>{selectedFriend.name}</strong>
-                <span><i className={selectedFriend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />{selectedFriend.online ? data.labels.online : data.labels.offline}</span>
+                <span className="friends-mini-chat-person">
+                  <UserAvatar user={{ ...selectedFriend, displayName: selectedFriend.name }} size="sm" />
+                  <strong>{selectedFriend.name}</strong>
+                </span>
+                <span className="friends-mini-chat-status"><i className={selectedFriend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />{selectedFriend.online ? data.labels.online : data.labels.offline}</span>
               </div>
               <ProblemChallengeDialog
                 buttonClassName="secondary"
@@ -322,7 +326,10 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
             <div className="friends-menu-list">
               {data.friends.map((friend) => (
                 <button key={friend.id} type="button" className="friends-menu-row" onClick={() => setSelectedFriend(friend)}>
-                  <span className={friend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
+                  <span className="friends-menu-avatar-wrap">
+                    <UserAvatar user={{ ...friend, displayName: friend.name }} size="sm" />
+                    <i className={friend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
+                  </span>
                   <span>{friend.name}</span>
                   {friend.unreadCount > 0 ? (
                     <small

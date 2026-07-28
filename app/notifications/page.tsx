@@ -2,6 +2,7 @@ import { NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserAvatar } from "@/components/UserAvatar";
 import { clearNotificationsAction } from "@/lib/actions/notification-actions";
 import { requireUser } from "@/lib/auth";
 import { formatUserShortDateTime } from "@/lib/date-format";
@@ -21,12 +22,14 @@ export default async function NotificationsPage() {
     prisma.notification.findMany({
       where: { userId: user.id, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
-      take: 100
+      take: 100,
+      include: { actor: { select: { username: true, displayName: true, avatarUrl: true } } }
     }),
     prisma.notification.findMany({
       where: { userId: user.id, readAt: { not: null }, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
-      take: 100
+      take: 100,
+      include: { actor: { select: { username: true, displayName: true, avatarUrl: true } } }
     })
   ]);
   const notifications = [...unreadNotifications, ...readNotifications].slice(0, 100);
@@ -62,11 +65,16 @@ export default async function NotificationsPage() {
             href={notificationOpenHref(notification.id) as never}
             className={notification.readAt ? "notification-item" : "notification-item notification-unread"}
           >
-            <span>
-              <strong>{notification.title}</strong>
-              <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
-            </span>
-            <p>{notification.body}</p>
+            <div className="notification-item-main">
+              {notification.actor && <UserAvatar user={notification.actor} size="sm" />}
+              <div>
+                <span>
+                  <strong>{notification.title}</strong>
+                  <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
+                </span>
+                <p>{notification.body}</p>
+              </div>
+            </div>
           </Link>
         ))}
         {notifications.length === 0 && <p className="empty-state">{t.notifications.noNotifications}</p>}

@@ -5,6 +5,7 @@ import { ChatMessageForm } from "@/components/ChatMessageForm";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
+import { UserAvatar } from "@/components/UserAvatar";
 import { sendFriendRequestAction } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -25,7 +26,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
   const { username } = await params;
   const otherUser = await prisma.user.findUnique({
     where: { username },
-    select: { id: true, username: true, displayName: true, deletedAt: true }
+    select: { id: true, username: true, displayName: true, avatarUrl: true, deletedAt: true }
   });
 
   if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) notFound();
@@ -42,8 +43,8 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       ]
     },
     include: {
-      requester: { select: { id: true, username: true, displayName: true } },
-      addressee: { select: { id: true, username: true, displayName: true } }
+      requester: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+      addressee: { select: { id: true, username: true, displayName: true, avatarUrl: true } }
     }
   });
 
@@ -85,7 +86,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
     where: { userAId_userBId: pair },
     include: {
       messages: {
-        include: { author: { select: { id: true, username: true, displayName: true } } },
+        include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
         orderBy: { createdAt: "asc" },
         take: 100
       }
@@ -97,6 +98,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       authorId: message.authorId,
       authorUsername: message.author.username,
       authorName: displayNameForUser(message.author),
+      authorAvatarUrl: message.author.avatarUrl,
       bodyHtml: message.bodyHtml,
       createdAt: message.createdAt.toISOString()
     })) ?? [];
@@ -109,6 +111,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       heroImage={SOCIAL_HERO_ART.src}
       heroAlt={SOCIAL_HERO_ART.alt}
       description={t.social.privateChatDescription}
+      meta={<UserAvatar user={otherUser} size="xl" />}
       workspaceClassName="forest-page-workspace-narrow"
       actions={
         <>

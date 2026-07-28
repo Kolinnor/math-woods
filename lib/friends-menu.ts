@@ -15,6 +15,7 @@ export type FriendsMenuData = {
   locale: InterfaceLocale;
   friends: Array<{
     id: number;
+    avatarUrl: string | null;
     name: string;
     online: boolean;
     unreadCount: number;
@@ -54,8 +55,8 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
         OR: [{ requesterId: userId }, { addresseeId: userId }]
       },
       include: {
-        requester: { select: { id: true, username: true, displayName: true } },
-        addressee: { select: { id: true, username: true, displayName: true } }
+        requester: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+        addressee: { select: { id: true, username: true, displayName: true, avatarUrl: true } }
       },
       orderBy: { updatedAt: "desc" },
       take: 50
@@ -103,6 +104,7 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
       const unreadCount = unreadByFriendId.get(friend.id) ?? 0;
       return {
         id: friend.id,
+        avatarUrl: friend.avatarUrl,
         name: displayNameForUser(friend),
         online: onlineIds.has(friend.id),
         unreadCount,
