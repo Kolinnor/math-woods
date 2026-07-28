@@ -8,6 +8,7 @@ import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
+import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { prisma } from "@/lib/db";
@@ -836,7 +837,7 @@ export default async function ProblemsPage({
                       className="problem-ledger-author"
                       title={t.problems.filterByAuthor(authorName)}
                     >
-                      {t.common.by} {authorName}
+                      {t.common.by} <UserName user={problem.author} />
                     </Link>
                     {isOwnProblem && (
                       <span className="problem-favorite-count problem-own-count" title={t.problems.yourProblem}>

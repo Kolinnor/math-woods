@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { UserName } from "@/components/UserName";
 import { deleteProofAction, updateProofAction } from "@/lib/actions/proof-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canEditSolution } from "@/lib/permissions";
-import { displayNameForUser } from "@/lib/user-display";
 import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export default async function EditProofPage({
   const proof = await prisma.problemProof.findUnique({
     where: { id },
     include: {
-      author: { select: { username: true, displayName: true } },
+      author: { select: { username: true, displayName: true, avatarUrl: true } },
       problem: { select: { title: true, slug: true } }
     }
   });
@@ -37,7 +37,7 @@ export default async function EditProofPage({
         <div>
           <h1 className="mb-2 text-2xl font-bold">Edit solution</h1>
           <p className="muted">
-            Solution by {displayNameForUser(proof.author)} for{" "}
+            Solution by <UserName user={proof.author} /> for{" "}
             <Link href={`/problems/${proof.problem.slug}`} className="underline">
               {proof.problem.title}
             </Link>

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserName } from "@/components/UserName";
 import { createSuggestionAction } from "@/lib/actions/suggestion-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
 import { isVerifiedContributor } from "@/lib/permissions";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +74,7 @@ export default async function SuggestionsPage({
               </div>
               <p className="mt-2 whitespace-pre-wrap text-sm">{suggestion.body}</p>
               <p className="muted mt-3 text-xs">
-                {suggestion.author ? displayNameForUser(suggestion.author) : "former user"} ·{" "}
+                {suggestion.author ? <UserName user={suggestion.author} /> : "former user"} ·{" "}
                 {suggestion.createdAt.toLocaleDateString("en-US")}
               </p>
             </article>

@@ -12,6 +12,7 @@ import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
 import { ProblemHintReveal } from "@/components/ProblemHintReveal";
+import { UserName } from "@/components/UserName";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
   dismissProblemTranslationStaleNoticeAction,
@@ -257,7 +258,7 @@ export default async function ProblemPage({
       ? prisma.problemVerificationRequest.findMany({
           where: { problemId: problem.id, status: "PENDING" },
           include: {
-            user: { select: { username: true, displayName: true } },
+            user: { select: { username: true, displayName: true, avatarUrl: true } },
             messages: {
               include: { author: { select: { username: true, displayName: true } } },
               orderBy: { createdAt: "asc" }
@@ -396,7 +397,10 @@ export default async function ProblemPage({
               <AsyncMarkdownInline markdown={problem.title} />
             </h1>
             <p className="problem-hero-byline">
-              {t.problemDetail.by} <Link href={`/profile/${problem.author.username}`}>{displayNameForUser(problem.author)}</Link>
+              {t.problemDetail.by}{" "}
+              <Link href={`/profile/${problem.author.username}`}>
+                <UserName user={problem.author} />
+              </Link>
             </p>
           </div>
           <div className="problem-hero-meta">
@@ -560,7 +564,7 @@ export default async function ProblemPage({
                             <AsyncMarkdownInline markdown={targetProblem.title} />
                           </strong>
                           <span>
-                            {t.problemDetail.by} {displayNameForUser(targetProblem.author)}
+                            {t.problemDetail.by} <UserName user={targetProblem.author} />
                             {targetProblem.difficulty ? ` \u00b7 ${t.problemDetail.difficulty.toLowerCase()} ${targetProblem.difficulty}/100` : ""}
                             {!targetProblem.listed ? ` \u00b7 ${t.problemDetail.playlistSpecific.toLowerCase()}` : ""}
                           </span>
@@ -625,7 +629,10 @@ export default async function ProblemPage({
                         <div>
                           {accepted && <span className="accepted-label">{t.problemDetail.communityAccepted}</span>}
                           <p className="meta">
-                            {t.problemDetail.solutionBy} <Link href={`/profile/${proof.author.username}`}>{displayNameForUser(proof.author)}</Link>
+                            {t.problemDetail.solutionBy}{" "}
+                            <Link href={`/profile/${proof.author.username}`}>
+                              <UserName user={proof.author} />
+                            </Link>
                           </p>
                         </div>
                         <div className="proof-actions">
@@ -864,7 +871,9 @@ export default async function ProblemPage({
             <div className="grid gap-3">
               {pendingVerificationRequests.map((request) => (
                 <div key={request.id} className="verification-review-card">
-                  <p className="meta">{displayNameForUser(request.user)}</p>
+                  <p className="meta">
+                    <UserName user={request.user} />
+                  </p>
                   <div className="verification-submission">
                     <strong>{t.problemDetail.submittedAnswer}</strong>
                     <p>{request.answer}</p>

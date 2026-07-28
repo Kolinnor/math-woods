@@ -3,6 +3,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { UserName } from "@/components/UserName";
 import {
   claimContributionRequestAction,
   completeContributionRequestAction,
@@ -13,7 +14,6 @@ import { loadRenderedContributionPage } from "@/lib/contribution-page";
 import { prisma } from "@/lib/db";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -121,9 +121,9 @@ export default async function ContributingPage({
                     </div>
                     <p>{request.body}</p>
                     <p className="meta">
-                      Requested by {request.requester ? displayNameForUser(request.requester) : "a deleted user"} /{" "}
+                      Requested by {request.requester ? <UserName user={request.requester} /> : "a deleted user"} /{" "}
                       {request.createdAt.toLocaleDateString("en-US")}
-                      {request.claimedBy && <> / handled by {displayNameForUser(request.claimedBy)}</>}
+                      {request.claimedBy && <> / handled by <UserName user={request.claimedBy} /></>}
                     </p>
                   </div>
                   {hasRequestActions && (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Swords } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserAvatar } from "@/components/UserAvatar";
 import { acceptProblemChallengeInviteAction } from "@/lib/actions/problem-challenge-invite-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -184,7 +185,10 @@ export default async function ProblemChallengeInvitePage({
               <Swords size={28} />
             </div>
             <div>
-              <p>{t.social.challengeLink.challengedBy(displayNameForUser(availableInvite.challenger))}</p>
+              <div className="user-name-with-avatar">
+                <UserAvatar user={availableInvite.challenger} size="xs" />
+                <p>{t.social.challengeLink.challengedBy(displayNameForUser(availableInvite.challenger))}</p>
+              </div>
               <h2><AsyncMarkdownInline markdown={availableInvite.problem.title} /></h2>
             </div>
           </header>

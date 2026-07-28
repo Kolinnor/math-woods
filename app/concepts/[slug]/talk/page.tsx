@@ -2,12 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { UserName } from "@/components/UserName";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { createConceptTalkPostAction } from "@/lib/actions/concept-community-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
           <article key={post.id} className="panel p-5">
             <p className="muted mb-3 text-sm">
               <Link href={`/profile/${post.author.username}`} className="underline">
-                {displayNameForUser(post.author)}
+                <UserName user={post.author} />
               </Link>{" "}
               · {post.createdAt.toLocaleString("en-US")}
             </p>

@@ -529,6 +529,13 @@ a {
   width: 100%;
 }
 
+.user-avatar-xs {
+  border-radius: 4px;
+  font-size: 0.48rem;
+  height: 1.125rem;
+  width: 1.125rem;
+}
+
 .user-avatar-sm {
   font-size: 0.62rem;
   height: 1.75rem;
@@ -553,6 +560,18 @@ a {
   font-size: 1.5rem;
   height: 5rem;
   width: 5rem;
+}
+
+.user-name-with-avatar {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.3rem;
+  max-width: 100%;
+  vertical-align: -0.2em;
+}
+
+.user-name-with-avatar > span:last-child {
+  overflow-wrap: anywhere;
 }
 
 .user-avatar-tone-1 {
@@ -8761,8 +8780,8 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   min-height: clamp(340px, 38vh, 440px);
 }
 
-.forest-page-hero img,
-.problems-hero img {
+.forest-page-hero > img,
+.problems-hero > img {
   height: 100%;
   inset: 0;
   object-fit: cover;
@@ -8771,7 +8790,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   width: 100%;
 }
 
-.forest-page-hero img {
+.forest-page-hero > img {
   object-position: center 56%;
 }
 

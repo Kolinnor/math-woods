@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RevisionDiff } from "@/components/RevisionDiff";
+import { UserName } from "@/components/UserName";
 import { rollbackProblemRevisionAction } from "@/lib/actions/problem-actions";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,12 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
                   <h2 className="font-semibold">Revision {revision.id}</h2>
                   <p className="muted text-sm">
                     {revision.createdAt.toLocaleString("en-US")}
-                    {revision.editedBy ? ` / ${displayNameForUser(revision.editedBy)}` : ""}
+                    {revision.editedBy && (
+                      <>
+                        {" / "}
+                        <UserName user={revision.editedBy} />
+                      </>
+                    )}
                   </p>
                 </div>
                 <form action={rollbackProblemRevisionAction.bind(null, problem.id, revision.id, problem.version)}>

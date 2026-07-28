@@ -8,7 +8,7 @@ type AvatarUser = {
 
 type UserAvatarProps = {
   className?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   user: AvatarUser;
 };
 

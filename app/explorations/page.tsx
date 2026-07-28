@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookOpen, Clock3, Search, Users } from "lucide-react";
 import { MathDomain } from "@prisma/client";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
@@ -9,7 +10,6 @@ import { explorationCatalogWhere } from "@/lib/explorations";
 import { getTranslations } from "@/lib/i18n/server";
 import { contentLanguageLabel } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +108,7 @@ export default async function ExplorationsPage({
                   <span><BookOpen size={15} /> {blockCount} blocks</span>
                   <span><Clock3 size={15} /> {exploration.estimatedMinutes ? `${exploration.estimatedMinutes} min` : "Open-ended"}</span>
                   <span><Users size={15} /> {exploration._count.explorationSessions} readers</span>
-                  <span>by {displayNameForUser(exploration.author)}</span>
+                  <span>by <UserName user={exploration.author} /></span>
                 </div>
                 {session && (
                   <div className="exploration-catalog-progress">

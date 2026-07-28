@@ -2,10 +2,10 @@ import Link from "next/link";
 import { ArrowLeft, FileClock } from "lucide-react";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canViewExploration } from "@/lib/explorations";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,12 @@ export default async function ExplorationHistoryPage({ params }: { params: Promi
               <h2>{change.changeSummary || "Published exploration"}</h2>
               <span className="muted text-sm">
                 {change.publishedAt.toLocaleString("en-US")}
-                {change.publishedBy ? ` / ${displayNameForUser(change.publishedBy)}` : ""}
+                {change.publishedBy && (
+                  <>
+                    {" / "}
+                    <UserName user={change.publishedBy} />
+                  </>
+                )}
               </span>
             </div>
           </article>

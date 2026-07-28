@@ -2,10 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { RevisionDiff } from "@/components/RevisionDiff";
+import { UserName } from "@/components/UserName";
 import { rollbackConceptRevisionAction } from "@/lib/actions/concept-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,12 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
                 <h2 className="font-semibold">Revision {revision.id}</h2>
                 <p className="muted text-sm">
                   {revision.createdAt.toLocaleString("en-US")}
-                  {revision.editedBy ? ` · ${displayNameForUser(revision.editedBy)}` : ""}
+                  {revision.editedBy && (
+                    <>
+                      {" · "}
+                      <UserName user={revision.editedBy} />
+                    </>
+                  )}
                 </p>
               </div>
               {user && (

@@ -5,6 +5,7 @@ import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { UserName } from "@/components/UserName";
 import {
   createVerificationMessageAction,
   deleteVerificationMessageAction,
@@ -21,7 +22,6 @@ import {
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -53,10 +53,10 @@ export default async function ProblemVerificationPage({
           author: true
         }
       },
-      user: { select: { id: true, username: true, displayName: true } },
-      reviewer: { select: { id: true, username: true, displayName: true } },
+      user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+      reviewer: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
       messages: {
-        include: { author: { select: { id: true, username: true, displayName: true } } },
+        include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
         orderBy: { createdAt: "asc" }
       }
     }
@@ -87,7 +87,7 @@ export default async function ProblemVerificationPage({
           <p className="muted mt-1 text-sm">
             {verificationStatusLabel(request.status)} review requested by{" "}
             <Link href={`/profile/${request.user.username}`} className="underline">
-              {displayNameForUser(request.user)}
+              <UserName user={request.user} />
             </Link>
           </p>
         </div>
@@ -117,7 +117,7 @@ export default async function ProblemVerificationPage({
                 <p className="muted text-sm">
                   Reviewed by{" "}
                   <Link href={`/profile/${request.reviewer.username}`} className="underline">
-                    {displayNameForUser(request.reviewer)}
+                    <UserName user={request.reviewer} />
                   </Link>
                 </p>
               )}
@@ -130,7 +130,7 @@ export default async function ProblemVerificationPage({
                 return (
                   <article key={message.id} className="verification-message">
                     <p className="meta">
-                      {displayNameForUser(message.author)} {"\u00b7"} {message.createdAt.toLocaleString("en-US")}
+                      <UserName user={message.author} /> {"\u00b7"} {message.createdAt.toLocaleString("en-US")}
                     </p>
                     <MarkdownBlock html={message.bodyHtml} />
                     {canEditMessage && (

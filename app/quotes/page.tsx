@@ -5,6 +5,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { UserName } from "@/components/UserName";
 import { createQuoteAction } from "@/lib/actions/quote-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -13,7 +14,6 @@ import { contentLanguageLabel } from "@/lib/languages";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -164,7 +164,7 @@ export default async function QuotesPage({
             </Link>
             <div className="quote-meta-row">
               <span>{quote.attributedTo ? `Attributed to ${quote.attributedTo}` : "No attribution recorded"}</span>
-              <span>added by {quote.contributor ? displayNameForUser(quote.contributor) : "former user"}</span>
+              <span>added by {quote.contributor ? <UserName user={quote.contributor} /> : "former user"}</span>
             </div>
             <details className="quote-provenance">
               <summary>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserName } from "@/components/UserName";
 import { markErrorReportReviewedAction } from "@/lib/actions/error-report-actions";
 import {
   dismissReportAction,
@@ -15,7 +16,6 @@ import { formatUserDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { qualityLabel } from "@/lib/quality";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +93,7 @@ export default async function ModerationPage() {
                     {errorReport.source} / {formatUserDateTime(errorReport.createdAt, timeZone)}
                   </div>
                   <p className="muted text-sm">
-                    {errorReport.user ? `reported while signed in as ${displayNameForUser(errorReport.user)}` : "anonymous user"}
+                    {errorReport.user ? <>reported while signed in as <UserName user={errorReport.user} /></> : "anonymous user"}
                   </p>
                 </div>
                 <Link href={errorReport.path as never} className="underline">
@@ -181,7 +181,7 @@ export default async function ModerationPage() {
                     {report.targetType.toLowerCase()} · {report.status.toLowerCase()}
                   </div>
                   <p className="muted text-sm">
-                    reported by {displayNameForUser(report.reporter)} · {formatUserDateTime(report.createdAt, timeZone)}
+                    reported by <UserName user={report.reporter} /> · {formatUserDateTime(report.createdAt, timeZone)}
                   </p>
                 </div>
                 {report.targetType === "PROBLEM" && problem && (
@@ -208,7 +208,7 @@ export default async function ModerationPage() {
               {post && (
                 <blockquote className="mt-3 border-l-2 border-line pl-3 text-sm">
                   <div className="muted mb-1">
-                    {post.deletedAt ? "Hidden post" : "Visible post"} by {displayNameForUser(post.author)}
+                    {post.deletedAt ? "Hidden post" : "Visible post"} by <UserName user={post.author} />
                   </div>
                   {post.bodyMarkdown}
                 </blockquote>

@@ -3,10 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canViewProblem } from "@/lib/problem-visibility";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +47,12 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
       eyebrow="Quote"
       heroImage="/art/pine-forest.jpg"
       heroAlt="Ivan Shishkin, Pine Forest"
-      description={`added by ${quote.contributor ? displayNameForUser(quote.contributor) : "former user"} on ${quote.createdAt.toLocaleDateString("en-US")}`}
+      description={
+        <span>
+          added by {quote.contributor ? <UserName user={quote.contributor} /> : "former user"} on{" "}
+          {quote.createdAt.toLocaleDateString("en-US")}
+        </span>
+      }
       meta={
         <>
           <p>{relatedProblems.length} related problems</p>

@@ -5,6 +5,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { HiddenHint } from "@/components/HiddenHint";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { UserName } from "@/components/UserName";
 import { reportPostAction } from "@/lib/actions/moderation-actions";
 import {
   createDiscussionPostAction,
@@ -18,7 +19,6 @@ import { getTranslations } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canEditDiscussionHint, canEditProblem, canViewArchivedProblem } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -126,7 +126,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                       </span>{" "}
                       by{" "}
                       <Link href={`/profile/${post.author.username}`} className="underline">
-                        {displayNameForUser(post.author)}
+                        <UserName user={post.author} />
                       </Link>{" "}
                       {"\u00b7"} {post.createdAt.toLocaleString("en-US")}
                     </div>

@@ -3,13 +3,13 @@ import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { ExplorationReader, type ExplorationReaderBlock } from "@/components/ExplorationReader";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { asExplorationState } from "@/lib/exploration-engine";
 import { canEditExploration, canViewExploration } from "@/lib/explorations";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { canViewProblem } from "@/lib/problem-visibility";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -188,7 +188,7 @@ export default async function StartExplorationPage({
       eyebrow="Exploration"
       heroImage={exploration.coverImageUrl || "/art/playlists-forest-lodge.webp"}
       heroAlt={exploration.coverImageUrl ? `Cover for ${exploration.title}` : "Ivan Shishkin, Forest Lodge"}
-      description={`by ${displayNameForUser(exploration.author)}`}
+      description={<span>by <UserName user={exploration.author} /></span>}
       workspaceClassName="forest-page-workspace-wide"
       actions={<Link href="/explorations" className="button secondary"><ArrowLeft size={16} /> Explorations</Link>}
     >

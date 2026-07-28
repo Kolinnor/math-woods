@@ -6,6 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { UserAvatar } from "@/components/UserAvatar";
 import { dismissConceptTranslationStaleNoticeAction } from "@/lib/actions/concept-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -274,7 +275,15 @@ export default async function ConceptPage({
       description={
         <>
           {t.conceptDetail.statusLabel(conceptDomainLabel, conceptStatusLabel)}
-          {concept.lastEditedBy ? ` / ${t.conceptDetail.editedBy(displayNameForUser(concept.lastEditedBy))}` : ""}
+          {concept.lastEditedBy && (
+            <>
+              {" / "}
+              <span className="user-name-with-avatar">
+                <UserAvatar user={concept.lastEditedBy} size="xs" />
+                <span>{t.conceptDetail.editedBy(displayNameForUser(concept.lastEditedBy))}</span>
+              </span>
+            </>
+          )}
         </>
       }
       meta={

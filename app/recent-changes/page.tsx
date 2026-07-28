@@ -1,10 +1,10 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +57,7 @@ export default async function RecentChangesPage() {
               </div>
               <p className="mt-1 text-sm">{revision.editSummary || "No edit summary."}</p>
               <p className="muted mt-1 text-xs">
-                {revision.editedBy ? displayNameForUser(revision.editedBy) : "unknown"}
+                {revision.editedBy ? <UserName user={revision.editedBy} /> : "unknown"}
               </p>
             </article>
           );

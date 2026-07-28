@@ -3,6 +3,7 @@ import Link from "next/link";
 import { EditorSettingsVisitedMarker } from "@/components/EditorSettingsVisitedMarker";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { OAuthProviderIcon } from "@/components/OAuthProviderIcon";
+import { UserName } from "@/components/UserName";
 import {
   changePasswordAction,
   deleteAccountAction,
@@ -392,7 +393,16 @@ export default async function SettingsPage({
   const roleUsers = canManageRoles
     ? await prisma.user.findMany({
         orderBy: [{ role: "desc" }, { username: "asc" }],
-        select: { id: true, username: true, displayName: true, email: true, role: true, createdAt: true, deletedAt: true }
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          deletedAt: true
+        }
       })
     : [];
   const activeUsers = roleUsers.filter((managedUser) => !isDeletedUser(managedUser));
@@ -901,7 +911,7 @@ export default async function SettingsPage({
                 <div key={managedUser.id} className="rounded-md border border-line p-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium">{displayNameForUser(managedUser)}</p>
+                      <p className="font-medium"><UserName user={managedUser} /></p>
                       <p className="muted">
                         {roleLabel(managedUser.role)} / joined {formatDate(managedUser.createdAt)}
                         {managedUser.deletedAt && <> / deleted {formatDate(managedUser.deletedAt)}</>}
