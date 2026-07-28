@@ -9,6 +9,7 @@ export type DirectChatMessage = {
   authorId: number;
   authorUsername: string;
   authorName: string;
+  authorAvatarBackground: string | null;
   authorAvatarUrl: string | null;
   bodyHtml: string;
   createdAt: string;
@@ -33,7 +34,13 @@ export async function acceptedFriendshipBetween(userId: number, otherUserId: num
 }
 
 export async function sendDirectChatMessage(
-  user: { id: number; username: string; displayName?: string | null; avatarUrl?: string | null },
+  user: {
+    id: number;
+    username: string;
+    displayName?: string | null;
+    avatarBackground?: string | null;
+    avatarUrl?: string | null;
+  },
   otherUsername: string,
   rawBodyMarkdown: FormDataEntryValue | string | null | undefined
 ): Promise<DirectChatMessage> {
@@ -79,6 +86,7 @@ export async function sendDirectChatMessage(
     authorId: user.id,
     authorUsername: user.username,
     authorName: displayNameForUser(user),
+    authorAvatarBackground: user.avatarBackground ?? null,
     authorAvatarUrl: user.avatarUrl ?? null,
     bodyHtml: message.bodyHtml,
     createdAt: message.createdAt.toISOString()

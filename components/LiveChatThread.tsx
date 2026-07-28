@@ -126,6 +126,7 @@ export function LiveChatThread({
                 user={{
                   username: message.authorUsername,
                   displayName: message.authorName,
+                  avatarBackground: message.authorAvatarBackground,
                   avatarUrl: message.authorAvatarUrl
                 }}
                 size="sm"

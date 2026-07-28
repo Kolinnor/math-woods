@@ -41,6 +41,7 @@ export type UserReputationSummary = {
   userId: number;
   username: string;
   displayName: string | null;
+  avatarBackground: string | null;
   avatarUrl: string | null;
   role: Role;
   mathLevel: UserMathLevel | null;
@@ -94,6 +95,7 @@ function summarizeUser(
     id: number;
     username: string;
     displayName: string | null;
+    avatarBackground: string | null;
     avatarUrl: string | null;
     role: Role;
     mathLevel: UserMathLevel | null;
@@ -111,6 +113,7 @@ function summarizeUser(
     userId: user.id,
     username: user.username,
     displayName: user.displayName,
+    avatarBackground: user.avatarBackground,
     avatarUrl: user.avatarUrl,
     role: user.role,
     mathLevel: user.mathLevel,
@@ -143,6 +146,7 @@ export async function getReputationLeaderboard() {
       id: true,
       username: true,
       displayName: true,
+      avatarBackground: true,
       avatarUrl: true,
       role: true,
       mathLevel: true,

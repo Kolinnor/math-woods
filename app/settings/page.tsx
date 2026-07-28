@@ -397,6 +397,7 @@ export default async function SettingsPage({
           id: true,
           username: true,
           displayName: true,
+          avatarBackground: true,
           avatarUrl: true,
           email: true,
           role: true,

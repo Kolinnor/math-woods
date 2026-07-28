@@ -305,6 +305,20 @@ export const fr = {
     profileImageRemoved: "Image de profil retirée.",
     profileImageInvalid: "Choisissez une image JPEG, PNG, WebP ou AVIF de moins de 5 Mo.",
     profileImageUploadFailed: "L'image de profil n'a pas pu être mise à jour.",
+    profileImageBackground: "Fond de l'avatar par défaut",
+    profileImageBackgroundHelp: "Choisissez la couleur douce affichée derrière votre avatar animal par défaut.",
+    profileImageBackgroundUpdated: "Fond de l'avatar mis à jour.",
+    profileImageBackgroundFailed: "Le fond de l'avatar n'a pas pu être mis à jour.",
+    profileImageBackgroundColors: {
+      moss: "Mousse",
+      butter: "Beurre",
+      rose: "Rose",
+      sky: "Ciel",
+      lavender: "Lavande",
+      apricot: "Abricot",
+      mint: "Menthe",
+      stone: "Pierre"
+    },
     saveProfile: "Enregistrer le profil",
     bioPlaceholder: "Algèbre, topologie, problèmes olympiques...",
     profileNameUrlHelp: (username: string) =>
@@ -319,7 +333,8 @@ export const fr = {
     about: "À propos",
     suggestions: "Suggestions",
     contribute: "Contribuer",
-    legalAndBrand: "Mentions légales et marque"
+    legalAndBrand: "Mentions légales et marque",
+    avatarArtwork: "Illustrations des avatars par défaut"
   },
   home: {
     hero: {

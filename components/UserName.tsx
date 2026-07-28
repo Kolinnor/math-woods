@@ -2,6 +2,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { displayNameForUser } from "@/lib/user-display";
 
 type NamedUser = {
+  avatarBackground?: string | null;
   avatarUrl?: string | null;
   displayName?: string | null;
   username: string;

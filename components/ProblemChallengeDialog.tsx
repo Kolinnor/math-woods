@@ -23,6 +23,7 @@ export type ProblemChallengeProblem = {
 };
 
 type SuggestedUser = {
+  avatarBackground: string | null;
   avatarUrl: string | null;
   name: string;
   username: string;
@@ -85,13 +86,20 @@ function ProblemChallengeDialog({
   const [userQuery, setUserQuery] = useState("");
   const [userSuggestions, setUserSuggestions] = useState<SuggestedUser[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<SuggestedUser | null>(
-    recipientUsername && recipientName ? { avatarUrl: null, name: recipientName, username: recipientUsername } : null
+    recipientUsername && recipientName
+      ? { avatarBackground: null, avatarUrl: null, name: recipientName, username: recipientUsername }
+      : null
   );
   const [searching, setSearching] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [visibleError, setVisibleError] = useState<ProblemChallengeActionState["error"]>(null);
   const activeRecipient = fixedRecipient
-    ? { avatarUrl: null, name: recipientName ?? recipientUsername ?? "", username: recipientUsername ?? "" }
+    ? {
+        avatarBackground: null,
+        avatarUrl: null,
+        name: recipientName ?? recipientUsername ?? "",
+        username: recipientUsername ?? ""
+      }
     : selectedRecipient;
   const triggerLabel = buttonLabel ?? labels.button;
 

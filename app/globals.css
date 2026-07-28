@@ -529,6 +529,11 @@ a {
   width: 100%;
 }
 
+.user-avatar-default img {
+  object-fit: contain;
+  padding: 9%;
+}
+
 .user-avatar-xs {
   border-radius: 4px;
   font-size: 0.48rem;
@@ -572,31 +577,6 @@ a {
 
 .user-name-with-avatar > span:last-child {
   overflow-wrap: anywhere;
-}
-
-.user-avatar-tone-1 {
-  background: #e7e2cb;
-  color: #66531f;
-}
-
-.user-avatar-tone-2 {
-  background: #dce7ea;
-  color: #285365;
-}
-
-.user-avatar-tone-3 {
-  background: #eadfdc;
-  color: #78423a;
-}
-
-.user-avatar-tone-4 {
-  background: #e3dfea;
-  color: #594a70;
-}
-
-.user-avatar-tone-5 {
-  background: #e7e4dd;
-  color: #4b4a45;
 }
 
 .floating-friends-menu {
@@ -1295,6 +1275,17 @@ a {
 
 .site-footer a:hover {
   color: var(--ink);
+}
+
+.avatar-artwork-credit {
+  font-size: 0.75rem;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.avatar-artwork-credit a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .daily-tip {
@@ -9633,6 +9624,23 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   text-decoration: none;
 }
 
+.problem-ledger-author-row {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.problem-ledger-author-avatar {
+  align-items: center;
+  display: inline-flex;
+}
+
+.problem-ledger-author-avatar .user-avatar-xs {
+  height: 1.35rem;
+  width: 1.35rem;
+}
+
 .problem-ledger-author:hover {
   color: var(--link);
   text-decoration: underline;
@@ -10782,6 +10790,42 @@ button.relation-remove-button {
   padding: 0.4rem 0.7rem;
 }
 
+.profile-avatar-background {
+  border-top: 1px solid var(--line);
+  margin-top: 0.8rem;
+  padding-top: 0.75rem;
+}
+
+.profile-avatar-background > strong {
+  font-size: 0.84rem;
+}
+
+.profile-avatar-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.profile-avatar-swatch {
+  align-items: center;
+  border: 1px solid rgb(32 70 45 / 0.24);
+  border-radius: 5px;
+  color: #294632;
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0;
+  width: 2rem;
+}
+
+.profile-avatar-swatch:hover,
+.profile-avatar-swatch.selected {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px rgb(47 111 75 / 0.18);
+}
+
 .profile-avatar-editor .profile-avatar-status {
   color: var(--accent-strong);
 }
@@ -10800,6 +10844,11 @@ button.relation-remove-button {
   display: grid;
   gap: 0.4rem;
   justify-items: end;
+}
+
+.profile-hero-avatar.user-avatar-xl {
+  height: 6rem;
+  width: 6rem;
 }
 
 .friend-add-form {

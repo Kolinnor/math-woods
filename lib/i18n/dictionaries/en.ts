@@ -303,6 +303,20 @@ export const en = {
     profileImageRemoved: "Profile image removed.",
     profileImageInvalid: "Choose a JPEG, PNG, WebP, or AVIF image smaller than 5 MB.",
     profileImageUploadFailed: "Profile image could not be updated.",
+    profileImageBackground: "Default avatar background",
+    profileImageBackgroundHelp: "Choose the soft color shown behind your default animal avatar.",
+    profileImageBackgroundUpdated: "Avatar background updated.",
+    profileImageBackgroundFailed: "The avatar background could not be updated.",
+    profileImageBackgroundColors: {
+      moss: "Moss",
+      butter: "Butter",
+      rose: "Rose",
+      sky: "Sky",
+      lavender: "Lavender",
+      apricot: "Apricot",
+      mint: "Mint",
+      stone: "Stone"
+    },
     saveProfile: "Save profile",
     bioPlaceholder: "Algebra, topology, olympiad problems...",
     profileNameUrlHelp: (username: string) => `This is the name other people will see. Your profile URL stays /profile/${username}.`,
@@ -316,7 +330,8 @@ export const en = {
     about: "About",
     suggestions: "Suggestions",
     contribute: "Contribute",
-    legalAndBrand: "Legal & brand"
+    legalAndBrand: "Legal & brand",
+    avatarArtwork: "Default avatar artwork"
   },
   home: {
     hero: {

@@ -28,6 +28,13 @@ import {
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
 import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
+import {
+  AVATAR_BACKGROUND_OPTIONS,
+  DEFAULT_AVATAR_PRESETS,
+  avatarBackgroundOption,
+  defaultAvatarPresetForUsername,
+  parseAvatarBackground
+} from "../lib/avatar-presets.ts";
 import { en } from "../lib/i18n/dictionaries/en.ts";
 import { fr } from "../lib/i18n/dictionaries/fr.ts";
 import {
@@ -1307,6 +1314,7 @@ const mathematicianFixtures = [
     userId: 1,
     username: "ada",
     displayName: "Ada",
+    avatarBackground: null,
     avatarUrl: null,
     role: Role.USER,
     mathLevel: UserMathLevel.RESEARCH,
@@ -1328,6 +1336,7 @@ const mathematicianFixtures = [
     userId: 2,
     username: "emmy",
     displayName: "Emmy",
+    avatarBackground: null,
     avatarUrl: null,
     role: Role.MODERATOR,
     mathLevel: UserMathLevel.GRADUATE_CONTEST,
@@ -1346,6 +1355,14 @@ const mathematicianFixtures = [
     explorationCount: 0
   }
 ] satisfies UserReputationSummary[];
+
+assert.equal(defaultAvatarPresetForUsername("ada"), defaultAvatarPresetForUsername("Ada"));
+assert.ok(DEFAULT_AVATAR_PRESETS.includes(defaultAvatarPresetForUsername("emmy")));
+assert.equal(parseAvatarBackground("moss"), "moss");
+assert.equal(parseAvatarBackground("#ff0000"), null);
+assert.equal(avatarBackgroundOption("ada", "rose").id, "rose");
+assert.ok(AVATAR_BACKGROUND_OPTIONS.some((option) => option.id === avatarBackgroundOption("ada").id));
+
 assert.deepEqual(filterMathematicians(mathematicianFixtures, { query: "university" }).map((user) => user.username), ["ada"]);
 assert.deepEqual(filterMathematicians(mathematicianFixtures, { domain: MathDomain.ALGEBRA }).map((user) => user.username), ["emmy"]);
 assert.deepEqual(filterMathematicians(mathematicianFixtures, { collaborationOnly: true }).map((user) => user.username), ["ada"]);

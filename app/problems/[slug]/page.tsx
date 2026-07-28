@@ -258,7 +258,9 @@ export default async function ProblemPage({
       ? prisma.problemVerificationRequest.findMany({
           where: { problemId: problem.id, status: "PENDING" },
           include: {
-            user: { select: { username: true, displayName: true, avatarUrl: true } },
+            user: {
+              select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+            },
             messages: {
               include: { author: { select: { username: true, displayName: true } } },
               orderBy: { createdAt: "asc" }

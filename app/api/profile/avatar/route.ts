@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
+import { parseAvatarBackground } from "@/lib/avatar-presets";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -103,6 +104,29 @@ export async function DELETE() {
   await prisma.user.update({ where: { id: user.id }, data: { avatarUrl: null } });
   revalidateAvatarSurfaces(user.username);
   return NextResponse.json({ ok: true });
+}
+
+export async function PATCH(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  try {
+    await assertRateLimit(`avatar-background:${user.id}`, 30, 60 * 60_000);
+  } catch {
+    return NextResponse.json({ error: "Too many profile image changes. Please try again later." }, { status: 429 });
+  }
+
+  const body = await request.json().catch(() => null) as { background?: unknown } | null;
+  const avatarBackground = parseAvatarBackground(body?.background);
+  if (!avatarBackground) {
+    return NextResponse.json({ error: "Choose one of the available background colors." }, { status: 400 });
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { avatarBackground }
+  });
+  revalidateAvatarSurfaces(user.username);
+  return NextResponse.json({ avatarBackground });
 }
 
 async function deleteStoredAvatar(

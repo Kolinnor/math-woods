@@ -210,7 +210,7 @@ export default async function ProfilePage({
       description={`${user.mathLevel ? t.auth.mathLevels[user.mathLevel] : t.profile.notSet} / ${t.profile.reputation} ${reputation}`}
       meta={
         <div className="profile-hero-identity">
-          <UserAvatar user={user} size="xl" />
+          <UserAvatar user={user} size="xl" className="profile-hero-avatar" />
           <p>{user.role.toLowerCase()}</p>
         </div>
       }

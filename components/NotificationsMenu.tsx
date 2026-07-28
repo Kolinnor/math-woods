@@ -19,7 +19,11 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       where: { userId, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
       take: 8,
-      include: { actor: { select: { username: true, displayName: true, avatarUrl: true } } }
+      include: {
+        actor: {
+          select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        }
+      }
     }),
     prisma.notification.count({
       where: { userId, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } }

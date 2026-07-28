@@ -33,9 +33,15 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
       workspaceClassName="forest-page-workspace-narrow"
     >
       <AvatarUploader
+        initialAvatarBackground={user.avatarBackground}
         initialAvatarUrl={user.avatarUrl}
         user={{ username: user.username, displayName: user.displayName }}
         labels={{
+          backgroundColors: t.profile.profileImageBackgroundColors,
+          backgroundFailed: t.profile.profileImageBackgroundFailed,
+          backgroundHelp: t.profile.profileImageBackgroundHelp,
+          backgroundTitle: t.profile.profileImageBackground,
+          backgroundUpdated: t.profile.profileImageBackgroundUpdated,
           choose: t.profile.chooseProfileImage,
           help: t.profile.profileImageHelp,
           invalid: t.profile.profileImageInvalid,

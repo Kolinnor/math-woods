@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import "../node_modules/jsxgraph/distrib/jsxgraph.css";
 import "./globals.css";
 import { AchievementToast } from "@/components/AchievementToast";
+import { AvatarArtworkCredit } from "@/components/AvatarArtworkCredit";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ErrorReporter } from "@/components/ErrorReporter";
@@ -225,6 +226,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <span>GitHub</span>
               </a>
             </div>
+            <AvatarArtworkCredit label={t.footer.avatarArtwork} />
           </div>
         </footer>
       </body>

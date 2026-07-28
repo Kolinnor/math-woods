@@ -28,8 +28,12 @@ async function acceptedFriendshipsForUser(userId: number) {
       OR: [{ requesterId: userId }, { addresseeId: userId }]
     },
     include: {
-      requester: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      addressee: { select: { id: true, username: true, displayName: true, avatarUrl: true } }
+      requester: {
+        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+      },
+      addressee: {
+        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+      }
     },
     orderBy: { updatedAt: "desc" }
   });
@@ -51,12 +55,20 @@ export default async function FriendsPage() {
     acceptedFriendshipsForUser(user.id),
     prisma.friendship.findMany({
       where: { addresseeId: user.id, status: FriendshipStatus.PENDING },
-      include: { requester: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+      include: {
+        requester: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        }
+      },
       orderBy: { createdAt: "desc" }
     }),
     prisma.friendship.findMany({
       where: { requesterId: user.id, status: FriendshipStatus.PENDING },
-      include: { addressee: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+      include: {
+        addressee: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        }
+      },
       orderBy: { createdAt: "desc" }
     }),
     prisma.directChat.findMany({
@@ -64,8 +76,12 @@ export default async function FriendsPage() {
         OR: [{ userAId: user.id }, { userBId: user.id }]
       },
       include: {
-        userA: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        userB: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+        userA: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        },
+        userB: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        },
         messages: {
           include: { author: { select: { id: true, username: true, displayName: true } } },
           orderBy: { createdAt: "desc" },

@@ -23,13 +23,21 @@ export default async function NotificationsPage() {
       where: { userId: user.id, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
       take: 100,
-      include: { actor: { select: { username: true, displayName: true, avatarUrl: true } } }
+      include: {
+        actor: {
+          select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        }
+      }
     }),
     prisma.notification.findMany({
       where: { userId: user.id, readAt: { not: null }, type: { not: NotificationType.CHAT_MESSAGE } },
       orderBy: { createdAt: "desc" },
       take: 100,
-      include: { actor: { select: { username: true, displayName: true, avatarUrl: true } } }
+      include: {
+        actor: {
+          select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        }
+      }
     })
   ]);
   const notifications = [...unreadNotifications, ...readNotifications].slice(0, 100);

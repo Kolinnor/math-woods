@@ -31,6 +31,7 @@ export async function GET(request: Request) {
       id: true,
       username: true,
       displayName: true,
+      avatarBackground: true,
       avatarUrl: true
     },
     orderBy: { username: "asc" },
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
     users: users.map((user) => ({
       name: user.title,
       username: user.username,
+      avatarBackground: user.avatarBackground,
       avatarUrl: user.avatarUrl
     }))
   });

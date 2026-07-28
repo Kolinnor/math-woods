@@ -8,7 +8,7 @@ import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
-import { UserName } from "@/components/UserName";
+import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { prisma } from "@/lib/db";
@@ -832,13 +832,23 @@ export default async function ProblemsPage({
                     </div>
                   </Link>
                   <div className="problem-ledger-side">
-                    <Link
-                      href={problemsHref({ ...paginationParams, author: authorName }) as never}
-                      className="problem-ledger-author"
-                      title={t.problems.filterByAuthor(authorName)}
-                    >
-                      {t.common.by} <UserName user={problem.author} />
-                    </Link>
+                    <div className="problem-ledger-author-row">
+                      <Link
+                        href={problemsHref({ ...paginationParams, author: authorName }) as never}
+                        className="problem-ledger-author"
+                        title={t.problems.filterByAuthor(authorName)}
+                      >
+                        {t.common.by} {authorName}
+                      </Link>
+                      <Link
+                        href={`/profile/${problem.author.username}`}
+                        className="problem-ledger-author-avatar"
+                        title={authorName}
+                        aria-label={authorName}
+                      >
+                        <UserAvatar user={problem.author} size="xs" />
+                      </Link>
+                    </div>
                     {isOwnProblem && (
                       <span className="problem-favorite-count problem-own-count" title={t.problems.yourProblem}>
                         <House size={15} />

@@ -23,7 +23,9 @@ export default async function EditProofPage({
   const proof = await prisma.problemProof.findUnique({
     where: { id },
     include: {
-      author: { select: { username: true, displayName: true, avatarUrl: true } },
+      author: {
+        select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+      },
       problem: { select: { title: true, slug: true } }
     }
   });

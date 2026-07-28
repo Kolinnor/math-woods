@@ -244,6 +244,7 @@ model User {
   username                     String                       @unique
   displayName                  String?
   avatarUrl                    String?
+  avatarBackground             String?
   email                        String?                      @unique
   emailVerifiedAt              DateTime?
   passwordHash                 String?

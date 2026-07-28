@@ -53,10 +53,18 @@ export default async function ProblemVerificationPage({
           author: true
         }
       },
-      user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      reviewer: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+      user: {
+        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+      },
+      reviewer: {
+        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+      },
       messages: {
-        include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+        include: {
+          author: {
+            select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          }
+        },
         orderBy: { createdAt: "asc" }
       }
     }
