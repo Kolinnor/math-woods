@@ -1,7 +1,7 @@
 "use client";
 
 import { Search, Swords, X } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { forwardRef, useActionState, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   createProblemChallengeAction,
@@ -29,11 +29,16 @@ type SuggestedUser = {
 type ProblemChallengeDialogProps = {
   buttonLabel?: string;
   buttonClassName?: string;
+  hideTrigger?: boolean;
   iconOnly?: boolean;
   initialProblem?: ProblemChallengeProblem;
   labels: ProblemChallengeLabels;
   recipientName?: string;
   recipientUsername?: string;
+};
+
+export type ProblemChallengeDialogHandle = {
+  open: () => void;
 };
 
 const initialState: ProblemChallengeActionState = { error: null, ok: false };
@@ -53,15 +58,17 @@ function ChallengeSubmitButton({ labels, disabled }: { labels: ProblemChallengeL
   );
 }
 
-export function ProblemChallengeDialog({
+export const ProblemChallengeDialog = forwardRef<ProblemChallengeDialogHandle, ProblemChallengeDialogProps>(
+function ProblemChallengeDialog({
   buttonLabel,
   buttonClassName = "secondary",
+  hideTrigger = false,
   iconOnly = false,
   initialProblem,
   labels,
   recipientName,
   recipientUsername
-}: ProblemChallengeDialogProps) {
+}, ref) {
   const fixedProblem = Boolean(initialProblem);
   const fixedRecipient = Boolean(recipientUsername);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -85,6 +92,13 @@ export function ProblemChallengeDialog({
     ? { name: recipientName ?? recipientUsername ?? "", username: recipientUsername ?? "" }
     : selectedRecipient;
   const triggerLabel = buttonLabel ?? labels.button;
+
+  useImperativeHandle(ref, () => ({
+    open() {
+      setVisibleError(null);
+      dialogRef.current?.showModal();
+    }
+  }), []);
 
   useEffect(() => {
     if (fixedProblem) setSelectedProblem(initialProblem ?? null);
@@ -172,19 +186,21 @@ export function ProblemChallengeDialog({
 
   return (
     <>
-      <button
-        type="button"
-        className={iconOnly ? `icon-button ${buttonClassName}`.trim() : `button challenge-button ${buttonClassName}`.trim()}
-        title={triggerLabel}
-        aria-label={triggerLabel}
-        onClick={() => {
-          setVisibleError(null);
-          dialogRef.current?.showModal();
-        }}
-      >
-        <Swords size={iconOnly ? 16 : 17} aria-hidden="true" />
-        {!iconOnly && <span>{triggerLabel}</span>}
-      </button>
+      {!hideTrigger && (
+        <button
+          type="button"
+          className={iconOnly ? `icon-button ${buttonClassName}`.trim() : `button challenge-button ${buttonClassName}`.trim()}
+          title={triggerLabel}
+          aria-label={triggerLabel}
+          onClick={() => {
+            setVisibleError(null);
+            dialogRef.current?.showModal();
+          }}
+        >
+          <Swords size={iconOnly ? 16 : 17} aria-hidden="true" />
+          {!iconOnly && <span>{triggerLabel}</span>}
+        </button>
+      )}
 
       <dialog ref={dialogRef} className="problem-challenge-dialog">
         <header className="problem-challenge-header">
@@ -349,4 +365,4 @@ export function ProblemChallengeDialog({
       </dialog>
     </>
   );
-}
+});

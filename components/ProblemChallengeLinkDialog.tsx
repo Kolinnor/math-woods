@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, Link2, Swords, X } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { forwardRef, useActionState, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   createProblemChallengeInviteAction,
@@ -12,6 +12,7 @@ import { PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH } from "@/lib/problem-challenges";
 
 type ProblemChallengeLinkDialogProps = {
   buttonClassName?: string;
+  hideTrigger?: boolean;
   labels: ProblemChallengeLinkDialogLabels;
   problem: {
     difficulty: number | null;
@@ -21,7 +22,11 @@ type ProblemChallengeLinkDialogProps = {
   };
 };
 
-type ProblemChallengeLinkDialogLabels = Pick<
+export type ProblemChallengeLinkDialogHandle = {
+  open: () => void;
+};
+
+export type ProblemChallengeLinkDialogLabels = Pick<
   Dictionary["social"]["challengeLink"],
   | "button"
   | "cancel"
@@ -58,11 +63,15 @@ function GenerateLinkButton({ labels }: { labels: ProblemChallengeLinkDialogLabe
   );
 }
 
-export function ProblemChallengeLinkDialog({
+export const ProblemChallengeLinkDialog = forwardRef<
+  ProblemChallengeLinkDialogHandle,
+  ProblemChallengeLinkDialogProps
+>(function ProblemChallengeLinkDialog({
   buttonClassName = "secondary",
+  hideTrigger = false,
   labels,
   problem
-}: ProblemChallengeLinkDialogProps) {
+}, ref) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState(
@@ -72,6 +81,12 @@ export function ProblemChallengeLinkDialog({
   const [linkPath, setLinkPath] = useState<string | null>(null);
   const [absoluteLink, setAbsoluteLink] = useState("");
   const [copied, setCopied] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    open() {
+      dialogRef.current?.showModal();
+    }
+  }), []);
 
   useEffect(() => {
     if (state.linkPath) setLinkPath(state.linkPath);
@@ -94,16 +109,18 @@ export function ProblemChallengeLinkDialog({
 
   return (
     <>
-      <button
-        type="button"
-        className={`button challenge-button ${buttonClassName}`.trim()}
-        title={labels.button}
-        aria-label={labels.button}
-        onClick={() => dialogRef.current?.showModal()}
-      >
-        <Link2 size={17} aria-hidden="true" />
-        <span>{labels.button}</span>
-      </button>
+      {!hideTrigger && (
+        <button
+          type="button"
+          className={`button challenge-button ${buttonClassName}`.trim()}
+          title={labels.button}
+          aria-label={labels.button}
+          onClick={() => dialogRef.current?.showModal()}
+        >
+          <Link2 size={17} aria-hidden="true" />
+          <span>{labels.button}</span>
+        </button>
+      )}
 
       <dialog ref={dialogRef} className="problem-challenge-dialog">
         <header className="problem-challenge-header">
@@ -179,4 +196,4 @@ export function ProblemChallengeLinkDialog({
       </dialog>
     </>
   );
-}
+});

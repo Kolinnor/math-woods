@@ -1585,6 +1585,26 @@ a {
   width: 2.8rem;
 }
 
+.problem-challenge-method-dialog {
+  width: 30rem;
+}
+
+.problem-challenge-methods {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.problem-challenge-methods button {
+  align-items: center;
+  display: flex;
+  gap: 0.7rem;
+  justify-content: flex-start;
+  min-height: 3.5rem;
+  text-align: left;
+  width: 100%;
+}
+
 .problem-challenge-form {
   display: grid;
   gap: 1rem;

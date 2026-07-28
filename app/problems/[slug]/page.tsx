@@ -10,8 +10,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
-import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
-import { ProblemChallengeLinkDialog } from "@/components/ProblemChallengeLinkDialog";
+import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
 import { ProblemHintReveal } from "@/components/ProblemHintReveal";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
@@ -890,9 +889,9 @@ export default async function ProblemPage({
 
         {user && problem.status === "PUBLISHED" && problem.listed && (
           <section className="sidebar-section problem-rail-challenge">
-            <ProblemChallengeLinkDialog
-              buttonClassName="w-full"
-              labels={{
+            <ProblemChallengeLauncher
+              challengeLabels={t.social.challenge}
+              linkLabels={{
                 button: t.social.challengeLink.button,
                 cancel: t.social.challengeLink.cancel,
                 close: t.social.challengeLink.close,
@@ -914,22 +913,11 @@ export default async function ProblemPage({
               problem={{
                 difficulty: problem.difficulty,
                 domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
-                slug: problem.slug,
-                title: problem.title
-              }}
-            />
-            <ProblemChallengeDialog
-              buttonClassName="secondary w-full"
-              buttonLabel={t.social.challenge.challengeProblem}
-              initialProblem={{
-                difficulty: problem.difficulty,
-                domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
                 language: problem.language,
                 listed: problem.listed,
                 slug: problem.slug,
                 title: problem.title
               }}
-              labels={t.social.challenge}
             />
           </section>
         )}

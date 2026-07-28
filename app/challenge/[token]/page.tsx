@@ -7,6 +7,7 @@ import { acceptProblemChallengeInviteAction } from "@/lib/actions/problem-challe
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
+import { markdownExcerpt } from "@/lib/metadata-text";
 import {
   normalizeProblemChallengeInviteToken,
   problemChallengeInviteTokenHash
@@ -16,12 +17,104 @@ import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  robots: {
-    index: false,
-    follow: false
-  }
+const challengeRobots = {
+  index: false,
+  follow: false
 };
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ token: string }>;
+}): Promise<Metadata> {
+  const { token: tokenValue } = await params;
+  const token = normalizeProblemChallengeInviteToken(tokenValue);
+  const route = token ? `/challenge/${encodeURIComponent(token)}` : "/challenge";
+  const image = token ? `${route}/opengraph-image` : "/icon.svg";
+  const fallbackTitle = "You have been challenged on Math Woods";
+  const fallbackDescription = "A mathematical problem is waiting for you.";
+
+  if (!token) {
+    return {
+      title: fallbackTitle,
+      description: fallbackDescription,
+      robots: challengeRobots
+    };
+  }
+
+  const invite = await prisma.problemChallengeInvite.findUnique({
+    where: { tokenHash: problemChallengeInviteTokenHash(token) },
+    select: {
+      expiresAt: true,
+      challenger: {
+        select: {
+          username: true,
+          displayName: true,
+          deletedAt: true
+        }
+      },
+      problem: {
+        select: {
+          title: true,
+          language: true,
+          listed: true,
+          status: true
+        }
+      }
+    }
+  });
+  const availableInvite =
+    invite &&
+    !invite.challenger.deletedAt &&
+    invite.expiresAt > new Date() &&
+    invite.problem.listed &&
+    invite.problem.status === "PUBLISHED"
+      ? invite
+      : null;
+
+  const challengerName = availableInvite ? displayNameForUser(availableInvite.challenger) : null;
+  const problemTitle = availableInvite
+    ? markdownExcerpt(availableInvite.problem.title, "a Math Woods problem", 120)
+    : null;
+  const isFrench = availableInvite?.problem.language === "fr";
+  const title = challengerName
+    ? isFrench
+      ? `${challengerName} vous lance un défi sur Math Woods`
+      : `${challengerName} challenged you on Math Woods`
+    : fallbackTitle;
+  const description = problemTitle
+    ? isFrench
+      ? `Saurez-vous résoudre « ${problemTitle} » ? Acceptez le défi sur Math Woods.`
+      : `Can you solve “${problemTitle}”? Accept the challenge on Math Woods.`
+    : fallbackDescription;
+
+  return {
+    title,
+    description,
+    robots: challengeRobots,
+    openGraph: {
+      title,
+      description,
+      url: route,
+      siteName: "Math Woods",
+      type: "website",
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: "Crossed swords for a Math Woods challenge"
+        }
+      ]
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image]
+    }
+  };
+}
 
 export default async function ProblemChallengeInvitePage({
   params
