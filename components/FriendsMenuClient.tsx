@@ -225,10 +225,13 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 <ArrowLeft size={16} />
               </button>
               <div>
-                <span className="friends-mini-chat-person">
+                <Link
+                  href={`/profile/${selectedFriend.username}` as never}
+                  className="friends-mini-chat-person"
+                >
                   <UserAvatar user={{ ...selectedFriend, displayName: selectedFriend.name }} size="sm" />
                   <strong>{selectedFriend.name}</strong>
-                </span>
+                </Link>
                 <span className="friends-mini-chat-status"><i className={selectedFriend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />{selectedFriend.online ? data.labels.online : data.labels.offline}</span>
               </div>
               <ProblemChallengeDialog

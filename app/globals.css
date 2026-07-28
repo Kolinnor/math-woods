@@ -744,6 +744,18 @@ a {
   min-width: 0;
 }
 
+.friends-mini-chat-person:hover strong {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.friends-mini-chat-person:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .friends-menu-row small {
   color: var(--muted);
   font-size: 0.72rem;
