@@ -91,6 +91,7 @@ export type TipEntry = {
   title: string;
   description: string;
   body: string;
+  imageUrl: string | null;
 };
 
 export const DAILY_TIPS = DEFAULT_TIPS;
@@ -100,6 +101,7 @@ function defaultTipsWithIds(): TipEntry[] {
     id: index + 1,
     position: index,
     showInMainMenu: false,
+    imageUrl: null,
     ...tip
   }));
 }

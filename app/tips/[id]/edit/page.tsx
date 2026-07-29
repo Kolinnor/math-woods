@@ -1,5 +1,6 @@
 import { DeleteTipButton } from "@/components/DeleteTipButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { TipImageField } from "@/components/TipImageField";
 import { TipProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -79,6 +80,7 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
           <span className="text-sm font-medium">Description</span>
           <textarea name="description" maxLength={1200} required defaultValue={tip.description} />
         </label>
+        <TipImageField initialImageUrl={tip.imageUrl} />
         <label className="checkbox-inline">
           <input name="showInMainMenu" type="checkbox" defaultChecked={tip.showInMainMenu} />
           <span>This can appear in the main menu</span>

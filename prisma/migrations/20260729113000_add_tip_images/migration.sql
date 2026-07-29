@@ -1,0 +1,1 @@
+ALTER TABLE "Tip" ADD COLUMN "imageUrl" TEXT;

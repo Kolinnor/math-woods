@@ -1361,6 +1361,7 @@ model Tip {
   title          String
   description    String
   body           String       @db.Text
+  imageUrl       String?
   showInMainMenu Boolean      @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

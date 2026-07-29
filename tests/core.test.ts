@@ -28,6 +28,7 @@ import {
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
 import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
+import { DEFAULT_TIP_IMAGE_URL, normalizeTipImageUrl, tipImageUrl } from "../lib/tip-images.ts";
 import {
   AVATAR_BACKGROUND_OPTIONS,
   DEFAULT_AVATAR_PRESETS,
@@ -1135,6 +1136,13 @@ assert.equal(
   "avatars/user-7/example.webp"
 );
 assert.equal(imageObjectKeyFromPublicUrl(testImageStorageConfig, "https://malicious.example/avatar.webp"), null);
+assert.equal(normalizeTipImageUrl(" /art/oak-grove.jpg "), "/art/oak-grove.jpg");
+assert.equal(normalizeTipImageUrl("https://images.example.org/tip.png"), "https://images.example.org/tip.png");
+assert.equal(normalizeTipImageUrl(""), null);
+assert.throws(() => normalizeTipImageUrl("http://images.example.org/tip.png"));
+assert.throws(() => normalizeTipImageUrl("//images.example.org/tip.png"));
+assert.equal(tipImageUrl(null), DEFAULT_TIP_IMAGE_URL);
+assert.equal(tipImageUrl("https://images.example.org/tip.png"), "https://images.example.org/tip.png");
 const presignedDelete = createPresignedImageDelete(
   testImageStorageConfig,
   "avatars/user-7/example.webp",

@@ -12,6 +12,7 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
+import { tipImageUrl } from "@/lib/tip-images";
 
 export const dynamic = "force-dynamic";
 
@@ -141,15 +142,22 @@ export default async function TipsPage({
       <div className="tips-grid">
         {tips.map(({ tip, index, relatedProblems }) => (
           <article key={tip.title} className="tip-card">
-            <div className="tip-card-actions">
-              <p className="eyebrow">Tip {index + 1}</p>
-              <Link href={`/tips/${tip.id}/edit` as Route} className="button secondary">
-                Edit
-              </Link>
+            <div className="tip-card-summary">
+              <div className="tip-card-image">
+                <img src={tipImageUrl(tip.imageUrl)} alt="" loading="lazy" />
+              </div>
+              <div className="tip-card-summary-copy">
+                <div className="tip-card-actions">
+                  <p className="eyebrow">Tip {index + 1}</p>
+                  <Link href={`/tips/${tip.id}/edit` as Route} className="button secondary">
+                    Edit
+                  </Link>
+                </div>
+                {tip.showInMainMenu && <span className="tip-main-menu-badge">Main menu</span>}
+                <h2>{tip.title}</h2>
+                <p className="tip-description">{tip.description}</p>
+              </div>
             </div>
-            {tip.showInMainMenu && <span className="tip-main-menu-badge">Main menu</span>}
-            <h2>{tip.title}</h2>
-            <p className="tip-description">{tip.description}</p>
 
             <section className="tip-related" aria-labelledby={`tip-${index}-practice`}>
               <div className="tip-related-heading">

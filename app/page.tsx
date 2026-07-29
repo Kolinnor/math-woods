@@ -12,6 +12,7 @@ import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
+import { tipImageUrl } from "@/lib/tip-images";
 
 export const dynamic = "force-dynamic";
 
@@ -124,7 +125,7 @@ function TipOfDay({
   homeT,
   difficultyUnset
 }: {
-  tip: { title: string };
+  tip: { title: string; imageUrl: string | null };
   bodyHtml: string;
   practice: HomeProblem[];
   t: HomeTranslations["tip"];
@@ -134,7 +135,7 @@ function TipOfDay({
   return (
     <section className="home-tip-card">
       <div className="home-tip-image">
-        <Image src="/art/oak-grove.jpg" alt="Ivan Shishkin, Oak Grove" fill sizes="(max-width: 760px) 100vw, 300px" />
+        <img src={tipImageUrl(tip.imageUrl)} alt="" />
       </div>
       <div className="home-tip-copy">
         <p className="home-section-kicker">{t.title}</p>
