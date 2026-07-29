@@ -10,6 +10,7 @@ import { sendFriendRequestAction } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { directChatPair } from "@/lib/direct-chat";
+import { summarizeChatReactions } from "@/lib/chat-reactions";
 import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
@@ -106,6 +107,12 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
               avatarUrl: true,
               avatarBackground: true
             }
+          },
+          reactions: {
+            select: {
+              reaction: true,
+              userId: true
+            }
           }
         },
         orderBy: { createdAt: "asc" },
@@ -122,7 +129,8 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       authorAvatarBackground: message.author.avatarBackground,
       authorAvatarUrl: message.author.avatarUrl,
       bodyHtml: message.bodyHtml,
-      createdAt: message.createdAt.toISOString()
+      createdAt: message.createdAt.toISOString(),
+      reactions: summarizeChatReactions(message.reactions, user.id)
     })) ?? [];
   const ownMessageResetSignal = messages.filter((message) => message.authorId === user.id).at(-1)?.id ?? 0;
 
@@ -162,7 +170,11 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           labels={{
             live: t.social.live,
             livePaused: t.social.livePaused,
-            noMessagesYet: t.social.noMessagesYet
+            noMessagesYet: t.social.noMessagesYet,
+            reactions: {
+              addReaction: t.social.addReaction,
+              reactionNames: t.social.reactionNames
+            }
           }}
         />
 

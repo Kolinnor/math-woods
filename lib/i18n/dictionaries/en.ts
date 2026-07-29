@@ -120,6 +120,19 @@ export const en = {
     send: "Send",
     live: "Live",
     livePaused: "Live updates paused",
+    addReaction: "Add a reaction",
+    reactionNames: {
+      LIKE: "Like",
+      HEART: "Love",
+      DISLIKE: "Dislike",
+      SMILE: "Smile",
+      LAUGH: "Laugh",
+      SURPRISE: "Surprised",
+      SAD: "Sad",
+      THINKING: "Thinking",
+      CELEBRATE: "Celebrate",
+      AGREE: "Agree"
+    },
     challenge: {
       button: "Challenge",
       cancel: "Cancel",

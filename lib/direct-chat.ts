@@ -1,5 +1,6 @@
 import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import type { ChatReactionSummary } from "@/lib/chat-reactions";
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
 import { displayNameForUser } from "@/lib/user-display";
@@ -13,6 +14,7 @@ export type DirectChatMessage = {
   authorAvatarUrl: string | null;
   bodyHtml: string;
   createdAt: string;
+  reactions: ChatReactionSummary[];
 };
 
 export function directChatPair(userId: number, otherUserId: number) {
@@ -89,6 +91,7 @@ export async function sendDirectChatMessage(
     authorAvatarBackground: user.avatarBackground ?? null,
     authorAvatarUrl: user.avatarUrl ?? null,
     bodyHtml: message.bodyHtml,
-    createdAt: message.createdAt.toISOString()
+    createdAt: message.createdAt.toISOString(),
+    reactions: []
   };
 }

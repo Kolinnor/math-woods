@@ -294,6 +294,7 @@ model User {
   directChatsAsA               DirectChat[]                 @relation("DirectChatUserA")
   directChatsAsB               DirectChat[]                 @relation("DirectChatUserB")
   chatMessages                 ChatMessage[]
+  chatMessageReactions         ChatMessageReaction[]
   problemChallengesSent        ProblemChallenge[]            @relation("ProblemChallengeChallenger")
   problemChallengesReceived    ProblemChallenge[]            @relation("ProblemChallengeRecipient")
   problemChallengeInvitesSent  ProblemChallengeInvite[]      @relation("ProblemChallengeInviteChallenger")
@@ -416,18 +417,46 @@ model DirectChat {
 }
 
 model ChatMessage {
-  id           Int        @id @default(autoincrement())
+  id           Int                   @id @default(autoincrement())
   directChatId Int
   authorId     Int
   bodyMarkdown String
   bodyHtml     String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  directChat   DirectChat @relation(fields: [directChatId], references: [id], onDelete: Cascade)
-  author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  directChat   DirectChat            @relation(fields: [directChatId], references: [id], onDelete: Cascade)
+  author       User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions    ChatMessageReaction[]
 
   @@index([directChatId, createdAt])
   @@index([authorId, createdAt])
+}
+
+enum ChatReactionType {
+  LIKE
+  HEART
+  DISLIKE
+  SMILE
+  LAUGH
+  SURPRISE
+  SAD
+  THINKING
+  CELEBRATE
+  AGREE
+}
+
+model ChatMessageReaction {
+  id        Int              @id @default(autoincrement())
+  messageId Int
+  userId    Int
+  reaction  ChatReactionType
+  createdAt DateTime         @default(now())
+  message   ChatMessage      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, reaction])
+  @@index([messageId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Problem {

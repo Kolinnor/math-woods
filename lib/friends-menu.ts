@@ -1,5 +1,6 @@
 import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import type { ChatReactionLabels } from "@/lib/chat-reactions";
 import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
 import type { InterfaceLocale } from "@/lib/i18n/types";
 import type { ProblemChallengeLabels } from "@/lib/problem-challenges";
@@ -29,6 +30,7 @@ export type FriendsMenuData = {
     friends: string;
     backToFriends: string;
     challenge: ProblemChallengeLabels;
+    reactions: ChatReactionLabels;
     closeChat: string;
     noFriendsYet: string;
     noMessagesYet: string;
@@ -140,6 +142,10 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
       friends: t.social.friends,
       backToFriends: t.social.backToFriends,
       challenge: t.social.challenge,
+      reactions: {
+        addReaction: t.social.addReaction,
+        reactionNames: t.social.reactionNames
+      },
       closeChat: t.social.closeChat,
       noFriendsYet: t.social.noFriendsYet,
       noMessagesYet: t.social.noMessagesYet,

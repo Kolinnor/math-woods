@@ -27,6 +27,12 @@ import {
 } from "../lib/image-storage.ts";
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
+import { shouldSendChatOnEnter } from "../lib/chat-compose.ts";
+import {
+  applyChatReactionUpdates,
+  isChatReaction,
+  summarizeChatReactions
+} from "../lib/chat-reactions.ts";
 import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
 import {
   DEFAULT_TIP_IMAGE_POSITION,
@@ -336,6 +342,73 @@ assert.equal(chatUnreadDocumentTitle("Math Woods", 1), "(1) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(1) Math Woods", 3), "(3) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(99+) Math Woods", 0), "Math Woods");
 assert.equal(chatUnreadDocumentTitle("A problem - Math Woods", 120), "(99+) A problem - Math Woods");
+assert.equal(shouldSendChatOnEnter({
+  key: "Enter",
+  shiftKey: false,
+  altKey: false,
+  ctrlKey: false,
+  metaKey: false
+}), true);
+assert.equal(shouldSendChatOnEnter({
+  key: "Enter",
+  shiftKey: true,
+  altKey: false,
+  ctrlKey: false,
+  metaKey: false
+}), false);
+assert.equal(shouldSendChatOnEnter({
+  key: "Enter",
+  shiftKey: false,
+  altKey: false,
+  ctrlKey: false,
+  metaKey: false,
+  isComposing: true
+}), false);
+assert.equal(shouldSendChatOnEnter({
+  key: "Enter",
+  shiftKey: false,
+  altKey: false,
+  ctrlKey: false,
+  metaKey: false,
+  keyCode: 229
+}), false);
+assert.equal(isChatReaction("HEART"), true);
+assert.equal(isChatReaction("FIRE"), false);
+assert.deepEqual(
+  summarizeChatReactions(
+    [
+      { reaction: "HEART", userId: 3 },
+      { reaction: "LIKE", userId: 2 },
+      { reaction: "HEART", userId: 2 },
+      { reaction: "UNKNOWN", userId: 2 }
+    ],
+    2
+  ),
+  [
+    { reaction: "LIKE", count: 1, reactedByCurrentUser: true },
+    { reaction: "HEART", count: 2, reactedByCurrentUser: true }
+  ]
+);
+assert.deepEqual(
+  applyChatReactionUpdates(
+    [
+      { id: 10, body: "First", reactions: [] },
+      { id: 11, body: "Second", reactions: [] }
+    ],
+    [{
+      messageId: 11,
+      reactions: [{ reaction: "SMILE", count: 2, reactedByCurrentUser: false }]
+    }]
+  ),
+  [
+    { id: 10, body: "First", reactions: [] },
+    {
+      id: 11,
+      body: "Second",
+      reactions: [{ reaction: "SMILE", count: 2, reactedByCurrentUser: false }]
+    }
+  ]
+);
 
 const parsedDoc = parseMarkdownDocument(`---
 type: "problem"

@@ -4,9 +4,16 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, Send, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
+import { ChatMessageReactions } from "@/components/ChatMessageReactions";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
+import { shouldSendChatOnEnter } from "@/lib/chat-compose";
+import {
+  applyChatReactionUpdates,
+  type ChatReactionSummary,
+  type ChatReactionUpdate
+} from "@/lib/chat-reactions";
 import { CHAT_READ_EVENT, chatUnreadDocumentTitle } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
@@ -26,6 +33,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const latestMessageIdRef = useRef(0);
+  const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -116,6 +124,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     let timeoutId: number | undefined;
     const controller = new AbortController();
     latestMessageIdRef.current = 0;
+    reactionCursorRef.current = 0;
     setMessages([]);
     setDraft("");
     setChatError(null);
@@ -130,18 +139,37 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
       try {
         const afterId = initial ? 0 : latestMessageIdRef.current;
         const response = await fetch(
-          `/api/chat/${encodeURIComponent(selectedFriend!.username)}/messages?afterId=${afterId}`,
+          `/api/chat/${encodeURIComponent(selectedFriend!.username)}/messages?afterId=${afterId}`
+            + `&reactionsAfter=${reactionCursorRef.current}`,
           { cache: "no-store", signal: controller.signal }
         );
-        const result = await response.json() as { error?: string; messages?: DirectChatMessage[] };
+        const result = await response.json() as {
+          error?: string;
+          messages?: DirectChatMessage[];
+          reactionCursor?: number;
+          reactionUpdates?: ChatReactionUpdate[];
+        };
         if (!response.ok) throw new Error(result.error || "Conversation could not be loaded.");
 
-        if (!stopped && Array.isArray(result.messages) && result.messages.length > 0) {
+        if (
+          !stopped
+          && (
+            (Array.isArray(result.messages) && result.messages.length > 0)
+            || (Array.isArray(result.reactionUpdates) && result.reactionUpdates.length > 0)
+          )
+        ) {
           setMessages((current) => {
             const seen = new Set(current.map((message) => message.id));
-            return [...current, ...result.messages!.filter((message) => !seen.has(message.id))];
+            const withNewMessages = [
+              ...current,
+              ...(result.messages ?? []).filter((message) => !seen.has(message.id))
+            ];
+            return applyChatReactionUpdates(withNewMessages, result.reactionUpdates ?? []);
           });
-          latestMessageIdRef.current = result.messages.at(-1)?.id ?? latestMessageIdRef.current;
+          latestMessageIdRef.current = result.messages?.at(-1)?.id ?? latestMessageIdRef.current;
+        }
+        if (!stopped && typeof result.reactionCursor === "number") {
+          reactionCursorRef.current = result.reactionCursor;
         }
         if (!stopped && (initial || (result.messages?.length ?? 0) > 0)) {
           window.dispatchEvent(new Event(CHAT_READ_EVENT));
@@ -199,9 +227,21 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   }
 
   function submitOnShortcut(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || (!event.ctrlKey && !event.metaKey)) return;
+    if (!shouldSendChatOnEnter({
+      key: event.key,
+      shiftKey: event.shiftKey,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      isComposing: event.nativeEvent.isComposing,
+      keyCode: event.nativeEvent.keyCode
+    })) return;
     event.preventDefault();
     event.currentTarget.form?.requestSubmit();
+  }
+
+  function updateMessageReactions(messageId: number, reactions: ChatReactionSummary[]) {
+    setMessages((current) => applyChatReactionUpdates(current, [{ messageId, reactions }]));
   }
 
   return (
@@ -291,6 +331,13 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                       className={message.authorId === data.currentUserId ? "friends-mini-message is-own" : "friends-mini-message"}
                     >
                       <MarkdownBlock html={message.bodyHtml} />
+                      <ChatMessageReactions
+                        labels={data.labels.reactions}
+                        messageId={message.id}
+                        onChange={updateMessageReactions}
+                        otherUsername={selectedFriend.username}
+                        reactions={message.reactions}
+                      />
                       <time className="friends-mini-message-time" dateTime={message.createdAt}>
                         {formatChatTime(message.createdAt, data.locale, data.timeZone)}
                       </time>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, type KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
+import { shouldSendChatOnEnter } from "@/lib/chat-compose";
 import {
   createChatMessageAction,
   type ChatMessageActionState
@@ -42,8 +43,29 @@ export function ChatMessageForm({
     initialState
   );
 
+  function submitOnEnter(event: KeyboardEvent<HTMLFormElement>) {
+    const target = event.target;
+    if (!(target instanceof Element) || !target.closest(".cm-editor")) return;
+    if (!shouldSendChatOnEnter({
+      key: event.key,
+      shiftKey: event.shiftKey,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      isComposing: event.nativeEvent.isComposing,
+      keyCode: event.nativeEvent.keyCode
+    })) return;
+
+    event.preventDefault();
+    const form = event.currentTarget;
+    const messageField = form.elements.namedItem("bodyMarkdown");
+    const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (!(messageField instanceof HTMLTextAreaElement) || !messageField.value.trim() || submitButton?.disabled) return;
+    form.requestSubmit();
+  }
+
   return (
-    <form action={formAction} className="panel mt-5 grid gap-3 p-5">
+    <form action={formAction} className="panel mt-5 grid gap-3 p-5" onKeyDownCapture={submitOnEnter}>
       <h2 className="font-semibold">{labels.message}</h2>
       <LazyMarkdownEditor
         name="bodyMarkdown"

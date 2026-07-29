@@ -2,6 +2,7 @@ import { NotificationType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { directChatPair, acceptedFriendshipBetween, sendDirectChatMessage } from "@/lib/direct-chat";
+import { summarizeChatReactions } from "@/lib/chat-reactions";
 import { prisma } from "@/lib/db";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { isVerifiedContributor } from "@/lib/permissions";
@@ -19,6 +20,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
   const url = new URL(request.url);
   const afterIdRaw = Number(url.searchParams.get("afterId") ?? 0);
   const afterId = Number.isInteger(afterIdRaw) && afterIdRaw > 0 ? afterIdRaw : 0;
+  const reactionCursor = Date.now();
+  const reactionsAfterRaw = Number(url.searchParams.get("reactionsAfter") ?? 0);
+  const reactionsAfter = Number.isFinite(reactionsAfterRaw)
+    && reactionsAfterRaw > 0
+    && reactionsAfterRaw <= reactionCursor
+    ? new Date(reactionsAfterRaw)
+    : new Date(0);
 
   const otherUser = await prisma.user.findUnique({
     where: { username },
@@ -49,28 +57,56 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
   });
 
   if (!chat) {
-    return NextResponse.json({ messages: [] }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { messages: [], reactionCursor, reactionUpdates: [] },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 
-  const messages = await prisma.chatMessage.findMany({
-    where: {
-      directChatId: chat.id,
-      id: { gt: afterId }
-    },
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          avatarUrl: true,
-          avatarBackground: true
+  const [messages, reactionMessages] = await Promise.all([
+    prisma.chatMessage.findMany({
+      where: {
+        directChatId: chat.id,
+        id: { gt: afterId }
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            avatarBackground: true
+          }
+        },
+        reactions: {
+          select: {
+            reaction: true,
+            userId: true
+          }
         }
-      }
-    },
-    orderBy: { id: afterId > 0 ? "asc" : "desc" },
-    take: 50
-  });
+      },
+      orderBy: { id: afterId > 0 ? "asc" : "desc" },
+      take: 50
+    }),
+    prisma.chatMessage.findMany({
+      where: {
+        directChatId: chat.id,
+        updatedAt: { gt: reactionsAfter }
+      },
+      select: {
+        id: true,
+        reactions: {
+          select: {
+            reaction: true,
+            userId: true
+          }
+        }
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 100
+    })
+  ]);
   if (afterId === 0) messages.reverse();
 
   return NextResponse.json(
@@ -83,7 +119,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
         authorAvatarBackground: message.author.avatarBackground,
         authorAvatarUrl: message.author.avatarUrl,
         bodyHtml: message.bodyHtml,
-        createdAt: message.createdAt.toISOString()
+        createdAt: message.createdAt.toISOString(),
+        reactions: summarizeChatReactions(message.reactions, user.id)
+      })),
+      reactionCursor,
+      reactionUpdates: reactionMessages.map((message) => ({
+        messageId: message.id,
+        reactions: summarizeChatReactions(message.reactions, user.id)
       }))
     },
     { headers: { "Cache-Control": "no-store" } }

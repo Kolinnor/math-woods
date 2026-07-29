@@ -122,6 +122,19 @@ export const fr = {
     send: "Envoyer",
     live: "En direct",
     livePaused: "Mises à jour en direct suspendues",
+    addReaction: "Ajouter une réaction",
+    reactionNames: {
+      LIKE: "J'aime",
+      HEART: "Cœur",
+      DISLIKE: "Je n'aime pas",
+      SMILE: "Sourire",
+      LAUGH: "Rire",
+      SURPRISE: "Surpris",
+      SAD: "Triste",
+      THINKING: "Réfléchir",
+      CELEBRATE: "Célébrer",
+      AGREE: "D'accord"
+    },
     challenge: {
       button: "Défier",
       cancel: "Annuler",

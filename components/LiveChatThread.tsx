@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { ChatMessageReactions } from "@/components/ChatMessageReactions";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserAvatar } from "@/components/UserAvatar";
+import {
+  applyChatReactionUpdates,
+  type ChatReactionLabels,
+  type ChatReactionSummary,
+  type ChatReactionUpdate
+} from "@/lib/chat-reactions";
 import { CHAT_READ_EVENT } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
@@ -21,6 +28,7 @@ type LiveChatThreadProps = {
     live: string;
     livePaused: string;
     noMessagesYet: string;
+    reactions: ChatReactionLabels;
   };
 };
 
@@ -35,6 +43,7 @@ export function LiveChatThread({
   const [messages, setMessages] = useState(initialMessages);
   const [status, setStatus] = useState<"live" | "checking" | "paused">("live");
   const latestIdRef = useRef(initialMessages.at(-1)?.id ?? 0);
+  const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLElement | null>(null);
 
   const scrollToEnd = useCallback(() => {
@@ -46,6 +55,10 @@ export function LiveChatThread({
   useEffect(() => {
     latestIdRef.current = messages.at(-1)?.id ?? 0;
   }, [messages]);
+
+  const updateMessageReactions = useCallback((messageId: number, reactions: ChatReactionSummary[]) => {
+    setMessages((current) => applyChatReactionUpdates(current, [{ messageId, reactions }]));
+  }, []);
 
   useEffect(() => {
     scrollToEnd();
@@ -67,7 +80,8 @@ export function LiveChatThread({
       setStatus("checking");
       try {
         const response = await fetch(
-          `/api/chat/${encodeURIComponent(otherUsername)}/messages?afterId=${latestIdRef.current}`,
+          `/api/chat/${encodeURIComponent(otherUsername)}/messages?afterId=${latestIdRef.current}`
+            + `&reactionsAfter=${reactionCursorRef.current}`,
           {
             cache: "no-store",
             signal: controller.signal
@@ -77,15 +91,29 @@ export function LiveChatThread({
         if (!response.ok) {
           setStatus("paused");
         } else {
-          const data = (await response.json()) as { messages?: LiveChatMessage[] };
-          if (Array.isArray(data.messages) && data.messages.length > 0) {
+          const data = (await response.json()) as {
+            messages?: LiveChatMessage[];
+            reactionCursor?: number;
+            reactionUpdates?: ChatReactionUpdate[];
+          };
+          if (
+            (Array.isArray(data.messages) && data.messages.length > 0)
+            || (Array.isArray(data.reactionUpdates) && data.reactionUpdates.length > 0)
+          ) {
             setMessages((current) => {
               const seen = new Set(current.map((message) => message.id));
-              return [...current, ...data.messages!.filter((message) => !seen.has(message.id))];
+              const withNewMessages = [
+                ...current,
+                ...(data.messages ?? []).filter((message) => !seen.has(message.id))
+              ];
+              return applyChatReactionUpdates(withNewMessages, data.reactionUpdates ?? []);
             });
-            window.setTimeout(scrollToEnd, 0);
-            window.dispatchEvent(new Event(CHAT_READ_EVENT));
+            if ((data.messages?.length ?? 0) > 0) {
+              window.setTimeout(scrollToEnd, 0);
+              window.dispatchEvent(new Event(CHAT_READ_EVENT));
+            }
           }
+          if (typeof data.reactionCursor === "number") reactionCursorRef.current = data.reactionCursor;
           setStatus("live");
         }
       } catch (error) {
@@ -138,6 +166,13 @@ export function LiveChatThread({
                   <time dateTime={message.createdAt}>{formatChatTime(message.createdAt, locale, timeZone)}</time>
                 </p>
                 <MarkdownBlock html={message.bodyHtml} />
+                <ChatMessageReactions
+                  labels={labels.reactions}
+                  messageId={message.id}
+                  onChange={updateMessageReactions}
+                  otherUsername={otherUsername}
+                  reactions={message.reactions}
+                />
               </div>
             </article>
           </Fragment>
