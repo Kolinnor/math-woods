@@ -8,6 +8,7 @@
 :root {
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-serif: Charter, "Bitstream Charter", Georgia, serif;
+  --site-content-width: 82rem;
   --paper: #f4f6f4;
   --panel: #ffffff;
   --panel-muted: #f2f6f2;
@@ -81,6 +82,11 @@
   --page-background: var(--background-green);
   --page-background-size: auto;
   color-scheme: light;
+}
+
+.site-content-width {
+  max-width: var(--site-content-width);
+  width: 100%;
 }
 
 [data-theme="dim"] {
@@ -8825,7 +8831,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   margin-left: auto;
   margin-right: auto;
   margin-top: auto;
-  max-width: 1180px;
+  max-width: var(--site-content-width);
   padding: 0 2rem 1.8rem;
   position: relative;
   width: 100%;
@@ -8923,7 +8929,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 .forest-page-workspace {
   margin-left: auto;
   margin-right: auto;
-  max-width: 1180px;
+  max-width: var(--site-content-width);
   padding: 1.6rem 1.6rem 3.2rem;
   width: 100%;
 }
@@ -9029,7 +9035,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 .problem-domain-strip {
   margin-left: auto;
   margin-right: auto;
-  max-width: 1180px;
+  max-width: var(--site-content-width);
   padding: 1.5rem 1.6rem 0.4rem;
   width: 100%;
 }
@@ -9281,7 +9287,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   margin-left: auto;
   margin-right: auto;
   margin-top: 1.3rem;
-  max-width: 1180px;
+  max-width: var(--site-content-width);
   width: 100%;
 }
 
@@ -12203,7 +12209,7 @@ body:has(.home-shell) > .site-footer {
   display: grid;
   gap: 2.6rem;
   margin: 0 auto;
-  max-width: 72rem;
+  max-width: var(--site-content-width);
   padding: 3rem 1.5rem 1rem;
 }
 
@@ -12508,7 +12514,7 @@ body:has(.home-shell) > .site-footer {
 
 .home-trail-cta > div:last-child {
   margin: 0 auto;
-  max-width: 72rem;
+  max-width: var(--site-content-width);
   padding: 3rem;
   position: relative;
   width: 100%;
@@ -12550,7 +12556,7 @@ body:has(.home-shell) > .site-footer {
   gap: 1rem;
   grid-template-columns: 1fr auto;
   margin: 0 auto;
-  max-width: 72rem;
+  max-width: var(--site-content-width);
   padding: 1.8rem 1.5rem;
 }
 
@@ -13046,7 +13052,7 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
   gap: 1.5rem;
   justify-content: space-between;
   margin: auto auto 0;
-  max-width: 1180px;
+  max-width: var(--site-content-width);
   padding: 5rem 2rem 1.9rem;
   position: relative;
   width: 100%;
@@ -13111,7 +13117,7 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
   gap: 1.8rem;
   grid-template-columns: minmax(0, 1fr) 288px;
   margin: 0 auto;
-  max-width: 1180px;
+  max-width: var(--site-content-width);
   padding: 2rem 2rem 3rem;
   width: 100%;
 }

@@ -145,7 +145,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ErrorReporter />
         <TimeZoneReporter />
         <header className="site-header">
-          <nav className="site-nav mx-auto max-w-6xl px-4">
+          <nav className="site-nav site-content-width mx-auto px-4">
             <Link href="/" className="site-brand" aria-label={t.nav.homeAriaLabel}>
               <img src="/icon.svg" alt="" className="site-brand-logo" aria-hidden="true" />
               <span>Math Woods</span>
@@ -206,9 +206,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <FriendsMenu userId={user.id} />
           </div>
         )}
-        <main className="site-main mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main className="site-main site-content-width mx-auto px-4 py-8">{children}</main>
         <footer className="site-footer">
-          <div className="mx-auto grid max-w-6xl gap-3 px-4 py-6 text-sm md:grid-cols-[1fr_auto] md:items-center">
+          <div className="site-content-width mx-auto grid gap-3 px-4 py-6 text-sm md:grid-cols-[1fr_auto] md:items-center">
             <p>{t.footer.legal}</p>
             <div className="flex flex-wrap justify-end gap-4">
               <Link href="/about">{t.footer.about}</Link>

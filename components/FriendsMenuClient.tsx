@@ -228,6 +228,11 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 <Link
                   href={`/profile/${selectedFriend.username}` as never}
                   className="friends-mini-chat-person"
+                  onClick={(event) => {
+                    setSelectedFriend(null);
+                    const details = event.currentTarget.closest("details");
+                    if (details) details.open = false;
+                  }}
                 >
                   <UserAvatar user={{ ...selectedFriend, displayName: selectedFriend.name }} size="sm" />
                   <strong>{selectedFriend.name}</strong>
@@ -243,7 +248,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
               />
               <Link
                 href={`/chat/${selectedFriend.username}` as never}
-                className="icon-button secondary"
+                className="button icon-button secondary"
                 title={data.labels.openFullChat}
                 aria-label={data.labels.openFullChat}
                 onClick={(event) => {

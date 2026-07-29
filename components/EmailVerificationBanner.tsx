@@ -91,7 +91,7 @@ export function EmailVerificationBanner({
 
   return (
     <div className="email-verification-banner">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4">
+      <div className="site-content-width mx-auto flex flex-wrap items-center justify-between gap-3 px-4">
         <p>Verify your email to solve, vote, discuss, and contribute.</p>
         <form action={resendAction}>
           <button type="submit" className="secondary">
