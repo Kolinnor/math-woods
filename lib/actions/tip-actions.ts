@@ -9,7 +9,7 @@ import { prisma } from "@/lib/db";
 import { ensureDefaultTips } from "@/lib/daily-tip";
 import { canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { normalizeTipImageUrl } from "@/lib/tip-images";
+import { normalizeTipImagePosition, normalizeTipImageUrl } from "@/lib/tip-images";
 
 function parseTipProblemIds(values: FormDataEntryValue[]) {
   const seen = new Set<number>();
@@ -36,6 +36,8 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
   const body = boundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body") || description;
   const imageUrl = normalizeTipImageUrl(formData.get("imageUrl"));
+  const imagePositionX = normalizeTipImagePosition(formData.get("imagePositionX"));
+  const imagePositionY = normalizeTipImagePosition(formData.get("imagePositionY"));
   const showInMainMenu = formData.get("showInMainMenu") === "on";
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
@@ -56,6 +58,8 @@ export async function updateTipAction(tipId: number, formData: FormData) {
         description,
         body,
         imageUrl,
+        imagePositionX,
+        imagePositionY,
         showInMainMenu
       }
     });

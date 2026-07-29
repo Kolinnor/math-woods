@@ -2,7 +2,11 @@
 
 import { ImagePlus, RotateCcw } from "lucide-react";
 import { useRef, useState } from "react";
-import { DEFAULT_TIP_IMAGE_URL } from "@/lib/tip-images";
+import {
+  DEFAULT_TIP_IMAGE_POSITION,
+  DEFAULT_TIP_IMAGE_URL,
+  tipImageObjectPosition
+} from "@/lib/tip-images";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -13,13 +17,26 @@ type UploadResponse = {
   };
 };
 
-export function TipImageField({ initialImageUrl }: { initialImageUrl: string | null }) {
+type TipImageFieldProps = {
+  initialImageUrl: string | null;
+  initialPositionX: number;
+  initialPositionY: number;
+};
+
+export function TipImageField({
+  initialImageUrl,
+  initialPositionX,
+  initialPositionY
+}: TipImageFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState(initialImageUrl ?? "");
+  const [positionX, setPositionX] = useState(initialPositionX);
+  const [positionY, setPositionY] = useState(initialPositionY);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const effectiveImageUrl = imageUrl.trim() || DEFAULT_TIP_IMAGE_URL;
+  const objectPosition = tipImageObjectPosition(positionX, positionY);
 
   async function upload(file: File) {
     if (
@@ -54,17 +71,40 @@ export function TipImageField({ initialImageUrl }: { initialImageUrl: string | n
 
   return (
     <section className="tip-image-editor">
-      <div className="tip-image-preview">
+      <div className="tip-image-previews">
         {!previewFailed ? (
-          <img
-            key={effectiveImageUrl}
-            src={effectiveImageUrl}
-            alt=""
-            onLoad={() => setPreviewFailed(false)}
-            onError={() => setPreviewFailed(true)}
-          />
+          <>
+            <figure>
+              <figcaption>Desktop · 220 × 220 px</figcaption>
+              <div className="tip-image-preview tip-image-preview-desktop">
+                <img
+                  key={`desktop-${effectiveImageUrl}`}
+                  src={effectiveImageUrl}
+                  alt=""
+                  style={{ objectPosition }}
+                  onLoad={() => setPreviewFailed(false)}
+                  onError={() => setPreviewFailed(true)}
+                />
+              </div>
+            </figure>
+            <figure>
+              <figcaption>Mobile · full width (16:7)</figcaption>
+              <div className="tip-image-preview tip-image-preview-mobile">
+                <img
+                  key={`mobile-${effectiveImageUrl}`}
+                  src={effectiveImageUrl}
+                  alt=""
+                  style={{ objectPosition }}
+                  onLoad={() => setPreviewFailed(false)}
+                  onError={() => setPreviewFailed(true)}
+                />
+              </div>
+            </figure>
+          </>
         ) : (
-          <p>Preview unavailable. Check the image URL.</p>
+          <div className="tip-image-preview tip-image-preview-desktop">
+            <p>Preview unavailable. Check the image URL.</p>
+          </div>
         )}
       </div>
       <div className="tip-image-controls">
@@ -85,6 +125,49 @@ export function TipImageField({ initialImageUrl }: { initialImageUrl: string | n
         <p className="muted text-sm">
           Paste a secure image URL, use a local site path, or upload an image. Leave blank to use Oak Grove.
         </p>
+        <fieldset className="tip-image-crop-controls">
+          <legend>Crop position</legend>
+          <label>
+            <span>
+              Horizontal focus
+              <output>{positionX}%</output>
+            </span>
+            <input
+              name="imagePositionX"
+              type="range"
+              min="0"
+              max="100"
+              value={positionX}
+              onChange={(event) => setPositionX(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            <span>
+              Vertical focus
+              <output>{positionY}%</output>
+            </span>
+            <input
+              name="imagePositionY"
+              type="range"
+              min="0"
+              max="100"
+              value={positionY}
+              onChange={(event) => setPositionY(Number(event.target.value))}
+            />
+          </label>
+          <button
+            type="button"
+            className="secondary"
+            disabled={positionX === DEFAULT_TIP_IMAGE_POSITION && positionY === DEFAULT_TIP_IMAGE_POSITION}
+            onClick={() => {
+              setPositionX(DEFAULT_TIP_IMAGE_POSITION);
+              setPositionY(DEFAULT_TIP_IMAGE_POSITION);
+            }}
+          >
+            <RotateCcw size={16} aria-hidden="true" />
+            Center crop
+          </button>
+        </fieldset>
         <input
           ref={fileInputRef}
           type="file"
@@ -106,6 +189,8 @@ export function TipImageField({ initialImageUrl }: { initialImageUrl: string | n
             disabled={busy || !imageUrl}
             onClick={() => {
               setImageUrl("");
+              setPositionX(DEFAULT_TIP_IMAGE_POSITION);
+              setPositionY(DEFAULT_TIP_IMAGE_POSITION);
               setPreviewFailed(false);
               setMessage("The default image will be used after saving.");
             }}

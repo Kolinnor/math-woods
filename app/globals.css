@@ -8163,7 +8163,7 @@ button.domain-picker-tile > span:last-child {
 }
 
 .tip-card-image {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1;
   align-self: start;
   background: #fff;
   border: 1px solid var(--line);
@@ -8230,12 +8230,29 @@ button.domain-picker-tile > span:last-child {
   border-radius: 7px;
   display: grid;
   gap: 1rem;
-  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+  grid-template-columns: minmax(12rem, 14rem) minmax(0, 1fr);
   padding: 1rem;
 }
 
+.tip-image-previews {
+  align-content: start;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tip-image-previews figure {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.tip-image-previews figcaption {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .tip-image-preview {
-  aspect-ratio: 4 / 3;
   align-items: center;
   background: #fff;
   border: 1px solid var(--line);
@@ -8243,6 +8260,14 @@ button.domain-picker-tile > span:last-child {
   display: flex;
   justify-content: center;
   overflow: hidden;
+}
+
+.tip-image-preview-desktop {
+  aspect-ratio: 1;
+}
+
+.tip-image-preview-mobile {
+  aspect-ratio: 16 / 7;
 }
 
 .tip-image-preview img {
@@ -8271,6 +8296,42 @@ button.domain-picker-tile > span:last-child {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+.tip-image-crop-controls {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0.8rem;
+}
+
+.tip-image-crop-controls legend {
+  font-size: 0.85rem;
+  font-weight: 750;
+  padding: 0 0.25rem;
+}
+
+.tip-image-crop-controls label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.tip-image-crop-controls label > span {
+  align-items: center;
+  display: flex;
+  font-size: 0.8rem;
+  justify-content: space-between;
+}
+
+.tip-image-crop-controls output {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tip-image-crop-controls button {
+  justify-self: start;
 }
 
 .tip-image-message {
@@ -11058,19 +11119,37 @@ button.relation-remove-button {
   box-shadow: none;
 }
 
-.profile-hero-identity {
-  align-items: end;
-  display: grid;
-  gap: 0.4rem;
-  justify-items: end;
+.profile-hero-title {
+  align-items: center;
+  display: flex;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.profile-hero-title > span:last-child {
+  overflow-wrap: anywhere;
 }
 
 .profile-hero-avatar.user-avatar-xl {
-  height: 6rem;
-  width: 6rem;
+  flex: 0 0 auto;
+  height: 7rem;
+  width: 7rem;
+}
+
+.profile-hero-role {
+  font-weight: 650;
 }
 
 @media (max-width: 640px) {
+  .profile-hero-avatar.user-avatar-xl {
+    height: 5rem;
+    width: 5rem;
+  }
+
+  .profile-hero-title {
+    gap: 0.75rem;
+  }
+
   .profile-avatar-editor {
     align-items: start;
     grid-template-columns: 1fr;
@@ -12353,6 +12432,7 @@ body:has(.home-shell) > .site-footer {
 }
 
 .home-tip-card {
+  align-items: start;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -12363,8 +12443,10 @@ body:has(.home-shell) > .site-footer {
 }
 
 .home-tip-image {
+  aspect-ratio: 1;
+  align-self: start;
   background: var(--imgbg);
-  min-height: 220px;
+  min-height: 0;
   position: relative;
 }
 
@@ -12704,7 +12786,8 @@ body:has(.home-shell) > .site-footer {
   }
 
   .home-tip-image {
-    min-height: 150px;
+    aspect-ratio: 16 / 7;
+    min-height: 0;
   }
 
   .home-tip-copy {

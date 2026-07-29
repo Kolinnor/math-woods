@@ -80,7 +80,11 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
           <span className="text-sm font-medium">Description</span>
           <textarea name="description" maxLength={1200} required defaultValue={tip.description} />
         </label>
-        <TipImageField initialImageUrl={tip.imageUrl} />
+        <TipImageField
+          initialImageUrl={tip.imageUrl}
+          initialPositionX={tip.imagePositionX}
+          initialPositionY={tip.imagePositionY}
+        />
         <label className="checkbox-inline">
           <input name="showInMainMenu" type="checkbox" defaultChecked={tip.showInMainMenu} />
           <span>This can appear in the main menu</span>

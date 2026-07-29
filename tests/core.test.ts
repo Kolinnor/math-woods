@@ -28,7 +28,14 @@ import {
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
 import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
-import { DEFAULT_TIP_IMAGE_URL, normalizeTipImageUrl, tipImageUrl } from "../lib/tip-images.ts";
+import {
+  DEFAULT_TIP_IMAGE_POSITION,
+  DEFAULT_TIP_IMAGE_URL,
+  normalizeTipImagePosition,
+  normalizeTipImageUrl,
+  tipImageObjectPosition,
+  tipImageUrl
+} from "../lib/tip-images.ts";
 import {
   AVATAR_BACKGROUND_OPTIONS,
   DEFAULT_AVATAR_PRESETS,
@@ -1143,6 +1150,12 @@ assert.throws(() => normalizeTipImageUrl("http://images.example.org/tip.png"));
 assert.throws(() => normalizeTipImageUrl("//images.example.org/tip.png"));
 assert.equal(tipImageUrl(null), DEFAULT_TIP_IMAGE_URL);
 assert.equal(tipImageUrl("https://images.example.org/tip.png"), "https://images.example.org/tip.png");
+assert.equal(normalizeTipImagePosition(undefined), DEFAULT_TIP_IMAGE_POSITION);
+assert.equal(normalizeTipImagePosition(null), DEFAULT_TIP_IMAGE_POSITION);
+assert.equal(normalizeTipImagePosition("72.4"), 72);
+assert.equal(normalizeTipImagePosition(-10), 0);
+assert.equal(normalizeTipImagePosition(140), 100);
+assert.equal(tipImageObjectPosition(25, 80), "25% 80%");
 const presignedDelete = createPresignedImageDelete(
   testImageStorageConfig,
   "avatars/user-7/example.webp",

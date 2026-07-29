@@ -203,17 +203,17 @@ export default async function ProfilePage({
 
   return (
     <ForestPageLayout
-      title={displayNameForUser(user)}
+      title={
+        <span className="profile-hero-title">
+          <UserAvatar user={user} size="xl" className="profile-hero-avatar" />
+          <span>{displayNameForUser(user)}</span>
+        </span>
+      }
       eyebrow={t.profile.profile}
       heroImage={SOCIAL_HERO_ART.src}
       heroAlt={SOCIAL_HERO_ART.alt}
       description={`${user.mathLevel ? t.auth.mathLevels[user.mathLevel] : t.profile.notSet} / ${t.profile.reputation} ${reputation}`}
-      meta={
-        <div className="profile-hero-identity">
-          <UserAvatar user={user} size="xl" className="profile-hero-avatar" />
-          <p>{user.role.toLowerCase()}</p>
-        </div>
-      }
+      meta={<p className="profile-hero-role">{user.role.toLowerCase()}</p>}
       actions={profileActions}
     >
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">

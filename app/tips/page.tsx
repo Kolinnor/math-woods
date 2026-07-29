@@ -12,7 +12,7 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
-import { tipImageUrl } from "@/lib/tip-images";
+import { tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
 
 export const dynamic = "force-dynamic";
 
@@ -144,7 +144,12 @@ export default async function TipsPage({
           <article key={tip.title} className="tip-card">
             <div className="tip-card-summary">
               <div className="tip-card-image">
-                <img src={tipImageUrl(tip.imageUrl)} alt="" loading="lazy" />
+                <img
+                  src={tipImageUrl(tip.imageUrl)}
+                  alt=""
+                  loading="lazy"
+                  style={{ objectPosition: tipImageObjectPosition(tip.imagePositionX, tip.imagePositionY) }}
+                />
               </div>
               <div className="tip-card-summary-copy">
                 <div className="tip-card-actions">

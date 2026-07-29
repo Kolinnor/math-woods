@@ -10,7 +10,7 @@ type ForestPageLayoutProps = {
   heroImage?: string;
   meta?: ReactNode;
   sidebar?: ReactNode;
-  title: string;
+  title: ReactNode;
   workspaceClassName?: string;
 };
 

@@ -1,0 +1,7 @@
+ALTER TABLE "Tip"
+ADD COLUMN "imagePositionX" INTEGER NOT NULL DEFAULT 50,
+ADD COLUMN "imagePositionY" INTEGER NOT NULL DEFAULT 50;
+
+ALTER TABLE "Tip"
+ADD CONSTRAINT "Tip_imagePositionX_range" CHECK ("imagePositionX" BETWEEN 0 AND 100),
+ADD CONSTRAINT "Tip_imagePositionY_range" CHECK ("imagePositionY" BETWEEN 0 AND 100);
