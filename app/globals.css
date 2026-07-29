@@ -2282,6 +2282,23 @@ textarea {
   gap: 0.65rem;
 }
 
+.oauth-login-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.oauth-login-panel h2 {
+  font-size: 1.25rem;
+  font-weight: 650;
+  margin: 0;
+}
+
+.oauth-login-panel .oauth-provider-buttons {
+  justify-content: center;
+}
+
 .oauth-provider-buttons .button,
 .oauth-connect-button {
   align-items: center;
@@ -8238,6 +8255,7 @@ button.domain-picker-tile > span:last-child {
   align-content: start;
   display: grid;
   gap: 0.75rem;
+  width: min(14rem, 100%);
 }
 
 .tip-image-previews figure {
@@ -8262,12 +8280,29 @@ button.domain-picker-tile > span:last-child {
   overflow: hidden;
 }
 
-.tip-image-preview-desktop {
+.tip-image-preview-square {
   aspect-ratio: 1;
+  cursor: grab;
+  position: relative;
+  touch-action: none;
+  user-select: none;
 }
 
-.tip-image-preview-mobile {
-  aspect-ratio: 16 / 7;
+.tip-image-preview-square.dragging {
+  cursor: grabbing;
+}
+
+.tip-image-preview-square:focus-visible {
+  outline: 3px solid rgb(47 111 75 / 0.34);
+  outline-offset: 2px;
+}
+
+.tip-image-crop-frame {
+  border: 1px solid rgb(255 255 255 / 0.66);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.16);
+  inset: 0.45rem;
+  pointer-events: none;
+  position: absolute;
 }
 
 .tip-image-preview img {
@@ -8307,27 +8342,16 @@ button.domain-picker-tile > span:last-child {
   padding: 0.8rem;
 }
 
+.tip-image-crop-controls p {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
 .tip-image-crop-controls legend {
   font-size: 0.85rem;
   font-weight: 750;
   padding: 0 0.25rem;
-}
-
-.tip-image-crop-controls label {
-  display: grid;
-  gap: 0.3rem;
-}
-
-.tip-image-crop-controls label > span {
-  align-items: center;
-  display: flex;
-  font-size: 0.8rem;
-  justify-content: space-between;
-}
-
-.tip-image-crop-controls output {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .tip-image-crop-controls button {
@@ -8347,7 +8371,7 @@ button.domain-picker-tile > span:last-child {
   }
 
   .tip-card-image {
-    aspect-ratio: 16 / 7;
+    aspect-ratio: 1;
   }
 }
 
@@ -12786,8 +12810,10 @@ body:has(.home-shell) > .site-footer {
   }
 
   .home-tip-image {
-    aspect-ratio: 16 / 7;
+    aspect-ratio: 1;
+    justify-self: center;
     min-height: 0;
+    width: min(220px, 100%);
   }
 
   .home-tip-copy {

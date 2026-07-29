@@ -1,7 +1,12 @@
 "use client";
 
 import { ImagePlus, RotateCcw } from "lucide-react";
-import { useRef, useState } from "react";
+import {
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 import {
   DEFAULT_TIP_IMAGE_POSITION,
   DEFAULT_TIP_IMAGE_URL,
@@ -9,6 +14,13 @@ import {
 } from "@/lib/tip-images";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const KEYBOARD_POSITION_STEP = 3;
+const KEYBOARD_POSITION_MOVEMENT: Partial<Record<string, readonly [number, number]>> = {
+  ArrowDown: [0, -KEYBOARD_POSITION_STEP],
+  ArrowLeft: [KEYBOARD_POSITION_STEP, 0],
+  ArrowRight: [-KEYBOARD_POSITION_STEP, 0],
+  ArrowUp: [0, KEYBOARD_POSITION_STEP]
+};
 
 type UploadResponse = {
   error?: string;
@@ -32,11 +44,64 @@ export function TipImageField({
   const [imageUrl, setImageUrl] = useState(initialImageUrl ?? "");
   const [positionX, setPositionX] = useState(initialPositionX);
   const [positionY, setPositionY] = useState(initialPositionY);
+  const dragRef = useRef<{
+    pointerId: number;
+    pointerX: number;
+    pointerY: number;
+    positionX: number;
+    positionY: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const effectiveImageUrl = imageUrl.trim() || DEFAULT_TIP_IMAGE_URL;
   const objectPosition = tipImageObjectPosition(positionX, positionY);
+
+  function clampPosition(position: number) {
+    return Math.max(0, Math.min(100, Math.round(position)));
+  }
+
+  function startPositioning(event: ReactPointerEvent<HTMLDivElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    dragRef.current = {
+      pointerId: event.pointerId,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      positionX,
+      positionY,
+      width: bounds.width,
+      height: bounds.height
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragging(true);
+  }
+
+  function movePosition(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setPositionX(clampPosition(drag.positionX - ((event.clientX - drag.pointerX) / drag.width) * 100));
+    setPositionY(clampPosition(drag.positionY - ((event.clientY - drag.pointerY) / drag.height) * 100));
+  }
+
+  function stopPositioning(event: ReactPointerEvent<HTMLDivElement>) {
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current = null;
+    setDragging(false);
+  }
+
+  function movePositionWithKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const movement = KEYBOARD_POSITION_MOVEMENT[event.key];
+    if (!movement) return;
+    event.preventDefault();
+    setPositionX((current) => clampPosition(current + movement[0]));
+    setPositionY((current) => clampPosition(current + movement[1]));
+  }
 
   async function upload(file: File) {
     if (
@@ -73,36 +138,35 @@ export function TipImageField({
     <section className="tip-image-editor">
       <div className="tip-image-previews">
         {!previewFailed ? (
-          <>
-            <figure>
-              <figcaption>Desktop · 220 × 220 px</figcaption>
-              <div className="tip-image-preview tip-image-preview-desktop">
-                <img
-                  key={`desktop-${effectiveImageUrl}`}
-                  src={effectiveImageUrl}
-                  alt=""
-                  style={{ objectPosition }}
-                  onLoad={() => setPreviewFailed(false)}
-                  onError={() => setPreviewFailed(true)}
-                />
-              </div>
-            </figure>
-            <figure>
-              <figcaption>Mobile · full width (16:7)</figcaption>
-              <div className="tip-image-preview tip-image-preview-mobile">
-                <img
-                  key={`mobile-${effectiveImageUrl}`}
-                  src={effectiveImageUrl}
-                  alt=""
-                  style={{ objectPosition }}
-                  onLoad={() => setPreviewFailed(false)}
-                  onError={() => setPreviewFailed(true)}
-                />
-              </div>
-            </figure>
-          </>
+          <figure>
+            <figcaption>Desktop and mobile · square</figcaption>
+            <div
+              className={dragging
+                ? "tip-image-preview tip-image-preview-square dragging"
+                : "tip-image-preview tip-image-preview-square"}
+              role="application"
+              tabIndex={0}
+              aria-label="Drag or use the arrow keys to reposition the image inside the square crop."
+              onKeyDown={movePositionWithKeyboard}
+              onPointerDown={startPositioning}
+              onPointerMove={movePosition}
+              onPointerUp={stopPositioning}
+              onPointerCancel={stopPositioning}
+            >
+              <img
+                key={effectiveImageUrl}
+                src={effectiveImageUrl}
+                alt=""
+                draggable={false}
+                style={{ objectPosition }}
+                onLoad={() => setPreviewFailed(false)}
+                onError={() => setPreviewFailed(true)}
+              />
+              <span className="tip-image-crop-frame" aria-hidden="true" />
+            </div>
+          </figure>
         ) : (
-          <div className="tip-image-preview tip-image-preview-desktop">
+          <div className="tip-image-preview tip-image-preview-square">
             <p>Preview unavailable. Check the image URL.</p>
           </div>
         )}
@@ -126,35 +190,10 @@ export function TipImageField({
           Paste a secure image URL, use a local site path, or upload an image. Leave blank to use Oak Grove.
         </p>
         <fieldset className="tip-image-crop-controls">
-          <legend>Crop position</legend>
-          <label>
-            <span>
-              Horizontal focus
-              <output>{positionX}%</output>
-            </span>
-            <input
-              name="imagePositionX"
-              type="range"
-              min="0"
-              max="100"
-              value={positionX}
-              onChange={(event) => setPositionX(Number(event.target.value))}
-            />
-          </label>
-          <label>
-            <span>
-              Vertical focus
-              <output>{positionY}%</output>
-            </span>
-            <input
-              name="imagePositionY"
-              type="range"
-              min="0"
-              max="100"
-              value={positionY}
-              onChange={(event) => setPositionY(Number(event.target.value))}
-            />
-          </label>
+          <legend>Crop</legend>
+          <p>Drag or touch the image to position it inside the square.</p>
+          <input name="imagePositionX" type="hidden" value={positionX} />
+          <input name="imagePositionY" type="hidden" value={positionY} />
           <button
             type="button"
             className="secondary"
@@ -165,7 +204,7 @@ export function TipImageField({
             }}
           >
             <RotateCcw size={16} aria-hidden="true" />
-            Center crop
+            Center image
           </button>
         </fieldset>
         <input

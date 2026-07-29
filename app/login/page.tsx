@@ -50,11 +50,8 @@ export default async function LoginPage({
     <div className="grid gap-6">
       {oauthError && <p className="quality-banner quality-needs-work">{oauthError}</p>}
       {providers.length > 0 && (
-        <section className="panel grid gap-4 p-5">
-          <div>
-            <h1 className="text-xl font-semibold">Continue with an account</h1>
-            <p className="muted mt-1 text-sm">Use a trusted identity provider without creating another password.</p>
-          </div>
+        <section className="panel oauth-login-panel">
+          <h2>Continue with an account</h2>
           <div className="oauth-provider-buttons">
             {providers.map((provider) => (
               <Link
