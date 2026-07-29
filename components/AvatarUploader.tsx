@@ -30,7 +30,7 @@ type AvatarUploaderProps = {
     defaultUpdated: string;
     help: string;
     invalid: string;
-    presetLabel: (preset: string) => string;
+    presetLabels: Record<DefaultAvatarPreset, string>;
     remove: string;
     removed: string;
     title: string;
@@ -229,7 +229,7 @@ export function AvatarUploader({
             <div className="profile-avatar-presets" role="group" aria-label={labels.defaultTitle}>
               {DEFAULT_AVATAR_PRESETS.map((preset) => {
                 const selected = avatarPreset === preset;
-                const label = labels.presetLabel(preset);
+                const label = labels.presetLabels[preset];
                 return (
                   <button
                     key={preset}

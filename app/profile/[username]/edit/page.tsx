@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { updateProfileAction } from "@/lib/actions/user-actions";
+import { DEFAULT_AVATAR_PRESETS, type DefaultAvatarPreset } from "@/lib/avatar-presets";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
@@ -22,6 +23,9 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
 
   const user = await prisma.user.findUnique({ where: { username } });
   if (!user) notFound();
+  const avatarPresetLabels = Object.fromEntries(
+    DEFAULT_AVATAR_PRESETS.map((preset) => [preset, t.profile.profileImagePresetLabel(preset)])
+  ) as Record<DefaultAvatarPreset, string>;
 
   return (
     <ForestPageLayout
@@ -49,7 +53,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
           defaultUpdated: t.profile.profileImageDefaultUpdated,
           help: t.profile.profileImageHelp,
           invalid: t.profile.profileImageInvalid,
-          presetLabel: t.profile.profileImagePresetLabel,
+          presetLabels: avatarPresetLabels,
           remove: t.profile.removeProfileImage,
           removed: t.profile.profileImageRemoved,
           title: t.profile.profileImage,
