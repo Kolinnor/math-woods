@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { NotificationType } from "@prisma/client";
-import { QualityStatus } from "@prisma/client";
 import { Check, Heart, House, Lightbulb, MessageSquare, Pencil, Swords, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -71,7 +70,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       qualityStatus: true
     }
   });
-  if (!problem || problem.qualityStatus === QualityStatus.UNREVIEWED) return {};
+  if (!problem) return {};
 
   const translations = await prisma.problem.findMany({
     where: { translationGroupId: problem.translationGroupId },

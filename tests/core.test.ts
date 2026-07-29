@@ -14,6 +14,7 @@ import {
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
+import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
 import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
 import {
@@ -342,6 +343,11 @@ assert.equal(chatUnreadDocumentTitle("Math Woods", 1), "(1) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(1) Math Woods", 3), "(3) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(99+) Math Woods", 0), "Math Woods");
 assert.equal(chatUnreadDocumentTitle("A problem - Math Woods", 120), "(99+) A problem - Math Woods");
+assert.equal(
+  canViewProblem(null, { authorId: 7, qualityStatus: QualityStatus.UNREVIEWED }),
+  true
+);
+assert.deepEqual(visibleProblemWhere(null), {});
 assert.equal(shouldSendChatOnEnter({
   key: "Enter",
   shiftKey: false,

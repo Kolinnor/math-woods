@@ -861,6 +861,7 @@ a {
   justify-self: start;
   max-width: 86%;
   padding: 0.5rem 0.65rem;
+  position: relative;
 }
 
 .friends-mini-message.is-own {
@@ -11328,6 +11329,7 @@ button.relation-remove-button {
 
 .chat-message > div {
   min-width: 0;
+  position: relative;
 }
 
 .chat-message .prose-math {
@@ -11344,6 +11346,37 @@ button.relation-remove-button {
 .chat-message-own .chat-reactions,
 .friends-mini-message.is-own .chat-reactions {
   margin-left: auto;
+}
+
+.chat-reactions.is-empty {
+  margin: 0;
+  opacity: 0.42;
+  position: absolute;
+  right: -1.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: opacity 140ms ease;
+  width: auto;
+  z-index: 2;
+}
+
+.chat-message-own .chat-reactions.is-empty,
+.friends-mini-message.is-own .chat-reactions.is-empty {
+  left: -1.45rem;
+  margin: 0;
+  right: auto;
+}
+
+.chat-message:hover .chat-reactions.is-empty,
+.chat-message:focus-within .chat-reactions.is-empty,
+.friends-mini-message:hover .chat-reactions.is-empty,
+.friends-mini-message:focus-within .chat-reactions.is-empty {
+  opacity: 1;
+}
+
+.chat-reactions.is-empty .chat-reaction-add {
+  height: 1.45rem;
+  width: 1.45rem;
 }
 
 .chat-reaction-row {

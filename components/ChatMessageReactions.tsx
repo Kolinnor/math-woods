@@ -82,7 +82,7 @@ export function ChatMessageReactions({
   }
 
   return (
-    <div className="chat-reactions" ref={hostRef}>
+    <div className={reactions.length > 0 ? "chat-reactions" : "chat-reactions is-empty"} ref={hostRef}>
       <div className="chat-reaction-row">
         {reactions.map((summary) => {
           const label = labels.reactionNames[summary.reaction];
