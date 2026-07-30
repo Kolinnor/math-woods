@@ -244,6 +244,11 @@ export default async function HomePage() {
     ...baseProblemWhere,
     canAppearOnFrontPage: true
   };
+  const tipPracticeProblemWhere = {
+    status: "PUBLISHED" as const,
+    listed: true,
+    ...visibleProblemWhere(user)
+  };
 
   const [solvedProblemGroups, resumeAttempt, tip] = await Promise.all([
     user
@@ -288,7 +293,7 @@ export default async function HomePage() {
         prisma.tipProblem.findMany({
           where: {
             tipId: tip.id,
-            problem: frontPageProblemWhere
+            problem: tipPracticeProblemWhere
           },
           orderBy: { position: "asc" },
           take: 3,
@@ -329,7 +334,7 @@ export default async function HomePage() {
       <HomeHero user={homeUser} resume={resume} t={t.home.hero} />
       <main className="home-main">
         {!homeUser && <TrailBand t={t.home.trail} />}
-        {homeUser && tip && renderedPractice.length > 0 && (
+        {homeUser && tip && (
           <TipOfDay
             tip={tip}
             bodyHtml={tipBodyHtml}
