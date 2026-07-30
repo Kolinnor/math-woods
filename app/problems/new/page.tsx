@@ -97,14 +97,8 @@ export default async function NewProblemPage({
   return (
     <ForestPageLayout
       title={sourceProblem ? "Translation" : "New problem"}
-      eyebrow={sourceProblem ? undefined : "Problem"}
       heroImage="/art/rye.jpg"
       heroAlt="Ivan Shishkin, Rye"
-      description={
-        sourceProblem
-          ? undefined
-          : "A clear statement and an honest difficulty estimate are enough for a first version."
-      }
       workspaceClassName={sourceProblem ? undefined : "forest-page-workspace-narrow"}
     >
     <div className={sourceProblem ? "translation-compose-page" : ""}>

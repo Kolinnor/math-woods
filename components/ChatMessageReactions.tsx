@@ -27,6 +27,8 @@ export function ChatMessageReactions({
 }: ChatMessageReactionsProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerOpensLeft, setPickerOpensLeft] = useState(false);
+  const [pickerOpensDown, setPickerOpensDown] = useState(false);
   const [pendingReaction, setPendingReaction] = useState<ChatReaction | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +52,30 @@ export function ChatMessageReactions({
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [pickerOpen]);
+
+  function togglePicker() {
+    if (pickerOpen) {
+      setPickerOpen(false);
+      return;
+    }
+
+    const host = hostRef.current;
+    const boundary = host?.closest(".friends-mini-chat-thread, .chat-thread");
+    if (host && boundary) {
+      const hostRect = host.getBoundingClientRect();
+      const boundaryRect = boundary.getBoundingClientRect();
+      const spaceAbove = hostRect.top - boundaryRect.top;
+      const spaceBelow = boundaryRect.bottom - hostRect.bottom;
+      const spaceLeft = hostRect.left - boundaryRect.left;
+      const spaceRight = boundaryRect.right - hostRect.right;
+      setPickerOpensLeft(spaceRight < 180 && spaceLeft > spaceRight);
+      setPickerOpensDown(spaceAbove < 86 && spaceBelow > spaceAbove);
+    } else {
+      setPickerOpensLeft(false);
+      setPickerOpensDown(false);
+    }
+    setPickerOpen(true);
+  }
 
   async function toggleReaction(reaction: ChatReaction) {
     if (pendingReaction) return;
@@ -84,6 +110,16 @@ export function ChatMessageReactions({
   return (
     <div className={reactions.length > 0 ? "chat-reactions" : "chat-reactions is-empty"} ref={hostRef}>
       <div className="chat-reaction-row">
+        <button
+          type="button"
+          className="chat-reaction-add"
+          aria-expanded={pickerOpen}
+          aria-label={labels.addReaction}
+          title={labels.addReaction}
+          onClick={togglePicker}
+        >
+          <SmilePlus size={15} />
+        </button>
         {reactions.map((summary) => {
           const label = labels.reactionNames[summary.reaction];
           return (
@@ -102,20 +138,18 @@ export function ChatMessageReactions({
             </button>
           );
         })}
-        <button
-          type="button"
-          className="chat-reaction-add"
-          aria-expanded={pickerOpen}
-          aria-label={labels.addReaction}
-          title={labels.addReaction}
-          onClick={() => setPickerOpen((open) => !open)}
-        >
-          <SmilePlus size={15} />
-        </button>
       </div>
 
       {pickerOpen && (
-        <div className="chat-reaction-picker" role="menu" aria-label={labels.addReaction}>
+        <div
+          className={[
+            "chat-reaction-picker",
+            pickerOpensLeft ? "opens-left" : null,
+            pickerOpensDown ? "opens-down" : null
+          ].filter(Boolean).join(" ")}
+          role="menu"
+          aria-label={labels.addReaction}
+        >
           {CHAT_REACTIONS.map((option) => {
             const selected = reactions.some(
               (summary) => summary.reaction === option.type && summary.reactedByCurrentUser

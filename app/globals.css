@@ -859,6 +859,7 @@ a {
   border: 1px solid var(--line);
   border-radius: 6px;
   justify-self: start;
+  margin-bottom: 0.8rem;
   max-width: 86%;
   padding: 0.5rem 0.65rem;
   position: relative;
@@ -7595,6 +7596,10 @@ button.danger:hover,
   position: relative;
 }
 
+.domain-picker-tile-shell.is-expanded {
+  z-index: 40;
+}
+
 button.domain-picker-tile {
   align-items: center;
   background: #f8f4ea;
@@ -7682,47 +7687,40 @@ button.domain-picker-tile > span:last-child {
   width: 23px;
 }
 
-.domain-picker-subdomains {
-  background: #f4f7f3;
-  border: 1px solid #cbd5ca;
-  border-radius: 6px;
-  display: grid;
-  gap: 0.55rem;
-  padding: 0.65rem;
-}
-
-.domain-picker-subdomains > p {
-  color: #5a665c;
-  font-size: 0.72rem;
-  font-weight: 750;
-  margin: 0;
-  text-transform: uppercase;
-}
-
-.domain-picker-subdomain-grid {
-  display: grid;
-  gap: 0.4rem;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-}
-
-.domain-picker-subdomain-grid button {
+.domain-picker-subdomain-menu {
   background: #fff;
   border: 1px solid #cbd5ca;
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgb(28 33 27 / 0.18);
+  display: grid;
+  left: 0;
+  max-height: min(20rem, calc(100vh - 5rem));
+  min-width: 14rem;
+  overflow-y: auto;
+  padding: 0.3rem;
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  width: max-content;
+  z-index: 45;
+}
+
+.domain-picker-subdomain-menu button {
+  background: transparent;
+  border: 0;
   border-radius: 4px;
   box-shadow: none;
   color: #263129;
   font-size: 0.82rem;
-  font-weight: 650;
   justify-content: flex-start;
-  min-height: 2.35rem;
-  padding: 0.48rem 0.65rem;
+  min-height: 0;
+  padding: 0.48rem 0.6rem;
   text-align: left;
+  white-space: nowrap;
 }
 
-.domain-picker-subdomain-grid button:hover,
-.domain-picker-subdomain-grid button.selected {
+.domain-picker-subdomain-menu button:hover,
+.domain-picker-subdomain-menu button.selected {
   background: #e7f0e9;
-  border-color: #8eaa92;
   color: #205d3b;
 }
 
@@ -8406,7 +8404,7 @@ button.domain-picker-tile > span:last-child {
   border-radius: 7px;
   display: grid;
   gap: 0.65rem;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   padding: 0.7rem;
 }
 
@@ -8415,14 +8413,48 @@ button.domain-picker-tile > span:last-child {
   border-color: var(--accent);
 }
 
-.tip-selected-problem div {
+.tip-selected-problem-copy {
   display: grid;
   gap: 0.2rem;
+  min-width: 0;
 }
 
 .tip-selected-problem span {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.tip-selected-problem.is-dragging {
+  opacity: 0.45;
+}
+
+.tip-selected-problem.is-drop-target {
+  background: #dfece2;
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.tip-problem-drag-handle {
+  align-items: center;
+  align-self: stretch;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: grab;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0;
+  width: 1.5rem;
+}
+
+.tip-problem-drag-handle:hover,
+.tip-problem-drag-handle:focus-visible {
+  background: var(--panel);
+  color: var(--accent-strong);
+}
+
+.tip-problem-drag-handle:active {
+  cursor: grabbing;
 }
 
 .tip-remove-problem {
@@ -9484,6 +9516,29 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   gap: 1.25rem;
 }
 
+.live-search-reset-row {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+button.live-search-reset {
+  background: transparent;
+  border: 0;
+  color: var(--accent-strong);
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-height: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.15rem;
+}
+
+button.live-search-reset:hover {
+  background: transparent;
+  color: var(--accent);
+}
+
 .problem-filter-search,
 .problem-filter-section,
 .problem-filter-inline-field {
@@ -9526,6 +9581,19 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   letter-spacing: 0.14em;
   margin: 0;
   text-transform: uppercase;
+}
+
+.problem-language-filter .problem-content-filter-legend {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.problem-content-filter-legend .field-help {
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .problem-language-filter label {
@@ -11324,6 +11392,7 @@ button.relation-remove-button {
   display: grid;
   gap: 0.65rem;
   grid-template-columns: auto minmax(0, 1fr);
+  margin-bottom: 0.8rem;
   max-width: min(42rem, 100%);
   padding: 0.85rem 1rem;
 }
@@ -11343,34 +11412,25 @@ button.relation-remove-button {
 }
 
 .chat-reactions {
-  margin-top: 0.45rem;
+  bottom: -1.75rem;
+  left: 0;
+  margin: 0;
   max-width: 100%;
-  position: relative;
+  position: absolute;
   width: max-content;
+  z-index: 3;
 }
 
 .chat-message-own .chat-reactions,
 .friends-mini-message.is-own .chat-reactions {
-  margin-left: auto;
+  left: 0;
 }
 
 .chat-reactions.is-empty {
   margin: 0;
   opacity: 0.42;
-  position: absolute;
-  right: -1.45rem;
-  top: 50%;
-  transform: translateY(-50%);
   transition: opacity 140ms ease;
   width: auto;
-  z-index: 2;
-}
-
-.chat-message-own .chat-reactions.is-empty,
-.friends-mini-message.is-own .chat-reactions.is-empty {
-  left: -1.45rem;
-  margin: 0;
-  right: auto;
 }
 
 .chat-message:hover .chat-reactions.is-empty,
@@ -11383,6 +11443,10 @@ button.relation-remove-button {
 .chat-reactions.is-empty .chat-reaction-add {
   height: 1.45rem;
   width: 1.45rem;
+}
+
+.friends-mini-message .chat-reactions {
+  bottom: -0.85rem;
 }
 
 .chat-reaction-row {
@@ -11461,10 +11525,14 @@ button.relation-remove-button {
   z-index: 8;
 }
 
-.chat-message-own .chat-reaction-picker,
-.friends-mini-message.is-own .chat-reaction-picker {
+.chat-reaction-picker.opens-left {
   left: auto;
   right: 0;
+}
+
+.chat-reaction-picker.opens-down {
+  bottom: auto;
+  top: calc(100% + 0.3rem);
 }
 
 .chat-reaction-picker button {

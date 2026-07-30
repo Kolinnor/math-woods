@@ -2,6 +2,7 @@ import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
+import { FieldHelp } from "@/components/FieldHelp";
 import { Heart, House } from "lucide-react";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
@@ -28,6 +29,7 @@ import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import {
+  defaultProblemContentTypesForMathLevel,
   isDefaultProblemContentType,
   parseProblemContentTypes,
   problemContentTypeWhere
@@ -319,7 +321,8 @@ export default async function ProblemsPage({
   const preferredLanguage = await getPreferredContentLanguage();
   const showSpoilerTags = includeSpoilerTags === "1" || includeSpoilerTags === "on";
   const showAllProblems = showAll === "1" || showAll === "on";
-  const contentTypeValues = parseProblemContentTypes(contentType);
+  const defaultContentTypeValues = defaultProblemContentTypesForMathLevel(user?.mathLevel);
+  const contentTypeValues = parseProblemContentTypes(contentType, defaultContentTypeValues);
   const contentTypeWhere = problemContentTypeWhere(contentTypeValues);
   const showsProblems = contentTypeValues.includes("problem");
   const showsExercises = contentTypeValues.includes("exercise");
@@ -596,7 +599,7 @@ export default async function ProblemsPage({
     filterOp: advancedFilters.map((filter) => filter.op),
     filterValue: advancedFilters.map((filter) => filter.value),
     includeSpoilerTags: showSpoilerTags ? "1" : undefined,
-    contentType: isDefaultProblemContentType(contentTypeValues) ? undefined : contentTypeValues,
+    contentType: isDefaultProblemContentType(contentTypeValues, defaultContentTypeValues) ? undefined : contentTypeValues,
     showAll: showAllProblems ? "1" : undefined
   };
   const progressPercent = progressTotal ? Math.round((progressSolved / progressTotal) * 100) : 0;
@@ -660,7 +663,11 @@ export default async function ProblemsPage({
 
       <div className="problems-workspace">
         <aside className="problems-filter-panel">
-          <LiveSearchForm className="problem-filter-form" persistKey="problems">
+          <LiveSearchForm
+            className="problem-filter-form"
+            persistKey="problems"
+            resetLabel={t.problems.resetFilters}
+          >
             <label className="problem-filter-search">
               <span>{t.problems.searchProblems}</span>
               <input name="q" defaultValue={query} />
@@ -669,7 +676,10 @@ export default async function ProblemsPage({
 
             <div className="problem-filter-section">
               <fieldset className="problem-language-filter">
-                <legend>{t.problems.contentTypes}</legend>
+                <legend className="problem-content-filter-legend">
+                  {t.problems.contentTypes}
+                  <FieldHelp text={t.problems.exerciseTypeHelp} />
+                </legend>
                 <label>
                   <input
                     name="contentType"

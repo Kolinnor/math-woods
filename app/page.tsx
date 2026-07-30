@@ -1,6 +1,7 @@
 import { MathDomain } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { MarkdownInline } from "@/components/MarkdownInline";
 import { getCurrentUser } from "@/lib/auth";
 import { loadDailyTip } from "@/lib/daily-tip";
@@ -148,7 +149,9 @@ function TipOfDay({
       </div>
       <div className="home-tip-copy">
         <p className="home-section-kicker">{t.title}</p>
-        <h2>{tip.title}</h2>
+        <h2>
+          <AsyncMarkdownInline markdown={tip.title} />
+        </h2>
         <div className="home-tip-body prose-math" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
         {practice.length > 0 && (
           <>

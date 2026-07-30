@@ -566,6 +566,7 @@ export const fr = {
     requestProblemPlaceholder:
       "Décrivez le type de problème souhaité : notion, théorème, technique, exemples ou niveau de difficulté.",
     searchProblems: "Rechercher des problèmes",
+    resetFilters: "Réinitialiser les filtres",
     difficulty: "Difficulté",
     minimumDifficulty: "Difficulté minimale",
     maximumDifficulty: "Difficulté maximale",
@@ -596,6 +597,8 @@ export const fr = {
     contentTypes: "Contenu",
     problemType: "Problèmes",
     exerciseType: "Exercices",
+    exerciseTypeHelp:
+      "Les exercices servent à appliquer un concept précis. Ils sont masqués par défaut dans la liste des problèmes, mais restent accessibles avec le filtre Exercices et depuis les pages des concepts auxquels ils sont liés.",
     includeSpoilers: "Inclure les spoilers",
     ariaLabel: "Problèmes",
     showingResults: (total: number) => `${total} problème${total > 1 ? "s" : ""} affiché${total > 1 ? "s" : ""}`,

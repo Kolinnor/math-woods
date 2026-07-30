@@ -562,6 +562,7 @@ export const en = {
     requestProblemPlaceholder:
       "Describe the kind of problem you would like: the notion, theorem, technique, examples, or difficulty range you have in mind.",
     searchProblems: "Search problems",
+    resetFilters: "Reset filters",
     difficulty: "Difficulty",
     minimumDifficulty: "Minimum difficulty",
     maximumDifficulty: "Maximum difficulty",
@@ -592,6 +593,8 @@ export const en = {
     contentTypes: "Content",
     problemType: "Problems",
     exerciseType: "Exercises",
+    exerciseTypeHelp:
+      "Exercises focus on applying a specific concept. They are hidden from the problem browser by default, but remain available through the Exercises filter and from linked concept pages.",
     includeSpoilers: "Include spoilers",
     ariaLabel: "Problems",
     showingResults: (total: number) => `Showing ${total} ${total === 1 ? "problem" : "problems"}`,

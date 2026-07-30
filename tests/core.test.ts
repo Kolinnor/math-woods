@@ -15,6 +15,7 @@ import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
+  defaultProblemContentTypesForMathLevel,
   isDefaultProblemContentType,
   parseProblemContentTypes,
   problemContentTypeWhere
@@ -341,10 +342,20 @@ assert.equal(legacyExcellentSnapshot?.isExercise, false);
 assert.deepEqual(parseProblemContentTypes(undefined), ["problem"]);
 assert.deepEqual(parseProblemContentTypes(["exercise"]), ["exercise"]);
 assert.deepEqual(parseProblemContentTypes(["exercise", "problem", "unknown"]), ["problem", "exercise"]);
+assert.deepEqual(defaultProblemContentTypesForMathLevel(UserMathLevel.BEGINNER_PRE_UNIVERSITY), ["problem", "exercise"]);
+assert.deepEqual(defaultProblemContentTypesForMathLevel(UserMathLevel.EARLY_UNDERGRAD), ["problem", "exercise"]);
+assert.deepEqual(defaultProblemContentTypesForMathLevel(UserMathLevel.UNDERGRAD), ["problem"]);
+assert.deepEqual(defaultProblemContentTypesForMathLevel(null), ["problem"]);
+assert.deepEqual(
+  parseProblemContentTypes(undefined, defaultProblemContentTypesForMathLevel(UserMathLevel.BEGINNER_PRE_UNIVERSITY)),
+  ["problem", "exercise"]
+);
 assert.deepEqual(problemContentTypeWhere(["problem"]), { isExercise: false });
 assert.deepEqual(problemContentTypeWhere(["exercise"]), { isExercise: true });
 assert.equal(problemContentTypeWhere(["problem", "exercise"]), null);
 assert.equal(isDefaultProblemContentType(["problem"]), true);
+assert.equal(isDefaultProblemContentType(["problem", "exercise"], ["problem", "exercise"]), true);
+assert.equal(isDefaultProblemContentType(["problem"], ["problem", "exercise"]), false);
 
 const start = new Date("2026-06-04T10:00:00.000Z");
 const unlock = unlockDate(start);

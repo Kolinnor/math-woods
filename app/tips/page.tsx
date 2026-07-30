@@ -159,8 +159,12 @@ export default async function TipsPage({
                   </Link>
                 </div>
                 {tip.showInMainMenu && <span className="tip-main-menu-badge">Main menu</span>}
-                <h2>{tip.title}</h2>
-                <p className="tip-description">{tip.description}</p>
+                <h2>
+                  <AsyncMarkdownInline markdown={tip.title} />
+                </h2>
+                <p className="tip-description">
+                  <AsyncMarkdownInline markdown={tip.description} />
+                </p>
               </div>
             </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { Search, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { GripVertical, Search, X } from "lucide-react";
+import { useEffect, useMemo, useState, type DragEvent, type KeyboardEvent } from "react";
 
 export type TipPickerProblem = {
   id: number;
@@ -35,6 +35,8 @@ function problemMeta(problem: TipPickerProblem) {
 
 export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProblemPickerProps) {
   const [selectedProblems, setSelectedProblems] = useState<TipPickerProblem[]>(initialProblems);
+  const [draggedProblemId, setDraggedProblemId] = useState<number | null>(null);
+  const [dropTargetProblemId, setDropTargetProblemId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<ProblemSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -79,6 +81,42 @@ export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProble
     setSelectedProblems((current) => current.filter((problem) => problem.id !== problemId));
   }
 
+  function moveProblem(problemId: number, targetIndex: number) {
+    setSelectedProblems((current) => {
+      const sourceIndex = current.findIndex((problem) => problem.id === problemId);
+      if (sourceIndex < 0) return current;
+
+      const nextIndex = Math.max(0, Math.min(current.length - 1, targetIndex));
+      if (sourceIndex === nextIndex) return current;
+
+      const reordered = [...current];
+      const [movedProblem] = reordered.splice(sourceIndex, 1);
+      reordered.splice(nextIndex, 0, movedProblem);
+      return reordered;
+    });
+  }
+
+  function dropProblem(event: DragEvent<HTMLDivElement>, targetProblemId: number) {
+    event.preventDefault();
+    const transferredProblemId = Number(event.dataTransfer.getData("text/plain"));
+    const sourceProblemId = draggedProblemId ?? (Number.isInteger(transferredProblemId) ? transferredProblemId : null);
+    if (sourceProblemId !== null) {
+      moveProblem(
+        sourceProblemId,
+        selectedProblems.findIndex((problem) => problem.id === targetProblemId)
+      );
+    }
+    setDraggedProblemId(null);
+    setDropTargetProblemId(null);
+  }
+
+  function moveProblemWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, problemId: number) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const currentIndex = selectedProblems.findIndex((problem) => problem.id === problemId);
+    moveProblem(problemId, currentIndex + (event.key === "ArrowUp" ? -1 : 1));
+  }
+
   return (
     <div className="tip-problem-picker">
       {selectedProblems.map((problem) => (
@@ -86,9 +124,41 @@ export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProble
       ))}
 
       <div className="tip-selected-problem-list">
-        {selectedProblems.map((problem) => (
-          <div key={problem.id} className="tip-selected-problem">
-            <div>
+        {selectedProblems.map((problem, index) => (
+          <div
+            key={problem.id}
+            className={[
+              "tip-selected-problem",
+              draggedProblemId === problem.id ? "is-dragging" : "",
+              dropTargetProblemId === problem.id && draggedProblemId !== problem.id ? "is-drop-target" : ""
+            ].filter(Boolean).join(" ")}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setDropTargetProblemId(problem.id);
+            }}
+            onDrop={(event) => dropProblem(event, problem.id)}
+          >
+            <button
+              type="button"
+              className="tip-problem-drag-handle"
+              draggable
+              aria-label={`Move ${problem.title}. Use the up and down arrow keys to reorder.`}
+              title="Drag to reorder"
+              onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", String(problem.id));
+                setDraggedProblemId(problem.id);
+              }}
+              onDragEnd={() => {
+                setDraggedProblemId(null);
+                setDropTargetProblemId(null);
+              }}
+              onKeyDown={(event) => moveProblemWithKeyboard(event, problem.id)}
+            >
+              <GripVertical size={16} aria-hidden="true" />
+            </button>
+            <div className="tip-selected-problem-copy">
               <strong>{problem.title}</strong>
               <span>{problemMeta(problem)}</span>
             </div>

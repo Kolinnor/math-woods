@@ -9,6 +9,7 @@ type LiveSearchFormProps = {
   className?: string;
   debounceMs?: number;
   persistKey?: string;
+  resetLabel?: string;
   updatingLabel?: string;
 };
 
@@ -18,6 +19,7 @@ export function LiveSearchForm({
   className,
   debounceMs = 250,
   persistKey,
+  resetLabel,
   updatingLabel = "Updating results"
 }: LiveSearchFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -91,6 +93,13 @@ export function LiveSearchForm({
     updateUrl();
   };
 
+  const resetFilters = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (persistKey) sessionStorage.removeItem(`math-woods:filters:${persistKey}`);
+    const targetPath = action || pathname;
+    startTransition(() => router.replace(targetPath as never, { scroll: false }));
+  };
+
   return (
     <form
       ref={formRef}
@@ -101,6 +110,13 @@ export function LiveSearchForm({
       onInput={scheduleUpdate}
       onSubmit={submitNow}
     >
+      {resetLabel ? (
+        <div className="live-search-reset-row">
+          <button className="live-search-reset" type="button" onClick={resetFilters}>
+            {resetLabel}
+          </button>
+        </div>
+      ) : null}
       {children}
       <span className="sr-only" role="status" aria-live="polite">
         {isPending ? updatingLabel : ""}

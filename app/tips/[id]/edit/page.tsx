@@ -1,4 +1,5 @@
 import { DeleteTipButton } from "@/components/DeleteTipButton";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { TipImageField } from "@/components/TipImageField";
 import { TipProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
@@ -63,7 +64,7 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
       eyebrow={`Tip ${tip.position + 1}`}
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      description={tip.title}
+      description={<AsyncMarkdownInline markdown={tip.title} />}
       workspaceClassName="forest-page-workspace-narrow"
       actions={
         <Link href="/tips" className="button secondary">
