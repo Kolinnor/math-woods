@@ -237,6 +237,7 @@ export default async function HomePage() {
   const baseProblemWhere = {
     status: "PUBLISHED" as const,
     listed: true,
+    isExercise: false,
     language: preferredLanguage,
     ...visibleProblemWhere(user)
   };

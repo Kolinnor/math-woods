@@ -9775,6 +9775,12 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   padding: 0.18rem 0.34rem;
 }
 
+.problem-exercise-badge {
+  background: #f7e5d9;
+  border-color: #d9a783;
+  color: #9a4825;
+}
+
 .problem-review-badge {
   align-items: center;
   border: 1px solid;
@@ -11549,6 +11555,57 @@ button.relation-remove-button {
   display: grid;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.concept-practice-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 7px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1.15rem 1.25rem;
+}
+
+.concept-practice-box h2 {
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0.3rem 0 0;
+}
+
+.concept-practice-list {
+  border-top: 1px solid var(--line);
+  display: grid;
+}
+
+.concept-practice-link {
+  align-items: center;
+  color: var(--ink);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.8rem 0;
+  text-decoration: none;
+}
+
+.concept-practice-link + .concept-practice-link {
+  border-top: 1px solid var(--line);
+}
+
+.concept-practice-link:hover strong {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.concept-practice-link span:last-child {
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-size: 0.8rem;
 }
 
 .concept-problem-box {

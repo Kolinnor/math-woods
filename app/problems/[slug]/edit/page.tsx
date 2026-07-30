@@ -225,6 +225,13 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                         <strong>Listed in the problem browser</strong>
                       </span>
                     </label>
+                    <label className="checkbox-field">
+                      <input name="isExercise" type="checkbox" defaultChecked={problem.isExercise} />
+                      <div className="field-label-with-help">
+                        <strong>Exercise</strong>
+                        <FieldHelp text="Exercises are designed to practise a specific concept. They appear on linked concept pages and are hidden from the default problem-browser view, while remaining available through the Exercises filter." />
+                      </div>
+                    </label>
                     {canManageFrontPageEligibility && (
                       <label className="checkbox-field">
                         <input name="canAppearOnFrontPage" type="checkbox" defaultChecked={problem.canAppearOnFrontPage} />

@@ -14,6 +14,11 @@ import {
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
+import {
+  isDefaultProblemContentType,
+  parseProblemContentTypes,
+  problemContentTypeWhere
+} from "../lib/problem-content-types.ts";
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
 import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
@@ -289,6 +294,7 @@ const baseProblemSnapshot: ProblemRevisionSnapshot = {
   originPage: null,
   originNote: null,
   listed: true,
+  isExercise: false,
   canAppearOnFrontPage: false,
   status: "PUBLISHED",
   qualityStatus: QualityStatus.UNREVIEWED,
@@ -331,6 +337,14 @@ const legacyExcellentSnapshot = parseProblemRevisionSnapshot({
 });
 assert.equal(legacyExcellentSnapshot?.qualityStatus, QualityStatus.REVIEWED);
 assert.equal(legacyExcellentSnapshot?.canAppearOnFrontPage, true);
+assert.equal(legacyExcellentSnapshot?.isExercise, false);
+assert.deepEqual(parseProblemContentTypes(undefined), ["problem"]);
+assert.deepEqual(parseProblemContentTypes(["exercise"]), ["exercise"]);
+assert.deepEqual(parseProblemContentTypes(["exercise", "problem", "unknown"]), ["problem", "exercise"]);
+assert.deepEqual(problemContentTypeWhere(["problem"]), { isExercise: false });
+assert.deepEqual(problemContentTypeWhere(["exercise"]), { isExercise: true });
+assert.equal(problemContentTypeWhere(["problem", "exercise"]), null);
+assert.equal(isDefaultProblemContentType(["problem"]), true);
 
 const start = new Date("2026-06-04T10:00:00.000Z");
 const unlock = unlockDate(start);

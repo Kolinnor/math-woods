@@ -272,6 +272,7 @@ export async function createProblemAction(formData: FormData) {
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
   const listed = formData.get("listed") === "on";
+  const isExercise = formData.get("isExercise") === "on";
   const verificationMode = parseProblemVerificationMode(formData.get("verificationMode"));
   const verificationPrompt = optionalBoundedText(
     formData.get("verificationPrompt"),
@@ -319,14 +320,27 @@ export async function createProblemAction(formData: FormData) {
       translationGroupId && translationSourceSlug
         ? await tx.problem.findFirst({
             where: { slug: translationSourceSlug, translationGroupId },
-            select: { id: true, authorId: true, difficulty: true, canAppearOnFrontPage: true, createdAt: true }
+            select: {
+              id: true,
+              authorId: true,
+              difficulty: true,
+              isExercise: true,
+              canAppearOnFrontPage: true,
+              createdAt: true
+            }
           })
         : null;
     const originalProblem = translationGroupId
       ? await tx.problem.findFirst({
           where: { translationGroupId, translatedFromProblemId: null },
           orderBy: { createdAt: "asc" },
-          select: { authorId: true, difficulty: true, canAppearOnFrontPage: true, createdAt: true }
+          select: {
+            authorId: true,
+            difficulty: true,
+            isExercise: true,
+            canAppearOnFrontPage: true,
+            createdAt: true
+          }
         })
       : null;
     const sourceRevision = translationSource
@@ -361,6 +375,7 @@ export async function createProblemAction(formData: FormData) {
         originPage,
         originNote,
         listed,
+        isExercise: originalProblem?.isExercise ?? translationSource?.isExercise ?? isExercise,
         ...(translationGroupId ? { createdAt: originalProblem?.createdAt ?? translationSource?.createdAt } : {}),
         canAppearOnFrontPage:
           originalProblem?.canAppearOnFrontPage ?? translationSource?.canAppearOnFrontPage ?? false,
@@ -548,6 +563,7 @@ export async function updateProblemAction(
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
   const listed = formData.get("listed") === "on";
+  const isExercise = formData.get("isExercise") === "on";
   const canAppearOnFrontPage = canUseAdminTools(user)
     ? formData.get("canAppearOnFrontPage") === "on"
     : previous.canAppearOnFrontPage;
@@ -597,6 +613,7 @@ export async function updateProblemAction(
     originPage,
     originNote,
     listed,
+    isExercise,
     canAppearOnFrontPage,
     status: previous.status,
     qualityStatus,
@@ -696,6 +713,7 @@ export async function updateProblemAction(
           originPage: resolvedSnapshot.originPage,
           originNote: resolvedSnapshot.originNote,
           listed: resolvedSnapshot.listed,
+          isExercise: resolvedSnapshot.isExercise,
           canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage,
           qualityStatus: resolvedSnapshot.qualityStatus,
           verificationMode: resolvedSnapshot.verificationMode,
@@ -708,6 +726,7 @@ export async function updateProblemAction(
       if (updateResult.count !== 1) throw new ProblemEditConflictError(current.version + 1);
 
       const syncFrontPage = resolvedSnapshot.canAppearOnFrontPage !== current.canAppearOnFrontPage;
+      const syncExerciseType = resolvedSnapshot.isExercise !== current.isExercise;
       const siblingCandidates = await tx.problem.findMany({
         where: {
           translationGroupId: current.translationGroupId,
@@ -718,6 +737,9 @@ export async function updateProblemAction(
               : { OR: [{ difficulty: null }, { difficulty: { not: resolvedSnapshot.difficulty } }] },
             ...(syncFrontPage
               ? [{ canAppearOnFrontPage: { not: resolvedSnapshot.canAppearOnFrontPage } }]
+              : []),
+            ...(syncExerciseType
+              ? [{ isExercise: { not: resolvedSnapshot.isExercise } }]
               : [])
           ]
         },
@@ -732,6 +754,7 @@ export async function updateProblemAction(
           data: {
             difficulty: resolvedSnapshot.difficulty,
             ...(syncFrontPage ? { canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage } : {}),
+            ...(syncExerciseType ? { isExercise: resolvedSnapshot.isExercise } : {}),
             version: { increment: 1 }
           }
         });
@@ -991,6 +1014,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               originPage: snapshot.originPage,
               originNote: snapshot.originNote,
               listed: snapshot.listed,
+              isExercise: snapshot.isExercise,
               canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
               status: snapshot.status,
               qualityStatus: QualityStatus.UNREVIEWED,
@@ -1024,7 +1048,8 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               snapshot.difficulty === null
                 ? { difficulty: { not: null } }
                 : { OR: [{ difficulty: null }, { difficulty: { not: snapshot.difficulty } }] },
-              { canAppearOnFrontPage: { not: snapshot.canAppearOnFrontPage } }
+              { canAppearOnFrontPage: { not: snapshot.canAppearOnFrontPage } },
+              { isExercise: { not: snapshot.isExercise } }
             ]
           },
           select: { id: true }
@@ -1038,6 +1063,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
         where: { id: { in: siblingCandidates.map((item) => item.id) } },
         data: {
           difficulty: snapshot.difficulty,
+          isExercise: snapshot.isExercise,
           canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
           version: { increment: 1 }
         }

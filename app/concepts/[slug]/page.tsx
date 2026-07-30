@@ -234,7 +234,7 @@ export default async function ConceptPage({
           in: backlinks.filter((link) => link.sourceType === "PROBLEM").map((link) => link.sourceId)
         }
       },
-      select: { id: true, slug: true, title: true }
+      select: { id: true, slug: true, title: true, difficulty: true, isExercise: true }
     }),
     prisma.concept.findMany({
       where: {
@@ -258,13 +258,17 @@ export default async function ConceptPage({
           }
         }
       },
-      select: { id: true, slug: true, title: true },
+      select: { id: true, slug: true, title: true, isExercise: true },
       orderBy: { updatedAt: "desc" },
       take: 30
     })
   ]);
   const problemBacklinkIds = new Set(problemBacklinks.map((problem) => problem.id));
-  const spoilerProblemBacklinks = spoilerProblemBacklinksRaw.filter((problem) => !problemBacklinkIds.has(problem.id));
+  const exerciseBacklinks = problemBacklinks.filter((problem) => problem.isExercise);
+  const regularProblemBacklinks = problemBacklinks.filter((problem) => !problem.isExercise);
+  const spoilerProblemBacklinks = spoilerProblemBacklinksRaw.filter(
+    (problem) => !problem.isExercise && !problemBacklinkIds.has(problem.id)
+  );
 
   return (
     <ForestPageLayout
@@ -365,18 +369,41 @@ export default async function ConceptPage({
           <MarkdownBlock html={conceptBodyHtml} />
         </section>
 
+        {exerciseBacklinks.length > 0 && (
+          <section className="concept-practice-box">
+            <div>
+              <p className="home-section-kicker">{t.conceptDetail.practice}</p>
+              <h2>{t.conceptDetail.practiceWithExercises}</h2>
+            </div>
+            <div className="concept-practice-list">
+              {exerciseBacklinks.map((exercise) => (
+                <Link key={exercise.id} href={`/problems/${exercise.slug}`} className="concept-practice-link">
+                  <strong>
+                    <AsyncMarkdownInline markdown={exercise.title} />
+                  </strong>
+                  <span>
+                    {exercise.difficulty === null
+                      ? t.common.difficultyUnset
+                      : `${t.problems.difficulty} ${exercise.difficulty}/100`}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="concept-problem-boxes">
           <details className="concept-problem-box">
             <summary>
-              <span>{t.conceptDetail.problemsUsingConcept(problemBacklinks.length)}</span>
+              <span>{t.conceptDetail.problemsUsingConcept(regularProblemBacklinks.length)}</span>
             </summary>
             <div className="concept-problem-list">
-              {problemBacklinks.map((problem) => (
+              {regularProblemBacklinks.map((problem) => (
                 <Link key={problem.id} href={`/problems/${problem.slug}`} className="concept-problem-link">
                   <AsyncMarkdownInline markdown={problem.title} />
                 </Link>
               ))}
-              {problemBacklinks.length === 0 && <p>{t.conceptDetail.noProblemsUsingConcept}</p>}
+              {regularProblemBacklinks.length === 0 && <p>{t.conceptDetail.noProblemsUsingConcept}</p>}
             </div>
           </details>
 

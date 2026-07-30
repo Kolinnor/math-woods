@@ -408,6 +408,7 @@ export default async function ProblemPage({
             <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
               {t.quality[problem.qualityStatus]}
             </span>
+            {problem.isExercise && <p>{t.problemDetail.exercise}</p>}
             {problem.canAppearOnFrontPage && <p>{t.problems.featured}</p>}
             {hiddenDomainCount > 0 && problemDomains.length > 0 && <p>{t.problemDetail.spoilerDomainHiddenUntilSolved}</p>}
             {!problem.listed && <p>{t.problemDetail.playlistSpecific}</p>}

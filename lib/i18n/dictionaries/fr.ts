@@ -555,6 +555,8 @@ export const fr = {
   problems: {
     title: "Problèmes",
     heroMeta: (count: number) => `${count} problème${count > 1 ? "s" : ""} / 21 domaines`,
+    exerciseHeroMeta: (count: number) => `${count} exercice${count > 1 ? "s" : ""} / 21 domaines`,
+    mixedHeroMeta: (count: number) => `${count} problèmes et exercices / 21 domaines`,
     solvedProgress: (solved: number, scope: string, percent: number) =>
       `Vous avez résolu ${solved} problème${solved > 1 ? "s" : ""} dans ${scope} (${percent} %).`,
     signInProgress: (scope: string) => `Connectez-vous pour suivre vos problèmes résolus dans ${scope}.`,
@@ -591,9 +593,14 @@ export const fr = {
     unreviewed: "Non relu",
     reviewed: "Relu",
     featured: "Mis en avant",
+    contentTypes: "Contenu",
+    problemType: "Problèmes",
+    exerciseType: "Exercices",
     includeSpoilers: "Inclure les spoilers",
     ariaLabel: "Problèmes",
     showingResults: (total: number) => `${total} problème${total > 1 ? "s" : ""} affiché${total > 1 ? "s" : ""}`,
+    showingExercises: (total: number) => `${total} exercice${total > 1 ? "s" : ""} affiché${total > 1 ? "s" : ""}`,
+    showingProblemsAndExercises: (total: number) => `${total} problèmes et exercices affichés`,
     noMatches: "Aucun problème ne correspond à ces filtres.",
     otherLanguageFound: (count: number) =>
       `${count} problème${count > 1 ? "s" : ""} trouvé${count > 1 ? "s" : ""} dans d'autres langues.`,
@@ -691,6 +698,7 @@ export const fr = {
   },
   problemDetail: {
     problem: "Problème",
+    exercise: "Exercice",
     by: "par",
     editedBy: (name: string) => `modifié par ${name}`,
     needsWorkNotice: "Ce problème a été marqué comme à retravailler.",
@@ -833,6 +841,8 @@ export const fr = {
     report: "Signaler",
     reportPlaceholder: "Définition ambiguë, conflit, source manquante...",
     submit: "Envoyer",
+    practice: "Entraînement",
+    practiceWithExercises: "Pratiquer ce concept avec des exercices",
     problemsUsingConcept: (count: number) => `Problèmes utilisant ce concept (${count})`,
     spoilerProblemsUsingConcept: (count: number) => `Problèmes utilisant ce concept (spoiler) (${count})`,
     noProblemsUsingConcept: "Aucun problème listé ne renvoie encore vers ce concept.",

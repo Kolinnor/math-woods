@@ -18,6 +18,7 @@ export type ProblemRevisionSnapshot = {
   originPage: string | null;
   originNote: string | null;
   listed: boolean;
+  isExercise: boolean;
   canAppearOnFrontPage: boolean;
   status: ProblemStatus;
   qualityStatus: QualityStatus;
@@ -41,6 +42,7 @@ export type ProblemSnapshotSource = {
   originPage: string | null;
   originNote: string | null;
   listed: boolean;
+  isExercise: boolean;
   canAppearOnFrontPage: boolean;
   status: ProblemStatus;
   qualityStatus: QualityStatus;
@@ -67,6 +69,7 @@ export const PROBLEM_SNAPSHOT_FIELD_LABELS = {
   originPage: "origin page",
   originNote: "origin note",
   listed: "visibility",
+  isExercise: "content type",
   canAppearOnFrontPage: "front page eligibility",
   status: "publication status",
   qualityStatus: "quality",
@@ -103,6 +106,7 @@ export function buildProblemRevisionSnapshot(source: ProblemSnapshotSource): Pro
     originPage: source.originPage,
     originNote: source.originNote,
     listed: source.listed,
+    isExercise: source.isExercise,
     canAppearOnFrontPage: source.canAppearOnFrontPage,
     status: source.status,
     qualityStatus: source.qualityStatus,
@@ -144,6 +148,7 @@ export function parseProblemRevisionSnapshot(value: Prisma.JsonValue | null): Pr
   return {
     ...candidate,
     qualityStatus,
+    isExercise: candidate.isExercise === true,
     canAppearOnFrontPage:
       candidate.canAppearOnFrontPage === true || legacyQualityStatus === "EXCELLENT"
   } as unknown as ProblemRevisionSnapshot;

@@ -29,17 +29,27 @@ export default async function NewProblemPage({
     translateOf?: string;
     language?: string;
     draft?: string;
+    exercise?: string;
   }>;
 }) {
   await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const queryParams = await searchParams;
   const draftSession = requireDraftSession("/problems/new", queryParams);
-  const { playlist = "", exploration = "", listed = "1", parent = "", translateOf = "", language = "" } = queryParams;
+  const {
+    playlist = "",
+    exploration = "",
+    listed = "1",
+    parent = "",
+    translateOf = "",
+    language = "",
+    exercise = ""
+  } = queryParams;
   const explorationSlug = exploration || playlist;
   const preferredLanguage = await getPreferredContentLanguage();
   const requestedLanguage = language ? parseContentLanguage(language) : preferredLanguage;
   const isListedByDefault = listed !== "0";
+  const isExerciseByDefault = exercise === "1" || exercise === "true";
   const parentProblem = parent
     ? await prisma.problem.findUnique({
         where: { slug: parent },
@@ -56,6 +66,7 @@ export default async function NewProblemPage({
           language: true,
           translationGroupId: true,
           difficulty: true,
+          isExercise: true,
           domain: true,
           domains: { orderBy: { position: "asc" } }
         }
@@ -199,6 +210,17 @@ export default async function NewProblemPage({
                     <span>
                       <strong>Listed in the problem browser</strong>
                     </span>
+                  </label>
+                  <label className="checkbox-field">
+                    <input
+                      name="isExercise"
+                      type="checkbox"
+                      defaultChecked={sourceProblem?.isExercise ?? isExerciseByDefault}
+                    />
+                    <div className="field-label-with-help">
+                      <strong>Exercise</strong>
+                      <FieldHelp text="Exercises are designed to practise a specific concept. They appear on linked concept pages and are hidden from the default problem-browser view, while remaining available through the Exercises filter." />
+                    </div>
                   </label>
                   <ProblemVerificationFields modeOptions={Object.entries(VERIFICATION_MODE_LABELS)} />
                 </section>

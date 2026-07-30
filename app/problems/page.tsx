@@ -27,6 +27,11 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import {
+  isDefaultProblemContentType,
+  parseProblemContentTypes,
+  problemContentTypeWhere
+} from "@/lib/problem-content-types";
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
@@ -282,6 +287,7 @@ export default async function ProblemsPage({
     filterOp?: SearchValue;
     filterValue?: SearchValue;
     includeSpoilerTags?: string;
+    contentType?: SearchValue;
   }>;
 }) {
   const user = await getCurrentUser();
@@ -307,11 +313,16 @@ export default async function ProblemsPage({
     filterField,
     filterOp,
     filterValue,
-    includeSpoilerTags = ""
+    includeSpoilerTags = "",
+    contentType
   } = await searchParams;
   const preferredLanguage = await getPreferredContentLanguage();
   const showSpoilerTags = includeSpoilerTags === "1" || includeSpoilerTags === "on";
   const showAllProblems = showAll === "1" || showAll === "on";
+  const contentTypeValues = parseProblemContentTypes(contentType);
+  const contentTypeWhere = problemContentTypeWhere(contentTypeValues);
+  const showsProblems = contentTypeValues.includes("problem");
+  const showsExercises = contentTypeValues.includes("exercise");
   const query = q.trim();
   const queryTagSlug = ensureSlug(query, "");
   const tagSlug = ensureSlug(tag, "");
@@ -430,6 +441,7 @@ export default async function ProblemsPage({
   const baseWhereClauses: Prisma.ProblemWhereInput[] = [
     { status: "PUBLISHED" },
     { listed: true },
+    ...(contentTypeWhere ? [contentTypeWhere] : []),
     ...(queryClauses.length ? [{ OR: queryClauses } satisfies Prisma.ProblemWhereInput] : []),
     ...(tagSlug ? [tagWhere(tagSlug, showSpoilerTags)].filter((item): item is Prisma.ProblemWhereInput => Boolean(item)) : []),
     ...(difficultyWhere ? [difficultyWhere] : []),
@@ -449,6 +461,7 @@ export default async function ProblemsPage({
   const progressWhere: Prisma.ProblemWhereInput = {
     status: "PUBLISHED",
     listed: true,
+    ...(contentTypeWhere ?? {}),
     ...(languageWhere ?? {}),
     ...(ownershipWhere ?? {}),
     ...(authorWhere ?? {}),
@@ -583,12 +596,23 @@ export default async function ProblemsPage({
     filterOp: advancedFilters.map((filter) => filter.op),
     filterValue: advancedFilters.map((filter) => filter.value),
     includeSpoilerTags: showSpoilerTags ? "1" : undefined,
+    contentType: isDefaultProblemContentType(contentTypeValues) ? undefined : contentTypeValues,
     showAll: showAllProblems ? "1" : undefined
   };
   const progressPercent = progressTotal ? Math.round((progressSolved / progressTotal) * 100) : 0;
   const progressScope = domainValue ? translatedDomainLabel(domainValue, t) : t.common.allDomains;
   const difficultyRanges = t.problems.difficultyRanges;
   const sortOptions = t.problems.sortOptions;
+  const heroMeta = showsExercises && !showsProblems
+    ? t.problems.exerciseHeroMeta(progressTotal)
+    : showsExercises
+      ? t.problems.mixedHeroMeta(progressTotal)
+      : t.problems.heroMeta(progressTotal);
+  const resultSummary = showsExercises && !showsProblems
+    ? t.problems.showingExercises(totalProblems)
+    : showsExercises
+      ? t.problems.showingProblemsAndExercises(totalProblems)
+      : t.problems.showingResults(totalProblems);
 
   return (
     <div className="problems-page-shell">
@@ -601,7 +625,7 @@ export default async function ProblemsPage({
           </div>
           <div className="problems-hero-meta">
             <p>
-              {t.problems.heroMeta(progressTotal)}
+              {heroMeta}
             </p>
             {user ? (
               <p>
@@ -642,6 +666,30 @@ export default async function ProblemsPage({
               <input name="q" defaultValue={query} />
             </label>
             {domainValue && <input type="hidden" name="domain" value={domainValue} />}
+
+            <div className="problem-filter-section">
+              <fieldset className="problem-language-filter">
+                <legend>{t.problems.contentTypes}</legend>
+                <label>
+                  <input
+                    name="contentType"
+                    type="checkbox"
+                    value="problem"
+                    defaultChecked={showsProblems}
+                  />
+                  <span>{t.problems.problemType}</span>
+                </label>
+                <label>
+                  <input
+                    name="contentType"
+                    type="checkbox"
+                    value="exercise"
+                    defaultChecked={showsExercises}
+                  />
+                  <span>{t.problems.exerciseType}</span>
+                </label>
+              </fieldset>
+            </div>
 
             <div className="problem-filter-section">
               <p>{t.problems.difficulty}</p>
@@ -735,7 +783,7 @@ export default async function ProblemsPage({
             <div>
               {totalProblems > 0 && (
                 <p className="result-summary" role="status" aria-live="polite">
-                  {t.problems.showingResults(totalProblems)}
+                  {resultSummary}
                 </p>
               )}
             </div>
@@ -797,6 +845,7 @@ export default async function ProblemsPage({
                         </span>
                       )}
                       {problem.canAppearOnFrontPage && <span className="problem-language-badge">{t.problems.featured}</span>}
+                      {problem.isExercise && <span className="problem-language-badge problem-exercise-badge">{t.problems.exerciseType}</span>}
                     </h3>
                     <p>
                       {visibleDomainCodes.length
