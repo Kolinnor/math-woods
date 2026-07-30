@@ -164,6 +164,7 @@ export default async function ProblemPage({
   if (user) {
     await markNotificationsReadForHref(user.id, `/problems/${problem.slug}`, [
       NotificationType.PROOF_ADDED,
+      NotificationType.SOLUTION_VOTED,
       NotificationType.PROBLEM_SOLVED,
       NotificationType.PROBLEM_CREATED,
       NotificationType.PROBLEM_CHALLENGE

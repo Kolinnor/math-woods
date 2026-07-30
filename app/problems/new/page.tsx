@@ -1,5 +1,6 @@
 import { createProblemAction } from "@/lib/actions/problem-actions";
 import { FieldHelp } from "@/components/FieldHelp";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
@@ -94,10 +95,20 @@ export default async function NewProblemPage({
     : [];
 
   return (
-    <div className={sourceProblem ? "translation-compose-page" : "mx-auto max-w-3xl"}>
+    <ForestPageLayout
+      title={sourceProblem ? "Translation" : "New problem"}
+      eyebrow={sourceProblem ? undefined : "Problem"}
+      heroImage="/art/rye.jpg"
+      heroAlt="Ivan Shishkin, Rye"
+      description={
+        sourceProblem
+          ? undefined
+          : "A clear statement and an honest difficulty estimate are enough for a first version."
+      }
+      workspaceClassName={sourceProblem ? undefined : "forest-page-workspace-narrow"}
+    >
+    <div className={sourceProblem ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
-        <h1 className="mb-4 text-2xl font-bold">New problem</h1>
-
         <form action={createProblemAction} className="problem-compose-form">
           {explorationSlug && <input type="hidden" name="addToExplorationSlug" value={explorationSlug} />}
           {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
@@ -249,5 +260,6 @@ export default async function NewProblemPage({
         />
       )}
     </div>
+    </ForestPageLayout>
   );
 }

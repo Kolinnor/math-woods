@@ -11,6 +11,7 @@ const configurableNotificationTypes = [
   NotificationType.PROBLEM_SOLVED,
   NotificationType.PROBLEM_EDITED,
   NotificationType.PROOF_ADDED,
+  NotificationType.SOLUTION_VOTED,
   NotificationType.DISCUSSION_POSTED,
   NotificationType.ACHIEVEMENT_UNLOCKED,
   NotificationType.VERIFICATION_REQUESTED,

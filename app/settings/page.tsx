@@ -68,6 +68,11 @@ const notificationOptions = [
     description: "When another user adds a solution to one of your problems."
   },
   {
+    type: NotificationType.SOLUTION_VOTED,
+    title: "Someone liked your solution",
+    description: "When another user marks one of your solutions as useful."
+  },
+  {
     type: NotificationType.DISCUSSION_POSTED,
     title: "Someone posted in your problem discussion",
     description: "When another user posts a comment, hint, solution, generalization, or correction."

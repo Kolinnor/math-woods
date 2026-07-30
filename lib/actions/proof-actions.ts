@@ -8,7 +8,7 @@ import { checkHintAchievements, checkProofAchievements } from "@/lib/achievement
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { notifyProblemAuthor } from "@/lib/notifications";
+import { createNotification, notifyProblemAuthor } from "@/lib/notifications";
 import { canDeleteSolution, canEditSolution } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
@@ -172,7 +172,7 @@ export async function voteProofAction(proofId: number, problemSlug: string) {
   await assertRateLimit(`vote:${user.id}`, 120, 60_000);
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
-    select: { authorId: true, problem: { select: { slug: true } } }
+    select: { authorId: true, problem: { select: { slug: true, title: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
@@ -195,6 +195,14 @@ export async function voteProofAction(proofId: number, problemSlug: string) {
     await prisma.vote.delete({ where: { userId_targetType_targetId: key } });
   } else {
     await prisma.vote.create({ data: { ...key, voteType: VoteType.UP } });
+    await createNotification({
+      userId: proof.authorId,
+      actorId: user.id,
+      type: NotificationType.SOLUTION_VOTED,
+      title: "Your solution received a useful vote",
+      body: `${displayNameForUser(user)} marked your solution to "${proof.problem.title}" as useful.`,
+      href: `/problems/${problemSlug}`
+    });
   }
 
   revalidatePath(`/problems/${problemSlug}`);
