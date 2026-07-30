@@ -507,6 +507,7 @@ model Problem {
   incomingRelations        ProblemRelation[]            @relation("ProblemRelationTarget")
   verificationRequests     ProblemVerificationRequest[]
   tipLinks                 TipProblem[]
+  conceptExerciseLinks     ConceptExercise[]
   challenges               ProblemChallenge[]
   challengeInvites         ProblemChallengeInvite[]
   translatedFromProblem    Problem?                     @relation("ProblemTranslationSource", fields: [translatedFromProblemId], references: [id], onDelete: SetNull)
@@ -592,6 +593,7 @@ model Concept {
   lastEditedBy              User?              @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
   aliases                   ConceptAlias[]
   references                ConceptReference[]
+  practiceExercises         ConceptExercise[]
   talkPosts                 ConceptTalkPost[]
   circuitNodes              PlaylistNode[]
   explorationBlocks         ExplorationBlock[]
@@ -673,6 +675,18 @@ model ConceptReference {
   concept   Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
 
   @@unique([conceptId, position])
+}
+
+model ConceptExercise {
+  conceptId Int
+  problemId Int
+  position  Int     @default(0)
+  concept   Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([conceptId, problemId])
+  @@unique([conceptId, position])
+  @@index([problemId])
 }
 
 model ConceptTalkPost {

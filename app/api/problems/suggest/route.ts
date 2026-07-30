@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const query = url.searchParams.get("q")?.trim().slice(0, 80) ?? "";
   const excludeSlug = url.searchParams.get("exclude")?.trim() ?? "";
   const listedOnly = url.searchParams.get("listed") === "1";
+  const exerciseOnly = url.searchParams.get("exercise") === "1";
 
   if (query.length < 2) {
     return NextResponse.json({ problems: [] });
@@ -25,6 +26,7 @@ export async function GET(request: Request) {
   const commonWhere = {
     status: listedOnly ? "PUBLISHED" as const : { not: "ARCHIVED" as const },
     listed: listedOnly ? true : undefined,
+    isExercise: exerciseOnly ? true : undefined,
     slug: excludeSlug ? { not: excludeSlug } : undefined,
     ...visibleProblemWhere(user)
   };

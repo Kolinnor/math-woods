@@ -4,12 +4,14 @@ import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { OrderedProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { deleteConceptAction, updateConceptAction } from "@/lib/actions/concept-actions";
 import { requireVerifiedUser } from "@/lib/auth";
+import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
 import { prisma } from "@/lib/db";
-import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
+import { PROBLEM_DOMAINS, translatedDomainLabel, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canChangeConceptStatus, canDeleteConcept, canEditConcept, canUseAdminTools } from "@/lib/permissions";
 
@@ -23,6 +25,20 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
     where: { slug },
     include: {
       aliases: true,
+      practiceExercises: {
+        orderBy: { position: "asc" },
+        select: {
+          problem: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              domain: true,
+              difficulty: true
+            }
+          }
+        }
+      },
       references: { orderBy: { position: "asc" } },
       translatedFromConcept: {
         select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true }
@@ -66,6 +82,13 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
   const staleTranslation = Boolean(
     sourceRevision && concept.translatedFromRevisionId && sourceRevision.id > concept.translatedFromRevisionId
   );
+  const initialExercises: TipPickerProblem[] = concept.practiceExercises.map(({ problem }) => ({
+    id: problem.id,
+    title: problem.title,
+    slug: problem.slug,
+    domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
+    difficulty: problem.difficulty
+  }));
 
   return (
     <ForestPageLayout
@@ -122,6 +145,31 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           <span className="text-sm font-medium">Content</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={concept.bodyMarkdown} />
         </div>
+        <details className="concept-linked-exercises-editor">
+          <summary>
+            <span>Linked exercises</span>
+          </summary>
+          <div className="concept-linked-exercises-editor-body">
+            <p className="muted text-sm">
+              Choose and order the exercises shown in the practice box on this concept page.
+            </p>
+            <OrderedProblemPicker
+              initialProblems={initialExercises}
+              inputName="exerciseIds"
+              maxProblems={MAX_CONCEPT_EXERCISES}
+              searchParams="exercise=1"
+              labels={{
+                empty: "No exercises selected.",
+                maximumSelected: (maximum) => `Maximum ${maximum} exercises selected`,
+                noMatches: "No matching exercises.",
+                remove: (title) => `Remove exercise ${title}`,
+                search: "Search exercises",
+                searchPlaceholder: "Search exercises by title or slug",
+                searching: "Searching exercises..."
+              }}
+            />
+          </div>
+        </details>
         <label className="grid gap-2">
           <span className="text-sm font-medium">References</span>
           <textarea

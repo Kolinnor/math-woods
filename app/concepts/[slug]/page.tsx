@@ -3,6 +3,7 @@ import { MathDomain, NotificationType } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ConceptExerciseCarousel } from "@/components/ConceptExerciseCarousel";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -15,6 +16,7 @@ import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/doma
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
+import { renderInlineMarkdown } from "@/lib/markdown";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canUseAdminTools } from "@/lib/permissions";
@@ -143,6 +145,22 @@ export default async function ConceptPage({
       createdBy: true,
       lastEditedBy: true,
       aliases: { orderBy: { alias: "asc" } },
+      practiceExercises: {
+        where: {
+          problem: {
+            isExercise: true,
+            listed: true,
+            status: "PUBLISHED",
+            ...visibleProblemWhere(user)
+          }
+        },
+        orderBy: { position: "asc" },
+        select: {
+          problem: {
+            select: { id: true, slug: true, title: true, difficulty: true }
+          }
+        }
+      },
       references: { orderBy: { position: "asc" } },
       translatedFromConcept: {
         select: { id: true, slug: true, title: true, language: true, createdById: true }
@@ -195,14 +213,26 @@ export default async function ConceptPage({
   }
   const uniqueOutgoingLinks = uniqueLinksByTargetSlug(outgoingLinks);
   const existingOutgoingSlugs = uniqueOutgoingLinks.filter((link) => link.exists).map((link) => link.targetSlug);
-  const [conceptBodyHtml, translationFreshness, outgoingConceptHrefBySlug, outgoingConceptTitleBySlug] = await Promise.all([
+  const [
+    conceptBodyHtml,
+    translationFreshness,
+    outgoingConceptHrefBySlug,
+    outgoingConceptTitleBySlug,
+    practiceExercises
+  ] = await Promise.all([
     renderMarkdownForContentLanguage(concept.bodyMarkdown, concept.language),
     conceptTranslationFreshness(concept.translatedFromConcept, concept.translatedFromRevisionId),
     resolveConceptHrefsForLanguage(
       existingOutgoingSlugs,
       concept.language
     ),
-    resolveConceptTitlesForLanguage(existingOutgoingSlugs, concept.language)
+    resolveConceptTitlesForLanguage(existingOutgoingSlugs, concept.language),
+    Promise.all(
+      concept.practiceExercises.map(async ({ problem }) => ({
+        ...problem,
+        titleHtml: await renderInlineMarkdown(problem.title)
+      }))
+    )
   ]);
   const isLanguageFallback = targetViewLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
@@ -264,7 +294,6 @@ export default async function ConceptPage({
     })
   ]);
   const problemBacklinkIds = new Set(problemBacklinks.map((problem) => problem.id));
-  const exerciseBacklinks = problemBacklinks.filter((problem) => problem.isExercise);
   const regularProblemBacklinks = problemBacklinks.filter((problem) => !problem.isExercise);
   const spoilerProblemBacklinks = spoilerProblemBacklinksRaw.filter(
     (problem) => !problem.isExercise && !problemBacklinkIds.has(problem.id)
@@ -369,27 +398,25 @@ export default async function ConceptPage({
           <MarkdownBlock html={conceptBodyHtml} />
         </section>
 
-        {exerciseBacklinks.length > 0 && (
-          <section className="concept-practice-box">
-            <div>
-              <p className="home-section-kicker">{t.conceptDetail.practice}</p>
-              <h2>{t.conceptDetail.practiceWithExercises}</h2>
-            </div>
-            <div className="concept-practice-list">
-              {exerciseBacklinks.map((exercise) => (
-                <Link key={exercise.id} href={`/problems/${exercise.slug}`} className="concept-practice-link">
-                  <strong>
-                    <AsyncMarkdownInline markdown={exercise.title} />
-                  </strong>
-                  <span>
-                    {exercise.difficulty === null
-                      ? t.common.difficultyUnset
-                      : `${t.problems.difficulty} ${exercise.difficulty}/100`}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
+        {practiceExercises.length > 0 && (
+          <ConceptExerciseCarousel
+            exercises={practiceExercises.map((exercise) => ({
+              id: exercise.id,
+              slug: exercise.slug,
+              titleHtml: exercise.titleHtml,
+              difficultyLabel:
+                exercise.difficulty === null
+                  ? t.common.difficultyUnset
+                  : `${t.problems.difficulty} ${exercise.difficulty}/100`
+            }))}
+            labels={{
+              kicker: t.conceptDetail.practice,
+              title: t.conceptDetail.practiceWithExercises,
+              previous: t.conceptDetail.previousExercise,
+              next: t.conceptDetail.nextExercise,
+              open: t.conceptDetail.openExercise
+            }}
+          />
         )}
 
         <div className="concept-problem-boxes">

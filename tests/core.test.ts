@@ -12,6 +12,7 @@ import {
   parseMarkdownDocument
 } from "../lib/frontmatter.ts";
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
+import { MAX_CONCEPT_EXERCISES, parseConceptExerciseIds } from "../lib/concept-exercises.ts";
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
@@ -356,6 +357,11 @@ assert.equal(problemContentTypeWhere(["problem", "exercise"]), null);
 assert.equal(isDefaultProblemContentType(["problem"]), true);
 assert.equal(isDefaultProblemContentType(["problem", "exercise"], ["problem", "exercise"]), true);
 assert.equal(isDefaultProblemContentType(["problem"], ["problem", "exercise"]), false);
+assert.deepEqual(parseConceptExerciseIds(["4", "2", "4", "invalid", "-1", "7"]), [4, 2, 7]);
+assert.equal(
+  parseConceptExerciseIds(Array.from({ length: MAX_CONCEPT_EXERCISES + 3 }, (_, index) => String(index + 1))).length,
+  MAX_CONCEPT_EXERCISES
+);
 
 const start = new Date("2026-06-04T10:00:00.000Z");
 const unlock = unlockDate(start);

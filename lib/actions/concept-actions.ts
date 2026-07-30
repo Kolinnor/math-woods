@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
+import { parseConceptExerciseIds } from "@/lib/concept-exercises";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { prisma } from "@/lib/db";
@@ -157,6 +158,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const domain = coarseDomainForCode(domainCode);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
+  const exerciseIds = parseConceptExerciseIds(formData.getAll("exerciseIds"));
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Concept edited";
   const markTranslationFresh = formData.get("markTranslationFresh") === "on";
   const statusInput = formData.get("status");
@@ -229,6 +231,29 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     await syncInternalLinks(SourceType.CONCEPT, updated.id, bodyMarkdown, tx, language);
     await syncConceptAliases(updated.id, aliases, tx);
     await syncConceptReferences(updated.id, references, tx);
+    const validExercises = exerciseIds.length
+      ? await tx.problem.findMany({
+          where: {
+            id: { in: exerciseIds },
+            isExercise: true,
+            listed: true,
+            status: "PUBLISHED"
+          },
+          select: { id: true }
+        })
+      : [];
+    const validExerciseIds = new Set(validExercises.map((exercise) => exercise.id));
+    const orderedExerciseIds = exerciseIds.filter((exerciseId) => validExerciseIds.has(exerciseId));
+    await tx.conceptExercise.deleteMany({ where: { conceptId: updated.id } });
+    if (orderedExerciseIds.length > 0) {
+      await tx.conceptExercise.createMany({
+        data: orderedExerciseIds.map((problemId, position) => ({
+          conceptId: updated.id,
+          problemId,
+          position
+        }))
+      });
+    }
     await refreshLinksForConceptId(updated.id, tx);
     await tx.pageRevision.create({
       data: {

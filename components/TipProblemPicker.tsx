@@ -11,9 +11,24 @@ export type TipPickerProblem = {
   difficulty: number | null;
 };
 
-type TipProblemPickerProps = {
+type OrderedProblemPickerLabels = {
+  dragTitle: string;
+  empty: string;
+  maximumSelected: (maximum: number) => string;
+  move: (title: string) => string;
+  noMatches: string;
+  remove: (title: string) => string;
+  search: string;
+  searchPlaceholder: string;
+  searching: string;
+};
+
+type OrderedProblemPickerProps = {
   initialProblems: TipPickerProblem[];
+  inputName?: string;
+  labels?: Partial<OrderedProblemPickerLabels>;
   maxProblems?: number;
+  searchParams?: string;
 };
 
 type ProblemSuggestion = TipPickerProblem & {
@@ -28,12 +43,31 @@ type SuggestResponse = {
 function problemMeta(problem: TipPickerProblem) {
   return [
     problem.domainLabel,
-    problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set",
+    problem.difficulty !== null ? `difficulty ${problem.difficulty}/100` : "difficulty not set",
     problem.slug
   ].join(" / ");
 }
 
-export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProblemPickerProps) {
+const DEFAULT_LABELS: OrderedProblemPickerLabels = {
+  dragTitle: "Drag to reorder",
+  empty: "No practice problems selected yet.",
+  maximumSelected: (maximum) => `Maximum ${maximum} problems selected`,
+  move: (title) => `Move ${title}. Use the up and down arrow keys to reorder.`,
+  noMatches: "No matching problems.",
+  remove: (title) => `Remove ${title}`,
+  search: "Search problems",
+  searchPlaceholder: "Search by title or slug",
+  searching: "Searching..."
+};
+
+export function OrderedProblemPicker({
+  initialProblems,
+  inputName = "problemIds",
+  labels: labelOverrides,
+  maxProblems = 8,
+  searchParams = ""
+}: OrderedProblemPickerProps) {
+  const labels = { ...DEFAULT_LABELS, ...labelOverrides };
   const [selectedProblems, setSelectedProblems] = useState<TipPickerProblem[]>(initialProblems);
   const [draggedProblemId, setDraggedProblemId] = useState<number | null>(null);
   const [dropTargetProblemId, setDropTargetProblemId] = useState<number | null>(null);
@@ -55,7 +89,10 @@ export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProble
 
     const controller = new AbortController();
     setIsSearching(true);
-    fetch(`/api/problems/suggest?q=${encodeURIComponent(trimmed)}&listed=1`, { signal: controller.signal })
+    const extraParams = searchParams ? `&${searchParams}` : "";
+    fetch(`/api/problems/suggest?q=${encodeURIComponent(trimmed)}&listed=1${extraParams}`, {
+      signal: controller.signal
+    })
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then((data: SuggestResponse) => {
         setSuggestions((data.problems ?? []).filter((problem) => !selectedIds.has(problem.id)));
@@ -68,7 +105,7 @@ export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProble
       });
 
     return () => controller.abort();
-  }, [canAddMore, query, selectedIds]);
+  }, [canAddMore, query, searchParams, selectedIds]);
 
   function addProblem(problem: ProblemSuggestion) {
     if (!canAddMore || selectedIds.has(problem.id)) return;
@@ -120,7 +157,7 @@ export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProble
   return (
     <div className="tip-problem-picker">
       {selectedProblems.map((problem) => (
-        <input key={problem.id} type="hidden" name="problemIds" value={problem.id} />
+        <input key={problem.id} type="hidden" name={inputName} value={problem.id} />
       ))}
 
       <div className="tip-selected-problem-list">
@@ -143,8 +180,8 @@ export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProble
               type="button"
               className="tip-problem-drag-handle"
               draggable
-              aria-label={`Move ${problem.title}. Use the up and down arrow keys to reorder.`}
-              title="Drag to reorder"
+              aria-label={labels.move(problem.title)}
+              title={labels.dragTitle}
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = "move";
                 event.dataTransfer.setData("text/plain", String(problem.id));
@@ -162,30 +199,30 @@ export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProble
               <strong>{problem.title}</strong>
               <span>{problemMeta(problem)}</span>
             </div>
-            <button type="button" className="secondary tip-remove-problem" aria-label={`Remove ${problem.title}`} onClick={() => removeProblem(problem.id)}>
+            <button type="button" className="secondary tip-remove-problem" aria-label={labels.remove(problem.title)} onClick={() => removeProblem(problem.id)}>
               <X size={15} aria-hidden="true" />
             </button>
           </div>
         ))}
-        {selectedProblems.length === 0 && <p className="muted text-sm">No practice problems selected yet.</p>}
+        {selectedProblems.length === 0 && <p className="muted text-sm">{labels.empty}</p>}
       </div>
 
       <label className="grid gap-1">
-        <span className="text-xs font-medium">Search problems</span>
+        <span className="text-xs font-medium">{labels.search}</span>
         <div className="tip-problem-search-input">
           <Search size={16} aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             disabled={!canAddMore}
-            placeholder={canAddMore ? "Search by title or slug" : `Maximum ${maxProblems} problems selected`}
+            placeholder={canAddMore ? labels.searchPlaceholder : labels.maximumSelected(maxProblems)}
           />
         </div>
       </label>
 
       {(suggestions.length > 0 || isSearching || (hasSearchQuery && canAddMore)) && (
         <div className="tip-problem-suggestion-menu">
-          {isSearching && <p className="muted text-sm">Searching...</p>}
+          {isSearching && <p className="muted text-sm">{labels.searching}</p>}
           {!isSearching &&
             suggestions.map((problem) => (
               <button key={problem.id} type="button" onClick={() => addProblem(problem)}>
@@ -193,9 +230,13 @@ export function TipProblemPicker({ initialProblems, maxProblems = 8 }: TipProble
                 <span>{problemMeta(problem)}</span>
               </button>
             ))}
-          {!isSearching && suggestions.length === 0 && <p className="muted text-sm">No matching problems.</p>}
+          {!isSearching && suggestions.length === 0 && <p className="muted text-sm">{labels.noMatches}</p>}
         </div>
       )}
     </div>
   );
+}
+
+export function TipProblemPicker(props: OrderedProblemPickerProps) {
+  return <OrderedProblemPicker {...props} />;
 }
