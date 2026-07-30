@@ -160,9 +160,9 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
               searchParams="exercise=1"
               labels={{
                 empty: "No exercises selected.",
-                maximumSelected: (maximum) => `Maximum ${maximum} exercises selected`,
+                maximumSelected: "Maximum {maximum} exercises selected",
                 noMatches: "No matching exercises.",
-                remove: (title) => `Remove exercise ${title}`,
+                remove: "Remove exercise {title}",
                 search: "Search exercises",
                 searchPlaceholder: "Search exercises by title or slug",
                 searching: "Searching exercises..."

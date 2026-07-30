@@ -14,10 +14,10 @@ export type TipPickerProblem = {
 type OrderedProblemPickerLabels = {
   dragTitle: string;
   empty: string;
-  maximumSelected: (maximum: number) => string;
-  move: (title: string) => string;
+  maximumSelected: string;
+  move: string;
   noMatches: string;
-  remove: (title: string) => string;
+  remove: string;
   search: string;
   searchPlaceholder: string;
   searching: string;
@@ -51,14 +51,20 @@ function problemMeta(problem: TipPickerProblem) {
 const DEFAULT_LABELS: OrderedProblemPickerLabels = {
   dragTitle: "Drag to reorder",
   empty: "No practice problems selected yet.",
-  maximumSelected: (maximum) => `Maximum ${maximum} problems selected`,
-  move: (title) => `Move ${title}. Use the up and down arrow keys to reorder.`,
+  maximumSelected: "Maximum {maximum} problems selected",
+  move: "Move {title}. Use the up and down arrow keys to reorder.",
   noMatches: "No matching problems.",
-  remove: (title) => `Remove ${title}`,
+  remove: "Remove {title}",
   search: "Search problems",
   searchPlaceholder: "Search by title or slug",
   searching: "Searching..."
 };
+
+function formatPickerLabel(template: string, values: { maximum?: number; title?: string }) {
+  return template
+    .replace("{maximum}", String(values.maximum ?? ""))
+    .replace("{title}", values.title ?? "");
+}
 
 export function OrderedProblemPicker({
   initialProblems,
@@ -180,7 +186,7 @@ export function OrderedProblemPicker({
               type="button"
               className="tip-problem-drag-handle"
               draggable
-              aria-label={labels.move(problem.title)}
+              aria-label={formatPickerLabel(labels.move, { title: problem.title })}
               title={labels.dragTitle}
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = "move";
@@ -199,7 +205,12 @@ export function OrderedProblemPicker({
               <strong>{problem.title}</strong>
               <span>{problemMeta(problem)}</span>
             </div>
-            <button type="button" className="secondary tip-remove-problem" aria-label={labels.remove(problem.title)} onClick={() => removeProblem(problem.id)}>
+            <button
+              type="button"
+              className="secondary tip-remove-problem"
+              aria-label={formatPickerLabel(labels.remove, { title: problem.title })}
+              onClick={() => removeProblem(problem.id)}
+            >
               <X size={15} aria-hidden="true" />
             </button>
           </div>
@@ -215,7 +226,11 @@ export function OrderedProblemPicker({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             disabled={!canAddMore}
-            placeholder={canAddMore ? labels.searchPlaceholder : labels.maximumSelected(maxProblems)}
+            placeholder={
+              canAddMore
+                ? labels.searchPlaceholder
+                : formatPickerLabel(labels.maximumSelected, { maximum: maxProblems })
+            }
           />
         </div>
       </label>
