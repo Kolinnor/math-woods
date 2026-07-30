@@ -849,6 +849,7 @@ export const fr = {
     previousExercise: "Exercice précédent",
     nextExercise: "Exercice suivant",
     openExercise: "Ouvrir l'exercice",
+    exerciseBlurbFallback: "Ouvrez l'exercice pour lire l'énoncé complet.",
     problemsUsingConcept: (count: number) => `Problèmes utilisant ce concept (${count})`,
     spoilerProblemsUsingConcept: (count: number) => `Problèmes utilisant ce concept (spoiler) (${count})`,
     noProblemsUsingConcept: "Aucun problème listé ne renvoie encore vers ce concept.",

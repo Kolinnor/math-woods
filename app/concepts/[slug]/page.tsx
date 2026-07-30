@@ -3,7 +3,7 @@ import { MathDomain, NotificationType } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ConceptExerciseCarousel } from "@/components/ConceptExerciseCarousel";
+import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -20,6 +20,7 @@ import { renderInlineMarkdown } from "@/lib/markdown";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canUseAdminTools } from "@/lib/permissions";
+import { problemDifficultyTone } from "@/lib/problem-difficulty";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
@@ -156,8 +157,18 @@ export default async function ConceptPage({
         },
         orderBy: { position: "asc" },
         select: {
+          position: true,
           problem: {
-            select: { id: true, slug: true, title: true, difficulty: true }
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              bodyMarkdown: true,
+              difficulty: true,
+              domain: true,
+              authorId: true,
+              translationGroupId: true
+            }
           }
         }
       },
@@ -184,7 +195,10 @@ export default async function ConceptPage({
     ]);
   }
 
-  const [translations, outgoingLinks, backlinks] = await Promise.all([
+  const practiceTranslationGroupIds = [
+    ...new Set(concept.practiceExercises.map(({ problem }) => problem.translationGroupId))
+  ];
+  const [translations, outgoingLinks, backlinks, practiceSolvedAttempts] = await Promise.all([
     prisma.concept.findMany({
       where: {
         translationGroupId: concept.translationGroupId,
@@ -200,8 +214,27 @@ export default async function ConceptPage({
     prisma.internalLink.findMany({
       where: { targetSlug: concept.slug, exists: true },
       orderBy: { createdAt: "desc" }
-    })
+    }),
+    practiceTranslationGroupIds.length
+      ? prisma.problemAttempt.findMany({
+          where: {
+            status: "SOLVED",
+            problem: { translationGroupId: { in: practiceTranslationGroupIds } }
+          },
+          select: {
+            userId: true,
+            problem: { select: { translationGroupId: true } }
+          }
+        })
+      : []
   ]);
+  const solvedUsersByPracticeGroup = new Map<string, Set<number>>();
+  for (const attempt of practiceSolvedAttempts) {
+    const groupId = attempt.problem.translationGroupId;
+    const solvedUsers = solvedUsersByPracticeGroup.get(groupId) ?? new Set<number>();
+    solvedUsers.add(attempt.userId);
+    solvedUsersByPracticeGroup.set(groupId, solvedUsers);
+  }
   const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
   const targetViewLanguage = requestedLanguage ?? preferredLanguage;
   const preferredTranslation = preferredTranslationForLanguage(concept.language, translations, targetViewLanguage);
@@ -228,10 +261,30 @@ export default async function ConceptPage({
     ),
     resolveConceptTitlesForLanguage(existingOutgoingSlugs, concept.language),
     Promise.all(
-      concept.practiceExercises.map(async ({ problem }) => ({
-        ...problem,
-        titleHtml: await renderInlineMarkdown(problem.title)
-      }))
+      [...concept.practiceExercises]
+        .sort(
+          (left, right) =>
+            (left.problem.difficulty ?? 101) - (right.problem.difficulty ?? 101) ||
+            left.position - right.position
+        )
+        .map(async ({ problem }) => {
+          const solvedUsers = solvedUsersByPracticeGroup.get(problem.translationGroupId) ?? new Set<number>();
+          const externalSolvedCount = [...solvedUsers].filter((userId) => userId !== problem.authorId).length;
+
+          return {
+            ...problem,
+            titleHtml: await renderInlineMarkdown(problem.title),
+            domainLabel: translatedDomainLabel(problem.domain, t),
+            difficultyTone: problemDifficultyTone(problem.difficulty),
+            solved: Boolean(user && solvedUsers.has(user.id)),
+            solvedCountLabel: t.problems.solvedCount(externalSolvedCount),
+            blurb: markdownExcerpt(
+              problem.bodyMarkdown,
+              t.conceptDetail.exerciseBlurbFallback,
+              160
+            )
+          };
+        })
     )
   ]);
   const isLanguageFallback = targetViewLanguage !== concept.language;
@@ -399,22 +452,27 @@ export default async function ConceptPage({
         </section>
 
         {practiceExercises.length > 0 && (
-          <ConceptExerciseCarousel
+          <ConceptPracticeQueue
             exercises={practiceExercises.map((exercise) => ({
               id: exercise.id,
               slug: exercise.slug,
               titleHtml: exercise.titleHtml,
-              difficultyLabel:
-                exercise.difficulty === null
-                  ? t.common.difficultyUnset
-                  : `${t.problems.difficulty} ${exercise.difficulty}/100`
+              difficulty: exercise.difficulty,
+              difficultyTone: exercise.difficultyTone,
+              domainLabel: exercise.domainLabel,
+              solved: exercise.solved,
+              solvedCountLabel: exercise.solvedCountLabel,
+              blurb: exercise.blurb
             }))}
             labels={{
               kicker: t.conceptDetail.practice,
               title: t.conceptDetail.practiceWithExercises,
               previous: t.conceptDetail.previousExercise,
               next: t.conceptDetail.nextExercise,
-              open: t.conceptDetail.openExercise
+              open: t.conceptDetail.openExercise,
+              solved: t.problemDetail.solved,
+              difficultyUnset: t.common.difficultyUnset,
+              difficulty: t.problems.difficulty
             }}
           />
         )}

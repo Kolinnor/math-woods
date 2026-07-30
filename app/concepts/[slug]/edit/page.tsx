@@ -151,7 +151,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           </summary>
           <div className="concept-linked-exercises-editor-body">
             <p className="muted text-sm">
-              Choose and order the exercises shown in the practice box on this concept page.
+              Choose the exercises shown in the practice queue. Readers see them from easiest to hardest.
             </p>
             <OrderedProblemPicker
               initialProblems={initialExercises}

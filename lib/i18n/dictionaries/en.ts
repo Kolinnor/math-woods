@@ -844,6 +844,7 @@ export const en = {
     previousExercise: "Previous exercise",
     nextExercise: "Next exercise",
     openExercise: "Open exercise",
+    exerciseBlurbFallback: "Open the exercise to read the full statement.",
     problemsUsingConcept: (count: number) => `Problems using this concept (${count})`,
     spoilerProblemsUsingConcept: (count: number) => `Problems using this concept (spoiler) (${count})`,
     noProblemsUsingConcept: "No listed problems link to this concept yet.",
