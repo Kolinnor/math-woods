@@ -1,4 +1,5 @@
 import { MathDomain } from "@prisma/client";
+import { Check } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -24,6 +25,7 @@ type HomeProblem = {
   titleHtml: string;
   domain: MathDomain;
   difficulty: number | null;
+  solved?: boolean;
   author?: {
     username: string;
     displayName: string | null;
@@ -124,7 +126,8 @@ function TipOfDay({
   practice,
   t,
   homeT,
-  difficultyUnset
+  difficultyUnset,
+  solvedLabel
 }: {
   tip: {
     title: string;
@@ -137,6 +140,7 @@ function TipOfDay({
   t: HomeTranslations["tip"];
   homeT: HomeTranslations;
   difficultyUnset: string;
+  solvedLabel: string;
 }) {
   return (
     <section className="home-tip-card">
@@ -158,10 +162,20 @@ function TipOfDay({
             <p className="home-practice-label">{t.practice}</p>
             <div className="home-practice-list">
               {practice.map((problem) => (
-                <Link key={problem.id} href={`/problems/${problem.slug}`}>
+                <Link
+                  key={problem.id}
+                  href={`/problems/${problem.slug}`}
+                  className={problem.solved ? "home-practice-problem is-solved" : "home-practice-problem"}
+                >
                   <MarkdownInline html={problem.titleHtml} />
-                  <span>
+                  <span className="home-practice-problem-meta">
                     {homeDomainLabel(problem.domain, homeT)} / {problem.difficulty ?? difficultyUnset}
+                    {problem.solved && (
+                      <span className="home-practice-solved" title={solvedLabel}>
+                        <Check size={13} strokeWidth={3} aria-hidden="true" />
+                        <span className="sr-only">{solvedLabel}</span>
+                      </span>
+                    )}
                   </span>
                 </Link>
               ))}
@@ -276,6 +290,7 @@ export default async function HomePage() {
     user ? loadDailyTip() : null
   ]);
   const solvedTranslationGroupIds = solvedProblemGroups.map((problem) => problem.translationGroupId);
+  const solvedTranslationGroupIdSet = new Set(solvedTranslationGroupIds);
   const recommendedProblemWhere = user
     ? {
         ...frontPageProblemWhere,
@@ -308,7 +323,8 @@ export default async function HomePage() {
                 slug: true,
                 title: true,
                 domain: true,
-                difficulty: true
+                difficulty: true,
+                translationGroupId: true
               }
             }
           }
@@ -318,7 +334,10 @@ export default async function HomePage() {
     : [[], ""];
 
   const renderedProblems = await withRenderedTitles(problemRows);
-  const practiceRows = practiceLinks.map((link) => link.problem);
+  const practiceRows = practiceLinks.map((link) => ({
+    ...link.problem,
+    solved: solvedTranslationGroupIdSet.has(link.problem.translationGroupId)
+  }));
   const renderedPractice = tip ? await withRenderedTitles(practiceRows) : [];
   const featured = renderedProblems[0] ?? null;
   const homeUser = user
@@ -346,6 +365,7 @@ export default async function HomePage() {
             t={t.home.tip}
             homeT={t.home}
             difficultyUnset={t.common.difficultyUnset}
+            solvedLabel={t.problemDetail.solved}
           />
         )}
         <ProblemToTry problem={featured} t={t.home} />

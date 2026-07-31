@@ -465,7 +465,6 @@ export default async function ConceptPage({
               blurb: exercise.blurb
             }))}
             labels={{
-              kicker: t.conceptDetail.practice,
               title: t.conceptDetail.practiceWithExercises,
               previous: t.conceptDetail.previousExercise,
               next: t.conceptDetail.nextExercise,

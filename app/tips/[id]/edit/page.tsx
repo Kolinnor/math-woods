@@ -1,8 +1,8 @@
 import { DeleteTipButton } from "@/components/DeleteTipButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { TipImageField } from "@/components/TipImageField";
-import { TipProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
+import { TipEditorFields } from "@/components/TipEditorFields";
+import type { TipPickerProblem } from "@/components/TipProblemPicker";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deleteTipAction, updateTipAction } from "@/lib/actions/tip-actions";
@@ -73,29 +73,19 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
       }
     >
       <form action={updateTipAction.bind(null, tip.id)} className="panel grid gap-4 p-5">
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Title</span>
-          <input name="title" maxLength={160} required defaultValue={tip.title} />
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Description</span>
-          <textarea name="description" maxLength={1200} required defaultValue={tip.description} />
-        </label>
-        <TipImageField
-          initialImageUrl={tip.imageUrl}
-          initialPositionX={tip.imagePositionX}
-          initialPositionY={tip.imagePositionY}
+        <TipEditorFields
+          initialProblems={initialProblems}
+          submitLabel="Save tip"
+          values={{
+            title: tip.title,
+            description: tip.description,
+            body: tip.body,
+            imageUrl: tip.imageUrl,
+            imagePositionX: tip.imagePositionX,
+            imagePositionY: tip.imagePositionY,
+            showInMainMenu: tip.showInMainMenu
+          }}
         />
-        <label className="checkbox-inline">
-          <input name="showInMainMenu" type="checkbox" defaultChecked={tip.showInMainMenu} />
-          <span>This can appear in the main menu</span>
-        </label>
-        <fieldset className="tip-problem-editor">
-          <legend>Try this on the following problems</legend>
-          <p className="muted text-sm">Choose up to 8 problems.</p>
-          <TipProblemPicker initialProblems={initialProblems} />
-        </fieldset>
-        <button type="submit">Save tip</button>
       </form>
 
       <section className="danger-zone">

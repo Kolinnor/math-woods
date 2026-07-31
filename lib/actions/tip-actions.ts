@@ -26,6 +26,62 @@ function parseTipProblemIds(values: FormDataEntryValue[]) {
   return problemIds;
 }
 
+export async function createTipAction(formData: FormData) {
+  const user = await requireUser();
+  if (!canUseAdminTools(user)) throw new Error("Only admins can create tips.");
+  await assertRateLimit(`tip:create:${user.id}`, 10, 60_000);
+  await ensureDefaultTips();
+
+  const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+  const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
+  const body = boundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body") || description;
+  const imageUrl = normalizeTipImageUrl(formData.get("imageUrl"));
+  const imagePositionX = normalizeTipImagePosition(formData.get("imagePositionX"));
+  const imagePositionY = normalizeTipImagePosition(formData.get("imagePositionY"));
+  const showInMainMenu = formData.get("showInMainMenu") === "on";
+  const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
+
+  const tip = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`LOCK TABLE "Tip" IN SHARE ROW EXCLUSIVE MODE`;
+    const lastTip = await tx.tip.findFirst({
+      orderBy: { position: "desc" },
+      select: { position: true }
+    });
+    const validProblems = problemIds.length
+      ? await tx.problem.findMany({
+          where: { id: { in: problemIds }, status: "PUBLISHED", listed: true },
+          select: { id: true }
+        })
+      : [];
+    const validProblemIds = new Set(validProblems.map((problem) => problem.id));
+    const orderedProblemIds = problemIds.filter((problemId) => validProblemIds.has(problemId));
+    const createdTip = await tx.tip.create({
+      data: {
+        position: (lastTip?.position ?? -1) + 1,
+        title,
+        description,
+        body,
+        imageUrl,
+        imagePositionX,
+        imagePositionY,
+        showInMainMenu
+      }
+    });
+
+    for (const [index, problemId] of orderedProblemIds.entries()) {
+      await tx.$executeRaw(
+        Prisma.sql`INSERT INTO "TipProblem" ("tipId", "problemId", "position") VALUES (${createdTip.id}, ${problemId}, ${index + 1})`
+      );
+    }
+
+    return createdTip;
+  });
+
+  revalidatePath("/");
+  revalidatePath("/tips");
+  redirect(`/tips?created=${tip.id}`);
+}
+
 export async function updateTipAction(tipId: number, formData: FormData) {
   const user = await requireUser();
   if (!canUseAdminTools(user)) throw new Error("Only admins can edit tips.");

@@ -13032,6 +13032,34 @@ body:has(.home-shell) > .site-footer {
   white-space: nowrap;
 }
 
+.home-practice-list a.is-solved {
+  background: var(--problem-solved-bg);
+  border-color: var(--problem-solved-border);
+  border-left: 3px solid var(--problem-solved);
+}
+
+.home-practice-list a.is-solved:hover {
+  border-color: var(--problem-solved);
+}
+
+.home-practice-problem-meta {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.home-practice-solved {
+  align-items: center;
+  background: var(--problem-solved);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 1.3rem;
+  justify-content: center;
+  width: 1.3rem;
+}
+
 .home-duo-grid {
   align-items: start;
   display: grid;

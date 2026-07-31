@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import type { Route } from "next";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { notFound } from "next/navigation";
@@ -54,13 +55,13 @@ function tipMatchesQuery(
 export default async function TipsPage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; updated?: string; deleted?: string }>;
+  searchParams: Promise<{ q?: string; created?: string; updated?: string; deleted?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
   const t = await getTranslations();
 
-  const { q = "", updated, deleted } = await searchParams;
+  const { q = "", created, updated, deleted } = await searchParams;
   const query = q.trim();
   const tipRows = await loadTips();
   const tipIds = tipRows.map((tip) => tip.id);
@@ -123,6 +124,12 @@ export default async function TipsPage({
           <p>Visible to admins</p>
         </>
       }
+      actions={
+        <Link href={"/tips/new" as Route} className="button">
+          <Plus size={16} aria-hidden="true" />
+          New tip
+        </Link>
+      }
     >
       <LiveSearchForm className="tip-search mb-6">
         <label className="grid gap-2">
@@ -132,6 +139,7 @@ export default async function TipsPage({
         <button type="submit">Search</button>
       </LiveSearchForm>
 
+      {created && <p className="quality-banner mb-4">Tip created.</p>}
       {updated && <p className="quality-banner mb-4">Tip updated.</p>}
       {deleted && <p className="quality-banner mb-4">Tip deleted.</p>}
 

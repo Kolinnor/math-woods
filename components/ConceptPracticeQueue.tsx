@@ -19,7 +19,6 @@ type ConceptPracticeQueueProps = {
     blurb: string;
   }>;
   labels: {
-    kicker: string;
     title: string;
     previous: string;
     next: string;
@@ -63,10 +62,7 @@ export function ConceptPracticeQueue({ exercises, labels }: ConceptPracticeQueue
       }}
     >
       <header className="concept-practice-queue-header">
-        <div>
-          <p className="home-section-kicker">{labels.kicker}</p>
-          <h2 id={`${queueId}-heading`}>{labels.title}</h2>
-        </div>
+        <h2 id={`${queueId}-heading`}>{labels.title}</h2>
         {exercises.length > 1 && (
           <div className="concept-practice-queue-nav">
             <span className="concept-practice-queue-counter" aria-live="polite">
