@@ -880,6 +880,73 @@ a {
   margin-bottom: 0;
 }
 
+.chat-message-content {
+  min-width: 0;
+  position: relative;
+}
+
+.chat-message-content.is-editable {
+  padding-right: 1rem;
+}
+
+.chat-message-edit-button {
+  height: 1.55rem;
+  opacity: 0;
+  padding: 0;
+  position: absolute;
+  right: -0.35rem;
+  top: -0.35rem;
+  transition: opacity 140ms ease;
+  width: 1.55rem;
+  z-index: 2;
+}
+
+.chat-message:hover .chat-message-edit-button,
+.chat-message:focus-within .chat-message-edit-button,
+.friends-mini-message:hover .chat-message-edit-button,
+.friends-mini-message:focus-within .chat-message-edit-button {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .chat-message-edit-button {
+    opacity: 0.72;
+  }
+}
+
+.chat-message-edit-form {
+  display: grid;
+  gap: 0.4rem;
+  min-width: min(24rem, 70vw);
+}
+
+.friends-mini-message .chat-message-edit-form {
+  min-width: min(15rem, 68vw);
+}
+
+.chat-message-edit-form textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+  width: 100%;
+}
+
+.chat-message-edit-actions {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: end;
+}
+
+.chat-message-edit-actions .icon-button {
+  height: 1.8rem;
+  width: 1.8rem;
+}
+
+.chat-message-edit-error {
+  color: #a3342c;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
 .friends-mini-message-time {
   color: var(--muted);
   display: block;
@@ -908,6 +975,115 @@ a {
   max-height: 7rem;
   min-height: 2.6rem;
   resize: vertical;
+}
+
+.friends-mini-chat-composer > textarea {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.friends-mini-chat-composer > .chat-image-input {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.friends-mini-chat-composer > button[type="submit"] {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.chat-image-input {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: start;
+}
+
+.chat-image-choose {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.chat-image-preview {
+  align-items: center;
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+  max-width: 28rem;
+  padding: 0.4rem;
+  width: 100%;
+}
+
+.chat-image-preview img {
+  aspect-ratio: 1;
+  background: #fff;
+  border-radius: 4px;
+  height: 3.25rem;
+  object-fit: cover;
+  width: 3.25rem;
+}
+
+.chat-image-preview span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-image-preview .icon-button {
+  height: 1.8rem;
+  width: 1.8rem;
+}
+
+.chat-image-input.is-compact .chat-image-choose {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.chat-image-input.is-compact .chat-image-preview {
+  font-size: 0.72rem;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  max-width: 100%;
+}
+
+.chat-image-input.is-compact .chat-image-preview img {
+  height: 2.5rem;
+  width: 2.5rem;
+}
+
+.chat-image-input-error {
+  color: #a3342c;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.chat-message-attachment {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: block;
+  margin-top: 0.55rem;
+  max-width: min(24rem, 100%);
+  overflow: hidden;
+}
+
+.chat-message-attachment img {
+  display: block;
+  height: auto;
+  max-height: 24rem;
+  object-fit: contain;
+  width: 100%;
+}
+
+.friends-mini-message .chat-message-attachment {
+  max-width: 100%;
+}
+
+.friends-mini-message .chat-message-attachment img {
+  max-height: 16rem;
 }
 
 .friend-online-dot,
@@ -7950,16 +8126,45 @@ button.domain-picker-tile > span:last-child {
 
 @media (min-width: 768px) {
   .concept-search-bar {
-    grid-template-columns: minmax(14rem, 1.45fr) minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(9rem, 1fr) auto;
+    grid-template-columns: minmax(13rem, 1.35fr) repeat(4, minmax(8rem, 1fr)) auto;
   }
 
   .concept-search-bar-admin {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
   }
 
   .concept-search-bar-admin > :first-child {
     grid-column: 1 / -1;
   }
+}
+
+.concept-min-exercises-filter {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.82rem;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.65rem;
+  white-space: nowrap;
+}
+
+.concept-min-exercises-filter:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.concept-min-exercises-filter input {
+  border: 0;
+  box-shadow: none;
+  font-weight: 750;
+  min-height: 0;
+  padding: 0.2rem;
+  text-align: center;
+  width: 3.25rem;
 }
 
 .problem-search-shell {
@@ -11989,6 +12194,11 @@ button.relation-remove-button {
   margin: 1rem 0;
 }
 
+.problem-hints-section {
+  border-top: 2px solid var(--line-strong);
+  padding-top: 1.25rem;
+}
+
 .problem-hint-guard .hint-confirmation {
   align-items: center;
   display: flex;
@@ -12002,8 +12212,19 @@ button.relation-remove-button {
   margin: 0;
 }
 
+.problem-hint-guard .hint-confirmation h3 {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.problem-hint-fallback {
+  font-size: 0.84rem;
+  margin-top: 0.3rem !important;
+}
+
 .problem-hint-revealed {
-  background: var(--panel-muted);
+  background: #fff;
   border: 1px solid var(--line);
   border-left: 3px solid var(--accent);
   border-radius: 7px;
@@ -12012,7 +12233,53 @@ button.relation-remove-button {
   padding: 1rem;
 }
 
-.problem-hint-revealed > .meta {
+.problem-hint-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  justify-content: space-between;
+}
+
+.problem-hint-heading > .meta {
+  margin: 0;
+}
+
+.problem-hint-language {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.problem-hint-translate {
+  font-size: 0.84rem;
+  font-weight: 700;
+  width: max-content;
+}
+
+.problem-hint-composer {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  margin-top: 1rem;
+}
+
+.problem-hint-composer > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  font-weight: 750;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+}
+
+.problem-hint-composer-body {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.problem-hint-composer-body > p {
+  color: var(--muted);
   margin: 0;
 }
 

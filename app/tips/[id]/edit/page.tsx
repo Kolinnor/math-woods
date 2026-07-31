@@ -78,7 +78,6 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
           submitLabel="Save tip"
           values={{
             title: tip.title,
-            description: tip.description,
             body: tip.body,
             imageUrl: tip.imageUrl,
             imagePositionX: tip.imagePositionX,

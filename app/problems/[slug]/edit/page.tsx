@@ -7,6 +7,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
+import { ProblemContentOptions } from "@/components/ProblemContentOptions";
 import { ProblemDetailsDisclosure } from "@/components/ProblemDetailsDisclosure";
 import { ProblemConcurrentEditForm } from "@/components/ProblemConcurrentEditForm";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -63,7 +64,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
   const canEditArchivedProblem = canEditProblem(user, problem);
   const canDeleteCurrentProblem = canDeleteProblem(user, problem);
-  const canManageProblemHints = canUseAdminTools(user);
+  const canManageProblemHints = canEditProblem(user, problem);
   const canManageFrontPageEligibility = canUseAdminTools(user);
   const canSetCurrentQualityStatus = canSetProblemQualityStatus(user.role, problem.qualityStatus);
   const canSetUnreviewedStatus = canSetProblemQualityStatus(user.role, QualityStatus.UNREVIEWED);
@@ -225,13 +226,10 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                         <strong>Listed in the problem browser</strong>
                       </span>
                     </label>
-                    <label className="checkbox-field">
-                      <input name="isExercise" type="checkbox" defaultChecked={problem.isExercise} />
-                      <div className="field-label-with-help">
-                        <strong>Exercise</strong>
-                        <FieldHelp text="Exercises are designed to practise a specific concept. They appear on linked concept pages and are hidden from the default problem-browser view, while remaining available through the Exercises filter." />
-                      </div>
-                    </label>
+                    <ProblemContentOptions
+                      initialIsExercise={problem.isExercise}
+                      initialShowRelatedProblems={problem.showRelatedProblems}
+                    />
                     {canManageFrontPageEligibility && (
                       <label className="checkbox-field">
                         <input name="canAppearOnFrontPage" type="checkbox" defaultChecked={problem.canAppearOnFrontPage} />

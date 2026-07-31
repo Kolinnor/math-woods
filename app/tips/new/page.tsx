@@ -32,7 +32,6 @@ export default async function NewTipPage() {
           submitLabel="Create tip"
           values={{
             title: "",
-            description: "",
             body: "",
             imageUrl: null,
             imagePositionX: DEFAULT_TIP_IMAGE_POSITION,

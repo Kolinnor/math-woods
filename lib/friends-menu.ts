@@ -31,7 +31,13 @@ export type FriendsMenuData = {
     backToFriends: string;
     challenge: ProblemChallengeLabels;
     reactions: ChatReactionLabels;
+    cancel: string;
+    attachImage: string;
+    chatImage: string;
     closeChat: string;
+    editMessage: string;
+    edited: string;
+    imageRequirements: string;
     noFriendsYet: string;
     noMessagesYet: string;
     offline: string;
@@ -40,6 +46,8 @@ export type FriendsMenuData = {
     openFullChat: string;
     pendingRequests: string | null;
     send: string;
+    saveChanges: string;
+    removeImage: string;
     sending: string;
     unreadMessages: string | null;
     writeMessage: string;
@@ -146,7 +154,13 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
         addReaction: t.social.addReaction,
         reactionNames: t.social.reactionNames
       },
+      cancel: t.social.cancel,
+      attachImage: t.social.attachImage,
+      chatImage: t.social.chatImage,
       closeChat: t.social.closeChat,
+      editMessage: t.social.editMessage,
+      edited: t.social.edited,
+      imageRequirements: t.social.imageRequirements,
       noFriendsYet: t.social.noFriendsYet,
       noMessagesYet: t.social.noMessagesYet,
       offline: t.social.offline,
@@ -155,6 +169,8 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
       openFullChat: t.social.openFullChat,
       pendingRequests: incomingCount > 0 ? t.social.pendingRequests(incomingCount) : null,
       send: t.social.send,
+      saveChanges: t.social.saveChanges,
+      removeImage: t.social.removeImage,
       sending: t.social.sending,
       unreadMessages: unreadChatCount > 0 ? t.social.unreadMessages(unreadChatCount) : null,
       writeMessage: t.social.writeMessage

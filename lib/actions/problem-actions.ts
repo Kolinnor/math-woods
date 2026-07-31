@@ -197,21 +197,60 @@ function problemEditNotificationBody({
   return `${actorName} edited "${title}".${changed}${summary}`;
 }
 
-async function requireProblemHintAdmin() {
+async function requireProblemHintEditor(problemId: number) {
   const user = await requireVerifiedUser();
-  if (!canUseAdminTools(user)) throw new Error("Only admins can edit problem hints.");
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: { id: true, authorId: true, slug: true, language: true, translationGroupId: true }
+  });
+  if (!problem) throw new Error("Problem not found.");
+  if (!canEditProblem(user, problem)) throw new Error("You cannot edit hints for this problem.");
   await assertRateLimit(`problem-hint:${user.id}`, 60, 60_000);
-  return user;
+  return { problem, user };
 }
 
-export async function createProblemHintAction(problemId: number, problemSlug: string, formData: FormData) {
-  const user = await requireProblemHintAdmin();
+async function revalidateProblemHintFamily(translationGroupId: string) {
+  const problems = await prisma.problem.findMany({
+    where: { translationGroupId },
+    select: { slug: true }
+  });
+  for (const problem of problems) {
+    revalidatePath(`/problems/${problem.slug}`);
+    revalidatePath(`/problems/${problem.slug}/edit`);
+  }
+}
+
+async function createProblemHint(
+  problemId: number,
+  formData: FormData
+) {
+  const { problem, user } = await requireProblemHintEditor(problemId);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
   const lastHint = await prisma.problemHint.findFirst({
     where: { problemId },
     orderBy: { position: "desc" },
     select: { position: true }
   });
+  const sourceHintId = Number(formData.get("sourceHintId"));
+  let position = intField(formData.get("position"), (lastHint?.position ?? -1) + 1);
+  let translationGroupId: string | undefined;
+  if (Number.isInteger(sourceHintId) && sourceHintId > 0) {
+    const sourceHint = await prisma.problemHint.findFirst({
+      where: {
+        id: sourceHintId,
+        problem: { translationGroupId: problem.translationGroupId }
+      },
+      select: { position: true, translationGroupId: true }
+    });
+    if (!sourceHint) throw new Error("Source hint not found.");
+    const existingTranslation = await prisma.problemHint.findFirst({
+      where: { problemId, translationGroupId: sourceHint.translationGroupId },
+      select: { id: true }
+    });
+    if (existingTranslation) throw new Error("This hint already has a translation on this problem.");
+    position = sourceHint.position;
+    translationGroupId = sourceHint.translationGroupId;
+  }
 
   await prisma.problemHint.create({
     data: {
@@ -219,17 +258,34 @@ export async function createProblemHintAction(problemId: number, problemSlug: st
       authorId: user.id,
       bodyMarkdown,
       bodyHtml: await renderMarkdownContent(bodyMarkdown),
-      position: intField(formData.get("position"), (lastHint?.position ?? -1) + 1)
+      position,
+      ...(translationGroupId ? { translationGroupId } : {})
     }
   });
 
-  revalidatePath(`/problems/${problemSlug}`);
-  revalidatePath(`/problems/${problemSlug}/edit`);
+  await revalidateProblemHintFamily(problem.translationGroupId);
+  return problem;
+}
+
+export async function createProblemHintAction(problemId: number, problemSlug: string, formData: FormData) {
+  await createProblemHint(problemId, formData);
   redirect(`/problems/${problemSlug}/edit?hints=created` as Route);
 }
 
+export async function createProblemHintFromProblemAction(problemId: number, formData: FormData) {
+  const problem = await createProblemHint(problemId, formData);
+  redirect(
+    `${contentLanguageViewHref("/problems", problem.slug, problem.language, { hint: "created" })}#problem-hints` as Route
+  );
+}
+
 export async function updateProblemHintAction(hintId: number, problemSlug: string, formData: FormData) {
-  await requireProblemHintAdmin();
+  const hint = await prisma.problemHint.findUnique({
+    where: { id: hintId },
+    select: { problemId: true }
+  });
+  if (!hint) throw new Error("Hint not found.");
+  const { problem } = await requireProblemHintEditor(hint.problemId);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
 
   await prisma.problemHint.update({
@@ -241,17 +297,20 @@ export async function updateProblemHintAction(hintId: number, problemSlug: strin
     }
   });
 
-  revalidatePath(`/problems/${problemSlug}`);
-  revalidatePath(`/problems/${problemSlug}/edit`);
+  await revalidateProblemHintFamily(problem.translationGroupId);
   redirect(`/problems/${problemSlug}/edit?hints=updated` as Route);
 }
 
 export async function deleteProblemHintAction(hintId: number, problemSlug: string) {
-  await requireProblemHintAdmin();
+  const hint = await prisma.problemHint.findUnique({
+    where: { id: hintId },
+    select: { problemId: true }
+  });
+  if (!hint) throw new Error("Hint not found.");
+  const { problem } = await requireProblemHintEditor(hint.problemId);
   await prisma.problemHint.delete({ where: { id: hintId } });
 
-  revalidatePath(`/problems/${problemSlug}`);
-  revalidatePath(`/problems/${problemSlug}/edit`);
+  await revalidateProblemHintFamily(problem.translationGroupId);
   redirect(`/problems/${problemSlug}/edit?hints=deleted` as Route);
 }
 
@@ -273,6 +332,7 @@ export async function createProblemAction(formData: FormData) {
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
   const listed = formData.get("listed") === "on";
   const isExercise = formData.get("isExercise") === "on";
+  const showRelatedProblems = formData.get("showRelatedProblems") === "on";
   const verificationMode = parseProblemVerificationMode(formData.get("verificationMode"));
   const verificationPrompt = optionalBoundedText(
     formData.get("verificationPrompt"),
@@ -325,6 +385,7 @@ export async function createProblemAction(formData: FormData) {
               authorId: true,
               difficulty: true,
               isExercise: true,
+              showRelatedProblems: true,
               canAppearOnFrontPage: true,
               createdAt: true
             }
@@ -338,6 +399,7 @@ export async function createProblemAction(formData: FormData) {
             authorId: true,
             difficulty: true,
             isExercise: true,
+            showRelatedProblems: true,
             canAppearOnFrontPage: true,
             createdAt: true
           }
@@ -376,6 +438,10 @@ export async function createProblemAction(formData: FormData) {
         originNote,
         listed,
         isExercise: originalProblem?.isExercise ?? translationSource?.isExercise ?? isExercise,
+        showRelatedProblems:
+          originalProblem?.showRelatedProblems ??
+          translationSource?.showRelatedProblems ??
+          showRelatedProblems,
         ...(translationGroupId ? { createdAt: originalProblem?.createdAt ?? translationSource?.createdAt } : {}),
         canAppearOnFrontPage:
           originalProblem?.canAppearOnFrontPage ?? translationSource?.canAppearOnFrontPage ?? false,
@@ -564,6 +630,7 @@ export async function updateProblemAction(
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
   const listed = formData.get("listed") === "on";
   const isExercise = formData.get("isExercise") === "on";
+  const showRelatedProblems = formData.get("showRelatedProblems") === "on";
   const canAppearOnFrontPage = canUseAdminTools(user)
     ? formData.get("canAppearOnFrontPage") === "on"
     : previous.canAppearOnFrontPage;
@@ -614,6 +681,7 @@ export async function updateProblemAction(
     originNote,
     listed,
     isExercise,
+    showRelatedProblems,
     canAppearOnFrontPage,
     status: previous.status,
     qualityStatus,
@@ -714,6 +782,7 @@ export async function updateProblemAction(
           originNote: resolvedSnapshot.originNote,
           listed: resolvedSnapshot.listed,
           isExercise: resolvedSnapshot.isExercise,
+          showRelatedProblems: resolvedSnapshot.showRelatedProblems,
           canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage,
           qualityStatus: resolvedSnapshot.qualityStatus,
           verificationMode: resolvedSnapshot.verificationMode,
@@ -727,6 +796,7 @@ export async function updateProblemAction(
 
       const syncFrontPage = resolvedSnapshot.canAppearOnFrontPage !== current.canAppearOnFrontPage;
       const syncExerciseType = resolvedSnapshot.isExercise !== current.isExercise;
+      const syncRelatedVisibility = resolvedSnapshot.showRelatedProblems !== current.showRelatedProblems;
       const siblingCandidates = await tx.problem.findMany({
         where: {
           translationGroupId: current.translationGroupId,
@@ -740,6 +810,9 @@ export async function updateProblemAction(
               : []),
             ...(syncExerciseType
               ? [{ isExercise: { not: resolvedSnapshot.isExercise } }]
+              : []),
+            ...(syncRelatedVisibility
+              ? [{ showRelatedProblems: { not: resolvedSnapshot.showRelatedProblems } }]
               : [])
           ]
         },
@@ -755,6 +828,7 @@ export async function updateProblemAction(
             difficulty: resolvedSnapshot.difficulty,
             ...(syncFrontPage ? { canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage } : {}),
             ...(syncExerciseType ? { isExercise: resolvedSnapshot.isExercise } : {}),
+            ...(syncRelatedVisibility ? { showRelatedProblems: resolvedSnapshot.showRelatedProblems } : {}),
             version: { increment: 1 }
           }
         });
@@ -1015,6 +1089,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               originNote: snapshot.originNote,
               listed: snapshot.listed,
               isExercise: snapshot.isExercise,
+              showRelatedProblems: snapshot.showRelatedProblems,
               canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
               status: snapshot.status,
               qualityStatus: QualityStatus.UNREVIEWED,
@@ -1049,7 +1124,8 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
                 ? { difficulty: { not: null } }
                 : { OR: [{ difficulty: null }, { difficulty: { not: snapshot.difficulty } }] },
               { canAppearOnFrontPage: { not: snapshot.canAppearOnFrontPage } },
-              { isExercise: { not: snapshot.isExercise } }
+              { isExercise: { not: snapshot.isExercise } },
+              { showRelatedProblems: { not: snapshot.showRelatedProblems } }
             ]
           },
           select: { id: true }
@@ -1064,6 +1140,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
         data: {
           difficulty: snapshot.difficulty,
           isExercise: snapshot.isExercise,
+          showRelatedProblems: snapshot.showRelatedProblems,
           canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
           version: { increment: 1 }
         }

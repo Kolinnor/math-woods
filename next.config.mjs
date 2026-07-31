@@ -37,7 +37,10 @@ const nextConfig = {
       }
     : undefined,
   experimental: {
-    devtoolSegmentExplorer: false
+    devtoolSegmentExplorer: false,
+    serverActions: {
+      bodySizeLimit: "6mb"
+    }
   },
   async headers() {
     return [

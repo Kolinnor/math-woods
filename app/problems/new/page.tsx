@@ -4,6 +4,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
+import { ProblemContentOptions } from "@/components/ProblemContentOptions";
 import { ProblemDetailsDisclosure } from "@/components/ProblemDetailsDisclosure";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
@@ -68,6 +69,7 @@ export default async function NewProblemPage({
           translationGroupId: true,
           difficulty: true,
           isExercise: true,
+          showRelatedProblems: true,
           domain: true,
           domains: { orderBy: { position: "asc" } }
         }
@@ -216,17 +218,12 @@ export default async function NewProblemPage({
                       <strong>Listed in the problem browser</strong>
                     </span>
                   </label>
-                  <label className="checkbox-field">
-                    <input
-                      name="isExercise"
-                      type="checkbox"
-                      defaultChecked={sourceProblem?.isExercise ?? isExerciseByDefault}
-                    />
-                    <div className="field-label-with-help">
-                      <strong>Exercise</strong>
-                      <FieldHelp text="Exercises are designed to practise a specific concept. They appear on linked concept pages and are hidden from the default problem-browser view, while remaining available through the Exercises filter." />
-                    </div>
-                  </label>
+                  <ProblemContentOptions
+                    initialIsExercise={sourceProblem?.isExercise ?? isExerciseByDefault}
+                    initialShowRelatedProblems={
+                      sourceProblem?.showRelatedProblems ?? !isExerciseByDefault
+                    }
+                  />
                   <ProblemVerificationFields modeOptions={Object.entries(VERIFICATION_MODE_LABELS)} />
                 </section>
 

@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { CONTENT_LIMITS, boundedText, requiredBoundedText } from "@/lib/content-limits";
+import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { ensureDefaultTips } from "@/lib/daily-tip";
 import { canUseAdminTools } from "@/lib/permissions";
@@ -33,8 +33,7 @@ export async function createTipAction(formData: FormData) {
   await ensureDefaultTips();
 
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
-  const body = boundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body") || description;
+  const body = requiredBoundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Tip text");
   const imageUrl = normalizeTipImageUrl(formData.get("imageUrl"));
   const imagePositionX = normalizeTipImagePosition(formData.get("imagePositionX"));
   const imagePositionY = normalizeTipImagePosition(formData.get("imagePositionY"));
@@ -59,7 +58,7 @@ export async function createTipAction(formData: FormData) {
       data: {
         position: (lastTip?.position ?? -1) + 1,
         title,
-        description,
+        description: body,
         body,
         imageUrl,
         imagePositionX,
@@ -89,8 +88,7 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   await ensureDefaultTips();
 
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const description = requiredBoundedText(formData.get("description"), CONTENT_LIMITS.mediumText, "Description");
-  const body = boundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Body") || description;
+  const body = requiredBoundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Tip text");
   const imageUrl = normalizeTipImageUrl(formData.get("imageUrl"));
   const imagePositionX = normalizeTipImagePosition(formData.get("imagePositionX"));
   const imagePositionY = normalizeTipImagePosition(formData.get("imagePositionY"));
@@ -111,7 +109,7 @@ export async function updateTipAction(tipId: number, formData: FormData) {
       where: { id: tipId },
       data: {
         title,
-        description,
+        description: body,
         body,
         imageUrl,
         imagePositionX,

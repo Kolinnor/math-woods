@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
+import { ChatMessageAttachment } from "@/components/ChatMessageAttachment";
 import { ChatMessageReactions } from "@/components/ChatMessageReactions";
-import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserAvatar } from "@/components/UserAvatar";
+import { applyChatMessageUpdates, type ChatMessageUpdate } from "@/lib/chat-message-updates";
 import {
   applyChatReactionUpdates,
   type ChatReactionLabels,
@@ -28,6 +30,11 @@ type LiveChatThreadProps = {
     live: string;
     livePaused: string;
     noMessagesYet: string;
+    cancel: string;
+    editMessage: string;
+    edited: string;
+    saveChanges: string;
+    chatImage: string;
     reactions: ChatReactionLabels;
   };
 };
@@ -58,6 +65,12 @@ export function LiveChatThread({
 
   const updateMessageReactions = useCallback((messageId: number, reactions: ChatReactionSummary[]) => {
     setMessages((current) => applyChatReactionUpdates(current, [{ messageId, reactions }]));
+  }, []);
+  const updateMessageContent = useCallback((update: EditedChatMessage) => {
+    const { messageId, ...changes } = update;
+    setMessages((current) => current.map((message) => (
+      message.id === messageId ? { ...message, ...changes } : message
+    )));
   }, []);
 
   useEffect(() => {
@@ -93,11 +106,13 @@ export function LiveChatThread({
         } else {
           const data = (await response.json()) as {
             messages?: LiveChatMessage[];
+            messageUpdates?: ChatMessageUpdate[];
             reactionCursor?: number;
             reactionUpdates?: ChatReactionUpdate[];
           };
           if (
             (Array.isArray(data.messages) && data.messages.length > 0)
+            || (Array.isArray(data.messageUpdates) && data.messageUpdates.length > 0)
             || (Array.isArray(data.reactionUpdates) && data.reactionUpdates.length > 0)
           ) {
             setMessages((current) => {
@@ -106,7 +121,10 @@ export function LiveChatThread({
                 ...current,
                 ...(data.messages ?? []).filter((message) => !seen.has(message.id))
               ];
-              return applyChatReactionUpdates(withNewMessages, data.reactionUpdates ?? []);
+              return applyChatReactionUpdates(
+                applyChatMessageUpdates(withNewMessages, data.messageUpdates ?? []),
+                data.reactionUpdates ?? []
+              );
             });
             if ((data.messages?.length ?? 0) > 0) {
               window.setTimeout(scrollToEnd, 0);
@@ -164,8 +182,23 @@ export function LiveChatThread({
                   <Link href={`/profile/${message.authorUsername}`}>{message.authorName}</Link>
                   {" \u00b7 "}
                   <time dateTime={message.createdAt}>{formatChatTime(message.createdAt, locale, timeZone)}</time>
+                  {message.editedAt && <>{" \u00b7 "}<span>{labels.edited}</span></>}
                 </p>
-                <MarkdownBlock html={message.bodyHtml} />
+                <ChatMessageEditor
+                  bodyHtml={message.bodyHtml}
+                  bodyMarkdown={message.bodyMarkdown}
+                  canEdit={ownMessage && Boolean(message.bodyMarkdown)}
+                  labels={labels}
+                  messageId={message.id}
+                  onChange={updateMessageContent}
+                  otherUsername={otherUsername}
+                />
+                <ChatMessageAttachment
+                  alt={labels.chatImage}
+                  height={message.imageHeight}
+                  url={message.imageUrl}
+                  width={message.imageWidth}
+                />
                 <ChatMessageReactions
                   labels={labels.reactions}
                   messageId={message.id}

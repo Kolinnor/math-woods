@@ -423,8 +423,13 @@ model ChatMessage {
   authorId     Int
   bodyMarkdown String
   bodyHtml     String
+  imageKey     String?
+  imageWidth   Int?
+  imageHeight  Int?
+  imageBytes   Int?
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
+  editedAt     DateTime?
   directChat   DirectChat            @relation(fields: [directChatId], references: [id], onDelete: Cascade)
   author       User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
   reactions    ChatMessageReaction[]
@@ -481,6 +486,7 @@ model Problem {
   license                  String                       @default("CC BY-SA 4.0")
   listed                   Boolean                      @default(true)
   isExercise               Boolean                      @default(false)
+  showRelatedProblems      Boolean                      @default(true)
   canAppearOnFrontPage     Boolean                      @default(false)
   status                   ProblemStatus                @default(PUBLISHED)
   qualityStatus            QualityStatus                @default(UNREVIEWED)
@@ -745,20 +751,23 @@ model ProblemFavorite {
 }
 
 model ProblemHint {
-  id           Int           @id @default(autoincrement())
-  problemId    Int
-  proofId      Int?          @unique
-  authorId     Int?
-  position     Int           @default(0)
-  bodyMarkdown String
-  bodyHtml     String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  problem      Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  proof        ProblemProof? @relation(fields: [proofId], references: [id], onDelete: Cascade)
-  author       User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  id                 Int           @id @default(autoincrement())
+  translationGroupId String        @default(cuid())
+  problemId          Int
+  proofId            Int?          @unique
+  authorId           Int?
+  position           Int           @default(0)
+  bodyMarkdown       String
+  bodyHtml           String
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  problem            Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  proof              ProblemProof? @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  author             User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
+  @@unique([translationGroupId, problemId])
   @@index([problemId, position])
+  @@index([translationGroupId])
   @@index([authorId])
 }
 

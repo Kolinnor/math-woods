@@ -6,6 +6,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { MAX_CONCEPT_EXERCISES, parseMinimumConceptExercises } from "@/lib/concept-exercises";
 import { prisma } from "@/lib/db";
 import {
   coarseDomainForCode,
@@ -53,14 +54,29 @@ function parseProblemLinkFilter(value: string | undefined): ProblemLinkFilter {
 export default async function ConceptsPage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; domain?: string; status?: string; sort?: string; problemLinks?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    domain?: string;
+    minExercises?: string;
+    problemLinks?: string;
+    sort?: string;
+    status?: string;
+  }>;
 }) {
   const user = await getCurrentUser();
   const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
-  const { q = "", domain = "", status = "", sort = "", problemLinks = "" } = await searchParams;
+  const {
+    q = "",
+    domain = "",
+    minExercises = "",
+    status = "",
+    sort = "",
+    problemLinks = ""
+  } = await searchParams;
   const query = q.trim();
   const sortValue = parseConceptSort(sort);
+  const minimumExerciseCount = parseMinimumConceptExercises(minExercises);
   const canFilterByProblemLinks = Boolean(user && canUseAdminTools(user));
   const problemLinkFilter = canFilterByProblemLinks ? parseProblemLinkFilter(problemLinks) : "all";
   const domainValue = domain ? parseDomainCode(domain) : undefined;
@@ -91,6 +107,17 @@ export default async function ConceptsPage({
             select: { targetSlug: true }
           })
         ).map((link) => link.targetSlug);
+  const conceptsMeetingExerciseMinimum = minimumExerciseCount > 0
+    ? (
+        await prisma.conceptExercise.groupBy({
+          by: ["conceptId"],
+          having: {
+            conceptId: { _count: { gte: minimumExerciseCount } }
+          }
+        })
+      )
+        .map((group) => group.conceptId)
+    : [];
   const where: Prisma.ConceptWhereInput = {
     language: preferredLanguage,
     ...(query
@@ -104,6 +131,7 @@ export default async function ConceptsPage({
       : {}),
     ...domainWhere,
     ...(statusValue ? { status: statusValue } : {}),
+    ...(minimumExerciseCount > 0 ? { id: { in: conceptsMeetingExerciseMinimum } } : {}),
     ...(problemLinkFilter === "with"
       ? { slug: { in: linkedConceptSlugs } }
       : problemLinkFilter === "without"
@@ -281,6 +309,19 @@ export default async function ConceptsPage({
             <option value="without">{t.concepts.withoutLinkedProblems}</option>
           </select>
         )}
+        <label className="concept-min-exercises-filter">
+          <span>{t.concepts.minimumExercisesPrefix}</span>
+          <input
+            aria-label={t.concepts.minimumExercisesAriaLabel}
+            defaultValue={minimumExerciseCount || ""}
+            max={MAX_CONCEPT_EXERCISES}
+            min={1}
+            name="minExercises"
+            placeholder="X"
+            type="number"
+          />
+          <span>{t.concepts.minimumExercisesSuffix}</span>
+        </label>
         <select name="sort" defaultValue={sortValue === "linked" ? "linked" : ""} aria-label={t.concepts.sortAriaLabel}>
           <option value="">{t.concepts.sortUpdated}</option>
           <option value="linked">{t.concepts.sortMostLinked}</option>

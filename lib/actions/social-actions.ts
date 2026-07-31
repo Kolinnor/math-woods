@@ -236,7 +236,12 @@ export async function createChatMessageAction(
   try {
     const user = await requireVerifiedUser();
     await assertRateLimit(`chat-message:${user.id}`, 30, 60_000);
-    await sendDirectChatMessage(user, otherUsername, formData.get("bodyMarkdown"));
+    await sendDirectChatMessage(
+      user,
+      otherUsername,
+      formData.get("bodyMarkdown"),
+      formData.get("image")
+    );
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     return {

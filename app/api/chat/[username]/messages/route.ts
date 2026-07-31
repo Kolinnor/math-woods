@@ -1,6 +1,7 @@
 import { NotificationType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { CHAT_IMAGE_MAX_INPUT_BYTES, chatImageUrl } from "@/lib/chat-image-config";
 import { directChatPair, acceptedFriendshipBetween, sendDirectChatMessage } from "@/lib/direct-chat";
 import { summarizeChatReactions } from "@/lib/chat-reactions";
 import { prisma } from "@/lib/db";
@@ -10,6 +11,7 @@ import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
+const MAX_CHAT_MESSAGE_BODY_BYTES = CHAT_IMAGE_MAX_INPUT_BYTES + 64_000;
 
 export async function GET(request: Request, { params }: { params: Promise<{ username: string }> }) {
   const user = await getCurrentUser();
@@ -63,7 +65,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     );
   }
 
-  const [messages, reactionMessages] = await Promise.all([
+  const [messages, updatedMessages] = await Promise.all([
     prisma.chatMessage.findMany({
       where: {
         directChatId: chat.id,
@@ -96,6 +98,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
       },
       select: {
         id: true,
+        bodyMarkdown: true,
+        bodyHtml: true,
+        editedAt: true,
         reactions: {
           select: {
             reaction: true,
@@ -118,13 +123,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
         authorName: displayNameForUser(message.author),
         authorAvatarBackground: message.author.avatarBackground,
         authorAvatarUrl: message.author.avatarUrl,
+        bodyMarkdown: message.bodyMarkdown,
         bodyHtml: message.bodyHtml,
         createdAt: message.createdAt.toISOString(),
+        editedAt: message.editedAt?.toISOString() ?? null,
+        imageUrl: chatImageUrl(otherUser.username, message.id, Boolean(message.imageKey)),
+        imageWidth: message.imageWidth,
+        imageHeight: message.imageHeight,
         reactions: summarizeChatReactions(message.reactions, user.id)
       })),
       reactionCursor,
-      reactionUpdates: reactionMessages.map((message) => ({
+      reactionUpdates: updatedMessages.map((message) => ({
         messageId: message.id,
+        reactions: summarizeChatReactions(message.reactions, user.id)
+      })),
+      messageUpdates: updatedMessages.map((message) => ({
+        messageId: message.id,
+        bodyMarkdown: message.bodyMarkdown,
+        bodyHtml: message.bodyHtml,
+        editedAt: message.editedAt?.toISOString() ?? null,
         reactions: summarizeChatReactions(message.reactions, user.id)
       }))
     },
@@ -133,6 +150,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ username: string }> }) {
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_CHAT_MESSAGE_BODY_BYTES) {
+    return NextResponse.json({ error: "Chat image must be smaller than 5 MB." }, { status: 413 });
+  }
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   if (!isVerifiedContributor(user)) return NextResponse.json({ error: "Email verification required." }, { status: 403 });
@@ -141,11 +163,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ use
 
   try {
     await assertRateLimit(`chat-message:${user.id}`, 30, 60_000);
-    const body = await request.json() as { bodyMarkdown?: unknown };
+    let bodyMarkdown: unknown = "";
+    let image: FormDataEntryValue | null = null;
+    if (request.headers.get("content-type")?.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      bodyMarkdown = formData.get("bodyMarkdown");
+      image = formData.get("image");
+    } else {
+      const body = await request.json() as { bodyMarkdown?: unknown };
+      bodyMarkdown = body.bodyMarkdown;
+    }
     const message = await sendDirectChatMessage(
       user,
       username,
-      typeof body.bodyMarkdown === "string" ? body.bodyMarkdown : ""
+      typeof bodyMarkdown === "string" ? bodyMarkdown : "",
+      image
     );
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {

@@ -7,7 +7,6 @@ type TipEditorFieldsProps = {
   submitLabel: string;
   values: {
     title: string;
-    description: string;
     body: string;
     imageUrl: string | null;
     imagePositionX: number;
@@ -24,20 +23,16 @@ export function TipEditorFields({ initialProblems, submitLabel, values }: TipEdi
         <input name="title" maxLength={CONTENT_LIMITS.title} required defaultValue={values.title} />
       </label>
       <label className="grid gap-2">
-        <span className="text-sm font-medium">Description</span>
-        <textarea
-          name="description"
-          maxLength={CONTENT_LIMITS.mediumText}
-          required
-          defaultValue={values.description}
-        />
-        <span className="muted text-sm">Short summary shown in the Tips library.</span>
-      </label>
-      <label className="grid gap-2">
         <span className="text-sm font-medium">Tip text</span>
-        <textarea name="body" maxLength={CONTENT_LIMITS.longNote} rows={7} defaultValue={values.body} />
+        <textarea
+          name="body"
+          maxLength={CONTENT_LIMITS.longNote}
+          rows={7}
+          required
+          defaultValue={values.body}
+        />
         <span className="muted text-sm">
-          Main text shown in Tip of the Day. Markdown and LaTeX are supported; leave blank to reuse the description.
+          Main text shown in the Tips library and Tip of the Day. Markdown and LaTeX are supported.
         </span>
       </label>
       <TipImageField

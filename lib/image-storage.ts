@@ -3,6 +3,7 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 export const IMAGE_UPLOAD_MAX_BYTES = Number(process.env.IMAGE_UPLOAD_MAX_BYTES ?? 5 * 1024 * 1024);
 export const IMAGE_UPLOAD_EXPIRES_SECONDS = 5 * 60;
 export const IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+export const PRIVATE_IMAGE_CACHE_CONTROL = "private, max-age=86400";
 
 const ALLOWED_IMAGE_TYPES = new Map([
   ["image/avif", "avif"],
@@ -41,6 +42,12 @@ type AvatarObjectKeyInput = {
   randomSuffix?: string;
 };
 
+type ChatImageObjectKeyInput = {
+  userId: number;
+  now?: Date;
+  randomSuffix?: string;
+};
+
 export function getImageStorageConfig(): ImageStorageConfig | null {
   const endpoint = process.env.IMAGE_STORAGE_ENDPOINT?.trim();
   const region = process.env.IMAGE_STORAGE_REGION?.trim();
@@ -60,6 +67,13 @@ export function getImageStorageConfig(): ImageStorageConfig | null {
     publicBaseUrl: new URL(publicBaseUrl),
     pathStyle: process.env.IMAGE_STORAGE_PATH_STYLE !== "0"
   };
+}
+
+export function getChatImageStorageConfig(): ImageStorageConfig | null {
+  const config = getImageStorageConfig();
+  const bucket = process.env.CHAT_IMAGE_STORAGE_BUCKET?.trim();
+  if (!config || !bucket) return null;
+  return { ...config, bucket };
 }
 
 export function validateImageUploadInput(value: unknown): ImageUploadInput {
@@ -112,6 +126,17 @@ export function buildAvatarObjectKey({
   return `avatars/user-${userId}/${now.getTime()}-${suffix}.webp`;
 }
 
+export function buildChatImageObjectKey({
+  userId,
+  now = new Date(),
+  randomSuffix
+}: ChatImageObjectKeyInput) {
+  const year = String(now.getUTCFullYear());
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const suffix = randomSuffix ?? randomBytes(12).toString("hex");
+  return `chat/${year}/${month}/user-${userId}/${now.getTime()}-${suffix}.webp`;
+}
+
 export function publicImageUrl(config: ImageStorageConfig, key: string) {
   const url = new URL(config.publicBaseUrl);
   url.pathname = joinUrlPath(url.pathname, key);
@@ -141,7 +166,13 @@ export function imageObjectKeyFromPublicUrl(config: ImageStorageConfig, value: s
   }
 }
 
-export function createPresignedImageUpload(config: ImageStorageConfig, key: string, contentType: string, now = new Date()) {
+export function createPresignedImageUpload(
+  config: ImageStorageConfig,
+  key: string,
+  contentType: string,
+  now = new Date(),
+  cacheControl = IMAGE_CACHE_CONTROL
+) {
   const uploadUrl = objectStorageUrl(config, key);
   const amzDate = awsDate(now);
   const dateStamp = amzDate.slice(0, 8);
@@ -159,7 +190,7 @@ export function createPresignedImageUpload(config: ImageStorageConfig, key: stri
     "PUT",
     canonicalUri(uploadUrl.pathname),
     canonicalQueryString(uploadUrl.searchParams),
-    `cache-control:${IMAGE_CACHE_CONTROL}\ncontent-type:${contentType}\nhost:${uploadUrl.host}\n`,
+    `cache-control:${cacheControl}\ncontent-type:${contentType}\nhost:${uploadUrl.host}\n`,
     signedHeaders,
     "UNSIGNED-PAYLOAD"
   ].join("\n");
@@ -180,9 +211,46 @@ export function createPresignedImageUpload(config: ImageStorageConfig, key: stri
     publicUrl: publicImageUrl(config, key),
     expiresAt: new Date(now.getTime() + IMAGE_UPLOAD_EXPIRES_SECONDS * 1000).toISOString(),
     headers: {
-      "Cache-Control": IMAGE_CACHE_CONTROL,
+      "Cache-Control": cacheControl,
       "Content-Type": contentType
     }
+  };
+}
+
+export function createPresignedImageDownload(config: ImageStorageConfig, key: string, now = new Date()) {
+  const downloadUrl = objectStorageUrl(config, key);
+  const amzDate = awsDate(now);
+  const dateStamp = amzDate.slice(0, 8);
+  const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
+  const signedHeaders = "host";
+  const expires = String(IMAGE_UPLOAD_EXPIRES_SECONDS);
+
+  downloadUrl.searchParams.set("X-Amz-Algorithm", "AWS4-HMAC-SHA256");
+  downloadUrl.searchParams.set("X-Amz-Credential", `${config.accessKeyId}/${credentialScope}`);
+  downloadUrl.searchParams.set("X-Amz-Date", amzDate);
+  downloadUrl.searchParams.set("X-Amz-Expires", expires);
+  downloadUrl.searchParams.set("X-Amz-SignedHeaders", signedHeaders);
+
+  const canonicalRequest = [
+    "GET",
+    canonicalUri(downloadUrl.pathname),
+    canonicalQueryString(downloadUrl.searchParams),
+    `host:${downloadUrl.host}\n`,
+    signedHeaders,
+    "UNSIGNED-PAYLOAD"
+  ].join("\n");
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    sha256Hex(canonicalRequest)
+  ].join("\n");
+  const signature = hmacHex(signingKey(config.secretAccessKey, dateStamp, config.region), stringToSign);
+  downloadUrl.searchParams.set("X-Amz-Signature", signature);
+
+  return {
+    url: downloadUrl.toString(),
+    expiresAt: new Date(now.getTime() + IMAGE_UPLOAD_EXPIRES_SECONDS * 1000).toISOString()
   };
 }
 

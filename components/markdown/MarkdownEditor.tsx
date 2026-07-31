@@ -217,6 +217,7 @@ type MarkdownEditorProps = {
   draftKey?: string;
   localDrafts?: boolean;
   resetSignal?: string | number | null;
+  imageUploadEnabled?: boolean;
 };
 
 type MarkdownDraft = {
@@ -1392,7 +1393,8 @@ export function MarkdownEditor({
   lineNumbers: showLineNumbers = true,
   draftKey,
   localDrafts = true,
-  resetSignal = null
+  resetSignal = null,
+  imageUploadEnabled = true
 }: MarkdownEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -1495,6 +1497,7 @@ export function MarkdownEditor({
           displayMathLineBreakNormalizer,
           EditorView.domEventHandlers({
             paste: (event) => {
+              if (!imageUploadEnabled) return false;
               const file = clipboardImageFile(event.clipboardData);
               if (!file) return false;
 
@@ -1623,7 +1626,7 @@ export function MarkdownEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [draftKey, initialValue, localDrafts, minHeight, name, showLineNumbers]);
+  }, [draftKey, imageUploadEnabled, initialValue, localDrafts, minHeight, name, showLineNumbers]);
 
   useEffect(() => {
     if (!linkMenu) return;
@@ -1976,16 +1979,18 @@ export function MarkdownEditor({
         </div>
       )}
       <div className="markdown-editor-toolbar" aria-label="Editor tools">
-        <button
-          type="button"
-          className="secondary markdown-editor-tool-button"
-          onClick={chooseImageFile}
-          disabled={imageUploading}
-          title="Insert image"
-        >
-          {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
-          <span>{imageUploading ? "Uploading" : "Image"}</span>
-        </button>
+        {imageUploadEnabled && (
+          <button
+            type="button"
+            className="secondary markdown-editor-tool-button"
+            onClick={chooseImageFile}
+            disabled={imageUploading}
+            title="Insert image"
+          >
+            {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
+            <span>{imageUploading ? "Uploading" : "Image"}</span>
+          </button>
+        )}
         <button
           type="button"
           className="secondary markdown-editor-tool-button"
@@ -1995,25 +2000,27 @@ export function MarkdownEditor({
           <Orbit size={14} aria-hidden="true" />
           <span>Graph</span>
         </button>
-        {imageUploadMessage && (
+        {imageUploadEnabled && imageUploadMessage && (
           <span className="markdown-editor-toolbar-status">
             {imageUploadMessage}
           </span>
         )}
-        <input
-          ref={imageInputRef}
-          type="file"
-          className="markdown-editor-file-input"
-          accept={IMAGE_UPLOAD_ACCEPT}
-          aria-hidden="true"
-          hidden
-          tabIndex={-1}
-          onChange={(event) => {
-            const file = event.target.files?.[0] ?? null;
-            event.target.value = "";
-            if (file) void uploadImage(file);
-          }}
-        />
+        {imageUploadEnabled && (
+          <input
+            ref={imageInputRef}
+            type="file"
+            className="markdown-editor-file-input"
+            accept={IMAGE_UPLOAD_ACCEPT}
+            aria-hidden="true"
+            hidden
+            tabIndex={-1}
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              event.target.value = "";
+              if (file) void uploadImage(file);
+            }}
+          />
+        )}
       </div>
       <div ref={hostRef} className="markdown-editor-host" />
       {linkMenu && (

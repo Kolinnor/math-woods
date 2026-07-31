@@ -10,10 +10,11 @@ import { ContentTranslations } from "@/components/ContentTranslations";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
-import { ProblemHintReveal } from "@/components/ProblemHintReveal";
+import { ProblemHints } from "@/components/ProblemHints";
 import { UserName } from "@/components/UserName";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
+  createProblemHintFromProblemAction,
   dismissProblemTranslationStaleNoticeAction,
   markProblemReviewedAction,
   markProblemSolvedAction,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/permissions";
 import { heroArtForProblemDomain } from "@/lib/problem-hero-art";
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
+import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
@@ -111,7 +113,14 @@ export default async function ProblemPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ challenge?: string; hint?: string; solution?: string; verification?: string; viewLanguage?: string }>;
+  searchParams?: Promise<{
+    challenge?: string;
+    hint?: string;
+    solution?: string;
+    translateHint?: string;
+    verification?: string;
+    viewLanguage?: string;
+  }>;
 }) {
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
@@ -187,6 +196,7 @@ export default async function ProblemPage({
     : Promise.resolve([]);
   const [
     translations,
+    familyHints,
     links,
     attemptsInTranslationGroup,
     receivedChallenge,
@@ -208,6 +218,27 @@ export default async function ProblemPage({
       },
       select: { slug: true, title: true, language: true },
       orderBy: { language: "asc" }
+    }),
+    prisma.problemHint.findMany({
+      where: {
+        problem: { translationGroupId: problem.translationGroupId }
+      },
+      select: {
+        id: true,
+        translationGroupId: true,
+        problemId: true,
+        proofId: true,
+        position: true,
+        bodyMarkdown: true,
+        bodyHtml: true,
+        problem: {
+          select: {
+            language: true,
+            translatedFromProblemId: true
+          }
+        }
+      },
+      orderBy: [{ position: "asc" }, { id: "asc" }]
     }),
     prisma.internalLink.findMany({
       where: { sourceType: "PROBLEM", sourceId: problem.id },
@@ -347,6 +378,26 @@ export default async function ProblemPage({
   const ownProofForHint = user ? problem.proofs.filter((proof) => proof.authorId === user.id).at(-1) ?? null : null;
   const ownSolutionHint = ownProofForHint
     ? problem.hints.find((hint) => hint.proofId === ownProofForHint.id) ?? null
+    : null;
+  const selectedHints = selectProblemHintsForLanguage(
+    familyHints.map((hint) => ({
+      id: hint.id,
+      translationGroupId: hint.translationGroupId,
+      problemId: hint.problemId,
+      proofId: hint.proofId,
+      position: hint.position,
+      bodyMarkdown: hint.bodyMarkdown,
+      bodyHtml: hint.bodyHtml,
+      language: hint.problem.language,
+      translatedFromProblemId: hint.problem.translatedFromProblemId
+    })),
+    problem.id
+  );
+  const requestedSourceHintId = Number(queryParams.translateHint);
+  const translationSourceHint = Number.isInteger(requestedSourceHintId)
+    ? selectedHints.find(
+        (hint) => hint.id === requestedSourceHintId && hint.isLanguageFallback
+      ) ?? null
     : null;
   const acceptedProofId =
     proofs.length > 0 && (proofVotes.get(proofs[0].id) ?? 0) >= COMMUNITY_ACCEPTED_PROOF_VOTES ? proofs[0].id : null;
@@ -542,56 +593,140 @@ export default async function ProblemPage({
           </div>
         )}
 
-        <section className="zen-hide related-problems-section mt-8">
-          <details>
-            <summary>
-              <span>{t.problemDetail.showRelatedProblems}</span>
-              <span>{visibleRelatedGroups.reduce((count, group) => count + group.relations.length, 0)}</span>
-            </summary>
-            <div className="grid gap-5 pt-4">
-              {visibleRelatedGroups.length > 0 ? (
-                visibleRelatedGroups.map((group) => (
-                  <div key={group.id} className="related-problem-group">
-                    <h2>{group.title}</h2>
-                    <div className="grid gap-2">
-                      {group.relations.map(({ id, targetProblem }) => (
-                        <Link
-                          key={id}
-                          href={`/problems/${targetProblem.slug}`}
-                          className={problemLinkClass(
-                            "related-problem-link block",
-                            relatedSolvedIds.has(targetProblem.id)
-                          )}
-                        >
-                          <strong>
-                            <AsyncMarkdownInline markdown={targetProblem.title} />
-                          </strong>
-                          <span>
-                            {t.problemDetail.by} <UserName user={targetProblem.author} />
-                            {targetProblem.difficulty ? ` \u00b7 ${t.problemDetail.difficulty.toLowerCase()} ${targetProblem.difficulty}/100` : ""}
-                            {!targetProblem.listed ? ` \u00b7 ${t.problemDetail.playlistSpecific.toLowerCase()}` : ""}
-                          </span>
-                        </Link>
-                      ))}
+        {problem.showRelatedProblems && (
+          <section className="zen-hide related-problems-section mt-8">
+            <details>
+              <summary>
+                <span>{t.problemDetail.showRelatedProblems}</span>
+                <span>{visibleRelatedGroups.reduce((count, group) => count + group.relations.length, 0)}</span>
+              </summary>
+              <div className="grid gap-5 pt-4">
+                {visibleRelatedGroups.length > 0 ? (
+                  visibleRelatedGroups.map((group) => (
+                    <div key={group.id} className="related-problem-group">
+                      <h2>{group.title}</h2>
+                      <div className="grid gap-2">
+                        {group.relations.map(({ id, targetProblem }) => (
+                          <Link
+                            key={id}
+                            href={`/problems/${targetProblem.slug}`}
+                            className={problemLinkClass(
+                              "related-problem-link block",
+                              relatedSolvedIds.has(targetProblem.id)
+                            )}
+                          >
+                            <strong>
+                              <AsyncMarkdownInline markdown={targetProblem.title} />
+                            </strong>
+                            <span>
+                              {t.problemDetail.by} <UserName user={targetProblem.author} />
+                              {targetProblem.difficulty ? ` \u00b7 ${t.problemDetail.difficulty.toLowerCase()} ${targetProblem.difficulty}/100` : ""}
+                              {!targetProblem.listed ? ` \u00b7 ${t.problemDetail.playlistSpecific.toLowerCase()}` : ""}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <p className="muted">{t.problemDetail.noRelatedProblems}</p>
+                )}
+                {canEditCurrentProblem && (
+                  <div className="related-problem-actions">
+                    <Link href={`/problems/new?parent=${problem.slug}&listed=0&language=${problem.language}`} className="button">
+                      {t.problemDetail.createSpecificProblem}
+                    </Link>
+                    <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
+                      {t.problemDetail.editRelatedProblems}
+                    </Link>
                   </div>
-                ))
-              ) : (
-                <p className="muted">{t.problemDetail.noRelatedProblems}</p>
-              )}
-              {canEditCurrentProblem && (
-                <div className="related-problem-actions">
-                  <Link href={`/problems/new?parent=${problem.slug}&listed=0&language=${problem.language}`} className="button">
-                    {t.problemDetail.createSpecificProblem}
-                  </Link>
-                  <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
-                    {t.problemDetail.editRelatedProblems}
-                  </Link>
-                </div>
-              )}
+                )}
+              </div>
+            </details>
+          </section>
+        )}
+
+        {(selectedHints.length > 0 || canEditCurrentProblem) && (
+          <section id="problem-hints" className="zen-hide problem-hints-section mt-8">
+            <div className="section-heading">
+              <h2>{t.problemDetail.hints}</h2>
+              <span>{selectedHints.length}</span>
             </div>
-          </details>
-        </section>
+            {queryParams.hint === "created" && (
+              <p className="success-text">{t.problemDetail.hintCreated}</p>
+            )}
+            {selectedHints.length > 0 && (
+              <ProblemHints
+                hints={selectedHints.map((hint) => ({
+                  id: hint.id,
+                  html: hint.bodyHtml,
+                  languageLabel: contentLanguageLabel(hint.language),
+                  isLanguageFallback: hint.isLanguageFallback,
+                  translateHref:
+                    canEditCurrentProblem && hint.isLanguageFallback
+                      ? `/problems/${problem.slug}?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(
+                          problem.language
+                        )}&translateHint=${hint.id}#add-problem-hint`
+                      : null
+                }))}
+                labels={{
+                  hint: t.problemDetail.hint,
+                  fallback: t.problemDetail.hintLanguageFallback,
+                  showFirst: t.problemDetail.showHint,
+                  showNext: t.problemDetail.showNextHint,
+                  guidance: t.problemDetail.hintRevealGuidance,
+                  translate: t.problemDetail.translateHint
+                }}
+              />
+            )}
+            {canEditCurrentProblem && (
+              <details
+                id="add-problem-hint"
+                className="problem-hint-composer"
+                open={Boolean(translationSourceHint)}
+              >
+                <summary>
+                  <Lightbulb size={17} aria-hidden="true" />
+                  {translationSourceHint
+                    ? t.problemDetail.translateHint
+                    : t.problemDetail.addProblemHint}
+                </summary>
+                <div className="problem-hint-composer-body">
+                  <p>{t.problemDetail.problemHintDescription}</p>
+                  <form
+                    action={createProblemHintFromProblemAction.bind(null, problem.id)}
+                    className="grid gap-3"
+                  >
+                    {translationSourceHint && (
+                      <input
+                        type="hidden"
+                        name="sourceHintId"
+                        value={translationSourceHint.id}
+                      />
+                    )}
+                    <MarkdownEditor
+                      name="bodyMarkdown"
+                      initialValue={translationSourceHint?.bodyMarkdown}
+                      minHeight="8rem"
+                      lineNumbers={false}
+                      draftKey={
+                        translationSourceHint
+                          ? `problem:${problem.id}:translate-hint:${translationSourceHint.id}`
+                          : `problem:${problem.id}:new-hint`
+                      }
+                      resetSignal={selectedHints.length}
+                    />
+                    <button type="submit">
+                      {translationSourceHint
+                        ? t.problemDetail.saveHintTranslation
+                        : t.problemDetail.saveProblemHint}
+                    </button>
+                  </form>
+                </div>
+              </details>
+            )}
+          </section>
+        )}
 
         <section className="zen-hide proof-section mt-8">
           <div className="section-heading">
@@ -600,13 +735,6 @@ export default async function ProblemPage({
           </div>
           {isConjecture && proofs.length === 0 && (
             <p className="quality-banner quality-stub">{t.problemDetail.conjectureNoSolution}</p>
-          )}
-          {problem.hints.length > 0 && (
-            <div className="problem-hints">
-              {problem.hints.map((hint, index) => (
-                <ProblemHintReveal key={hint.id} html={hint.bodyHtml} index={index + 1} />
-              ))}
-            </div>
           )}
           {proofs.length > 0 && !canViewSolutions && (
             <p className="quality-banner quality-unreviewed">

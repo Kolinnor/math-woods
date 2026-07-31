@@ -12,7 +12,11 @@ import {
   parseMarkdownDocument
 } from "../lib/frontmatter.ts";
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
-import { MAX_CONCEPT_EXERCISES, parseConceptExerciseIds } from "../lib/concept-exercises.ts";
+import {
+  MAX_CONCEPT_EXERCISES,
+  parseConceptExerciseIds,
+  parseMinimumConceptExercises
+} from "../lib/concept-exercises.ts";
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
@@ -21,21 +25,26 @@ import {
   parseProblemContentTypes,
   problemContentTypeWhere
 } from "../lib/problem-content-types.ts";
+import { selectProblemHintsForLanguage } from "../lib/problem-hints.ts";
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
 import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
 import {
   buildAvatarObjectKey,
+  buildChatImageObjectKey,
   buildImageObjectKey,
+  createPresignedImageDownload,
   createPresignedImageDelete,
   createPresignedImageUpload,
   imageObjectKeyFromPublicUrl,
   validateImageUploadInput,
   type ImageStorageConfig
 } from "../lib/image-storage.ts";
+import { chatImageDailyLimitForRole, chatImageUrl } from "../lib/chat-image-config.ts";
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
 import { shouldSendChatOnEnter } from "../lib/chat-compose.ts";
+import { applyChatMessageUpdates } from "../lib/chat-message-updates.ts";
 import {
   applyChatReactionUpdates,
   isChatReaction,
@@ -297,6 +306,7 @@ const baseProblemSnapshot: ProblemRevisionSnapshot = {
   originNote: null,
   listed: true,
   isExercise: false,
+  showRelatedProblems: true,
   canAppearOnFrontPage: false,
   status: "PUBLISHED",
   qualityStatus: QualityStatus.UNREVIEWED,
@@ -340,6 +350,16 @@ const legacyExcellentSnapshot = parseProblemRevisionSnapshot({
 assert.equal(legacyExcellentSnapshot?.qualityStatus, QualityStatus.REVIEWED);
 assert.equal(legacyExcellentSnapshot?.canAppearOnFrontPage, true);
 assert.equal(legacyExcellentSnapshot?.isExercise, false);
+assert.equal(legacyExcellentSnapshot?.showRelatedProblems, true);
+const legacyExerciseSnapshot = JSON.parse(JSON.stringify({
+  ...baseProblemSnapshot,
+  isExercise: true
+}));
+delete legacyExerciseSnapshot.showRelatedProblems;
+assert.equal(
+  parseProblemRevisionSnapshot(legacyExerciseSnapshot)?.showRelatedProblems,
+  false
+);
 assert.deepEqual(parseProblemContentTypes(undefined), ["problem"]);
 assert.deepEqual(parseProblemContentTypes(["exercise"]), ["exercise"]);
 assert.deepEqual(parseProblemContentTypes(["exercise", "problem", "unknown"]), ["problem", "exercise"]);
@@ -443,6 +463,49 @@ assert.deepEqual(
       id: 11,
       body: "Second",
       reactions: [{ reaction: "SMILE", count: 2, reactedByCurrentUser: false }]
+    }
+  ]
+);
+assert.deepEqual(
+  applyChatMessageUpdates(
+    [
+      {
+        id: 10,
+        bodyMarkdown: "First",
+        bodyHtml: "<p>First</p>",
+        editedAt: null,
+        reactions: []
+      },
+      {
+        id: 11,
+        bodyMarkdown: "Second",
+        bodyHtml: "<p>Second</p>",
+        editedAt: null,
+        reactions: []
+      }
+    ],
+    [{
+      messageId: 11,
+      bodyMarkdown: "Edited second",
+      bodyHtml: "<p>Edited second</p>",
+      editedAt: "2026-07-31T08:00:00.000Z",
+      reactions: [{ reaction: "HEART", count: 1, reactedByCurrentUser: false }]
+    }]
+  ),
+  [
+    {
+      id: 10,
+      bodyMarkdown: "First",
+      bodyHtml: "<p>First</p>",
+      editedAt: null,
+      reactions: []
+    },
+    {
+      id: 11,
+      bodyMarkdown: "Edited second",
+      bodyHtml: "<p>Edited second</p>",
+      editedAt: "2026-07-31T08:00:00.000Z",
+      reactions: [{ reaction: "HEART", count: 1, reactedByCurrentUser: false }]
     }
   ]
 );
@@ -1225,6 +1288,19 @@ assert.equal(
   }),
   `uploads/2026/07/user-7/${imageKeyDate.getTime()}-abc123-jolie-equation-finale.webp`
 );
+assert.equal(
+  buildChatImageObjectKey({
+    userId: 7,
+    now: imageKeyDate,
+    randomSuffix: "private123"
+  }),
+  `chat/2026/07/user-7/${imageKeyDate.getTime()}-private123.webp`
+);
+assert.equal(chatImageDailyLimitForRole(Role.USER), 20);
+assert.equal(chatImageDailyLimitForRole(Role.MODERATOR), 100);
+assert.equal(chatImageDailyLimitForRole(Role.ADMIN), Number.POSITIVE_INFINITY);
+assert.equal(chatImageUrl("Ada Lovelace", 42, true), "/api/chat/Ada%20Lovelace/messages/42");
+assert.equal(chatImageUrl("Ada Lovelace", 42, false), null);
 assert.deepEqual(validateImageUploadInput({ filename: "diagram.png", contentType: "image/png", sizeBytes: 42 }), {
   filename: "diagram.png",
   contentType: "image/png",
@@ -1247,7 +1323,14 @@ const presignedUpload = createPresignedImageUpload(
   "image/webp",
   imageKeyDate
 );
+const presignedDownload = createPresignedImageDownload(
+  testImageStorageConfig,
+  "chat/2026/07/user-7/private.webp",
+  imageKeyDate
+);
 assert.equal(presignedUpload.method, "PUT");
+assert.match(presignedDownload.url, /^https:\/\/s3\.example\.test\/mathwoods-images\/chat\/2026\/07\/user-7\/private\.webp\?/);
+assert.match(presignedDownload.url, /X-Amz-Signature=/);
 assert.equal(
   imageObjectKeyFromPublicUrl(testImageStorageConfig, "https://images.mathwoods.org/avatars/user-7/example.webp"),
   "avatars/user-7/example.webp"
@@ -1569,5 +1652,53 @@ assert.equal(normalizeProblemChallengeInviteToken(challengeInviteToken), challen
 assert.equal(normalizeProblemChallengeInviteToken("../not-a-token"), null);
 assert.equal(problemChallengeInviteTokenHash(challengeInviteToken).length, 64);
 assert.equal(problemChallengeInvitePath(challengeInviteToken), `/challenge/${challengeInviteToken}`);
+
+assert.equal(parseMinimumConceptExercises(undefined), 0);
+assert.equal(parseMinimumConceptExercises("3"), 3);
+assert.equal(parseMinimumConceptExercises("2.5"), 0);
+assert.equal(parseMinimumConceptExercises("999"), MAX_CONCEPT_EXERCISES);
+
+const multilingualHints = [
+  {
+    id: 1,
+    translationGroupId: "first",
+    problemId: 10,
+    proofId: null,
+    position: 0,
+    bodyMarkdown: "First hint",
+    bodyHtml: "<p>First hint</p>",
+    language: "en",
+    translatedFromProblemId: null
+  },
+  {
+    id: 2,
+    translationGroupId: "second",
+    problemId: 10,
+    proofId: null,
+    position: 1,
+    bodyMarkdown: "Second hint",
+    bodyHtml: "<p>Second hint</p>",
+    language: "en",
+    translatedFromProblemId: null
+  },
+  {
+    id: 3,
+    translationGroupId: "first",
+    problemId: 20,
+    proofId: null,
+    position: 0,
+    bodyMarkdown: "Premier indice",
+    bodyHtml: "<p>Premier indice</p>",
+    language: "fr",
+    translatedFromProblemId: 10
+  }
+];
+const selectedFrenchHints = selectProblemHintsForLanguage(multilingualHints, 20);
+assert.deepEqual(selectedFrenchHints.map((hint) => hint.id), [3, 2]);
+assert.deepEqual(selectedFrenchHints.map((hint) => hint.isLanguageFallback), [false, true]);
+assert.deepEqual(
+  selectProblemHintsForLanguage(multilingualHints, 10).map((hint) => hint.id),
+  [1, 2]
+);
 
 console.log("core tests ok");

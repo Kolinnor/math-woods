@@ -8,6 +8,7 @@ import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
 import { sendFriendRequestAction } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
+import { chatImageUrl } from "@/lib/chat-image-config";
 import { prisma } from "@/lib/db";
 import { directChatPair } from "@/lib/direct-chat";
 import { summarizeChatReactions } from "@/lib/chat-reactions";
@@ -128,8 +129,13 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       authorName: displayNameForUser(message.author),
       authorAvatarBackground: message.author.avatarBackground,
       authorAvatarUrl: message.author.avatarUrl,
+      bodyMarkdown: message.bodyMarkdown,
       bodyHtml: message.bodyHtml,
       createdAt: message.createdAt.toISOString(),
+      editedAt: message.editedAt?.toISOString() ?? null,
+      imageUrl: chatImageUrl(otherUser.username, message.id, Boolean(message.imageKey)),
+      imageWidth: message.imageWidth,
+      imageHeight: message.imageHeight,
       reactions: summarizeChatReactions(message.reactions, user.id)
     })) ?? [];
   const ownMessageResetSignal = messages.filter((message) => message.authorId === user.id).at(-1)?.id ?? 0;
@@ -171,6 +177,11 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
             live: t.social.live,
             livePaused: t.social.livePaused,
             noMessagesYet: t.social.noMessagesYet,
+            cancel: t.social.cancel,
+            editMessage: t.social.editMessage,
+            edited: t.social.edited,
+            saveChanges: t.social.saveChanges,
+            chatImage: t.social.chatImage,
             reactions: {
               addReaction: t.social.addReaction,
               reactionNames: t.social.reactionNames
@@ -184,7 +195,10 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           labels={{
             message: t.social.message,
             send: t.social.send,
-            sending: t.social.sending
+            sending: t.social.sending,
+            attachImage: t.social.attachImage,
+            imageRequirements: t.social.imageRequirements,
+            removeImage: t.social.removeImage
           }}
           otherUsername={otherUser.username}
         />

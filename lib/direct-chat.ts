@@ -1,7 +1,17 @@
-import { FriendshipStatus, NotificationType } from "@prisma/client";
-import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { FriendshipStatus, NotificationType, Role } from "@prisma/client";
+import {
+  chatImageDailyLimitForRole,
+  chatImageUrl,
+  CHAT_IMAGE_ROLLING_WINDOW_MS
+} from "@/lib/chat-image-config";
+import {
+  deleteStoredChatImage,
+  storeChatImage
+} from "@/lib/chat-images";
+import { CONTENT_LIMITS, boundedText } from "@/lib/content-limits";
 import type { ChatReactionSummary } from "@/lib/chat-reactions";
 import { prisma } from "@/lib/db";
+import { getChatImageStorageConfig } from "@/lib/image-storage";
 import { createNotification } from "@/lib/notifications";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -12,8 +22,13 @@ export type DirectChatMessage = {
   authorName: string;
   authorAvatarBackground: string | null;
   authorAvatarUrl: string | null;
+  bodyMarkdown: string;
   bodyHtml: string;
   createdAt: string;
+  editedAt: string | null;
+  imageUrl: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   reactions: ChatReactionSummary[];
 };
 
@@ -42,11 +57,15 @@ export async function sendDirectChatMessage(
     displayName?: string | null;
     avatarBackground?: string | null;
     avatarUrl?: string | null;
+    role: Role;
   },
   otherUsername: string,
-  rawBodyMarkdown: FormDataEntryValue | string | null | undefined
+  rawBodyMarkdown: FormDataEntryValue | string | null | undefined,
+  rawImage?: FormDataEntryValue | null
 ): Promise<DirectChatMessage> {
-  const bodyMarkdown = requiredBoundedText(rawBodyMarkdown, CONTENT_LIMITS.discussionPost, "Message");
+  const bodyMarkdown = boundedText(rawBodyMarkdown, CONTENT_LIMITS.discussionPost, "Message");
+  const image = rawImage instanceof File && rawImage.size > 0 ? rawImage : null;
+  if (!bodyMarkdown && !image) throw new Error("Write a message or attach an image.");
   const otherUser = await prisma.user.findUnique({
     where: { username: otherUsername },
     select: { id: true, username: true, deletedAt: true }
@@ -64,15 +83,46 @@ export async function sendDirectChatMessage(
     update: { updatedAt: new Date() },
     create: pair
   });
-  const { renderMarkdown } = await import("@/lib/markdown");
-  const message = await prisma.chatMessage.create({
-    data: {
-      directChatId: chat.id,
-      authorId: user.id,
-      bodyMarkdown,
-      bodyHtml: await renderMarkdown(bodyMarkdown)
+  let storedImage = null;
+  if (image) {
+    const dailyLimit = chatImageDailyLimitForRole(user.role);
+    if (Number.isFinite(dailyLimit)) {
+      const recentImageCount = await prisma.chatMessage.count({
+        where: {
+          authorId: user.id,
+          imageKey: { not: null },
+          createdAt: { gte: new Date(Date.now() - CHAT_IMAGE_ROLLING_WINDOW_MS) }
+        }
+      });
+      if (recentImageCount >= dailyLimit) {
+        throw new Error(`You can send up to ${dailyLimit} chat images every 24 hours.`);
+      }
     }
-  });
+    storedImage = await storeChatImage(user.id, image);
+  }
+
+  const { renderMarkdown } = await import("@/lib/markdown");
+  let message;
+  try {
+    message = await prisma.chatMessage.create({
+      data: {
+        directChatId: chat.id,
+        authorId: user.id,
+        bodyMarkdown,
+        bodyHtml: bodyMarkdown ? await renderMarkdown(bodyMarkdown) : "",
+        imageKey: storedImage?.key ?? null,
+        imageWidth: storedImage?.width ?? null,
+        imageHeight: storedImage?.height ?? null,
+        imageBytes: storedImage?.bytes ?? null
+      }
+    });
+  } catch (error) {
+    const config = storedImage ? getChatImageStorageConfig() : null;
+    if (config && storedImage) {
+      await deleteStoredChatImage(config, storedImage.key).catch(() => false);
+    }
+    throw error;
+  }
 
   await createNotification({
     userId: otherUser.id,
@@ -90,8 +140,13 @@ export async function sendDirectChatMessage(
     authorName: displayNameForUser(user),
     authorAvatarBackground: user.avatarBackground ?? null,
     authorAvatarUrl: user.avatarUrl ?? null,
+    bodyMarkdown: message.bodyMarkdown,
     bodyHtml: message.bodyHtml,
     createdAt: message.createdAt.toISOString(),
+    editedAt: null,
+    imageUrl: chatImageUrl(otherUsername, message.id, Boolean(message.imageKey)),
+    imageWidth: message.imageWidth,
+    imageHeight: message.imageHeight,
     reactions: []
   };
 }

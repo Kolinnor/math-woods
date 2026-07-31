@@ -40,7 +40,7 @@ function tipMatchesQuery(
 
   const haystack = [
     tip.title,
-    tip.description,
+    tip.body,
     ...relatedProblems.map((problem) => [
       problem.title,
       problem.origin,
@@ -170,9 +170,9 @@ export default async function TipsPage({
                 <h2>
                   <AsyncMarkdownInline markdown={tip.title} />
                 </h2>
-                <p className="tip-description">
-                  <AsyncMarkdownInline markdown={tip.description} />
-                </p>
+                <div className="tip-description">
+                  <AsyncMarkdownInline markdown={tip.body} />
+                </div>
               </div>
             </div>
 

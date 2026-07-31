@@ -2,6 +2,7 @@
 
 import { useActionState, type KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
+import { ChatImageAttachmentInput } from "@/components/ChatImageAttachmentInput";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { shouldSendChatOnEnter } from "@/lib/chat-compose";
 import {
@@ -16,6 +17,9 @@ type ChatMessageFormProps = {
     message: string;
     send: string;
     sending: string;
+    attachImage: string;
+    imageRequirements: string;
+    removeImage: string;
   };
   otherUsername: string;
 };
@@ -73,7 +77,9 @@ export function ChatMessageForm({
         lineNumbers={false}
         draftKey={editorDraftKey}
         resetSignal={editorResetSignal}
+        imageUploadEnabled={false}
       />
+      <ChatImageAttachmentInput labels={labels} />
       {state.error && (
         <p className="form-error" role="alert">
           {state.error}

@@ -4,11 +4,14 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, Send, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
+import { ChatImageAttachmentInput } from "@/components/ChatImageAttachmentInput";
+import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
+import { ChatMessageAttachment } from "@/components/ChatMessageAttachment";
 import { ChatMessageReactions } from "@/components/ChatMessageReactions";
-import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
 import { shouldSendChatOnEnter } from "@/lib/chat-compose";
+import { applyChatMessageUpdates, type ChatMessageUpdate } from "@/lib/chat-message-updates";
 import {
   applyChatReactionUpdates,
   type ChatReactionSummary,
@@ -32,6 +35,8 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [hasChatImage, setHasChatImage] = useState(false);
+  const [imageResetSignal, setImageResetSignal] = useState(0);
   const latestMessageIdRef = useRef(0);
   const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLDivElement | null>(null);
@@ -127,6 +132,8 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     reactionCursorRef.current = 0;
     setMessages([]);
     setDraft("");
+    setHasChatImage(false);
+    setImageResetSignal((current) => current + 1);
     setChatError(null);
     setChatLoading(true);
 
@@ -146,6 +153,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         const result = await response.json() as {
           error?: string;
           messages?: DirectChatMessage[];
+          messageUpdates?: ChatMessageUpdate[];
           reactionCursor?: number;
           reactionUpdates?: ChatReactionUpdate[];
         };
@@ -155,6 +163,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
           !stopped
           && (
             (Array.isArray(result.messages) && result.messages.length > 0)
+            || (Array.isArray(result.messageUpdates) && result.messageUpdates.length > 0)
             || (Array.isArray(result.reactionUpdates) && result.reactionUpdates.length > 0)
           )
         ) {
@@ -164,7 +173,10 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
               ...current,
               ...(result.messages ?? []).filter((message) => !seen.has(message.id))
             ];
-            return applyChatReactionUpdates(withNewMessages, result.reactionUpdates ?? []);
+            return applyChatReactionUpdates(
+              applyChatMessageUpdates(withNewMessages, result.messageUpdates ?? []),
+              result.reactionUpdates ?? []
+            );
           });
           latestMessageIdRef.current = result.messages?.at(-1)?.id ?? latestMessageIdRef.current;
         }
@@ -202,15 +214,16 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedFriend || !draft.trim() || chatSending) return;
+    if (!selectedFriend || (!draft.trim() && !hasChatImage) || chatSending) return;
     setChatSending(true);
     setChatError(null);
 
     try {
+      const payload = new FormData(event.currentTarget);
+      payload.set("bodyMarkdown", draft);
       const response = await fetch(`/api/chat/${encodeURIComponent(selectedFriend.username)}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bodyMarkdown: draft })
+        body: payload
       });
       const result = await response.json() as { error?: string; message?: DirectChatMessage };
       if (!response.ok || !result.message) throw new Error(result.error || "Message could not be sent.");
@@ -219,6 +232,8 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         : [...current, result.message!]);
       latestMessageIdRef.current = Math.max(latestMessageIdRef.current, result.message.id);
       setDraft("");
+      setHasChatImage(false);
+      setImageResetSignal((current) => current + 1);
     } catch (error) {
       setChatError(error instanceof Error ? error.message : "Message could not be sent.");
     } finally {
@@ -242,6 +257,13 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
 
   function updateMessageReactions(messageId: number, reactions: ChatReactionSummary[]) {
     setMessages((current) => applyChatReactionUpdates(current, [{ messageId, reactions }]));
+  }
+
+  function updateMessageContent(update: EditedChatMessage) {
+    const { messageId, ...changes } = update;
+    setMessages((current) => current.map((message) => (
+      message.id === messageId ? { ...message, ...changes } : message
+    )));
   }
 
   return (
@@ -330,7 +352,21 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                     <article
                       className={message.authorId === data.currentUserId ? "friends-mini-message is-own" : "friends-mini-message"}
                     >
-                      <MarkdownBlock html={message.bodyHtml} />
+                      <ChatMessageEditor
+                        bodyHtml={message.bodyHtml}
+                        bodyMarkdown={message.bodyMarkdown}
+                        canEdit={message.authorId === data.currentUserId && Boolean(message.bodyMarkdown)}
+                        labels={data.labels}
+                        messageId={message.id}
+                        onChange={updateMessageContent}
+                        otherUsername={selectedFriend.username}
+                      />
+                      <ChatMessageAttachment
+                        alt={data.labels.chatImage}
+                        height={message.imageHeight}
+                        url={message.imageUrl}
+                        width={message.imageWidth}
+                      />
                       <ChatMessageReactions
                         labels={data.labels.reactions}
                         messageId={message.id}
@@ -338,9 +374,12 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                         otherUsername={selectedFriend.username}
                         reactions={message.reactions}
                       />
-                      <time className="friends-mini-message-time" dateTime={message.createdAt}>
-                        {formatChatTime(message.createdAt, data.locale, data.timeZone)}
-                      </time>
+                      <span className="friends-mini-message-time">
+                        <time dateTime={message.createdAt}>
+                          {formatChatTime(message.createdAt, data.locale, data.timeZone)}
+                        </time>
+                        {message.editedAt && <>{" \u00b7 "}{data.labels.edited}</>}
+                      </span>
                     </article>
                   </Fragment>
                 );
@@ -350,6 +389,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
             {chatError && <p className="friends-mini-chat-error" role="alert">{chatError}</p>}
             <form className="friends-mini-chat-composer" onSubmit={sendMessage}>
               <textarea
+                name="bodyMarkdown"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={submitOnShortcut}
@@ -357,10 +397,16 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 aria-label={data.labels.writeMessage}
                 rows={2}
               />
+              <ChatImageAttachmentInput
+                compact
+                labels={data.labels}
+                onSelectionChange={setHasChatImage}
+                resetSignal={imageResetSignal}
+              />
               <button
                 type="submit"
                 className="icon-button"
-                disabled={chatSending || !draft.trim()}
+                disabled={chatSending || (!draft.trim() && !hasChatImage)}
                 title={chatSending ? data.labels.sending : data.labels.send}
                 aria-label={chatSending ? data.labels.sending : data.labels.send}
               >
