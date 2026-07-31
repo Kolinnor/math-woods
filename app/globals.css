@@ -8126,11 +8126,11 @@ button.domain-picker-tile > span:last-child {
 
 @media (min-width: 768px) {
   .concept-search-bar {
-    grid-template-columns: minmax(13rem, 1.35fr) repeat(4, minmax(8rem, 1fr)) auto;
+    grid-template-columns: minmax(13rem, 1.35fr) repeat(2, minmax(8rem, 1fr)) minmax(9.5rem, 1.1fr) minmax(8rem, 1fr) auto;
   }
 
   .concept-search-bar-admin {
-    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+    grid-template-columns: repeat(3, minmax(8rem, 1fr)) minmax(9.5rem, 1.1fr) minmax(8rem, 1fr) auto;
   }
 
   .concept-search-bar-admin > :first-child {
@@ -8138,33 +8138,58 @@ button.domain-picker-tile > span:last-child {
   }
 }
 
-.concept-min-exercises-filter {
-  align-items: center;
+.concept-exercise-count-filter {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 6px;
-  color: var(--muted);
-  display: flex;
-  font-size: 0.82rem;
-  gap: 0.45rem;
+  display: grid;
+  gap: 0.12rem;
   min-height: 2.75rem;
-  padding: 0.35rem 0.65rem;
-  white-space: nowrap;
+  padding: 0.28rem 0.55rem;
 }
 
-.concept-min-exercises-filter:focus-within {
+.concept-exercise-count-filter:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-.concept-min-exercises-filter input {
+.concept-exercise-count-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.concept-exercise-count-controls {
+  align-items: center;
+  display: grid;
+  gap: 0.3rem;
+  grid-template-columns: minmax(5.2rem, 1fr) 3rem;
+}
+
+.concept-exercise-count-controls select,
+.concept-exercise-count-controls input {
+  background: transparent;
   border: 0;
+  border-radius: 0;
   box-shadow: none;
-  font-weight: 750;
   min-height: 0;
-  padding: 0.2rem;
+  padding: 0.12rem 0;
+}
+
+.concept-exercise-count-controls select {
+  font-size: 0.82rem;
+  font-weight: 650;
+  width: 100%;
+}
+
+.concept-exercise-count-controls input {
+  border-left: 1px solid var(--line);
+  font-size: 0.88rem;
+  font-weight: 750;
+  padding-left: 0.3rem;
   text-align: center;
-  width: 3.25rem;
+  width: 100%;
 }
 
 .problem-search-shell {

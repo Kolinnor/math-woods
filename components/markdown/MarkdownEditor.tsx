@@ -70,6 +70,7 @@ import {
   markdownHeadingPreviewText,
   markdownPreviewClass
 } from "@/lib/markdown-preview";
+import { markdownDraftConflictsWithSource, type MarkdownDraft } from "@/lib/markdown-drafts";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
 import { JSXGRAPH_MARKDOWN_TEMPLATE } from "@/lib/jsxgraph";
@@ -218,11 +219,7 @@ type MarkdownEditorProps = {
   localDrafts?: boolean;
   resetSignal?: string | number | null;
   imageUploadEnabled?: boolean;
-};
-
-type MarkdownDraft = {
-  value: string;
-  updatedAt: number;
+  sourceUpdatedAt?: number | null;
 };
 
 type MarkdownDraftSubmit = {
@@ -236,19 +233,24 @@ function readMarkdownDraft(key: string): MarkdownDraft | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<MarkdownDraft>;
     if (typeof parsed.value !== "string" || typeof parsed.updatedAt !== "number") return null;
-    return { value: parsed.value, updatedAt: parsed.updatedAt };
+    return {
+      value: parsed.value,
+      updatedAt: parsed.updatedAt,
+      ...(typeof parsed.baseValue === "string" ? { baseValue: parsed.baseValue } : {})
+    };
   } catch {
     return null;
   }
 }
 
-function writeMarkdownDraft(key: string, value: string) {
+function writeMarkdownDraft(key: string, value: string, baseValue: string) {
   try {
     window.localStorage.setItem(
       key,
       JSON.stringify({
         value,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        baseValue
       } satisfies MarkdownDraft)
     );
   } catch {
@@ -1394,7 +1396,8 @@ export function MarkdownEditor({
   draftKey,
   localDrafts = true,
   resetSignal = null,
-  imageUploadEnabled = true
+  imageUploadEnabled = true,
+  sourceUpdatedAt = null
 }: MarkdownEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -1408,6 +1411,7 @@ export function MarkdownEditor({
   const linkTargetInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState(initialValue);
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
+  const [conflictingDraft, setConflictingDraft] = useState<MarkdownDraft | null>(null);
   const [linkMenu, setLinkMenu] = useState<LinkMenuState | null>(null);
   const [linkMenuPosition, setLinkMenuPosition] = useState<LinkMenuPosition | null>(null);
   const [linkTargetType, setLinkTargetType] = useState<LinkTargetType>("concept");
@@ -1444,13 +1448,18 @@ export function MarkdownEditor({
       }
     }
     const savedDraft = activeDraftKey ? readMarkdownDraft(activeDraftKey) : null;
-    const startValue = savedDraft && savedDraft.value !== initialValue ? savedDraft.value : initialValue;
+    const draftConflicts = Boolean(
+      savedDraft && markdownDraftConflictsWithSource(savedDraft, initialValue, sourceUpdatedAt)
+    );
+    const shouldRestoreDraft = Boolean(savedDraft && savedDraft.value !== initialValue && !draftConflicts);
+    const startValue = shouldRestoreDraft && savedDraft ? savedDraft.value : initialValue;
 
     if (savedDraft && savedDraft.value === initialValue) {
       removeMarkdownDraft(resolvedDraftKey);
     }
     setValue(startValue);
-    setRestoredDraftAt(savedDraft && savedDraft.value !== initialValue ? savedDraft.updatedAt : null);
+    setRestoredDraftAt(shouldRestoreDraft && savedDraft ? savedDraft.updatedAt : null);
+    setConflictingDraft(draftConflicts ? savedDraft : null);
 
     const view = new EditorView({
       parent: hostRef.current,
@@ -1545,13 +1554,14 @@ export function MarkdownEditor({
               const nextValue = update.state.doc.toString();
               setValue(nextValue);
               setRestoredDraftAt(null);
+              setConflictingDraft(null);
               hostRef.current?.closest("form")?.dispatchEvent(new Event("input", { bubbles: true }));
 
               if (activeDraftKey) {
                 if (nextValue === initialValue) {
                   removeMarkdownDraft(activeDraftKey);
                 } else {
-                  writeMarkdownDraft(activeDraftKey, nextValue);
+                  writeMarkdownDraft(activeDraftKey, nextValue, initialValue);
                 }
               }
             }
@@ -1626,7 +1636,7 @@ export function MarkdownEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [draftKey, imageUploadEnabled, initialValue, localDrafts, minHeight, name, showLineNumbers]);
+  }, [draftKey, imageUploadEnabled, initialValue, localDrafts, minHeight, name, showLineNumbers, sourceUpdatedAt]);
 
   useEffect(() => {
     if (!linkMenu) return;
@@ -1706,6 +1716,7 @@ export function MarkdownEditor({
       removeDraftSubmit(key);
     }
     setRestoredDraftAt(null);
+    setConflictingDraft(null);
     setValue(initialValue);
     setLinkMenu(null);
     setLinkSuggestions([]);
@@ -1799,12 +1810,30 @@ export function MarkdownEditor({
     const key = draftKeyRef.current;
     if (key) removeMarkdownDraft(key);
     setRestoredDraftAt(null);
+    setConflictingDraft(null);
     setValue(initialValue);
     viewRef.current?.dispatch({
       changes: {
         from: 0,
         to: viewRef.current.state.doc.length,
         insert: initialValue
+      },
+      annotations: previewOnly
+    });
+  }
+
+  function restoreConflictingDraft() {
+    if (!conflictingDraft) return;
+    setConflictingDraft(null);
+    setRestoredDraftAt(conflictingDraft.updatedAt);
+    setValue(conflictingDraft.value);
+    const key = draftKeyRef.current;
+    if (key) writeMarkdownDraft(key, conflictingDraft.value, initialValue);
+    viewRef.current?.dispatch({
+      changes: {
+        from: 0,
+        to: viewRef.current.state.doc.length,
+        insert: conflictingDraft.value
       },
       annotations: previewOnly
     });
@@ -1970,6 +1999,17 @@ export function MarkdownEditor({
 
   return (
     <div className="markdown-editor">
+      {conflictingDraft && (
+        <div className="markdown-draft-notice" role="status">
+          <span>The server content changed after this local draft. The latest server version is shown.</span>
+          <button type="button" className="secondary" onClick={restoreConflictingDraft}>
+            Restore local draft
+          </button>
+          <button type="button" className="secondary" onClick={discardDraft}>
+            Discard local draft
+          </button>
+        </div>
+      )}
       {restoredDraftAt && (
         <div className="markdown-draft-notice">
           <span>Draft restored from {formatDraftTime(restoredDraftAt)}.</span>

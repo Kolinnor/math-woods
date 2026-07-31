@@ -133,6 +133,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                   initialValue={problem.bodyMarkdown}
                   draftKey={`problem:${problem.id}:statement`}
                   resetSignal={problem.version}
+                  sourceUpdatedAt={problem.updatedAt.getTime()}
                 />
               </div>
               <div className="grid gap-4 md:grid-cols-[1fr_0.85fr]">

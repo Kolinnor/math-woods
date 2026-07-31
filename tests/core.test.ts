@@ -12,8 +12,11 @@ import {
   parseMarkdownDocument
 } from "../lib/frontmatter.ts";
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
+import { markdownDraftConflictsWithSource } from "../lib/markdown-drafts.ts";
 import {
   MAX_CONCEPT_EXERCISES,
+  parseConceptExerciseCount,
+  parseConceptExerciseCountMode,
   parseConceptExerciseIds,
   parseMinimumConceptExercises
 } from "../lib/concept-exercises.ts";
@@ -292,6 +295,30 @@ assert.equal(wikiLinkMarkup("Category", "this is a category"), "[[Category|this 
 assert.equal(wikiLinkMarkup("Category", "Category"), "[[Category|Category]]");
 assert.equal(problemLinkMarkup("A problem slug", "this problem"), "[this problem](/problems/a-problem-slug)");
 assert.equal(markdownExcerpt("Use [[polynomial|polynomials]] and $x^2$.", "fallback"), "Use polynomials and formula .");
+assert.equal(
+  markdownDraftConflictsWithSource(
+    { value: "Local edit", updatedAt: 100, baseValue: "Old server text" },
+    "New server text",
+    200
+  ),
+  true
+);
+assert.equal(
+  markdownDraftConflictsWithSource(
+    { value: "Local edit", updatedAt: 300, baseValue: "Current server text" },
+    "Current server text",
+    200
+  ),
+  false
+);
+assert.equal(
+  markdownDraftConflictsWithSource(
+    { value: "Legacy local edit", updatedAt: 100 },
+    "New server text",
+    200
+  ),
+  true
+);
 
 const baseProblemSnapshot: ProblemRevisionSnapshot = {
   schemaVersion: 1,
@@ -1657,6 +1684,14 @@ assert.equal(parseMinimumConceptExercises(undefined), 0);
 assert.equal(parseMinimumConceptExercises("3"), 3);
 assert.equal(parseMinimumConceptExercises("2.5"), 0);
 assert.equal(parseMinimumConceptExercises("999"), MAX_CONCEPT_EXERCISES);
+assert.equal(parseConceptExerciseCount(undefined), null);
+assert.equal(parseConceptExerciseCount(""), null);
+assert.equal(parseConceptExerciseCount("0"), 0);
+assert.equal(parseConceptExerciseCount("4"), 4);
+assert.equal(parseConceptExerciseCount("2.5"), null);
+assert.equal(parseConceptExerciseCount("999"), MAX_CONCEPT_EXERCISES);
+assert.equal(parseConceptExerciseCountMode("at-most"), "at-most");
+assert.equal(parseConceptExerciseCountMode("unexpected"), "at-least");
 
 const multilingualHints = [
   {

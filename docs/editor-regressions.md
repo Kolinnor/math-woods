@@ -6,6 +6,26 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-07-31 - Local drafts must not hide newer server edits
+
+Symptom:
+
+- A concept or problem changed by another contributor displayed the new text in its viewer, but opening the editor
+  could silently restore an older local browser draft instead.
+
+Root cause:
+
+- Markdown drafts stored their own update time, but not the server value from which they were created.
+- Draft restoration treated every value different from the current server content as recoverable, even when the server
+  had changed after that draft was written.
+
+Guardrail:
+
+- Persist the initial server value with new local drafts and compare it when the editor is reopened.
+- Edit pages should also provide the server update time so legacy drafts can be recognized as stale.
+- When a local draft conflicts with newer server content, show the latest server version by default and preserve an
+  explicit option to restore or discard the local draft. Never silently overwrite either version.
+
 ## 2026-07-27 - Heading shortcuts must not capture Shift-only symbols
 
 Symptom:

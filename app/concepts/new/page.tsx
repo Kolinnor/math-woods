@@ -1,4 +1,5 @@
 import { createConceptAction } from "@/lib/actions/concept-actions";
+import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
@@ -95,7 +96,10 @@ export default async function NewConceptPage({
             showSpoilerToggle={false}
           />
           <label className="grid gap-2">
-            <span className="text-sm font-medium">Aliases</span>
+            <span className="field-label-with-help text-sm font-medium">
+              Aliases
+              <FieldHelp text="Alternative names for this concept. Separate aliases with commas or line breaks; spaces around each alias are ignored. Example: cyclic group, monogenic group." />
+            </span>
             <input name="aliases" />
           </label>
         </div>

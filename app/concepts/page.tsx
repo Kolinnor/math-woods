@@ -6,7 +6,11 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { getCurrentUser } from "@/lib/auth";
-import { MAX_CONCEPT_EXERCISES, parseMinimumConceptExercises } from "@/lib/concept-exercises";
+import {
+  MAX_CONCEPT_EXERCISES,
+  parseConceptExerciseCount,
+  parseConceptExerciseCountMode
+} from "@/lib/concept-exercises";
 import { prisma } from "@/lib/db";
 import {
   coarseDomainForCode,
@@ -57,6 +61,8 @@ export default async function ConceptsPage({
   searchParams: Promise<{
     q?: string;
     domain?: string;
+    exerciseCount?: string;
+    exerciseCountMode?: string;
     minExercises?: string;
     problemLinks?: string;
     sort?: string;
@@ -69,6 +75,8 @@ export default async function ConceptsPage({
   const {
     q = "",
     domain = "",
+    exerciseCount = "",
+    exerciseCountMode = "",
     minExercises = "",
     status = "",
     sort = "",
@@ -76,7 +84,8 @@ export default async function ConceptsPage({
   } = await searchParams;
   const query = q.trim();
   const sortValue = parseConceptSort(sort);
-  const minimumExerciseCount = parseMinimumConceptExercises(minExercises);
+  const exerciseCountValue = parseConceptExerciseCount(exerciseCount || minExercises);
+  const exerciseCountModeValue = parseConceptExerciseCountMode(exerciseCountMode);
   const canFilterByProblemLinks = Boolean(user && canUseAdminTools(user));
   const problemLinkFilter = canFilterByProblemLinks ? parseProblemLinkFilter(problemLinks) : "all";
   const domainValue = domain ? parseDomainCode(domain) : undefined;
@@ -107,17 +116,23 @@ export default async function ConceptsPage({
             select: { targetSlug: true }
           })
         ).map((link) => link.targetSlug);
-  const conceptsMeetingExerciseMinimum = minimumExerciseCount > 0
-    ? (
+  const exerciseCountFilterActive = exerciseCountValue !== null && !(
+    exerciseCountModeValue === "at-least" && exerciseCountValue === 0
+  );
+  const exerciseCountBoundaryConceptIds = !exerciseCountFilterActive || exerciseCountValue === null
+    ? []
+    : (
         await prisma.conceptExercise.groupBy({
           by: ["conceptId"],
           having: {
-            conceptId: { _count: { gte: minimumExerciseCount } }
+            conceptId: {
+              _count: exerciseCountModeValue === "at-most"
+                ? { gt: exerciseCountValue }
+                : { gte: exerciseCountValue }
+            }
           }
         })
-      )
-        .map((group) => group.conceptId)
-    : [];
+      ).map((group) => group.conceptId);
   const where: Prisma.ConceptWhereInput = {
     language: preferredLanguage,
     ...(query
@@ -131,7 +146,11 @@ export default async function ConceptsPage({
       : {}),
     ...domainWhere,
     ...(statusValue ? { status: statusValue } : {}),
-    ...(minimumExerciseCount > 0 ? { id: { in: conceptsMeetingExerciseMinimum } } : {}),
+    ...(!exerciseCountFilterActive
+      ? {}
+      : exerciseCountModeValue === "at-most"
+        ? { id: { notIn: exerciseCountBoundaryConceptIds } }
+        : { id: { in: exerciseCountBoundaryConceptIds } }),
     ...(problemLinkFilter === "with"
       ? { slug: { in: linkedConceptSlugs } }
       : problemLinkFilter === "without"
@@ -309,19 +328,28 @@ export default async function ConceptsPage({
             <option value="without">{t.concepts.withoutLinkedProblems}</option>
           </select>
         )}
-        <label className="concept-min-exercises-filter">
-          <span>{t.concepts.minimumExercisesPrefix}</span>
-          <input
-            aria-label={t.concepts.minimumExercisesAriaLabel}
-            defaultValue={minimumExerciseCount || ""}
-            max={MAX_CONCEPT_EXERCISES}
-            min={1}
-            name="minExercises"
-            placeholder="X"
-            type="number"
-          />
-          <span>{t.concepts.minimumExercisesSuffix}</span>
-        </label>
+        <div className="concept-exercise-count-filter">
+          <span className="concept-exercise-count-label">{t.concepts.exerciseCountLabel}</span>
+          <div className="concept-exercise-count-controls">
+            <select
+              aria-label={t.concepts.exerciseCountModeAriaLabel}
+              defaultValue={exerciseCountModeValue}
+              name="exerciseCountMode"
+            >
+              <option value="at-least">{t.concepts.exerciseCountAtLeast}</option>
+              <option value="at-most">{t.concepts.exerciseCountAtMost}</option>
+            </select>
+            <input
+              aria-label={t.concepts.exerciseCountAriaLabel}
+              defaultValue={exerciseCountValue ?? ""}
+              max={MAX_CONCEPT_EXERCISES}
+              min={0}
+              name="exerciseCount"
+              placeholder="X"
+              type="number"
+            />
+          </div>
+        </div>
         <select name="sort" defaultValue={sortValue === "linked" ? "linked" : ""} aria-label={t.concepts.sortAriaLabel}>
           <option value="">{t.concepts.sortUpdated}</option>
           <option value="linked">{t.concepts.sortMostLinked}</option>
