@@ -4,7 +4,9 @@ import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownInline } from "@/components/MarkdownInline";
+import { problemDifficultyBars } from "@/lib/problem-difficulty";
 
 type ConceptPracticeQueueProps = {
   exercises: Array<{
@@ -13,10 +15,9 @@ type ConceptPracticeQueueProps = {
     titleHtml: string;
     difficulty: number | null;
     difficultyTone: string;
-    domainLabel: string;
     solved: boolean;
     solvedCountLabel: string;
-    blurb: string;
+    blurbHtml: string;
   }>;
   labels: {
     title: string;
@@ -101,6 +102,7 @@ export function ConceptPracticeQueue({ exercises, labels }: ConceptPracticeQueue
             exercise.difficulty === null
               ? labels.difficultyUnset
               : `${labels.difficulty} ${exercise.difficulty}/100`;
+          const difficultyLevel = problemDifficultyBars(exercise.difficulty);
 
           return (
             <li
@@ -128,20 +130,29 @@ export function ConceptPracticeQueue({ exercises, labels }: ConceptPracticeQueue
                   style={{ color: exercise.difficultyTone }}
                   title={difficultyLabel}
                 >
-                  {exercise.difficulty ?? "--"}
+                  <span className="concept-practice-queue-difficulty-value">
+                    {exercise.difficulty ?? "--"}
+                  </span>
+                  <span className="concept-practice-queue-difficulty-bars" aria-hidden="true">
+                    {[1, 2, 3, 4].map((level) => (
+                      <i
+                        key={level}
+                        style={{ background: level <= difficultyLevel ? exercise.difficultyTone : undefined }}
+                      />
+                    ))}
+                  </span>
                 </span>
                 <span className="concept-practice-queue-title">
                   <MarkdownInline html={exercise.titleHtml} />
                 </span>
-                <span className="concept-practice-queue-row-meta">
-                  <span className="concept-practice-queue-domain">{exercise.domainLabel}</span>
-                  {exercise.solved && (
+                {exercise.solved && (
+                  <span className="concept-practice-queue-row-meta">
                     <span className="concept-practice-queue-solved">
                       <Check size={14} strokeWidth={2.5} aria-hidden="true" />
                       {labels.solved}
                     </span>
-                  )}
-                </span>
+                  </span>
+                )}
               </button>
 
               {isOpen && (
@@ -151,7 +162,9 @@ export function ConceptPracticeQueue({ exercises, labels }: ConceptPracticeQueue
                   role="region"
                   aria-labelledby={headerId}
                 >
-                  <p>{exercise.blurb}</p>
+                  <div className="concept-practice-queue-statement">
+                    <MarkdownBlock html={exercise.blurbHtml} />
+                  </div>
                   <div className="concept-practice-queue-actions">
                     <Link href={`/problems/${exercise.slug}`} className="concept-practice-queue-open">
                       {labels.open}

@@ -657,11 +657,13 @@ export default async function ProblemPage({
             )}
             {selectedHints.length > 0 && (
               <ProblemHints
-                hints={selectedHints.map((hint) => ({
+                hints={selectedHints.map((hint, index) => ({
                   id: hint.id,
                   html: hint.bodyHtml,
-                  languageLabel: contentLanguageLabel(hint.language),
-                  isLanguageFallback: hint.isLanguageFallback,
+                  label: t.problemDetail.hint(index + 1),
+                  fallbackLabel: hint.isLanguageFallback
+                    ? t.problemDetail.hintLanguageFallback(contentLanguageLabel(hint.language))
+                    : null,
                   translateHref:
                     canEditCurrentProblem && hint.isLanguageFallback
                       ? `/problems/${problem.slug}?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(
@@ -670,8 +672,6 @@ export default async function ProblemPage({
                       : null
                 }))}
                 labels={{
-                  hint: t.problemDetail.hint,
-                  fallback: t.problemDetail.hintLanguageFallback,
                   showFirst: t.problemDetail.showHint,
                   showNext: t.problemDetail.showNextHint,
                   guidance: t.problemDetail.hintRevealGuidance,

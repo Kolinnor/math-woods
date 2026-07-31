@@ -273,10 +273,7 @@ export async function createProblemHintAction(problemId: number, problemSlug: st
 }
 
 export async function createProblemHintFromProblemAction(problemId: number, formData: FormData) {
-  const problem = await createProblemHint(problemId, formData);
-  redirect(
-    `${contentLanguageViewHref("/problems", problem.slug, problem.language, { hint: "created" })}#problem-hints` as Route
-  );
+  await createProblemHint(problemId, formData);
 }
 
 export async function updateProblemHintAction(hintId: number, problemSlug: string, formData: FormData) {

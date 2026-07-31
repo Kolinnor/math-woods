@@ -7,16 +7,14 @@ import { MarkdownBlock } from "@/components/MarkdownBlock";
 type ProblemHintItem = {
   id: number;
   html: string;
-  languageLabel: string;
-  isLanguageFallback: boolean;
+  label: string;
+  fallbackLabel: string | null;
   translateHref: string | null;
 };
 
 type ProblemHintsProps = {
   hints: ProblemHintItem[];
   labels: {
-    hint: (index: number) => string;
-    fallback: (language: string) => string;
     showFirst: string;
     showNext: string;
     guidance: string;
@@ -30,13 +28,13 @@ export function ProblemHints({ hints, labels }: ProblemHintsProps) {
 
   return (
     <div className="problem-hints">
-      {hints.slice(0, revealedCount).map((hint, index) => (
+      {hints.slice(0, revealedCount).map((hint) => (
         <article key={hint.id} className="hint-revealed problem-hint-revealed">
           <div className="problem-hint-heading">
-            <p className="meta">{labels.hint(index + 1)}</p>
-            {hint.isLanguageFallback && (
+            <p className="meta">{hint.label}</p>
+            {hint.fallbackLabel && (
               <span className="problem-hint-language">
-                {labels.fallback(hint.languageLabel)}
+                {hint.fallbackLabel}
               </span>
             )}
           </div>
@@ -55,12 +53,12 @@ export function ProblemHints({ hints, labels }: ProblemHintsProps) {
             <div>
               <h3>
                 <Lightbulb size={18} aria-hidden="true" />
-                {labels.hint(revealedCount + 1)}
+                {nextHint.label}
               </h3>
               <p>{labels.guidance}</p>
-              {nextHint.isLanguageFallback && (
+              {nextHint.fallbackLabel && (
                 <p className="problem-hint-fallback">
-                  {labels.fallback(nextHint.languageLabel)}
+                  {nextHint.fallbackLabel}
                 </p>
               )}
             </div>

@@ -24,6 +24,7 @@ export function LiveSearchForm({
 }: LiveSearchFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const restoredRef = useRef(false);
+  const resetPendingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -52,6 +53,12 @@ export function LiveSearchForm({
     const currentQuery = searchParams.toString();
     if (currentQuery) sessionStorage.setItem(`math-woods:filters:${persistKey}`, currentQuery);
   }, [persistKey, searchParams]);
+
+  useEffect(() => {
+    if (!resetPendingRef.current || searchParams.toString()) return;
+    resetPendingRef.current = false;
+    formRef.current?.reset();
+  }, [searchParams]);
 
   const updateUrl = () => {
     const form = formRef.current;
@@ -97,6 +104,11 @@ export function LiveSearchForm({
     if (timerRef.current) clearTimeout(timerRef.current);
     if (persistKey) sessionStorage.removeItem(`math-woods:filters:${persistKey}`);
     const targetPath = action || pathname;
+    resetPendingRef.current = true;
+    if (!searchParams.toString()) {
+      resetPendingRef.current = false;
+      formRef.current?.reset();
+    }
     startTransition(() => router.replace(targetPath as never, { scroll: false }));
   };
 

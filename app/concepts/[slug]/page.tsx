@@ -164,8 +164,8 @@ export default async function ConceptPage({
               slug: true,
               title: true,
               bodyMarkdown: true,
+              language: true,
               difficulty: true,
-              domain: true,
               authorId: true,
               translationGroupId: true
             }
@@ -270,19 +270,18 @@ export default async function ConceptPage({
         .map(async ({ problem }) => {
           const solvedUsers = solvedUsersByPracticeGroup.get(problem.translationGroupId) ?? new Set<number>();
           const externalSolvedCount = [...solvedUsers].filter((userId) => userId !== problem.authorId).length;
+          const [titleHtml, blurbHtml] = await Promise.all([
+            renderInlineMarkdown(problem.title),
+            renderMarkdownForContentLanguage(problem.bodyMarkdown, problem.language)
+          ]);
 
           return {
             ...problem,
-            titleHtml: await renderInlineMarkdown(problem.title),
-            domainLabel: translatedDomainLabel(problem.domain, t),
+            titleHtml,
             difficultyTone: problemDifficultyTone(problem.difficulty),
             solved: Boolean(user && solvedUsers.has(user.id)),
             solvedCountLabel: t.problems.solvedCount(externalSolvedCount),
-            blurb: markdownExcerpt(
-              problem.bodyMarkdown,
-              t.conceptDetail.exerciseBlurbFallback,
-              160
-            )
+            blurbHtml
           };
         })
     )
@@ -459,10 +458,9 @@ export default async function ConceptPage({
               titleHtml: exercise.titleHtml,
               difficulty: exercise.difficulty,
               difficultyTone: exercise.difficultyTone,
-              domainLabel: exercise.domainLabel,
               solved: exercise.solved,
               solvedCountLabel: exercise.solvedCountLabel,
-              blurb: exercise.blurb
+              blurbHtml: exercise.blurbHtml
             }))}
             labels={{
               title: t.conceptDetail.practiceWithExercises,

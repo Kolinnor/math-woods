@@ -11979,9 +11979,29 @@ button.relation-remove-button {
 }
 
 .concept-practice-queue-difficulty {
-  font-size: 0.88rem;
-  font-weight: 800;
-  text-align: right;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.concept-practice-queue-difficulty-value {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.concept-practice-queue-difficulty-bars {
+  display: flex;
+  gap: 2px;
+}
+
+.concept-practice-queue-difficulty-bars i {
+  background: #d6ddcf;
+  border-radius: 1px;
+  height: 8px;
+  width: 4px;
 }
 
 .concept-practice-queue-title {
@@ -12012,10 +12032,6 @@ button.relation-remove-button {
   justify-content: flex-end;
 }
 
-.concept-practice-queue-domain {
-  white-space: nowrap;
-}
-
 .concept-practice-queue-solved {
   align-items: center;
   color: var(--problem-solved);
@@ -12031,13 +12047,22 @@ button.relation-remove-button {
   padding: 0 1rem 1rem 3.85rem;
 }
 
-.concept-practice-queue-body > p {
+.concept-practice-queue-statement {
   color: var(--muted);
   font-family: var(--font-serif);
   font-size: 1rem;
   line-height: 1.5;
-  margin: 0;
   text-wrap: pretty;
+}
+
+.concept-practice-queue-statement > :first-child,
+.concept-practice-queue-statement > div > :first-child {
+  margin-top: 0;
+}
+
+.concept-practice-queue-statement > :last-child,
+.concept-practice-queue-statement > div > :last-child {
+  margin-bottom: 0;
 }
 
 .concept-practice-queue-actions {
