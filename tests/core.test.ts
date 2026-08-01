@@ -23,6 +23,10 @@ import {
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
+  buildRecommendationProfile,
+  scoreProblemRecommendation
+} from "../lib/recommendations.ts";
+import {
   defaultProblemContentTypesForMathLevel,
   isDefaultProblemContentType,
   parseProblemContentTypes,
@@ -1734,6 +1738,105 @@ assert.deepEqual(selectedFrenchHints.map((hint) => hint.isLanguageFallback), [fa
 assert.deepEqual(
   selectProblemHintsForLanguage(multilingualHints, 10).map((hint) => hint.id),
   [1, 2]
+);
+
+const recommendationNow = new Date("2026-08-01T12:00:00.000Z");
+const recommendationProfile = buildRecommendationProfile(
+  {
+    mathLevel: "UNDERGRAD",
+    mathematicalDomains: ["ALGEBRA"],
+    attempts: [
+      {
+        translationGroupId: "solved-algebra",
+        difficulty: 40,
+        domains: ["ALGEBRA"],
+        status: "SOLVED",
+        updatedAt: recommendationNow
+      },
+      {
+        translationGroupId: "blocked-topology",
+        difficulty: 80,
+        domains: ["TOPOLOGY"],
+        status: "BLOCKED",
+        updatedAt: recommendationNow
+      }
+    ],
+    favorites: []
+  },
+  recommendationNow
+);
+assert.equal(recommendationProfile.declaredDifficulty, 30);
+assert.ok(recommendationProfile.targetDifficulty > 30 && recommendationProfile.targetDifficulty < 50);
+assert.ok(recommendationProfile.difficultyConfidence > 0.3);
+assert.ok(recommendationProfile.domains.ALGEBRA.affinity > recommendationProfile.domains.TOPOLOGY.affinity);
+
+const fittingRecommendation = scoreProblemRecommendation(
+  recommendationProfile,
+  {
+    id: 1,
+    translationGroupId: "candidate",
+    difficulty: 42,
+    domains: ["ALGEBRA"],
+    qualityStatus: "REVIEWED",
+    isExercise: false,
+    createdAt: recommendationNow
+  },
+  { mathLevel: "UNDERGRAD", now: recommendationNow }
+);
+const poorRecommendation = scoreProblemRecommendation(
+  recommendationProfile,
+  {
+    id: 2,
+    translationGroupId: "poor-candidate",
+    difficulty: 95,
+    domains: ["GEOMETRY"],
+    qualityStatus: "NEEDS_WORK",
+    isExercise: false,
+    createdAt: new Date("2025-01-01T00:00:00.000Z")
+  },
+  { mathLevel: "UNDERGRAD", now: recommendationNow }
+);
+assert.ok(fittingRecommendation && poorRecommendation);
+assert.ok(fittingRecommendation.score > poorRecommendation.score);
+assert.equal(
+  fittingRecommendation.score,
+  fittingRecommendation.parts.reduce((total, part) => total + part.points, 0)
+);
+assert.equal(
+  scoreProblemRecommendation(
+    recommendationProfile,
+    {
+      id: 3,
+      translationGroupId: "already-solved",
+      difficulty: 35,
+      domains: ["ALGEBRA"],
+      qualityStatus: "REVIEWED",
+      isExercise: false,
+      createdAt: recommendationNow,
+      attemptStatus: "SOLVED"
+    },
+    { mathLevel: "UNDERGRAD", now: recommendationNow }
+  ),
+  null
+);
+const recentlyBlockedRecommendation = scoreProblemRecommendation(
+  recommendationProfile,
+  {
+    id: 4,
+    translationGroupId: "recently-blocked",
+    difficulty: 45,
+    domains: ["ALGEBRA"],
+    qualityStatus: "REVIEWED",
+    isExercise: false,
+    createdAt: recommendationNow,
+    attemptStatus: "BLOCKED",
+    attemptUpdatedAt: recommendationNow
+  },
+  { mathLevel: "UNDERGRAD", now: recommendationNow }
+);
+assert.equal(
+  recentlyBlockedRecommendation?.parts.find((part) => part.code === "recently_blocked")?.points,
+  -9
 );
 
 console.log("core tests ok");
