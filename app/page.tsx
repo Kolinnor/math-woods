@@ -73,6 +73,16 @@ function dayStart(now = new Date()) {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
+function relativeActivityTime(date: Date, locale: string, now = Date.now()) {
+  const elapsedSeconds = Math.max(0, Math.floor((now - date.getTime()) / 1000));
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+
+  if (elapsedSeconds < 60) return formatter.format(-elapsedSeconds, "second");
+  if (elapsedSeconds < 3600) return formatter.format(-Math.floor(elapsedSeconds / 60), "minute");
+  if (elapsedSeconds < 86_400) return formatter.format(-Math.floor(elapsedSeconds / 3600), "hour");
+  return formatter.format(-Math.floor(elapsedSeconds / 86_400), "day");
+}
+
 export default async function HomePage() {
   const user = await getCurrentUser();
   const [t, locale, preferredLanguage] = await Promise.all([
@@ -492,7 +502,10 @@ export default async function HomePage() {
             {friendActivity.length ? friendActivity.map((entry) => (
               <div key={`${entry.user.id}-${entry.href}-${entry.date.toISOString()}`}>
                 <UserAvatar user={entry.user} size="sm" />
-                <p><strong>{displayNameForUser(entry.user)}</strong> {entry.verb} <Link href={entry.href as Route}><AsyncMarkdownInline markdown={entry.title} /></Link></p>
+                <div className="home-friend-activity-copy">
+                  <p><strong>{displayNameForUser(entry.user)}</strong> {entry.verb} <Link href={entry.href as Route}><AsyncMarkdownInline markdown={entry.title} /></Link></p>
+                  <time dateTime={entry.date.toISOString()}>{relativeActivityTime(entry.date, locale)}</time>
+                </div>
               </div>
             )) : <p className="muted">{copy.noActivity}</p>}
           </section>

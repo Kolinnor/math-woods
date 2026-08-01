@@ -1,6 +1,8 @@
 "use client";
 
-import { GripVertical, Search, X } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
+import { GripVertical, Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState, type DragEvent, type KeyboardEvent } from "react";
 
 export type TipPickerProblem = {
@@ -24,6 +26,8 @@ type OrderedProblemPickerLabels = {
 };
 
 type OrderedProblemPickerProps = {
+  createHref?: string;
+  createLabel?: string;
   initialProblems: TipPickerProblem[];
   inputName?: string;
   labels?: Partial<OrderedProblemPickerLabels>;
@@ -67,6 +71,8 @@ function formatPickerLabel(template: string, values: { maximum?: number; title?:
 }
 
 export function OrderedProblemPicker({
+  createHref,
+  createLabel,
   initialProblems,
   inputName = "problemIds",
   labels: labelOverrides,
@@ -234,6 +240,13 @@ export function OrderedProblemPicker({
           />
         </div>
       </label>
+
+      {createHref && createLabel && (
+        <Link href={createHref as Route} className="button secondary tip-problem-create-link">
+          <Plus size={16} aria-hidden="true" />
+          {createLabel}
+        </Link>
+      )}
 
       {(suggestions.length > 0 || isSearching || (hasSearchQuery && canAddMore)) && (
         <div className="tip-problem-suggestion-menu">

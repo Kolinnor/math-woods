@@ -98,7 +98,7 @@ export default async function NewProblemPage({
 
   return (
     <ForestPageLayout
-      title={sourceProblem ? "Translation" : "New problem"}
+      title={sourceProblem ? "Translation" : isExerciseByDefault ? "New exercise" : "New problem"}
       heroImage="/art/rye.jpg"
       heroAlt="Ivan Shishkin, Rye"
       workspaceClassName={sourceProblem ? undefined : "forest-page-workspace-narrow"}

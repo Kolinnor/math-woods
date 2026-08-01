@@ -413,7 +413,7 @@ export const fr = {
       "algebraic-geometry": "Géométrie algébrique",
       geometry: "Géométrie",
       "differential-geometry": "Géométrie différentielle",
-      "general-topology": "Topologie générale",
+      "general-topology": "Topologie",
       "algebraic-topology": "Topologie algébrique",
       "real-analysis": "Analyse réelle",
       "complex-analysis": "Analyse complexe",

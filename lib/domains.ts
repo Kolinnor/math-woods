@@ -164,9 +164,12 @@ function problemDomain(
   return { ...option(value, label, domain, aliases), glyph, family, diff, year };
 }
 
-function withSubdomains(domain: ProblemDomainOption, entries: Array<[value: string, label: string]>): ProblemDomainOption {
+function withSubdomains(
+  domain: ProblemDomainOption,
+  entries: Array<[value: string, label: string, aliases?: string[]]>
+): ProblemDomainOption {
   const children = entries
-    .map(([value, label]) => option(value, label, domain.domain))
+    .map(([value, label, aliases = []]) => option(value, label, domain.domain, aliases))
     .sort((left, right) => left.label.localeCompare(right.label, "en"));
 
   return { ...domain, children };
@@ -212,10 +215,10 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
   problemDomain("geometry", "Geometry", MathDomain.GEOMETRY, "△", "geom", 2, -300, [MathDomain.GEOMETRY, "51", "51-XX", "52", "52-XX"]),
   problemDomain("differential-geometry", "Differential geometry", MathDomain.GEOMETRY, "∂", "geom", 4, 1827, ["53", "53-XX", "58", "58-XX"]),
   withSubdomains(
-    problemDomain("general-topology", "General topology", MathDomain.TOPOLOGY, "∞", "geom", 3, 1895, [MathDomain.TOPOLOGY, "54", "54-XX", "57", "57-XX"]),
+    problemDomain("general-topology", "Topology", MathDomain.TOPOLOGY, "∞", "geom", 3, 1895, [MathDomain.TOPOLOGY, "54", "54-XX", "57", "57-XX"]),
     [
       ["topology-algebraic-geometry", "Algebraic geometry"],
-      ["topology-algebraic-topology", "Algebraic topology"],
+      ["topology-algebraic-topology", "Algebraic topology", ["algebraic-topology", "55", "55-XX"]],
       ["topology-compact-sets", "Compact sets"],
       ["topology-connectedness", "Connectedness"],
       ["topology-differential-geometry", "Differential geometry"],
@@ -225,7 +228,6 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
       ["topology-riemann-surfaces", "Riemann surfaces"]
     ]
   ),
-  problemDomain("algebraic-topology", "Algebraic topology", MathDomain.TOPOLOGY, "π", "geom", 4, 1900, ["55", "55-XX"]),
   withSubdomains(
     problemDomain("real-analysis", "Real analysis", MathDomain.ANALYSIS, "ℝ", "ana", 3, 1700, [MathDomain.ANALYSIS, "26", "26-XX", "28", "28-XX", "40", "40-XX"]),
     [

@@ -60,11 +60,6 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
     alt: "Ivan Shishkin, Forest",
     painting: "Forest"
   },
-  "algebraic-topology": {
-    src: `${IMAGE_BASE}/algebraic-topology.webp`,
-    alt: "Ivan Shishkin, Forest Lodge",
-    painting: "Forest Lodge"
-  },
   "real-analysis": {
     src: `${IMAGE_BASE}/real-analysis.webp`,
     alt: "Ivan Shishkin, Pine Forest",

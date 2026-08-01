@@ -164,6 +164,8 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
               Choose the exercises shown in the practice queue. Readers see them from easiest to hardest.
             </p>
             <OrderedProblemPicker
+              createHref="/problems/new?exercise=1"
+              createLabel="Add exercise"
               initialProblems={initialExercises}
               inputName="exerciseIds"
               maxProblems={MAX_CONCEPT_EXERCISES}
