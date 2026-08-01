@@ -292,7 +292,10 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                   <UserAvatar user={{ ...selectedFriend, displayName: selectedFriend.name }} size="sm" />
                   <strong>{selectedFriend.name}</strong>
                 </Link>
-                <span className="friends-mini-chat-status"><i className={selectedFriend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />{selectedFriend.online ? data.labels.online : data.labels.offline}</span>
+                <span className={`friends-mini-chat-status ${selectedFriend.online ? "is-online" : "is-offline"}`}>
+                  <i className={selectedFriend.online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
+                  {selectedFriend.online ? data.labels.online : data.labels.offline}
+                </span>
               </div>
               <ProblemChallengeDialog
                 buttonClassName="secondary"
@@ -428,7 +431,9 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                       {friend.unreadCount > 99 ? "99+" : friend.unreadCount}
                     </small>
                   ) : (
-                    <small>{friend.online ? data.labels.online : data.labels.offline}</small>
+                    <small className={friend.online ? "friend-presence-label is-online" : "friend-presence-label is-offline"}>
+                      {friend.online ? data.labels.online : data.labels.offline}
+                    </small>
                   )}
                 </button>
               ))}

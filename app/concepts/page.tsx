@@ -223,7 +223,7 @@ export default async function ConceptsPage({
       }
       actions={
         <>
-          <Link href="/concepts/random" className="button secondary concept-browser-action-button">
+          <Link href="/concepts/random" prefetch={false} className="button secondary concept-browser-action-button">
             {t.concepts.random}
           </Link>
           <Link href="/concepts/new" className="button concept-browser-action-button">

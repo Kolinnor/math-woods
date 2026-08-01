@@ -34,6 +34,7 @@ import {
 } from "../lib/problem-content-types.ts";
 import { selectProblemHintsForLanguage } from "../lib/problem-hints.ts";
 import { buildProgressMap } from "../lib/progress.ts";
+import { pickRandomDifferent } from "../lib/random-content.ts";
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
 import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
@@ -1895,5 +1896,10 @@ assert.deepEqual(
   ["2026-08-01", "2026-08-02", "2026-08-03"]
 );
 assert.equal(dailyProblemRotationIndex(5, "2026-08-01"), dailyProblemRotationIndex(5, "2026-08-06"));
+
+assert.equal(pickRandomDifferent([], undefined, () => 0), undefined);
+assert.equal(pickRandomDifferent(["only"], "only", () => 0), "only");
+assert.equal(pickRandomDifferent(["first", "second", "third"], "first", () => 0), "second");
+assert.equal(pickRandomDifferent(["first", "second", "third"], "second", () => 0.99), "third");
 
 console.log("core tests ok");

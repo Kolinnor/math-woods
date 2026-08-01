@@ -273,6 +273,21 @@ body:has(.problem-detail-shell) {
   color: var(--mw-text);
 }
 
+.home-daily-solved-link {
+  align-self: flex-start;
+  color: var(--mw-secondary);
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+.home-daily-solved-link:hover {
+  color: var(--mw-green);
+  text-decoration-color: currentColor;
+}
+
 .home-daily-problem > div:first-child {
   padding: 22px 26px;
   position: relative;
@@ -2289,6 +2304,18 @@ a {
   gap: 0.35rem;
 }
 
+.friends-mini-chat-status.is-online,
+.friend-presence-label.is-online {
+  color: #237a3b;
+  font-weight: 750;
+}
+
+.friends-mini-chat-status.is-offline,
+.friend-presence-label.is-offline {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .friends-mini-chat-header .friend-online-dot,
 .friends-mini-chat-header .friend-offline-dot {
   height: 0.5rem;
@@ -2547,11 +2574,21 @@ a {
 }
 
 .friend-online-dot {
-  background: #5fa536;
+  background: #32a852;
+  border: 1px solid #14752f;
+  box-shadow: 0 0 0 2px rgb(50 168 82 / 18%);
 }
 
 .friend-offline-dot {
-  background: var(--line-strong);
+  background: transparent;
+  border: 2px solid var(--line-strong);
+}
+
+.friends-menu-avatar-wrap .friend-offline-dot,
+.friend-avatar-status .friend-offline-dot {
+  background: var(--panel);
+  border-color: #68776c;
+  box-shadow: 0 0 0 1px var(--panel);
 }
 
 .notification-menu {
@@ -11613,14 +11650,25 @@ button.live-search-reset:hover {
   border-top: 1px solid #d8d0bd;
 }
 
+.problem-random-button {
+  align-items: center;
+  display: inline-flex;
+  font-size: 0.8rem;
+  gap: 0.45rem;
+  justify-content: center;
+  min-height: 2.35rem;
+  width: 100%;
+}
+
 .problem-ledger-row {
   align-items: center;
   border-bottom: 1px solid #e0d8c6;
   color: inherit;
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
   grid-template-columns: minmax(0, 1fr) auto;
-  padding: 0.4rem;
+  min-height: 62px;
+  padding: 0.6rem 0.7rem;
   position: relative;
   transition: background-color 120ms ease;
 }
@@ -11633,8 +11681,8 @@ button.live-search-reset:hover {
   align-items: center;
   color: inherit;
   display: grid;
-  gap: 0.75rem;
-  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 0.9rem;
+  grid-template-columns: 60px minmax(0, 1fr);
   min-width: 0;
   padding-left: 1.55rem;
   text-decoration: none;
@@ -11649,7 +11697,7 @@ button.live-search-reset:hover {
 
 .problem-ledger-difficulty > span:first-child {
   font-family: var(--font-serif);
-  font-size: 1rem;
+  font-size: 1.08rem;
   font-weight: 650;
   line-height: 1;
 }
@@ -11669,7 +11717,7 @@ button.live-search-reset:hover {
 .problem-ledger-main {
   align-items: baseline;
   display: flex;
-  gap: 0.6rem;
+  gap: 0.75rem;
   min-width: 0;
 }
 
@@ -11677,7 +11725,7 @@ button.live-search-reset:hover {
   align-items: baseline;
   display: flex;
   flex: 0 1 auto;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 650;
   gap: 0.45rem;
   margin: 0;

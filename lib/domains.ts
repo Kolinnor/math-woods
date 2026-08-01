@@ -217,7 +217,6 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
   withSubdomains(
     problemDomain("general-topology", "Topology", MathDomain.TOPOLOGY, "∞", "geom", 3, 1895, [MathDomain.TOPOLOGY, "54", "54-XX", "57", "57-XX"]),
     [
-      ["topology-algebraic-geometry", "Algebraic geometry"],
       ["topology-algebraic-topology", "Algebraic topology", ["algebraic-topology", "55", "55-XX"]],
       ["topology-compact-sets", "Compact sets"],
       ["topology-connectedness", "Connectedness"],
@@ -244,7 +243,6 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
   withSubdomains(
     problemDomain("functional-analysis", "Functional analysis", MathDomain.ANALYSIS, "ƒ", "ana", 4, 1900, ["46", "46-XX", "47", "47-XX"]),
     [
-      ["multivariable-analysis-complex-analysis", "Complex analysis"],
       ["multivariable-analysis-differentiation", "Differentiation"],
       ["multivariable-analysis-distributions", "Distributions"],
       ["multivariable-analysis-fourier-integration", "Fourier integration"],

@@ -1,15 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { pickRandomDifferent } from "@/lib/random-content";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
-function redirectTo(path: string) {
-  return new NextResponse(null, {
+const LAST_RANDOM_CONCEPT_COOKIE = "mw_last_random_concept";
+
+function redirectTo(path: string, request: NextRequest, selectedSlug?: string) {
+  const response = new NextResponse(null, {
     status: 307,
-    headers: { Location: path }
+    headers: {
+      "Cache-Control": "private, no-store, max-age=0",
+      Location: path
+    }
   });
+  if (selectedSlug) {
+    response.cookies.set(LAST_RANDOM_CONCEPT_COOKIE, selectedSlug, {
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:"
+    });
+  }
+  return response;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const language = await getPreferredContentLanguage();
   const concepts = await prisma.concept.findMany({
     where: { status: { not: "MISSING" }, language },
@@ -17,8 +33,10 @@ export async function GET() {
   });
 
   if (!concepts.length) {
-    return redirectTo("/concepts");
+    return redirectTo("/concepts", request);
   }
-  const concept = concepts[Math.floor(Math.random() * concepts.length)];
-  return redirectTo(`/concepts/${concept.slug}`);
+  const previousSlug = request.cookies.get(LAST_RANDOM_CONCEPT_COOKIE)?.value;
+  const concept = pickRandomDifferent(concepts, concepts.find((item) => item.slug === previousSlug));
+  if (!concept) return redirectTo("/concepts", request);
+  return redirectTo(`/concepts/${concept.slug}`, request, concept.slug);
 }

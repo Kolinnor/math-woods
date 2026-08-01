@@ -9,6 +9,7 @@ import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
+import { RandomProblemButton } from "@/components/RandomProblemButton";
 import { RecommendedProblemReader } from "@/components/RecommendedProblemReader";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
@@ -516,6 +517,7 @@ export default async function ProblemsPage({
       orderBy,
       select: {
         id: true,
+        slug: true,
         translationGroupId: true,
         language: true,
         translatedFromProblemId: true
@@ -729,6 +731,10 @@ export default async function ProblemsPage({
               <span>{t.problems.searchProblems}</span>
               <input name="q" defaultValue={query} />
             </label>
+            <RandomProblemButton
+              label={t.problems.randomProblem}
+              slugs={dedupedProblems.map((problem) => problem.slug)}
+            />
             {domainValue && <input type="hidden" name="domain" value={domainValue} />}
 
             <div className="problem-filter-section">

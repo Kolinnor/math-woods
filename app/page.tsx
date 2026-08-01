@@ -29,6 +29,7 @@ export const dynamic = "force-dynamic";
 const dashboardCopy = {
   en: {
     problemOfDay: "Problem of the day",
+    showSolvedProblemOfDay: "Show problem of the day (already solved)",
     solveToday: "Solve today's problem",
     solvedToday: (count: number) => `${count} solved it today`,
     recommended: "Recommended for you",
@@ -49,6 +50,7 @@ const dashboardCopy = {
   },
   fr: {
     problemOfDay: "Problème du jour",
+    showSolvedProblemOfDay: "Voir le problème du jour (déjà résolu)",
     solveToday: "Résoudre le problème du jour",
     solvedToday: (count: number) => `${count} l'ont résolu aujourd'hui`,
     recommended: "Recommandés pour vous",
@@ -414,6 +416,12 @@ export default async function HomePage() {
               <div className="home-daily-art" aria-hidden="true">
                 <img src={dailyProblemImageUrl} alt="" style={{ objectPosition: dailyProblemImagePosition }} />
               </div>
+            </Link>
+          )}
+
+          {dailyProblem && dailyProblemIsSolved && (
+            <Link href={`/problems/${dailyProblem.slug}`} className="home-daily-solved-link">
+              {copy.showSolvedProblemOfDay}
             </Link>
           )}
 
