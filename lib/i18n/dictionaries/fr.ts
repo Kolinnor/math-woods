@@ -647,7 +647,7 @@ export const fr = {
         date: "Date historique"
       },
       showSubdomains: "Afficher les sous-domaines de {domain}",
-      solvedCount: (done: number, total: number) => `${done} sur ${total} résolus`
+      solvedCount: "{done} sur {total} résolus"
     },
     domainPicker: {
       domains: "Domaines",

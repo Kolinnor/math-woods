@@ -642,7 +642,7 @@ export const en = {
         date: "Historical date"
       },
       showSubdomains: "Show {domain} subdomains",
-      solvedCount: (done: number, total: number) => `${done} of ${total} solved`
+      solvedCount: "{done} of {total} solved"
     },
     domainPicker: {
       domains: "Domains",

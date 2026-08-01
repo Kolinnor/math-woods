@@ -116,7 +116,11 @@ export function ProblemDomainStrip({ domains, families, labels, locale, progress
                       total={progress[domain.value].total}
                     />
                     <span className="problem-domain-tile-count">
-                      {labels.solvedCount(progress[domain.value].done, progress[domain.value].total)}
+                      {template(
+                        template(labels.solvedCount, "done", String(progress[domain.value].done)),
+                        "total",
+                        String(progress[domain.value].total)
+                      )}
                     </span>
                   </>
                 )}
