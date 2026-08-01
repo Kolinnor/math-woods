@@ -572,7 +572,6 @@ export default async function ProblemPage({
           <h1><AsyncMarkdownInline markdown={problem.title} /></h1>
           <div className="problem-title-meta">
             <Link href={`/profile/${problem.author.username}`}>
-              <UserAvatar user={problem.author} size="sm" />
               {t.problemDetail.by} <UserName user={problem.author} />
             </Link>
             <span>·</span>

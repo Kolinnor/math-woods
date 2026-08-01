@@ -526,6 +526,7 @@ model Problem {
   incomingRelations        ProblemRelation[]            @relation("ProblemRelationTarget")
   verificationRequests     ProblemVerificationRequest[]
   tipLinks                 TipProblem[]
+  dailyProblemSchedules    DailyProblemSchedule[]
   conceptExerciseLinks     ConceptExercise[]
   challenges               ProblemChallenge[]
   challengeInvites         ProblemChallengeInvite[]
@@ -1462,6 +1463,19 @@ model TipProblem {
 
   @@id([tipId, problemId])
   @@index([tipId, position])
+  @@index([problemId])
+}
+
+model DailyProblemSchedule {
+  dateKey        String   @id @db.VarChar(10)
+  problemId      Int
+  imageUrl       String?
+  imagePositionX Int      @default(50)
+  imagePositionY Int      @default(50)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  problem        Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
   @@index([problemId])
 }
 

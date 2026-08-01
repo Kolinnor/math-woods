@@ -3,6 +3,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import type { Route } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { TipsAdminTabs } from "@/components/TipsAdminTabs";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { notFound } from "next/navigation";
@@ -131,6 +132,8 @@ export default async function TipsPage({
         </Link>
       }
     >
+      <TipsAdminTabs active="library" />
+
       <LiveSearchForm className="tip-search mb-6">
         <label className="grid gap-2">
           <span className="text-sm font-medium">Search tips</span>

@@ -8,9 +8,14 @@ import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { ProgressTicks } from "@/components/ProgressTicks";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
+import {
+  dailyProblemDateKey,
+  dailyProblemRotationIndex,
+  DEFAULT_DAILY_PROBLEM_IMAGE_URL
+} from "@/lib/daily-problem-schedule";
 import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
-import { translatedDomainLabel } from "@/lib/domains";
+import { parentProblemDomainForCode, PROBLEM_DOMAINS, translatedDomainLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { renderMarkdown } from "@/lib/markdown";
 import { buildProgressMap } from "@/lib/progress";
@@ -68,11 +73,6 @@ function dayStart(now = new Date()) {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-function dailyIndex(total: number, now = new Date()) {
-  const day = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 86_400_000);
-  return total ? day % total : 0;
-}
-
 export default async function HomePage() {
   const user = await getCurrentUser();
   const [t, locale, preferredLanguage] = await Promise.all([
@@ -100,13 +100,37 @@ export default async function HomePage() {
     isExercise: false,
     canAppearOnFrontPage: true
   };
-  const dailyCandidates = await prisma.problem.findMany({
-    where: dailyWhere,
-    orderBy: { id: "asc" },
-    select: { translationGroupId: true }
+  const todayDateKey = dailyProblemDateKey();
+  const scheduledDailyProblem = await prisma.dailyProblemSchedule.findUnique({
+    where: { dateKey: todayDateKey },
+    include: {
+      problem: {
+        select: {
+          translationGroupId: true,
+          status: true,
+          listed: true,
+          isExercise: true
+        }
+      }
+    }
   });
+  const scheduledDailyGroup =
+    scheduledDailyProblem?.problem.status === "PUBLISHED"
+    && scheduledDailyProblem.problem.listed
+    && !scheduledDailyProblem.problem.isExercise
+      ? scheduledDailyProblem.problem.translationGroupId
+      : null;
+  const dailyCandidates = scheduledDailyGroup
+    ? []
+    : await prisma.problem.findMany({
+        where: dailyWhere,
+        orderBy: { id: "asc" },
+        select: { translationGroupId: true }
+      });
   const dailyGroups = [...new Set(dailyCandidates.map((problem) => problem.translationGroupId))];
-  const chosenDailyGroup = dailyGroups[dailyIndex(dailyGroups.length)] ?? null;
+  const chosenDailyGroup = scheduledDailyGroup
+    ?? dailyGroups[dailyProblemRotationIndex(dailyGroups.length, todayDateKey)]
+    ?? null;
   const dailyTranslations = chosenDailyGroup
     ? await prisma.problem.findMany({
         where: { translationGroupId: chosenDailyGroup, status: "PUBLISHED", listed: true },
@@ -122,6 +146,16 @@ export default async function HomePage() {
       orderBy: { createdAt: "desc" },
       include: { author: true }
     }));
+  const usesScheduledDailyProblem = Boolean(
+    scheduledDailyGroup && dailyProblem?.translationGroupId === scheduledDailyGroup
+  );
+  const dailyProblemImageUrl = usesScheduledDailyProblem
+    ? scheduledDailyProblem?.imageUrl || DEFAULT_DAILY_PROBLEM_IMAGE_URL
+    : DEFAULT_DAILY_PROBLEM_IMAGE_URL;
+  const dailyProblemImagePosition = tipImageObjectPosition(
+    usesScheduledDailyProblem ? scheduledDailyProblem?.imagePositionX : 50,
+    usesScheduledDailyProblem ? scheduledDailyProblem?.imagePositionY : 50
+  );
 
   const [recommendedData, tip, recentProblems, explorations, friendships] = await Promise.all([
     user ? recommendationsForUser(user.id, 5, preferredLanguage) : null,
@@ -178,9 +212,17 @@ export default async function HomePage() {
       : [],
     user
       ? prisma.problem.findMany({
-          where: { status: "PUBLISHED", listed: true, isExercise: false, language: preferredLanguage },
+          where: { status: "PUBLISHED", listed: true, language: preferredLanguage },
           distinct: ["translationGroupId"],
-          select: { translationGroupId: true, domain: true }
+          select: {
+            translationGroupId: true,
+            domain: true,
+            domains: {
+              orderBy: { position: "asc" },
+              take: 1,
+              select: { mscCode: true }
+            }
+          }
         })
       : [],
     user
@@ -263,12 +305,20 @@ export default async function HomePage() {
   const dailyProblemIsSolved = Boolean(
     dailyProblem && solvedSet.has(dailyProblem.translationGroupId)
   );
-  const progressMap = buildProgressMap(allProblemGroups, solvedSet, (problem) => problem.domain);
+  const progressMap = buildProgressMap(allProblemGroups, solvedSet, (problem) =>
+    parentProblemDomainForCode(problem.domains[0]?.mscCode ?? problem.domain)?.value ?? String(problem.domain)
+  );
   const progress = [...progressMap.entries()]
     .map(([domain, value]) => ({ domain, ...value }))
-    .sort((left, right) => right.total - left.total)
+    .sort((left, right) =>
+      right.total - left.total
+      || translatedDomainLabel(left.domain, t.home.domainLabels).localeCompare(
+        translatedDomainLabel(right.domain, t.home.domainLabels),
+        locale
+      )
+    )
     .slice(0, 5);
-  const totalSolved = solvedSet.size;
+  const totalSolved = allProblemGroups.filter((problem) => solvedSet.has(problem.translationGroupId)).length;
   const friendActivity = [
     ...friendProblems.map((entry) => ({
       date: entry.createdAt,
@@ -351,7 +401,9 @@ export default async function HomePage() {
                   <small>{copy.solvedToday(dailySolvers.length)}</small>
                 </div>
               </div>
-              <div className="home-daily-art" aria-hidden="true" />
+              <div className="home-daily-art" aria-hidden="true">
+                <img src={dailyProblemImageUrl} alt="" style={{ objectPosition: dailyProblemImagePosition }} />
+              </div>
             </Link>
           )}
 
@@ -431,7 +483,7 @@ export default async function HomePage() {
                   <ProgressTicks done={entry.done} total={entry.total} />
                 </div>
               ))}
-              <Link href="/problems" className="home-all-domains">{copy.allDomains(progressMap.size)}</Link>
+              <Link href="/problems" className="home-all-domains">{copy.allDomains(PROBLEM_DOMAINS.length)}</Link>
               <p className="home-authored-solves">{copy.authoredSolves(authoredSolves.length)}</p>
             </section>
           )}

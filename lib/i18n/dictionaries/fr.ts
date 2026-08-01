@@ -633,6 +633,8 @@ export const fr = {
     domainBrowser: {
       title: "Parcourir par domaine",
       allDomains: "tous les domaines",
+      showAllDomains: "Afficher tous les domaines",
+      collapseDomains: "Afficher moins de domaines",
       sortBy: "par {label}",
       sortLabels: {
         family: "thème",

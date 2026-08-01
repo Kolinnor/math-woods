@@ -33,12 +33,28 @@ type TipImageFieldProps = {
   initialImageUrl: string | null;
   initialPositionX: number;
   initialPositionY: number;
+  defaultImageUrl?: string;
+  defaultImageLabel?: string;
+  inputNames?: {
+    imageUrl: string;
+    imagePositionX: string;
+    imagePositionY: string;
+  };
+  saveLabel?: string;
 };
 
 export function TipImageField({
   initialImageUrl,
   initialPositionX,
-  initialPositionY
+  initialPositionY,
+  defaultImageUrl = DEFAULT_TIP_IMAGE_URL,
+  defaultImageLabel = "Oak Grove",
+  inputNames = {
+    imageUrl: "imageUrl",
+    imagePositionX: "imagePositionX",
+    imagePositionY: "imagePositionY"
+  },
+  saveLabel = "Save the tip"
 }: TipImageFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState(initialImageUrl ?? "");
@@ -57,7 +73,7 @@ export function TipImageField({
   const [previewFailed, setPreviewFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const effectiveImageUrl = imageUrl.trim() || DEFAULT_TIP_IMAGE_URL;
+  const effectiveImageUrl = imageUrl.trim() || defaultImageUrl;
   const objectPosition = tipImageObjectPosition(positionX, positionY);
 
   function clampPosition(position: number) {
@@ -125,7 +141,7 @@ export function TipImageField({
 
       setImageUrl(publicUrl);
       setPreviewFailed(false);
-      setMessage("Image uploaded. Save the tip to keep it.");
+      setMessage(`Image uploaded. ${saveLabel} to keep it.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Image upload failed.");
     } finally {
@@ -175,10 +191,10 @@ export function TipImageField({
         <label className="grid gap-2">
           <span className="text-sm font-medium">Image</span>
           <input
-            name="imageUrl"
+            name={inputNames.imageUrl}
             value={imageUrl}
             maxLength={1200}
-            placeholder={DEFAULT_TIP_IMAGE_URL}
+            placeholder={defaultImageUrl}
             onChange={(event) => {
               setImageUrl(event.target.value);
               setPreviewFailed(false);
@@ -187,13 +203,13 @@ export function TipImageField({
           />
         </label>
         <p className="muted text-sm">
-          Paste a secure image URL, use a local site path, or upload an image. Leave blank to use Oak Grove.
+          Paste a secure image URL, use a local site path, or upload an image. Leave blank to use {defaultImageLabel}.
         </p>
         <fieldset className="tip-image-crop-controls">
           <legend>Crop</legend>
           <p>Drag or touch the image to position it inside the square.</p>
-          <input name="imagePositionX" type="hidden" value={positionX} />
-          <input name="imagePositionY" type="hidden" value={positionY} />
+          <input name={inputNames.imagePositionX} type="hidden" value={positionX} />
+          <input name={inputNames.imagePositionY} type="hidden" value={positionY} />
           <button
             type="button"
             className="secondary"

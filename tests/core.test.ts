@@ -60,6 +60,13 @@ import {
 } from "../lib/chat-reactions.ts";
 import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
 import {
+  addDaysToDateKey,
+  dailyProblemDateKey,
+  dailyProblemRotationIndex,
+  isDailyProblemDateKey,
+  upcomingDailyProblemDateKeys
+} from "../lib/daily-problem-schedule.ts";
+import {
   DEFAULT_TIP_IMAGE_POSITION,
   DEFAULT_TIP_IMAGE_URL,
   normalizeTipImagePosition,
@@ -1872,5 +1879,16 @@ const progressMap = buildProgressMap(
 );
 assert.deepEqual(progressMap.get("algebra"), { done: 1, total: 2 });
 assert.deepEqual(progressMap.get("topology"), { done: 1, total: 1 });
+
+assert.equal(dailyProblemDateKey(new Date("2026-08-01T21:30:00.000Z")), "2026-08-01");
+assert.equal(dailyProblemDateKey(new Date("2026-08-01T22:30:00.000Z")), "2026-08-02");
+assert.equal(addDaysToDateKey("2028-02-28", 1), "2028-02-29");
+assert.equal(addDaysToDateKey("2026-12-31", 1), "2027-01-01");
+assert.equal(isDailyProblemDateKey("2026-02-29"), false);
+assert.deepEqual(
+  upcomingDailyProblemDateKeys(new Date("2026-08-01T12:00:00.000Z"), 3),
+  ["2026-08-01", "2026-08-02", "2026-08-03"]
+);
+assert.equal(dailyProblemRotationIndex(5, "2026-08-01"), dailyProblemRotationIndex(5, "2026-08-06"));
 
 console.log("core tests ok");

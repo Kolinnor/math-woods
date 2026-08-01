@@ -34,6 +34,7 @@ function template(value: string, key: string, replacement: string) {
 export function ProblemDomainStrip({ domains, families, labels, locale, progress, selectedDomain }: ProblemDomainStripProps) {
   const [sort, setSort] = useState<SortKey>("family");
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const activeDomain = normalized(selectedDomain);
   const sortedDomains = useMemo(() => {
     return [...domains].sort((a, b) => {
@@ -51,6 +52,20 @@ export function ProblemDomainStrip({ domains, families, labels, locale, progress
         : sort === "diff"
           ? labels.sortLabels.difficulty
           : labels.sortLabels.date;
+  const visibleDomains = useMemo(() => {
+    if (expanded || sortedDomains.length <= 8) return sortedDomains;
+
+    const firstDomains = sortedDomains.slice(0, 8);
+    const activeTopLevelDomain = sortedDomains.find((domain) =>
+      matchesDomain(domain.value, domain.aliases, activeDomain)
+      || domain.children?.some((child) => matchesDomain(child.value, child.aliases, activeDomain))
+    );
+    if (!activeTopLevelDomain || firstDomains.some((domain) => domain.value === activeTopLevelDomain.value)) {
+      return firstDomains;
+    }
+
+    return [...firstDomains.slice(0, 7), activeTopLevelDomain];
+  }, [activeDomain, expanded, sortedDomains]);
 
   function choose(nextSort: SortKey) {
     setSort(nextSort);
@@ -65,6 +80,18 @@ export function ProblemDomainStrip({ domains, families, labels, locale, progress
           <Link href="/problems" scroll={false}>
             {labels.allDomains}
           </Link>
+          {domains.length > 8 && (
+            <button
+              type="button"
+              className="problem-domain-visibility-toggle"
+              aria-expanded={expanded}
+              aria-label={expanded ? labels.collapseDomains : labels.showAllDomains}
+              title={expanded ? labels.collapseDomains : labels.showAllDomains}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              <ChevronDown size={13} aria-hidden="true" />
+            </button>
+          )}
         </div>
         <div className="problem-domain-strip-actions">
           <div className="problem-domain-sort">
@@ -91,7 +118,7 @@ export function ProblemDomainStrip({ domains, families, labels, locale, progress
         </div>
       </div>
       <div className="problem-domain-tile-grid">
-        {sortedDomains.map((domain) => {
+        {visibleDomains.map((domain) => {
           const subdomains = [...(domain.children ?? [])].sort((left, right) => left.label.localeCompare(right.label, locale));
           const activeSubdomain = subdomains.find((subdomain) =>
             matchesDomain(subdomain.value, subdomain.aliases, activeDomain)

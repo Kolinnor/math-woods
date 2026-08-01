@@ -320,9 +320,23 @@ body:has(.problem-detail-shell) {
 }
 
 .home-daily-art {
-  background:
-    linear-gradient(90deg, var(--mw-surface) 0%, rgba(248, 244, 234, 0) 58%),
-    url("/art/rye.jpg") center / cover;
+  overflow: hidden;
+  position: relative;
+}
+
+.home-daily-art img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.home-daily-art::after {
+  background: linear-gradient(90deg, var(--mw-surface) 0%, rgba(248, 244, 234, 0) 58%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
 }
 
 .home-solver-stack {
@@ -1000,9 +1014,20 @@ body:has(.problem-detail-shell) .site-main {
   opacity: .78;
 }
 
-.problem-action-tile.solve,
+.problem-action-tile.solve {
+  background: var(--mw-surface);
+  border-color: var(--mw-green);
+  color: var(--mw-green);
+}
+
+.problem-action-tile.solve:hover {
+  background: var(--mw-green-tint);
+  border-color: var(--mw-green-hover);
+  color: var(--mw-green-hover);
+}
+
 .problem-action-tile.solved {
-  background: #2a7a51;
+  background: var(--mw-green);
   border-color: var(--mw-green-shadow);
   color: #fff;
 }
@@ -1245,9 +1270,11 @@ body:has(.problem-detail-shell) .site-main {
 }
 
 .home-daily-problem:hover .home-daily-art {
-  background:
-    linear-gradient(90deg, #fbf8f0 0%, rgba(251, 248, 240, 0) 58%),
-    url("/art/rye.jpg") center / cover;
+  background: transparent;
+}
+
+.home-daily-problem:hover .home-daily-art::after {
+  background: linear-gradient(90deg, #fbf8f0 0%, rgba(251, 248, 240, 0) 58%);
 }
 
 .home-progress-card .home-authored-solves {
@@ -1294,28 +1321,41 @@ body:has(.problem-detail-shell) .site-main {
 
 .home-dashboard .home-member-hero-copy,
 .problems-page-shell .problems-hero-content {
-  margin-bottom: auto;
+  margin-bottom: 0;
   margin-top: auto;
-  padding-bottom: 0;
+  padding-bottom: 1.8rem;
 }
 
 .problems-page-shell .problem-domain-tile-grid {
-  grid-auto-rows: minmax(108px, auto);
+  grid-auto-rows: 82px;
 }
 
 .problems-page-shell .problem-domain-tile {
-  align-items: start;
+  align-content: center;
+  align-items: center;
   display: grid;
-  gap: 7px;
-  grid-template-columns: 26px minmax(0, 1fr);
-  padding: 12px 13px;
+  gap: 4px 7px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  padding: 7px 9px;
   text-align: left;
 }
 
 .problems-page-shell .problem-domain-tile > span:nth-child(2) {
-  font-size: 14.5px;
+  display: -webkit-box;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.15;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.problems-page-shell .problem-domain-glyph {
+  font-size: 0.85rem;
+  height: 22px;
+  width: 22px;
 }
 
 .problems-page-shell .problem-domain-tile .mw-progress-ticks,
@@ -1330,8 +1370,9 @@ body:has(.problem-detail-shell) .site-main {
 .problems-page-shell .problem-domain-tile-count {
   color: var(--mw-tertiary);
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 400;
+  line-height: 1;
 }
 
 .problem-detail-shell .problem-rail {
@@ -9786,6 +9827,135 @@ button.domain-picker-tile > span:last-child {
   margin: 0;
 }
 
+.tips-admin-tabs {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1.4rem;
+  margin-bottom: 1.35rem;
+}
+
+.tips-admin-tabs a {
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-weight: 750;
+  margin-bottom: -1px;
+  padding: 0.65rem 0.1rem;
+}
+
+.tips-admin-tabs a:hover,
+.tips-admin-tabs a[aria-current="page"] {
+  border-bottom-color: var(--accent);
+  color: var(--ink);
+}
+
+.daily-problem-schedule-intro {
+  align-items: center;
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+.daily-problem-schedule-intro svg {
+  color: var(--accent-strong);
+  flex: 0 0 auto;
+}
+
+.daily-problem-schedule-intro p {
+  margin: 0;
+}
+
+.daily-problem-schedule-form,
+.daily-problem-schedule-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.daily-problem-schedule-day {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.daily-problem-schedule-day > header {
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 0.8rem;
+}
+
+.daily-problem-schedule-day h2,
+.daily-problem-schedule-day h3,
+.daily-problem-schedule-day p {
+  margin: 0;
+}
+
+.daily-problem-schedule-day h2 {
+  font-size: 1.25rem;
+}
+
+.daily-problem-schedule-day h3 {
+  font-size: 1rem;
+  margin-bottom: 0.55rem;
+}
+
+.daily-problem-schedule-day time {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.daily-problem-schedule-picker {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.daily-problem-schedule-picker legend {
+  font-weight: 750;
+  margin-bottom: 0.55rem;
+}
+
+.daily-problem-schedule-image .tip-image-editor {
+  grid-template-columns: minmax(9rem, 11rem) minmax(0, 1fr);
+  padding: 0.8rem;
+}
+
+.daily-problem-schedule-image .tip-image-previews {
+  width: min(11rem, 100%);
+}
+
+.daily-problem-schedule-submit {
+  background: rgb(247 244 235 / 0.94);
+  border: 1px solid var(--line);
+  bottom: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem;
+  position: sticky;
+  z-index: 5;
+}
+
+@media (max-width: 700px) {
+  .daily-problem-schedule-day > header {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .daily-problem-schedule-image .tip-image-editor {
+    grid-template-columns: 1fr;
+  }
+}
+
 .tip-main-menu-badge {
   background: var(--accent-soft);
   border: 1px solid rgba(74, 124, 89, 0.25);
@@ -10807,7 +10977,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   margin-left: auto;
   margin-right: auto;
   max-width: var(--site-content-width);
-  padding: 1.5rem 1.6rem 0.4rem;
+  padding: 1rem 1.6rem 0.25rem;
   width: 100%;
 }
 
@@ -10816,7 +10986,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   display: flex;
   gap: 1rem;
   justify-content: space-between;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.55rem;
 }
 
 .problem-domain-strip-title-row {
@@ -10841,6 +11011,30 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 
 .problem-domain-strip-title-row a:hover {
   color: #1c211b;
+}
+
+.problem-domain-visibility-toggle {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: #5a665c;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  padding: 2px;
+}
+
+.problem-domain-visibility-toggle:hover {
+  color: #1c211b;
+}
+
+.problem-domain-visibility-toggle svg {
+  transition: transform 160ms ease;
+}
+
+.problem-domain-visibility-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
 }
 
 .problem-domain-strip-actions {
@@ -11335,6 +11529,7 @@ button.live-search-reset:hover {
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr) auto;
   padding: 0.85rem 0.4rem;
+  position: relative;
   transition: background-color 120ms ease;
 }
 
@@ -12236,6 +12431,16 @@ button.live-search-reset:hover {
   position: static;
   vertical-align: middle;
   width: 1.3rem;
+}
+
+.problem-ledger-row.problem-link.problem-opened::after,
+.problem-ledger-row.problem-link.problem-solved::after {
+  height: 1.2rem;
+  left: 0.5rem;
+  margin: 0;
+  position: absolute;
+  top: 0.5rem;
+  width: 1.2rem;
 }
 
 .related-problems-section {
@@ -15606,7 +15811,7 @@ body:has(.home-dashboard) > .site-footer {
 }
 
 .problems-page-shell .problem-domain-tile-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
 }
 
 .problems-page-shell .problems-workspace {
@@ -15645,6 +15850,12 @@ body:has(.home-dashboard) > .site-footer {
   }
 }
 
+@media (max-width: 1100px) {
+  .problems-page-shell .problem-domain-tile-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .home-dashboard .home-tip-card {
     grid-template-columns: 1fr;
@@ -15673,5 +15884,97 @@ body:has(.home-dashboard) > .site-footer {
   .problems-page-shell .problems-workspace {
     padding-left: 14px;
     padding-right: 14px;
+  }
+}
+
+/* Keep the dashboard tip compact regardless of the amount of authored text. */
+.home-dashboard .home-tip-card {
+  grid-template-columns: 232px minmax(0, 1fr);
+  height: 232px;
+  min-height: 232px;
+}
+
+.home-dashboard .home-tip-image {
+  aspect-ratio: 1;
+  align-self: stretch;
+  border-bottom: 0;
+  border-right: 3px solid #5a4a2c;
+  height: 232px;
+  justify-self: stretch;
+  min-height: 0;
+  width: 232px;
+}
+
+.home-dashboard .home-tip-copy {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 18px 22px;
+}
+
+.home-dashboard .home-tip-copy h2 {
+  display: -webkit-box;
+  font-size: 1.45rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.home-dashboard .home-tip-copy > .prose-math {
+  display: -webkit-box;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  margin-top: 0.55rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.home-dashboard .home-tip-copy > .prose-math > :first-child {
+  margin-top: 0;
+}
+
+.home-dashboard .home-tip-copy > .prose-math > :last-child {
+  margin-bottom: 0;
+}
+
+.home-dashboard .home-tip-practice {
+  flex: 0 0 auto;
+  margin-top: auto;
+}
+
+@media (max-width: 600px) {
+  .home-dashboard .home-tip-card {
+    grid-template-columns: 124px minmax(0, 1fr);
+    height: 190px;
+    min-height: 190px;
+  }
+
+  .home-dashboard .home-tip-image {
+    align-self: center;
+    border-right: 2px solid #5a4a2c;
+    height: 124px;
+    justify-self: center;
+    width: 124px;
+  }
+
+  .home-dashboard .home-tip-copy {
+    padding: 14px;
+  }
+
+  .home-dashboard .home-tip-copy h2 {
+    font-size: 1.12rem;
+  }
+
+  .home-dashboard .home-tip-copy > .prose-math {
+    -webkit-line-clamp: 2;
+  }
+
+  .home-dashboard .home-tip-practice {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 7px 9px;
   }
 }
