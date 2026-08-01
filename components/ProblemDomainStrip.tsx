@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
+import { ProgressTicks } from "@/components/ProgressTicks";
 import type { ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
 import type { Dictionary, InterfaceLocale } from "@/lib/i18n/types";
 
@@ -14,6 +15,7 @@ type ProblemDomainStripProps = {
   families: Record<ProblemDomainFamily, { label: string; color: string; order: number }>;
   labels: Dictionary["problems"]["domainBrowser"];
   locale: InterfaceLocale;
+  progress?: Record<string, { done: number; total: number }>;
   selectedDomain?: string;
 };
 
@@ -29,7 +31,7 @@ function template(value: string, key: string, replacement: string) {
   return value.replace(`{${key}}`, replacement);
 }
 
-export function ProblemDomainStrip({ domains, families, labels, locale, selectedDomain }: ProblemDomainStripProps) {
+export function ProblemDomainStrip({ domains, families, labels, locale, progress, selectedDomain }: ProblemDomainStripProps) {
   const [sort, setSort] = useState<SortKey>("family");
   const [open, setOpen] = useState(false);
   const activeDomain = normalized(selectedDomain);
@@ -107,6 +109,17 @@ export function ProblemDomainStrip({ domains, families, labels, locale, selected
                   {domain.glyph}
                 </span>
                 <span>{domain.label}</span>
+                {progress?.[domain.value] && (
+                  <>
+                    <ProgressTicks
+                      done={progress[domain.value].done}
+                      total={progress[domain.value].total}
+                    />
+                    <span className="problem-domain-tile-count">
+                      {labels.solvedCount(progress[domain.value].done, progress[domain.value].total)}
+                    </span>
+                  </>
+                )}
               </Link>
               {subdomains.length > 0 && (
                 <AutoClosingDetails className="problem-domain-subdomains">

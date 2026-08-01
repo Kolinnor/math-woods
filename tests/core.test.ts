@@ -33,6 +33,7 @@ import {
   problemContentTypeWhere
 } from "../lib/problem-content-types.ts";
 import { selectProblemHintsForLanguage } from "../lib/problem-hints.ts";
+import { buildProgressMap } from "../lib/progress.ts";
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
 import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
@@ -1859,5 +1860,17 @@ assert.equal(
   recentlyBlockedRecommendation?.parts.find((part) => part.code === "recently_blocked")?.points,
   -9
 );
+
+const progressMap = buildProgressMap(
+  [
+    { translationGroupId: "algebra-1", domain: "algebra" },
+    { translationGroupId: "algebra-2", domain: "algebra" },
+    { translationGroupId: "topology-1", domain: "topology" }
+  ],
+  new Set(["algebra-2", "topology-1"]),
+  (problem) => problem.domain
+);
+assert.deepEqual(progressMap.get("algebra"), { done: 1, total: 2 });
+assert.deepEqual(progressMap.get("topology"), { done: 1, total: 1 });
 
 console.log("core tests ok");

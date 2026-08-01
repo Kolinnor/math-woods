@@ -1,6 +1,7 @@
 import { AttemptStatus, FriendshipStatus } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
+import type { Route } from "next";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Difficulty } from "@/components/Difficulty";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -12,6 +13,7 @@ import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { renderMarkdown } from "@/lib/markdown";
+import { buildProgressMap } from "@/lib/progress";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
@@ -152,7 +154,16 @@ export default async function HomePage() {
         friendship.requesterId === user.id ? friendship.addresseeId : friendship.requesterId
       )
     : [];
-  const [dailySolvers, allProblemGroups, solvedGroups, authoredSolves, friendAttempts, friendFavorites] = await Promise.all([
+  const [
+    dailySolvers,
+    allProblemGroups,
+    solvedGroups,
+    authoredSolves,
+    friendProblems,
+    friendConcepts,
+    friendExplorations,
+    friendProofs
+  ] = await Promise.all([
     dailyProblem
       ? prisma.problemAttempt.findMany({
           where: {
@@ -187,19 +198,55 @@ export default async function HomePage() {
         })
       : [],
     friendIds.length
-      ? prisma.problemAttempt.findMany({
-          where: { userId: { in: friendIds }, status: AttemptStatus.SOLVED, problem: { status: "PUBLISHED", listed: true } },
-          orderBy: { updatedAt: "desc" },
+      ? prisma.problem.findMany({
+          where: {
+            authorId: { in: friendIds },
+            status: "PUBLISHED",
+            listed: true,
+            translatedFromProblemId: null
+          },
+          orderBy: { createdAt: "desc" },
           take: 6,
-          select: { updatedAt: true, user: true, problem: { select: { slug: true, title: true } } }
+          select: { createdAt: true, isExercise: true, slug: true, title: true, author: true }
         })
       : [],
     friendIds.length
-      ? prisma.problemFavorite.findMany({
-          where: { userId: { in: friendIds }, problem: { status: "PUBLISHED", listed: true } },
+      ? prisma.concept.findMany({
+          where: {
+            createdById: { in: friendIds },
+            status: { not: "MISSING" },
+            translatedFromConceptId: null
+          },
           orderBy: { createdAt: "desc" },
           take: 6,
-          select: { createdAt: true, user: true, problem: { select: { slug: true, title: true } } }
+          select: { createdAt: true, slug: true, title: true, createdBy: true }
+        })
+      : [],
+    friendIds.length
+      ? prisma.playlist.findMany({
+          where: {
+            authorId: { in: friendIds },
+            status: "PUBLISHED",
+            visibility: "PUBLIC"
+          },
+          orderBy: { publishedAt: "desc" },
+          take: 6,
+          select: { publishedAt: true, createdAt: true, slug: true, title: true, author: true }
+        })
+      : [],
+    friendIds.length
+      ? prisma.problemProof.findMany({
+          where: {
+            authorId: { in: friendIds },
+            problem: { status: "PUBLISHED", listed: true }
+          },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+          select: {
+            createdAt: true,
+            author: true,
+            problem: { select: { slug: true, title: true } }
+          }
         })
       : []
   ]);
@@ -213,21 +260,46 @@ export default async function HomePage() {
   const tipBodyHtml = tip ? await renderMarkdown(tip.body) : "";
 
   const solvedSet = new Set(solvedGroups.map((attempt) => attempt.problem.translationGroupId));
-  const progressMap = new Map<string, { done: number; total: number }>();
-  for (const problem of allProblemGroups) {
-    const entry = progressMap.get(problem.domain) ?? { done: 0, total: 0 };
-    entry.total += 1;
-    if (solvedSet.has(problem.translationGroupId)) entry.done += 1;
-    progressMap.set(problem.domain, entry);
-  }
+  const dailyProblemIsSolved = Boolean(
+    dailyProblem && solvedSet.has(dailyProblem.translationGroupId)
+  );
+  const progressMap = buildProgressMap(allProblemGroups, solvedSet, (problem) => problem.domain);
   const progress = [...progressMap.entries()]
     .map(([domain, value]) => ({ domain, ...value }))
     .sort((left, right) => right.total - left.total)
     .slice(0, 5);
   const totalSolved = solvedSet.size;
   const friendActivity = [
-    ...friendAttempts.map((entry) => ({ ...entry, date: entry.updatedAt, verb: locale === "fr" ? "a résolu" : "solved" })),
-    ...friendFavorites.map((entry) => ({ ...entry, date: entry.createdAt, verb: locale === "fr" ? "a ajouté aux favoris" : "favorited" }))
+    ...friendProblems.map((entry) => ({
+      date: entry.createdAt,
+      href: `/problems/${entry.slug}`,
+      title: entry.title,
+      user: entry.author,
+      verb: entry.isExercise
+        ? locale === "fr" ? "a créé l'exercice" : "created the exercise"
+        : locale === "fr" ? "a créé le problème" : "created the problem"
+    })),
+    ...friendConcepts.flatMap((entry) => entry.createdBy ? [{
+      date: entry.createdAt,
+      href: `/concepts/${entry.slug}`,
+      title: entry.title,
+      user: entry.createdBy,
+      verb: locale === "fr" ? "a créé le concept" : "created the concept"
+    }] : []),
+    ...friendExplorations.map((entry) => ({
+      date: entry.publishedAt ?? entry.createdAt,
+      href: `/explorations/${entry.slug}/start`,
+      title: entry.title,
+      user: entry.author,
+      verb: locale === "fr" ? "a publié l'exploration" : "published the exploration"
+    })),
+    ...friendProofs.map((entry) => ({
+      date: entry.createdAt,
+      href: `/problems/${entry.problem.slug}`,
+      title: entry.problem.title,
+      user: entry.author,
+      verb: locale === "fr" ? "a ajouté une solution à" : "added a solution to"
+    }))
   ]
     .sort((left, right) => right.date.getTime() - left.date.getTime())
     .slice(0, 3);
@@ -256,7 +328,7 @@ export default async function HomePage() {
 
       <main className="home-dashboard-grid">
         <div className="home-dashboard-main">
-          {dailyProblem && (
+          {dailyProblem && !dailyProblemIsSolved && (
             <Link href={`/problems/${dailyProblem.slug}`} className="home-daily-problem">
               <div>
                 <p className="mw-kicker">{copy.problemOfDay}</p>
@@ -366,9 +438,9 @@ export default async function HomePage() {
           <section className="mw-card home-friend-activity">
             <h2>{copy.friends}</h2>
             {friendActivity.length ? friendActivity.map((entry) => (
-              <div key={`${entry.user.id}-${entry.problem.slug}-${entry.date.toISOString()}`}>
+              <div key={`${entry.user.id}-${entry.href}-${entry.date.toISOString()}`}>
                 <UserAvatar user={entry.user} size="sm" />
-                <p><strong>{displayNameForUser(entry.user)}</strong> {entry.verb} <Link href={`/problems/${entry.problem.slug}`}>{entry.problem.title}</Link></p>
+                <p><strong>{displayNameForUser(entry.user)}</strong> {entry.verb} <Link href={entry.href as Route}><AsyncMarkdownInline markdown={entry.title} /></Link></p>
               </div>
             )) : <p className="muted">{copy.noActivity}</p>}
           </section>

@@ -195,10 +195,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           labels={{
             message: t.social.message,
             send: t.social.send,
-            sending: t.social.sending,
-            attachImage: t.social.attachImage,
-            imageRequirements: t.social.imageRequirements,
-            removeImage: t.social.removeImage
+            sending: t.social.sending
           }}
           otherUsername={otherUser.username}
         />

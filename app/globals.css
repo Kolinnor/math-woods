@@ -1078,15 +1078,6 @@ body:has(.problem-detail-shell) .site-main {
   text-align: center;
 }
 
-.problem-rail .problem-difficulty-tile {
-  display: none;
-}
-
-.problem-rail .problem-rail-primary-duplicate,
-.problem-rail .attempted-state-button {
-  display: none;
-}
-
 @media (max-width: 960px) {
   .home-dashboard-grid,
   .problem-detail-body {
@@ -1222,6 +1213,201 @@ body:has(.problem-detail-shell) .site-main {
 
   .problem-reactions > div {
     flex-wrap: wrap;
+  }
+}
+
+/* Redesign corrections with enough specificity to beat legacy layout rules. */
+.home-dashboard .home-member-hero-copy {
+  inset: auto;
+  margin: auto;
+  max-width: 1240px;
+  padding: 0 40px;
+  width: 100%;
+}
+
+.home-dashboard .home-member-hero-copy .home-button-light {
+  background: #f6f2e6;
+  border-radius: 8px;
+  box-shadow: none;
+  color: #22201d;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 18px;
+}
+
+.home-dashboard .home-tip-image {
+  aspect-ratio: auto;
+  min-height: 220px;
+}
+
+.home-dashboard .home-tip-copy {
+  border-left: 0;
+}
+
+.home-daily-problem:hover .home-daily-art {
+  background:
+    linear-gradient(90deg, #fbf8f0 0%, rgba(251, 248, 240, 0) 58%),
+    url("/art/rye.jpg") center / cover;
+}
+
+.home-progress-card .home-authored-solves {
+  color: var(--mw-secondary);
+  display: block;
+  font-size: 13px;
+}
+
+.home-progress-card .home-authored-solves strong {
+  color: var(--mw-text);
+  font-weight: 600;
+}
+
+.home-news-list > a {
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+}
+
+.problems-page-shell .problems-hero-actions {
+  align-items: center;
+  gap: 10px;
+  margin-top: 0;
+}
+
+.problems-page-shell .problems-hero-actions .button {
+  background: #f6f2e6;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: none;
+  color: #22201d;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 0;
+  min-width: 0;
+  padding: 10px 18px;
+  text-shadow: none;
+}
+
+.problems-page-shell .problems-hero-actions .button.secondary,
+.problems-page-shell .problems-hero-actions button.secondary {
+  background: transparent;
+  border: 1px solid rgb(255 255 255 / 0.6);
+  color: #fff;
+}
+
+.home-dashboard .home-member-hero-copy,
+.problems-page-shell .problems-hero-content {
+  margin-bottom: auto;
+  margin-top: auto;
+  padding-bottom: 0;
+}
+
+.problems-page-shell .problem-domain-tile-grid {
+  grid-auto-rows: minmax(108px, auto);
+}
+
+.problems-page-shell .problem-domain-tile {
+  align-items: start;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: 26px minmax(0, 1fr);
+  padding: 12px 13px;
+  text-align: left;
+}
+
+.problems-page-shell .problem-domain-tile > span:nth-child(2) {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.problems-page-shell .problem-domain-tile .mw-progress-ticks,
+.problems-page-shell .problem-domain-tile .problem-domain-tile-count {
+  grid-column: 1 / -1;
+}
+
+.problems-page-shell .problem-domain-tile .mw-progress-ticks {
+  width: 100%;
+}
+
+.problems-page-shell .problem-domain-tile-count {
+  color: var(--mw-tertiary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.problem-detail-shell .problem-rail {
+  margin-top: 0;
+}
+
+.problem-action-tile.solved {
+  background: var(--mw-green);
+}
+
+.problem-action-tile.attempted:not(button):not(a) {
+  background: var(--mw-muted-surface);
+  border-color: #ddd5c2;
+  cursor: default;
+}
+
+.problem-action-tile.attempted:not(button):not(a):hover {
+  background: var(--mw-muted-surface);
+}
+
+.problem-rail-actions {
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-border);
+  border-radius: 11px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px;
+}
+
+.problem-rail-actions > a,
+.problem-rail-actions > button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  color: var(--mw-text);
+  display: flex;
+  font-size: 14px;
+  font-weight: 500;
+  justify-content: space-between;
+  padding: 9px 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.problem-rail-actions > a:hover,
+.problem-rail-actions > button:hover {
+  background: #efe8d8;
+}
+
+.problem-rail-actions > a > span {
+  color: var(--mw-tertiary);
+  font-size: 12.5px;
+}
+
+.problem-report-section {
+  border-top: 1px solid var(--mw-border);
+  margin-top: 32px;
+  padding-top: 18px;
+}
+
+.problem-report-section summary {
+  color: var(--mw-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .home-dashboard .home-member-hero-copy {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .problems-page-shell .problem-domain-tile-grid {
+    grid-auto-rows: minmax(112px, auto);
   }
 }
 
@@ -15443,7 +15629,7 @@ body:has(.home-dashboard) > .site-footer {
 }
 
 .problem-detail-shell .problem-rail {
-  margin-top: 127px;
+  margin-top: 0;
 }
 
 @media (max-width: 960px) {

@@ -561,6 +561,7 @@ export const fr = {
   },
   problems: {
     title: "Problèmes",
+    mixedTitle: "Problèmes et exercices",
     heroMeta: (count: number) => `${count} problème${count > 1 ? "s" : ""} / 21 domaines`,
     exerciseHeroMeta: (count: number) => `${count} exercice${count > 1 ? "s" : ""} / 21 domaines`,
     mixedHeroMeta: (count: number) => `${count} problèmes et exercices / 21 domaines`,
@@ -645,7 +646,8 @@ export const fr = {
         difficulty: "Difficulté",
         date: "Date historique"
       },
-      showSubdomains: "Afficher les sous-domaines de {domain}"
+      showSubdomains: "Afficher les sous-domaines de {domain}",
+      solvedCount: (done: number, total: number) => `${done} sur ${total} résolus`
     },
     domainPicker: {
       domains: "Domaines",

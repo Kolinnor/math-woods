@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, Send, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
-import { ChatImageAttachmentInput } from "@/components/ChatImageAttachmentInput";
 import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
 import { ChatMessageAttachment } from "@/components/ChatMessageAttachment";
 import { ChatMessageReactions } from "@/components/ChatMessageReactions";
@@ -35,8 +34,6 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const [hasChatImage, setHasChatImage] = useState(false);
-  const [imageResetSignal, setImageResetSignal] = useState(0);
   const latestMessageIdRef = useRef(0);
   const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLDivElement | null>(null);
@@ -132,8 +129,6 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     reactionCursorRef.current = 0;
     setMessages([]);
     setDraft("");
-    setHasChatImage(false);
-    setImageResetSignal((current) => current + 1);
     setChatError(null);
     setChatLoading(true);
 
@@ -214,7 +209,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedFriend || (!draft.trim() && !hasChatImage) || chatSending) return;
+    if (!selectedFriend || !draft.trim() || chatSending) return;
     setChatSending(true);
     setChatError(null);
 
@@ -232,8 +227,6 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         : [...current, result.message!]);
       latestMessageIdRef.current = Math.max(latestMessageIdRef.current, result.message.id);
       setDraft("");
-      setHasChatImage(false);
-      setImageResetSignal((current) => current + 1);
     } catch (error) {
       setChatError(error instanceof Error ? error.message : "Message could not be sent.");
     } finally {
@@ -397,16 +390,10 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 aria-label={data.labels.writeMessage}
                 rows={2}
               />
-              <ChatImageAttachmentInput
-                compact
-                labels={data.labels}
-                onSelectionChange={setHasChatImage}
-                resetSignal={imageResetSignal}
-              />
               <button
                 type="submit"
                 className="icon-button"
-                disabled={chatSending || (!draft.trim() && !hasChatImage)}
+                disabled={chatSending || !draft.trim()}
                 title={chatSending ? data.labels.sending : data.labels.send}
                 aria-label={chatSending ? data.labels.sending : data.labels.send}
               >

@@ -15,12 +15,14 @@ import {
 import type { ProblemChallengeLabels } from "@/lib/problem-challenges";
 
 type ProblemChallengeLauncherProps = {
+  className?: string;
   challengeLabels: ProblemChallengeLabels;
   linkLabels: ProblemChallengeLinkDialogLabels;
   problem: ProblemChallengeProblem;
 };
 
 export function ProblemChallengeLauncher({
+  className,
   challengeLabels,
   linkLabels,
   problem
@@ -40,7 +42,7 @@ export function ProblemChallengeLauncher({
     <>
       <button
         type="button"
-        className="button challenge-button w-full"
+        className={className ? `challenge-button ${className}` : "button challenge-button w-full"}
         onClick={() => chooserRef.current?.showModal()}
       >
         <Swords size={17} aria-hidden="true" />

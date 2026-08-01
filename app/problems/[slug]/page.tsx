@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { NotificationType } from "@prisma/client";
-import { Check, Heart, House, Lightbulb, MessageSquare, Pencil, Swords, Target, ThumbsUp } from "lucide-react";
+import { Check, Heart, Lightbulb, Pencil, Target, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
@@ -117,6 +117,14 @@ const redesignCopy = {
     solvedToo: "solved this too",
     next: "Next, if you liked this one",
     open: "Open it",
+    tiles: {
+      solveSub: "Mark it done",
+      solvedSub: "Just now",
+      verifySub: "Check your answer",
+      attemptSub: "Keep it in your list",
+      attemptedSub: "In progress",
+      favoriteSub: (count: number) => `${count} ${count === 1 ? "favorite" : "favorites"}`
+    },
     reactions: {
       howWasIt: "How was it?",
       tooHard: "Too hard for me",
@@ -133,6 +141,14 @@ const redesignCopy = {
     solvedToo: "ont aussi résolu ce problème",
     next: "Ensuite, si celui-ci vous a plu",
     open: "Ouvrir",
+    tiles: {
+      solveSub: "Marquer comme résolu",
+      solvedSub: "À l'instant",
+      verifySub: "Vérifier votre réponse",
+      attemptSub: "Le garder dans votre liste",
+      attemptedSub: "En cours",
+      favoriteSub: (count: number) => `${count} favori${count > 1 ? "s" : ""}`
+    },
     reactions: {
       howWasIt: "Comment était-il ?",
       tooHard: "Trop difficile pour moi",
@@ -480,8 +496,14 @@ export default async function ProblemPage({
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
   const requiresSolutionVerification = problem.verificationMode !== ProblemVerificationMode.NONE;
   const canViewSolutions = !requiresSolutionVerification || attempt?.status === "SOLVED" || canEditCurrentProblem;
-  const discussionVisible = Boolean(attempt || canEditCurrentProblem);
   const discussionPostCount = problem.thread?.posts.length ?? 0;
+  const showVerificationRail = Boolean(
+    (user &&
+      attempt?.status !== "SOLVED" &&
+      problem.verificationMode !== ProblemVerificationMode.NONE &&
+      user.id !== problem.authorId) ||
+    (ownVerificationRequests.length > 0 && attempt?.status !== "SOLVED")
+  );
   const revealSpoilerDetails = attempt?.status === "SOLVED" || isProblemAuthor;
   const showSpoilerTags = problem.spoilerTags.length > 0 && revealSpoilerDetails;
   const problemDomains = problem.domains.length
@@ -698,20 +720,20 @@ export default async function ProblemPage({
               <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)}>
                 <button type="submit" className="problem-action-tile solved" title={t.problemDetail.unmarkSolved}>
                   <Check size={25} />
-                  <span><strong>{t.problemDetail.solved}</strong><small>{t.problemDetail.unmarkSolved}</small></span>
+                  <span><strong>{t.problemDetail.solved}</strong><small>{copy.tiles.solvedSub}</small></span>
                 </button>
               </form>
             ) : problem.verificationMode === ProblemVerificationMode.NONE || user.id === problem.authorId ? (
               <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
                 <button type="submit" className="problem-action-tile solve">
                   <Check size={25} />
-                  <span><strong>{t.problemDetail.markSolved}</strong><small>{t.problemDetail.problem}</small></span>
+                  <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.solveSub}</small></span>
                 </button>
               </form>
             ) : (
               <a href="#problem-verification" className="problem-action-tile solve">
                 <Check size={25} />
-                <span><strong>{t.problemDetail.markSolved}</strong><small>{t.problemDetail.verification}</small></span>
+                <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.verifySub}</small></span>
               </a>
             )
           ) : (
@@ -722,15 +744,15 @@ export default async function ProblemPage({
           )}
           {user ? (
             attempt ? (
-              <span className="problem-action-tile attempted">
+              <span className="problem-action-tile attempted" aria-disabled="true">
                 <Target size={25} />
-                <span><strong>{t.problemDetail.attempted}</strong><small>{t.problemDetail.openDiscussion}</small></span>
+                <span><strong>{t.problemDetail.attempted}</strong><small>{copy.tiles.attemptedSub}</small></span>
               </span>
             ) : (
               <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
                 <button type="submit" className="problem-action-tile attempted">
                   <Target size={25} />
-                  <span><strong>{receivedChallenge ? t.problemDetail.challenged : t.problemDetail.startAttempting}</strong><small>{t.problemDetail.openDiscussion}</small></span>
+                  <span><strong>{receivedChallenge ? t.problemDetail.challenged : t.problemDetail.startAttempting}</strong><small>{copy.tiles.attemptSub}</small></span>
                 </button>
               </form>
             )
@@ -742,20 +764,20 @@ export default async function ProblemPage({
           )}
           {isOwnProblem ? (
             <span className="problem-action-tile favorite">
-              <House size={25} />
-              <span><strong>{t.problemDetail.yourProblem}</strong><small>{t.problemDetail.favoriteCount(favoriteCount)}</small></span>
+              <Heart size={25} />
+              <span><strong>{t.problemDetail.yourProblem}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
             </span>
           ) : user ? (
             <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
               <button type="submit" className="problem-action-tile favorite" aria-pressed={Boolean(favorite)}>
                 <Heart size={25} fill={favorite ? "currentColor" : "none"} />
-                <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{t.problemDetail.favoriteCount(favoriteCount)}</small></span>
+                <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
               </button>
             </form>
           ) : (
             <Link href="/login" className="problem-action-tile favorite">
               <Heart size={25} />
-              <span><strong>{t.problemDetail.addFavorite}</strong><small>{t.problemDetail.favoriteCount(favoriteCount)}</small></span>
+              <span><strong>{t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
             </Link>
           )}
         </section>
@@ -1030,6 +1052,22 @@ export default async function ProblemPage({
           )}
         </section>
 
+        <section id="report" className="problem-report-section zen-hide">
+          <details>
+            <summary>{t.problemDetail.report}</summary>
+            <form action={reportProblemAction.bind(null, problem.id)} className="mt-3 grid gap-2">
+              <textarea
+                name="reason"
+                placeholder={t.problemDetail.reportPlaceholder}
+                required
+              />
+              <button type="submit" className="secondary">
+                {t.problemDetail.submit}
+              </button>
+            </form>
+          </details>
+        </section>
+
       </article>
 
         <aside className="problem-rail zen-hide">
@@ -1046,137 +1084,100 @@ export default async function ProblemPage({
             </section>
           )}
 
-        <section className="action-surface" id="problem-verification">
-          {user && attempt?.status !== "SOLVED" && (
-            attempt ? (
-              <button type="button" className="secondary attempted-state-button w-full" disabled>
-                {t.problemDetail.attempted}
-              </button>
-            ) : (
-              <form action={startAttemptAction.bind(null, problem.id, problem.slug)} className="problem-rail-primary-duplicate">
-                <button
-                  type="submit"
-                  className={receivedChallenge ? "challenge-attempt-button w-full" : "secondary attempt-action-button w-full"}
-                  title={
-                    receivedChallenge
-                      ? t.social.challengeLink.challengedBy(displayNameForUser(receivedChallenge.challenger))
-                      : undefined
-                  }
-                >
-                  {receivedChallenge && <Swords size={17} aria-hidden="true" />}
-                  {receivedChallenge ? t.problemDetail.challenged : t.problemDetail.startAttempting}
-                </button>
-              </form>
-            )
+        {showVerificationRail && (
+          <section className="action-surface" id="problem-verification">
+            {user &&
+              problem.verificationMode === ProblemVerificationMode.SELF_CHECK &&
+              user.id !== problem.authorId && (
+                <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)} className="verification-box">
+                  <p className="font-medium">{t.problemDetail.verification}</p>
+                  <p className="muted text-sm">
+                    {problem.verificationPrompt || t.problemDetail.verificationPlaceholder}
+                  </p>
+                  <input name="verificationAnswer" required placeholder={t.problemDetail.shortAnswer} />
+                  <button type="submit" className="secondary w-full">
+                    <Check size={17} />
+                    {t.problemDetail.checkAndMarkSolved}
+                  </button>
+                </form>
+              )}
+            {user &&
+              problem.verificationMode === ProblemVerificationMode.AUTHOR_REVIEW &&
+              user.id !== problem.authorId && (
+                <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)} className="verification-box">
+                  <p className="font-medium">{t.problemDetail.authorReview}</p>
+                  <p className="muted text-sm">
+                    {problem.verificationPrompt || t.problemDetail.authorReviewDescription}
+                  </p>
+                  <textarea name="verificationAnswer" required placeholder={t.problemDetail.explainAnswer} />
+                  <button type="submit" className="secondary w-full">
+                    {t.problemDetail.requestVerification}
+                  </button>
+                </form>
+              )}
+            {ownVerificationRequests.length > 0 && (
+              <div className="verification-history">
+                {ownVerificationRequests.map((request) => (
+                  <Link
+                    key={request.id}
+                    href={`/problems/${problem.slug}/verification/${request.id}` as never}
+                    className="verification-thread verification-thread-link"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span>{t.problemDetail.reviewStatus(verificationStatusLabel(request.status))}</span>
+                    <span>{request.messages.length ? t.problemDetail.messages(request.messages.length) : t.problemDetail.openDiscussion}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        <nav className="problem-rail-actions" aria-label={t.problemDetail.problem}>
+          {canEditCurrentProblem && (
+            <Link href={`/problems/${problem.slug}/edit`}>{t.problemDetail.edit}</Link>
           )}
-          {attempt?.status === "SOLVED" ? (
-            <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)} className="problem-rail-primary-duplicate">
-              <button
-                type="submit"
-                className="secondary solved-state-button w-full"
-                title={t.problemDetail.unmarkSolved}
-                aria-pressed="true"
-              >
-                <Check size={17} />
-                {t.problemDetail.solved}
-              </button>
-            </form>
-          ) : problem.verificationMode === ProblemVerificationMode.NONE || user?.id === problem.authorId ? (
-            <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)} className="problem-rail-primary-duplicate">
-              <button type="submit" className="secondary w-full">
-                <Check size={17} />
-                {t.problemDetail.markSolved}
-              </button>
-            </form>
-          ) : problem.verificationMode === ProblemVerificationMode.SELF_CHECK ? (
-            <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)} className="verification-box">
-              <p className="font-medium">{t.problemDetail.verification}</p>
-              <p className="muted text-sm">
-                {problem.verificationPrompt || t.problemDetail.verificationPlaceholder}
-              </p>
-              <input name="verificationAnswer" required placeholder={t.problemDetail.shortAnswer} />
-              <button type="submit" className="secondary w-full">
-                <Check size={17} />
-                {t.problemDetail.checkAndMarkSolved}
-              </button>
-            </form>
-          ) : (
-            <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)} className="verification-box">
-              <p className="font-medium">{t.problemDetail.authorReview}</p>
-              <p className="muted text-sm">
-                {problem.verificationPrompt || t.problemDetail.authorReviewDescription}
-              </p>
-              <textarea name="verificationAnswer" required placeholder={t.problemDetail.explainAnswer} />
-              <button type="submit" className="secondary w-full">
-                {t.problemDetail.requestVerification}
-              </button>
-            </form>
-          )}
-          {isOwnProblem ? (
-            <div className="own-problem-favorite-note problem-rail-primary-duplicate">
-              <House size={17} aria-hidden="true" />
-              {t.problemDetail.yourProblem} {"\u00b7"} {t.problemDetail.favoriteCount(favoriteCount)}
-            </div>
-          ) : (
-            <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)} className="problem-rail-primary-duplicate">
-              <button
-                type="submit"
-                className={favorite ? "favorite-state-button w-full" : "secondary favorite-action-button w-full"}
-                title={favorite ? t.problemDetail.removeFavorite : t.problemDetail.addFavorite}
-                aria-pressed={Boolean(favorite)}
-              >
-                <Heart size={17} fill={favorite ? "currentColor" : "none"} />
-                {favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite} {"\u00b7"} {t.problemDetail.favoriteCount(favoriteCount)}
-              </button>
-            </form>
-          )}
-          {ownVerificationRequests.length > 0 && attempt?.status !== "SOLVED" && (
-            <div className="verification-history">
-              {ownVerificationRequests.map((request) => (
-                <Link
-                  key={request.id}
-                  href={`/problems/${problem.slug}/verification/${request.id}` as never}
-                  className="verification-thread verification-thread-link"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span>{t.problemDetail.reviewStatus(verificationStatusLabel(request.status))}</span>
-                  <span>{request.messages.length ? t.problemDetail.messages(request.messages.length) : t.problemDetail.openDiscussion}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-          <Link href={`/problems/${problem.slug}/edit`} className="button secondary">
-            {t.problemDetail.edit}
+          <Link href={`/problems/${problem.slug}/discussion`}>
+            {t.problemDetail.discussions}
+            <span>{discussionPostCount}</span>
           </Link>
-          <Link
-            href={{ pathname: `/problems/${problem.slug}/discussion` }}
-            className="button secondary"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <MessageSquare size={17} />
-            {t.problemDetail.discussions} {"\u00b7"} {t.problemDetail.messages(discussionPostCount)}
-          </Link>
-          {!discussionVisible && (
-            <p className="muted text-xs">
-              {t.problemDetail.discussionLocked}
-            </p>
+          <Link href={`/problems/${problem.slug}/history`}>{t.conceptDetail.history}</Link>
+          {user && problem.status === "PUBLISHED" && problem.listed && (
+            <ProblemChallengeLauncher
+              className="problem-rail-challenge-trigger"
+              challengeLabels={t.social.challenge}
+              linkLabels={{
+                button: t.social.challengeLink.button,
+                cancel: t.social.challengeLink.cancel,
+                close: t.social.challengeLink.close,
+                copied: t.social.challengeLink.copied,
+                copy: t.social.challengeLink.copy,
+                createAnother: t.social.challengeLink.createAnother,
+                description: t.social.challengeLink.description,
+                done: t.social.challengeLink.done,
+                errors: t.social.challengeLink.errors,
+                expiryNotice: t.social.challengeLink.expiryNotice,
+                generate: t.social.challengeLink.generate,
+                generating: t.social.challengeLink.generating,
+                linkLabel: t.social.challengeLink.linkLabel,
+                messagePlaceholder: t.social.challengeLink.messagePlaceholder,
+                problem: t.social.challengeLink.problem,
+                ready: t.social.challengeLink.ready,
+                title: t.social.challengeLink.title
+              }}
+              problem={{
+                difficulty: problem.difficulty,
+                domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
+                language: problem.language,
+                listed: problem.listed,
+                slug: problem.slug,
+                title: problem.title
+              }}
+            />
           )}
-          <details className="text-sm">
-            <summary className="cursor-pointer font-medium">{t.problemDetail.report}</summary>
-            <form action={reportProblemAction.bind(null, problem.id)} className="mt-3 grid gap-2">
-              <textarea
-                name="reason"
-                placeholder={t.problemDetail.reportPlaceholder}
-                required
-              />
-              <button type="submit" className="secondary">
-                {t.problemDetail.submit}
-              </button>
-            </form>
-          </details>
-        </section>
+          <a href="#report">{t.problemDetail.report}</a>
+        </nav>
 
         {pendingVerificationRequests.length > 0 && (
           <section className="sidebar-section verification-review-list">
@@ -1236,40 +1237,6 @@ export default async function ProblemPage({
           </section>
         )}
 
-        {user && problem.status === "PUBLISHED" && problem.listed && (
-          <section className="sidebar-section problem-rail-challenge">
-            <ProblemChallengeLauncher
-              challengeLabels={t.social.challenge}
-              linkLabels={{
-                button: t.social.challengeLink.button,
-                cancel: t.social.challengeLink.cancel,
-                close: t.social.challengeLink.close,
-                copied: t.social.challengeLink.copied,
-                copy: t.social.challengeLink.copy,
-                createAnother: t.social.challengeLink.createAnother,
-                description: t.social.challengeLink.description,
-                done: t.social.challengeLink.done,
-                errors: t.social.challengeLink.errors,
-                expiryNotice: t.social.challengeLink.expiryNotice,
-                generate: t.social.challengeLink.generate,
-                generating: t.social.challengeLink.generating,
-                linkLabel: t.social.challengeLink.linkLabel,
-                messagePlaceholder: t.social.challengeLink.messagePlaceholder,
-                problem: t.social.challengeLink.problem,
-                ready: t.social.challengeLink.ready,
-                title: t.social.challengeLink.title
-              }}
-              problem={{
-                difficulty: problem.difficulty,
-                domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
-                language: problem.language,
-                listed: problem.listed,
-                slug: problem.slug,
-                title: problem.title
-              }}
-            />
-          </section>
-        )}
       </aside>
       </div>
     </div>

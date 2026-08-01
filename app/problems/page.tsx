@@ -37,6 +37,7 @@ import {
   problemContentTypeWhere
 } from "@/lib/problem-content-types";
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
+import { buildProgressMap } from "@/lib/progress";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
@@ -473,8 +474,16 @@ export default async function ProblemsPage({
     ...(authorWhere ?? {}),
     ...(domainValue ? domainWhere(domainValue, showSpoilerTags) : {})
   };
+  const domainProgressWhere: Prisma.ProblemWhereInput = {
+    status: "PUBLISHED",
+    listed: true,
+    ...(contentTypeWhere ?? {}),
+    ...(languageWhere ?? {}),
+    ...(ownershipWhere ?? {}),
+    ...(authorWhere ?? {})
+  };
 
-  const [tags, progressProblemGroups, problemCandidateKeys] = await Promise.all([
+  const [tags, progressProblemGroups, domainProgressProblemGroups, problemCandidateKeys] = await Promise.all([
     prisma.tag.findMany({
       where: showSpoilerTags
         ? { OR: [{ problems: { some: {} } }, { spoilerProblems: { some: {} } }] }
@@ -487,6 +496,21 @@ export default async function ProblemsPage({
       distinct: ["translationGroupId"],
       select: { translationGroupId: true }
     }),
+    user
+      ? prisma.problem.findMany({
+          where: domainProgressWhere,
+          distinct: ["translationGroupId"],
+          select: {
+            translationGroupId: true,
+            domain: true,
+            domains: {
+              where: { spoiler: false },
+              orderBy: { position: "asc" },
+              select: { domain: true, mscCode: true }
+            }
+          }
+        })
+      : Promise.resolve([]),
     prisma.problem.findMany({
       where,
       orderBy,
@@ -502,6 +526,15 @@ export default async function ProblemsPage({
   const progressSolved = progressProblemGroups.filter((problem) =>
     solvedTranslationGroupIdSet.has(problem.translationGroupId)
   ).length;
+  const domainProgress = Object.fromEntries(
+    buildProgressMap(
+      domainProgressProblemGroups,
+      solvedTranslationGroupIdSet,
+      (problem) =>
+        parseDomainCode(problem.domains[0]?.mscCode ?? problem.domains[0]?.domain ?? problem.domain) ??
+        String(problem.domain).toLowerCase()
+    )
+  );
   const candidatesByTranslationGroup = new Map<string, typeof problemCandidateKeys>();
   for (const candidate of problemCandidateKeys) {
     candidatesByTranslationGroup.set(candidate.translationGroupId, [
@@ -609,6 +642,11 @@ export default async function ProblemsPage({
   const progressScope = domainValue ? translatedDomainLabel(domainValue, t) : t.common.allDomains;
   const difficultyRanges = t.problems.difficultyRanges;
   const sortOptions = t.problems.sortOptions;
+  const heroTitle = showsExercises && !showsProblems
+    ? t.problems.exerciseType
+    : showsExercises
+      ? t.problems.mixedTitle
+      : t.problems.title;
   const heroMeta = showsExercises && !showsProblems
     ? t.problems.exerciseHeroMeta(progressTotal)
     : showsExercises
@@ -639,7 +677,7 @@ export default async function ProblemsPage({
         <div className="problems-hero-overlay" />
         <div className="problems-hero-content">
           <div className="problems-hero-heading">
-            <h1>{t.problems.title}</h1>
+            <h1>{heroTitle}</h1>
             <p className="problems-hero-summary">
               {heroMeta}
               {user
@@ -679,6 +717,7 @@ export default async function ProblemsPage({
         families={PROBLEM_DOMAIN_FAMILIES}
         labels={t.problems.domainBrowser}
         locale={interfaceLocale}
+        progress={user ? domainProgress : undefined}
         selectedDomain={domainValue}
       />
 
