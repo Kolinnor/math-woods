@@ -568,15 +568,11 @@ body:has(.problem-detail-shell) {
   font-size: 32px;
 }
 
-.problems-page-shell .problems-hero-meta {
-  align-items: center;
-  display: flex;
-  flex-direction: row;
-  gap: 14px;
-}
-
-.problems-page-shell .problems-hero-meta p + p {
-  display: none;
+.problems-page-shell .problems-hero-summary {
+  color: rgb(255 255 255 / 0.82);
+  font-size: 13.5px;
+  margin: 4px 0 0;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
 }
 
 .problems-page-shell .problems-hero-actions {
@@ -1164,18 +1160,13 @@ body:has(.problem-detail-shell) .site-main {
     min-height: 180px;
   }
 
-  .problems-page-shell .problems-hero-content,
-  .problems-page-shell .problems-hero-meta {
+  .problems-page-shell .problems-hero-content {
     align-items: flex-start;
     flex-direction: column;
   }
 
   .problems-page-shell .problems-hero-content {
     justify-content: center;
-  }
-
-  .problems-page-shell .problems-hero-meta > p {
-    display: none;
   }
 
   .problems-recommendations,
@@ -15403,6 +15394,11 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
 /* Final specificity bridge for the 2026 reading redesign. */
 body:has(.home-dashboard) > .site-footer {
   display: block;
+}
+
+.home-dashboard .home-tip-image {
+  min-width: 0;
+  width: auto;
 }
 
 .home-dashboard .home-dashboard-grid {

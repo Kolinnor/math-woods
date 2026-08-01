@@ -638,32 +638,26 @@ export default async function ProblemsPage({
         <img src="/art/hero-rye.jpg" alt="Ivan Shishkin, Rye (1878)" />
         <div className="problems-hero-overlay" />
         <div className="problems-hero-content">
-          <div>
+          <div className="problems-hero-heading">
             <h1>{t.problems.title}</h1>
-          </div>
-          <div className="problems-hero-meta">
-            <p>
+            <p className="problems-hero-summary">
               {heroMeta}
+              {user
+                ? ` · ${t.problems.solvedProgress(progressSolved, progressScope, progressPercent)}`
+                : ""}
             </p>
-            {user ? (
-              <p>
-                {t.problems.solvedProgress(progressSolved, progressScope, progressPercent)}
-              </p>
-            ) : (
-              <p>{t.problems.signInProgress(progressScope)}</p>
-            )}
-            <div className="problems-hero-actions">
-              <Link href="/problems/new" className="button">
-                {t.problems.addProblem}
-              </Link>
-              <ContributionRequestDialog
-                action={createContributionRequestAction.bind(null, "PROBLEM", "/problems")}
-                buttonLabel={t.problems.requestProblem}
-                title={t.problems.requestProblem}
-                description={t.problems.requestProblemDescription}
-                placeholder={t.problems.requestProblemPlaceholder}
-              />
-            </div>
+          </div>
+          <div className="problems-hero-actions">
+            <Link href="/problems/new" className="button">
+              {t.problems.addProblem}
+            </Link>
+            <ContributionRequestDialog
+              action={createContributionRequestAction.bind(null, "PROBLEM", "/problems")}
+              buttonLabel={t.problems.requestProblem}
+              title={t.problems.requestProblem}
+              description={t.problems.requestProblemDescription}
+              placeholder={t.problems.requestProblemPlaceholder}
+            />
           </div>
         </div>
       </section>
