@@ -388,7 +388,7 @@ body:has(.problem-detail-shell) {
 }
 
 .home-dashboard .home-tip-card {
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: minmax(220px, 36%) minmax(0, 1fr);
 }
 
 .home-dashboard .home-tip-image {
@@ -15398,7 +15398,7 @@ body:has(.home-dashboard) > .site-footer {
 
 .home-dashboard .home-tip-image {
   min-width: 0;
-  width: auto;
+  width: 100%;
 }
 
 .home-dashboard .home-dashboard-grid {
@@ -15456,6 +15456,20 @@ body:has(.home-dashboard) > .site-footer {
 
   .problem-detail-shell .problem-rail {
     margin-top: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .home-dashboard .home-tip-card {
+    grid-template-columns: 1fr;
+  }
+
+  .home-dashboard .home-tip-image {
+    border-bottom: 3px solid #5a4a2c;
+    border-right: 0;
+    justify-self: center;
+    min-height: 0;
+    width: min(240px, 100%);
   }
 }
 
