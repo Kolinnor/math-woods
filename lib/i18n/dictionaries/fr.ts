@@ -605,6 +605,8 @@ export const fr = {
     contentTypes: "Contenu",
     problemType: "Problèmes",
     exerciseType: "Exercices",
+    problemBadge: "Problème",
+    exerciseBadge: "Exercice",
     exerciseTypeHelp:
       "Les exercices servent à appliquer un concept précis. Ils sont masqués par défaut dans la liste des problèmes, mais restent accessibles avec le filtre Exercices et depuis les pages des concepts auxquels ils sont liés.",
     includeSpoilers: "Inclure les spoilers",

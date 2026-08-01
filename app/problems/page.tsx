@@ -45,7 +45,7 @@ import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
-const PROBLEMS_PER_PAGE = 7;
+const PROBLEMS_PER_PAGE = 14;
 type SearchValue = string | string[] | undefined;
 type DifficultyRange = {
   value: string;
@@ -566,9 +566,7 @@ export default async function ProblemsPage({
         where: { id: { in: pageProblemIds } },
         include: {
           author: true,
-          domains: { orderBy: { position: "asc" } },
-          tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
-          spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } }
+          domains: { orderBy: { position: "asc" } }
         }
       })
     : [];
@@ -666,7 +664,8 @@ export default async function ProblemsPage({
       titleHtml: await renderInlineMarkdown(problem.title),
       bodyHtml: problem.bodyHtml,
       difficulty: problem.difficulty,
-      domain: translatedDomainLabel(problem.domains[0] ?? "OTHER", t)
+      domain: translatedDomainLabel(problem.domains[0] ?? "OTHER", t),
+      isExercise: problem.isExercise
     }))
   );
 
@@ -706,8 +705,6 @@ export default async function ProblemsPage({
           <RecommendedProblemReader
             items={recommendationItems}
             openLabel={interfaceLocale === "fr" ? "Ouvrir le problème" : "Open problem"}
-            overflowLabel={interfaceLocale === "fr" ? "Ouvrir pour lire la suite" : "Open problem to read it all"}
-            favoriteLabel={t.problemDetail.addFavorite}
           />
         </section>
       )}
@@ -917,40 +914,21 @@ export default async function ProblemsPage({
                       {problem.canAppearOnFrontPage && <span className="problem-language-badge">{t.problems.featured}</span>}
                       {problem.isExercise && <span className="problem-language-badge problem-exercise-badge">{t.problems.exerciseType}</span>}
                     </h3>
-                    <p>
+                    <span className="problem-ledger-domain">
                       {visibleDomainCodes.length
                         ? visibleDomainCodes.map((code) => translatedDomainLabel(code, t)).join(" · ")
                         : t.problems.domainHidden}
-                      {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""} ·{" "}
-                      {t.problems.solvedCount(externalSolveCount)} ·{" "}
-                      <span
-                        className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}
-                      >
-                        {t.quality[problem.qualityStatus]}
-                      </span>
-                    </p>
-                    {problem.tags.length > 0 && (
-                      <div className="problem-ledger-tags">
-                        {problem.tags.map(({ tag }) => (
-                          <span key={tag.id} className="tag">
-                            {tag.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {showSpoilerTags && problem.spoilerTags.length > 0 && (
-                      <div className="problem-ledger-tags">
-                        <span className="meta">{t.problems.spoiler}</span>
-                        {problem.spoilerTags.map(({ tag }) => (
-                          <span key={tag.id} className="tag spoiler-tag">
-                            {tag.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                      {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""}
+                    </span>
                     </div>
                   </Link>
                   <div className="problem-ledger-side">
+                    <span className="problem-ledger-solve-count">{t.problems.solvedCount(externalSolveCount)}</span>
+                    <span
+                      className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}
+                    >
+                      {t.quality[problem.qualityStatus]}
+                    </span>
                     <div className="problem-ledger-author-row">
                       <Link
                         href={problemsHref({ ...paginationParams, author: authorName }) as never}

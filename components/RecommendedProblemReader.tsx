@@ -1,10 +1,9 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Difficulty } from "@/components/Difficulty";
-import { toggleProblemFavoriteAction } from "@/lib/actions/problem-actions";
 import { problemDifficultyTone } from "@/lib/problem-difficulty";
 
 export type RecommendedProblemItem = {
@@ -15,19 +14,17 @@ export type RecommendedProblemItem = {
   bodyHtml: string;
   domain: string;
   difficulty: number | null;
+  isExercise: boolean;
 };
 
 export function RecommendedProblemReader({
-  favoriteLabel,
   items,
-  openLabel,
-  overflowLabel
+  openLabel
 }: {
-  favoriteLabel: string;
   items: RecommendedProblemItem[];
   openLabel: string;
-  overflowLabel: string;
 }) {
+  const router = useRouter();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [overflows, setOverflows] = useState(false);
   const statementRef = useRef<HTMLDivElement>(null);
@@ -36,8 +33,11 @@ export function RecommendedProblemReader({
   useEffect(() => {
     const element = statementRef.current;
     if (!element) return;
-    const check = () => setOverflows(element.scrollHeight > element.clientHeight + 2);
+    const check = () => {
+      if (element.isConnected) setOverflows(element.scrollHeight > element.clientHeight + 2);
+    };
     check();
+    void document.fonts?.ready.then(check);
     const observer = new ResizeObserver(check);
     observer.observe(element);
     const images = [...element.querySelectorAll("img")];
@@ -69,12 +69,11 @@ export function RecommendedProblemReader({
             </span>
             <span>
               <strong dangerouslySetInnerHTML={{ __html: item.titleHtml }} />
-              <small>{item.domain}</small>
             </span>
           </button>
         ))}
       </div>
-      <div className="recommendation-reader-panel">
+      <div className={`recommendation-reader-panel${selected.isExercise ? " is-exercise" : ""}`}>
         <header>
           <div>
             <p>{selected.domain}</p>
@@ -89,25 +88,27 @@ export function RecommendedProblemReader({
             </button>
           </div>
         </header>
-        <div className="recommendation-statement" ref={statementRef}>
+        <div
+          className="recommendation-statement"
+          ref={statementRef}
+          role="link"
+          tabIndex={0}
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest("a")) return;
+            router.push(`/problems/${selected.slug}`);
+          }}
+          onKeyDown={(event) => {
+            if ((event.target as HTMLElement).closest("a")) return;
+            if (event.key === "Enter") router.push(`/problems/${selected.slug}`);
+          }}
+        >
           <div className="prose-math" dangerouslySetInnerHTML={{ __html: selected.bodyHtml }} />
-          {overflows && (
-            <div className="recommendation-statement-fade">
-              <Link href={`/problems/${selected.slug}`}>{overflowLabel}</Link>
-            </div>
-          )}
+          {overflows && <span className="recommendation-statement-fade" aria-hidden="true" />}
         </div>
         <footer>
           <Link href={`/problems/${selected.slug}`} className="mw-primary-button">
             {openLabel}
           </Link>
-          <form action={toggleProblemFavoriteAction.bind(null, selected.id, selected.slug)}>
-            <button type="submit" className="button secondary">
-              <Heart size={16} />
-              {favoriteLabel}
-            </button>
-          </form>
-          <Difficulty value={selected.difficulty} compact />
         </footer>
       </div>
     </section>

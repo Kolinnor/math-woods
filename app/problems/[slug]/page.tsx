@@ -565,6 +565,9 @@ export default async function ProblemPage({
             <Link href={`/problems?domain=${encodeURIComponent(heroDomain)}`}>
               {translatedDomainLabel(heroDomain, t.home.domainLabels)}
             </Link>
+            <span className={`problem-type-badge${problem.isExercise ? " is-exercise" : ""}`}>
+              {problem.isExercise ? t.problems.exerciseBadge : t.problems.problemBadge}
+            </span>
             <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
               {t.quality[problem.qualityStatus]}
             </span>
@@ -710,7 +713,7 @@ export default async function ProblemPage({
           </div>
         )}
 
-        <section className="problem-statement reading-surface">
+        <section className={`problem-statement reading-surface${problem.isExercise ? " is-exercise" : ""}`}>
           <MarkdownBlock html={problemBodyHtml} />
         </section>
         <section className="problem-primary-actions" aria-label="Problem progress">
