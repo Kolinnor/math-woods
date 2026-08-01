@@ -76,6 +76,17 @@ enum AttemptStatus {
   REVIEW_LATER
 }
 
+enum ProblemDifficultyReaction {
+  TOO_HARD
+  TOO_EASY
+  FEELS_RIGHT
+}
+
+enum ProblemPreferenceReaction {
+  MORE_LIKE_THIS
+  LESS_LIKE_THIS
+}
+
 enum PostType {
   COMMENT
   HINT
@@ -266,6 +277,7 @@ model User {
   revisions                    PageRevision[]
   conceptTalkPosts             ConceptTalkPost[]
   attempts                     ProblemAttempt[]
+  problemReactions             ProblemReaction[]
   posts                        DiscussionPost[]
   playlists                    Playlist[]
   votes                        Vote[]
@@ -498,6 +510,7 @@ model Problem {
   author                   User                         @relation(fields: [authorId], references: [id])
   thread                   DiscussionThread?
   attempts                 ProblemAttempt[]
+  reactions                ProblemReaction[]
   playlistItems            PlaylistItem[]
   tags                     ProblemTag[]
   spoilerTags              ProblemSpoilerTag[]
@@ -748,6 +761,21 @@ model ProblemFavorite {
 
   @@id([userId, problemId])
   @@index([problemId])
+}
+
+model ProblemReaction {
+  userId               Int
+  problemId            Int
+  difficultyReaction   ProblemDifficultyReaction?
+  preferenceReaction   ProblemPreferenceReaction?
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  user                 User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem              Problem                      @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([userId, problemId])
+  @@index([problemId])
+  @@index([userId, updatedAt])
 }
 
 model ProblemHint {

@@ -1,377 +1,390 @@
-import { MathDomain } from "@prisma/client";
-import { Check } from "lucide-react";
+import { AttemptStatus, FriendshipStatus } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
-import { MarkdownInline } from "@/components/MarkdownInline";
+import { Difficulty } from "@/components/Difficulty";
+import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { ProgressTicks } from "@/components/ProgressTicks";
+import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
-import { getTranslations } from "@/lib/i18n/server";
-import type { Dictionary } from "@/lib/i18n/types";
-import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
-import { visibleProblemWhere } from "@/lib/problem-visibility";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
+import { renderMarkdown } from "@/lib/markdown";
+import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
 import { tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
 
 export const dynamic = "force-dynamic";
 
-type HomeProblem = {
-  id: number;
-  slug: string;
-  title: string;
-  titleHtml: string;
-  domain: MathDomain;
-  difficulty: number | null;
-  solved?: boolean;
-  author?: {
-    username: string;
-    displayName: string | null;
-  };
-  _count?: {
-    attempts: number;
-    favorites: number;
-  };
-};
+const dashboardCopy = {
+  en: {
+    problemOfDay: "Problem of the day",
+    solveToday: "Solve today's problem",
+    solvedToday: (count: number) => `${count} solved it today`,
+    recommended: "Recommended for you",
+    more: "more like these",
+    news: "News on Math Woods",
+    allProblems: "all problems",
+    progress: "Progress",
+    solved: (done: number, total: number) => `${done} / ${total} solved`,
+    allDomains: (count: number) => `see all ${count} domains`,
+    authoredSolves: (count: number) => `Your problems were solved ${count} times`,
+    friends: "Friends",
+    explorations: "Start an exploration",
+    steps: (count: number) => `${count} steps`,
+    tip: "Tip of the day",
+    practice: "Practice",
+    by: "by",
+    noActivity: "Your friends' recent activity will appear here."
+  },
+  fr: {
+    problemOfDay: "Problème du jour",
+    solveToday: "Résoudre le problème du jour",
+    solvedToday: (count: number) => `${count} l'ont résolu aujourd'hui`,
+    recommended: "Recommandés pour vous",
+    more: "plus de recommandations",
+    news: "Nouveautés sur Math Woods",
+    allProblems: "tous les problèmes",
+    progress: "Progression",
+    solved: (done: number, total: number) => `${done} / ${total} résolus`,
+    allDomains: (count: number) => `voir les ${count} domaines`,
+    authoredSolves: (count: number) => `Vos problèmes ont été résolus ${count} fois`,
+    friends: "Amis",
+    explorations: "Commencer une exploration",
+    steps: (count: number) => `${count} étapes`,
+    tip: "Conseil du jour",
+    practice: "S'entraîner",
+    by: "par",
+    noActivity: "L'activité récente de vos amis apparaîtra ici."
+  }
+} as const;
 
-type HomeTranslations = Dictionary["home"];
-
-function homeDomainLabel(domain: MathDomain, t: HomeTranslations) {
-  return translatedDomainLabel(domain, t.domainLabels);
+function dayStart(now = new Date()) {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-async function withRenderedTitles<T extends { title: string }>(items: T[]) {
-  return Promise.all(
-    items.map(async (item) => ({
-      ...item,
-      titleHtml: await renderInlineMarkdown(item.title)
-    }))
-  );
-}
-
-function HomeHero({
-  user,
-  resume,
-  t
-}: {
-  user: { name: string } | null;
-  resume: { title: string; slug: string } | null;
-  t: HomeTranslations["hero"];
-}) {
-  const isMember = Boolean(user);
-
-  return (
-    <section className={isMember ? "home-hero-forest home-hero-member" : "home-hero-forest"}>
-      <Image
-        src="/art/morning-in-a-pine-forest.jpg"
-        alt="Ivan Shishkin, Morning in a Pine Forest"
-        fill
-        priority
-        sizes="100vw"
-        className="home-hero-image"
-      />
-      <div className={isMember ? "home-hero-overlay home-hero-overlay-member" : "home-hero-overlay"} />
-      {user ? (
-        <div className="home-member-hero-copy">
-          <div>
-            <h1>{t.welcomeBack(user.name)}</h1>
-          </div>
-          <div className="home-hero-actions">
-            {resume && (
-              <Link href={`/problems/${resume.slug}`} className="home-button home-button-light">
-                {t.resume(resume.title)}
-              </Link>
-            )}
-            <Link href="/problems?level=mine" className="home-button home-button-ghost">
-              {t.findLevel}
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="home-guest-hero-copy">
-          <h1>{t.guestTitle}</h1>
-          <div className="home-hero-actions">
-            <Link href="/problems" className="home-button home-button-accent">
-              {t.startSolving}
-            </Link>
-            <Link href="/contributing" className="home-button home-button-ghost">
-              {t.contributeQuestion}
-            </Link>
-          </div>
-          <p className="home-art-credit">{t.artCredit}</p>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function TrailBand({ t }: { t: HomeTranslations["trail"] }) {
-  return (
-    <section className="home-trail-band" aria-label={t.ariaLabel}>
-      {t.items.map((item, index) => (
-        <div key={item}>
-          <strong>{String(index + 1).padStart(2, "0")}</strong>
-          <p>{item}</p>
-        </div>
-      ))}
-    </section>
-  );
-}
-
-function TipOfDay({
-  tip,
-  bodyHtml,
-  practice,
-  t,
-  homeT,
-  difficultyUnset,
-  solvedLabel
-}: {
-  tip: {
-    title: string;
-    imageUrl: string | null;
-    imagePositionX: number;
-    imagePositionY: number;
-  };
-  bodyHtml: string;
-  practice: HomeProblem[];
-  t: HomeTranslations["tip"];
-  homeT: HomeTranslations;
-  difficultyUnset: string;
-  solvedLabel: string;
-}) {
-  return (
-    <section className="home-tip-card">
-      <div className="home-tip-image">
-        <img
-          src={tipImageUrl(tip.imageUrl)}
-          alt=""
-          style={{ objectPosition: tipImageObjectPosition(tip.imagePositionX, tip.imagePositionY) }}
-        />
-      </div>
-      <div className="home-tip-copy">
-        <p className="home-section-kicker">{t.title}</p>
-        <h2>
-          <AsyncMarkdownInline markdown={tip.title} />
-        </h2>
-        <div className="home-tip-body prose-math" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
-        {practice.length > 0 && (
-          <>
-            <p className="home-practice-label">{t.practice}</p>
-            <div className="home-practice-list">
-              {practice.map((problem) => (
-                <Link
-                  key={problem.id}
-                  href={`/problems/${problem.slug}`}
-                  className={problem.solved ? "home-practice-problem is-solved" : "home-practice-problem"}
-                >
-                  <MarkdownInline html={problem.titleHtml} />
-                  <span className="home-practice-problem-meta">
-                    {homeDomainLabel(problem.domain, homeT)} / {problem.difficulty ?? difficultyUnset}
-                    {problem.solved && (
-                      <span className="home-practice-solved" title={solvedLabel}>
-                        <Check size={13} strokeWidth={3} aria-hidden="true" />
-                        <span className="sr-only">{solvedLabel}</span>
-                      </span>
-                    )}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function ProblemToTry({ problem, t }: { problem: HomeProblem | null; t: HomeTranslations }) {
-  return (
-    <section>
-      <div className="home-section-heading">
-        <h2>{t.problemToTry.title}</h2>
-        <Link href="/problems">{t.problemToTry.allProblems}</Link>
-      </div>
-      {problem ? (
-        <Link href={`/problems/${problem.slug}`} className="home-featured-problem">
-          <p>{homeDomainLabel(problem.domain, t)}</p>
-          <h3>
-            <MarkdownInline html={problem.titleHtml} />
-          </h3>
-          <span>
-            {t.problemToTry.difficultyLine(
-              problem.difficulty,
-              t.problemToTry.attempts(problem._count?.attempts ?? 0),
-              t.problemToTry.favorites(problem._count?.favorites ?? 0)
-            )}
-          </span>
-        </Link>
-      ) : (
-        <p className="home-empty-card">{t.problemToTry.empty}</p>
-      )}
-    </section>
-  );
-}
-
-function TrailCta({ t }: { t: HomeTranslations["cta"] }) {
-  return (
-    <section className="home-trail-cta">
-      <Image src="/art/pine-forest.jpg" alt="Ivan Shishkin, Pine Forest" fill sizes="100vw" />
-      <div className="home-trail-cta-overlay" />
-      <div>
-        <h2>{t.title}</h2>
-        <Link href="/problems?level=mine" className="home-button home-button-light">
-          {t.action}
-        </Link>
-        <p>{t.artCredit}</p>
-      </div>
-    </section>
-  );
-}
-
-function HomeFooter({ t }: { t: HomeTranslations["footer"] }) {
-  return (
-    <footer className="home-footer">
-      <div>
-        <p>{t.legal}</p>
-        <nav aria-label="Footer navigation">
-          <Link href="/about">{t.about}</Link>
-          <Link href="/suggestions">{t.suggestions}</Link>
-          <Link href="/contributing">{t.contribute}</Link>
-          <Link href={"/legal" as never}>{t.legalAndBrand}</Link>
-        </nav>
-      </div>
-    </footer>
-  );
+function dailyIndex(total: number, now = new Date()) {
+  const day = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 86_400_000);
+  return total ? day % total : 0;
 }
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  const t = await getTranslations();
-  const preferredLanguage = await getPreferredContentLanguage();
-  const baseProblemWhere = {
+  const [t, locale, preferredLanguage] = await Promise.all([
+    getTranslations(),
+    getInterfaceLocale(),
+    getPreferredContentLanguage()
+  ]);
+  const copy = dashboardCopy[locale];
+
+  const resumeAttempt = user
+    ? await prisma.problemAttempt.findFirst({
+        where: {
+          userId: user.id,
+          status: { not: AttemptStatus.SOLVED },
+          problem: { status: "PUBLISHED", listed: true }
+        },
+        orderBy: { updatedAt: "desc" },
+        select: { problem: { select: { title: true, slug: true } } }
+      })
+    : null;
+
+  const dailyWhere = {
     status: "PUBLISHED" as const,
     listed: true,
     isExercise: false,
-    language: preferredLanguage,
-    ...visibleProblemWhere(user)
-  };
-  const frontPageProblemWhere = {
-    ...baseProblemWhere,
     canAppearOnFrontPage: true
   };
-  const tipPracticeProblemWhere = {
-    status: "PUBLISHED" as const,
-    listed: true,
-    ...visibleProblemWhere(user)
-  };
+  const dailyCandidates = await prisma.problem.findMany({
+    where: dailyWhere,
+    orderBy: { id: "asc" },
+    select: { translationGroupId: true }
+  });
+  const dailyGroups = [...new Set(dailyCandidates.map((problem) => problem.translationGroupId))];
+  const chosenDailyGroup = dailyGroups[dailyIndex(dailyGroups.length)] ?? null;
+  const dailyTranslations = chosenDailyGroup
+    ? await prisma.problem.findMany({
+        where: { translationGroupId: chosenDailyGroup, status: "PUBLISHED", listed: true },
+        include: { author: true }
+      })
+    : [];
+  const dailyProblem =
+    dailyTranslations.find((problem) => problem.language === preferredLanguage) ??
+    dailyTranslations.find((problem) => problem.translatedFromProblemId === null) ??
+    dailyTranslations[0] ??
+    (await prisma.problem.findFirst({
+      where: { status: "PUBLISHED", listed: true, isExercise: false, language: preferredLanguage },
+      orderBy: { createdAt: "desc" },
+      include: { author: true }
+    }));
 
-  const [solvedProblemGroups, resumeAttempt, tip] = await Promise.all([
+  const [recommendedData, tip, recentProblems, explorations, friendships] = await Promise.all([
+    user ? recommendationsForUser(user.id, 5, preferredLanguage) : null,
+    loadDailyTip(),
+    prisma.problem.findMany({
+      where: { status: "PUBLISHED", listed: true, language: preferredLanguage },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { author: true }
+    }),
+    prisma.playlist.findMany({
+      where: { status: "PUBLISHED", visibility: "PUBLIC", language: preferredLanguage },
+      orderBy: { updatedAt: "desc" },
+      take: 3,
+      include: { _count: { select: { circuitNodes: true } } }
+    }),
     user
-      ? prisma.problem.findMany({
-          where: { attempts: { some: { userId: user.id, status: "SOLVED" } } },
-          distinct: ["translationGroupId"],
-          select: { translationGroupId: true }
+      ? prisma.friendship.findMany({
+          where: {
+            status: FriendshipStatus.ACCEPTED,
+            OR: [{ requesterId: user.id }, { addresseeId: user.id }]
+          },
+          select: { requesterId: true, addresseeId: true }
+        })
+      : []
+  ]);
+
+  const friendIds = user
+    ? friendships.map((friendship) =>
+        friendship.requesterId === user.id ? friendship.addresseeId : friendship.requesterId
+      )
+    : [];
+  const [dailySolvers, allProblemGroups, solvedGroups, authoredSolves, friendAttempts, friendFavorites] = await Promise.all([
+    dailyProblem
+      ? prisma.problemAttempt.findMany({
+          where: {
+            status: AttemptStatus.SOLVED,
+            updatedAt: { gte: dayStart() },
+            problem: { translationGroupId: dailyProblem.translationGroupId }
+          },
+          distinct: ["userId"],
+          orderBy: { updatedAt: "desc" },
+          select: { user: true }
         })
       : [],
     user
-      ? prisma.problemAttempt.findFirst({
-          where: {
-            userId: user.id,
-            status: { not: "SOLVED" },
-            problem: baseProblemWhere
-          },
-          orderBy: { updatedAt: "desc" },
-          include: { problem: { select: { slug: true, title: true } } }
+      ? prisma.problem.findMany({
+          where: { status: "PUBLISHED", listed: true, isExercise: false, language: preferredLanguage },
+          distinct: ["translationGroupId"],
+          select: { translationGroupId: true, domain: true }
         })
-      : null,
-    user ? loadDailyTip() : null
+      : [],
+    user
+      ? prisma.problemAttempt.findMany({
+          where: { userId: user.id, status: AttemptStatus.SOLVED },
+          distinct: ["problemId"],
+          select: { problem: { select: { translationGroupId: true } } }
+        })
+      : [],
+    user
+      ? prisma.problemAttempt.findMany({
+          where: { status: AttemptStatus.SOLVED, userId: { not: user.id }, problem: { authorId: user.id } },
+          distinct: ["userId", "problemId"],
+          select: { id: true }
+        })
+      : [],
+    friendIds.length
+      ? prisma.problemAttempt.findMany({
+          where: { userId: { in: friendIds }, status: AttemptStatus.SOLVED, problem: { status: "PUBLISHED", listed: true } },
+          orderBy: { updatedAt: "desc" },
+          take: 6,
+          select: { updatedAt: true, user: true, problem: { select: { slug: true, title: true } } }
+        })
+      : [],
+    friendIds.length
+      ? prisma.problemFavorite.findMany({
+          where: { userId: { in: friendIds }, problem: { status: "PUBLISHED", listed: true } },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+          select: { createdAt: true, user: true, problem: { select: { slug: true, title: true } } }
+        })
+      : []
   ]);
-  const solvedTranslationGroupIds = solvedProblemGroups.map((problem) => problem.translationGroupId);
-  const solvedTranslationGroupIdSet = new Set(solvedTranslationGroupIds);
-  const recommendedProblemWhere = user
-    ? {
-        ...frontPageProblemWhere,
-        translationGroupId: { notIn: solvedTranslationGroupIds }
-      }
-    : frontPageProblemWhere;
-
-  const problemRows = await prisma.problem.findMany({
-    where: recommendedProblemWhere,
-    orderBy: { createdAt: "desc" },
-    take: 4,
-    include: {
-      author: { select: { username: true, displayName: true } },
-      _count: { select: { attempts: true, favorites: true } }
-    }
-  });
-  const [practiceLinks, tipBodyHtml] = tip
-    ? await Promise.all([
-        prisma.tipProblem.findMany({
-          where: {
-            tipId: tip.id,
-            problem: tipPracticeProblemWhere
-          },
-          orderBy: { position: "asc" },
-          take: 3,
-          select: {
-            problem: {
-              select: {
-                id: true,
-                slug: true,
-                title: true,
-                domain: true,
-                difficulty: true,
-                translationGroupId: true
-              }
-            }
-          }
-        }),
-        renderMarkdown(tip.body)
-      ])
-    : [[], ""];
-
-  const renderedProblems = await withRenderedTitles(problemRows);
-  const practiceRows = practiceLinks.map((link) => ({
-    ...link.problem,
-    solved: solvedTranslationGroupIdSet.has(link.problem.translationGroupId)
-  }));
-  const renderedPractice = tip ? await withRenderedTitles(practiceRows) : [];
-  const featured = renderedProblems[0] ?? null;
-  const homeUser = user
-    ? {
-        name: displayNameForUser(user)
-      }
+  const tipPracticeLink = tip
+    ? await prisma.tipProblem.findFirst({
+        where: { tipId: tip.id, problem: { status: "PUBLISHED", listed: true } },
+        orderBy: { position: "asc" },
+        include: { problem: true }
+      })
     : null;
-  const resume = resumeAttempt
-    ? {
-        title: resumeAttempt.problem.title,
-        slug: resumeAttempt.problem.slug
-      }
-    : null;
+  const tipBodyHtml = tip ? await renderMarkdown(tip.body) : "";
+
+  const solvedSet = new Set(solvedGroups.map((attempt) => attempt.problem.translationGroupId));
+  const progressMap = new Map<string, { done: number; total: number }>();
+  for (const problem of allProblemGroups) {
+    const entry = progressMap.get(problem.domain) ?? { done: 0, total: 0 };
+    entry.total += 1;
+    if (solvedSet.has(problem.translationGroupId)) entry.done += 1;
+    progressMap.set(problem.domain, entry);
+  }
+  const progress = [...progressMap.entries()]
+    .map(([domain, value]) => ({ domain, ...value }))
+    .sort((left, right) => right.total - left.total)
+    .slice(0, 5);
+  const totalSolved = solvedSet.size;
+  const friendActivity = [
+    ...friendAttempts.map((entry) => ({ ...entry, date: entry.updatedAt, verb: locale === "fr" ? "a résolu" : "solved" })),
+    ...friendFavorites.map((entry) => ({ ...entry, date: entry.createdAt, verb: locale === "fr" ? "a ajouté aux favoris" : "favorited" }))
+  ]
+    .sort((left, right) => right.date.getTime() - left.date.getTime())
+    .slice(0, 3);
 
   return (
-    <div className="home-shell">
-      <HomeHero user={homeUser} resume={resume} t={t.home.hero} />
-      <main className="home-main">
-        {!homeUser && <TrailBand t={t.home.trail} />}
-        {homeUser && tip && (
-          <TipOfDay
-            tip={tip}
-            bodyHtml={tipBodyHtml}
-            practice={renderedPractice}
-            t={t.home.tip}
-            homeT={t.home}
-            difficultyUnset={t.common.difficultyUnset}
-            solvedLabel={t.problemDetail.solved}
-          />
-        )}
-        <ProblemToTry problem={featured} t={t.home} />
+    <div className="home-shell home-dashboard">
+      <section className="home-hero-forest home-hero-member">
+        <Image
+          src="/art/morning-in-a-pine-forest.jpg"
+          alt="Ivan Shishkin, Morning in a Pine Forest"
+          fill
+          priority
+          sizes="100vw"
+          className="home-hero-image"
+        />
+        <div className="home-hero-overlay home-hero-overlay-member" />
+        <div className="home-member-hero-copy">
+          <h1>{user ? t.home.hero.welcomeBack(displayNameForUser(user)) : t.home.hero.guestTitle}</h1>
+          {resumeAttempt && (
+            <Link href={`/problems/${resumeAttempt.problem.slug}`} className="home-button home-button-light">
+              {t.home.hero.resume(resumeAttempt.problem.title)}
+            </Link>
+          )}
+        </div>
+      </section>
+
+      <main className="home-dashboard-grid">
+        <div className="home-dashboard-main">
+          {dailyProblem && (
+            <Link href={`/problems/${dailyProblem.slug}`} className="home-daily-problem">
+              <div>
+                <p className="mw-kicker">{copy.problemOfDay}</p>
+                <h2><AsyncMarkdownInline markdown={dailyProblem.title} /></h2>
+                <p className="home-dashboard-author">
+                  <UserAvatar user={dailyProblem.author} size="xs" />
+                  {copy.by} {displayNameForUser(dailyProblem.author)}
+                </p>
+                <div className="home-daily-meta">
+                  <span>{translatedDomainLabel(dailyProblem.domain, t.home.domainLabels)}</span>
+                  <Difficulty value={dailyProblem.difficulty} compact />
+                </div>
+                <div className="home-daily-action">
+                  <span className="mw-primary-button">{copy.solveToday}</span>
+                  <span className="home-solver-stack">
+                    {dailySolvers.slice(0, 4).map(({ user: solver }) => (
+                      <UserAvatar key={solver.id} user={solver} size="sm" />
+                    ))}
+                  </span>
+                  <small>{copy.solvedToday(dailySolvers.length)}</small>
+                </div>
+              </div>
+              <div className="home-daily-art" aria-hidden="true" />
+            </Link>
+          )}
+
+          {recommendedData && recommendedData.recommendations.length > 0 && (
+            <section>
+              <div className="mw-section-heading">
+                <h2>{copy.recommended}</h2>
+                <Link href="/problems">{copy.more}</Link>
+              </div>
+              <div className="home-recommendation-grid">
+                {recommendedData.recommendations.slice(0, 4).map(({ problem }) => (
+                  <Link key={problem.id} href={`/problems/${problem.slug}`}>
+                    <Difficulty value={problem.difficulty} />
+                    <span>
+                      <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
+                      <small>{translatedDomainLabel(problem.domains[0] ?? "OTHER", t.home.domainLabels)}</small>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {tip && (
+            <section className="home-tip-card">
+              <div className="home-tip-image">
+                <img
+                  src={tipImageUrl(tip.imageUrl)}
+                  alt=""
+                  style={{ objectPosition: tipImageObjectPosition(tip.imagePositionX, tip.imagePositionY) }}
+                />
+              </div>
+              <div className="home-tip-copy">
+                <p className="mw-kicker">{copy.tip}</p>
+                <h2><AsyncMarkdownInline markdown={tip.title} /></h2>
+                <MarkdownBlock html={tipBodyHtml} />
+                {tipPracticeLink && (
+                  <Link href={`/problems/${tipPracticeLink.problem.slug}`} className="home-tip-practice">
+                    <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeLink.problem.title} /></strong>
+                    <span>{translatedDomainLabel(tipPracticeLink.problem.domain, t.home.domainLabels)} / {tipPracticeLink.problem.difficulty ?? "--"}</span>
+                  </Link>
+                )}
+              </div>
+            </section>
+          )}
+
+          <section>
+            <div className="mw-section-heading">
+              <h2>{copy.news}</h2>
+              <Link href="/problems">{copy.allProblems}</Link>
+            </div>
+            <div className="home-news-list">
+              {recentProblems.map((problem) => (
+                <Link key={problem.id} href={`/problems/${problem.slug}`}>
+                  <Difficulty value={problem.difficulty} compact />
+                  <span>
+                    <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
+                    <small>{translatedDomainLabel(problem.domain, t.home.domainLabels)} · {copy.by} {displayNameForUser(problem.author)}</small>
+                  </span>
+                  <time>{new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-Math.max(0, Math.round((Date.now() - problem.createdAt.getTime()) / 86_400_000)), "day")}</time>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside className="home-dashboard-rail">
+          {user && (
+            <section className="mw-card home-progress-card">
+              <header>
+                <h2>{copy.progress}</h2>
+                <span>{copy.solved(totalSolved, allProblemGroups.length)}</span>
+              </header>
+              {progress.map((entry) => (
+                <div key={entry.domain}>
+                  <p><strong>{translatedDomainLabel(entry.domain, t.home.domainLabels)}</strong><span>{entry.done} / {entry.total}</span></p>
+                  <ProgressTicks done={entry.done} total={entry.total} />
+                </div>
+              ))}
+              <Link href="/problems" className="home-all-domains">{copy.allDomains(progressMap.size)}</Link>
+              <p className="home-authored-solves">{copy.authoredSolves(authoredSolves.length)}</p>
+            </section>
+          )}
+          <section className="mw-card home-friend-activity">
+            <h2>{copy.friends}</h2>
+            {friendActivity.length ? friendActivity.map((entry) => (
+              <div key={`${entry.user.id}-${entry.problem.slug}-${entry.date.toISOString()}`}>
+                <UserAvatar user={entry.user} size="sm" />
+                <p><strong>{displayNameForUser(entry.user)}</strong> {entry.verb} <Link href={`/problems/${entry.problem.slug}`}>{entry.problem.title}</Link></p>
+              </div>
+            )) : <p className="muted">{copy.noActivity}</p>}
+          </section>
+          {explorations.length > 0 && (
+            <section className="home-exploration-card">
+              <h2>{copy.explorations}</h2>
+              {explorations.map((exploration) => (
+                <Link key={exploration.id} href={`/explorations/${exploration.slug}/start`}>
+                  <strong>{exploration.title}</strong>
+                  <small>{copy.steps(exploration._count.circuitNodes)} · {translatedDomainLabel(exploration.domain, t.home.domainLabels)}</small>
+                </Link>
+              ))}
+            </section>
+          )}
+        </aside>
       </main>
-      {!homeUser && <TrailCta t={t.home.cta} />}
-      <HomeFooter t={t.home.footer} />
     </div>
   );
 }

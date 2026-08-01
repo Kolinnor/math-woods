@@ -1770,6 +1770,27 @@ assert.ok(recommendationProfile.targetDifficulty > 30 && recommendationProfile.t
 assert.ok(recommendationProfile.difficultyConfidence > 0.3);
 assert.ok(recommendationProfile.domains.ALGEBRA.affinity > recommendationProfile.domains.TOPOLOGY.affinity);
 
+const reactionAdjustedProfile = buildRecommendationProfile(
+  {
+    mathLevel: "UNDERGRAD",
+    mathematicalDomains: ["ALGEBRA"],
+    attempts: [],
+    favorites: [],
+    reactions: [
+      {
+        difficulty: 30,
+        domains: ["ALGEBRA"],
+        difficultyReaction: "TOO_EASY",
+        preferenceReaction: "MORE_LIKE_THIS",
+        updatedAt: recommendationNow
+      }
+    ]
+  },
+  recommendationNow
+);
+assert.ok(reactionAdjustedProfile.targetDifficulty > 30);
+assert.ok(reactionAdjustedProfile.domains.ALGEBRA.affinity > 0.35);
+
 const fittingRecommendation = scoreProblemRecommendation(
   recommendationProfile,
   {

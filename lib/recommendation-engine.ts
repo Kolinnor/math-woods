@@ -71,7 +71,7 @@ function dedupeFavorites(
   return [...byGroup.values()];
 }
 
-export async function recommendationShadowForUser(userId: number, requestedLimit = 20) {
+export async function recommendationsForUser(userId: number, requestedLimit = 20, preferredLanguage = "en") {
   const limit = Math.min(50, Math.max(1, Math.trunc(requestedLimit) || 20));
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -106,6 +106,20 @@ export async function recommendationShadowForUser(userId: number, requestedLimit
             }
           }
         }
+      },
+      problemReactions: {
+        select: {
+          difficultyReaction: true,
+          preferenceReaction: true,
+          updatedAt: true,
+          problem: {
+            select: {
+              difficulty: true,
+              domain: true,
+              domains: { select: { domain: true } }
+            }
+          }
+        }
       }
     }
   });
@@ -122,7 +136,14 @@ export async function recommendationShadowForUser(userId: number, requestedLimit
       mathLevel: user.mathLevel as RecommendationMathLevel | null,
       mathematicalDomains: user.mathematicalDomains,
       attempts,
-      favorites
+      favorites,
+      reactions: user.problemReactions.map((reaction) => ({
+        difficulty: reaction.problem.difficulty,
+        domains: problemDomains(reaction.problem),
+        difficultyReaction: reaction.difficultyReaction,
+        preferenceReaction: reaction.preferenceReaction,
+        updatedAt: reaction.updatedAt
+      }))
     },
     now
   );
@@ -138,6 +159,7 @@ export async function recommendationShadowForUser(userId: number, requestedLimit
       id: true,
       slug: true,
       title: true,
+      bodyHtml: true,
       language: true,
       translationGroupId: true,
       translatedFromProblemId: true,
@@ -146,7 +168,15 @@ export async function recommendationShadowForUser(userId: number, requestedLimit
       domains: { select: { domain: true } },
       qualityStatus: true,
       isExercise: true,
-      createdAt: true
+      createdAt: true,
+      author: {
+        select: {
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          avatarBackground: true
+        }
+      }
     }
   });
 
@@ -161,6 +191,7 @@ export async function recommendationShadowForUser(userId: number, requestedLimit
   const recommendations = [...candidatesByGroup.values()]
     .map((translations) => {
       const problem =
+        translations.find((item) => item.language === preferredLanguage) ??
         translations.find((item) => item.translatedFromProblemId === null) ??
         translations.find((item) => item.language === "en") ??
         translations[0];
@@ -191,12 +222,14 @@ export async function recommendationShadowForUser(userId: number, requestedLimit
         id: problem.id,
         slug: problem.slug,
         title: problem.title,
+        bodyHtml: problem.bodyHtml,
         language: problem.language,
         translationGroupId: problem.translationGroupId,
         difficulty: problem.difficulty,
         domains: problemDomains(problem),
         qualityStatus: problem.qualityStatus,
-        isExercise: problem.isExercise
+        isExercise: problem.isExercise,
+        author: problem.author
       },
       ...score
     }));
@@ -207,4 +240,8 @@ export async function recommendationShadowForUser(userId: number, requestedLimit
     profile,
     recommendations
   };
+}
+
+export async function recommendationShadowForUser(userId: number, requestedLimit = 20) {
+  return recommendationsForUser(userId, requestedLimit);
 }

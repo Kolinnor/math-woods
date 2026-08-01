@@ -1,4 +1,4 @@
-export const RECOMMENDATION_MODEL_VERSION = 1;
+export const RECOMMENDATION_MODEL_VERSION = 2;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -27,11 +27,20 @@ export type RecommendationFavorite = {
   createdAt: Date;
 };
 
+export type RecommendationReaction = {
+  difficulty: number | null;
+  domains: string[];
+  difficultyReaction: "TOO_HARD" | "TOO_EASY" | "FEELS_RIGHT" | null;
+  preferenceReaction: "MORE_LIKE_THIS" | "LESS_LIKE_THIS" | null;
+  updatedAt: Date;
+};
+
 export type RecommendationProfileInput = {
   mathLevel: RecommendationMathLevel | null;
   mathematicalDomains: string[];
   attempts: RecommendationAttempt[];
   favorites: RecommendationFavorite[];
+  reactions?: RecommendationReaction[];
 };
 
 export type RecommendationDomainSignal = {
@@ -148,6 +157,29 @@ export function buildRecommendationProfile(
     evidenceCount += evidence;
     for (const domain of new Set(favorite.domains)) {
       domainEvidence.set(domain, (domainEvidence.get(domain) ?? 0) + evidence);
+    }
+  }
+
+  for (const reaction of input.reactions ?? []) {
+    const recency = recencyWeight(reaction.updatedAt, now, 240);
+    if (reaction.preferenceReaction) {
+      const evidence = (reaction.preferenceReaction === "MORE_LIKE_THIS" ? 2 : -1.5) * recency;
+      evidenceCount += Math.abs(evidence);
+      for (const domain of new Set(reaction.domains)) {
+        domainEvidence.set(domain, Math.max(0, (domainEvidence.get(domain) ?? 0) + evidence));
+      }
+    }
+    if (reaction.difficulty !== null && reaction.difficultyReaction) {
+      const adjustment =
+        reaction.difficultyReaction === "TOO_HARD"
+          ? -8
+          : reaction.difficultyReaction === "TOO_EASY"
+            ? 8
+            : 2;
+      const weight = 2.5 * recency;
+      weightedDifficulty += clamp(reaction.difficulty + adjustment, 1, 100) * weight;
+      difficultyWeight += weight;
+      evidenceCount += weight;
     }
   }
 

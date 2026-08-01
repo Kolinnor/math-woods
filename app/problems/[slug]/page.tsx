@@ -3,14 +3,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { NotificationType } from "@prisma/client";
-import { Check, Heart, House, Lightbulb, MessageSquare, Pencil, Swords, ThumbsUp } from "lucide-react";
+import { Check, Heart, House, Lightbulb, MessageSquare, Pencil, Swords, Target, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
+import { Difficulty } from "@/components/Difficulty";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
 import { ProblemHints } from "@/components/ProblemHints";
+import { ProblemReactions } from "@/components/ProblemReactions";
+import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
@@ -31,7 +34,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import {
@@ -41,8 +44,7 @@ import {
   canUseAdminTools,
   canViewArchivedProblem
 } from "@/lib/permissions";
-import { heroArtForProblemDomain } from "@/lib/problem-hero-art";
-import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
+import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
@@ -108,6 +110,41 @@ function verificationStatusLabel(status: string) {
   return status.toLowerCase().replaceAll("_", " ");
 }
 
+const redesignCopy = {
+  en: {
+    solvedProgress: (done: number, total: number, domain: string) =>
+      `Solved. You have solved ${done} of ${total} problems in ${domain}.`,
+    solvedToo: "solved this too",
+    next: "Next, if you liked this one",
+    open: "Open it",
+    reactions: {
+      howWasIt: "How was it?",
+      tooHard: "Too hard for me",
+      tooEasy: "Too easy",
+      feelsRight: "Difficulty feels right",
+      more: "More problems like this",
+      less: "Less problems like this",
+      somethingElse: "Something else"
+    }
+  },
+  fr: {
+    solvedProgress: (done: number, total: number, domain: string) =>
+      `Résolu. Vous avez résolu ${done} problèmes sur ${total} en ${domain}.`,
+    solvedToo: "ont aussi résolu ce problème",
+    next: "Ensuite, si celui-ci vous a plu",
+    open: "Ouvrir",
+    reactions: {
+      howWasIt: "Comment était-il ?",
+      tooHard: "Trop difficile pour moi",
+      tooEasy: "Trop facile",
+      feelsRight: "Bonne difficulté",
+      more: "Plus de problèmes comme celui-ci",
+      less: "Moins de problèmes comme celui-ci",
+      somethingElse: "Autre chose"
+    }
+  }
+} as const;
+
 export default async function ProblemPage({
   params,
   searchParams
@@ -125,7 +162,8 @@ export default async function ProblemPage({
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
   const user = await getCurrentUser();
-  const t = await getTranslations();
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
+  const copy = redesignCopy[interfaceLocale];
   const preferredLanguage = await getPreferredContentLanguage();
   const problem = await prisma.problem.findUnique({
     where: { slug },
@@ -207,7 +245,10 @@ export default async function ProblemPage({
     userVotes,
     favorite,
     groupFavoriteRows,
-    relatedSolvedAttempts
+    relatedSolvedAttempts,
+    ownReaction,
+    groupSolvers,
+    solverFriendships
   ] = await Promise.all([
     prisma.problem.findMany({
       where: {
@@ -335,7 +376,32 @@ export default async function ProblemPage({
           },
           select: { problem: { select: { translationGroupId: true } } }
         })
-      : Promise.resolve([])
+      : Promise.resolve([]),
+    user
+      ? prisma.problemReaction.findUnique({
+          where: { userId_problemId: { userId: user.id, problemId: problem.id } },
+          select: { difficultyReaction: true, preferenceReaction: true }
+        })
+      : null,
+    prisma.problemAttempt.findMany({
+      where: {
+        status: "SOLVED",
+        problem: { translationGroupId: problem.translationGroupId }
+      },
+      distinct: ["userId"],
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+      select: { user: true }
+    }),
+    user
+      ? prisma.friendship.findMany({
+          where: {
+            status: "ACCEPTED",
+            OR: [{ requesterId: user.id }, { addresseeId: user.id }]
+          },
+          select: { requesterId: true, addresseeId: true }
+        })
+      : []
   ]);
   const attempt =
     attemptsInTranslationGroup.find((translationAttempt) => translationAttempt.status === "SOLVED") ??
@@ -435,41 +501,90 @@ export default async function ProblemPage({
   const verificationMessage =
     queryParams.verification === "incorrect" ? t.problemDetail.verificationIncorrect : null;
   const heroDomain = problemDomains[0] ?? (problem.domains.length ? "other" : problem.domain);
-  const heroImage = heroArtForProblemDomain(heroDomain);
-  const difficultyTone = problemDifficultyTone(problem.difficulty ?? null);
-  const difficultyLevel = problemDifficultyBars(problem.difficulty ?? null);
+  const [domainProblemGroups, domainSolvedGroups, nextRecommendationData] = attempt?.status === "SOLVED" && user
+    ? await Promise.all([
+        prisma.problem.findMany({
+          where: { status: "PUBLISHED", listed: true, domain: problem.domain },
+          distinct: ["translationGroupId"],
+          select: { translationGroupId: true }
+        }),
+        prisma.problemAttempt.findMany({
+          where: { userId: user.id, status: "SOLVED", problem: { domain: problem.domain } },
+          distinct: ["problemId"],
+          select: { problem: { select: { translationGroupId: true } } }
+        }),
+        recommendationsForUser(user.id, 8, preferredLanguage)
+      ])
+    : [[], [], null];
+  const domainSolvedCount = new Set(domainSolvedGroups.map((item) => item.problem.translationGroupId)).size;
+  const nextProblem = nextRecommendationData?.recommendations.find(
+    (item) => item.problem.translationGroupId !== problem.translationGroupId
+  )?.problem ?? null;
+  const friendIdSet = new Set(
+    solverFriendships.map((friendship) =>
+      friendship.requesterId === user?.id ? friendship.addresseeId : friendship.requesterId
+    )
+  );
+  const friendSolvers = groupSolvers.filter(({ user: solver }) => friendIdSet.has(solver.id));
 
   return (
     <div className="problem-detail-shell">
       <section className="problem-hero">
-        <img src={heroImage.src} alt={heroImage.alt} />
+        <img src="/art/brook-in-the-forest.jpg" alt="Ivan Shishkin, Brook in the Forest" />
         <div className="problem-hero-overlay" />
-        <div className="problem-hero-inner">
-          <div>
-            <h1>
-              <AsyncMarkdownInline markdown={problem.title} />
-            </h1>
-            <p className="problem-hero-byline">
-              {t.problemDetail.by}{" "}
-              <Link href={`/profile/${problem.author.username}`}>
-                <UserName user={problem.author} />
-              </Link>
-            </p>
-          </div>
-          <div className="problem-hero-meta">
-            <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
-              {t.quality[problem.qualityStatus]}
-            </span>
-            {problem.isExercise && <p>{t.problemDetail.exercise}</p>}
-            {problem.canAppearOnFrontPage && <p>{t.problems.featured}</p>}
-            {hiddenDomainCount > 0 && problemDomains.length > 0 && <p>{t.problemDetail.spoilerDomainHiddenUntilSolved}</p>}
-            {!problem.listed && <p>{t.problemDetail.playlistSpecific}</p>}
-          </div>
-        </div>
       </section>
 
       <div className="problem-detail-body">
         <article className="problem-detail-article">
+        <header className="problem-title-block">
+          <p className="problem-breadcrumb">
+            <Link href="/problems">{t.problems.title}</Link>
+            <span>/</span>
+            <Link href={`/problems?domain=${encodeURIComponent(heroDomain)}`}>
+              {translatedDomainLabel(heroDomain, t.home.domainLabels)}
+            </Link>
+            <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
+              {t.quality[problem.qualityStatus]}
+            </span>
+          </p>
+          <h1><AsyncMarkdownInline markdown={problem.title} /></h1>
+          <div className="problem-title-meta">
+            <Link href={`/profile/${problem.author.username}`}>
+              <UserAvatar user={problem.author} size="sm" />
+              {t.problemDetail.by} <UserName user={problem.author} />
+            </Link>
+            <span>·</span>
+            <Difficulty value={problem.difficulty} compact />
+          </div>
+        </header>
+        {attempt?.status === "SOLVED" && (
+          <section className="problem-solved-banner" role="status">
+            <span className="problem-solved-check"><Check size={20} /></span>
+            <div className="problem-solved-copy">
+              <strong>{copy.solvedProgress(
+                domainSolvedCount,
+                domainProblemGroups.length,
+                translatedDomainLabel(heroDomain, t.home.domainLabels)
+              )}</strong>
+              {friendSolvers.length > 0 && (
+                <p>
+                  <span className="problem-solver-avatars">
+                    {friendSolvers.slice(0, 4).map(({ user: solver }) => (
+                      <UserAvatar key={solver.id} user={solver} size="sm" />
+                    ))}
+                  </span>
+                  {friendSolvers.slice(0, 2).map(({ user: solver }) => displayNameForUser(solver)).join(", ")} {copy.solvedToo}
+                </p>
+              )}
+            </div>
+            <ProblemReactions
+              labels={copy.reactions}
+              problemId={problem.id}
+              problemSlug={problem.slug}
+              reaction={ownReaction}
+            />
+          </section>
+        )}
         {queryParams.challenge === "accepted" && (
           <p className="quality-banner challenge-accepted-banner mb-4" role="status">
             {t.social.challengeLink.accepted}
@@ -576,6 +691,73 @@ export default async function ProblemPage({
 
         <section className="problem-statement reading-surface">
           <MarkdownBlock html={problemBodyHtml} />
+        </section>
+        <section className="problem-primary-actions" aria-label="Problem progress">
+          {user ? (
+            attempt?.status === "SOLVED" ? (
+              <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)}>
+                <button type="submit" className="problem-action-tile solved" title={t.problemDetail.unmarkSolved}>
+                  <Check size={25} />
+                  <span><strong>{t.problemDetail.solved}</strong><small>{t.problemDetail.unmarkSolved}</small></span>
+                </button>
+              </form>
+            ) : problem.verificationMode === ProblemVerificationMode.NONE || user.id === problem.authorId ? (
+              <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
+                <button type="submit" className="problem-action-tile solve">
+                  <Check size={25} />
+                  <span><strong>{t.problemDetail.markSolved}</strong><small>{t.problemDetail.problem}</small></span>
+                </button>
+              </form>
+            ) : (
+              <a href="#problem-verification" className="problem-action-tile solve">
+                <Check size={25} />
+                <span><strong>{t.problemDetail.markSolved}</strong><small>{t.problemDetail.verification}</small></span>
+              </a>
+            )
+          ) : (
+            <Link href="/login" className="problem-action-tile solve">
+              <Check size={25} />
+              <span><strong>{t.problemDetail.markSolved}</strong><small>{t.home.hero.startSolving}</small></span>
+            </Link>
+          )}
+          {user ? (
+            attempt ? (
+              <span className="problem-action-tile attempted">
+                <Target size={25} />
+                <span><strong>{t.problemDetail.attempted}</strong><small>{t.problemDetail.openDiscussion}</small></span>
+              </span>
+            ) : (
+              <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
+                <button type="submit" className="problem-action-tile attempted">
+                  <Target size={25} />
+                  <span><strong>{receivedChallenge ? t.problemDetail.challenged : t.problemDetail.startAttempting}</strong><small>{t.problemDetail.openDiscussion}</small></span>
+                </button>
+              </form>
+            )
+          ) : (
+            <Link href="/login" className="problem-action-tile attempted">
+              <Target size={25} />
+              <span><strong>{t.problemDetail.startAttempting}</strong><small>{t.home.hero.startSolving}</small></span>
+            </Link>
+          )}
+          {isOwnProblem ? (
+            <span className="problem-action-tile favorite">
+              <House size={25} />
+              <span><strong>{t.problemDetail.yourProblem}</strong><small>{t.problemDetail.favoriteCount(favoriteCount)}</small></span>
+            </span>
+          ) : user ? (
+            <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
+              <button type="submit" className="problem-action-tile favorite" aria-pressed={Boolean(favorite)}>
+                <Heart size={25} fill={favorite ? "currentColor" : "none"} />
+                <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{t.problemDetail.favoriteCount(favoriteCount)}</small></span>
+              </button>
+            </form>
+          ) : (
+            <Link href="/login" className="problem-action-tile favorite">
+              <Heart size={25} />
+              <span><strong>{t.problemDetail.addFavorite}</strong><small>{t.problemDetail.favoriteCount(favoriteCount)}</small></span>
+            </Link>
+          )}
         </section>
         {hasSpecifiedOrigin && (
           <div className="problem-origin-note zen-meta">
@@ -851,27 +1033,27 @@ export default async function ProblemPage({
       </article>
 
         <aside className="problem-rail zen-hide">
-          <div className="problem-difficulty-tile">
-            <p>{t.problemDetail.difficulty}</p>
-            <p className="problem-difficulty-value" style={{ color: difficultyTone }}>
-              {problem.difficulty ?? "--"}
-              <span>/100</span>
-            </p>
-            <span className="problem-difficulty-bars" aria-hidden="true">
-              {[1, 2, 3, 4].map((level) => (
-                <i key={level} style={{ background: level <= difficultyLevel ? difficultyTone : undefined }} />
-              ))}
-            </span>
-          </div>
+          {nextProblem && (
+            <section className="problem-next-card">
+              <span aria-hidden="true">⇉</span>
+              <p>{copy.next}</p>
+              <h2><AsyncMarkdownInline markdown={nextProblem.title} /></h2>
+              <div>
+                <Difficulty value={nextProblem.difficulty} compact />
+                <small>{translatedDomainLabel(nextProblem.domains[0] ?? "OTHER", t.home.domainLabels)}</small>
+              </div>
+              <Link href={`/problems/${nextProblem.slug}`}>{copy.open}</Link>
+            </section>
+          )}
 
-        <section className="action-surface">
+        <section className="action-surface" id="problem-verification">
           {user && attempt?.status !== "SOLVED" && (
             attempt ? (
               <button type="button" className="secondary attempted-state-button w-full" disabled>
                 {t.problemDetail.attempted}
               </button>
             ) : (
-              <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
+              <form action={startAttemptAction.bind(null, problem.id, problem.slug)} className="problem-rail-primary-duplicate">
                 <button
                   type="submit"
                   className={receivedChallenge ? "challenge-attempt-button w-full" : "secondary attempt-action-button w-full"}
@@ -888,7 +1070,7 @@ export default async function ProblemPage({
             )
           )}
           {attempt?.status === "SOLVED" ? (
-            <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)}>
+            <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)} className="problem-rail-primary-duplicate">
               <button
                 type="submit"
                 className="secondary solved-state-button w-full"
@@ -900,7 +1082,7 @@ export default async function ProblemPage({
               </button>
             </form>
           ) : problem.verificationMode === ProblemVerificationMode.NONE || user?.id === problem.authorId ? (
-            <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
+            <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)} className="problem-rail-primary-duplicate">
               <button type="submit" className="secondary w-full">
                 <Check size={17} />
                 {t.problemDetail.markSolved}
@@ -931,12 +1113,12 @@ export default async function ProblemPage({
             </form>
           )}
           {isOwnProblem ? (
-            <div className="own-problem-favorite-note">
+            <div className="own-problem-favorite-note problem-rail-primary-duplicate">
               <House size={17} aria-hidden="true" />
               {t.problemDetail.yourProblem} {"\u00b7"} {t.problemDetail.favoriteCount(favoriteCount)}
             </div>
           ) : (
-            <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
+            <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)} className="problem-rail-primary-duplicate">
               <button
                 type="submit"
                 className={favorite ? "favorite-state-button w-full" : "secondary favorite-action-button w-full"}

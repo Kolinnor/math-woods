@@ -9,6 +9,7 @@ import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
+import { RecommendedProblemReader } from "@/components/RecommendedProblemReader";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
@@ -28,6 +29,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { renderInlineMarkdown } from "@/lib/markdown";
 import {
   defaultProblemContentTypesForMathLevel,
   isDefaultProblemContentType,
@@ -35,6 +37,7 @@ import {
   problemContentTypeWhere
 } from "@/lib/problem-content-types";
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
+import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -616,6 +619,18 @@ export default async function ProblemsPage({
     : showsExercises
       ? t.problems.showingProblemsAndExercises(totalProblems)
       : t.problems.showingResults(totalProblems);
+  const recommendationData = user ? await recommendationsForUser(user.id, 5, preferredLanguage) : null;
+  const recommendationItems = await Promise.all(
+    (recommendationData?.recommendations ?? []).map(async ({ problem }) => ({
+      id: problem.id,
+      slug: problem.slug,
+      title: problem.title,
+      titleHtml: await renderInlineMarkdown(problem.title),
+      bodyHtml: problem.bodyHtml,
+      difficulty: problem.difficulty,
+      domain: translatedDomainLabel(problem.domains[0] ?? "OTHER", t)
+    }))
+  );
 
   return (
     <div className="problems-page-shell">
@@ -652,6 +667,18 @@ export default async function ProblemsPage({
           </div>
         </div>
       </section>
+
+      {recommendationItems.length > 0 && (
+        <section className="problems-recommendations">
+          <h2>{interfaceLocale === "fr" ? "Recommandés pour vous" : "Recommended for you"}</h2>
+          <RecommendedProblemReader
+            items={recommendationItems}
+            openLabel={interfaceLocale === "fr" ? "Ouvrir le problème" : "Open problem"}
+            overflowLabel={interfaceLocale === "fr" ? "Ouvrir pour lire la suite" : "Open problem to read it all"}
+            favoriteLabel={t.problemDetail.addFavorite}
+          />
+        </section>
+      )}
 
       <ProblemDomainStrip
         domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
