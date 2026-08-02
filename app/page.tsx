@@ -6,6 +6,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Difficulty } from "@/components/Difficulty";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { ProgressTicks } from "@/components/ProgressTicks";
+import { RevealSolvedDailyProblem } from "@/components/RevealSolvedDailyProblem";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -495,6 +496,34 @@ export default async function HomePage() {
   ]
     .sort((left, right) => right.date.getTime() - left.date.getTime())
     .slice(0, 3);
+  const dailyProblemCard = dailyProblem ? (
+    <Link href={`/problems/${dailyProblem.slug}`} className="home-daily-problem">
+      <div>
+        <p className="mw-kicker">{copy.problemOfDay}</p>
+        <h2><AsyncMarkdownInline markdown={dailyProblem.title} /></h2>
+        <p className="home-dashboard-author">
+          <UserAvatar user={dailyProblem.author} size="xs" />
+          {copy.by} {displayNameForUser(dailyProblem.author)}
+        </p>
+        <div className="home-daily-meta">
+          <span>{translatedDomainLabel(dailyProblem.domain, t.home.domainLabels)}</span>
+          <Difficulty value={dailyProblem.difficulty} compact />
+        </div>
+        <div className="home-daily-action">
+          <span className="mw-primary-button">{copy.solveToday}</span>
+          <span className="home-solver-stack">
+            {dailySolvers.slice(0, 4).map(({ user: solver }) => (
+              <UserAvatar key={solver.id} user={solver} size="sm" />
+            ))}
+          </span>
+          <small>{copy.solvedToday(dailySolvers.length)}</small>
+        </div>
+      </div>
+      <div className="home-daily-art" aria-hidden="true">
+        <img src={dailyProblemImageUrl} alt="" style={{ objectPosition: dailyProblemImagePosition }} />
+      </div>
+    </Link>
+  ) : null;
 
   return (
     <div className="home-shell home-dashboard">
@@ -520,39 +549,12 @@ export default async function HomePage() {
 
       <main className="home-dashboard-grid">
         <div className="home-dashboard-main">
-          {dailyProblem && !dailyProblemIsSolved && (
-            <Link href={`/problems/${dailyProblem.slug}`} className="home-daily-problem">
-              <div>
-                <p className="mw-kicker">{copy.problemOfDay}</p>
-                <h2><AsyncMarkdownInline markdown={dailyProblem.title} /></h2>
-                <p className="home-dashboard-author">
-                  <UserAvatar user={dailyProblem.author} size="xs" />
-                  {copy.by} {displayNameForUser(dailyProblem.author)}
-                </p>
-                <div className="home-daily-meta">
-                  <span>{translatedDomainLabel(dailyProblem.domain, t.home.domainLabels)}</span>
-                  <Difficulty value={dailyProblem.difficulty} compact />
-                </div>
-                <div className="home-daily-action">
-                  <span className="mw-primary-button">{copy.solveToday}</span>
-                  <span className="home-solver-stack">
-                    {dailySolvers.slice(0, 4).map(({ user: solver }) => (
-                      <UserAvatar key={solver.id} user={solver} size="sm" />
-                    ))}
-                  </span>
-                  <small>{copy.solvedToday(dailySolvers.length)}</small>
-                </div>
-              </div>
-              <div className="home-daily-art" aria-hidden="true">
-                <img src={dailyProblemImageUrl} alt="" style={{ objectPosition: dailyProblemImagePosition }} />
-              </div>
-            </Link>
-          )}
-
-          {dailyProblem && dailyProblemIsSolved && (
-            <Link href={`/problems/${dailyProblem.slug}`} className="home-daily-solved-link">
-              {copy.showSolvedProblemOfDay}
-            </Link>
+          {dailyProblemCard && (
+            dailyProblemIsSolved ? (
+              <RevealSolvedDailyProblem label={copy.showSolvedProblemOfDay}>
+                {dailyProblemCard}
+              </RevealSolvedDailyProblem>
+            ) : dailyProblemCard
           )}
 
           {recommendedData && recommendedData.recommendations.length > 0 && (

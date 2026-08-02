@@ -2,11 +2,13 @@
 
 import type { Route } from "next";
 import { ConceptStatus, NotificationType, SourceType, TargetType } from "@prisma/client";
+import type { ConceptKind, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { parseConceptExerciseIds } from "@/lib/concept-exercises";
+import { parseConceptKind } from "@/lib/concept-kinds";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { prisma } from "@/lib/db";
@@ -38,6 +40,28 @@ function duplicateConceptTitleError() {
   return new Error("A concept card already exists with this title.");
 }
 
+async function pinLatestConceptRevisionMetadata(
+  tx: Prisma.TransactionClient,
+  conceptId: number,
+  title: string,
+  kind: ConceptKind
+) {
+  const latestRevision = await tx.pageRevision.findFirst({
+    where: { pageType: SourceType.CONCEPT, pageId: conceptId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true, conceptTitle: true, conceptKind: true }
+  });
+  if (latestRevision && (latestRevision.conceptTitle === null || latestRevision.conceptKind === null)) {
+    await tx.pageRevision.update({
+      where: { id: latestRevision.id },
+      data: {
+        ...(latestRevision.conceptTitle === null ? { conceptTitle: title } : {}),
+        ...(latestRevision.conceptKind === null ? { conceptKind: kind } : {})
+      }
+    });
+  }
+}
+
 export async function createConceptAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`concept:create:${user.id}`, 5, 60_000);
@@ -46,6 +70,7 @@ export async function createConceptAction(formData: FormData) {
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
+  const kind = parseConceptKind(formData.get("kind"));
   const domainCode = parseDomainCode(formData.get("domain"));
   const domain = coarseDomainForCode(domainCode);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
@@ -105,6 +130,7 @@ export async function createConceptAction(formData: FormData) {
         bodyHtml,
         domain,
         domainCode,
+        kind,
         createdById: user.id,
         lastEditedById: user.id
       }
@@ -118,6 +144,8 @@ export async function createConceptAction(formData: FormData) {
         pageType: SourceType.CONCEPT,
         pageId: created.id,
         markdown: bodyMarkdown,
+        conceptTitle: created.title,
+        conceptKind: created.kind,
         editedById: user.id,
         isCreation: true,
         editSummary: "Concept created"
@@ -148,6 +176,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       createdById: true,
       language: true,
       title: true,
+      kind: true,
       translationGroupId: true,
       translatedFromConceptId: true,
       status: true
@@ -161,6 +190,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const language = parseContentLanguage(formData.get("language"));
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
+  const kind = parseConceptKind(formData.get("kind"), existingConcept.kind);
   const domainCode = parseDomainCode(formData.get("domain"));
   const domain = coarseDomainForCode(domainCode);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
@@ -183,6 +213,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   const concept = await prisma.$transaction(async (tx) => {
+    await pinLatestConceptRevisionMetadata(tx, conceptId, existingConcept.title, existingConcept.kind);
     const titleOrLanguageChanged =
       title.toLowerCase() !== existingConcept.title.toLowerCase() || language !== existingConcept.language;
     if (titleOrLanguageChanged) {
@@ -228,6 +259,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         bodyHtml,
         domain,
         domainCode,
+        kind,
         ...(status ? { status } : {}),
         ...(canAppearInConceptBrowser !== undefined ? { canAppearInConceptBrowser } : {}),
         ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {}),
@@ -267,6 +299,8 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         pageType: SourceType.CONCEPT,
         pageId: updated.id,
         markdown: bodyMarkdown,
+        conceptTitle: updated.title,
+        conceptKind: updated.kind,
         editedById: user.id,
         editSummary
       }
@@ -306,7 +340,9 @@ export async function markConceptReviewedAction(conceptId: number) {
         id: true,
         slug: true,
         language: true,
+        title: true,
         bodyMarkdown: true,
+        kind: true,
         status: true,
         createdById: true
       }
@@ -319,6 +355,7 @@ export async function markConceptReviewedAction(conceptId: number) {
       return current;
     }
 
+    await pinLatestConceptRevisionMetadata(tx, current.id, current.title, current.kind);
     const updated = await tx.concept.update({
       where: { id: current.id },
       data: { status: ConceptStatus.REVIEWED }
@@ -328,6 +365,8 @@ export async function markConceptReviewedAction(conceptId: number) {
         pageType: SourceType.CONCEPT,
         pageId: current.id,
         markdown: current.bodyMarkdown,
+        conceptTitle: current.title,
+        conceptKind: current.kind,
         editedById: user.id,
         editSummary: "Concept reviewed"
       }
@@ -389,6 +428,7 @@ export async function deleteConceptAction(conceptId: number) {
       slug: true,
       title: true,
       bodyMarkdown: true,
+      kind: true,
       createdById: true,
       aliases: { select: { aliasSlug: true } }
     }
@@ -401,6 +441,7 @@ export async function deleteConceptAction(conceptId: number) {
 
   const targetSlugs = [concept.slug, ...concept.aliases.map((alias) => alias.aliasSlug)];
   await prisma.$transaction(async (tx) => {
+    await pinLatestConceptRevisionMetadata(tx, concept.id, concept.title, concept.kind);
     await tx.internalLink.deleteMany({
       where: {
         sourceType: SourceType.CONCEPT,
@@ -421,6 +462,8 @@ export async function deleteConceptAction(conceptId: number) {
         pageType: SourceType.CONCEPT,
         pageId: concept.id,
         markdown: concept.bodyMarkdown,
+        conceptTitle: concept.title,
+        conceptKind: concept.kind,
         editedById: user.id,
         editSummary: "Concept deleted"
       }
@@ -449,7 +492,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
     }),
     prisma.concept.findUnique({
       where: { id: conceptId },
-      select: { createdById: true }
+      select: { createdById: true, title: true, kind: true }
     })
   ]);
 
@@ -460,11 +503,13 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
   }
 
   const concept = await prisma.$transaction(async (tx) => {
+    await pinLatestConceptRevisionMetadata(tx, conceptId, existingConcept.title, existingConcept.kind);
     const updated = await tx.concept.update({
       where: { id: conceptId },
       data: {
         bodyMarkdown: revision.markdown,
         bodyHtml: await renderMarkdownContent(revision.markdown),
+        ...(revision.conceptKind ? { kind: revision.conceptKind } : {}),
         lastEditedById: user.id
       }
     });
@@ -475,6 +520,8 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
         pageType: SourceType.CONCEPT,
         pageId: conceptId,
         markdown: revision.markdown,
+        conceptTitle: existingConcept.title,
+        conceptKind: revision.conceptKind ?? existingConcept.kind,
         editedById: user.id,
         editSummary: `Rolled back to revision ${revision.id}`
       }

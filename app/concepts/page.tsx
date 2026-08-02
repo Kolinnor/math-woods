@@ -1,4 +1,4 @@
-import { ConceptStatus, MathDomain, Prisma } from "@prisma/client";
+import { ConceptKind, ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import type { Route } from "next";
 import Link from "next/link";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
@@ -63,6 +63,7 @@ export default async function ConceptsPage({
     domain?: string;
     exerciseCount?: string;
     exerciseCountMode?: string;
+    kind?: string;
     minExercises?: string;
     problemLinks?: string;
     sort?: string;
@@ -77,6 +78,7 @@ export default async function ConceptsPage({
     domain = "",
     exerciseCount = "",
     exerciseCountMode = "",
+    kind = "",
     minExercises = "",
     status = "",
     sort = "",
@@ -101,6 +103,9 @@ export default async function ConceptsPage({
     : {};
   const statusValue = Object.values(ConceptStatus).includes(status as ConceptStatus)
     ? (status as ConceptStatus)
+    : undefined;
+  const kindValue = Object.values(ConceptKind).includes(kind as ConceptKind)
+    ? (kind as ConceptKind)
     : undefined;
   const linkedConceptSlugs =
     problemLinkFilter === "all"
@@ -145,6 +150,7 @@ export default async function ConceptsPage({
         }
       : {}),
     ...domainWhere,
+    ...(kindValue ? { kind: kindValue } : {}),
     ...(statusValue ? { status: statusValue } : {}),
     ...(!exerciseCountFilterActive
       ? {}
@@ -313,6 +319,12 @@ export default async function ConceptsPage({
             ))
           ])}
         </select>
+        <select name="kind" defaultValue={kindValue ?? ""} aria-label={t.concepts.kind}>
+          <option value="">{t.concepts.anyKind}</option>
+          <option value="DEFINITION">{t.concepts.kinds.DEFINITION}</option>
+          <option value="THEOREM">{t.concepts.kinds.THEOREM}</option>
+          <option value="INTUITIVE_NOTION">{t.concepts.kinds.INTUITIVE_NOTION}</option>
+        </select>
         <select name="status" defaultValue={statusValue ?? ""}>
           <option value="">{t.concepts.anyStatus}</option>
           <option value="STUB">{t.concepts.statuses.STUB}</option>
@@ -364,7 +376,8 @@ export default async function ConceptsPage({
               <div>
                 <h2 className="font-semibold">{concept.title}</h2>
                 <p className="meta">
-                  {translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()} /{" "}
+                  {t.concepts.kinds[concept.kind]} / {translatedDomainLabel(concept.domainCode, t)} /{" "}
+                  {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()} /{" "}
                   {t.concepts.incomingLinks(incomingLinkCountBySlug.get(concept.slug) ?? 0)} / {t.concepts.sources(concept._count.references)} /{" "}
                   {t.concepts.talkPosts(concept._count.talkPosts)}
                 </p>

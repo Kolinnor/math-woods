@@ -6,11 +6,12 @@ import { UserName } from "@/components/UserName";
 import { rollbackConceptRevisionAction } from "@/lib/actions/concept-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getTranslations } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConceptHistoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const user = await getCurrentUser();
+  const [user, t] = await Promise.all([getCurrentUser(), getTranslations()]);
   const { slug } = await params;
   const concept = await prisma.concept.findUnique({ where: { slug } });
 
@@ -66,6 +67,22 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
               )}
             </div>
             <p className="mt-3">{revision.editSummary || "No edit summary."}</p>
+            {revision.conceptTitle && revision.conceptTitle !== previousRevision?.conceptTitle && (
+              <div className="revision-field-diff mt-3">
+                <strong>{previousRevision?.conceptTitle ? "Title changed" : "Recorded title"}</strong>
+                {previousRevision?.conceptTitle && <del>{previousRevision.conceptTitle}</del>}
+                {previousRevision?.conceptTitle && <span aria-hidden="true">→</span>}
+                <ins>{revision.conceptTitle}</ins>
+              </div>
+            )}
+            {revision.conceptKind && revision.conceptKind !== previousRevision?.conceptKind && (
+              <div className="revision-field-diff mt-3">
+                <strong>{previousRevision?.conceptKind ? "Type changed" : "Recorded type"}</strong>
+                {previousRevision?.conceptKind && <del>{t.concepts.kinds[previousRevision.conceptKind]}</del>}
+                {previousRevision?.conceptKind && <span aria-hidden="true">→</span>}
+                <ins>{t.concepts.kinds[revision.conceptKind]}</ins>
+              </div>
+            )}
             {previousRevision ? (
               <RevisionDiff
                 afterMarkdown={revision.markdown}

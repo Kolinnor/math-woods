@@ -29,7 +29,15 @@ export default async function NewConceptPage({
   const sourceConcept = translateOf
     ? await prisma.concept.findUnique({
         where: { slug: translateOf },
-        select: { slug: true, title: true, bodyMarkdown: true, domainCode: true, language: true, translationGroupId: true }
+        select: {
+          slug: true,
+          title: true,
+          bodyMarkdown: true,
+          domainCode: true,
+          kind: true,
+          language: true,
+          translationGroupId: true
+        }
       })
     : null;
   const sourceTranslationLanguages = sourceConcept
@@ -72,6 +80,14 @@ export default async function NewConceptPage({
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
           <input name="title" required defaultValue={sourceConcept?.title ?? title} />
+        </label>
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">{t.concepts.kind}</span>
+          <select name="kind" defaultValue={sourceConcept?.kind ?? "DEFINITION"}>
+            <option value="DEFINITION">{t.concepts.kinds.DEFINITION}</option>
+            <option value="THEOREM">{t.concepts.kinds.THEOREM}</option>
+            <option value="INTUITIVE_NOTION">{t.concepts.kinds.INTUITIVE_NOTION}</option>
+          </select>
         </label>
         <LanguageField
           defaultValue={initialLanguage}

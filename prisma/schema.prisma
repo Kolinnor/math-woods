@@ -54,6 +54,12 @@ enum ConceptStatus {
   CONTROVERSIAL
 }
 
+enum ConceptKind {
+  DEFINITION
+  THEOREM
+  INTUITIVE_NOTION
+}
+
 enum SourceType {
   PROBLEM
   CONCEPT
@@ -603,6 +609,7 @@ model Concept {
   bodyHtml                  String
   domain                    MathDomain         @default(OTHER)
   domainCode                String             @default("other")
+  kind                      ConceptKind        @default(DEFINITION)
   status                    ConceptStatus      @default(STUB)
   canAppearInConceptBrowser Boolean            @default(false)
   createdAt                 DateTime           @default(now())
@@ -624,6 +631,7 @@ model Concept {
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
   @@index([language, canAppearInConceptBrowser, updatedAt])
+  @@index([language, kind, updatedAt])
   @@index([domainCode])
   @@index([translationGroupId])
   @@index([translatedFromConceptId])
@@ -634,6 +642,8 @@ model PageRevision {
   pageType        SourceType
   pageId          Int
   markdown        String
+  conceptTitle    String?
+  conceptKind     ConceptKind?
   problemVersion  Int?
   problemSnapshot Json?
   isCreation      Boolean     @default(false)

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ConceptStatus, MathDomain, Prisma, QualityStatus, Role, UserMathLevel } from "@prisma/client";
+import { ConceptKind, ConceptStatus, MathDomain, Prisma, QualityStatus, Role, UserMathLevel } from "@prisma/client";
 import { EditorState, StateEffect } from "@codemirror/state";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import {
@@ -20,6 +20,7 @@ import {
   parseConceptExerciseIds,
   parseMinimumConceptExercises
 } from "../lib/concept-exercises.ts";
+import { parseConceptKind } from "../lib/concept-kinds.ts";
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
@@ -1710,6 +1711,10 @@ assert.equal(parseConceptExerciseCount("2.5"), null);
 assert.equal(parseConceptExerciseCount("999"), MAX_CONCEPT_EXERCISES);
 assert.equal(parseConceptExerciseCountMode("at-most"), "at-most");
 assert.equal(parseConceptExerciseCountMode("unexpected"), "at-least");
+assert.equal(parseConceptKind("THEOREM"), ConceptKind.THEOREM);
+assert.equal(parseConceptKind("INTUITIVE_NOTION"), ConceptKind.INTUITIVE_NOTION);
+assert.equal(parseConceptKind("unexpected"), ConceptKind.DEFINITION);
+assert.equal(parseConceptKind(undefined, ConceptKind.THEOREM), ConceptKind.THEOREM);
 
 const multilingualHints = [
   {

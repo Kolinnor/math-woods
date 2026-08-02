@@ -822,6 +822,13 @@ export const en = {
     noMissingConcepts: "No missing concepts.",
     searchPlaceholder: "Search titles, content, or aliases",
     anyDomain: "Any domain",
+    kind: "Type",
+    anyKind: "Any type",
+    kinds: {
+      DEFINITION: "Definition",
+      THEOREM: "Theorem",
+      INTUITIVE_NOTION: "Intuitive notion"
+    },
     anyStatus: "Any status",
     problemLinksFilter: "Problem links",
     allProblemLinks: "All concepts",

@@ -291,6 +291,7 @@ export default async function ConceptPage({
   ]);
   const isLanguageFallback = targetViewLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
+  const conceptKindLabel = t.concepts.kinds[concept.kind];
   const conceptDomainLabel = translatedDomainLabel(concept.domainCode, t);
   const hasReadingHeader =
     isLanguageFallback ||
@@ -362,7 +363,7 @@ export default async function ConceptPage({
       heroAlt="Ivan Shishkin, Birch Grove"
       description={
         <>
-          {t.conceptDetail.statusLabel(conceptDomainLabel, conceptStatusLabel)}
+          {conceptKindLabel} / {t.conceptDetail.statusLabel(conceptDomainLabel, conceptStatusLabel)}
           {concept.lastEditedBy && (
             <>
               {" / "}

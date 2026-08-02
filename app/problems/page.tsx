@@ -910,31 +910,36 @@ export default async function ProblemsPage({
                     </span>
                   </div>
                   <div className="problem-ledger-main">
-                    <h3>
-                      <AsyncMarkdownInline markdown={problem.title} />
-                      {showLanguageBadge && (
-                        <span className="problem-language-badge" title={contentLanguageLabel(problem.language)}>
-                          {problem.language.toUpperCase()}
-                        </span>
-                      )}
-                      {problem.canAppearOnFrontPage && <span className="problem-language-badge">{t.problems.featured}</span>}
-                      {problem.isExercise && <span className="problem-language-badge problem-exercise-badge">{t.problems.exerciseType}</span>}
-                    </h3>
-                    <span className="problem-ledger-domain">
-                      {visibleDomainCodes.length
-                        ? visibleDomainCodes.map((code) => translatedDomainLabel(code, t)).join(" · ")
-                        : t.problems.domainHidden}
-                      {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""}
-                    </span>
+                    <div className="problem-ledger-title-row">
+                      <h3>
+                        <AsyncMarkdownInline markdown={problem.title} />
+                        {showLanguageBadge && (
+                          <span className="problem-language-badge" title={contentLanguageLabel(problem.language)}>
+                            {problem.language.toUpperCase()}
+                          </span>
+                        )}
+                        {problem.canAppearOnFrontPage && <span className="problem-language-badge">{t.problems.featured}</span>}
+                        {problem.isExercise && <span className="problem-language-badge problem-exercise-badge">{t.problems.exerciseType}</span>}
+                      </h3>
+                      <span
+                        className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}
+                      >
+                        {t.quality[problem.qualityStatus]}
+                      </span>
+                    </div>
+                    <div className="problem-ledger-meta-row">
+                      <span className="problem-ledger-domain">
+                        {visibleDomainCodes.length
+                          ? visibleDomainCodes.map((code) => translatedDomainLabel(code, t)).join(" · ")
+                          : t.problems.domainHidden}
+                        {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span className="problem-ledger-solve-count">{t.problems.solvedCount(externalSolveCount)}</span>
+                    </div>
                     </div>
                   </Link>
                   <div className="problem-ledger-side">
-                    <span className="problem-ledger-solve-count">{t.problems.solvedCount(externalSolveCount)}</span>
-                    <span
-                      className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}
-                    >
-                      {t.quality[problem.qualityStatus]}
-                    </span>
                     <div className="problem-ledger-author-row">
                       <Link
                         href={problemsHref({ ...paginationParams, author: authorName }) as never}

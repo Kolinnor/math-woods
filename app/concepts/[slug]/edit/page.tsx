@@ -107,6 +107,14 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           <span className="text-sm font-medium">Title</span>
           <input name="title" required defaultValue={concept.title} />
         </label>
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">{t.concepts.kind}</span>
+          <select name="kind" defaultValue={concept.kind}>
+            <option value="DEFINITION">{t.concepts.kinds.DEFINITION}</option>
+            <option value="THEOREM">{t.concepts.kinds.THEOREM}</option>
+            <option value="INTUITIVE_NOTION">{t.concepts.kinds.INTUITIVE_NOTION}</option>
+          </select>
+        </label>
         <LanguageField
           defaultValue={concept.language}
           disabledValues={siblingTranslations.map((translation) => translation.language)}
