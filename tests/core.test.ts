@@ -212,6 +212,10 @@ import {
   markdownHeadingPreviewText,
   markdownPreviewClass
 } from "../lib/markdown-preview.ts";
+import {
+  findMarkdownQuestionMarkers,
+  normalizeMarkdownQuestionMarkers
+} from "../lib/markdown-question-markers.ts";
 import { markdownExcerpt } from "../lib/metadata-text.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
@@ -875,6 +879,22 @@ assert.equal(
   canChangeConceptStatus(
     { id: 1, role: Role.MODERATOR },
     { createdById: 1, status: ConceptStatus.STUB },
+    ConceptStatus.USABLE
+  ),
+  true
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.USER },
+    { createdById: 1, status: ConceptStatus.STUB },
+    ConceptStatus.USABLE
+  ),
+  false
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.MODERATOR },
+    { createdById: 1, status: ConceptStatus.STUB },
     ConceptStatus.REVIEWED
   ),
   false
@@ -883,6 +903,14 @@ assert.equal(
   canChangeConceptStatus(
     { id: 1, role: Role.MODERATOR },
     { createdById: 2, status: ConceptStatus.STUB },
+    ConceptStatus.REVIEWED
+  ),
+  false
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.MODERATOR },
+    { createdById: 2, status: ConceptStatus.USABLE },
     ConceptStatus.REVIEWED
   ),
   true
@@ -1138,6 +1166,34 @@ assert.equal(renderedLatexList.includes("z"), true);
 
 const renderedOrderedListStart = await renderMarkdown("1. First\n\n- Aside\n\n4. Fourth");
 assert.equal(renderedOrderedListStart.includes('<ol start="4">'), true);
+
+assert.deepEqual(findMarkdownQuestionMarkers("1) Question\n2)a) Subquestion\n`3)b) Code`"), [
+  {
+    primaryFrom: 0,
+    primaryTo: 2,
+    secondaryFrom: null,
+    secondaryTo: null,
+    compact: false
+  },
+  {
+    primaryFrom: 12,
+    primaryTo: 14,
+    secondaryFrom: 14,
+    secondaryTo: 16,
+    compact: true
+  }
+]);
+assert.equal(
+  normalizeMarkdownQuestionMarkers("1)a) First subquestion\n2) b) Second subquestion"),
+  "1) **a)** First subquestion\n2) **b)** Second subquestion"
+);
+assert.equal(
+  normalizeMarkdownQuestionMarkers("1)\na) Separate line"),
+  "1)\na) Separate line"
+);
+const renderedExerciseQuestions = await renderMarkdown("1) Question\n2)a) Subquestion");
+assert.match(renderedExerciseQuestions, /<ol>[\s\S]*<li>Question<\/li>/);
+assert.match(renderedExerciseQuestions, /<li><strong>a\)<\/strong> Subquestion<\/li>/);
 
 const renderedMatrixLatex = await renderMarkdown(
   String.raw`$$A=\left(\begin{array}{lll}1&2&3\\4&5&6\\7&8&9\end{array}\right)$$`

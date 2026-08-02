@@ -4,6 +4,7 @@ import sanitizeHtml from "sanitize-html";
 import { findLatexRanges } from "./latex-ranges.ts";
 import { jsxGraphCodeBlockHtml } from "./jsxgraph.ts";
 import { markdownImageSizingFromSrc } from "./markdown-images.ts";
+import { normalizeMarkdownQuestionMarkers } from "./markdown-question-markers.ts";
 import { replaceWikiLinks } from "./wikilinks.ts";
 
 function externalLinkAttributes(href: string | undefined): Record<string, string> {
@@ -102,7 +103,7 @@ export async function renderMarkdown(
   blockDisplayMath = true,
   resolveWikiHref = (link: { targetSlug: string }) => `/concepts/${link.targetSlug}`
 ) {
-  const normalizedMarkdown = normalizeLatexLists(markdown);
+  const normalizedMarkdown = normalizeMarkdownQuestionMarkers(normalizeLatexLists(markdown));
   const { markdown: withLatexTokens, replacements } = protectLatex(normalizedMarkdown, blockDisplayMath);
   const withWikiLinks = replaceWikiLinks(
     withLatexTokens,

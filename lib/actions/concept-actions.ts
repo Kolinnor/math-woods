@@ -348,11 +348,14 @@ export async function markConceptReviewedAction(conceptId: number) {
       }
     });
     if (!current) throw new Error("Concept not found.");
-    if (!canReviewConcept(user, current)) {
-      throw new Error("You cannot review this concept.");
-    }
     if (current.status === ConceptStatus.REVIEWED || current.status === ConceptStatus.EXCELLENT) {
       return current;
+    }
+    if (current.status !== ConceptStatus.USABLE) {
+      throw new Error("A concept must be marked usable before it can be reviewed.");
+    }
+    if (!canReviewConcept(user, current)) {
+      throw new Error("You cannot review this concept.");
     }
 
     await pinLatestConceptRevisionMetadata(tx, current.id, current.title, current.kind);
@@ -369,6 +372,59 @@ export async function markConceptReviewedAction(conceptId: number) {
         conceptKind: current.kind,
         editedById: user.id,
         editSummary: "Concept reviewed"
+      }
+    });
+
+    return updated;
+  });
+
+  revalidatePath("/concepts");
+  revalidatePath(`/concepts/${concept.slug}`);
+  revalidatePath(`/concepts/${concept.slug}/edit`);
+  revalidatePath(`/concepts/${concept.slug}/history`);
+}
+
+export async function markConceptUsableAction(conceptId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`concept:usable:${user.id}`, 30, 60_000);
+
+  const concept = await prisma.$transaction(async (tx) => {
+    const current = await tx.concept.findUnique({
+      where: { id: conceptId },
+      select: {
+        id: true,
+        slug: true,
+        language: true,
+        title: true,
+        bodyMarkdown: true,
+        kind: true,
+        status: true,
+        createdById: true
+      }
+    });
+    if (!current) throw new Error("Concept not found.");
+    if (current.status === ConceptStatus.USABLE) return current;
+    if (current.status !== ConceptStatus.STUB && current.status !== ConceptStatus.MISSING) {
+      throw new Error("Only a stub can be marked as usable from this action.");
+    }
+    if (!canChangeConceptStatus(user, current, ConceptStatus.USABLE)) {
+      throw new Error("You cannot mark this concept as usable.");
+    }
+
+    await pinLatestConceptRevisionMetadata(tx, current.id, current.title, current.kind);
+    const updated = await tx.concept.update({
+      where: { id: current.id },
+      data: { status: ConceptStatus.USABLE }
+    });
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.CONCEPT,
+        pageId: current.id,
+        markdown: current.bodyMarkdown,
+        conceptTitle: current.title,
+        conceptKind: current.kind,
+        editedById: user.id,
+        editSummary: "Concept marked usable"
       }
     });
 

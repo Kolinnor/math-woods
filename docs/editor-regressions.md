@@ -6,6 +6,20 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-08-02 - Exercise question markers must match the rendered page
+
+Symptom:
+
+- Ordered question markers such as `1)` appeared bold in the live editor but not on the rendered problem page.
+- Compact sub-question markers such as `1)a)` were not recognized as question structure.
+
+Guardrail:
+
+- Keep the saved Markdown unchanged; recognize question markers for editor decoration and normalize only the temporary
+  Markdown passed to the server renderer.
+- Support both `1)a)` and `1) a)` without treating marker-like text inside inline or fenced code as a question.
+- Do not implement this by changing CodeMirror list replacement behavior or by rewriting the active editor document.
+
 ## 2026-07-31 - Local drafts must not hide newer server edits
 
 Symptom:

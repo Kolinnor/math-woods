@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MathDomain, NotificationType } from "@prisma/client";
+import { ConceptStatus, MathDomain, NotificationType } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -10,7 +10,8 @@ import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserAvatar } from "@/components/UserAvatar";
 import {
   dismissConceptTranslationStaleNoticeAction,
-  markConceptReviewedAction
+  markConceptReviewedAction,
+  markConceptUsableAction
 } from "@/lib/actions/concept-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -22,7 +23,7 @@ import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
-import { canReviewConcept, canUseAdminTools } from "@/lib/permissions";
+import { canChangeConceptStatus, canReviewConcept, canUseAdminTools } from "@/lib/permissions";
 import { problemDifficultyTone } from "@/lib/problem-difficulty";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -450,17 +451,33 @@ export default async function ConceptPage({
           </p>
         )}
 
-        {concept.status !== "REVIEWED" && concept.status !== "EXCELLENT" && (
-          <div className="quality-banner quality-unreviewed mb-4">
-            <strong>{t.conceptDetail.unreviewed}.</strong>{" "}
-            {t.conceptDetail.unreviewedNotice}
-            {user && canReviewConcept(user, concept) && (
+        {(concept.status === "STUB" || concept.status === "MISSING") && (
+          <div className="quality-banner quality-stub mb-4">
+            <strong>{t.concepts.statuses[concept.status]}.</strong>{" "}
+            {t.conceptDetail.stubStatusNotice}
+            {user && canChangeConceptStatus(user, concept, ConceptStatus.USABLE) && (
+              <form action={markConceptUsableAction.bind(null, concept.id)} className="mt-2">
+                <button type="submit" className="secondary">
+                  {t.conceptDetail.markUsable}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {concept.status === "USABLE" && (
+          <div className="quality-banner quality-usable mb-4">
+            <strong>{t.concepts.statuses.USABLE}.</strong>{" "}
+            {t.conceptDetail.usableNotice}
+            {user && canReviewConcept(user, concept) ? (
               <form action={markConceptReviewedAction.bind(null, concept.id)} className="mt-2">
                 <button type="submit" className="secondary">
                   {t.conceptDetail.markReviewed}
                 </button>
               </form>
-            )}
+            ) : user && concept.createdById === user.id ? (
+              <p className="concept-review-requirement mt-2">{t.conceptDetail.reviewRequiresAnotherUser}</p>
+            ) : null}
           </div>
         )}
 

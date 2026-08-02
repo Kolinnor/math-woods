@@ -1073,8 +1073,8 @@ body:has(.problem-detail-shell) .site-main {
 .problem-detail-shell .problem-statement .prose-math {
   color: #1c1a17;
   font-family: var(--font-serif), Georgia, serif;
-  font-size: 22px;
-  line-height: 1.72;
+  font-size: 1.05rem;
+  line-height: 1.68;
   max-width: 62ch;
 }
 
@@ -7902,6 +7902,10 @@ button.markdown-editor-tool-button:disabled svg {
   width: max-content;
 }
 
+.markdown-editor .cm-md-question-mark {
+  font-weight: 750;
+}
+
 .markdown-editor .cm-md-strong {
   font-weight: 750;
 }
@@ -8976,6 +8980,10 @@ button.danger:hover,
   list-style: decimal;
 }
 
+.prose-math ol > li::marker {
+  font-weight: 750;
+}
+
 .prose-math ul ul,
 .prose-math ol ul {
   list-style: circle;
@@ -9455,6 +9463,17 @@ button.domain-picker-tile > span:last-child {
   background: var(--notice-amber-bg);
   border-color: var(--notice-amber-border);
   border-left-color: var(--notice-amber-stripe);
+}
+
+.quality-usable {
+  background: #edf7f0;
+  border-color: #b8d7c1;
+  border-left-color: var(--accent);
+}
+
+.concept-review-requirement {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .quality-controversial {

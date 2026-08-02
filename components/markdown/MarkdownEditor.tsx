@@ -70,6 +70,7 @@ import {
   markdownHeadingPreviewText,
   markdownPreviewClass
 } from "@/lib/markdown-preview";
+import { findMarkdownQuestionMarkers } from "@/lib/markdown-question-markers";
 import { markdownDraftConflictsWithSource, type MarkdownDraft } from "@/lib/markdown-drafts";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
@@ -1284,6 +1285,17 @@ function buildLivePreviewDecorations(state: EditorState) {
           widget: new WikiLinkWidget(range.label, range.from),
           inclusive: false
         }).range(range.from, range.to)
+      )
+  );
+
+  decorations.push(
+    ...findMarkdownQuestionMarkers(text)
+      .filter((marker) => marker.secondaryFrom !== null && marker.secondaryTo !== null)
+      .map((marker) =>
+        Decoration.mark({ class: "cm-md-question-mark" }).range(
+          marker.compact ? marker.primaryFrom : marker.secondaryFrom!,
+          marker.secondaryTo!
+        )
       )
   );
 
