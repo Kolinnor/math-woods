@@ -1,4 +1,4 @@
-import { AttemptStatus, FriendshipStatus } from "@prisma/client";
+import { AttemptStatus, FriendshipStatus, MathDomain } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
@@ -17,8 +17,10 @@ import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
 import { parentProblemDomainForCode, PROBLEM_DOMAINS, translatedDomainLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
+import type { Dictionary } from "@/lib/i18n/types";
 import { renderMarkdown } from "@/lib/markdown";
 import { buildProgressMap } from "@/lib/progress";
+import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
@@ -71,6 +73,111 @@ const dashboardCopy = {
   }
 } as const;
 
+type HomeTranslations = Dictionary["home"];
+
+function homeDomainLabel(domain: MathDomain, t: HomeTranslations) {
+  return translatedDomainLabel(domain, t.domainLabels);
+}
+
+function GuestHomePage({
+  featured,
+  t
+}: {
+  featured: {
+    slug: string;
+    title: string;
+    domain: MathDomain;
+    difficulty: number | null;
+    _count: { attempts: number; favorites: number };
+  } | null;
+  t: HomeTranslations;
+}) {
+  return (
+    <div className="home-shell">
+      <section className="home-hero-forest">
+        <Image
+          src="/art/morning-in-a-pine-forest.jpg"
+          alt="Ivan Shishkin, Morning in a Pine Forest"
+          fill
+          priority
+          sizes="100vw"
+          className="home-hero-image"
+        />
+        <div className="home-hero-overlay" />
+        <div className="home-guest-hero-copy">
+          <h1>{t.hero.guestTitle}</h1>
+          <div className="home-hero-actions">
+            <Link href="/problems" className="home-button home-button-accent">
+              {t.hero.startSolving}
+            </Link>
+            <Link href="/contributing" className="home-button home-button-ghost">
+              {t.hero.contributeQuestion}
+            </Link>
+          </div>
+          <p className="home-art-credit">{t.hero.artCredit}</p>
+        </div>
+      </section>
+
+      <main className="home-main">
+        <section className="home-trail-band" aria-label={t.trail.ariaLabel}>
+          {t.trail.items.map((item, index) => (
+            <div key={item}>
+              <strong>{String(index + 1).padStart(2, "0")}</strong>
+              <p>{item}</p>
+            </div>
+          ))}
+        </section>
+
+        <section>
+          <div className="home-section-heading">
+            <h2>{t.problemToTry.title}</h2>
+            <Link href="/problems">{t.problemToTry.allProblems}</Link>
+          </div>
+          {featured ? (
+            <Link href={`/problems/${featured.slug}`} className="home-featured-problem">
+              <p>{homeDomainLabel(featured.domain, t)}</p>
+              <h3><AsyncMarkdownInline markdown={featured.title} /></h3>
+              <span>
+                {t.problemToTry.difficultyLine(
+                  featured.difficulty,
+                  t.problemToTry.attempts(featured._count.attempts),
+                  t.problemToTry.favorites(featured._count.favorites)
+                )}
+              </span>
+            </Link>
+          ) : (
+            <p className="home-empty-card">{t.problemToTry.empty}</p>
+          )}
+        </section>
+      </main>
+
+      <section className="home-trail-cta">
+        <Image src="/art/pine-forest.jpg" alt="Ivan Shishkin, Pine Forest" fill sizes="100vw" />
+        <div className="home-trail-cta-overlay" />
+        <div>
+          <h2>{t.cta.title}</h2>
+          <Link href="/problems" className="home-button home-button-light">
+            {t.cta.action}
+          </Link>
+          <p>{t.cta.artCredit}</p>
+        </div>
+      </section>
+
+      <footer className="home-footer">
+        <div>
+          <p>{t.footer.legal}</p>
+          <nav aria-label="Footer navigation">
+            <Link href="/about">{t.footer.about}</Link>
+            <Link href="/suggestions">{t.footer.suggestions}</Link>
+            <Link href="/contributing">{t.footer.contribute}</Link>
+            <Link href={"/legal" as Route}>{t.footer.legalAndBrand}</Link>
+          </nav>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 function dayStart(now = new Date()) {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
@@ -93,6 +200,29 @@ export default async function HomePage() {
     getPreferredContentLanguage()
   ]);
   const copy = dashboardCopy[locale];
+
+  if (!user) {
+    const featured = await prisma.problem.findFirst({
+      where: {
+        status: "PUBLISHED",
+        listed: true,
+        isExercise: false,
+        language: preferredLanguage,
+        canAppearOnFrontPage: true,
+        ...visibleProblemWhere(null)
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        slug: true,
+        title: true,
+        domain: true,
+        difficulty: true,
+        _count: { select: { attempts: true, favorites: true } }
+      }
+    });
+
+    return <GuestHomePage featured={featured} t={t.home} />;
+  }
 
   const resumeAttempt = user
     ? await prisma.problemAttempt.findFirst({

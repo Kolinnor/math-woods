@@ -15,7 +15,14 @@ import { parseAliases, parseReferences, syncConceptAliases, syncConceptReference
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import { refreshLinksForConcept, refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
-import { canChangeConceptStatus, canDeleteConcept, canEditConcept, canRollbackConcept, canUseAdminTools } from "@/lib/permissions";
+import {
+  canChangeConceptStatus,
+  canDeleteConcept,
+  canEditConcept,
+  canReviewConcept,
+  canRollbackConcept,
+  canUseAdminTools
+} from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
@@ -286,6 +293,53 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     href: `/concepts/${concept.slug}`
   });
   redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
+}
+
+export async function markConceptReviewedAction(conceptId: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`concept:review:${user.id}`, 30, 60_000);
+
+  const concept = await prisma.$transaction(async (tx) => {
+    const current = await tx.concept.findUnique({
+      where: { id: conceptId },
+      select: {
+        id: true,
+        slug: true,
+        language: true,
+        bodyMarkdown: true,
+        status: true,
+        createdById: true
+      }
+    });
+    if (!current) throw new Error("Concept not found.");
+    if (!canReviewConcept(user, current)) {
+      throw new Error("You cannot review this concept.");
+    }
+    if (current.status === ConceptStatus.REVIEWED || current.status === ConceptStatus.EXCELLENT) {
+      return current;
+    }
+
+    const updated = await tx.concept.update({
+      where: { id: current.id },
+      data: { status: ConceptStatus.REVIEWED }
+    });
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.CONCEPT,
+        pageId: current.id,
+        markdown: current.bodyMarkdown,
+        editedById: user.id,
+        editSummary: "Concept reviewed"
+      }
+    });
+
+    return updated;
+  });
+
+  revalidatePath("/concepts");
+  revalidatePath(`/concepts/${concept.slug}`);
+  revalidatePath(`/concepts/${concept.slug}/edit`);
+  revalidatePath(`/concepts/${concept.slug}/history`);
 }
 
 export async function dismissConceptTranslationStaleNoticeAction(conceptId: number) {

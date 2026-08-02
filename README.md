@@ -1,121 +1,125 @@
-# Math Woods
+<p align="center">
+  <img src="./public/icon.svg" width="88" alt="Math Woods logo">
+</p>
+
+<h1 align="center">Math Woods</h1>
+
+<p align="center">
+  <strong>The Free Math Knowledge Graph.</strong><br>
+  An open-source, community-curated collection of mathematical problems, exercises, concepts, and explorations.
+</p>
+
+<p align="center">
+  <a href="https://mathwoods.org"><strong>Visit Math Woods</strong></a>
+  &nbsp;·&nbsp;
+  <a href="./CONTRIBUTING.md">Contribute</a>
+  &nbsp;·&nbsp;
+  <a href="./LICENSING.md">Licensing</a>
+</p>
+
+![A forest painted by Ivan Shishkin](./public/art/morning-in-a-pine-forest.jpg)
 
 > [!IMPORTANT]
-> **Licensing:** software code is available under
-> [AGPL-3.0-or-later](./LICENSE), educational content is available under
-> [CC BY-NC-SA 4.0](./CONTENT_LICENSE.md) unless otherwise stated, and official brand assets are governed by the
-> [Brand Policy](./TRADEMARK.md). See [LICENSING.md](./LICENSING.md) for the complete overview.
+> The software is available under [AGPL-3.0-or-later](./LICENSE). Public educational content is available under
+> [CC BY-NC-SA 4.0](./CONTENT_LICENSE.md) unless a page states otherwise. The Math Woods name and official visual
+> identity are governed by the [Brand Policy](./TRADEMARK.md). The complete overview is in
+> [LICENSING.md](./LICENSING.md).
 
-Next.js prototype for an open-source math problem site inspired by lichess, Obsidian, and Math StackExchange.
+## About Math Woods
 
-Math Woods' core promise is to remain 100% free and free of advertising. Application code is licensed under
-GNU AGPL-3.0-or-later. Educational content defaults to CC BY-NC-SA 4.0 unless otherwise stated.
+Math Woods is a place for reading, writing, and solving mathematics together. Problems are organized by domain and
+difficulty, concepts form a network of linked pages, and exercises give readers a direct way to practise an idea they
+have just encountered. Everything is free to read, without advertising or subscriptions.
 
-Math Woods was coded with help from Codex, an AI coding agent by OpenAI, under human direction and review. The
-published site remains a human responsibility.
+The project takes inspiration from the collaborative editing of Wikipedia, the mathematical conversations of Math
+StackExchange, the connected notes of Obsidian, and the quiet focus of lichess. It is still growing, and its shape is
+guided by the people who use it to learn, explain, review, and explore mathematics.
 
-## Implemented Features
+## What you can do
 
-- Email/password authentication with PBKDF2 password hashes and database-backed session tokens.
-- Email verification before public contributions.
-- Problem creation and display with Markdown/LaTeX.
-- CodeMirror 6 editor for Markdown content.
-- Wikilink detection for `[[concept]]` and `[[concept|alias]]`.
-- Existing concepts, missing concepts, and backlinks.
-- Sourced concept articles with global aliases/redirects and mathematical domains.
-- Public article history with attributed edit summaries and rollback.
-- Separate editorial talk pages, concept watchlists, and recent changes.
-- Global search across concepts, aliases, problems, and playlists.
-- Random concept discovery and encyclopedia contribution guidelines.
-- `Start this problem` button.
-- Discussion posts behind an explicit reveal action on problem pages.
-- Private notes and personal status per user.
-- Discussion posts after unlock.
-- Playlists, problem insertion by slug, simple votes.
-- Problem search and filtering by tag or difficulty.
-- Problem domains with category browsing and filtering.
-- Expandable problem provenance with approximate origin, chapter, page, and historical notes.
-- Light forest theme for problem statements.
-- Solved problems and favorite problems on user profiles.
-- Playlist following with personal solved progress.
-- Public suggestion box.
-- Large About/FAQ policy covering free access, advertising, open source, AI, licensing, attribution, and responsible reformulation.
-- Problem tags.
-- Problem and concept editing with revision history.
-- Rollback from earlier revisions.
-- Basic reporting and moderation queue.
-- User profiles with editable bios.
-- Account settings with password changes and session revocation.
-- Typed discussion posts, post votes, and post reports.
-- Personal work dashboard at `/me`.
-- Markdown export for problems, concepts, and playlists.
-- Markdown import for problems and concepts at `/import`.
-- Rate limiting for auth, public contributions, reports, imports, voting, and moderation actions.
-- PostgreSQL Prisma schema for the MVP entities.
+### Solve and discuss
 
-## Local Setup
+The problem browser supports mathematical domains and subdomains, difficulty levels, exercises, translations, and
+personal progress. A problem can collect hints, solutions, discussions, reactions, related problems, and editorial
+review. Recommendations and friendly challenges help readers find a useful next problem without turning mathematics
+into an attention contest.
+
+### Build the knowledge graph
+
+Concept pages connect mathematical definitions and ideas through wiki-style links, aliases, backlinks, translations,
+and revision history. Curated exercises can be attached to a concept so that reading can lead naturally into practice.
+
+### Write interactive explorations
+
+Explorations are visual, branching mathematical stories built from blocks. Authors arrange text, concepts, problems,
+choices, and quizzes on a canvas, then connect them into paths that respond to the reader's answers.
+
+### Contribute with other people
+
+Math Woods includes public profiles, attributed revisions, review tools, notifications, friendships, private chat, and
+moderation. Contributors can sign in with Google, GitHub, ORCID, or a Math Woods account. Mathematical writing remains
+the center of the experience; the social tools are there to make collaboration easier.
+
+## Running Math Woods locally
+
+Math Woods uses Node.js 22 and PostgreSQL. Docker is the simplest way to start the local database.
 
 ```bash
+git clone https://github.com/Kolinnor/math-woods.git
+cd math-woods
 cp .env.example .env
 docker compose up -d
 npm install
+npm run prisma:generate
 npm run prisma:migrate
 npm run db:seed
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open [http://localhost:3000](http://localhost:3000). On Windows, use `npm.cmd` when PowerShell prevents the `npm`
+wrapper from running.
 
-Demo moderator account:
+External login providers, email delivery, Redis-compatible rate limiting, and object storage are optional during local
+development. Their environment variables are documented in [`.env.example`](./.env.example). Never commit a real
+`.env` or `.env.production` file.
 
-- Email: `curator@example.com`
-- Password: `curator-demo`
+## Development
 
-## One-Click Launch on Windows
+The application is built with Next.js 15, React 19, TypeScript, Prisma, and PostgreSQL. CodeMirror powers the
+Markdown/LaTeX editor, KaTeX renders mathematics, JSXGraph supports interactive figures, and React Flow powers the
+exploration canvas. Production runs in Docker with Caddy, Valkey, and automated PostgreSQL backups.
 
-Double-click `Launch Math Woods.vbs` from the project folder. It starts Docker/Postgres if needed, runs the Next dev server in the background, then opens `http://localhost:3000`.
-
-Double-click `Stop Math Woods.vbs` to stop the hidden dev server.
-
-Logs are written to `runtime/launcher.log` and `runtime/next-dev.log`.
-
-If PowerShell blocks `npm`, use `npm.cmd`:
-
-```powershell
-npm.cmd run dev
-```
-
-## Core Tests
+Before opening a pull request, run the same checks used for substantial local changes:
 
 ```bash
+npx tsc --noEmit
 npm run test:core
+npm run build
 ```
 
-These tests cover slugs, wikilinks, and core problem-solving flows.
+The editor has a history of delicate edge cases around live LaTeX, selections, links, lists, and display mathematics.
+Please read [`docs/editor-regressions.md`](./docs/editor-regressions.md) before changing it. The production setup is
+documented separately in [`deploy/INFOMANIAK.md`](./deploy/INFOMANIAK.md).
 
-## Low-Cost Production Deploy
+## Contributing
 
-The Infomaniak/VPS deployment path is documented in `deploy/INFOMANIAK.md`.
-It runs Math Woods on one Docker host with Next.js, PostgreSQL, Valkey rate limiting, Caddy HTTPS, Uptime Kuma, and a Postgres backup script.
+There are many useful ways to take part: write or translate mathematical content, improve a proof, review a page, report
+a bug, refine the interface, or contribute code. The site records authorship and revision history so that changes can be
+discussed and understood.
 
-## Repository and Remotes
+Please read [`CONTRIBUTING.md`](./CONTRIBUTING.md) before submitting work. Only contribute material you wrote, material
+in the public domain, or material you have permission to publish under the relevant Math Woods license. Sources and
+adaptations should be identified clearly.
 
-This repository is the active Math Woods codebase. Older "math-garden" names or clones may exist, but current work
-should happen here.
+Math Woods was developed with assistance from AI coding tools under human direction and review. Responsibility for
+the published project remains human.
 
-- `origin`: VPS bare repository at `ubuntu@37.156.45.153:~/git/math-woods.git`.
-- `github`: public GitHub repository at `https://github.com/Kolinnor/math-woods.git`.
+## Licensing and credits
 
-Important provenance tags:
+The application code is licensed under the [GNU Affero General Public License v3.0 or later](./LICENSE). Educational
+content uses [CC BY-NC-SA 4.0](./CONTENT_LICENSE.md) by default. Forks should use their own name and visual identity in
+accordance with the [Brand Policy](./TRADEMARK.md).
 
-- `vps-origin-2026-06-10`: original VPS snapshot from June 10, 2026.
-- `public-origin-2026-06-27`: public release state pushed to GitHub on June 27, 2026.
-
-## Notes
-
-Authentication is still intentionally lightweight for this first prototype. The natural next step is password reset and stronger production-grade rate limiting.
-
-For production, set `AUTH_SECRET` to a unique random value of at least 32 characters. The app refuses to use the local-development placeholder when `NODE_ENV=production`.
-
-Before public registration is opened, configure SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_AUTH_REQUIRED=1`) so users can verify their email addresses.
-Before inviting contributors, copy Postgres backups outside the VPS with `deploy/sync-backups-offsite.sh` and test at least one restore.
+Forest paintings used by Math Woods are works by Ivan Shishkin (1832-1898), in the public domain. Default avatar
+illustrations come from AsIan's *Animal Outlined Sepia Icons* collection under CC BY 4.0. Third-party notices and
+attribution guidance are collected in [`NOTICE`](./NOTICE).

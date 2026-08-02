@@ -8,7 +8,10 @@ import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserAvatar } from "@/components/UserAvatar";
-import { dismissConceptTranslationStaleNoticeAction } from "@/lib/actions/concept-actions";
+import {
+  dismissConceptTranslationStaleNoticeAction,
+  markConceptReviewedAction
+} from "@/lib/actions/concept-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -19,7 +22,7 @@ import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
-import { canUseAdminTools } from "@/lib/permissions";
+import { canReviewConcept, canUseAdminTools } from "@/lib/permissions";
 import { problemDifficultyTone } from "@/lib/problem-difficulty";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -444,6 +447,20 @@ export default async function ConceptPage({
           <p className="quality-banner quality-controversial mb-4">
             {t.conceptDetail.controversialNotice}
           </p>
+        )}
+
+        {concept.status !== "REVIEWED" && concept.status !== "EXCELLENT" && (
+          <div className="quality-banner quality-unreviewed mb-4">
+            <strong>{t.conceptDetail.unreviewed}.</strong>{" "}
+            {t.conceptDetail.unreviewedNotice}
+            {user && canReviewConcept(user, concept) && (
+              <form action={markConceptReviewedAction.bind(null, concept.id)} className="mt-2">
+                <button type="submit" className="secondary">
+                  {t.conceptDetail.markReviewed}
+                </button>
+              </form>
+            )}
+          </div>
         )}
 
         <section className="reading-surface">

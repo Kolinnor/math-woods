@@ -88,6 +88,7 @@
 :root {
   --mw-page: #e8e2d3;
   --mw-surface: #f8f4ea;
+  --mw-reading-surface: #fdfaf3;
   --mw-muted-surface: #f1ebdc;
   --mw-border: #d8d0bd;
   --mw-border-strong: #cbc0a8;
@@ -678,6 +679,7 @@ body:has(.problem-detail-shell) {
   color: var(--mw-text);
   display: flex;
   gap: 10px;
+  justify-content: flex-start;
   padding: 9px 16px;
   text-align: left;
   width: 100%;
@@ -689,9 +691,15 @@ body:has(.problem-detail-shell) {
 }
 
 .recommendation-reader-list button > span:first-child {
+  flex: 0 0 28px;
   font-family: var(--font-serif), Georgia, serif;
   font-size: 16px;
   font-weight: 700;
+  text-align: right;
+}
+
+.recommendation-reader-list button > span:last-child {
+  min-width: 0;
 }
 
 .recommendation-reader-list strong {
@@ -705,7 +713,7 @@ body:has(.problem-detail-shell) {
 }
 
 .recommendation-reader-panel {
-  background: #e0d3c4;
+  background: var(--mw-reading-surface);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -777,7 +785,7 @@ body:has(.problem-detail-shell) {
 }
 
 .recommendation-statement-fade {
-  background: linear-gradient(180deg, rgba(224,211,196,0), rgba(224,211,196,.96) 55%, #e0d3c4 85%);
+  background: linear-gradient(180deg, rgb(253 250 243 / 0), rgb(253 250 243 / .96) 55%, var(--mw-reading-surface) 85%);
   bottom: 0;
   display: block;
   height: 56px;
@@ -1031,8 +1039,8 @@ body:has(.problem-detail-shell) .site-main {
 }
 
 .problem-detail-shell .problem-statement {
-  background: #e0d3c4;
-  border: 1px solid #c0a893;
+  background: var(--mw-reading-surface);
+  border: 1px solid var(--mw-border);
   border-radius: 12px;
   padding: 32px 36px;
 }
