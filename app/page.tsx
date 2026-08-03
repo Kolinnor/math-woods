@@ -593,7 +593,10 @@ export default async function HomePage() {
                 {tipPracticeLink && (
                   <Link href={`/problems/${tipPracticeLink.problem.slug}`} className="home-tip-practice">
                     <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeLink.problem.title} /></strong>
-                    <span>{translatedDomainLabel(tipPracticeLink.problem.domain, t.home.domainLabels)} / {tipPracticeLink.problem.difficulty ?? "--"}</span>
+                    <span className="home-tip-practice-meta">
+                      {translatedDomainLabel(tipPracticeLink.problem.domain, t.home.domainLabels)}
+                      <Difficulty value={tipPracticeLink.problem.difficulty} compact />
+                    </span>
                   </Link>
                 )}
               </div>

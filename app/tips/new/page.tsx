@@ -28,6 +28,7 @@ export default async function NewTipPage() {
     >
       <form action={createTipAction} className="panel grid gap-4 p-5">
         <TipEditorFields
+          draftKey="tip:new:body"
           initialProblems={[]}
           submitLabel="Create tip"
           values={{

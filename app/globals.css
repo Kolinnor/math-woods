@@ -463,6 +463,17 @@ body:has(.problem-detail-shell) {
   font-size: 12.5px;
 }
 
+.home-tip-practice-meta {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.55rem;
+}
+
+.home-tip-practice-meta .mw-difficulty {
+  flex-direction: row-reverse;
+  gap: 0.3rem;
+}
+
 .home-news-list {
   background: var(--mw-surface);
   border: 1px solid var(--mw-border);
@@ -940,6 +951,10 @@ body:has(.problem-detail-shell) .site-main {
   color: inherit;
   display: flex;
   gap: 7px;
+}
+
+.problem-title-meta .translation-menu {
+  margin-top: 0;
 }
 
 .problem-solved-banner {
@@ -12500,7 +12515,18 @@ button.live-search-reset:hover {
 }
 
 .problem-ledger-attempt.is-active {
-  cursor: default;
+  cursor: pointer;
+}
+
+.problem-ledger-check:disabled,
+.problem-ledger-attempt:disabled,
+button.problem-favorite-count:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.problem-ledger-action-failed {
+  box-shadow: inset 0 0 0 1px var(--danger);
 }
 
 .problem-ledger-difficulty {

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { FieldHelp } from "@/components/FieldHelp";
-import { Check, Ellipsis, Heart, House } from "lucide-react";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
+import { ProblemLedgerInteractiveRow } from "@/components/ProblemLedgerInteractiveRow";
 import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
@@ -14,12 +14,6 @@ import { RecommendedProblemReader } from "@/components/RecommendedProblemReader"
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
-import {
-  markProblemSolvedAction,
-  startAttemptAction,
-  toggleProblemFavoriteAction,
-  unmarkProblemSolvedAction
-} from "@/lib/actions/problem-actions";
 import { prisma } from "@/lib/db";
 import {
   domainCodeAliases,
@@ -900,61 +894,50 @@ export default async function ProblemsPage({
               const showLanguageBadge = problem.language !== preferredLanguage;
 
               return (
-                <div
+                <ProblemLedgerInteractiveRow
                   key={problem.id}
-                  title={isOwnProblem ? t.problems.yourProblem : isUserFavorite ? t.problems.favoriteProblem : undefined}
-                  className={`${problemLinkClass(
-                    "problem-ledger-row",
-                    isSolved ? "solved" : isOpened ? "opened" : null
-                  )}${isOwnProblem ? " problem-own" : isUserFavorite ? " problem-favorite" : ""}`}
-                >
-                  <div className="problem-ledger-progress-action">
-                    {user ? (
-                      isSolved ? (
-                        <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)}>
-                          <button
-                            type="submit"
-                            className="problem-ledger-check is-solved"
-                            title={t.problemDetail.unmarkSolved}
-                            aria-label={t.problemDetail.unmarkSolved}
-                            aria-pressed="true"
-                          >
-                            <Check size={14} strokeWidth={3} />
-                          </button>
-                        </form>
-                      ) : problem.verificationMode === "NONE" || isOwnProblem ? (
-                        <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
-                          <button
-                            type="submit"
-                            className="problem-ledger-check"
-                            title={t.problemDetail.markSolved}
-                            aria-label={t.problemDetail.markSolved}
-                            aria-pressed="false"
-                          >
-                            <Check size={14} strokeWidth={3} />
-                          </button>
-                        </form>
-                      ) : (
-                        <Link
-                          href={`/problems/${problem.slug}#problem-verification`}
-                          className="problem-ledger-check"
-                          title={t.problemDetail.markSolved}
-                          aria-label={t.problemDetail.markSolved}
-                        >
-                          <Check size={14} strokeWidth={3} />
-                        </Link>
-                      )
-                    ) : (
+                  author={(
+                    <div className="problem-ledger-author-row">
                       <Link
-                        href="/login"
-                        className="problem-ledger-check"
-                        title={t.problemDetail.markSolved}
-                        aria-label={t.problemDetail.markSolved}
+                        href={problemsHref({ ...paginationParams, author: authorName }) as never}
+                        className="problem-ledger-author"
+                        title={t.problems.filterByAuthor(authorName)}
                       >
-                        <Check size={14} strokeWidth={3} />
+                        {t.common.by} {authorName}
                       </Link>
-                    )}
-                  </div>
+                      <Link
+                        href={`/profile/${problem.author.username}`}
+                        className="problem-ledger-author-avatar"
+                        title={authorName}
+                        aria-label={authorName}
+                      >
+                        <UserAvatar user={problem.author} size="xs" />
+                      </Link>
+                    </div>
+                  )}
+                  className={`${problemLinkClass("problem-ledger-row")}${isOwnProblem ? " problem-own" : ""}`}
+                  favoriteCount={externalFavoriteCount}
+                  initialAttempted={isOpened}
+                  initialFavorite={isUserFavorite}
+                  initialSolved={isSolved}
+                  isOwnProblem={isOwnProblem}
+                  labels={{
+                    addFavorite: t.problemDetail.addFavorite,
+                    attempted: t.problemDetail.attempted,
+                    favoriteProblem: t.problems.favoriteProblem,
+                    favorites: t.problems.favorites,
+                    markSolved: t.problemDetail.markSolved,
+                    removeFavorite: t.problemDetail.removeFavorite,
+                    startAttempting: t.problemDetail.startAttempting,
+                    unmarkSolved: t.problemDetail.unmarkSolved,
+                    updateFailed: t.problems.browserUpdateFailed,
+                    yourProblem: t.problems.yourProblem
+                  }}
+                  problemId={problem.id}
+                  problemSlug={problem.slug}
+                  requiresVerification={problem.verificationMode !== "NONE" && !isOwnProblem}
+                  signedIn={Boolean(user)}
+                >
                   <Link href={`/problems/${problem.slug}`} className="problem-ledger-content">
                     <div className="problem-ledger-difficulty" style={{ color: tone }}>
                     <span>{difficulty ? String(difficulty).padStart(2, "0") : "--"}</span>
@@ -999,91 +982,7 @@ export default async function ProblemsPage({
                     </div>
                     </div>
                   </Link>
-                  <div className="problem-ledger-side">
-                    <div className="problem-ledger-author-row">
-                      <Link
-                        href={problemsHref({ ...paginationParams, author: authorName }) as never}
-                        className="problem-ledger-author"
-                        title={t.problems.filterByAuthor(authorName)}
-                      >
-                        {t.common.by} {authorName}
-                      </Link>
-                      <Link
-                        href={`/profile/${problem.author.username}`}
-                        className="problem-ledger-author-avatar"
-                        title={authorName}
-                        aria-label={authorName}
-                      >
-                        <UserAvatar user={problem.author} size="xs" />
-                      </Link>
-                    </div>
-                    {!isSolved && (user ? (
-                      isOpened ? (
-                        <span
-                          className="problem-ledger-attempt is-active"
-                          title={t.problemDetail.attempted}
-                          aria-label={t.problemDetail.attempted}
-                        >
-                          <Ellipsis size={16} strokeWidth={3} />
-                        </span>
-                      ) : (
-                        <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
-                          <button
-                            type="submit"
-                            className="problem-ledger-attempt"
-                            title={t.problemDetail.startAttempting}
-                            aria-label={t.problemDetail.startAttempting}
-                          >
-                            <Ellipsis size={16} strokeWidth={3} />
-                          </button>
-                        </form>
-                      )
-                    ) : (
-                      <Link
-                        href="/login"
-                        className="problem-ledger-attempt"
-                        title={t.problemDetail.startAttempting}
-                        aria-label={t.problemDetail.startAttempting}
-                      >
-                        <Ellipsis size={16} strokeWidth={3} />
-                      </Link>
-                    ))}
-                    {isOwnProblem && (
-                      <span className="problem-favorite-count problem-own-count" title={t.problems.yourProblem}>
-                        <House size={15} />
-                      </span>
-                    )}
-                    {isOwnProblem ? (
-                      <span className="problem-favorite-count" title={t.problems.favorites}>
-                        <Heart size={15} />
-                        {externalFavoriteCount}
-                      </span>
-                    ) : user ? (
-                      <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
-                        <button
-                          type="submit"
-                          className={isUserFavorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
-                          title={isUserFavorite ? t.problemDetail.removeFavorite : t.problemDetail.addFavorite}
-                          aria-label={isUserFavorite ? t.problemDetail.removeFavorite : t.problemDetail.addFavorite}
-                          aria-pressed={isUserFavorite}
-                        >
-                          <Heart size={15} fill={isUserFavorite ? "currentColor" : "none"} />
-                          {externalFavoriteCount}
-                        </button>
-                      </form>
-                    ) : (
-                      <Link
-                        href="/login"
-                        className="problem-favorite-count"
-                        title={t.problemDetail.addFavorite}
-                        aria-label={t.problemDetail.addFavorite}
-                      >
-                        <Heart size={15} />
-                        {externalFavoriteCount}
-                      </Link>
-                    )}
-                  </div>
-                </div>
+                </ProblemLedgerInteractiveRow>
               );
             })}
             {problems.length === 0 && (

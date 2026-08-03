@@ -598,6 +598,14 @@ export default async function ProblemPage({
             </Link>
             <span>·</span>
             <Difficulty value={problem.difficulty} compact />
+            <span>·</span>
+            <ContentTranslations
+              currentLanguage={problem.language}
+              hrefPrefix="/problems"
+              translations={translations}
+              addTranslationLabel={t.translations.addTranslation}
+              createHref={addTranslationHref}
+            />
           </div>
         </header>
         {attempt?.status === "SOLVED" && (
@@ -670,22 +678,6 @@ export default async function ProblemPage({
               )}
             </div>
           )}
-          <nav className="tab-nav problem-tab-nav">
-            <span>{t.problemDetail.statement}</span>
-            <Link href={`/problems/${problem.slug}/discussion`}>
-              {t.problemDetail.discussions} · {t.problemDetail.messages(discussionPostCount)}
-            </Link>
-            <Link href={`/problems/${problem.slug}/history`}>
-              {t.conceptDetail.history}
-            </Link>
-            <ContentTranslations
-              currentLanguage={problem.language}
-              hrefPrefix="/problems"
-              translations={translations}
-              addTranslationLabel={t.translations.addTranslation}
-              createHref={addTranslationHref}
-            />
-          </nav>
           {problem.tags.length > 0 && (
             <div className="problem-detail-tags zen-meta">
               {problem.tags.map(({ tag }) => (

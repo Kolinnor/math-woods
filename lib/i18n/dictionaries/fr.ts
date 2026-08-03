@@ -641,6 +641,7 @@ export const fr = {
     yourProblem: "Votre problème",
     favoriteProblem: "Problème favori",
     favorites: "Favoris",
+    browserUpdateFailed: "La modification n'a pas pu être enregistrée. Réessayez.",
     domainHidden: "Domaine masqué",
     spoilerDomainHidden: "domaine spoiler masqué",
     solvedCount: (count: number) => `${count} résolu${count > 1 ? "s" : ""}`,

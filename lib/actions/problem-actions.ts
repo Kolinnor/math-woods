@@ -1251,6 +1251,32 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
   revalidatePath("/me");
 }
 
+export async function unmarkProblemAttemptAction(problemId: number, problemSlug: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`attempt:remove:${user.id}`, 60, 60_000);
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: { translationGroupId: true }
+  });
+  if (!problem) throw new Error("Problem not found.");
+  const translations = await prisma.problem.findMany({
+    where: { translationGroupId: problem.translationGroupId },
+    select: { id: true, slug: true }
+  });
+
+  await prisma.problemAttempt.deleteMany({
+    where: {
+      userId: user.id,
+      problemId: { in: translations.map((translation) => translation.id) },
+      status: AttemptStatus.STARTED
+    }
+  });
+
+  revalidatePath("/problems");
+  for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);
+  revalidatePath("/me");
+}
+
 async function markSolvedNow(problemId: number, problemSlug: string, user: { id: number; username: string; displayName?: string | null }) {
   const now = new Date();
   const problem = await prisma.problem.findUnique({

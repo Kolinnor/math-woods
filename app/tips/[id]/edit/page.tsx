@@ -74,8 +74,10 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
     >
       <form action={updateTipAction.bind(null, tip.id)} className="panel grid gap-4 p-5">
         <TipEditorFields
+          draftKey={`tip:${tip.id}:body`}
           initialProblems={initialProblems}
           submitLabel="Save tip"
+          sourceUpdatedAt={tip.updatedAt.getTime()}
           values={{
             title: tip.title,
             body: tip.body,

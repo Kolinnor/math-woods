@@ -636,6 +636,7 @@ export const en = {
     yourProblem: "Your problem",
     favoriteProblem: "Favorite problem",
     favorites: "Favorites",
+    browserUpdateFailed: "The change could not be saved. Try again.",
     domainHidden: "Domain hidden",
     spoilerDomainHidden: "spoiler domain hidden",
     solvedCount: (count: number) => `${count} solved`,

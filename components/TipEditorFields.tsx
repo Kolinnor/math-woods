@@ -1,10 +1,13 @@
 import { TipImageField } from "@/components/TipImageField";
 import { TipProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
+import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { CONTENT_LIMITS } from "@/lib/content-limits";
 
 type TipEditorFieldsProps = {
+  draftKey: string;
   initialProblems: TipPickerProblem[];
   submitLabel: string;
+  sourceUpdatedAt?: number | null;
   values: {
     title: string;
     body: string;
@@ -15,26 +18,26 @@ type TipEditorFieldsProps = {
   };
 };
 
-export function TipEditorFields({ initialProblems, submitLabel, values }: TipEditorFieldsProps) {
+export function TipEditorFields({ draftKey, initialProblems, submitLabel, sourceUpdatedAt = null, values }: TipEditorFieldsProps) {
   return (
     <>
       <label className="grid gap-2">
         <span className="text-sm font-medium">Title</span>
         <input name="title" maxLength={CONTENT_LIMITS.title} required defaultValue={values.title} />
       </label>
-      <label className="grid gap-2">
+      <div className="grid gap-2">
         <span className="text-sm font-medium">Tip text</span>
-        <textarea
+        <LazyMarkdownEditor
           name="body"
-          maxLength={CONTENT_LIMITS.longNote}
-          rows={7}
-          required
-          defaultValue={values.body}
+          initialValue={values.body}
+          minHeight="12rem"
+          draftKey={draftKey}
+          sourceUpdatedAt={sourceUpdatedAt}
         />
         <span className="muted text-sm">
           Main text shown in the Tips library and Tip of the Day. Markdown and LaTeX are supported.
         </span>
-      </label>
+      </div>
       <TipImageField
         initialImageUrl={values.imageUrl}
         initialPositionX={values.imagePositionX}
