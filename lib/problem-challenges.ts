@@ -45,6 +45,23 @@ export function normalizeProblemChallengeMessage(value: FormDataEntryValue | str
   return String(value ?? "").trim().slice(0, PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH);
 }
 
+export function problemDeliveryChatMarkdown({
+  intent,
+  problemTitle,
+  problemSlug,
+  message
+}: {
+  intent: ProblemDeliveryIntent;
+  problemTitle: string;
+  problemSlug: string;
+  message?: string | null;
+}) {
+  const label = intent === "challenge" ? "Challenge" : "Shared problem";
+  const linkTitle = problemTitle.replace(/([\[\]])/g, "\\$1");
+  const introduction = `**${label}**\n\n[${linkTitle}](/problems/${problemSlug})`;
+  return message?.trim() ? `${introduction}\n\n${message.trim()}` : introduction;
+}
+
 export function problemChallengeNotificationBody({
   challengerName,
   problemTitle,

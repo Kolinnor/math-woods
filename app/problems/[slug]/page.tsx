@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { TargetType } from "@prisma/client";
 import { NotificationType } from "@prisma/client";
-import { Check, Heart, Lightbulb, Pencil, Target, ThumbsUp } from "lucide-react";
+import { Check, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
@@ -1094,13 +1094,26 @@ export default async function ProblemPage({
         <aside className="problem-rail zen-hide">
         <nav className="problem-rail-actions" aria-label={t.problemDetail.problem}>
           {canEditCurrentProblem && (
-            <Link href={`/problems/${problem.slug}/edit`}>{t.problemDetail.edit}</Link>
+            <Link href={`/problems/${problem.slug}/edit`}>
+              <span className="problem-rail-action-label">
+                <Pencil size={16} aria-hidden="true" />
+                <span>{t.problemDetail.edit}</span>
+              </span>
+            </Link>
           )}
           <Link href={`/problems/${problem.slug}/discussion`}>
-            {t.problemDetail.discussions}
-            <span>{discussionPostCount}</span>
+            <span className="problem-rail-action-label">
+              <MessageCircle size={16} aria-hidden="true" />
+              <span>{t.problemDetail.discussions}</span>
+            </span>
+            <span className="problem-rail-action-count">{discussionPostCount}</span>
           </Link>
-          <Link href={`/problems/${problem.slug}/history`}>{t.conceptDetail.history}</Link>
+          <Link href={`/problems/${problem.slug}/history`}>
+            <span className="problem-rail-action-label">
+              <History size={16} aria-hidden="true" />
+              <span>{t.conceptDetail.history}</span>
+            </span>
+          </Link>
           {user && problem.status === "PUBLISHED" && problem.listed && (
             <ProblemChallengeLauncher
               className="problem-rail-challenge-trigger"
@@ -1144,7 +1157,12 @@ export default async function ProblemPage({
               }}
             />
           )}
-          <a href="#report">{t.problemDetail.report}</a>
+          <a href="#report">
+            <span className="problem-rail-action-label">
+              <Flag size={16} aria-hidden="true" />
+              <span>{t.problemDetail.report}</span>
+            </span>
+          </a>
         </nav>
 
           {nextProblem && (

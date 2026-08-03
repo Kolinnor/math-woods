@@ -94,6 +94,7 @@ import { en } from "../lib/i18n/dictionaries/en.ts";
 import { fr } from "../lib/i18n/dictionaries/fr.ts";
 import {
   normalizeProblemChallengeMessage,
+  problemDeliveryChatMarkdown,
   problemChallengeNotificationBody,
   problemShareNotificationBody,
   PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH
@@ -1768,6 +1769,23 @@ assert.equal(
     problemTitle: "A short proof"
   }),
   'Emmy shared the problem "A short proof" with you.'
+);
+assert.equal(
+  problemDeliveryChatMarkdown({
+    intent: "challenge",
+    problemTitle: "A short proof",
+    problemSlug: "a-short-proof",
+    message: "I think you will like it."
+  }),
+  "**Challenge**\n\n[A short proof](/problems/a-short-proof)\n\nI think you will like it."
+);
+assert.equal(
+  problemDeliveryChatMarkdown({
+    intent: "share",
+    problemTitle: "Sequences [and series]",
+    problemSlug: "sequences-and-series"
+  }),
+  "**Shared problem**\n\n[Sequences \\[and series\\]](/problems/sequences-and-series)"
 );
 const challengeInviteToken = "a".repeat(43);
 assert.equal(normalizeProblemChallengeInviteToken(challengeInviteToken), challengeInviteToken);

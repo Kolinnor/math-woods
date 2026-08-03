@@ -1580,9 +1580,22 @@ body:has(.problem-detail-shell) .site-main {
   background: #efe8d8;
 }
 
-.problem-rail-actions > a > span {
+.problem-rail-action-count {
   color: var(--mw-tertiary);
   font-size: 12.5px;
+}
+
+.problem-rail-action-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.problem-rail-action-label > svg,
+.problem-rail-actions > .problem-rail-challenge-trigger > svg {
+  color: var(--mw-tertiary);
+  flex: 0 0 auto;
 }
 
 .problem-report-section {
@@ -8810,6 +8823,8 @@ button.secondary:hover,
   box-shadow: none;
   color: var(--mw-text);
   font-weight: 500;
+  gap: 10px;
+  justify-content: flex-start;
 }
 
 .problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger:hover,

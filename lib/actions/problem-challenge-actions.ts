@@ -1,12 +1,15 @@
 "use server";
 
-import { NotificationType } from "@prisma/client";
+import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { directChatPair } from "@/lib/direct-chat";
+import { renderMarkdown } from "@/lib/markdown";
 import { createNotification } from "@/lib/notifications";
 import {
   normalizeProblemChallengeMessage,
+  problemDeliveryChatMarkdown,
   problemChallengeNotificationBody,
   problemShareNotificationBody,
   type ProblemDeliveryIntent,
@@ -81,16 +84,55 @@ export async function createProblemChallengeAction(
       });
   if (recentDuplicate) return { error: "duplicate", ok: false };
 
-  if (intent === "challenge") {
-    await prisma.problemChallenge.create({
-      data: {
-        challengerId: challenger.id,
-        recipientId: recipient.id,
-        problemId: problem.id,
-        message: message || null
-      }
-    });
-  }
+  const friendship = await prisma.friendship.findFirst({
+    where: {
+      status: FriendshipStatus.ACCEPTED,
+      OR: [
+        { requesterId: challenger.id, addresseeId: recipient.id },
+        { requesterId: recipient.id, addresseeId: challenger.id }
+      ]
+    },
+    select: { id: true }
+  });
+  const chatBodyMarkdown = friendship
+    ? problemDeliveryChatMarkdown({
+        intent,
+        problemTitle: problem.title,
+        problemSlug: problem.slug,
+        message
+      })
+    : null;
+  const chatBodyHtml = chatBodyMarkdown ? await renderMarkdown(chatBodyMarkdown) : null;
+
+  await prisma.$transaction(async (tx) => {
+    if (intent === "challenge") {
+      await tx.problemChallenge.create({
+        data: {
+          challengerId: challenger.id,
+          recipientId: recipient.id,
+          problemId: problem.id,
+          message: message || null
+        }
+      });
+    }
+
+    if (chatBodyMarkdown && chatBodyHtml) {
+      const pair = directChatPair(challenger.id, recipient.id);
+      const chat = await tx.directChat.upsert({
+        where: { userAId_userBId: pair },
+        update: { updatedAt: new Date() },
+        create: pair
+      });
+      await tx.chatMessage.create({
+        data: {
+          directChatId: chat.id,
+          authorId: challenger.id,
+          bodyMarkdown: chatBodyMarkdown,
+          bodyHtml: chatBodyHtml
+        }
+      });
+    }
+  });
 
   await createNotification({
     userId: recipient.id,
@@ -112,6 +154,9 @@ export async function createProblemChallengeAction(
   });
 
   revalidatePath("/", "layout");
+  revalidatePath("/friends");
+  revalidatePath(`/chat/${recipient.username}`);
+  revalidatePath(`/chat/${challenger.username}`);
   revalidatePath(`/profile/${recipient.username}`);
   return { error: null, ok: true };
 }

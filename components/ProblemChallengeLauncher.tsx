@@ -46,6 +46,7 @@ export function ProblemChallengeLauncher({
         className={className ? `challenge-button ${className}` : "button challenge-button w-full"}
         onClick={() => chooserRef.current?.showModal()}
       >
+        <Share2 size={16} aria-hidden="true" />
         <span>{challengeLabels.button}</span>
       </button>
 
@@ -86,9 +87,9 @@ export function ProblemChallengeLauncher({
             {challengeLabels.challengeMode}
           </button>
         </div>
-        <p className="problem-delivery-description">
-          {intent === "share" ? challengeLabels.shareDescription : challengeLabels.challengeDescription}
-        </p>
+        {intent === "challenge" ? (
+          <p className="problem-delivery-description">{challengeLabels.challengeDescription}</p>
+        ) : null}
         <div className="problem-challenge-methods">
           <button type="button" onClick={() => openDelivery(userDialogRef)}>
             <UserRound size={21} aria-hidden="true" />
