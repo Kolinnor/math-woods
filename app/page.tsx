@@ -10,9 +10,9 @@ import { RevealSolvedDailyProblem } from "@/components/RevealSolvedDailyProblem"
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import {
-  dailyProblemDateKey,
-  dailyProblemRotationIndex,
-  DEFAULT_DAILY_PROBLEM_IMAGE_URL
+  automaticDailyProblemGroup,
+  dailyProblemDefaultImageUrl,
+  dailyProblemDateKey
 } from "@/lib/daily-problem-schedule";
 import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
@@ -266,13 +266,11 @@ export default async function HomePage() {
   const dailyCandidates = scheduledDailyGroup
     ? []
     : await prisma.problem.findMany({
-        where: dailyWhere,
-        orderBy: { id: "asc" },
-        select: { translationGroupId: true }
+        where: { ...dailyWhere, translatedFromProblemId: null },
+        select: { createdAt: true, qualityStatus: true, translationGroupId: true }
       });
-  const dailyGroups = [...new Set(dailyCandidates.map((problem) => problem.translationGroupId))];
   const chosenDailyGroup = scheduledDailyGroup
-    ?? dailyGroups[dailyProblemRotationIndex(dailyGroups.length, todayDateKey)]
+    ?? automaticDailyProblemGroup(dailyCandidates, todayDateKey)
     ?? null;
   const dailyTranslations = chosenDailyGroup
     ? await prisma.problem.findMany({
@@ -292,9 +290,10 @@ export default async function HomePage() {
   const usesScheduledDailyProblem = Boolean(
     scheduledDailyGroup && dailyProblem?.translationGroupId === scheduledDailyGroup
   );
+  const automaticDailyProblemImageUrl = dailyProblemDefaultImageUrl(todayDateKey);
   const dailyProblemImageUrl = usesScheduledDailyProblem
-    ? scheduledDailyProblem?.imageUrl || DEFAULT_DAILY_PROBLEM_IMAGE_URL
-    : DEFAULT_DAILY_PROBLEM_IMAGE_URL;
+    ? scheduledDailyProblem?.imageUrl || automaticDailyProblemImageUrl
+    : automaticDailyProblemImageUrl;
   const dailyProblemImagePosition = tipImageObjectPosition(
     usesScheduledDailyProblem ? scheduledDailyProblem?.imagePositionX : 50,
     usesScheduledDailyProblem ? scheduledDailyProblem?.imagePositionY : 50

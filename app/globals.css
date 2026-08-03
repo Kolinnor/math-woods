@@ -1080,7 +1080,7 @@ body:has(.problem-detail-shell) .site-main {
   font-family: var(--font-serif), Georgia, serif;
   font-size: 1.05rem;
   line-height: 1.68;
-  max-width: 62ch;
+  max-width: none;
 }
 
 .problem-detail-shell .problem-statement img,
@@ -3456,10 +3456,54 @@ a {
   width: 30rem;
 }
 
+.problem-delivery-intent {
+  background: var(--panel-muted);
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0.65rem 1rem 0;
+}
+
+.problem-delivery-intent button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--muted);
+  display: inline-flex;
+  gap: 0.45rem;
+  justify-content: center;
+  min-height: 2.7rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.problem-delivery-intent button:hover,
+.problem-delivery-intent button:focus-visible {
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.problem-delivery-intent button.active {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.problem-delivery-description {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 0.85rem 1rem 0;
+}
+
 .problem-challenge-methods {
   display: grid;
   gap: 0.65rem;
-  padding: 1rem;
+  padding: 0.85rem 1rem 1rem;
 }
 
 .problem-challenge-methods button {

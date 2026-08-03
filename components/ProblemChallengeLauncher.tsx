@@ -1,7 +1,7 @@
 "use client";
 
-import { Link2, Swords, UserRound, X } from "lucide-react";
-import { useRef, type RefObject } from "react";
+import { Link2, Share2, Swords, UserRound, X } from "lucide-react";
+import { useRef, useState, type RefObject } from "react";
 import {
   ProblemChallengeDialog,
   type ProblemChallengeDialogHandle,
@@ -12,7 +12,7 @@ import {
   type ProblemChallengeLinkDialogHandle,
   type ProblemChallengeLinkDialogLabels
 } from "@/components/ProblemChallengeLinkDialog";
-import type { ProblemChallengeLabels } from "@/lib/problem-challenges";
+import type { ProblemChallengeLabels, ProblemDeliveryIntent } from "@/lib/problem-challenges";
 
 type ProblemChallengeLauncherProps = {
   className?: string;
@@ -30,8 +30,9 @@ export function ProblemChallengeLauncher({
   const chooserRef = useRef<HTMLDialogElement>(null);
   const userDialogRef = useRef<ProblemChallengeDialogHandle>(null);
   const linkDialogRef = useRef<ProblemChallengeLinkDialogHandle>(null);
+  const [intent, setIntent] = useState<ProblemDeliveryIntent>("share");
 
-  function openChallenge(
+  function openDelivery(
     dialogRef: RefObject<ProblemChallengeDialogHandle | ProblemChallengeLinkDialogHandle | null>
   ) {
     chooserRef.current?.close();
@@ -45,16 +46,15 @@ export function ProblemChallengeLauncher({
         className={className ? `challenge-button ${className}` : "button challenge-button w-full"}
         onClick={() => chooserRef.current?.showModal()}
       >
-        <Swords size={17} aria-hidden="true" />
         <span>{challengeLabels.button}</span>
       </button>
 
       <dialog ref={chooserRef} className="problem-challenge-dialog problem-challenge-method-dialog">
         <header className="problem-challenge-header">
           <div className="problem-challenge-mark" aria-hidden="true">
-            <Swords size={27} />
+            {intent === "share" ? <Share2 size={27} /> : <Swords size={27} />}
           </div>
-          <h2>{challengeLabels.challengeSomeone}</h2>
+          <h2>{challengeLabels.chooserTitle}</h2>
           <button
             type="button"
             className="icon-button secondary"
@@ -66,27 +66,54 @@ export function ProblemChallengeLauncher({
           </button>
         </header>
 
-        <div className="problem-challenge-methods">
-          <button type="button" onClick={() => openChallenge(userDialogRef)}>
-            <UserRound size={21} aria-hidden="true" />
-            <span>{challengeLabels.challengeProblem}</span>
+        <div className="problem-delivery-intent" role="group" aria-label={challengeLabels.chooserTitle}>
+          <button
+            type="button"
+            className={intent === "share" ? "active" : ""}
+            aria-pressed={intent === "share"}
+            onClick={() => setIntent("share")}
+          >
+            <Share2 size={18} aria-hidden="true" />
+            {challengeLabels.shareMode}
           </button>
-          <button type="button" className="secondary" onClick={() => openChallenge(linkDialogRef)}>
+          <button
+            type="button"
+            className={intent === "challenge" ? "active" : ""}
+            aria-pressed={intent === "challenge"}
+            onClick={() => setIntent("challenge")}
+          >
+            <Swords size={18} aria-hidden="true" />
+            {challengeLabels.challengeMode}
+          </button>
+        </div>
+        <p className="problem-delivery-description">
+          {intent === "share" ? challengeLabels.shareDescription : challengeLabels.challengeDescription}
+        </p>
+        <div className="problem-challenge-methods">
+          <button type="button" onClick={() => openDelivery(userDialogRef)}>
+            <UserRound size={21} aria-hidden="true" />
+            <span>{intent === "share" ? challengeLabels.shareProblem : challengeLabels.challengeProblem}</span>
+          </button>
+          <button type="button" className="secondary" onClick={() => openDelivery(linkDialogRef)}>
             <Link2 size={21} aria-hidden="true" />
-            <span>{linkLabels.button}</span>
+            <span>{intent === "share" ? linkLabels.shareGenerate : linkLabels.button}</span>
           </button>
         </div>
       </dialog>
 
       <ProblemChallengeDialog
+        key={`user-${intent}`}
         ref={userDialogRef}
         hideTrigger
         initialProblem={problem}
+        intent={intent}
         labels={challengeLabels}
       />
       <ProblemChallengeLinkDialog
+        key={`link-${intent}`}
         ref={linkDialogRef}
         hideTrigger
+        intent={intent}
         labels={linkLabels}
         problem={problem}
       />

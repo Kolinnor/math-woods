@@ -8,8 +8,8 @@ import { updateDailyProblemScheduleAction } from "@/lib/actions/daily-problem-ac
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  dailyProblemDefaultImageUrl,
   dateFromDailyProblemKey,
-  DEFAULT_DAILY_PROBLEM_IMAGE_URL,
   upcomingDailyProblemDateKeys
 } from "@/lib/daily-problem-schedule";
 import { translatedDomainLabel } from "@/lib/domains";
@@ -67,7 +67,8 @@ export default async function ProblemOfTheDaySchedulePage({
       <div className="daily-problem-schedule-intro">
         <CalendarDays size={21} aria-hidden="true" />
         <p>
-          Each choice applies to that calendar date only. Leave a day empty to use the automatic rotation.
+          Each choice applies to that calendar date only. Leave a day empty to use a recent problem,
+          preferring reviewed ones, with automatic Shishkin artwork.
         </p>
       </div>
 
@@ -104,7 +105,7 @@ export default async function ProblemOfTheDaySchedulePage({
                     maxProblems={1}
                     searchParams="exercise=0"
                     labels={{
-                      empty: "No problem selected. The automatic rotation will be used.",
+                      empty: "No problem selected. A recent problem will be chosen automatically.",
                       maximumSelected: "Remove the current problem to choose another",
                       search: "Choose a problem",
                       searchPlaceholder: "Search by title or slug"
@@ -118,7 +119,7 @@ export default async function ProblemOfTheDaySchedulePage({
                     initialImageUrl={schedule?.imageUrl ?? null}
                     initialPositionX={schedule?.imagePositionX ?? 50}
                     initialPositionY={schedule?.imagePositionY ?? 50}
-                    defaultImageUrl={DEFAULT_DAILY_PROBLEM_IMAGE_URL}
+                    defaultImageUrl={dailyProblemDefaultImageUrl(dateKey)}
                     defaultImageLabel="the default problem artwork"
                     inputNames={{
                       imageUrl: fieldName("imageUrl", dateKey),

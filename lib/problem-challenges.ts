@@ -1,5 +1,7 @@
 export const PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH = 500;
 
+export type ProblemDeliveryIntent = "challenge" | "share";
+
 export type ProblemChallengeError =
   | "chooseProblem"
   | "chooseUser"
@@ -12,9 +14,12 @@ export type ProblemChallengeError =
 export type ProblemChallengeLabels = {
   button: string;
   cancel: string;
+  challengeDescription: string;
+  challengeMode: string;
   challengeProblem: string;
   challengeSomeone: string;
   challengeUser: string;
+  chooserTitle: string;
   close: string;
   messagePlaceholder: string;
   noResults: string;
@@ -26,6 +31,13 @@ export type ProblemChallengeLabels = {
   searching: string;
   send: string;
   sending: string;
+  shareDescription: string;
+  shareMode: string;
+  shareProblem: string;
+  shareSomeone: string;
+  shareUser: string;
+  shareSend: string;
+  shareSending: string;
   errors: Record<ProblemChallengeError, string>;
 };
 
@@ -44,4 +56,17 @@ export function problemChallengeNotificationBody({
 }) {
   const invitation = `${challengerName} challenged you to solve "${problemTitle}".`;
   return message?.trim() ? `${invitation} ${message.trim()}` : invitation;
+}
+
+export function problemShareNotificationBody({
+  senderName,
+  problemTitle,
+  message
+}: {
+  senderName: string;
+  problemTitle: string;
+  message?: string | null;
+}) {
+  const introduction = `${senderName} shared the problem "${problemTitle}" with you.`;
+  return message?.trim() ? `${introduction} ${message.trim()}` : introduction;
 }

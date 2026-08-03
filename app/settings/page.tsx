@@ -153,6 +153,16 @@ const notificationOptions = [
     description: "When another user challenges you to solve a problem."
   },
   {
+    type: NotificationType.PROBLEM_SHARED,
+    title: "Problems shared with you",
+    description: "When another user shares a problem directly with you."
+  },
+  {
+    type: NotificationType.PROBLEM_OF_THE_DAY,
+    title: "Problem of the day selections",
+    description: "When one of your problems is selected as the problem of the day."
+  },
+  {
     type: NotificationType.EXPLORATION_PUBLISHED,
     title: "Exploration publications",
     description: "When an exploration you follow is published."

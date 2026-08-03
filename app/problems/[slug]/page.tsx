@@ -230,7 +230,9 @@ export default async function ProblemPage({
       NotificationType.SOLUTION_VOTED,
       NotificationType.PROBLEM_SOLVED,
       NotificationType.PROBLEM_CREATED,
-      NotificationType.PROBLEM_CHALLENGE
+      NotificationType.PROBLEM_CHALLENGE,
+      NotificationType.PROBLEM_SHARED,
+      NotificationType.PROBLEM_OF_THE_DAY
     ]);
   }
   const hasSpecifiedOrigin =
@@ -1109,6 +1111,16 @@ export default async function ProblemPage({
                 messagePlaceholder: t.social.challengeLink.messagePlaceholder,
                 problem: t.social.challengeLink.problem,
                 ready: t.social.challengeLink.ready,
+                shareCopied: t.social.challengeLink.shareCopied,
+                shareCopy: t.social.challengeLink.shareCopy,
+                shareDescription: t.social.challengeLink.shareDescription,
+                shareGenerate: t.social.challengeLink.shareGenerate,
+                shareLinkLabel: t.social.challengeLink.shareLinkLabel,
+                shareNative: t.social.challengeLink.shareNative,
+                shareProblem: t.social.challengeLink.shareProblem,
+                shareReady: t.social.challengeLink.shareReady,
+                shareText: t.social.challengeLink.shareText,
+                shareTitle: t.social.challengeLink.shareTitle,
                 title: t.social.challengeLink.title
               }}
               problem={{

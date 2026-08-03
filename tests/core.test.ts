@@ -63,8 +63,11 @@ import {
 import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
 import {
   addDaysToDateKey,
+  automaticDailyProblemGroup,
+  dailyProblemDefaultImageUrl,
   dailyProblemDateKey,
   dailyProblemRotationIndex,
+  DEFAULT_DAILY_PROBLEM_IMAGE_URLS,
   isDailyProblemDateKey,
   upcomingDailyProblemDateKeys
 } from "../lib/daily-problem-schedule.ts";
@@ -91,6 +94,7 @@ import { fr } from "../lib/i18n/dictionaries/fr.ts";
 import {
   normalizeProblemChallengeMessage,
   problemChallengeNotificationBody,
+  problemShareNotificationBody,
   PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH
 } from "../lib/problem-challenges.ts";
 import {
@@ -1749,6 +1753,21 @@ assert.equal(
   }),
   'Emmy challenged you to solve "A short proof".'
 );
+assert.equal(
+  problemShareNotificationBody({
+    senderName: "Emmy",
+    problemTitle: "A short proof",
+    message: "This made me think of you."
+  }),
+  'Emmy shared the problem "A short proof" with you. This made me think of you.'
+);
+assert.equal(
+  problemShareNotificationBody({
+    senderName: "Emmy",
+    problemTitle: "A short proof"
+  }),
+  'Emmy shared the problem "A short proof" with you.'
+);
 const challengeInviteToken = "a".repeat(43);
 assert.equal(normalizeProblemChallengeInviteToken(challengeInviteToken), challengeInviteToken);
 assert.equal(normalizeProblemChallengeInviteToken("../not-a-token"), null);
@@ -1957,6 +1976,23 @@ assert.deepEqual(
   ["2026-08-01", "2026-08-02", "2026-08-03"]
 );
 assert.equal(dailyProblemRotationIndex(5, "2026-08-01"), dailyProblemRotationIndex(5, "2026-08-06"));
+assert.equal(
+  automaticDailyProblemGroup([
+    { createdAt: new Date("2026-07-30T12:00:00.000Z"), qualityStatus: "REVIEWED", translationGroupId: "old" },
+    { createdAt: new Date("2026-08-01T09:00:00.000Z"), qualityStatus: "UNREVIEWED", translationGroupId: "recent-unreviewed" },
+    { createdAt: new Date("2026-08-01T10:00:00.000Z"), qualityStatus: "REVIEWED", translationGroupId: "recent-reviewed" }
+  ], "2026-08-03"),
+  "recent-reviewed"
+);
+assert.equal(
+  automaticDailyProblemGroup([
+    { createdAt: new Date("2026-08-01T09:00:00.000Z"), qualityStatus: "UNREVIEWED", translationGroupId: "recent" },
+    { createdAt: new Date("2026-07-31T10:00:00.000Z"), qualityStatus: "REVIEWED", translationGroupId: "old-reviewed" }
+  ], "2026-08-03"),
+  "recent"
+);
+assert.equal(automaticDailyProblemGroup([], "2026-08-03"), null);
+assert.ok(DEFAULT_DAILY_PROBLEM_IMAGE_URLS.includes(dailyProblemDefaultImageUrl("2026-08-03")));
 
 assert.equal(pickRandomDifferent([], undefined, () => 0), undefined);
 assert.equal(pickRandomDifferent(["only"], "only", () => 0), "only");

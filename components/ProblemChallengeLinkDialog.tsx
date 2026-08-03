@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Link2, Swords, X } from "lucide-react";
+import { Check, Copy, Link2, Share2, Swords, X } from "lucide-react";
 import { forwardRef, useActionState, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -8,11 +8,15 @@ import {
   type ProblemChallengeInviteActionState
 } from "@/lib/actions/problem-challenge-invite-actions";
 import type { Dictionary } from "@/lib/i18n/types";
-import { PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH } from "@/lib/problem-challenges";
+import {
+  PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH,
+  type ProblemDeliveryIntent
+} from "@/lib/problem-challenges";
 
 type ProblemChallengeLinkDialogProps = {
   buttonClassName?: string;
   hideTrigger?: boolean;
+  intent?: ProblemDeliveryIntent;
   labels: ProblemChallengeLinkDialogLabels;
   problem: {
     difficulty: number | null;
@@ -44,6 +48,16 @@ export type ProblemChallengeLinkDialogLabels = Pick<
   | "messagePlaceholder"
   | "problem"
   | "ready"
+  | "shareCopied"
+  | "shareCopy"
+  | "shareDescription"
+  | "shareGenerate"
+  | "shareLinkLabel"
+  | "shareNative"
+  | "shareProblem"
+  | "shareReady"
+  | "shareText"
+  | "shareTitle"
   | "title"
 >;
 
@@ -52,13 +66,20 @@ const initialState: ProblemChallengeInviteActionState = {
   linkPath: null
 };
 
-function GenerateLinkButton({ labels }: { labels: ProblemChallengeLinkDialogLabels }) {
+function GenerateLinkButton({
+  intent,
+  labels
+}: {
+  intent: ProblemDeliveryIntent;
+  labels: ProblemChallengeLinkDialogLabels;
+}) {
   const { pending } = useFormStatus();
+  const Icon = intent === "share" ? Share2 : Link2;
 
   return (
     <button type="submit" disabled={pending}>
-      <Link2 size={17} aria-hidden="true" />
-      {pending ? labels.generating : labels.generate}
+      <Icon size={17} aria-hidden="true" />
+      {intent === "share" ? labels.shareGenerate : pending ? labels.generating : labels.generate}
     </button>
   );
 }
@@ -69,6 +90,7 @@ export const ProblemChallengeLinkDialog = forwardRef<
 >(function ProblemChallengeLinkDialog({
   buttonClassName = "secondary",
   hideTrigger = false,
+  intent = "challenge",
   labels,
   problem
 }, ref) {
@@ -81,6 +103,7 @@ export const ProblemChallengeLinkDialog = forwardRef<
   const [linkPath, setLinkPath] = useState<string | null>(null);
   const [absoluteLink, setAbsoluteLink] = useState("");
   const [copied, setCopied] = useState(false);
+  const isShare = intent === "share";
 
   useImperativeHandle(ref, () => ({
     open() {
@@ -97,6 +120,13 @@ export const ProblemChallengeLinkDialog = forwardRef<
     setCopied(false);
   }, [linkPath]);
 
+  useEffect(() => {
+    formRef.current?.reset();
+    setLinkPath(null);
+    setAbsoluteLink("");
+    setCopied(false);
+  }, [intent]);
+
   function closeDialog() {
     dialogRef.current?.close();
   }
@@ -105,6 +135,23 @@ export const ProblemChallengeLinkDialog = forwardRef<
     if (!absoluteLink) return;
     await navigator.clipboard.writeText(absoluteLink);
     setCopied(true);
+  }
+
+  async function shareLink() {
+    if (!absoluteLink) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: problem.title,
+          text: labels.shareText.replace("{title}", problem.title),
+          url: absoluteLink
+        });
+      } catch {
+        // Closing the native share sheet is not an application error.
+      }
+      return;
+    }
+    await copyLink();
   }
 
   return (
@@ -117,7 +164,7 @@ export const ProblemChallengeLinkDialog = forwardRef<
           aria-label={labels.button}
           onClick={() => dialogRef.current?.showModal()}
         >
-          <Link2 size={17} aria-hidden="true" />
+          {isShare ? <Share2 size={17} aria-hidden="true" /> : <Link2 size={17} aria-hidden="true" />}
           <span>{labels.button}</span>
         </button>
       )}
@@ -125,9 +172,9 @@ export const ProblemChallengeLinkDialog = forwardRef<
       <dialog ref={dialogRef} className="problem-challenge-dialog">
         <header className="problem-challenge-header">
           <div className="problem-challenge-mark" aria-hidden="true">
-            <Swords size={27} />
+            {isShare ? <Share2 size={27} /> : <Swords size={27} />}
           </div>
-          <h2>{labels.title}</h2>
+          <h2>{isShare ? labels.shareTitle : labels.title}</h2>
           <button
             type="button"
             className="icon-button secondary"
@@ -141,34 +188,51 @@ export const ProblemChallengeLinkDialog = forwardRef<
 
         {linkPath ? (
           <div className="problem-challenge-link-result">
-            <p>{labels.ready}</p>
+            <p>{isShare ? labels.shareReady : labels.ready}</p>
             <div className="problem-challenge-link-copy">
-              <input value={absoluteLink} readOnly aria-label={labels.linkLabel} />
+              <input value={absoluteLink} readOnly aria-label={isShare ? labels.shareLinkLabel : labels.linkLabel} />
               <button type="button" onClick={() => void copyLink()}>
                 {copied ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
-                {copied ? labels.copied : labels.copy}
+                {copied
+                  ? isShare ? labels.shareCopied : labels.copied
+                  : isShare ? labels.shareCopy : labels.copy}
               </button>
             </div>
-            <p className="muted text-sm">{labels.expiryNotice}</p>
+            {!isShare && <p className="muted text-sm">{labels.expiryNotice}</p>}
             <footer>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  formRef.current?.reset();
-                  setLinkPath(null);
-                }}
-              >
-                {labels.createAnother}
-              </button>
+              {isShare ? (
+                <button type="button" className="secondary" onClick={() => void shareLink()}>
+                  <Share2 size={17} aria-hidden="true" />
+                  {labels.shareNative}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    formRef.current?.reset();
+                    setLinkPath(null);
+                  }}
+                >
+                  {labels.createAnother}
+                </button>
+              )}
               <button type="button" onClick={closeDialog}>{labels.done}</button>
             </footer>
           </div>
         ) : (
-          <form ref={formRef} action={formAction} className="problem-challenge-form">
-            <p className="muted text-sm">{labels.description}</p>
+          <form
+            ref={formRef}
+            action={isShare ? undefined : formAction}
+            className="problem-challenge-form"
+            onSubmit={isShare ? (event) => {
+              event.preventDefault();
+              setLinkPath(`/problems/${problem.slug}`);
+            } : undefined}
+          >
+            <p className="muted text-sm">{isShare ? labels.shareDescription : labels.description}</p>
             <div className="problem-challenge-problem-field">
-              <span className="text-sm font-medium">{labels.problem}</span>
+              <span className="text-sm font-medium">{isShare ? labels.shareProblem : labels.problem}</span>
               <div className="problem-challenge-selected">
                 <div>
                   <strong>{problem.title}</strong>
@@ -179,17 +243,21 @@ export const ProblemChallengeLinkDialog = forwardRef<
                 </div>
               </div>
             </div>
-            <textarea
-              name="message"
-              maxLength={PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH}
-              placeholder={labels.messagePlaceholder}
-              aria-label={labels.messagePlaceholder}
-            />
-            <p className="muted text-sm">{labels.expiryNotice}</p>
-            {state.error && <p className="form-error" role="alert">{labels.errors[state.error]}</p>}
+            {!isShare && (
+              <>
+                <textarea
+                  name="message"
+                  maxLength={PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH}
+                  placeholder={labels.messagePlaceholder}
+                  aria-label={labels.messagePlaceholder}
+                />
+                <p className="muted text-sm">{labels.expiryNotice}</p>
+                {state.error && <p className="form-error" role="alert">{labels.errors[state.error]}</p>}
+              </>
+            )}
             <footer>
               <button type="button" className="secondary" onClick={closeDialog}>{labels.cancel}</button>
-              <GenerateLinkButton labels={labels} />
+              <GenerateLinkButton intent={intent} labels={labels} />
             </footer>
           </form>
         )}

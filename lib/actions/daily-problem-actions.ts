@@ -1,16 +1,27 @@
 "use server";
 
+import { NotificationType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { upcomingDailyProblemDateKeys } from "@/lib/daily-problem-schedule";
+import { dateFromDailyProblemKey, upcomingDailyProblemDateKeys } from "@/lib/daily-problem-schedule";
+import { createNotification } from "@/lib/notifications";
 import { canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { normalizeTipImagePosition, normalizeTipImageUrl } from "@/lib/tip-images";
 
 function scheduledField(name: string, dateKey: string) {
   return `${name}:${dateKey}`;
+}
+
+function notificationDateLabel(dateKey: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+    year: "numeric"
+  }).format(dateFromDailyProblemKey(dateKey));
 }
 
 export async function updateDailyProblemScheduleAction(formData: FormData) {
@@ -28,7 +39,14 @@ export async function updateDailyProblemScheduleAction(formData: FormData) {
     throw new Error("The daily problem schedule is out of date. Reload the page and try again.");
   }
 
-  await prisma.$transaction(async (tx) => {
+  const newSelections = await prisma.$transaction(async (tx) => {
+    const selectedProblems: Array<{
+      authorId: number;
+      dateKey: string;
+      slug: string;
+      title: string;
+    }> = [];
+
     for (const dateKey of submittedDateKeys) {
       const problemId = Number(formData.get(scheduledField("problemId", dateKey)));
       if (!Number.isInteger(problemId) || problemId <= 0) {
@@ -38,9 +56,14 @@ export async function updateDailyProblemScheduleAction(formData: FormData) {
 
       const problem = await tx.problem.findFirst({
         where: { id: problemId, status: "PUBLISHED", listed: true, isExercise: false },
-        select: { id: true }
+        select: { authorId: true, id: true, slug: true, title: true }
       });
       if (!problem) throw new Error(`The selected problem for ${dateKey} is not available.`);
+
+      const existingSchedule = await tx.dailyProblemSchedule.findUnique({
+        where: { dateKey },
+        select: { problemId: true }
+      });
 
       const imageUrl = normalizeTipImageUrl(formData.get(scheduledField("imageUrl", dateKey)));
       const imagePositionX = normalizeTipImagePosition(formData.get(scheduledField("imagePositionX", dateKey)));
@@ -51,8 +74,32 @@ export async function updateDailyProblemScheduleAction(formData: FormData) {
         create: { dateKey, problemId, imageUrl, imagePositionX, imagePositionY },
         update: { problemId, imageUrl, imagePositionX, imagePositionY }
       });
+
+      if (existingSchedule?.problemId !== problem.id) {
+        selectedProblems.push({
+          authorId: problem.authorId,
+          dateKey,
+          slug: problem.slug,
+          title: problem.title
+        });
+      }
     }
+
+    return selectedProblems;
   });
+
+  await Promise.all(
+    newSelections.map((selection) =>
+      createNotification({
+        userId: selection.authorId,
+        actorId: user.id,
+        type: NotificationType.PROBLEM_OF_THE_DAY,
+        title: "Your problem was selected as the problem of the day",
+        body: `"${selection.title}" will be featured on ${notificationDateLabel(selection.dateKey)}.`,
+        href: `/problems/${selection.slug}`
+      })
+    )
+  );
 
   revalidatePath("/");
   revalidatePath("/tips/problem-of-the-day");

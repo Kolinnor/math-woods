@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Swords, X } from "lucide-react";
+import { Search, Send, Swords, X } from "lucide-react";
 import { forwardRef, useActionState, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions/problem-challenge-actions";
 import {
   PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH,
+  type ProblemDeliveryIntent,
   type ProblemChallengeLabels
 } from "@/lib/problem-challenges";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -35,6 +36,7 @@ type ProblemChallengeDialogProps = {
   hideTrigger?: boolean;
   iconOnly?: boolean;
   initialProblem?: ProblemChallengeProblem;
+  intent?: ProblemDeliveryIntent;
   labels: ProblemChallengeLabels;
   recipientName?: string;
   recipientUsername?: string;
@@ -50,13 +52,24 @@ function template(value: string, key: string, replacement: string) {
   return value.replace(`{${key}}`, replacement);
 }
 
-function ChallengeSubmitButton({ labels, disabled }: { labels: ProblemChallengeLabels; disabled: boolean }) {
+function ChallengeSubmitButton({
+  labels,
+  disabled,
+  intent
+}: {
+  labels: ProblemChallengeLabels;
+  disabled: boolean;
+  intent: ProblemDeliveryIntent;
+}) {
   const { pending } = useFormStatus();
+  const Icon = intent === "share" ? Send : Swords;
 
   return (
     <button type="submit" disabled={disabled || pending}>
-      <Swords size={17} aria-hidden="true" />
-      {pending ? labels.sending : labels.send}
+      <Icon size={17} aria-hidden="true" />
+      {pending
+        ? intent === "share" ? labels.shareSending : labels.sending
+        : intent === "share" ? labels.shareSend : labels.send}
     </button>
   );
 }
@@ -68,6 +81,7 @@ function ProblemChallengeDialog({
   hideTrigger = false,
   iconOnly = false,
   initialProblem,
+  intent = "challenge",
   labels,
   recipientName,
   recipientUsername
@@ -77,7 +91,7 @@ function ProblemChallengeDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState(
-    createProblemChallengeAction.bind(null, recipientUsername ?? null),
+    createProblemChallengeAction.bind(null, recipientUsername ?? null, intent),
     initialState
   );
   const [query, setQuery] = useState("");
@@ -101,7 +115,7 @@ function ProblemChallengeDialog({
         username: recipientUsername ?? ""
       }
     : selectedRecipient;
-  const triggerLabel = buttonLabel ?? labels.button;
+  const triggerLabel = buttonLabel ?? (intent === "share" ? labels.shareMode : labels.button);
 
   useImperativeHandle(ref, () => ({
     open() {
@@ -207,7 +221,9 @@ function ProblemChallengeDialog({
             dialogRef.current?.showModal();
           }}
         >
-          <Swords size={iconOnly ? 16 : 17} aria-hidden="true" />
+          {intent === "share"
+            ? <Send size={iconOnly ? 16 : 17} aria-hidden="true" />
+            : <Swords size={iconOnly ? 16 : 17} aria-hidden="true" />}
           {!iconOnly && <span>{triggerLabel}</span>}
         </button>
       )}
@@ -215,13 +231,17 @@ function ProblemChallengeDialog({
       <dialog ref={dialogRef} className="problem-challenge-dialog">
         <header className="problem-challenge-header">
           <div className="problem-challenge-mark" aria-hidden="true">
-            <Swords size={27} />
+            {intent === "share" ? <Send size={27} /> : <Swords size={27} />}
           </div>
           <div>
             <h2>
               {activeRecipient
-                ? template(labels.challengeUser, "name", activeRecipient.name)
-                : labels.challengeSomeone}
+                ? template(
+                    intent === "share" ? labels.shareUser : labels.challengeUser,
+                    "name",
+                    activeRecipient.name
+                  )
+                : intent === "share" ? labels.shareSomeone : labels.challengeSomeone}
             </h2>
           </div>
           <button type="button" className="icon-button secondary" onClick={closeDialog} title={labels.close} aria-label={labels.close}>
@@ -382,7 +402,11 @@ function ProblemChallengeDialog({
 
           <footer>
             <button type="button" className="secondary" onClick={closeDialog}>{labels.cancel}</button>
-            <ChallengeSubmitButton labels={labels} disabled={!selectedProblem || !activeRecipient} />
+            <ChallengeSubmitButton
+              labels={labels}
+              disabled={!selectedProblem || !activeRecipient}
+              intent={intent}
+            />
           </footer>
         </form>
       </dialog>

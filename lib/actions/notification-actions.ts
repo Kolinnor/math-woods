@@ -28,6 +28,8 @@ const configurableNotificationTypes = [
   NotificationType.FRIEND_REQUEST,
   NotificationType.CHAT_MESSAGE,
   NotificationType.PROBLEM_CHALLENGE,
+  NotificationType.PROBLEM_SHARED,
+  NotificationType.PROBLEM_OF_THE_DAY,
   NotificationType.EXPLORATION_PUBLISHED
 ] as const;
 

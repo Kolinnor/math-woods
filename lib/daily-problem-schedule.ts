@@ -1,6 +1,14 @@
 export const DAILY_PROBLEM_TIME_ZONE = "Europe/Paris";
 export const DAILY_PROBLEM_SCHEDULE_DAYS = 7;
-export const DEFAULT_DAILY_PROBLEM_IMAGE_URL = "/art/rye.jpg";
+export const DEFAULT_DAILY_PROBLEM_IMAGE_URLS = [
+  "/art/rye.jpg",
+  "/art/oak-grove.jpg",
+  "/art/birch-grove.jpg",
+  "/art/brook-in-the-forest.jpg",
+  "/art/pine-forest.jpg",
+  "/art/morning-in-a-pine-forest.jpg"
+] as const;
+export const DEFAULT_DAILY_PROBLEM_IMAGE_URL = DEFAULT_DAILY_PROBLEM_IMAGE_URLS[0];
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -48,6 +56,33 @@ export function dailyProblemRotationIndex(total: number, dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   const dayNumber = Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
   return dayNumber % total;
+}
+
+export function automaticDailyProblemGroup(
+  candidates: Array<{ createdAt: Date; qualityStatus: string; translationGroupId: string }>,
+  dateKey: string,
+  timeZone = DAILY_PROBLEM_TIME_ZONE
+) {
+  if (!candidates.length) return null;
+
+  const mostRecentPublicationDay = candidates.reduce((latest, candidate) => {
+    const candidateDay = dailyProblemDateKey(candidate.createdAt, timeZone);
+    return candidateDay > latest ? candidateDay : latest;
+  }, "");
+  const recentCandidates = candidates.filter(
+    (candidate) => dailyProblemDateKey(candidate.createdAt, timeZone) === mostRecentPublicationDay
+  );
+  const reviewedCandidates = recentCandidates.filter((candidate) => candidate.qualityStatus === "REVIEWED");
+  const preferredCandidates = reviewedCandidates.length ? reviewedCandidates : recentCandidates;
+  const groups = [...new Set(preferredCandidates.map((candidate) => candidate.translationGroupId))].sort();
+
+  return groups[dailyProblemRotationIndex(groups.length, dateKey)] ?? null;
+}
+
+export function dailyProblemDefaultImageUrl(dateKey: string) {
+  return DEFAULT_DAILY_PROBLEM_IMAGE_URLS[
+    dailyProblemRotationIndex(DEFAULT_DAILY_PROBLEM_IMAGE_URLS.length, dateKey)
+  ] ?? DEFAULT_DAILY_PROBLEM_IMAGE_URL;
 }
 
 export function dateFromDailyProblemKey(dateKey: string) {
