@@ -638,12 +638,14 @@ export const fr = {
       collapseDomains: "Afficher moins de domaines",
       sortBy: "par {label}",
       sortLabels: {
+        problemCount: "nombre de problèmes",
         family: "thème",
         name: "A-Z",
         difficulty: "difficulté",
         date: "date"
       },
       sortOptions: {
+        problemCount: "Nombre de problèmes",
         family: "Thème",
         name: "Ordre alphabétique",
         difficulty: "Difficulté",
@@ -713,6 +715,7 @@ export const fr = {
   },
   problemDetail: {
     problem: "Problème",
+    statement: "Énoncé",
     exercise: "Exercice",
     by: "par",
     editedBy: (name: string) => `modifié par ${name}`,

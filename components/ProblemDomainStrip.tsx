@@ -8,13 +8,14 @@ import { ProgressTicks } from "@/components/ProgressTicks";
 import type { ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
 import type { Dictionary, InterfaceLocale } from "@/lib/i18n/types";
 
-type SortKey = "family" | "name" | "diff" | "date";
+type SortKey = "count" | "family" | "name" | "diff" | "date";
 
 type ProblemDomainStripProps = {
   domains: ProblemDomainOption[];
   families: Record<ProblemDomainFamily, { label: string; color: string; order: number }>;
   labels: Dictionary["problems"]["domainBrowser"];
   locale: InterfaceLocale;
+  problemCounts?: Record<string, number>;
   progress?: Record<string, { done: number; total: number }>;
   selectedDomain?: string;
 };
@@ -31,21 +32,35 @@ function template(value: string, key: string, replacement: string) {
   return value.replace(`{${key}}`, replacement);
 }
 
-export function ProblemDomainStrip({ domains, families, labels, locale, progress, selectedDomain }: ProblemDomainStripProps) {
-  const [sort, setSort] = useState<SortKey>("family");
+export function ProblemDomainStrip({
+  domains,
+  families,
+  labels,
+  locale,
+  problemCounts,
+  progress,
+  selectedDomain
+}: ProblemDomainStripProps) {
+  const [sort, setSort] = useState<SortKey>("count");
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const activeDomain = normalized(selectedDomain);
   const sortedDomains = useMemo(() => {
     return [...domains].sort((a, b) => {
+      if (sort === "count") {
+        return (problemCounts?.[b.value] ?? 0) - (problemCounts?.[a.value] ?? 0)
+          || a.label.localeCompare(b.label, locale);
+      }
       if (sort === "name") return a.label.localeCompare(b.label, locale);
       if (sort === "diff") return a.diff - b.diff || a.label.localeCompare(b.label, locale);
       if (sort === "date") return a.year - b.year || a.label.localeCompare(b.label, locale);
       return families[a.family].order - families[b.family].order || a.label.localeCompare(b.label, locale);
     });
-  }, [domains, families, locale, sort]);
+  }, [domains, families, locale, problemCounts, sort]);
   const activeSortLabel =
-    sort === "family"
+    sort === "count"
+      ? labels.sortLabels.problemCount
+      : sort === "family"
       ? labels.sortLabels.family
       : sort === "name"
         ? labels.sortLabels.name
@@ -100,6 +115,9 @@ export function ProblemDomainStrip({ domains, families, labels, locale, progress
             </button>
             {open && (
               <div className="problem-domain-sort-menu">
+                <button type="button" onClick={() => choose("count")}>
+                  {labels.sortOptions.problemCount}
+                </button>
                 <button type="button" onClick={() => choose("family")}>
                   {labels.sortOptions.family}
                 </button>

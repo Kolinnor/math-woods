@@ -497,21 +497,19 @@ export default async function ProblemsPage({
       distinct: ["translationGroupId"],
       select: { translationGroupId: true }
     }),
-    user
-      ? prisma.problem.findMany({
-          where: domainProgressWhere,
-          distinct: ["translationGroupId"],
-          select: {
-            translationGroupId: true,
-            domain: true,
-            domains: {
-              where: { spoiler: false },
-              orderBy: { position: "asc" },
-              select: { domain: true, mscCode: true }
-            }
-          }
-        })
-      : Promise.resolve([]),
+    prisma.problem.findMany({
+      where: domainProgressWhere,
+      distinct: ["translationGroupId"],
+      select: {
+        translationGroupId: true,
+        domain: true,
+        domains: {
+          where: { spoiler: false },
+          orderBy: { position: "asc" },
+          select: { domain: true, mscCode: true }
+        }
+      }
+    }),
     prisma.problem.findMany({
       where,
       orderBy,
@@ -536,6 +534,9 @@ export default async function ProblemsPage({
         parseDomainCode(problem.domains[0]?.mscCode ?? problem.domains[0]?.domain ?? problem.domain) ??
         String(problem.domain).toLowerCase()
     )
+  );
+  const domainProblemCounts = Object.fromEntries(
+    Object.entries(domainProgress).map(([domain, entry]) => [domain, entry.total])
   );
   const candidatesByTranslationGroup = new Map<string, typeof problemCandidateKeys>();
   for (const candidate of problemCandidateKeys) {
@@ -716,6 +717,7 @@ export default async function ProblemsPage({
         families={PROBLEM_DOMAIN_FAMILIES}
         labels={t.problems.domainBrowser}
         locale={interfaceLocale}
+        problemCounts={domainProblemCounts}
         progress={user ? domainProgress : undefined}
         selectedDomain={domainValue}
       />

@@ -584,6 +584,11 @@ body:has(.problem-detail-shell) {
   text-decoration: underline;
 }
 
+.home-friend-activity-copy .home-friend-profile-link {
+  color: var(--mw-text);
+  font-weight: 700;
+}
+
 .home-friend-activity-copy time {
   color: var(--mw-tertiary);
   display: block;
@@ -8706,6 +8711,20 @@ button.secondary:hover,
   box-shadow: 0 1px 1px rgb(0 0 0 / 0.06), 0 5px 12px rgb(0 0 0 / 0.06);
 }
 
+.problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--mw-text);
+  font-weight: 500;
+}
+
+.problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger:hover,
+.problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger:focus-visible {
+  background: #efe8d8;
+  box-shadow: none;
+}
+
 button.contribution-request-button,
 .button.contribution-request-button {
   background: var(--request-action);
@@ -15938,6 +15957,11 @@ body:has(.problem-detail-shell) .header-search input::placeholder {
 }
 
 .problem-detail-article {
+  min-width: 0;
+}
+
+.problem-detail-preamble {
+  grid-column: 1 / -1;
   min-width: 0;
 }
 

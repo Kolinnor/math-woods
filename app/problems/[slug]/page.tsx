@@ -557,7 +557,7 @@ export default async function ProblemPage({
       </section>
 
       <div className="problem-detail-body">
-        <article className="problem-detail-article">
+        <div className="problem-detail-preamble">
         <header className="problem-title-block">
           <p className="problem-breadcrumb">
             <Link href="/problems">{t.problems.title}</Link>
@@ -565,14 +565,16 @@ export default async function ProblemPage({
             <Link href={`/problems?domain=${encodeURIComponent(heroDomain)}`}>
               {translatedDomainLabel(heroDomain, t.home.domainLabels)}
             </Link>
-            <span className={`problem-type-badge${problem.isExercise ? " is-exercise" : ""}`}>
-              {problem.isExercise ? t.problems.exerciseBadge : t.problems.problemBadge}
-            </span>
+            {problem.isExercise && (
+              <span className="problem-type-badge is-exercise">
+                {t.problems.exerciseBadge}
+              </span>
+            )}
             <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
               {t.quality[problem.qualityStatus]}
             </span>
           </p>
-          <h1><AsyncMarkdownInline markdown={problem.title} /></h1>
+          <h1 id="problem-title"><AsyncMarkdownInline markdown={problem.title} /></h1>
           <div className="problem-title-meta">
             <Link href={`/profile/${problem.author.username}`}>
               {t.problemDetail.by} <UserName user={problem.author} />
@@ -652,7 +654,7 @@ export default async function ProblemPage({
             </div>
           )}
           <nav className="tab-nav problem-tab-nav">
-            <span>{t.problemDetail.problem}</span>
+            <span>{t.problemDetail.statement}</span>
             <Link href={`/problems/${problem.slug}/discussion`}>
               {t.problemDetail.discussions} · {t.problemDetail.messages(discussionPostCount)}
             </Link>
@@ -712,6 +714,10 @@ export default async function ProblemPage({
             )}
           </div>
         )}
+
+        </div>
+
+        <article className="problem-detail-article" aria-labelledby="problem-title">
 
         <section className={`problem-statement reading-surface${problem.isExercise ? " is-exercise" : ""}`}>
           <MarkdownBlock html={problemBodyHtml} />
@@ -1073,6 +1079,51 @@ export default async function ProblemPage({
       </article>
 
         <aside className="problem-rail zen-hide">
+        <nav className="problem-rail-actions" aria-label={t.problemDetail.problem}>
+          {canEditCurrentProblem && (
+            <Link href={`/problems/${problem.slug}/edit`}>{t.problemDetail.edit}</Link>
+          )}
+          <Link href={`/problems/${problem.slug}/discussion`}>
+            {t.problemDetail.discussions}
+            <span>{discussionPostCount}</span>
+          </Link>
+          <Link href={`/problems/${problem.slug}/history`}>{t.conceptDetail.history}</Link>
+          {user && problem.status === "PUBLISHED" && problem.listed && (
+            <ProblemChallengeLauncher
+              className="problem-rail-challenge-trigger"
+              challengeLabels={t.social.challenge}
+              linkLabels={{
+                button: t.social.challengeLink.button,
+                cancel: t.social.challengeLink.cancel,
+                close: t.social.challengeLink.close,
+                copied: t.social.challengeLink.copied,
+                copy: t.social.challengeLink.copy,
+                createAnother: t.social.challengeLink.createAnother,
+                description: t.social.challengeLink.description,
+                done: t.social.challengeLink.done,
+                errors: t.social.challengeLink.errors,
+                expiryNotice: t.social.challengeLink.expiryNotice,
+                generate: t.social.challengeLink.generate,
+                generating: t.social.challengeLink.generating,
+                linkLabel: t.social.challengeLink.linkLabel,
+                messagePlaceholder: t.social.challengeLink.messagePlaceholder,
+                problem: t.social.challengeLink.problem,
+                ready: t.social.challengeLink.ready,
+                title: t.social.challengeLink.title
+              }}
+              problem={{
+                difficulty: problem.difficulty,
+                domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
+                language: problem.language,
+                listed: problem.listed,
+                slug: problem.slug,
+                title: problem.title
+              }}
+            />
+          )}
+          <a href="#report">{t.problemDetail.report}</a>
+        </nav>
+
           {nextProblem && (
             <section className="problem-next-card">
               <span aria-hidden="true">⇉</span>
@@ -1135,51 +1186,6 @@ export default async function ProblemPage({
             )}
           </section>
         )}
-
-        <nav className="problem-rail-actions" aria-label={t.problemDetail.problem}>
-          {canEditCurrentProblem && (
-            <Link href={`/problems/${problem.slug}/edit`}>{t.problemDetail.edit}</Link>
-          )}
-          <Link href={`/problems/${problem.slug}/discussion`}>
-            {t.problemDetail.discussions}
-            <span>{discussionPostCount}</span>
-          </Link>
-          <Link href={`/problems/${problem.slug}/history`}>{t.conceptDetail.history}</Link>
-          {user && problem.status === "PUBLISHED" && problem.listed && (
-            <ProblemChallengeLauncher
-              className="problem-rail-challenge-trigger"
-              challengeLabels={t.social.challenge}
-              linkLabels={{
-                button: t.social.challengeLink.button,
-                cancel: t.social.challengeLink.cancel,
-                close: t.social.challengeLink.close,
-                copied: t.social.challengeLink.copied,
-                copy: t.social.challengeLink.copy,
-                createAnother: t.social.challengeLink.createAnother,
-                description: t.social.challengeLink.description,
-                done: t.social.challengeLink.done,
-                errors: t.social.challengeLink.errors,
-                expiryNotice: t.social.challengeLink.expiryNotice,
-                generate: t.social.challengeLink.generate,
-                generating: t.social.challengeLink.generating,
-                linkLabel: t.social.challengeLink.linkLabel,
-                messagePlaceholder: t.social.challengeLink.messagePlaceholder,
-                problem: t.social.challengeLink.problem,
-                ready: t.social.challengeLink.ready,
-                title: t.social.challengeLink.title
-              }}
-              problem={{
-                difficulty: problem.difficulty,
-                domainLabel: translatedDomainLabel(heroDomain, t.home.domainLabels),
-                language: problem.language,
-                listed: problem.listed,
-                slug: problem.slug,
-                title: problem.title
-              }}
-            />
-          )}
-          <a href="#report">{t.problemDetail.report}</a>
-        </nav>
 
         {pendingVerificationRequests.length > 0 && (
           <section className="sidebar-section verification-review-list">

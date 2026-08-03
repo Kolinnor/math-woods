@@ -643,7 +643,16 @@ export default async function HomePage() {
               <div key={`${entry.user.id}-${entry.href}-${entry.date.toISOString()}`}>
                 <UserAvatar user={entry.user} size="sm" />
                 <div className="home-friend-activity-copy">
-                  <p><strong>{displayNameForUser(entry.user)}</strong> {entry.verb} <Link href={entry.href as Route}><AsyncMarkdownInline markdown={entry.title} /></Link></p>
+                  <p>
+                    <Link
+                      href={`/profile/${entry.user.username}` as Route}
+                      className="home-friend-profile-link"
+                    >
+                      {displayNameForUser(entry.user)}
+                    </Link>{" "}
+                    {entry.verb}{" "}
+                    <Link href={entry.href as Route}><AsyncMarkdownInline markdown={entry.title} /></Link>
+                  </p>
                   <time dateTime={entry.date.toISOString()}>{relativeActivityTime(entry.date, locale)}</time>
                 </div>
               </div>
