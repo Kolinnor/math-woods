@@ -39,13 +39,20 @@ export async function resolveConceptHrefsForLanguage(slugs: readonly string[], l
   );
 }
 
-export async function renderMarkdownForContentLanguage(markdown: string, language: string) {
+export async function renderMarkdownCollectionForContentLanguage(
+  markdowns: readonly string[],
+  language: string
+) {
+  if (markdowns.length === 0) return [];
+
   const targetLanguage = parseContentLanguage(language);
-  const links = extractWikiLinks(markdown);
+  const links = markdowns.flatMap((markdown) => extractWikiLinks(markdown));
   const targetSlugs = [...new Set(links.map((link) => link.targetSlug))];
   const targetTitles = [...new Set(links.map((link) => link.target.trim()).filter(Boolean))];
 
-  if (targetSlugs.length === 0) return renderMarkdown(markdown);
+  if (targetSlugs.length === 0) {
+    return Promise.all(markdowns.map((markdown) => renderMarkdown(markdown)));
+  }
 
   const concepts = await prisma.concept.findMany({
     where: {
@@ -111,10 +118,19 @@ export async function renderMarkdownForContentLanguage(markdown: string, languag
   );
   const missingSlugs = new Set(targetSlugs.filter((slug) => !conceptByLookupSlug.has(slug)));
 
-  return renderMarkdown(markdown, missingSlugs, true, (link) => {
-    const concept = conceptByLookupSlug.get(link.targetSlug);
-    if (!concept) return `/concepts/${link.targetSlug}`;
+  return Promise.all(
+    markdowns.map((markdown) =>
+      renderMarkdown(markdown, missingSlugs, true, (link) => {
+        const concept = conceptByLookupSlug.get(link.targetSlug);
+        if (!concept) return `/concepts/${link.targetSlug}`;
 
-    return `/concepts/${translatedSlugByGroup.get(concept.translationGroupId) ?? concept.slug}`;
-  });
+        return `/concepts/${translatedSlugByGroup.get(concept.translationGroupId) ?? concept.slug}`;
+      })
+    )
+  );
+}
+
+export async function renderMarkdownForContentLanguage(markdown: string, language: string) {
+  const [html] = await renderMarkdownCollectionForContentLanguage([markdown], language);
+  return html;
 }

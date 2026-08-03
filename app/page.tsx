@@ -447,6 +447,7 @@ export default async function HomePage() {
   const dailyProblemIsSolved = Boolean(
     dailyProblem && solvedSet.has(dailyProblem.translationGroupId)
   );
+  const dailyProblemIsOwn = dailyProblem?.authorId === user.id;
   const progressMap = buildProgressMap(allProblemGroups, solvedSet, (problem) =>
     parentProblemDomainForCode(problem.domains[0]?.mscCode ?? problem.domain)?.value ?? String(problem.domain)
   );
@@ -549,7 +550,7 @@ export default async function HomePage() {
       <main className="home-dashboard-grid">
         <div className="home-dashboard-main">
           {dailyProblemCard && (
-            dailyProblemIsSolved ? (
+            dailyProblemIsSolved && !dailyProblemIsOwn ? (
               <RevealSolvedDailyProblem label={copy.showSolvedProblemOfDay}>
                 {dailyProblemCard}
               </RevealSolvedDailyProblem>

@@ -1430,24 +1430,35 @@ body:has(.problem-detail-shell) .site-main {
 }
 
 .problems-page-shell .problems-hero-actions .button {
-  background: #f6f2e6;
-  border: 0;
+  background: var(--mw-green);
+  border: 1px solid var(--mw-green-shadow);
   border-radius: 8px;
-  box-shadow: none;
-  color: #22201d;
-  font-size: 14px;
-  font-weight: 600;
-  min-height: 0;
-  min-width: 0;
-  padding: 10px 18px;
+  box-shadow: 0 2px 0 var(--mw-green-shadow), 0 8px 20px rgb(0 0 0 / 0.18);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  min-height: 48px;
+  padding: 12px 22px;
   text-shadow: none;
 }
 
-.problems-page-shell .problems-hero-actions .button.secondary,
-.problems-page-shell .problems-hero-actions button.secondary {
-  background: transparent;
-  border: 1px solid rgb(255 255 255 / 0.6);
+.problems-page-shell .problems-hero-actions .button:hover {
+  background: var(--mw-green-hover);
+  border-color: var(--mw-green-shadow);
+  box-shadow: 0 2px 0 var(--mw-green-shadow), 0 10px 24px rgb(0 0 0 / 0.22);
+}
+
+.problems-page-shell .problems-hero-actions .contribution-request-button {
+  background: var(--mw-rust);
+  border-color: #7a3f11;
+  box-shadow: 0 2px 0 #7a3f11, 0 8px 20px rgb(0 0 0 / 0.18);
   color: #fff;
+}
+
+.problems-page-shell .problems-hero-actions .contribution-request-button:hover {
+  background: #874914;
+  border-color: #6c370f;
+  box-shadow: 0 2px 0 #6c370f, 0 10px 24px rgb(0 0 0 / 0.22);
 }
 
 .home-dashboard .home-member-hero-copy,

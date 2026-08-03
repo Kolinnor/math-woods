@@ -50,7 +50,10 @@ import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
+import {
+  renderMarkdownCollectionForContentLanguage,
+  resolveConceptHrefsForLanguage
+} from "@/lib/translated-markdown";
 import { problemTranslationFreshness } from "@/lib/translation-freshness";
 import {
   nextMissingTranslationLanguage,
@@ -435,14 +438,21 @@ export default async function ProblemPage({
       : "";
     redirect(`/problems/${preferredTranslation.slug}${viewLanguageQuery}`);
   }
-  const [problemBodyHtml, translationFreshness, linkedConceptHrefBySlug] = await Promise.all([
-    renderMarkdownForContentLanguage(problem.bodyMarkdown, problem.language),
+  const [renderedProblemContent, translationFreshness, linkedConceptHrefBySlug] = await Promise.all([
+    renderMarkdownCollectionForContentLanguage(
+      [problem.bodyMarkdown, ...problem.proofs.map((proof) => proof.bodyMarkdown)],
+      problem.language
+    ),
     problemTranslationFreshness(problem.translatedFromProblem, problem.translatedFromRevisionId),
     resolveConceptHrefsForLanguage(
       links.filter((link) => link.exists).map((link) => link.targetSlug),
       problem.language
     )
   ]);
+  const [problemBodyHtml, ...proofBodyHtml] = renderedProblemContent;
+  const proofBodyHtmlById = new Map(
+    problem.proofs.map((proof, index) => [proof.id, proofBodyHtml[index] ?? proof.bodyHtml])
+  );
   const isLanguageFallback = targetViewLanguage !== problem.language;
 
   const proofVotes = new Map(proofVoteGroups.map((item) => [item.targetId, item._count.targetId]));
@@ -1011,7 +1021,7 @@ export default async function ProblemPage({
                           )}
                         </div>
                       </header>
-                      <MarkdownBlock html={proof.bodyHtml} />
+                      <MarkdownBlock html={proofBodyHtmlById.get(proof.id) ?? proof.bodyHtml} />
                     </article>
                   );
                 })}
