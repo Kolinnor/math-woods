@@ -2185,7 +2185,9 @@ a {
 
 .floating-friends-menu .friends-menu-popover.is-chat-open {
   height: min(32rem, calc(100vh - 7rem));
+  max-width: calc(100vw - 2rem);
   max-height: none;
+  min-width: 0;
   width: min(23rem, calc(100vw - 2rem));
 }
 
@@ -2318,6 +2320,9 @@ a {
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   height: 100%;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
 }
 
 .friends-mini-chat-header {
@@ -2371,6 +2376,8 @@ a {
   display: grid;
   gap: 0.45rem;
   min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 0.7rem 0.35rem;
   scroll-behavior: smooth;
@@ -2383,6 +2390,7 @@ a {
   justify-self: start;
   margin-bottom: 0.8rem;
   max-width: 86%;
+  min-width: 0;
   padding: 0.5rem 0.65rem;
   position: relative;
 }
@@ -2403,8 +2411,23 @@ a {
 }
 
 .chat-message-content {
+  max-width: 100%;
   min-width: 0;
   position: relative;
+}
+
+.friends-mini-message .prose-math,
+.chat-message .prose-math {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.friends-mini-message .prose-math a,
+.chat-message .prose-math a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .chat-message-content.is-editable {
@@ -11219,6 +11242,574 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   color: #5a665c;
 }
 
+/* Mobile layout baseline
+   Keep responsive ownership here so older page-specific rules cannot restore
+   desktop grids after their mobile breakpoints have already run. */
+.nav-menu-primary-mobile,
+.nav-menu-primary-divider {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .problems-page-shell .problems-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .problems-page-shell .problems-filter-panel {
+    border-bottom: 1px solid #d8d0bd;
+    border-right: 0;
+  }
+
+  .problem-detail-shell .problem-detail-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .site-nav {
+    gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 3.65rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .site-brand {
+    min-width: 0;
+  }
+
+  .site-brand > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .primary-nav {
+    display: none;
+  }
+
+  .nav-tools {
+    gap: 0.4rem;
+    justify-self: end;
+  }
+
+  .language-selector {
+    height: 2.35rem;
+    padding-left: 0.45rem;
+  }
+
+  .language-selector select {
+    width: 3.25rem;
+  }
+
+  .nav-menu-primary-mobile {
+    display: grid;
+  }
+
+  .nav-menu-primary-divider {
+    display: block;
+  }
+
+  .nav-menu-popover {
+    max-height: min(72dvh, 34rem);
+    min-width: min(19rem, calc(100vw - 1.5rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .nav-menu-popover a,
+  .nav-menu-action {
+    min-height: 2.65rem;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .site-main {
+    max-width: 100%;
+    min-width: 0;
+    padding: 1.25rem 0.875rem;
+    width: 100%;
+  }
+
+  .site-footer > div {
+    align-items: flex-start;
+    grid-template-columns: 1fr;
+  }
+
+  .site-footer > div > div {
+    justify-content: flex-start;
+  }
+
+  .panel,
+  .reading-surface,
+  .action-surface,
+  .forest-page-primary,
+  .translation-compose-main,
+  .problem-detail-article,
+  .exploration-reader-page {
+    min-width: 0;
+  }
+
+  .reading-surface {
+    padding: 1.1rem 0.95rem;
+  }
+
+  .prose-math,
+  .markdown-inline {
+    overflow-wrap: anywhere;
+  }
+
+  .prose-math .katex-display,
+  .markdown-inline .katex-display {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .prose-math table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .prose-math img,
+  .reading-surface img {
+    height: auto;
+    max-width: 100%;
+  }
+
+  .home-hero-member {
+    min-height: 300px;
+  }
+
+  .home-dashboard .home-member-hero-copy {
+    gap: 0.9rem;
+    padding: 0 0.875rem 1.2rem;
+  }
+
+  .home-member-hero-copy .home-hero-actions {
+    width: 100%;
+  }
+
+  .home-member-hero-copy .home-button {
+    min-height: 2.75rem;
+    width: 100%;
+  }
+
+  .home-dashboard .home-dashboard-grid {
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1rem 0.875rem 3rem;
+  }
+
+  .home-dashboard .home-recommendation-grid,
+  .home-dashboard .home-daily-problem {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-dashboard .home-daily-art {
+    display: none;
+  }
+
+  .home-dashboard .recommendation-reader-list {
+    scrollbar-width: thin;
+  }
+
+  .problems-hero {
+    min-height: 250px;
+  }
+
+  .problems-page-shell .problems-hero-content {
+    gap: 1rem;
+    padding: 4.5rem 0.875rem 1.25rem;
+  }
+
+  .problems-page-shell .problems-hero-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 0;
+    width: 100%;
+  }
+
+  .problems-page-shell .problems-hero-actions .button {
+    font-size: 0.9rem;
+    min-height: 3rem;
+    min-width: 0;
+    padding: 0.65rem 0.7rem;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .problems-page-shell .problems-recommendations,
+  .problems-page-shell .problem-domain-strip,
+  .problems-page-shell .problems-workspace {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  .problems-page-shell .problem-domain-strip-header,
+  .problems-page-shell .problems-ledger-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .problems-page-shell .problem-domain-strip-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .problems-page-shell .problem-domain-tile-grid {
+    grid-auto-rows: minmax(92px, auto);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .problems-page-shell .problems-filter-panel,
+  .problems-page-shell .problems-ledger {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .problems-page-shell .problem-filter-form {
+    gap: 0.9rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .problems-page-shell .problem-ledger-row {
+    align-items: stretch;
+    gap: 0.35rem;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 82px;
+    padding: 0.7rem 0.6rem;
+  }
+
+  .problems-page-shell .problem-ledger-content {
+    gap: 0.6rem;
+    grid-template-columns: 46px minmax(0, 1fr);
+    padding-left: 1.35rem;
+  }
+
+  .problems-page-shell .problem-ledger-title-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.45rem;
+  }
+
+  .problems-page-shell .problem-ledger-main h3 {
+    flex-basis: 100%;
+    white-space: normal;
+  }
+
+  .problems-page-shell .problem-ledger-main h3 > .markdown-inline {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .problems-page-shell .problem-ledger-meta-row {
+    flex-wrap: wrap;
+  }
+
+  .problems-page-shell .problem-ledger-side {
+    justify-content: flex-end;
+    padding-left: 4.2rem;
+  }
+
+  .problem-detail-shell .problem-hero {
+    height: auto;
+    min-height: 190px;
+  }
+
+  .problem-detail-shell .problem-hero-inner {
+    gap: 0.75rem;
+    padding: 4.5rem 0.875rem 1.2rem;
+  }
+
+  .problem-detail-shell .problem-detail-body {
+    gap: 1.1rem;
+    padding: 1rem 0.875rem 3rem;
+  }
+
+  .problem-detail-shell .problem-title-block h1 {
+    font-size: clamp(1.75rem, 9vw, 2.25rem);
+    overflow-wrap: anywhere;
+  }
+
+  .problem-detail-shell .problem-title-meta {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .problem-detail-shell .problem-statement {
+    padding: 1.2rem 1rem;
+  }
+
+  .problem-detail-shell .problem-primary-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .problem-detail-shell .problem-rail {
+    gap: 0.8rem;
+  }
+
+  .forest-page-hero {
+    min-height: 280px;
+  }
+
+  .forest-page-hero-content {
+    padding: 4.4rem 0.875rem 1.25rem;
+  }
+
+  .forest-page-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .forest-page-hero-actions .button,
+  .forest-page-hero-actions button {
+    flex: 1 1 9rem;
+    min-width: 0;
+  }
+
+  .forest-page-workspace,
+  .forest-page-workspace-with-sidebar {
+    gap: 1rem;
+    padding: 1rem 0.875rem 2.5rem;
+  }
+
+  .concept-search-bar,
+  .concept-search-bar-admin {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .concept-search-bar-admin > :first-child {
+    grid-column: auto;
+  }
+
+  .concept-practice-queue {
+    padding: 0.9rem 0.75rem;
+  }
+
+  .concept-practice-queue-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .concept-practice-queue-row-header {
+    gap: 0.55rem;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    padding: 0.7rem;
+  }
+
+  .concept-practice-queue-row-meta {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .concept-practice-queue-body {
+    padding: 0 0.7rem 0.8rem 3.25rem;
+  }
+
+  .translation-compose-page,
+  .verification-page-grid,
+  .exploration-studio-shell,
+  .exploration-reader-shell,
+  .exploration-overview-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .translation-reference-panel,
+  .verification-page-rail,
+  .exploration-studio-sidebar,
+  .exploration-reader-outline,
+  .exploration-overview-aside {
+    max-height: none;
+    position: static;
+  }
+
+  .problem-compose-card,
+  .problem-compose-subsection {
+    padding: 0.85rem;
+  }
+
+  .markdown-editor-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .markdown-editor-toolbar-status {
+    flex-basis: 100%;
+    margin-left: 0;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .exploration-studio-sidebar nav {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .exploration-map-canvas {
+    height: min(30rem, 62dvh);
+  }
+
+  .exploration-reader-page-title-row,
+  .exploration-reader-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .exploration-reader-page-header h1 {
+    font-size: 1.85rem;
+  }
+
+  .exploration-reader-controls button,
+  .exploration-reader-controls .button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .exploration-catalog-item {
+    grid-template-columns: 6rem minmax(0, 1fr);
+  }
+
+  .exploration-catalog-item > .button {
+    grid-column: 2;
+    justify-self: stretch;
+  }
+
+  .users-row {
+    gap: 0.65rem;
+    grid-template-columns: 2.25rem auto minmax(0, 1fr);
+    padding: 0.75rem;
+  }
+
+  .users-row .users-stat {
+    display: none;
+  }
+
+  .profile-hero-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-hero-avatar.user-avatar-xl {
+    height: 4.75rem;
+    width: 4.75rem;
+  }
+
+  .chat-message {
+    gap: 0.5rem;
+    grid-template-columns: auto minmax(0, 1fr);
+    max-width: 94%;
+    padding: 0.7rem;
+  }
+
+  .chat-reaction-picker {
+    grid-template-columns: repeat(5, minmax(1.9rem, 1fr));
+    max-width: calc(100vw - 3.5rem);
+  }
+
+  .floating-friends-menu .friends-menu-popover,
+  .floating-friends-menu .friends-menu-popover.is-chat-open {
+    bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 3.25rem);
+    height: auto;
+    left: max(0.75rem, env(safe-area-inset-left));
+    max-height: calc(100dvh - 5.5rem);
+    position: fixed;
+    right: max(0.75rem, env(safe-area-inset-right));
+    width: auto;
+  }
+
+  .floating-friends-menu .friends-menu-popover.is-chat-open {
+    height: min(36rem, calc(100dvh - 5.5rem));
+  }
+
+  .friends-mini-chat-header {
+    gap: 0.35rem;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  }
+
+  .friends-mini-message {
+    max-width: 92%;
+  }
+}
+
+@media (max-width: 430px) {
+  .site-brand-logo {
+    height: 1.7rem;
+    width: 1.7rem;
+  }
+
+  .site-brand {
+    font-size: 0.92rem;
+  }
+
+  .language-selector svg {
+    display: none;
+  }
+
+  .language-selector {
+    padding-left: 0.25rem;
+  }
+
+  .problems-page-shell .problems-hero-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-dashboard .home-tip-card {
+    grid-template-columns: 104px minmax(0, 1fr);
+    height: auto;
+    min-height: 168px;
+  }
+
+  .home-dashboard .home-tip-image {
+    align-self: start;
+    border-bottom: 0;
+    border-right: 2px solid #5a4a2c;
+    height: 104px;
+    width: 104px;
+  }
+
+  .home-dashboard .home-tip-copy {
+    padding: 0.75rem;
+  }
+
+  .home-dashboard .home-tip-copy h2 {
+    font-size: 1rem;
+  }
+
+  .home-dashboard .home-tip-copy > .prose-math {
+    font-size: 0.82rem;
+  }
+
+  .home-dashboard .home-tip-practice {
+    grid-column: 1 / -1;
+  }
+
+  .problems-page-shell .problem-domain-tile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .problems-page-shell .problem-domain-tile-shell:nth-child(n) .problem-domain-subdomain-menu {
+    left: 0;
+    right: auto;
+  }
+
+  .problems-page-shell .problem-ledger-content {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .problems-page-shell .problem-ledger-side {
+    padding-left: 3.7rem;
+  }
+
+}
+
 @media (max-width: 900px) {
   .forest-page-hero {
     min-height: 340px;
@@ -11836,6 +12427,82 @@ button.live-search-reset:hover {
   text-decoration: none;
 }
 
+.problem-ledger-progress-action {
+  align-items: center;
+  display: flex;
+  height: 1.3rem;
+  justify-content: center;
+  left: 0.45rem;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.3rem;
+  z-index: 2;
+}
+
+.problem-ledger-progress-action form,
+.problem-ledger-side form {
+  display: contents;
+}
+
+.problem-ledger-check,
+.problem-ledger-attempt {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  flex: none;
+  height: 1.3rem;
+  justify-content: center;
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+  text-decoration: none;
+  width: 1.3rem;
+}
+
+.problem-ledger-check svg {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.problem-ledger-check:hover,
+.problem-ledger-check:focus-visible {
+  border-color: var(--problem-solved);
+  color: var(--problem-solved);
+}
+
+.problem-ledger-check:hover svg,
+.problem-ledger-check:focus-visible svg,
+.problem-ledger-check.is-solved svg {
+  opacity: 1;
+}
+
+.problem-ledger-check.is-solved {
+  background: var(--problem-solved);
+  border-color: var(--problem-solved);
+  color: #ffffff;
+}
+
+.problem-ledger-attempt {
+  border-color: var(--problem-opened-border);
+  color: var(--problem-opened);
+}
+
+.problem-ledger-attempt:hover,
+.problem-ledger-attempt:focus-visible,
+.problem-ledger-attempt.is-active {
+  background: var(--problem-opened);
+  border-color: var(--problem-opened);
+  color: #ffffff;
+}
+
+.problem-ledger-attempt.is-active {
+  cursor: default;
+}
+
 .problem-ledger-difficulty {
   align-items: center;
   display: flex;
@@ -11962,6 +12629,14 @@ button.live-search-reset:hover {
   background: var(--notice-orange-bg);
   border-color: var(--notice-orange-border);
   color: var(--notice-text);
+}
+
+.problem-review-edited {
+  background: #f7ead2;
+  border-color: #d4b276;
+  color: #76511f;
+  font-size: 0.62rem;
+  font-weight: 750;
 }
 
 .problem-ledger-side {
@@ -12661,6 +13336,13 @@ button.live-search-reset:hover {
   line-height: 1;
   min-height: 1.85rem;
   padding: 0.35rem 0.55rem;
+  text-decoration: none;
+}
+
+button.problem-favorite-count {
+  cursor: pointer;
+  font-family: inherit;
+  margin: 0;
 }
 
 .problem-favorite-count svg {
@@ -12760,13 +13442,7 @@ button.live-search-reset:hover {
 
 .problem-ledger-row.problem-link.problem-opened::after,
 .problem-ledger-row.problem-link.problem-solved::after {
-  height: 1.2rem;
-  left: 0.5rem;
-  margin: 0;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1.2rem;
+  display: none;
 }
 
 .related-problems-section {
@@ -13432,6 +14108,8 @@ button.relation-remove-button {
   display: grid;
   gap: 0.9rem;
   max-height: min(62vh, 42rem);
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   scroll-behavior: smooth;
 }
@@ -13482,6 +14160,7 @@ button.relation-remove-button {
   grid-template-columns: auto minmax(0, 1fr);
   margin-bottom: 0.8rem;
   max-width: min(42rem, 100%);
+  min-width: 0;
   padding: 0.85rem 1rem;
 }
 
@@ -16297,5 +16976,77 @@ body:has(.home-dashboard) > .site-footer {
     flex-direction: column;
     gap: 0.2rem;
     padding: 7px 9px;
+  }
+}
+
+/* These rules intentionally come last: several legacy sections above redefine
+   the dashboard and problem layouts after their original mobile breakpoints. */
+@media (max-width: 960px) {
+  .problems-page-shell .problems-workspace,
+  .problem-detail-shell .problem-detail-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .site-nav {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 3.65rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .site-nav .primary-nav {
+    display: none;
+  }
+
+  .site-nav .language-selector select {
+    width: 5rem;
+  }
+
+  .problem-detail-shell .problem-hero {
+    height: auto;
+    min-height: 190px;
+  }
+
+  .problems-page-shell .problems-workspace {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  .problems-page-shell .problem-domain-tile-grid {
+    grid-auto-rows: minmax(92px, auto);
+  }
+}
+
+@media (max-width: 430px) {
+  .site-nav .language-selector select {
+    width: 4.5rem;
+  }
+
+  .home-dashboard .home-tip-card {
+    grid-template-columns: 104px minmax(0, 1fr);
+    height: auto;
+    min-height: 168px;
+  }
+
+  .home-dashboard .home-tip-image {
+    align-self: start;
+    border-bottom: 0;
+    border-right: 2px solid #5a4a2c;
+    height: 104px;
+    justify-self: stretch;
+    width: 104px;
+  }
+
+  .home-dashboard .home-tip-copy {
+    padding: 0.75rem;
+  }
+
+  .home-dashboard .home-tip-copy h2 {
+    font-size: 1rem;
+  }
+
+  .home-dashboard .home-tip-copy > .prose-math {
+    font-size: 0.82rem;
   }
 }

@@ -616,6 +616,8 @@ export const en = {
     needsWork: "Needs work",
     unreviewed: "Unreviewed",
     reviewed: "Reviewed",
+    editedSinceReview: "Edited since review",
+    editedSinceReviewNotice: "This problem changed after its last review and should be reviewed again.",
     featured: "Featured",
     contentTypes: "Content",
     problemType: "Problems",

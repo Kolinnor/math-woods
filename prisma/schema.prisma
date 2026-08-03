@@ -510,6 +510,7 @@ model Problem {
   canAppearOnFrontPage     Boolean                      @default(false)
   status                   ProblemStatus                @default(PUBLISHED)
   qualityStatus            QualityStatus                @default(UNREVIEWED)
+  needsReviewAfterEdit     Boolean                      @default(false)
   verificationMode         ProblemVerificationMode      @default(NONE)
   verificationPrompt       String?
   verificationAnswer       String?

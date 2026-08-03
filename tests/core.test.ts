@@ -23,6 +23,7 @@ import {
 import { parseConceptKind } from "../lib/concept-kinds.ts";
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
+import { needsReviewAfterProblemEdit } from "../lib/problem-review-state.ts";
 import {
   buildRecommendationProfile,
   scoreProblemRecommendation
@@ -1998,5 +1999,30 @@ assert.equal(pickRandomDifferent([], undefined, () => 0), undefined);
 assert.equal(pickRandomDifferent(["only"], "only", () => 0), "only");
 assert.equal(pickRandomDifferent(["first", "second", "third"], "first", () => 0), "second");
 assert.equal(pickRandomDifferent(["first", "second", "third"], "second", () => 0.99), "third");
+
+assert.equal(
+  needsReviewAfterProblemEdit({
+    alreadyNeedsReview: false,
+    currentStatus: QualityStatus.REVIEWED,
+    hasReviewSensitiveChanges: true
+  }),
+  true
+);
+assert.equal(
+  needsReviewAfterProblemEdit({
+    alreadyNeedsReview: false,
+    currentStatus: QualityStatus.REVIEWED,
+    hasReviewSensitiveChanges: false
+  }),
+  false
+);
+assert.equal(
+  needsReviewAfterProblemEdit({
+    alreadyNeedsReview: true,
+    currentStatus: QualityStatus.UNREVIEWED,
+    hasReviewSensitiveChanges: false
+  }),
+  true
+);
 
 console.log("core tests ok");

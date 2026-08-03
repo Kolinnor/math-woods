@@ -585,6 +585,11 @@ export default async function ProblemPage({
             <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
               {t.quality[problem.qualityStatus]}
             </span>
+            {problem.needsReviewAfterEdit && (
+              <span className="problem-review-badge problem-review-edited">
+                {t.problems.editedSinceReview}
+              </span>
+            )}
           </p>
           <h1 id="problem-title"><AsyncMarkdownInline markdown={problem.title} /></h1>
           <div className="problem-title-meta">
@@ -705,7 +710,9 @@ export default async function ProblemPage({
             </div>
           )}
 
-        {(problem.qualityStatus === "UNREVIEWED" || problem.qualityStatus === "NEEDS_WORK") && (
+        {(problem.qualityStatus === "UNREVIEWED" ||
+          problem.qualityStatus === "NEEDS_WORK" ||
+          problem.needsReviewAfterEdit) && (
           <div
             className={
               problem.qualityStatus === "NEEDS_WORK"
@@ -714,9 +721,11 @@ export default async function ProblemPage({
             }
           >
             <strong>{t.quality[problem.qualityStatus]}.</strong>{" "}
-            {problem.qualityStatus === "NEEDS_WORK"
-              ? t.problemDetail.needsWorkNotice
-              : t.problemDetail.unreviewedNotice}
+            {problem.needsReviewAfterEdit
+              ? t.problems.editedSinceReviewNotice
+              : problem.qualityStatus === "NEEDS_WORK"
+                ? t.problemDetail.needsWorkNotice
+                : t.problemDetail.unreviewedNotice}
             {user && canReviewProblem(user, problem) && (
               <form action={markProblemReviewedAction.bind(null, problem.id, problem.slug)} className="mt-2">
                 <button type="submit" className="secondary">

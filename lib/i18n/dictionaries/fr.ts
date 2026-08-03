@@ -620,6 +620,8 @@ export const fr = {
     needsWork: "À retravailler",
     unreviewed: "Non relu",
     reviewed: "Relu",
+    editedSinceReview: "Modifié depuis la relecture",
+    editedSinceReviewNotice: "Ce problème a changé depuis sa dernière relecture et doit être relu.",
     featured: "Mis en avant",
     contentTypes: "Contenu",
     problemType: "Problèmes",

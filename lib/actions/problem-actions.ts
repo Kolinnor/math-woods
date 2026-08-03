@@ -54,6 +54,7 @@ import {
   verificationMatches
 } from "@/lib/problem-verification";
 import { parseProblemDifficulty, tagsWithConjecture } from "@/lib/problems";
+import { needsReviewAfterProblemEdit } from "@/lib/problem-review-state";
 import { parseContributorQualityStatus } from "@/lib/quality";
 import { assertRateLimit } from "@/lib/rate-limit";
 import {
@@ -742,6 +743,11 @@ export async function updateProblemAction(
       ) {
         resolvedSnapshot.qualityStatus = QualityStatus.UNREVIEWED;
       }
+      const needsReviewAfterEdit = needsReviewAfterProblemEdit({
+        alreadyNeedsReview: current.needsReviewAfterEdit,
+        currentStatus: current.qualityStatus,
+        hasReviewSensitiveChanges: reviewSensitiveChanges.length > 0
+      });
       if (resolvedSnapshot.language !== current.language) {
         const existingTranslation = await tx.problem.findFirst({
           where: {
@@ -782,6 +788,7 @@ export async function updateProblemAction(
           showRelatedProblems: resolvedSnapshot.showRelatedProblems,
           canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage,
           qualityStatus: resolvedSnapshot.qualityStatus,
+          needsReviewAfterEdit,
           verificationMode: resolvedSnapshot.verificationMode,
           verificationPrompt: resolvedSnapshot.verificationPrompt,
           verificationAnswer: resolvedSnapshot.verificationAnswer,
@@ -813,7 +820,13 @@ export async function updateProblemAction(
               : [])
           ]
         },
-        select: { id: true }
+        select: {
+          id: true,
+          difficulty: true,
+          isExercise: true,
+          showRelatedProblems: true,
+          qualityStatus: true
+        }
       });
       for (const sibling of siblingCandidates) {
         await ensureProblemSnapshotRevision(tx, await problemSnapshotSource(tx, sibling.id));
@@ -829,6 +842,21 @@ export async function updateProblemAction(
             version: { increment: 1 }
           }
         });
+        const staleReviewedSiblingIds = siblingCandidates
+          .filter(
+            (sibling) =>
+              sibling.qualityStatus === QualityStatus.REVIEWED &&
+              (sibling.difficulty !== resolvedSnapshot.difficulty ||
+                (syncExerciseType && sibling.isExercise !== resolvedSnapshot.isExercise) ||
+                (syncRelatedVisibility && sibling.showRelatedProblems !== resolvedSnapshot.showRelatedProblems))
+          )
+          .map((sibling) => sibling.id);
+        if (staleReviewedSiblingIds.length) {
+          await tx.problem.updateMany({
+            where: { id: { in: staleReviewedSiblingIds } },
+            data: { needsReviewAfterEdit: true }
+          });
+        }
       }
 
       await syncInternalLinks(SourceType.PROBLEM, problemId, resolvedSnapshot.bodyMarkdown, tx, resolvedSnapshot.language);
@@ -1016,7 +1044,11 @@ export async function markProblemReviewedAction(problemId: number, problemSlug: 
     await ensureProblemSnapshotRevision(tx, current);
     const reviewed = await tx.problem.update({
       where: { id: problemId },
-      data: { qualityStatus: QualityStatus.REVIEWED, version: { increment: 1 } }
+      data: {
+        qualityStatus: QualityStatus.REVIEWED,
+        needsReviewAfterEdit: false,
+        version: { increment: 1 }
+      }
     });
     const reviewedSnapshot = await problemSnapshotSource(tx, reviewed.id);
     await tx.pageRevision.create({
@@ -1098,6 +1130,8 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
           : {}),
         bodyMarkdown: markdown,
         bodyHtml: await renderMarkdownContent(markdown),
+        needsReviewAfterEdit:
+          current.needsReviewAfterEdit || current.qualityStatus === QualityStatus.REVIEWED,
         version: { increment: 1 }
       }
     });
