@@ -18,6 +18,7 @@ import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 import { displayNameForUser } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export const dynamic = "force-dynamic";
 const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
@@ -27,8 +28,8 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
   const [locale, timeZone] = await Promise.all([getInterfaceLocale(), getRequestTimeZone()]);
   const t = dictionaryForLocale(locale);
   const { username } = await params;
-  const otherUser = await prisma.user.findUnique({
-    where: { username },
+  const otherUser = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(username) },
     select: {
       id: true,
       username: true,

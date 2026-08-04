@@ -64,6 +64,7 @@ enum SourceType {
   PROBLEM
   CONCEPT
   PLAYLIST
+  PROOF
 }
 
 enum TargetType {
@@ -261,6 +262,7 @@ enum UserMathLevel {
 
 model User {
   id                              Int                          @id @default(autoincrement())
+  // A migration also maintains a case-insensitive unique index on this field.
   username                        String                       @unique
   displayName                     String?
   avatarUrl                       String?

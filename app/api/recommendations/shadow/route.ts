@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { recommendationShadowForUser } from "@/lib/recommendation-engine";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,10 @@ export async function GET(request: Request) {
   const username = searchParams.get("username")?.trim();
   const limit = Number.parseInt(searchParams.get("limit") ?? "20", 10);
   const target = username
-    ? await prisma.user.findUnique({ where: { username }, select: { id: true } })
+    ? await prisma.user.findFirst({
+        where: { username: usernameLookupFilter(username) },
+        select: { id: true }
+      })
     : { id: currentUser.id };
   if (!target) return NextResponse.json({ ok: false }, { status: 404 });
 

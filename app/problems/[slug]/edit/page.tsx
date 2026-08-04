@@ -275,7 +275,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                     </label>
                   </section>
 
-                  <section className="problem-compose-subsection">
+                  <section id="related-problems-editor" className="problem-compose-subsection">
                     <h2>Related problems</h2>
                     <ProblemRelationPicker
                       excludeSlug={problem.slug}

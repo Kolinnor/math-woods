@@ -25,6 +25,7 @@ FROM deps AS migrator
 
 COPY prisma ./prisma
 COPY scripts ./scripts
+COPY lib ./lib
 RUN npx prisma generate
 CMD ["npm", "run", "prisma:migrate:deploy"]
 

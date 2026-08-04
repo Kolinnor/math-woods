@@ -23,6 +23,7 @@ import { hasTrustedPrivileges } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { getUserReputation } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export const dynamic = "force-dynamic";
 const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
@@ -43,8 +44,8 @@ export default async function ProfilePage({
       : "overview";
   const currentUser = await getCurrentUser();
   const preferredLanguage = await getPreferredContentLanguage();
-  const user = await prisma.user.findUnique({
-    where: { username },
+  const user = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(username) },
     include: {
       _count: {
         select: {

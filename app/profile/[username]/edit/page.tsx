@@ -10,6 +10,7 @@ import { getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export const dynamic = "force-dynamic";
 const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
@@ -19,10 +20,11 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
   const t = await getTranslations();
   const { username } = await params;
 
-  if (currentUser.username !== username) redirect(`/profile/${username}`);
-
-  const user = await prisma.user.findUnique({ where: { username } });
+  const user = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(username) }
+  });
   if (!user) notFound();
+  if (currentUser.id !== user.id) redirect(`/profile/${user.username}`);
   const avatarPresetLabels = Object.fromEntries(
     DEFAULT_AVATAR_PRESETS.map((preset) => [preset, t.profile.profileImagePresetLabel(preset)])
   ) as Record<DefaultAvatarPreset, string>;

@@ -117,6 +117,12 @@ const redesignCopy = {
   en: {
     solvedProgress: (done: number, total: number, domain: string) =>
       `Solved. You have solved ${done} of ${total} problems in ${domain}.`,
+    ownerSolved: {
+      writeSolution: "Help readers learn from your problem by writing a solution.",
+      writeSolutionAction: "Write a solution",
+      addRelated: "Give readers another way into this problem by creating a related problem.",
+      addRelatedAction: "Add related problems"
+    },
     solvedToo: "solved this too",
     next: "Next, if you liked this one",
     open: "Open it",
@@ -141,6 +147,12 @@ const redesignCopy = {
   fr: {
     solvedProgress: (done: number, total: number, domain: string) =>
       `Résolu. Vous avez résolu ${done} problèmes sur ${total} en ${domain}.`,
+    ownerSolved: {
+      writeSolution: "Aidez les lecteurs à apprendre grâce à votre problème en rédigeant une solution.",
+      writeSolutionAction: "Rédiger une solution",
+      addRelated: "Donnez aux lecteurs une autre façon d'aborder ce problème en ajoutant un problème lié.",
+      addRelatedAction: "Ajouter des problèmes liés"
+    },
     solvedToo: "ont aussi résolu ce problème",
     next: "Ensuite, si celui-ci vous a plu",
     open: "Ouvrir",
@@ -398,7 +410,7 @@ export default async function ProblemPage({
           select: { problem: { select: { translationGroupId: true } } }
         })
       : Promise.resolve([]),
-    user
+    user && !isOwnProblem
       ? prisma.problemReaction.findUnique({
           where: { userId_problemId: { userId: user.id, problemId: problem.id } },
           select: { difficultyReaction: true, preferenceReaction: true }
@@ -609,15 +621,31 @@ export default async function ProblemPage({
           </div>
         </header>
         {attempt?.status === "SOLVED" && (
-          <section className="problem-solved-banner" role="status">
+          <section className={`problem-solved-banner${isOwnProblem ? " problem-solved-banner-owner" : ""}`} role="status">
             <span className="problem-solved-check"><Check size={20} /></span>
             <div className="problem-solved-copy">
-              <strong>{copy.solvedProgress(
-                domainSolvedCount,
-                domainProblemGroups.length,
-                translatedDomainLabel(heroDomain, t.home.domainLabels)
-              )}</strong>
-              {friendSolvers.length > 0 && (
+              <strong>
+                {isOwnProblem
+                  ? ownProofForHint
+                    ? copy.ownerSolved.addRelated
+                    : copy.ownerSolved.writeSolution
+                  : copy.solvedProgress(
+                      domainSolvedCount,
+                      domainProblemGroups.length,
+                      translatedDomainLabel(heroDomain, t.home.domainLabels)
+                    )}
+              </strong>
+              {isOwnProblem ? (
+                ownProofForHint ? (
+                  <Link className="problem-solved-next-action" href={`/problems/${problem.slug}/edit#related-problems-editor`}>
+                    {copy.ownerSolved.addRelatedAction}
+                  </Link>
+                ) : (
+                  <a className="problem-solved-next-action" href="#write-solution">
+                    {copy.ownerSolved.writeSolutionAction}
+                  </a>
+                )
+              ) : friendSolvers.length > 0 && (
                 <p>
                   <span className="problem-solver-avatars">
                     {friendSolvers.slice(0, 4).map(({ user: solver }) => (
@@ -628,12 +656,14 @@ export default async function ProblemPage({
                 </p>
               )}
             </div>
-            <ProblemReactions
-              labels={copy.reactions}
-              problemId={problem.id}
-              problemSlug={problem.slug}
-              reaction={ownReaction}
-            />
+            {!isOwnProblem && (
+              <ProblemReactions
+                labels={copy.reactions}
+                problemId={problem.id}
+                problemSlug={problem.slug}
+                reaction={ownReaction}
+              />
+            )}
           </section>
         )}
         {queryParams.challenge === "accepted" && (
@@ -982,7 +1012,7 @@ export default async function ProblemPage({
                   const canEditProof = Boolean(user && canEditSolution(user, proof));
                   const isOwnProof = user?.id === proof.authorId;
                   return (
-                    <article key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
+                    <article id={`solution-${proof.id}`} key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
                       <header className="proof-header">
                         <div>
                           {accepted && <span className="accepted-label">{t.problemDetail.communityAccepted}</span>}
@@ -1059,7 +1089,7 @@ export default async function ProblemPage({
             </details>
           )}
           {user && (
-            <details className="add-proof">
+            <details id="write-solution" className="add-proof">
               <summary>{proofs.length === 0 ? t.problemDetail.firstSolution : t.problemDetail.addAnotherSolution}</summary>
               <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
                 <MarkdownEditor

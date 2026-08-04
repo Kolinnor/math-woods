@@ -9,6 +9,7 @@ import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { canUseModerationTools, canUseOwnerTools } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 const SESSION_COOKIE = "math_woods_session";
 const LEGACY_SESSION_COOKIES = ["math_hills_session", "math_garden_session"];
@@ -136,6 +137,12 @@ export async function registerUser(
   if (password.length < 8) throw new Error("Password must be at least 8 characters.");
   if (!mathLevel) throw new Error("Please choose your mathematics level.");
 
+  const usernameOwner = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(username) },
+    select: { id: true }
+  });
+  if (usernameOwner) throw new Error("This username is already in use.");
+
   const user = await prisma.user.create({
     data: {
       username,
@@ -158,11 +165,14 @@ export async function registerUser(
 }
 
 export async function signInWithPassword(identifierInput: string, password: string) {
-  const identifier = identifierInput.trim().toLowerCase();
+  const identifier = identifierInput.trim();
   const user = await prisma.user.findFirst({
     where: {
       deletedAt: null,
-      OR: [{ username: identifier }, { email: identifier }]
+      OR: [
+        { username: usernameLookupFilter(identifier) },
+        { email: { equals: identifier, mode: "insensitive" } }
+      ]
     }
   });
 

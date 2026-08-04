@@ -996,6 +996,21 @@ body:has(.problem-detail-shell) .site-main {
   margin-top: 4px;
 }
 
+.problem-solved-next-action {
+  color: #fff;
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-top: 5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.problem-solved-next-action:hover,
+.problem-solved-next-action:focus-visible {
+  color: #d8f1e1;
+}
+
 .problem-solver-avatars {
   display: flex;
 }

@@ -22,6 +22,7 @@ import {
 } from "../lib/concept-exercises.ts";
 import { parseConceptKind } from "../lib/concept-kinds.ts";
 import { slugify } from "../lib/slug.ts";
+import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
   hasProblemReviewSensitiveChanges,
@@ -263,6 +264,9 @@ import {
 
 assert.equal(slugify("Relations de Viète"), "relations-de-viete");
 assert.equal(slugify("  L'espace vectoriel ! "), "lespace-vectoriel");
+assert.equal(normalizeUsernameLookup(" Paulownia "), "paulownia");
+assert.equal(normalizeUsernameLookup("ＰＡＵＬＯＷＮＩＡ"), "paulownia");
+assert.deepEqual(usernameLookupFilter("Paulownia"), { equals: "paulownia", mode: "insensitive" });
 assert.equal(problemDifficultyTone(null), "#8a9184");
 assert.equal(problemDifficultyTone(1), "#4f7955");
 assert.equal(problemDifficultyTone(20), "#617a42");

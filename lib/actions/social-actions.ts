@@ -10,6 +10,7 @@ import { clearFriendRequestNotifications } from "@/lib/notification-lifecycle";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 async function friendshipBetween(userId: number, otherUserId: number) {
   return prisma.friendship.findFirst({
@@ -52,8 +53,8 @@ async function notifyFriendRequestAccepted({
 export async function sendFriendRequestAction(username: string) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`friend-request:${user.id}`, 20, 60_000);
-  const target = await prisma.user.findUnique({
-    where: { username },
+  const target = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(username) },
     select: { id: true, username: true, deletedAt: true }
   });
 

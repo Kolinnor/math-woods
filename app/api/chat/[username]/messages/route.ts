@@ -14,6 +14,7 @@ import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export const dynamic = "force-dynamic";
 const MAX_CHAT_MESSAGE_BODY_BYTES = CHAT_IMAGE_MAX_INPUT_BYTES + 64_000;
@@ -35,8 +36,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     ? new Date(reactionsAfterRaw)
     : new Date(0);
 
-  const otherUser = await prisma.user.findUnique({
-    where: { username },
+  const otherUser = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(username) },
     select: {
       id: true,
       username: true,

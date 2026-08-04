@@ -15,6 +15,7 @@ import { prisma } from "@/lib/db";
 import { getChatImageStorageConfig } from "@/lib/image-storage";
 import { createNotification } from "@/lib/notifications";
 import { displayNameForUser } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export type DirectChatMessage = {
   id: number;
@@ -91,8 +92,8 @@ export async function sendDirectChatMessage(
   const bodyMarkdown = boundedText(rawBodyMarkdown, CONTENT_LIMITS.discussionPost, "Message");
   const image = rawImage instanceof File && rawImage.size > 0 ? rawImage : null;
   if (!bodyMarkdown && !image) throw new Error("Write a message or attach an image.");
-  const otherUser = await prisma.user.findUnique({
-    where: { username: otherUsername },
+  const otherUser = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(otherUsername) },
     select: { id: true, username: true, deletedAt: true }
   });
 

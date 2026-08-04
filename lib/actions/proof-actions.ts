@@ -1,13 +1,14 @@
 "use server";
 
 import type { Route } from "next";
-import { NotificationType, TargetType, VoteType } from "@prisma/client";
+import { NotificationType, SourceType, TargetType, VoteType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkHintAchievements, checkProofAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
+import { syncInternalLinks } from "@/lib/internal-links";
 import { createNotification, notifyProblemAuthor } from "@/lib/notifications";
 import { canDeleteSolution, canEditSolution } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -32,13 +33,17 @@ export async function createProofAction(problemId: number, problemSlug: string, 
     throw new Error("Problem not found.");
   }
 
-  await prisma.problemProof.create({
-    data: {
-      problemId,
-      authorId: user.id,
-      bodyMarkdown,
-      bodyHtml: await renderMarkdownContent(bodyMarkdown)
-    }
+  const bodyHtml = await renderMarkdownContent(bodyMarkdown);
+  await prisma.$transaction(async (tx) => {
+    const proof = await tx.problemProof.create({
+      data: {
+        problemId,
+        authorId: user.id,
+        bodyMarkdown,
+        bodyHtml
+      }
+    });
+    await syncInternalLinks(SourceType.PROOF, proof.id, bodyMarkdown, tx, problem.language);
   });
 
   revalidatePath(`/problems/${problemSlug}`);
@@ -131,12 +136,13 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
     throw new Error("You cannot edit this solution.");
   }
 
-  await prisma.problemProof.update({
-    where: { id: proofId },
-    data: {
-      bodyMarkdown,
-      bodyHtml: await renderMarkdownContent(bodyMarkdown)
-    }
+  const bodyHtml = await renderMarkdownContent(bodyMarkdown);
+  await prisma.$transaction(async (tx) => {
+    await tx.problemProof.update({
+      where: { id: proofId },
+      data: { bodyMarkdown, bodyHtml }
+    });
+    await syncInternalLinks(SourceType.PROOF, proofId, bodyMarkdown, tx, proof.problem.language);
   });
 
   revalidatePath(`/problems/${problemSlug}`);
@@ -160,6 +166,7 @@ export async function deleteProofAction(proofId: number, problemSlug: string) {
 
   await prisma.$transaction([
     prisma.vote.deleteMany({ where: { targetType: TargetType.PROOF, targetId: proofId } }),
+    prisma.internalLink.deleteMany({ where: { sourceType: SourceType.PROOF, sourceId: proofId } }),
     prisma.problemProof.delete({ where: { id: proofId } })
   ]);
 

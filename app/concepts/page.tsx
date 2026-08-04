@@ -35,7 +35,7 @@ function conceptTitleFromSlug(slug: string) {
     .join(" ");
 }
 
-function sourceTypeLabel(sourceType: "PROBLEM" | "CONCEPT" | "PLAYLIST", t: Dictionary["concepts"]) {
+function sourceTypeLabel(sourceType: "PROBLEM" | "CONCEPT" | "PLAYLIST" | "PROOF", t: Dictionary["concepts"]) {
   return t.sourceTypes[sourceType];
 }
 

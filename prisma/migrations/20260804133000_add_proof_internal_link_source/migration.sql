@@ -1,0 +1,1 @@
+ALTER TYPE "SourceType" ADD VALUE 'PROOF';

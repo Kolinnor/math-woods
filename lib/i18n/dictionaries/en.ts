@@ -895,7 +895,8 @@ export const en = {
     sourceTypes: {
       PROBLEM: "Problem",
       CONCEPT: "Concept",
-      PLAYLIST: "Exploration"
+      PLAYLIST: "Exploration",
+      PROOF: "Solution"
     }
   },
   conceptDetail: {

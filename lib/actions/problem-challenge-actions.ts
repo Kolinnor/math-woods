@@ -17,6 +17,7 @@ import {
 } from "@/lib/problem-challenges";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export type ProblemChallengeActionState = {
   error: ProblemChallengeError | null;
@@ -44,8 +45,8 @@ export async function createProblemChallengeAction(
   if (!recipientUsername) return { error: "chooseUser", ok: false };
 
   const [recipient, problem] = await Promise.all([
-    prisma.user.findUnique({
-      where: { username: recipientUsername },
+    prisma.user.findFirst({
+      where: { username: usernameLookupFilter(recipientUsername) },
       select: { id: true, username: true, displayName: true, deletedAt: true }
     }),
     prisma.problem.findFirst({

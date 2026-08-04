@@ -5,6 +5,7 @@ import { acceptedFriendshipBetween, directChatPair } from "@/lib/direct-chat";
 import { prisma } from "@/lib/db";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,8 @@ export async function POST(
       return NextResponse.json({ error: "Unknown reaction." }, { status: 400 });
     }
 
-    const otherUser = await prisma.user.findUnique({
-      where: { username },
+    const otherUser = await prisma.user.findFirst({
+      where: { username: usernameLookupFilter(username) },
       select: { id: true, deletedAt: true }
     });
     if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) {

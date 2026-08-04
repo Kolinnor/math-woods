@@ -900,7 +900,8 @@ export const fr = {
     sourceTypes: {
       PROBLEM: "Problème",
       CONCEPT: "Concept",
-      PLAYLIST: "Exploration"
+      PLAYLIST: "Exploration",
+      PROOF: "Solution"
     }
   },
   conceptDetail: {

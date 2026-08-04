@@ -13,10 +13,14 @@ import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 async function availableUsername(displayName: string) {
   const base = ensureSlug(displayName, "user");
-  const existing = await prisma.user.findUnique({ where: { username: base }, select: { id: true } });
+  const existing = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(base) },
+    select: { id: true }
+  });
   return existing ? `${base}-${randomBytes(3).toString("hex")}` : base;
 }
 

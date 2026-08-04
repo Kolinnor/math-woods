@@ -8,6 +8,7 @@ import { createPresignedImageDownload, getChatImageStorageConfig } from "@/lib/i
 import { renderMarkdown } from "@/lib/markdown";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { usernameLookupFilter } from "@/lib/usernames";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,8 +26,8 @@ export async function GET(
     return NextResponse.json({ error: "Image not found." }, { status: 404 });
   }
 
-  const otherUser = await prisma.user.findUnique({
-    where: { username },
+  const otherUser = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(username) },
     select: { id: true, deletedAt: true }
   });
   if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) {
@@ -91,8 +92,8 @@ export async function PATCH(
       "Message"
     );
 
-    const otherUser = await prisma.user.findUnique({
-      where: { username },
+    const otherUser = await prisma.user.findFirst({
+      where: { username: usernameLookupFilter(username) },
       select: { id: true, deletedAt: true }
     });
     if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) {
@@ -176,8 +177,8 @@ export async function DELETE(
 
   try {
     await assertRateLimit(`chat-message-delete:${user.id}`, 30, 60_000);
-    const otherUser = await prisma.user.findUnique({
-      where: { username },
+    const otherUser = await prisma.user.findFirst({
+      where: { username: usernameLookupFilter(username) },
       select: { id: true, deletedAt: true }
     });
     if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) {

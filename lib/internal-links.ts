@@ -136,13 +136,14 @@ export async function missingConcepts(limit = 20, sourcesPerConcept = 4): Promis
     where: {
       exists: false,
       targetSlug: { in: slugs },
-      sourceType: { in: [SourceType.PROBLEM, SourceType.CONCEPT] }
+      sourceType: { in: [SourceType.PROBLEM, SourceType.CONCEPT, SourceType.PROOF] }
     },
     orderBy: { createdAt: "desc" }
   });
   const problemIds = [...new Set(links.filter((link) => link.sourceType === SourceType.PROBLEM).map((link) => link.sourceId))];
   const conceptIds = [...new Set(links.filter((link) => link.sourceType === SourceType.CONCEPT).map((link) => link.sourceId))];
-  const [problems, concepts] = await Promise.all([
+  const proofIds = [...new Set(links.filter((link) => link.sourceType === SourceType.PROOF).map((link) => link.sourceId))];
+  const [problems, concepts, proofs] = await Promise.all([
     problemIds.length
       ? prisma.problem.findMany({
           where: { id: { in: problemIds }, status: { not: "ARCHIVED" } },
@@ -154,10 +155,25 @@ export async function missingConcepts(limit = 20, sourcesPerConcept = 4): Promis
           where: { id: { in: conceptIds } },
           select: { id: true, slug: true, title: true }
         })
+      : Promise.resolve([]),
+    proofIds.length
+      ? prisma.problemProof.findMany({
+          where: {
+            id: { in: proofIds },
+            problem: { status: { not: "ARCHIVED" } }
+          },
+          select: {
+            id: true,
+            problem: { select: { slug: true, title: true } }
+          }
+        })
       : Promise.resolve([])
   ]);
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const conceptById = new Map(concepts.map((concept) => [concept.id, concept]));
+  const proofById = new Map(
+    proofs.map((proof) => [proof.id, { slug: proof.problem.slug, title: proof.problem.title }])
+  );
   const sourcesBySlug = new Map<string, MissingConceptSource[]>();
   const seenSourcesBySlug = new Map<string, Set<string>>();
 
@@ -167,7 +183,9 @@ export async function missingConcepts(limit = 20, sourcesPerConcept = 4): Promis
         ? problemById.get(link.sourceId)
         : link.sourceType === SourceType.CONCEPT
           ? conceptById.get(link.sourceId)
-          : null;
+          : link.sourceType === SourceType.PROOF
+            ? proofById.get(link.sourceId)
+            : null;
     if (!source) continue;
 
     const seenKey = `${link.sourceType}:${link.sourceId}`;
@@ -180,7 +198,12 @@ export async function missingConcepts(limit = 20, sourcesPerConcept = 4): Promis
     seen.add(seenKey);
     seenSourcesBySlug.set(link.targetSlug, seen);
     currentSources.push({
-      href: link.sourceType === SourceType.PROBLEM ? `/problems/${source.slug}` : `/concepts/${source.slug}`,
+      href:
+        link.sourceType === SourceType.PROBLEM
+          ? `/problems/${source.slug}`
+          : link.sourceType === SourceType.CONCEPT
+            ? `/concepts/${source.slug}`
+            : `/problems/${source.slug}#solution-${link.sourceId}`,
       label: link.label,
       sourceType: link.sourceType,
       title: source.title

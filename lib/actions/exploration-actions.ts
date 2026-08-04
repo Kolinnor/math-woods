@@ -45,6 +45,7 @@ import { parseContentLanguage } from "@/lib/languages";
 import { createNotification } from "@/lib/notifications";
 import { hasAdminPrivileges } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
+import { usernameLookupFilter } from "@/lib/usernames";
 import { uniqueSlug } from "@/lib/unique-slug";
 
 async function renderMarkdownContent(markdown: string) {
@@ -1889,8 +1890,11 @@ export async function addExplorationCollaboratorAction(playlistId: number, formD
   if (exploration.authorId !== user.id && !hasAdminPrivileges(user.role)) {
     throw new Error("Only the owner can manage collaborators.");
   }
-  const username = ensureSlug(String(formData.get("username") ?? ""));
-  const collaborator = await prisma.user.findUnique({ where: { username }, select: { id: true } });
+  const username = String(formData.get("username") ?? "");
+  const collaborator = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(username) },
+    select: { id: true }
+  });
   if (!collaborator) throw new Error("User not found.");
   if (collaborator.id === exploration.authorId) throw new Error("The owner is already part of this exploration.");
   const role = enumValue(
