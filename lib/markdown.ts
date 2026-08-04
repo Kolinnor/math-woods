@@ -183,7 +183,7 @@ async function renderMarkdownContent(
       code: ["class"],
       details: ["class"],
       div: ["aria-busy", "aria-label", "class", "data-jsxgraph", "role"],
-      img: ["src", "alt", "title", "loading", "decoding", "style"],
+      img: ["src", "alt", "title", "loading", "decoding", "style", "data-border"],
       ol: ["start"],
       span: ["class", "style"],
       math: ["xmlns", "display"],
@@ -219,6 +219,11 @@ async function renderMarkdownContent(
 
         if (sizing.width < 100) {
           imageAttribs.style = `width:${sizing.width}%;max-width:100%;height:auto;`;
+        }
+        if (sizing.bordered) {
+          imageAttribs["data-border"] = "true";
+        } else {
+          delete imageAttribs["data-border"];
         }
 
         return {

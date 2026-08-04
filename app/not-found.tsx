@@ -1,21 +1,11 @@
-import Link from "next/link";
+import { SiteErrorPage } from "@/components/SiteErrorPage";
 
 export default function NotFound() {
   return (
-    <div className="error-page-shell mx-auto grid max-w-2xl gap-4">
-      <section className="panel error-page-panel">
-        <p className="error-page-kicker">404</p>
-        <h1>You got lost in the forest.</h1>
-        <p className="muted">This link does not seem to lead to a Math Woods page.</p>
-        <div className="error-page-actions">
-          <Link href="/problems" className="button">
-            Browse problems
-          </Link>
-          <Link href="/" className="button secondary">
-            Back home
-          </Link>
-        </div>
-      </section>
-    </div>
+    <SiteErrorPage
+      code="404 - Path not found"
+      title="You got lost in the forest."
+      message="This path does not lead to a Math Woods page. It may have moved, or the link may be incomplete."
+    />
   );
 }

@@ -3,7 +3,7 @@ import { ConceptStatus, MathDomain, NotificationType } from "@prisma/client";
 import { FileDown, Flag, History, MessageCircle, Pencil } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -37,6 +37,7 @@ import {
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
+import { cleanWikiLinkTarget, missingConceptHref } from "@/lib/wikilinks";
 
 export const dynamic = "force-dynamic";
 
@@ -138,7 +139,7 @@ export default async function ConceptPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ viewLanguage?: string }>;
+  searchParams?: Promise<{ viewLanguage?: string; missingTitle?: string }>;
 }) {
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
@@ -191,7 +192,42 @@ export default async function ConceptPage({
       include: { concept: true }
     });
     if (alias) redirect(`/concepts/${alias.concept.slug}`);
-    notFound();
+
+    const missingTitle =
+      cleanWikiLinkTarget(queryParams.missingTitle ?? "") || titleFromConceptSlug(slug);
+    const createConceptHref = `/concepts/new?title=${encodeURIComponent(missingTitle)}`;
+    const contributionHref = user
+      ? createConceptHref
+      : `/login?returnTo=${encodeURIComponent(createConceptHref)}`;
+
+    return (
+      <ForestPageLayout
+        title={missingTitle}
+        eyebrow="Missing concept"
+        heroImage="/art/birch-grove.jpg"
+        heroAlt="Ivan Shishkin, Birch Grove"
+        description="This concept does not exist yet."
+        workspaceClassName="forest-page-workspace-narrow"
+      >
+        <section className="panel grid gap-4 p-5">
+          <div className="grid gap-2">
+            <h2 className="text-xl font-semibold">Help Math Woods grow</h2>
+            <p>
+              If you know about this concept, you can help create its page. A short definition,
+              one example, or a reliable reference is enough for a useful first version.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href={contributionHref as never} className="button">
+              {user ? "Create this concept" : "Sign in to create this concept"}
+            </Link>
+            <Link href="/concepts" className="button secondary">
+              Browse concepts
+            </Link>
+          </div>
+        </section>
+      </ForestPageLayout>
+    );
   }
   if (user) {
     await markNotificationsReadForHref(user.id, `/concepts/${concept.slug}`, [
@@ -617,7 +653,7 @@ export default async function ConceptPage({
               return (
                 <Link
                   key={link.id}
-                  href={(link.exists ? (outgoingConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : `/concepts/new?title=${encodeURIComponent(title)}`) as never}
+                  href={(link.exists ? (outgoingConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : missingConceptHref(title)) as never}
                   className={link.exists ? "wiki-link" : "wiki-link missing"}
                 >
                   {title}

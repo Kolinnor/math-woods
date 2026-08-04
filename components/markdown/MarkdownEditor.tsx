@@ -483,6 +483,7 @@ class MarkdownImageWidget extends WidgetType {
     readonly alt: string,
     readonly src: string,
     readonly width: MarkdownImageWidth,
+    readonly bordered: boolean,
     readonly from: number,
     readonly to: number
   ) {
@@ -490,16 +491,16 @@ class MarkdownImageWidget extends WidgetType {
   }
 
   eq(other: MarkdownImageWidget) {
-    return other.alt === this.alt && other.src === this.src && other.width === this.width && other.from === this.from && other.to === this.to;
+    return other.alt === this.alt && other.src === this.src && other.width === this.width && other.bordered === this.bordered && other.from === this.from && other.to === this.to;
   }
 
-  private replaceImage(view: EditorView, width: MarkdownImageWidth) {
+  private replaceImage(view: EditorView, width: MarkdownImageWidth, bordered = this.bordered) {
     const normalizedWidth = normalizeMarkdownImageWidth(width);
     view.dispatch({
       changes: {
         from: this.from,
         to: this.to,
-        insert: markdownImage(markdownImageSrcWithWidth(this.src, normalizedWidth), this.alt)
+        insert: markdownImage(markdownImageSrcWithWidth(this.src, normalizedWidth, bordered), this.alt)
       },
       selection: { anchor: this.from },
       scrollIntoView: true
@@ -599,7 +600,7 @@ class MarkdownImageWidget extends WidgetType {
 
   toDOM(view: EditorView) {
     const element = document.createElement("figure");
-    element.className = "cm-md-image";
+    element.className = `cm-md-image${this.bordered ? " has-border" : ""}`;
     element.title = "Image preview";
     element.style.width = `${this.width}%`;
 
@@ -661,6 +662,22 @@ class MarkdownImageWidget extends WidgetType {
       this.deleteImage(view);
     });
     toolbar.appendChild(deleteButton);
+
+    const borderLabel = document.createElement("label");
+    borderLabel.className = "cm-md-image-border-toggle";
+    borderLabel.title = "Show a border around this image";
+    const borderCheckbox = document.createElement("input");
+    borderCheckbox.type = "checkbox";
+    borderCheckbox.checked = this.bordered;
+    borderCheckbox.addEventListener("mousedown", (event) => {
+      event.stopPropagation();
+    });
+    borderCheckbox.addEventListener("change", (event) => {
+      event.stopPropagation();
+      this.replaceImage(view, this.width, borderCheckbox.checked);
+    });
+    borderLabel.append(borderCheckbox, "Border");
+    toolbar.appendChild(borderLabel);
 
     const widthLabel = document.createElement("span");
     widthLabel.className = "cm-md-image-width";
@@ -996,7 +1013,8 @@ function parseMarkdownImage(markdown: string) {
   return {
     alt: match[1],
     src: sizing.src,
-    width: sizing.width
+    width: sizing.width,
+    bordered: sizing.bordered
   };
 }
 
@@ -1312,7 +1330,7 @@ function buildLivePreviewDecorations(state: EditorState) {
           if (!image) return;
           decorations.push(
             Decoration.replace({
-              widget: new MarkdownImageWidget(image.alt, image.src, image.width, node.from, node.to),
+              widget: new MarkdownImageWidget(image.alt, image.src, image.width, image.bordered, node.from, node.to),
               inclusive: false
             }).range(node.from, node.to)
           );

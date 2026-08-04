@@ -1,6 +1,6 @@
 "use client";
 
-import { Code2, CircleHelp, Puzzle, X } from "lucide-react";
+import { Code2, CircleHelp, LogIn, Puzzle, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -62,6 +62,10 @@ export function HomeGuestIntro({ levels, recommendations }: HomeGuestIntroProps)
           <button type="button" className="button" onClick={() => setOpen(true)}>
             Start solving problems
           </button>
+          <Link href="/login" className="button secondary">
+            <LogIn aria-hidden="true" size={17} />
+            Sign in
+          </Link>
           <Link href="/contributing" className="button secondary">
             How can I contribute?
           </Link>

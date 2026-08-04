@@ -6,6 +6,27 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-08-04 - Missing concept links must lead to a contribution page
+
+Expected behavior:
+
+- A wiki link whose target does not exist remains red, but opens a helpful missing-concept state instead of the
+  generic 404 page.
+- Preserve the original wiki-link target in the URL so the contribution page and new-concept form can show the
+  intended title rather than only a normalized slug.
+- Existing concepts and aliases still resolve to their real concept pages.
+- Signed-out readers can see the explanation and are sent through sign-in before creating the concept.
+
+## 2026-08-04 - Image borders are optional per image
+
+Expected behavior:
+
+- Rendered Markdown images have no border by default.
+- Each image preview exposes a `Border` checkbox that updates only that image.
+- Resizing an image must preserve its border choice, and changing the border must preserve its width.
+- Keep the setting in Math Woods image URL metadata and remove that metadata from the URL sent to the browser.
+- Existing Markdown images and the older `#mw-width-N` syntax must remain valid and borderless by default.
+
 ## 2026-08-02 - Exercise question markers must match the rendered page
 
 Symptom:

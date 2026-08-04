@@ -13,6 +13,7 @@ import {
 } from "../lib/frontmatter.ts";
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { markdownDraftConflictsWithSource } from "../lib/markdown-drafts.ts";
+import { markdownImageSizingFromSrc, markdownImageSrcWithWidth } from "../lib/markdown-images.ts";
 import {
   MAX_CONCEPT_EXERCISES,
   parseConceptExerciseCount,
@@ -42,7 +43,13 @@ import { selectProblemHintsForLanguage } from "../lib/problem-hints.ts";
 import { buildProgressMap } from "../lib/progress.ts";
 import { pickRandomDifferent } from "../lib/random-content.ts";
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
-import { extractWikiLinks, problemLinkMarkup, replaceWikiLinks, wikiLinkMarkup } from "../lib/wikilinks.ts";
+import {
+  extractWikiLinks,
+  missingConceptHref,
+  problemLinkMarkup,
+  replaceWikiLinks,
+  wikiLinkMarkup
+} from "../lib/wikilinks.ts";
 import { wikiLinkDeleteChange } from "../lib/wiki-link-deletion.ts";
 import {
   buildAvatarObjectKey,
@@ -337,7 +344,11 @@ const html = replaceWikiLinks(
 );
 assert.equal(
   html,
-  'A lire: <a class="wiki-link missing" href="/concepts/racine-primitive">racines primitives</a>.'
+  'A lire: <a class="wiki-link missing" href="/concepts/racine-primitive?missingTitle=racine%20primitive">racines primitives</a>.'
+);
+assert.equal(
+  missingConceptHref("Primitive root"),
+  "/concepts/primitive-root?missingTitle=Primitive%20root"
 );
 assert.equal(wikiLinkMarkup("Category", "this is a category"), "[[Category|this is a category]]");
 assert.equal(wikiLinkMarkup("Category", "Category"), "[[Category|Category]]");
@@ -1361,6 +1372,23 @@ const renderedMarkdownImage = await renderMarkdown("![diagram](https://images.ma
 assert.equal(renderedMarkdownImage.includes('<img src="https://images.mathwoods.org/uploads/diagram.png"'), true);
 assert.equal(renderedMarkdownImage.includes('alt="diagram"'), true);
 assert.equal(renderedMarkdownImage.includes('loading="lazy"'), true);
+assert.equal(renderedMarkdownImage.includes('data-border="true"'), false);
+
+const borderedMarkdownImageSrc = markdownImageSrcWithWidth(
+  "https://images.mathwoods.org/uploads/diagram.png",
+  65,
+  true
+);
+assert.equal(borderedMarkdownImageSrc.endsWith("#mw-width-65&mw-border"), true);
+assert.deepEqual(markdownImageSizingFromSrc(borderedMarkdownImageSrc), {
+  src: "https://images.mathwoods.org/uploads/diagram.png",
+  width: 65,
+  bordered: true
+});
+const renderedBorderedMarkdownImage = await renderMarkdown(`![diagram](${borderedMarkdownImageSrc})`);
+assert.equal(renderedBorderedMarkdownImage.includes('src="https://images.mathwoods.org/uploads/diagram.png"'), true);
+assert.equal(renderedBorderedMarkdownImage.includes('style="width:65%;max-width:100%;height:auto"'), true);
+assert.equal(renderedBorderedMarkdownImage.includes('data-border="true"'), true);
 
 const renderedUnsafeMarkdownImage = await renderMarkdown("![bad](javascript:alert(1))");
 assert.equal(renderedUnsafeMarkdownImage.includes("<img"), false);

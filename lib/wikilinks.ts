@@ -35,6 +35,12 @@ export function problemLinkMarkup(slug: string, label: string) {
   return `[${cleanLabel || targetSlug}](/problems/${targetSlug})`;
 }
 
+export function missingConceptHref(target: string) {
+  const cleanTarget = cleanWikiLinkTarget(target);
+  const targetSlug = ensureSlug(cleanTarget, "concept");
+  return `/concepts/${targetSlug}?missingTitle=${encodeURIComponent(cleanTarget)}`;
+}
+
 function parseWikiLink(raw: string, inner: string): WikiLink | null {
   const [targetPart, labelPart] = inner.split("|", 2);
   const target = targetPart.trim();
@@ -81,8 +87,9 @@ export function replaceWikiLinks(
     const link = parseWikiLink(raw, inner);
     if (!link) return raw;
 
-    const href = resolveHref(link);
-    const klass = missingSlugs.has(link.targetSlug) ? "wiki-link missing" : "wiki-link";
+    const missing = missingSlugs.has(link.targetSlug);
+    const href = missing ? missingConceptHref(link.target) : resolveHref(link);
+    const klass = missing ? "wiki-link missing" : "wiki-link";
 
     return `<a class="${klass}" href="${href}">${escapeHtml(link.label)}</a>`;
   });

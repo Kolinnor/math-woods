@@ -838,6 +838,8 @@ body:has(.problem-detail-shell) {
 }
 
 .recommendation-reader-panel > footer {
+  display: flex;
+  justify-content: center;
   margin-top: 14px;
 }
 
@@ -7937,55 +7939,129 @@ button.markdown-editor-tool-button:disabled svg {
   text-underline-offset: 0.16em;
 }
 
-.error-page-shell {
-  min-height: min(62vh, 34rem);
-  place-items: center;
-}
-
-.error-page-panel {
-  display: grid;
-  gap: 0.85rem;
+.site-error-page {
+  align-items: flex-end;
+  background: #132018;
+  display: flex;
+  min-height: max(36rem, 100dvh);
   overflow: hidden;
-  padding: 2rem;
   position: relative;
 }
 
-.error-page-panel::before {
-  background:
-    linear-gradient(135deg, rgb(77 111 78 / 0.18), transparent 48%),
-    radial-gradient(circle at top right, rgb(166 126 47 / 0.18), transparent 42%);
-  content: "";
+.site-error-page-art {
+  height: 100%;
   inset: 0;
-  pointer-events: none;
+  object-fit: cover;
+  object-position: center 42%;
+  position: absolute;
+  width: 100%;
+}
+
+.site-error-page-overlay {
+  background: rgb(7 15 10 / 0.62);
+  inset: 0;
   position: absolute;
 }
 
-.error-page-panel > * {
+.site-error-page-content {
+  color: #fff;
+  margin: 0 auto;
+  max-width: var(--site-content-width);
+  padding: 9rem 1.6rem 5rem;
   position: relative;
+  text-shadow: 0 2px 20px rgb(0 0 0 / 0.6);
+  width: 100%;
 }
 
-.error-page-kicker {
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 760;
+.site-error-page-kicker {
+  color: #d8e8cf;
+  font-size: 0.76rem;
+  font-weight: 780;
   letter-spacing: 0.18em;
   margin: 0;
   text-transform: uppercase;
 }
 
-.error-page-panel h1 {
+.site-error-page h1 {
+  color: #fff;
   font-family: var(--font-serif);
-  font-size: clamp(2rem, 5vw, 3.4rem);
-  font-weight: 650;
-  line-height: 1;
-  margin: 0;
+  font-size: clamp(2.6rem, 7vw, 5.4rem);
+  font-weight: 600;
+  line-height: 0.98;
+  margin: 0.55rem 0 0;
+  max-width: 13ch;
 }
 
-.error-page-actions {
+.site-error-page-message {
+  color: rgb(255 255 255 / 0.86);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  margin: 1.1rem 0 0;
+  max-width: 42rem;
+}
+
+.site-error-page-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 0.35rem;
+  gap: 0.7rem;
+  margin-top: 1.4rem;
+  text-shadow: none;
+}
+
+.site-error-page-actions .button,
+.site-error-page-actions button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.site-error-page-actions .button:not(.secondary),
+.site-error-page-actions button {
+  background: #f8f4ea;
+  border-color: #f8f4ea;
+  color: #17351f;
+}
+
+.site-error-page-actions .button.secondary {
+  background: rgb(255 255 255 / 0.12);
+  border-color: rgb(255 255 255 / 0.55);
+  color: #fff;
+}
+
+.site-error-page-actions .button:hover,
+.site-error-page-actions button:hover {
+  background: #fff;
+  border-color: #fff;
+  color: #17351f;
+}
+
+@media (max-width: 640px) {
+  .site-error-page {
+    min-height: max(34rem, 100dvh);
+  }
+
+  .site-error-page-art {
+    object-position: 58% center;
+  }
+
+  .site-error-page-content {
+    padding: 7rem 1rem 2.5rem;
+  }
+
+  .site-error-page h1 {
+    font-size: 2.75rem;
+  }
+
+  .site-error-page-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .site-error-page-actions .button,
+  .site-error-page-actions button {
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 @keyframes markdown-editor-spin {
@@ -8230,6 +8306,22 @@ button.markdown-editor-tool-button:disabled svg {
   color: var(--accent);
 }
 
+.markdown-editor .cm-md-image-border-toggle {
+  align-items: center;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.3rem;
+  line-height: 1;
+}
+
+.markdown-editor .cm-md-image-border-toggle input {
+  margin: 0;
+}
+
 .markdown-editor .cm-md-image-width {
   align-items: center;
   color: var(--muted);
@@ -8248,6 +8340,10 @@ button.markdown-editor-tool-button:disabled svg {
   max-height: 24rem;
   max-width: 100%;
   object-fit: contain;
+}
+
+.markdown-editor .cm-md-image.has-border img {
+  border: 1px solid var(--line);
 }
 
 .markdown-editor .cm-md-image-resize-handle {
@@ -9300,7 +9396,7 @@ button.danger:hover,
 }
 
 .prose-math img {
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 6px;
   display: block;
   height: auto;
@@ -9308,6 +9404,10 @@ button.danger:hover,
   max-height: 42rem;
   max-width: 100%;
   object-fit: contain;
+}
+
+.prose-math img[data-border="true"] {
+  border: 1px solid var(--line);
 }
 
 .prose-math table {
@@ -12401,7 +12501,12 @@ button.live-search-reset:hover {
 }
 
 .problem-language-filter input {
+  accent-color: var(--accent);
+  flex: 0 0 1rem;
+  height: 1rem;
   margin: 0;
+  padding: 0;
+  width: 1rem;
 }
 
 .problem-language-filter span {

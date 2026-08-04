@@ -62,6 +62,7 @@ import {
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
+import { missingConceptHref } from "@/lib/wikilinks";
 
 export const dynamic = "force-dynamic";
 
@@ -258,6 +259,7 @@ export default async function ProblemPage({
   const relatedProblems = problem.relatedGroups.flatMap((group) =>
     group.relations.map((relation) => relation.targetProblem)
   ).filter((targetProblem) => canViewProblem(user, targetProblem));
+  const hasRelatedProblems = problem.relatedGroups.some((group) => group.relations.length > 0);
   const proofVoteGroupsPromise = proofIds.length
     ? prisma.vote.groupBy({
         by: ["targetId"],
@@ -620,7 +622,7 @@ export default async function ProblemPage({
             />
           </div>
         </header>
-        {attempt?.status === "SOLVED" && (
+        {attempt?.status === "SOLVED" && (!isOwnProblem || !ownProofForHint || !hasRelatedProblems) && (
           <section className={`problem-solved-banner${isOwnProblem ? " problem-solved-banner-owner" : ""}`} role="status">
             <span className="problem-solved-check"><Check size={20} /></span>
             <div className="problem-solved-copy">
@@ -1295,7 +1297,7 @@ export default async function ProblemPage({
               {links.map((link) => (
                 <Link
                   key={link.id}
-                  href={(link.exists ? (linkedConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : `/concepts/new?title=${link.targetSlug}`) as never}
+                  href={(link.exists ? (linkedConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : missingConceptHref(link.label ?? link.targetSlug)) as never}
                   className={link.exists ? "wiki-link" : "wiki-link missing"}
                 >
                   {link.label ?? link.targetSlug}
