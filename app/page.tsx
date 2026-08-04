@@ -287,6 +287,15 @@ export default async function HomePage() {
       orderBy: { createdAt: "desc" },
       include: { author: true }
     }));
+  if (!scheduledDailyProblem && dailyProblem) {
+    const storedDailyProblem = dailyTranslations.find((problem) => problem.translatedFromProblemId === null)
+      ?? dailyProblem;
+    await prisma.dailyProblemSchedule.upsert({
+      where: { dateKey: todayDateKey },
+      create: { dateKey: todayDateKey, problemId: storedDailyProblem.id },
+      update: {}
+    });
+  }
   const usesScheduledDailyProblem = Boolean(
     scheduledDailyGroup && dailyProblem?.translationGroupId === scheduledDailyGroup
   );
@@ -511,12 +520,16 @@ export default async function HomePage() {
         </div>
         <div className="home-daily-action">
           <span className="mw-primary-button">{copy.solveToday}</span>
-          <span className="home-solver-stack">
-            {dailySolvers.slice(0, 4).map(({ user: solver }) => (
-              <UserAvatar key={solver.id} user={solver} size="sm" />
-            ))}
-          </span>
-          <small>{copy.solvedToday(dailySolvers.length)}</small>
+          {dailySolvers.length > 0 && (
+            <>
+              <span className="home-solver-stack">
+                {dailySolvers.slice(0, 4).map(({ user: solver }) => (
+                  <UserAvatar key={solver.id} user={solver} size="sm" />
+                ))}
+              </span>
+              <small>{copy.solvedToday(dailySolvers.length)}</small>
+            </>
+          )}
         </div>
       </div>
       <div className="home-daily-art" aria-hidden="true">
@@ -636,7 +649,9 @@ export default async function HomePage() {
                   <ProgressTicks done={entry.done} total={entry.total} />
                 </div>
               ))}
-              <Link href="/problems" className="home-all-domains">{copy.allDomains(PROBLEM_DOMAINS.length)}</Link>
+              <Link href="/problems?domainView=all#browse-by-domain" className="home-all-domains">
+                {copy.allDomains(PROBLEM_DOMAINS.length)}
+              </Link>
               <p className="home-authored-solves">{copy.authoredSolves(authoredSolves.length)}</p>
             </section>
           )}

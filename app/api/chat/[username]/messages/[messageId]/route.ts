@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { deleteStoredChatImage } from "@/lib/chat-images";
 import { acceptedFriendshipBetween, directChatPair } from "@/lib/direct-chat";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
@@ -41,6 +42,7 @@ export async function GET(
     where: {
       id: messageId,
       imageKey: { not: null },
+      deletedAt: null,
       directChat: {
         userAId: pair.userAId,
         userBId: pair.userBId
@@ -107,6 +109,7 @@ export async function PATCH(
       where: {
         id: messageId,
         authorId: user.id,
+        deletedAt: null,
         directChat: {
           userAId: pair.userAId,
           userBId: pair.userBId
@@ -148,6 +151,82 @@ export async function PATCH(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Message could not be edited.";
+    return NextResponse.json(
+      { error: message },
+      { status: message.startsWith("Too many requests") ? 429 : 400 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ username: string; messageId: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  if (!isVerifiedContributor(user)) {
+    return NextResponse.json({ error: "Email verification required." }, { status: 403 });
+  }
+
+  const { username, messageId: messageIdParam } = await params;
+  const messageId = Number(messageIdParam);
+  if (!Number.isInteger(messageId) || messageId <= 0) {
+    return NextResponse.json({ error: "Message not found." }, { status: 404 });
+  }
+
+  try {
+    await assertRateLimit(`chat-message-delete:${user.id}`, 30, 60_000);
+    const otherUser = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, deletedAt: true }
+    });
+    if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) {
+      return NextResponse.json({ error: "Chat not found." }, { status: 404 });
+    }
+
+    const acceptedFriendship = await acceptedFriendshipBetween(user.id, otherUser.id);
+    if (!acceptedFriendship) {
+      return NextResponse.json({ error: "You can only delete messages in chats with accepted friends." }, { status: 403 });
+    }
+
+    const pair = directChatPair(user.id, otherUser.id);
+    const existingMessage = await prisma.chatMessage.findFirst({
+      where: {
+        id: messageId,
+        authorId: user.id,
+        deletedAt: null,
+        directChat: {
+          userAId: pair.userAId,
+          userBId: pair.userBId
+        }
+      },
+      select: { id: true, imageKey: true }
+    });
+    if (!existingMessage) {
+      return NextResponse.json({ error: "Message not found." }, { status: 404 });
+    }
+
+    await prisma.chatMessage.update({
+      where: { id: messageId },
+      data: {
+        bodyMarkdown: "",
+        bodyHtml: "",
+        imageKey: null,
+        imageWidth: null,
+        imageHeight: null,
+        editedAt: null,
+        deletedAt: new Date()
+      }
+    });
+
+    if (existingMessage.imageKey) {
+      const config = getChatImageStorageConfig();
+      if (config) await deleteStoredChatImage(config, existingMessage.imageKey).catch(() => false);
+    }
+
+    return NextResponse.json({ messageId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Message could not be deleted.";
     return NextResponse.json(
       { error: message },
       { status: message.startsWith("Too many requests") ? 429 : 400 }

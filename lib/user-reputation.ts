@@ -1,6 +1,8 @@
 import { MathDomain, Role, UserMathLevel } from "@prisma/client";
+import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
 import { prisma } from "@/lib/db";
 import { hasTrustedPrivileges } from "@/lib/permissions";
+import { dailyProblemReputationBonus } from "@/lib/reputation-scoring";
 import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
 
 type ReputationProblem = {
@@ -58,6 +60,7 @@ export type UserReputationSummary = {
   engagementCount: number;
   conceptCount: number;
   explorationCount: number;
+  dailyProblemCount: number;
 };
 
 function interactionWeight(role: Role, regularWeight: number, trustedWeight: number) {
@@ -107,7 +110,8 @@ function summarizeUser(
     createdAt: Date;
     _count: { conceptsCreated: number; playlists: number };
   },
-  problems: ReputationProblem[]
+  problems: ReputationProblem[],
+  dailyProblemCount: number
 ): UserReputationSummary {
   return {
     userId: user.id,
@@ -123,13 +127,16 @@ function summarizeUser(
     mathematicalDomains: user.mathematicalDomains,
     openToCollaboration: user.openToCollaboration,
     joinedAt: user.createdAt,
-    reputation: problems.reduce((total, problem) => total + scoreProblem(problem), 0),
+    reputation:
+      problems.reduce((total, problem) => total + scoreProblem(problem), 0)
+      + dailyProblemReputationBonus(dailyProblemCount),
     problemCount: problems.length,
     solvedCount: problems.reduce((total, problem) => total + solvedCount(problem), 0),
     favoriteCount: problems.reduce((total, problem) => total + favoriteCount(problem), 0),
     engagementCount: problems.reduce((total, problem) => total + engagementCount(problem), 0),
     conceptCount: user._count.conceptsCreated,
-    explorationCount: user._count.playlists
+    explorationCount: user._count.playlists,
+    dailyProblemCount
   };
 }
 
@@ -169,29 +176,38 @@ export async function getReputationLeaderboard() {
   const userIds = visibleUsers.map((user) => user.id);
   if (userIds.length === 0) return [];
 
-  const problems = await prisma.problem.findMany({
-    where: {
-      authorId: { in: userIds },
-      status: { not: "ARCHIVED" }
-    },
-    select: {
-      authorId: true,
-      translationGroupId: true,
-      attempts: {
-        where: { status: "SOLVED" },
-        select: {
-          userId: true,
-          user: { select: { role: true } }
-        }
+  const [problems, dailyProblems] = await Promise.all([
+    prisma.problem.findMany({
+      where: {
+        authorId: { in: userIds },
+        status: { not: "ARCHIVED" }
       },
-      favorites: {
-        select: {
-          userId: true,
-          user: { select: { role: true } }
+      select: {
+        authorId: true,
+        translationGroupId: true,
+        attempts: {
+          where: { status: "SOLVED" },
+          select: {
+            userId: true,
+            user: { select: { role: true } }
+          }
+        },
+        favorites: {
+          select: {
+            userId: true,
+            user: { select: { role: true } }
+          }
         }
       }
-    }
-  });
+    }),
+    prisma.dailyProblemSchedule.findMany({
+      where: {
+        dateKey: { lte: dailyProblemDateKey() },
+        problem: { authorId: { in: userIds } }
+      },
+      select: { problem: { select: { authorId: true } } }
+    })
+  ]);
 
   const problemsByAuthor = new Map<number, ReputationProblem[]>();
   for (const problem of mergeTranslatedProblems(problems)) {
@@ -200,33 +216,52 @@ export async function getReputationLeaderboard() {
     problemsByAuthor.set(problem.authorId, existing);
   }
 
-  return visibleUsers.map((user) => summarizeUser(user, problemsByAuthor.get(user.id) ?? []));
+  const dailyProblemsByAuthor = new Map<number, number>();
+  for (const selection of dailyProblems) {
+    const authorId = selection.problem.authorId;
+    dailyProblemsByAuthor.set(authorId, (dailyProblemsByAuthor.get(authorId) ?? 0) + 1);
+  }
+
+  return visibleUsers.map((user) => summarizeUser(
+    user,
+    problemsByAuthor.get(user.id) ?? [],
+    dailyProblemsByAuthor.get(user.id) ?? 0
+  ));
 }
 
 export async function getUserReputation(userId: number) {
-  const problems = await prisma.problem.findMany({
-    where: {
-      authorId: userId,
-      status: { not: "ARCHIVED" }
-    },
-    select: {
-      authorId: true,
-      translationGroupId: true,
-      attempts: {
-        where: { status: "SOLVED" },
-        select: {
-          userId: true,
-          user: { select: { role: true } }
-        }
+  const [problems, dailyProblemCount] = await Promise.all([
+    prisma.problem.findMany({
+      where: {
+        authorId: userId,
+        status: { not: "ARCHIVED" }
       },
-      favorites: {
-        select: {
-          userId: true,
-          user: { select: { role: true } }
+      select: {
+        authorId: true,
+        translationGroupId: true,
+        attempts: {
+          where: { status: "SOLVED" },
+          select: {
+            userId: true,
+            user: { select: { role: true } }
+          }
+        },
+        favorites: {
+          select: {
+            userId: true,
+            user: { select: { role: true } }
+          }
         }
       }
-    }
-  });
+    }),
+    prisma.dailyProblemSchedule.count({
+      where: {
+        dateKey: { lte: dailyProblemDateKey() },
+        problem: { authorId: userId }
+      }
+    })
+  ]);
 
-  return mergeTranslatedProblems(problems).reduce((total, problem) => total + scoreProblem(problem), 0);
+  return mergeTranslatedProblems(problems).reduce((total, problem) => total + scoreProblem(problem), 0)
+    + dailyProblemReputationBonus(dailyProblemCount);
 }

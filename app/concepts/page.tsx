@@ -170,7 +170,7 @@ export default async function ConceptsPage({
     ...(sortValue === "updated" ? { take: 75 } : {}),
     include: {
       aliases: true,
-      _count: { select: { references: true, talkPosts: true } }
+      _count: { select: { practiceExercises: true, references: true, talkPosts: true } }
     }
   });
   const candidateSlugs = conceptCandidates.map((concept) => concept.slug);
@@ -218,6 +218,7 @@ export default async function ConceptsPage({
 
   return (
     <ForestPageLayout
+      className="concepts-page-shell"
       title={t.concepts.title}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
@@ -245,151 +246,156 @@ export default async function ConceptsPage({
           />
         </>
       }
-      sidebar={
-        <>
-          {featuredConcepts.length > 0 && (
-            <section className="panel mb-6 grid gap-3 p-4">
-              <div>
-                <h2 className="font-semibold">{t.concepts.featuredConcepts}</h2>
-                <p className="muted text-sm">{t.concepts.featuredConceptsDescription}</p>
+      workspaceClassName="concept-browser-workspace"
+    >
+      <div className="concept-browser-layout">
+        <aside className="concept-filter-panel">
+          <LiveSearchForm className="concept-filter-form" persistKey="concepts">
+            <label className="concept-filter-search">
+              <span>{t.common.search}</span>
+              <input name="q" defaultValue={query} placeholder={t.concepts.searchPlaceholder} />
+            </label>
+            <div className="concept-filter-section">
+              <select name="domain" defaultValue={domainValue ?? ""}>
+                <option value="">{t.concepts.anyDomain}</option>
+                {PROBLEM_DOMAINS.flatMap((item) => [
+                  <option key={item.value} value={item.value}>{translatedDomainLabel(item.value, t)}</option>,
+                  ...(item.children ?? []).map((subdomain) => (
+                    <option key={subdomain.value} value={subdomain.value}>
+                      {"  - "}{translatedDomainLabel(subdomain.value, t)}
+                    </option>
+                  ))
+                ])}
+              </select>
+              <select name="kind" defaultValue={kindValue ?? ""} aria-label={t.concepts.kind}>
+                <option value="">{t.concepts.anyKind}</option>
+                <option value="DEFINITION">{t.concepts.kinds.DEFINITION}</option>
+                <option value="THEOREM">{t.concepts.kinds.THEOREM}</option>
+                <option value="INTUITIVE_NOTION">{t.concepts.kinds.INTUITIVE_NOTION}</option>
+              </select>
+              <select name="status" defaultValue={statusValue ?? ""}>
+                <option value="">{t.concepts.anyStatus}</option>
+                <option value="STUB">{t.concepts.statuses.STUB}</option>
+                <option value="USABLE">{t.concepts.statuses.USABLE}</option>
+                <option value="REVIEWED">{t.concepts.statuses.REVIEWED}</option>
+                <option value="EXCELLENT">{t.concepts.statuses.EXCELLENT}</option>
+                <option value="CONTROVERSIAL">{t.concepts.statuses.CONTROVERSIAL}</option>
+              </select>
+              {canFilterByProblemLinks && (
+                <select name="problemLinks" defaultValue={problemLinkFilter} aria-label={t.concepts.problemLinksFilter}>
+                  <option value="all">{t.concepts.allProblemLinks}</option>
+                  <option value="with">{t.concepts.withLinkedProblems}</option>
+                  <option value="without">{t.concepts.withoutLinkedProblems}</option>
+                </select>
+              )}
+            </div>
+            <div className="concept-filter-section">
+              <span className="concept-filter-section-title">{t.concepts.exerciseCountLabel}</span>
+              <div className="concept-exercise-count-filter">
+                <div className="concept-exercise-count-controls">
+                  <select aria-label={t.concepts.exerciseCountModeAriaLabel} defaultValue={exerciseCountModeValue} name="exerciseCountMode">
+                    <option value="at-least">{t.concepts.exerciseCountAtLeast}</option>
+                    <option value="at-most">{t.concepts.exerciseCountAtMost}</option>
+                  </select>
+                  <input aria-label={t.concepts.exerciseCountAriaLabel} defaultValue={exerciseCountValue ?? ""} max={MAX_CONCEPT_EXERCISES} min={0} name="exerciseCount" placeholder="X" type="number" />
+                </div>
               </div>
-              <div className="grid gap-2">
+            </div>
+            <div className="concept-filter-section">
+              <select name="sort" defaultValue={sortValue === "linked" ? "linked" : ""} aria-label={t.concepts.sortAriaLabel}>
+                <option value="">{t.concepts.sortUpdated}</option>
+                <option value="linked">{t.concepts.sortMostLinked}</option>
+              </select>
+            </div>
+            <button type="submit">{t.common.search}</button>
+          </LiveSearchForm>
+        </aside>
+
+        <section className="concept-ledger" aria-label={t.concepts.title}>
+          <header className="concept-ledger-header">
+            <p className="result-summary" role="status">{t.concepts.conceptsShown(concepts.length)}</p>
+          </header>
+          <div className="concept-ledger-list">
+            {concepts.map((concept) => (
+              <Link
+                key={concept.id}
+                href={`/concepts/${concept.slug}`}
+                className={`concept-ledger-row concept-ledger-status-${concept.status.toLowerCase()}`}
+              >
+                <div className="concept-ledger-main">
+                  <div className="concept-ledger-title-row">
+                    <h2>{concept.title}</h2>
+                    <span className={`concept-status-badge concept-status-${concept.status.toLowerCase()}`}>
+                      {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
+                    </span>
+                  </div>
+                  <p className="concept-ledger-meta">
+                    <span>{t.concepts.kinds[concept.kind]}</span>
+                    <span>{translatedDomainLabel(concept.domainCode, t)}</span>
+                    <span>{t.concepts.incomingLinks(incomingLinkCountBySlug.get(concept.slug) ?? 0)}</span>
+                    <span>{t.concepts.exerciseCountLabel}: {concept._count.practiceExercises}</span>
+                  </p>
+                  {concept.aliases.length > 0 && (
+                    <p className="concept-ledger-aliases">{concept.aliases.map((alias) => alias.alias).join(", ")}</p>
+                  )}
+                </div>
+                <span className="concept-ledger-updated">{t.common.updated} {concept.updatedAt.toLocaleDateString("en-US")}</span>
+              </Link>
+            ))}
+            {concepts.length === 0 && <p className="empty-state">{t.concepts.noMatches}</p>}
+          </div>
+        </section>
+
+        <aside className="concept-discovery-panel">
+          {featuredConcepts.length > 0 && (
+            <section className="concept-discovery-section">
+              <h2>{t.concepts.featuredConcepts}</h2>
+              <p>{t.concepts.featuredConceptsDescription}</p>
+              <div className="concept-discovery-links">
                 {featuredConcepts.map((concept) => (
                   <Link key={concept.id} href={`/concepts/${concept.slug}`} className="featured-concept-link">
                     <strong>{concept.title}</strong>
-                    <span>
-                      {translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
-                    </span>
+                    <span>{translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}</span>
                   </Link>
                 ))}
               </div>
             </section>
           )}
-          <h2 className="mb-3 font-semibold">{t.concepts.missingConcepts}</h2>
-          <p className="muted mb-4 text-sm">{t.concepts.missingConceptsDescription}</p>
-          <div className="grid gap-2">
-            {missing.map((item) => {
-              const title = conceptTitleFromSlug(item.slug);
-              const hiddenSourceCount = Math.max(0, item.count - item.sources.length);
-
-              return (
-                <div key={item.slug} className="missing-concept-card">
-                  <Link href={`/concepts/new?title=${encodeURIComponent(title)}`} className="missing-concept-main">
-                    <span className="wiki-link missing">{title}</span>
-                    <span className="muted text-sm">{item.count}</span>
-                  </Link>
-                  {item.sources.length > 0 && (
-                    <details className="missing-concept-sources">
-                      <summary>{t.concepts.citedIn(item.count)}</summary>
-                      <div>
-                        {item.sources.map((source) => (
-                          <Link key={`${source.sourceType}-${source.href}`} href={source.href as Route}>
-                            <span>{sourceTypeLabel(source.sourceType, t.concepts)}</span>
-                            <strong>{source.title}</strong>
-                            {source.label && <small>as "{source.label}"</small>}
-                          </Link>
-                        ))}
-                        {hiddenSourceCount > 0 && <p className="muted text-xs">{t.concepts.moreCitations(hiddenSourceCount)}</p>}
-                      </div>
-                    </details>
-                  )}
-                </div>
-              );
-            })}
-            {missing.length === 0 && <p className="muted text-sm">{t.concepts.noMissingConcepts}</p>}
-          </div>
-        </>
-      }
-    >
-      <LiveSearchForm
-        className={`filter-bar concept-search-bar${canFilterByProblemLinks ? " concept-search-bar-admin" : ""} mb-6 grid gap-3 p-4`}
-        persistKey="concepts"
-      >
-        <input name="q" defaultValue={query} placeholder={t.concepts.searchPlaceholder} />
-        <select name="domain" defaultValue={domainValue ?? ""}>
-          <option value="">{t.concepts.anyDomain}</option>
-          {PROBLEM_DOMAINS.flatMap((item) => [
-            <option key={item.value} value={item.value}>
-              {translatedDomainLabel(item.value, t)}
-            </option>,
-            ...(item.children ?? []).map((subdomain) => (
-              <option key={subdomain.value} value={subdomain.value}>
-                {"  - "}{translatedDomainLabel(subdomain.value, t)}
-              </option>
-            ))
-          ])}
-        </select>
-        <select name="kind" defaultValue={kindValue ?? ""} aria-label={t.concepts.kind}>
-          <option value="">{t.concepts.anyKind}</option>
-          <option value="DEFINITION">{t.concepts.kinds.DEFINITION}</option>
-          <option value="THEOREM">{t.concepts.kinds.THEOREM}</option>
-          <option value="INTUITIVE_NOTION">{t.concepts.kinds.INTUITIVE_NOTION}</option>
-        </select>
-        <select name="status" defaultValue={statusValue ?? ""}>
-          <option value="">{t.concepts.anyStatus}</option>
-          <option value="STUB">{t.concepts.statuses.STUB}</option>
-          <option value="USABLE">{t.concepts.statuses.USABLE}</option>
-          <option value="REVIEWED">{t.concepts.statuses.REVIEWED}</option>
-          <option value="EXCELLENT">{t.concepts.statuses.EXCELLENT}</option>
-          <option value="CONTROVERSIAL">{t.concepts.statuses.CONTROVERSIAL}</option>
-        </select>
-        {canFilterByProblemLinks && (
-          <select name="problemLinks" defaultValue={problemLinkFilter} aria-label={t.concepts.problemLinksFilter}>
-            <option value="all">{t.concepts.allProblemLinks}</option>
-            <option value="with">{t.concepts.withLinkedProblems}</option>
-            <option value="without">{t.concepts.withoutLinkedProblems}</option>
-          </select>
-        )}
-        <div className="concept-exercise-count-filter">
-          <span className="concept-exercise-count-label">{t.concepts.exerciseCountLabel}</span>
-          <div className="concept-exercise-count-controls">
-            <select
-              aria-label={t.concepts.exerciseCountModeAriaLabel}
-              defaultValue={exerciseCountModeValue}
-              name="exerciseCountMode"
-            >
-              <option value="at-least">{t.concepts.exerciseCountAtLeast}</option>
-              <option value="at-most">{t.concepts.exerciseCountAtMost}</option>
-            </select>
-            <input
-              aria-label={t.concepts.exerciseCountAriaLabel}
-              defaultValue={exerciseCountValue ?? ""}
-              max={MAX_CONCEPT_EXERCISES}
-              min={0}
-              name="exerciseCount"
-              placeholder="X"
-              type="number"
-            />
-          </div>
-        </div>
-        <select name="sort" defaultValue={sortValue === "linked" ? "linked" : ""} aria-label={t.concepts.sortAriaLabel}>
-          <option value="">{t.concepts.sortUpdated}</option>
-          <option value="linked">{t.concepts.sortMostLinked}</option>
-        </select>
-        <button type="submit">{t.common.search}</button>
-      </LiveSearchForm>
-
-      <div className="list-surface">
-        {concepts.map((concept) => (
-          <Link key={concept.id} href={`/concepts/${concept.slug}`} className="list-row block">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="font-semibold">{concept.title}</h2>
-                <p className="meta">
-                  {t.concepts.kinds[concept.kind]} / {translatedDomainLabel(concept.domainCode, t)} /{" "}
-                  {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()} /{" "}
-                  {t.concepts.incomingLinks(incomingLinkCountBySlug.get(concept.slug) ?? 0)} / {t.concepts.sources(concept._count.references)} /{" "}
-                  {t.concepts.talkPosts(concept._count.talkPosts)}
-                </p>
-                {concept.aliases.length > 0 && (
-                  <p className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</p>
-                )}
-              </div>
-              <span className="meta">{t.common.updated} {concept.updatedAt.toLocaleDateString("en-US")}</span>
+          <section className="concept-discovery-section">
+            <h2>{t.concepts.missingConcepts}</h2>
+            <p>{t.concepts.missingConceptsDescription}</p>
+            <div className="concept-discovery-links">
+              {missing.map((item) => {
+                const title = conceptTitleFromSlug(item.slug);
+                const hiddenSourceCount = Math.max(0, item.count - item.sources.length);
+                return (
+                  <div key={item.slug} className="missing-concept-card">
+                    <Link href={`/concepts/new?title=${encodeURIComponent(title)}`} className="missing-concept-main">
+                      <span className="wiki-link missing">{title}</span>
+                      <span className="muted text-sm">{item.count}</span>
+                    </Link>
+                    {item.sources.length > 0 && (
+                      <details className="missing-concept-sources">
+                        <summary>{t.concepts.citedIn(item.count)}</summary>
+                        <div>
+                          {item.sources.map((source) => (
+                            <Link key={`${source.sourceType}-${source.href}`} href={source.href as Route}>
+                              <span>{sourceTypeLabel(source.sourceType, t.concepts)}</span>
+                              <strong>{source.title}</strong>
+                              {source.label && <small>as "{source.label}"</small>}
+                            </Link>
+                          ))}
+                          {hiddenSourceCount > 0 && <p className="muted text-xs">{t.concepts.moreCitations(hiddenSourceCount)}</p>}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                );
+              })}
+              {missing.length === 0 && <p className="muted text-sm">{t.concepts.noMissingConcepts}</p>}
             </div>
-          </Link>
-        ))}
-        {concepts.length === 0 && <p className="empty-state">{t.concepts.noMatches}</p>}
+          </section>
+        </aside>
       </div>
     </ForestPageLayout>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, Ellipsis, Heart, House } from "lucide-react";
+import { Check, Heart, House, Target } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 type BrowserOperation = "solve" | "unsolve" | "attempt" | "unattempt" | "favorite";
@@ -135,7 +135,7 @@ export function ProblemLedgerInteractiveRow({
         {author}
         {!solved && (!signedIn ? (
           <Link href="/login" className="problem-ledger-attempt" title={labels.startAttempting} aria-label={labels.startAttempting}>
-            <Ellipsis size={16} strokeWidth={3} />
+            <Target size={16} strokeWidth={2.5} />
           </Link>
         ) : (
           <button
@@ -154,7 +154,7 @@ export function ProblemLedgerInteractiveRow({
               );
             }}
           >
-            <Ellipsis size={16} strokeWidth={3} />
+            <Target size={16} strokeWidth={2.5} />
           </button>
         ))}
 

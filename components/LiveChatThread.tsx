@@ -5,8 +5,14 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
 import { ChatMessageAttachment } from "@/components/ChatMessageAttachment";
 import { ChatMessageReactions } from "@/components/ChatMessageReactions";
+import { useChatReply } from "@/components/ChatReplyContext";
+import { ChatReplyQuote } from "@/components/ChatReplyQuote";
 import { UserAvatar } from "@/components/UserAvatar";
-import { applyChatMessageUpdates, type ChatMessageUpdate } from "@/lib/chat-message-updates";
+import {
+  applyChatMessageDeletions,
+  applyChatMessageUpdates,
+  type ChatMessageUpdate
+} from "@/lib/chat-message-updates";
 import {
   applyChatReactionUpdates,
   type ChatReactionLabels,
@@ -16,6 +22,7 @@ import {
 import { CHAT_READ_EVENT } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
+import type { ChatReplyPreview } from "@/lib/chat-replies";
 import type { InterfaceLocale } from "@/lib/i18n/types";
 
 export type LiveChatMessage = DirectChatMessage;
@@ -31,7 +38,11 @@ type LiveChatThreadProps = {
     livePaused: string;
     noMessagesYet: string;
     cancel: string;
+    confirmDeleteMessage: string;
+    deleteMessage: string;
+    deletingMessage: string;
     editMessage: string;
+    reply: string;
     edited: string;
     saveChanges: string;
     chatImage: string;
@@ -48,10 +59,12 @@ export function LiveChatThread({
   labels
 }: LiveChatThreadProps) {
   const [messages, setMessages] = useState(initialMessages);
+  const { setReplyingTo } = useChatReply();
   const [status, setStatus] = useState<"live" | "checking" | "paused">("live");
   const latestIdRef = useRef(initialMessages.at(-1)?.id ?? 0);
   const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLElement | null>(null);
+  const highlightTimerRef = useRef<number | null>(null);
 
   const scrollToEnd = useCallback(() => {
     const thread = threadRef.current;
@@ -72,6 +85,33 @@ export function LiveChatThread({
       message.id === messageId ? { ...message, ...changes } : message
     )));
   }, []);
+  const deleteMessage = useCallback((messageId: number) => {
+    setMessages((current) => applyChatMessageDeletions(current, [messageId]));
+    setReplyingTo(null);
+  }, [setReplyingTo]);
+
+  const scrollToMessage = useCallback((messageId: number) => {
+    const message = threadRef.current?.querySelector<HTMLElement>(`[data-chat-message-id="${messageId}"]`);
+    if (!message) return;
+    message.scrollIntoView({ behavior: "smooth", block: "center" });
+    message.classList.remove("is-reply-highlighted");
+    window.requestAnimationFrame(() => message.classList.add("is-reply-highlighted"));
+    if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = window.setTimeout(() => {
+      message.classList.remove("is-reply-highlighted");
+      highlightTimerRef.current = null;
+    }, 1800);
+  }, []);
+
+  function replyPreviewFor(message: LiveChatMessage): ChatReplyPreview {
+    return {
+      id: message.id,
+      authorId: message.authorId,
+      authorName: message.authorName,
+      bodyMarkdown: message.bodyMarkdown,
+      hasImage: Boolean(message.imageUrl)
+    };
+  }
 
   useEffect(() => {
     scrollToEnd();
@@ -106,12 +146,14 @@ export function LiveChatThread({
         } else {
           const data = (await response.json()) as {
             messages?: LiveChatMessage[];
+            deletedMessageIds?: number[];
             messageUpdates?: ChatMessageUpdate[];
             reactionCursor?: number;
             reactionUpdates?: ChatReactionUpdate[];
           };
           if (
             (Array.isArray(data.messages) && data.messages.length > 0)
+            || (Array.isArray(data.deletedMessageIds) && data.deletedMessageIds.length > 0)
             || (Array.isArray(data.messageUpdates) && data.messageUpdates.length > 0)
             || (Array.isArray(data.reactionUpdates) && data.reactionUpdates.length > 0)
           ) {
@@ -121,9 +163,12 @@ export function LiveChatThread({
                 ...current,
                 ...(data.messages ?? []).filter((message) => !seen.has(message.id))
               ];
-              return applyChatReactionUpdates(
-                applyChatMessageUpdates(withNewMessages, data.messageUpdates ?? []),
-                data.reactionUpdates ?? []
+              return applyChatMessageDeletions(
+                applyChatReactionUpdates(
+                  applyChatMessageUpdates(withNewMessages, data.messageUpdates ?? []),
+                  data.reactionUpdates ?? []
+                ),
+                data.deletedMessageIds ?? []
               );
             });
             if ((data.messages?.length ?? 0) > 0) {
@@ -147,6 +192,7 @@ export function LiveChatThread({
       stopped = true;
       controller.abort();
       if (timeoutId) window.clearTimeout(timeoutId);
+      if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
     };
   }, [otherUsername, scrollToEnd]);
 
@@ -167,7 +213,10 @@ export function LiveChatThread({
                 <time dateTime={dayKey}>{formatChatDay(message.createdAt, locale, timeZone)}</time>
               </div>
             )}
-            <article className={ownMessage ? "chat-message chat-message-own" : "chat-message"}>
+            <article
+              className={ownMessage ? "chat-message chat-message-own" : "chat-message"}
+              data-chat-message-id={message.id}
+            >
               <UserAvatar
                 user={{
                   username: message.authorUsername,
@@ -184,13 +233,23 @@ export function LiveChatThread({
                   <time dateTime={message.createdAt}>{formatChatTime(message.createdAt, locale, timeZone)}</time>
                   {message.editedAt && <>{" \u00b7 "}<span>{labels.edited}</span></>}
                 </p>
+                {message.replyTo && (
+                  <ChatReplyQuote
+                    replyTo={message.replyTo}
+                    imageLabel={labels.chatImage}
+                    onNavigate={scrollToMessage}
+                  />
+                )}
                 <ChatMessageEditor
                   bodyHtml={message.bodyHtml}
                   bodyMarkdown={message.bodyMarkdown}
+                  canDelete={ownMessage}
                   canEdit={ownMessage && Boolean(message.bodyMarkdown)}
                   labels={labels}
                   messageId={message.id}
                   onChange={updateMessageContent}
+                  onDelete={deleteMessage}
+                  onReply={() => setReplyingTo(replyPreviewFor(message))}
                   otherUsername={otherUsername}
                 />
                 <ChatMessageAttachment

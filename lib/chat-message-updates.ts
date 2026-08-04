@@ -8,6 +8,12 @@ export type ChatMessageUpdate = {
   reactions: ChatReactionSummary[];
 };
 
+export function applyChatMessageDeletions<T extends { id: number }>(messages: T[], deletedMessageIds: number[]) {
+  if (deletedMessageIds.length === 0) return messages;
+  const deletedIds = new Set(deletedMessageIds);
+  return messages.filter((message) => !deletedIds.has(message.id));
+}
+
 export function applyChatMessageUpdates<
   T extends {
     id: number;

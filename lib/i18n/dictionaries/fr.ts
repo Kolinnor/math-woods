@@ -123,6 +123,12 @@ export const fr = {
     live: "En direct",
     livePaused: "Mises à jour en direct suspendues",
     editMessage: "Modifier le message",
+    deleteMessage: "Supprimer le message",
+    deletingMessage: "Suppression du message",
+    confirmDeleteMessage: "Supprimer ce message ? Cette action est irréversible.",
+    reply: "Répondre",
+    replyingTo: "Réponse à {name}",
+    cancelReply: "Annuler la réponse",
     saveChanges: "Enregistrer les modifications",
     edited: "Modifié",
     attachImage: "Joindre une image",
@@ -242,6 +248,7 @@ export const fr = {
     stats: {
       reputation: "réputation",
       problems: "problèmes",
+      dailyProblems: "problèmes du jour",
       favorites: "favoris",
       solved: "résolus"
     },
@@ -256,6 +263,11 @@ export const fr = {
         label: "Réputation",
         title: "Classement par réputation",
         subtitle: "La réputation est calculée selon plusieurs critères liés à la qualité des contributions."
+      },
+      dailyProblems: {
+        label: "Problèmes du jour",
+        title: "Classement par problèmes du jour",
+        subtitle: "Chaque journée où un problème du membre a été mis en avant ajoute 50 points de réputation."
       },
       favorites: {
         label: "Nombre de favoris",

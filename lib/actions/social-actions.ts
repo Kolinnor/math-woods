@@ -240,7 +240,8 @@ export async function createChatMessageAction(
       user,
       otherUsername,
       formData.get("bodyMarkdown"),
-      formData.get("image")
+      formData.get("image"),
+      formData.get("replyToId")
     );
   } catch (error) {
     if (isNextRedirectError(error)) throw error;

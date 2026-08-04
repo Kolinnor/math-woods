@@ -2,7 +2,12 @@ import { NotificationType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { CHAT_IMAGE_MAX_INPUT_BYTES, chatImageUrl } from "@/lib/chat-image-config";
-import { directChatPair, acceptedFriendshipBetween, sendDirectChatMessage } from "@/lib/direct-chat";
+import {
+  directChatPair,
+  directChatReplyPreview,
+  acceptedFriendshipBetween,
+  sendDirectChatMessage
+} from "@/lib/direct-chat";
 import { summarizeChatReactions } from "@/lib/chat-reactions";
 import { prisma } from "@/lib/db";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
@@ -69,7 +74,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     prisma.chatMessage.findMany({
       where: {
         directChatId: chat.id,
-        id: { gt: afterId }
+        id: { gt: afterId },
+        deletedAt: null
       },
       include: {
         author: {
@@ -86,6 +92,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
             reaction: true,
             userId: true
           }
+        },
+        replyTo: {
+          select: {
+            id: true,
+            authorId: true,
+            bodyMarkdown: true,
+            imageKey: true,
+            author: {
+              select: {
+                username: true,
+                displayName: true
+              }
+            }
+          }
         }
       },
       orderBy: { id: afterId > 0 ? "asc" : "desc" },
@@ -101,6 +121,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
         bodyMarkdown: true,
         bodyHtml: true,
         editedAt: true,
+        deletedAt: true,
         reactions: {
           select: {
             reaction: true,
@@ -130,9 +151,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
         imageUrl: chatImageUrl(otherUser.username, message.id, Boolean(message.imageKey)),
         imageWidth: message.imageWidth,
         imageHeight: message.imageHeight,
+        replyTo: directChatReplyPreview(message.replyTo),
         reactions: summarizeChatReactions(message.reactions, user.id)
       })),
       reactionCursor,
+      deletedMessageIds: updatedMessages
+        .filter((message) => Boolean(message.deletedAt))
+        .map((message) => message.id),
       reactionUpdates: updatedMessages.map((message) => ({
         messageId: message.id,
         reactions: summarizeChatReactions(message.reactions, user.id)
@@ -165,19 +190,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ use
     await assertRateLimit(`chat-message:${user.id}`, 30, 60_000);
     let bodyMarkdown: unknown = "";
     let image: FormDataEntryValue | null = null;
+    let replyToId: unknown = null;
     if (request.headers.get("content-type")?.includes("multipart/form-data")) {
       const formData = await request.formData();
       bodyMarkdown = formData.get("bodyMarkdown");
       image = formData.get("image");
+      replyToId = formData.get("replyToId");
     } else {
-      const body = await request.json() as { bodyMarkdown?: unknown };
+      const body = await request.json() as { bodyMarkdown?: unknown; replyToId?: unknown };
       bodyMarkdown = body.bodyMarkdown;
+      replyToId = body.replyToId;
     }
     const message = await sendDirectChatMessage(
       user,
       username,
       typeof bodyMarkdown === "string" ? bodyMarkdown : "",
-      image
+      image,
+      typeof replyToId === "string" || typeof replyToId === "number" ? replyToId : null
     );
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {

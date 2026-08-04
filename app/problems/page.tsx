@@ -289,6 +289,7 @@ export default async function ProblemsPage({
     sort?: string;
     page?: string;
     showAll?: string;
+    domainView?: string;
     filterLogic?: string;
     filterField?: SearchValue;
     filterOp?: SearchValue;
@@ -316,6 +317,7 @@ export default async function ProblemsPage({
     sort = "newest",
     page = "1",
     showAll = "",
+    domainView = "",
     filterLogic = "AND",
     filterField,
     filterOp,
@@ -715,6 +717,7 @@ export default async function ProblemsPage({
       <ProblemDomainStrip
         domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
         families={PROBLEM_DOMAIN_FAMILIES}
+        initiallyExpanded={domainView === "all"}
         labels={t.problems.domainBrowser}
         locale={interfaceLocale}
         problemCounts={domainProblemCounts}

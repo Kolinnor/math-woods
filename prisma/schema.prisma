@@ -260,72 +260,72 @@ enum UserMathLevel {
 }
 
 model User {
-  id                           Int                          @id @default(autoincrement())
-  username                     String                       @unique
-  displayName                  String?
-  avatarUrl                    String?
-  avatarBackground             String?
-  email                        String?                      @unique
-  emailVerifiedAt              DateTime?
-  passwordHash                 String?
-  bio                          String?
-  affiliation                  String?
-  websiteUrl                   String?
-  mathematicalDomains         MathDomain[]                 @default([])
-  openToCollaboration          Boolean                      @default(false)
-  mathLevel                    UserMathLevel?
-  reputation                   Int                          @default(0)
-  role                         Role                         @default(USER)
-  createdAt                    DateTime                     @default(now())
-  updatedAt                    DateTime                     @updatedAt
-  deletedAt                    DateTime?
-  problems                     Problem[]
-  conceptsCreated              Concept[]                    @relation("ConceptCreatedBy")
-  conceptsEdited               Concept[]                    @relation("ConceptLastEditedBy")
-  revisions                    PageRevision[]
-  conceptTalkPosts             ConceptTalkPost[]
-  attempts                     ProblemAttempt[]
-  problemReactions             ProblemReaction[]
-  posts                        DiscussionPost[]
-  playlists                    Playlist[]
-  votes                        Vote[]
-  reports                      Report[]
-  sessions                     Session[]
-  externalIdentities           ExternalIdentity[]
-  oauthLinkAttempts            OAuthAttempt[]             @relation("OAuthAttemptLinkUser")
-  emailVerificationTokens      EmailVerificationToken[]
-  favorites                    ProblemFavorite[]
-  problemHints                 ProblemHint[]
-  proofs                       ProblemProof[]
-  proofComments                ProofComment[]
-  suggestions                  Suggestion[]
-  playlistFollows              PlaylistFollow[]
-  quotes                       Quote[]
-  notifications                Notification[]               @relation("NotificationRecipient")
-  notificationsSent            Notification[]               @relation("NotificationActor")
-  notificationPreferences      NotificationPreference[]
-  achievementUnlocks           AchievementUnlock[]
-  latexPreference              LatexPreference?
-  errorReports                 ErrorReport[]
-  verificationRequests         ProblemVerificationRequest[] @relation("ProblemVerificationRequester")
-  reviewedVerificationRequests ProblemVerificationRequest[] @relation("ProblemVerificationReviewer")
-  verificationMessages         ProblemVerificationMessage[]
-  friendRequestsSent           Friendship[]                 @relation("FriendshipRequester")
-  friendRequestsReceived       Friendship[]                 @relation("FriendshipAddressee")
-  directChatsAsA               DirectChat[]                 @relation("DirectChatUserA")
-  directChatsAsB               DirectChat[]                 @relation("DirectChatUserB")
-  chatMessages                 ChatMessage[]
-  chatMessageReactions         ChatMessageReaction[]
-  problemChallengesSent        ProblemChallenge[]            @relation("ProblemChallengeChallenger")
-  problemChallengesReceived    ProblemChallenge[]            @relation("ProblemChallengeRecipient")
-  problemChallengeInvitesSent  ProblemChallengeInvite[]      @relation("ProblemChallengeInviteChallenger")
-  problemChallengeInvitesAccepted ProblemChallengeInvite[]   @relation("ProblemChallengeInviteAcceptedBy")
-  contributionRequestsCreated  ContributionRequest[]        @relation("ContributionRequestRequester")
-  contributionRequestsClaimed  ContributionRequest[]        @relation("ContributionRequestClaimedBy")
-  explorationCollaborations    ExplorationCollaborator[]
-  explorationEditionsPublished ExplorationEdition[]         @relation("ExplorationEditionPublisher")
-  explorationSessions          ExplorationSession[]
-  mathematiciansCreated        Mathematician[]                @relation("MathematicianCreatedBy")
+  id                              Int                          @id @default(autoincrement())
+  username                        String                       @unique
+  displayName                     String?
+  avatarUrl                       String?
+  avatarBackground                String?
+  email                           String?                      @unique
+  emailVerifiedAt                 DateTime?
+  passwordHash                    String?
+  bio                             String?
+  affiliation                     String?
+  websiteUrl                      String?
+  mathematicalDomains             MathDomain[]                 @default([])
+  openToCollaboration             Boolean                      @default(false)
+  mathLevel                       UserMathLevel?
+  reputation                      Int                          @default(0)
+  role                            Role                         @default(USER)
+  createdAt                       DateTime                     @default(now())
+  updatedAt                       DateTime                     @updatedAt
+  deletedAt                       DateTime?
+  problems                        Problem[]
+  conceptsCreated                 Concept[]                    @relation("ConceptCreatedBy")
+  conceptsEdited                  Concept[]                    @relation("ConceptLastEditedBy")
+  revisions                       PageRevision[]
+  conceptTalkPosts                ConceptTalkPost[]
+  attempts                        ProblemAttempt[]
+  problemReactions                ProblemReaction[]
+  posts                           DiscussionPost[]
+  playlists                       Playlist[]
+  votes                           Vote[]
+  reports                         Report[]
+  sessions                        Session[]
+  externalIdentities              ExternalIdentity[]
+  oauthLinkAttempts               OAuthAttempt[]               @relation("OAuthAttemptLinkUser")
+  emailVerificationTokens         EmailVerificationToken[]
+  favorites                       ProblemFavorite[]
+  problemHints                    ProblemHint[]
+  proofs                          ProblemProof[]
+  proofComments                   ProofComment[]
+  suggestions                     Suggestion[]
+  playlistFollows                 PlaylistFollow[]
+  quotes                          Quote[]
+  notifications                   Notification[]               @relation("NotificationRecipient")
+  notificationsSent               Notification[]               @relation("NotificationActor")
+  notificationPreferences         NotificationPreference[]
+  achievementUnlocks              AchievementUnlock[]
+  latexPreference                 LatexPreference?
+  errorReports                    ErrorReport[]
+  verificationRequests            ProblemVerificationRequest[] @relation("ProblemVerificationRequester")
+  reviewedVerificationRequests    ProblemVerificationRequest[] @relation("ProblemVerificationReviewer")
+  verificationMessages            ProblemVerificationMessage[]
+  friendRequestsSent              Friendship[]                 @relation("FriendshipRequester")
+  friendRequestsReceived          Friendship[]                 @relation("FriendshipAddressee")
+  directChatsAsA                  DirectChat[]                 @relation("DirectChatUserA")
+  directChatsAsB                  DirectChat[]                 @relation("DirectChatUserB")
+  chatMessages                    ChatMessage[]
+  chatMessageReactions            ChatMessageReaction[]
+  problemChallengesSent           ProblemChallenge[]           @relation("ProblemChallengeChallenger")
+  problemChallengesReceived       ProblemChallenge[]           @relation("ProblemChallengeRecipient")
+  problemChallengeInvitesSent     ProblemChallengeInvite[]     @relation("ProblemChallengeInviteChallenger")
+  problemChallengeInvitesAccepted ProblemChallengeInvite[]     @relation("ProblemChallengeInviteAcceptedBy")
+  contributionRequestsCreated     ContributionRequest[]        @relation("ContributionRequestRequester")
+  contributionRequestsClaimed     ContributionRequest[]        @relation("ContributionRequestClaimedBy")
+  explorationCollaborations       ExplorationCollaborator[]
+  explorationEditionsPublished    ExplorationEdition[]         @relation("ExplorationEditionPublisher")
+  explorationSessions             ExplorationSession[]
+  mathematiciansCreated           Mathematician[]              @relation("MathematicianCreatedBy")
 }
 
 model ExternalIdentity {
@@ -365,18 +365,18 @@ model OAuthAttempt {
 }
 
 model Mathematician {
-  id          Int      @id @default(autoincrement())
-  slug        String   @unique
-  name        String
-  lifespan    String
-  birthPlace  String
-  portraitUrl String?
-  contentMarkdown String @default("")
-  contentHtml     String @default("")
-  createdById Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   User?    @relation("MathematicianCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  id              Int      @id @default(autoincrement())
+  slug            String   @unique
+  name            String
+  lifespan        String
+  birthPlace      String
+  portraitUrl     String?
+  contentMarkdown String   @default("")
+  contentHtml     String   @default("")
+  createdById     Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       User?    @relation("MathematicianCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([name])
 }
@@ -441,6 +441,7 @@ model ChatMessage {
   id           Int                   @id @default(autoincrement())
   directChatId Int
   authorId     Int
+  replyToId    Int?
   bodyMarkdown String
   bodyHtml     String
   imageKey     String?
@@ -450,12 +451,16 @@ model ChatMessage {
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
   editedAt     DateTime?
+  deletedAt    DateTime?
   directChat   DirectChat            @relation(fields: [directChatId], references: [id], onDelete: Cascade)
   author       User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replyTo      ChatMessage?          @relation("ChatMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      ChatMessage[]         @relation("ChatMessageReplies")
   reactions    ChatMessageReaction[]
 
   @@index([directChatId, createdAt])
   @@index([authorId, createdAt])
+  @@index([replyToId])
 }
 
 enum ChatReactionType {
@@ -641,7 +646,7 @@ model Concept {
 }
 
 model PageRevision {
-  id              Int        @id @default(autoincrement())
+  id              Int          @id @default(autoincrement())
   pageType        SourceType
   pageId          Int
   markdown        String
@@ -649,11 +654,11 @@ model PageRevision {
   conceptKind     ConceptKind?
   problemVersion  Int?
   problemSnapshot Json?
-  isCreation      Boolean     @default(false)
+  isCreation      Boolean      @default(false)
   editedById      Int?
   editSummary     String?
-  createdAt       DateTime   @default(now())
-  editedBy        User?      @relation(fields: [editedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime     @default(now())
+  editedBy        User?        @relation(fields: [editedById], references: [id], onDelete: SetNull)
 
   @@index([pageType, pageId, createdAt])
   @@index([pageType, pageId, problemVersion])
@@ -778,14 +783,14 @@ model ProblemFavorite {
 }
 
 model ProblemReaction {
-  userId               Int
-  problemId            Int
-  difficultyReaction   ProblemDifficultyReaction?
-  preferenceReaction   ProblemPreferenceReaction?
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
-  user                 User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problem              Problem                      @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  userId             Int
+  problemId          Int
+  difficultyReaction ProblemDifficultyReaction?
+  preferenceReaction ProblemPreferenceReaction?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem            Problem                    @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@id([userId, problemId])
   @@index([problemId])
@@ -1024,48 +1029,48 @@ model ExplorationBlockFolder {
 }
 
 model ExplorationBlock {
-  id                  Int                       @id @default(autoincrement())
-  pageId              Int
-  folderId            Int?
-  branchId            Int?
-  key                 String                    @default(cuid())
-  canvasX             Float?
-  canvasY             Float?
-  isStart             Boolean                   @default(false)
-  isEnd               Boolean                   @default(false)
-  continueToBlockId   Int?
+  id                   Int                            @id @default(autoincrement())
+  pageId               Int
+  folderId             Int?
+  branchId             Int?
+  key                  String                         @default(cuid())
+  canvasX              Float?
+  canvasY              Float?
+  isStart              Boolean                        @default(false)
+  isEnd                Boolean                        @default(false)
+  continueToBlockId    Int?
   continueTargetHandle String?
-  autoContinue        Boolean                   @default(false)
-  kind                ExplorationBlockKind      @default(MARKDOWN)
-  name                String?
-  title               String?
-  bodyMarkdown        String?
-  bodyHtml            String?
-  explanationMarkdown String?
-  explanationHtml     String?
-  position            Int
-  problemId           Int?
-  conceptId           Int?
-  quizType            ExplorationQuizType?
-  settings            Json?
-  visibilityRule      Json?
-  required            Boolean                   @default(false)
-  points              Int                       @default(0)
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
-  page                ExplorationPage           @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  folder              ExplorationBlockFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  branch              ExplorationBranch?        @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  problem             Problem?                  @relation(fields: [problemId], references: [id], onDelete: SetNull)
-  concept             Concept?                  @relation(fields: [conceptId], references: [id], onDelete: SetNull)
-  continueToBlock     ExplorationBlock?         @relation("ExplorationBlockContinue", fields: [continueToBlockId], references: [id], onDelete: SetNull)
-  incomingContinues   ExplorationBlock[]        @relation("ExplorationBlockContinue")
-  incomingOptions     ExplorationBlockOption[]  @relation("ExplorationOptionBlockTarget")
-  incomingOutcomes    ExplorationBlockOutcome[] @relation("ExplorationOutcomeBlockTarget")
-  options             ExplorationBlockOption[]
-  outcomes            ExplorationBlockOutcome[]
-  answers             ExplorationAnswer[]
-  problemGroups       ExplorationBlockProblemGroup[]
+  autoContinue         Boolean                        @default(false)
+  kind                 ExplorationBlockKind           @default(MARKDOWN)
+  name                 String?
+  title                String?
+  bodyMarkdown         String?
+  bodyHtml             String?
+  explanationMarkdown  String?
+  explanationHtml      String?
+  position             Int
+  problemId            Int?
+  conceptId            Int?
+  quizType             ExplorationQuizType?
+  settings             Json?
+  visibilityRule       Json?
+  required             Boolean                        @default(false)
+  points               Int                            @default(0)
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+  page                 ExplorationPage                @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  folder               ExplorationBlockFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  branch               ExplorationBranch?             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  problem              Problem?                       @relation(fields: [problemId], references: [id], onDelete: SetNull)
+  concept              Concept?                       @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+  continueToBlock      ExplorationBlock?              @relation("ExplorationBlockContinue", fields: [continueToBlockId], references: [id], onDelete: SetNull)
+  incomingContinues    ExplorationBlock[]             @relation("ExplorationBlockContinue")
+  incomingOptions      ExplorationBlockOption[]       @relation("ExplorationOptionBlockTarget")
+  incomingOutcomes     ExplorationBlockOutcome[]      @relation("ExplorationOutcomeBlockTarget")
+  options              ExplorationBlockOption[]
+  outcomes             ExplorationBlockOutcome[]
+  answers              ExplorationAnswer[]
+  problemGroups        ExplorationBlockProblemGroup[]
 
   @@unique([pageId, key])
   @@index([pageId, position])
@@ -1150,20 +1155,20 @@ model ExplorationBranch {
 }
 
 model ExplorationBlockOutcome {
-  id        Int                        @id @default(autoincrement())
-  blockId   Int
-  kind      ExplorationOutcomeKind
-  label     String
-  toPageId  Int?
-  toBlockId Int?
+  id           Int                        @id @default(autoincrement())
+  blockId      Int
+  kind         ExplorationOutcomeKind
+  label        String
+  toPageId     Int?
+  toBlockId    Int?
   targetHandle String?
-  position  Int
-  createdAt DateTime                   @default(now())
-  updatedAt DateTime                   @updatedAt
-  block     ExplorationBlock           @relation(fields: [blockId], references: [id], onDelete: Cascade)
-  toPage    ExplorationPage?           @relation("ExplorationOutcomeTarget", fields: [toPageId], references: [id], onDelete: SetNull)
-  toBlock   ExplorationBlock?          @relation("ExplorationOutcomeBlockTarget", fields: [toBlockId], references: [id], onDelete: SetNull)
-  matches   ExplorationOutcomeOption[]
+  position     Int
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  block        ExplorationBlock           @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  toPage       ExplorationPage?           @relation("ExplorationOutcomeTarget", fields: [toPageId], references: [id], onDelete: SetNull)
+  toBlock      ExplorationBlock?          @relation("ExplorationOutcomeBlockTarget", fields: [toBlockId], references: [id], onDelete: SetNull)
+  matches      ExplorationOutcomeOption[]
 
   @@index([blockId, position])
   @@index([toPageId])
@@ -1209,29 +1214,29 @@ model ExplorationEdition {
 }
 
 model ExplorationSession {
-  id              Int                      @id @default(autoincrement())
-  playlistId      Int
-  userId          Int
-  editionId       Int?
-  currentPageId   Int?
-  currentPageKey  String?
-  currentBlockKey String?
-  state           Json                     @default("{}")
-  visitedPageIds  Json                     @default("[]")
-  visitedPageKeys Json                     @default("[]")
-  visitedBlockKeys Json                    @default("[]")
+  id               Int                      @id @default(autoincrement())
+  playlistId       Int
+  userId           Int
+  editionId        Int?
+  currentPageId    Int?
+  currentPageKey   String?
+  currentBlockKey  String?
+  state            Json                     @default("{}")
+  visitedPageIds   Json                     @default("[]")
+  visitedPageKeys  Json                     @default("[]")
+  visitedBlockKeys Json                     @default("[]")
   pathBlockKeys    Json                     @default("[]")
-  status          ExplorationSessionStatus @default(IN_PROGRESS)
-  score           Int                      @default(0)
-  maxScore        Int                      @default(0)
-  startedAt       DateTime                 @default(now())
-  lastSeenAt      DateTime                 @updatedAt
-  completedAt     DateTime?
-  playlist        Playlist                 @relation(fields: [playlistId], references: [id], onDelete: Cascade)
-  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  edition         ExplorationEdition?      @relation(fields: [editionId], references: [id], onDelete: SetNull)
-  currentPage     ExplorationPage?         @relation(fields: [currentPageId], references: [id], onDelete: SetNull)
-  answers         ExplorationAnswer[]
+  status           ExplorationSessionStatus @default(IN_PROGRESS)
+  score            Int                      @default(0)
+  maxScore         Int                      @default(0)
+  startedAt        DateTime                 @default(now())
+  lastSeenAt       DateTime                 @updatedAt
+  completedAt      DateTime?
+  playlist         Playlist                 @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  edition          ExplorationEdition?      @relation(fields: [editionId], references: [id], onDelete: SetNull)
+  currentPage      ExplorationPage?         @relation(fields: [currentPageId], references: [id], onDelete: SetNull)
+  answers          ExplorationAnswer[]
 
   @@unique([playlistId, userId])
   @@index([userId, lastSeenAt])

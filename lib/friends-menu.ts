@@ -32,6 +32,10 @@ export type FriendsMenuData = {
     challenge: ProblemChallengeLabels;
     reactions: ChatReactionLabels;
     cancel: string;
+    cancelReply: string;
+    confirmDeleteMessage: string;
+    deleteMessage: string;
+    deletingMessage: string;
     attachImage: string;
     chatImage: string;
     closeChat: string;
@@ -48,6 +52,8 @@ export type FriendsMenuData = {
     send: string;
     saveChanges: string;
     removeImage: string;
+    reply: string;
+    replyingTo: string;
     sending: string;
     unreadMessages: string | null;
     writeMessage: string;
@@ -155,6 +161,10 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
         reactionNames: t.social.reactionNames
       },
       cancel: t.social.cancel,
+      cancelReply: t.social.cancelReply,
+      confirmDeleteMessage: t.social.confirmDeleteMessage,
+      deleteMessage: t.social.deleteMessage,
+      deletingMessage: t.social.deletingMessage,
       attachImage: t.social.attachImage,
       chatImage: t.social.chatImage,
       closeChat: t.social.closeChat,
@@ -171,6 +181,8 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
       send: t.social.send,
       saveChanges: t.social.saveChanges,
       removeImage: t.social.removeImage,
+      reply: t.social.reply,
+      replyingTo: t.social.replyingTo,
       sending: t.social.sending,
       unreadMessages: unreadChatCount > 0 ? t.social.unreadMessages(unreadChatCount) : null,
       writeMessage: t.social.writeMessage

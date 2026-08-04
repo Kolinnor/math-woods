@@ -13,6 +13,7 @@ type SortKey = "count" | "family" | "name" | "diff" | "date";
 type ProblemDomainStripProps = {
   domains: ProblemDomainOption[];
   families: Record<ProblemDomainFamily, { label: string; color: string; order: number }>;
+  initiallyExpanded?: boolean;
   labels: Dictionary["problems"]["domainBrowser"];
   locale: InterfaceLocale;
   problemCounts?: Record<string, number>;
@@ -35,6 +36,7 @@ function template(value: string, key: string, replacement: string) {
 export function ProblemDomainStrip({
   domains,
   families,
+  initiallyExpanded = false,
   labels,
   locale,
   problemCounts,
@@ -43,7 +45,7 @@ export function ProblemDomainStrip({
 }: ProblemDomainStripProps) {
   const [sort, setSort] = useState<SortKey>("count");
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const activeDomain = normalized(selectedDomain);
   const sortedDomains = useMemo(() => {
     return [...domains].sort((a, b) => {
@@ -88,7 +90,7 @@ export function ProblemDomainStrip({
   }
 
   return (
-    <section className="problem-domain-strip" aria-labelledby="problem-domain-strip-title">
+    <section id="browse-by-domain" className="problem-domain-strip" aria-labelledby="problem-domain-strip-title">
       <div className="problem-domain-strip-header">
         <div className="problem-domain-strip-title-row">
           <h2 id="problem-domain-strip-title">{labels.title}</h2>

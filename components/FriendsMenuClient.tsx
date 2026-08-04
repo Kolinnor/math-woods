@@ -7,10 +7,15 @@ import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
 import { ChatMessageAttachment } from "@/components/ChatMessageAttachment";
 import { ChatMessageReactions } from "@/components/ChatMessageReactions";
+import { ChatReplyComposerPreview, ChatReplyQuote } from "@/components/ChatReplyQuote";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
 import { shouldSendChatOnEnter } from "@/lib/chat-compose";
-import { applyChatMessageUpdates, type ChatMessageUpdate } from "@/lib/chat-message-updates";
+import {
+  applyChatMessageDeletions,
+  applyChatMessageUpdates,
+  type ChatMessageUpdate
+} from "@/lib/chat-message-updates";
 import {
   applyChatReactionUpdates,
   type ChatReactionSummary,
@@ -19,6 +24,7 @@ import {
 import { CHAT_READ_EVENT, chatUnreadDocumentTitle } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
+import type { ChatReplyPreview } from "@/lib/chat-replies";
 import type { FriendsMenuData } from "@/lib/friends-menu";
 
 const FRIENDS_MENU_POLL_MS = 5000;
@@ -31,9 +37,11 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   const [selectedFriend, setSelectedFriend] = useState<MenuFriend | null>(null);
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [replyingTo, setReplyingTo] = useState<ChatReplyPreview | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const highlightTimerRef = useRef<number | null>(null);
   const latestMessageIdRef = useRef(0);
   const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLDivElement | null>(null);
@@ -129,6 +137,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     reactionCursorRef.current = 0;
     setMessages([]);
     setDraft("");
+    setReplyingTo(null);
     setChatError(null);
     setChatLoading(true);
 
@@ -148,6 +157,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         const result = await response.json() as {
           error?: string;
           messages?: DirectChatMessage[];
+          deletedMessageIds?: number[];
           messageUpdates?: ChatMessageUpdate[];
           reactionCursor?: number;
           reactionUpdates?: ChatReactionUpdate[];
@@ -158,6 +168,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
           !stopped
           && (
             (Array.isArray(result.messages) && result.messages.length > 0)
+            || (Array.isArray(result.deletedMessageIds) && result.deletedMessageIds.length > 0)
             || (Array.isArray(result.messageUpdates) && result.messageUpdates.length > 0)
             || (Array.isArray(result.reactionUpdates) && result.reactionUpdates.length > 0)
           )
@@ -168,9 +179,12 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
               ...current,
               ...(result.messages ?? []).filter((message) => !seen.has(message.id))
             ];
-            return applyChatReactionUpdates(
-              applyChatMessageUpdates(withNewMessages, result.messageUpdates ?? []),
-              result.reactionUpdates ?? []
+            return applyChatMessageDeletions(
+              applyChatReactionUpdates(
+                applyChatMessageUpdates(withNewMessages, result.messageUpdates ?? []),
+                result.reactionUpdates ?? []
+              ),
+              result.deletedMessageIds ?? []
             );
           });
           latestMessageIdRef.current = result.messages?.at(-1)?.id ?? latestMessageIdRef.current;
@@ -199,6 +213,10 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
       stopped = true;
       controller.abort();
       if (timeoutId) window.clearTimeout(timeoutId);
+      if (highlightTimerRef.current) {
+        window.clearTimeout(highlightTimerRef.current);
+        highlightTimerRef.current = null;
+      }
     };
   }, [selectedFriend?.username]);
 
@@ -216,6 +234,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     try {
       const payload = new FormData(event.currentTarget);
       payload.set("bodyMarkdown", draft);
+      if (replyingTo) payload.set("replyToId", String(replyingTo.id));
       const response = await fetch(`/api/chat/${encodeURIComponent(selectedFriend.username)}/messages`, {
         method: "POST",
         body: payload
@@ -227,6 +246,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         : [...current, result.message!]);
       latestMessageIdRef.current = Math.max(latestMessageIdRef.current, result.message.id);
       setDraft("");
+      setReplyingTo(null);
     } catch (error) {
       setChatError(error instanceof Error ? error.message : "Message could not be sent.");
     } finally {
@@ -257,6 +277,34 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     setMessages((current) => current.map((message) => (
       message.id === messageId ? { ...message, ...changes } : message
     )));
+  }
+
+  function deleteMessage(messageId: number) {
+    setMessages((current) => applyChatMessageDeletions(current, [messageId]));
+    if (replyingTo?.id === messageId) setReplyingTo(null);
+  }
+
+  function replyPreviewFor(message: DirectChatMessage): ChatReplyPreview {
+    return {
+      id: message.id,
+      authorId: message.authorId,
+      authorName: message.authorName,
+      bodyMarkdown: message.bodyMarkdown,
+      hasImage: Boolean(message.imageUrl)
+    };
+  }
+
+  function scrollToMessage(messageId: number) {
+    const message = threadRef.current?.querySelector<HTMLElement>(`[data-chat-message-id="${messageId}"]`);
+    if (!message) return;
+    message.scrollIntoView({ behavior: "smooth", block: "center" });
+    message.classList.remove("is-reply-highlighted");
+    window.requestAnimationFrame(() => message.classList.add("is-reply-highlighted"));
+    if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = window.setTimeout(() => {
+      message.classList.remove("is-reply-highlighted");
+      highlightTimerRef.current = null;
+    }, 1800);
   }
 
   return (
@@ -347,14 +395,25 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                     )}
                     <article
                       className={message.authorId === data.currentUserId ? "friends-mini-message is-own" : "friends-mini-message"}
+                      data-chat-message-id={message.id}
                     >
+                      {message.replyTo && (
+                        <ChatReplyQuote
+                          replyTo={message.replyTo}
+                          imageLabel={data.labels.chatImage}
+                          onNavigate={scrollToMessage}
+                        />
+                      )}
                       <ChatMessageEditor
                         bodyHtml={message.bodyHtml}
                         bodyMarkdown={message.bodyMarkdown}
+                        canDelete={message.authorId === data.currentUserId}
                         canEdit={message.authorId === data.currentUserId && Boolean(message.bodyMarkdown)}
                         labels={data.labels}
                         messageId={message.id}
                         onChange={updateMessageContent}
+                        onDelete={deleteMessage}
+                        onReply={() => setReplyingTo(replyPreviewFor(message))}
                         otherUsername={selectedFriend.username}
                       />
                       <ChatMessageAttachment
@@ -384,6 +443,18 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
 
             {chatError && <p className="friends-mini-chat-error" role="alert">{chatError}</p>}
             <form className="friends-mini-chat-composer" onSubmit={sendMessage}>
+              {replyingTo && (
+                <ChatReplyComposerPreview
+                  labels={{
+                    cancelReply: data.labels.cancelReply,
+                    image: data.labels.chatImage,
+                    replyingTo: data.labels.replyingTo
+                  }}
+                  onCancel={() => setReplyingTo(null)}
+                  replyTo={replyingTo}
+                />
+              )}
+              <input type="hidden" name="replyToId" value={replyingTo?.id ?? ""} />
               <textarea
                 name="bodyMarkdown"
                 value={draft}

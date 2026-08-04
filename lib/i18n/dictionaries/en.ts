@@ -121,6 +121,12 @@ export const en = {
     live: "Live",
     livePaused: "Live updates paused",
     editMessage: "Edit message",
+    deleteMessage: "Delete message",
+    deletingMessage: "Deleting message",
+    confirmDeleteMessage: "Delete this message? This cannot be undone.",
+    reply: "Reply",
+    replyingTo: "Replying to {name}",
+    cancelReply: "Cancel reply",
     saveChanges: "Save changes",
     edited: "Edited",
     attachImage: "Attach image",
@@ -240,6 +246,7 @@ export const en = {
     stats: {
       reputation: "reputation",
       problems: "problems",
+      dailyProblems: "problems of the day",
       favorites: "favorites",
       solved: "solved"
     },
@@ -254,6 +261,11 @@ export const en = {
         label: "Reputation",
         title: "Ranking by reputation",
         subtitle: "Reputation is calculated based on various criteria for quality submissions."
+      },
+      dailyProblems: {
+        label: "Problems of the day",
+        title: "Ranking by problems of the day",
+        subtitle: "Each day one of a member's problems was featured adds 50 reputation points."
       },
       favorites: {
         label: "Number of favorites",

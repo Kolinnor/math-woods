@@ -2,6 +2,7 @@ import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChatMessageForm } from "@/components/ChatMessageForm";
+import { ChatReplyProvider } from "@/components/ChatReplyContext";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
@@ -10,7 +11,7 @@ import { sendFriendRequestAction } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { chatImageUrl } from "@/lib/chat-image-config";
 import { prisma } from "@/lib/db";
-import { directChatPair } from "@/lib/direct-chat";
+import { directChatPair, directChatReplyPreview } from "@/lib/direct-chat";
 import { summarizeChatReactions } from "@/lib/chat-reactions";
 import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
@@ -99,6 +100,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
     where: { userAId_userBId: pair },
     include: {
       messages: {
+        where: { deletedAt: null },
         include: {
           author: {
             select: {
@@ -113,6 +115,20 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
             select: {
               reaction: true,
               userId: true
+            }
+          },
+          replyTo: {
+            select: {
+              id: true,
+              authorId: true,
+              bodyMarkdown: true,
+              imageKey: true,
+              author: {
+                select: {
+                  username: true,
+                  displayName: true
+                }
+              }
             }
           }
         },
@@ -136,6 +152,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       imageUrl: chatImageUrl(otherUser.username, message.id, Boolean(message.imageKey)),
       imageWidth: message.imageWidth,
       imageHeight: message.imageHeight,
+      replyTo: directChatReplyPreview(message.replyTo),
       reactions: summarizeChatReactions(message.reactions, user.id)
     })) ?? [];
   const ownMessageResetSignal = messages.filter((message) => message.authorId === user.id).at(-1)?.id ?? 0;
@@ -165,41 +182,50 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
         </>
       }
     >
-      <div className="chat-page">
-        <LiveChatThread
-          key={otherUser.username}
-          currentUserId={user.id}
-          otherUsername={otherUser.username}
-          initialMessages={messages}
-          locale={locale}
-          timeZone={timeZone}
-          labels={{
-            live: t.social.live,
-            livePaused: t.social.livePaused,
-            noMessagesYet: t.social.noMessagesYet,
-            cancel: t.social.cancel,
-            editMessage: t.social.editMessage,
-            edited: t.social.edited,
-            saveChanges: t.social.saveChanges,
-            chatImage: t.social.chatImage,
-            reactions: {
-              addReaction: t.social.addReaction,
-              reactionNames: t.social.reactionNames
-            }
-          }}
-        />
+      <ChatReplyProvider>
+        <div className="chat-page">
+          <LiveChatThread
+            key={otherUser.username}
+            currentUserId={user.id}
+            otherUsername={otherUser.username}
+            initialMessages={messages}
+            locale={locale}
+            timeZone={timeZone}
+            labels={{
+              live: t.social.live,
+              livePaused: t.social.livePaused,
+              noMessagesYet: t.social.noMessagesYet,
+              cancel: t.social.cancel,
+              confirmDeleteMessage: t.social.confirmDeleteMessage,
+              deleteMessage: t.social.deleteMessage,
+              deletingMessage: t.social.deletingMessage,
+              editMessage: t.social.editMessage,
+              reply: t.social.reply,
+              edited: t.social.edited,
+              saveChanges: t.social.saveChanges,
+              chatImage: t.social.chatImage,
+              reactions: {
+                addReaction: t.social.addReaction,
+                reactionNames: t.social.reactionNames
+              }
+            }}
+          />
 
-        <ChatMessageForm
-          editorDraftKey={`chat:${otherUser.id}:message`}
-          editorResetSignal={ownMessageResetSignal}
-          labels={{
-            message: t.social.message,
-            send: t.social.send,
-            sending: t.social.sending
-          }}
-          otherUsername={otherUser.username}
-        />
-      </div>
+          <ChatMessageForm
+            editorDraftKey={`chat:${otherUser.id}:message`}
+            editorResetSignal={ownMessageResetSignal}
+            labels={{
+              message: t.social.message,
+              cancelReply: t.social.cancelReply,
+              chatImage: t.social.chatImage,
+              replyingTo: t.social.replyingTo,
+              send: t.social.send,
+              sending: t.social.sending
+            }}
+            otherUsername={otherUser.username}
+          />
+        </div>
+      </ChatReplyProvider>
     </ForestPageLayout>
   );
 }

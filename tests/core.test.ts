@@ -23,7 +23,10 @@ import {
 import { parseConceptKind } from "../lib/concept-kinds.ts";
 import { slugify } from "../lib/slug.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
-import { needsReviewAfterProblemEdit } from "../lib/problem-review-state.ts";
+import {
+  hasProblemReviewSensitiveChanges,
+  needsReviewAfterProblemEdit
+} from "../lib/problem-review-state.ts";
 import {
   buildRecommendationProfile,
   scoreProblemRecommendation
@@ -55,7 +58,8 @@ import { chatImageDailyLimitForRole, chatImageUrl } from "../lib/chat-image-conf
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
 import { shouldSendChatOnEnter } from "../lib/chat-compose.ts";
-import { applyChatMessageUpdates } from "../lib/chat-message-updates.ts";
+import { normalizeChatReplyToId } from "../lib/chat-replies.ts";
+import { applyChatMessageDeletions, applyChatMessageUpdates } from "../lib/chat-message-updates.ts";
 import {
   applyChatReactionUpdates,
   isChatReaction,
@@ -149,6 +153,10 @@ import {
   sortMathematicians
 } from "../lib/mathematicians.ts";
 import type { UserReputationSummary } from "../lib/user-reputation.ts";
+import {
+  DAILY_PROBLEM_REPUTATION_POINTS,
+  dailyProblemReputationBonus
+} from "../lib/reputation-scoring.ts";
 import {
   createDisplayMathLineBreakNormalizer,
   skipDisplayMathLineBreakNormalization
@@ -480,6 +488,15 @@ assert.equal(shouldSendChatOnEnter({
   metaKey: false,
   keyCode: 229
 }), false);
+assert.equal(normalizeChatReplyToId("42"), 42);
+assert.equal(normalizeChatReplyToId(7), 7);
+assert.equal(normalizeChatReplyToId(""), null);
+assert.equal(normalizeChatReplyToId("4.2"), null);
+assert.equal(normalizeChatReplyToId("../12"), null);
+assert.deepEqual(
+  applyChatMessageDeletions([{ id: 1 }, { id: 2 }, { id: 3 }], [2, 99]),
+  [{ id: 1 }, { id: 3 }]
+);
 assert.equal(isChatReaction("HEART"), true);
 assert.equal(isChatReaction("FIRE"), false);
 assert.deepEqual(
@@ -1670,7 +1687,8 @@ const mathematicianFixtures = [
     favoriteCount: 1,
     engagementCount: 4,
     conceptCount: 2,
-    explorationCount: 1
+    explorationCount: 1,
+    dailyProblemCount: 0
   },
   {
     userId: 2,
@@ -1692,9 +1710,14 @@ const mathematicianFixtures = [
     favoriteCount: 0,
     engagementCount: 0,
     conceptCount: 0,
-    explorationCount: 0
+    explorationCount: 0,
+    dailyProblemCount: 1
   }
 ] satisfies UserReputationSummary[];
+
+assert.equal(DAILY_PROBLEM_REPUTATION_POINTS, 50);
+assert.equal(dailyProblemReputationBonus(3), 150);
+assert.equal(dailyProblemReputationBonus(-2), 0);
 
 assert.equal(defaultAvatarPresetForUsername("ada"), defaultAvatarPresetForUsername("Ada"));
 assert.ok(DEFAULT_AVATAR_PRESETS.includes(defaultAvatarPresetForUsername("emmy")));
@@ -2041,6 +2064,23 @@ assert.equal(
     hasReviewSensitiveChanges: false
   }),
   true
+);
+
+assert.equal(hasProblemReviewSensitiveChanges(["title"]), true);
+assert.equal(hasProblemReviewSensitiveChanges(["bodyMarkdown"]), true);
+assert.equal(hasProblemReviewSensitiveChanges(["difficulty"]), false);
+assert.equal(
+  hasProblemReviewSensitiveChanges([
+    "domains",
+    "tags",
+    "listed",
+    "isExercise",
+    "showRelatedProblems",
+    "canAppearOnFrontPage",
+    "origin",
+    "verificationMode"
+  ]),
+  false
 );
 
 console.log("core tests ok");

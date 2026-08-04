@@ -3,6 +3,8 @@
 import { useActionState, type KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
+import { useChatReply } from "@/components/ChatReplyContext";
+import { ChatReplyComposerPreview } from "@/components/ChatReplyQuote";
 import { shouldSendChatOnEnter } from "@/lib/chat-compose";
 import {
   createChatMessageAction,
@@ -14,6 +16,9 @@ type ChatMessageFormProps = {
   editorResetSignal: number;
   labels: {
     message: string;
+    cancelReply: string;
+    chatImage: string;
+    replyingTo: string;
     send: string;
     sending: string;
   };
@@ -38,6 +43,7 @@ export function ChatMessageForm({
   labels,
   otherUsername
 }: ChatMessageFormProps) {
+  const { replyingTo, setReplyingTo } = useChatReply();
   const [state, formAction] = useActionState(
     createChatMessageAction.bind(null, otherUsername),
     initialState
@@ -65,8 +71,20 @@ export function ChatMessageForm({
   }
 
   return (
-    <form action={formAction} className="panel mt-5 grid gap-3 p-5" onKeyDownCapture={submitOnEnter}>
+    <form action={formAction} className="chat-message-form panel mt-5 grid gap-3 p-5" onKeyDownCapture={submitOnEnter}>
       <h2 className="font-semibold">{labels.message}</h2>
+      {replyingTo && (
+        <ChatReplyComposerPreview
+          labels={{
+            cancelReply: labels.cancelReply,
+            image: labels.chatImage,
+            replyingTo: labels.replyingTo
+          }}
+          onCancel={() => setReplyingTo(null)}
+          replyTo={replyingTo}
+        />
+      )}
+      <input type="hidden" name="replyToId" value={replyingTo?.id ?? ""} />
       <LazyMarkdownEditor
         name="bodyMarkdown"
         minHeight="9rem"

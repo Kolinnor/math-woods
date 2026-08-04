@@ -54,7 +54,10 @@ import {
   verificationMatches
 } from "@/lib/problem-verification";
 import { parseProblemDifficulty, tagsWithConjecture } from "@/lib/problems";
-import { needsReviewAfterProblemEdit } from "@/lib/problem-review-state";
+import {
+  hasProblemReviewSensitiveChanges,
+  needsReviewAfterProblemEdit
+} from "@/lib/problem-review-state";
 import { parseContributorQualityStatus } from "@/lib/quality";
 import { assertRateLimit } from "@/lib/rate-limit";
 import {
@@ -731,22 +734,18 @@ export async function updateProblemAction(
 
       resolvedSnapshot.status = current.status;
       resolvedSnapshot.translatedFromRevisionId = current.translatedFromRevisionId;
-      const reviewSensitiveChanges = changedProblemSnapshotFields(currentSnapshot, resolvedSnapshot).filter(
-        (field) =>
-          field !== "qualityStatus" &&
-          field !== "canAppearOnFrontPage" &&
-          field !== "translatedFromRevisionId"
-      );
+      const changedSnapshotFields = changedProblemSnapshotFields(currentSnapshot, resolvedSnapshot);
+      const hasReviewSensitiveChanges = hasProblemReviewSensitiveChanges(changedSnapshotFields);
       if (
         current.qualityStatus === QualityStatus.REVIEWED &&
-        reviewSensitiveChanges.length > 0
+        hasReviewSensitiveChanges
       ) {
         resolvedSnapshot.qualityStatus = QualityStatus.UNREVIEWED;
       }
       const needsReviewAfterEdit = needsReviewAfterProblemEdit({
         alreadyNeedsReview: current.needsReviewAfterEdit,
         currentStatus: current.qualityStatus,
-        hasReviewSensitiveChanges: reviewSensitiveChanges.length > 0
+        hasReviewSensitiveChanges
       });
       if (resolvedSnapshot.language !== current.language) {
         const existingTranslation = await tx.problem.findFirst({
@@ -824,8 +823,7 @@ export async function updateProblemAction(
           id: true,
           difficulty: true,
           isExercise: true,
-          showRelatedProblems: true,
-          qualityStatus: true
+          showRelatedProblems: true
         }
       });
       for (const sibling of siblingCandidates) {
@@ -842,21 +840,6 @@ export async function updateProblemAction(
             version: { increment: 1 }
           }
         });
-        const staleReviewedSiblingIds = siblingCandidates
-          .filter(
-            (sibling) =>
-              sibling.qualityStatus === QualityStatus.REVIEWED &&
-              (sibling.difficulty !== resolvedSnapshot.difficulty ||
-                (syncExerciseType && sibling.isExercise !== resolvedSnapshot.isExercise) ||
-                (syncRelatedVisibility && sibling.showRelatedProblems !== resolvedSnapshot.showRelatedProblems))
-          )
-          .map((sibling) => sibling.id);
-        if (staleReviewedSiblingIds.length) {
-          await tx.problem.updateMany({
-            where: { id: { in: staleReviewedSiblingIds } },
-            data: { needsReviewAfterEdit: true }
-          });
-        }
       }
 
       await syncInternalLinks(SourceType.PROBLEM, problemId, resolvedSnapshot.bodyMarkdown, tx, resolvedSnapshot.language);
@@ -1103,6 +1086,14 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
 
     const snapshot = parseProblemRevisionSnapshot(revision.problemSnapshot);
     const markdown = snapshot?.bodyMarkdown ?? revision.markdown;
+    const hasReviewSensitiveChanges = hasProblemReviewSensitiveChanges([
+      ...(snapshot && snapshot.title !== current.title ? ["title"] : []),
+      ...(markdown !== current.bodyMarkdown ? ["bodyMarkdown"] : [])
+    ]);
+    const qualityStatus =
+      current.qualityStatus === QualityStatus.REVIEWED && hasReviewSensitiveChanges
+        ? QualityStatus.UNREVIEWED
+        : current.qualityStatus;
     const updateResult = await tx.problem.updateMany({
       where: { id: problemId, version: expectedVersion },
       data: {
@@ -1121,7 +1112,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               showRelatedProblems: snapshot.showRelatedProblems,
               canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
               status: snapshot.status,
-              qualityStatus: QualityStatus.UNREVIEWED,
+              qualityStatus,
               verificationMode: snapshot.verificationMode,
               verificationPrompt: snapshot.verificationPrompt,
               verificationAnswer: snapshot.verificationAnswer,
@@ -1130,8 +1121,11 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
           : {}),
         bodyMarkdown: markdown,
         bodyHtml: await renderMarkdownContent(markdown),
-        needsReviewAfterEdit:
-          current.needsReviewAfterEdit || current.qualityStatus === QualityStatus.REVIEWED,
+        needsReviewAfterEdit: needsReviewAfterProblemEdit({
+          alreadyNeedsReview: current.needsReviewAfterEdit,
+          currentStatus: current.qualityStatus,
+          hasReviewSensitiveChanges
+        }),
         version: { increment: 1 }
       }
     });

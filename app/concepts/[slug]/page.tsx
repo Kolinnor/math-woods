@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ConceptStatus, MathDomain, NotificationType } from "@prisma/client";
+import { FileDown, Flag, History, MessageCircle, Pencil } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -358,13 +359,17 @@ export default async function ConceptPage({
 
   return (
     <ForestPageLayout
+      className="concept-detail-page"
       title={concept.title}
       eyebrow={t.conceptDetail.concept}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       description={
         <>
-          {conceptKindLabel} / {t.conceptDetail.statusLabel(conceptDomainLabel, conceptStatusLabel)}
+          {conceptKindLabel} / {conceptDomainLabel} /{" "}
+          <span className={`concept-status-badge concept-status-${concept.status.toLowerCase()}`}>
+            {conceptStatusLabel}
+          </span>
           {concept.lastEditedBy && (
             <>
               {" / "}
@@ -381,9 +386,11 @@ export default async function ConceptPage({
           <p>{t.conceptDetail.talkPosts(concept._count.talkPosts)}</p>
         </>
       }
+      titleBelowHero
+      workspaceClassName="concept-detail-workspace"
     >
-    <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
-      <article>
+    <div className="concept-detail-layout">
+      <article className="concept-detail-article">
         {hasReadingHeader && (
           <div className="reading-header mb-5">
             {isLanguageFallback && (
@@ -423,14 +430,7 @@ export default async function ConceptPage({
           </div>
         )}
 
-        <nav className="tab-nav">
-          <span>{t.conceptDetail.article}</span>
-          <Link href={`/concepts/${concept.slug}/talk`}>
-            {t.conceptDetail.talk} · {concept._count.talkPosts}
-          </Link>
-          <Link href={`/concepts/${concept.slug}/history`}>
-            {t.conceptDetail.history}
-          </Link>
+        <div className="concept-translation-row">
           <ContentTranslations
             currentLanguage={concept.language}
             hrefPrefix="/concepts"
@@ -443,7 +443,7 @@ export default async function ConceptPage({
               {t.conceptDetail.stubNotice}
             </span>
           )}
-        </nav>
+        </div>
 
         {concept.status === "CONTROVERSIAL" && (
           <p className="quality-banner quality-controversial mb-4">
@@ -481,7 +481,7 @@ export default async function ConceptPage({
           </div>
         )}
 
-        <section className="reading-surface">
+        <section className="reading-surface concept-reading-surface">
           <MarkdownBlock html={conceptBodyHtml} />
         </section>
 
@@ -560,19 +560,25 @@ export default async function ConceptPage({
         )}
       </article>
 
-      <aside className="grid content-start gap-5">
-        <section className="action-surface">
-          <Link href={`/concepts/${concept.slug}/edit`} className="button secondary">
-            {t.conceptDetail.edit}
+      <aside className="concept-detail-rail">
+        <nav className="problem-rail-actions concept-rail-actions" aria-label={t.conceptDetail.concept}>
+          <Link href={`/concepts/${concept.slug}/edit`}>
+            <span className="problem-rail-action-label"><Pencil size={16} aria-hidden="true" /><span>{t.conceptDetail.edit}</span></span>
           </Link>
-          <Link href={`/concepts/${concept.slug}/export`} className="button secondary">
-            {t.conceptDetail.exportMarkdown}
+          <Link href={`/concepts/${concept.slug}/talk`}>
+            <span className="problem-rail-action-label"><MessageCircle size={16} aria-hidden="true" /><span>{t.conceptDetail.talk}</span></span>
+            <span className="problem-rail-action-count">{concept._count.talkPosts}</span>
           </Link>
-          <Link href={`/concepts/${concept.slug}/history`} className="button secondary">
-            {t.conceptDetail.history}
+          <Link href={`/concepts/${concept.slug}/history`}>
+            <span className="problem-rail-action-label"><History size={16} aria-hidden="true" /><span>{t.conceptDetail.history}</span></span>
           </Link>
+          <Link href={`/concepts/${concept.slug}/export`}>
+            <span className="problem-rail-action-label"><FileDown size={16} aria-hidden="true" /><span>{t.conceptDetail.exportMarkdown}</span></span>
+          </Link>
+        </nav>
+        <section className="concept-report-surface">
           <details className="text-sm">
-            <summary className="cursor-pointer font-medium">{t.conceptDetail.report}</summary>
+            <summary className="cursor-pointer font-medium"><Flag size={15} aria-hidden="true" />{t.conceptDetail.report}</summary>
             <form action={reportConceptAction.bind(null, concept.id)} className="mt-3 grid gap-2">
               <textarea name="reason" placeholder={t.conceptDetail.reportPlaceholder} required />
               <button type="submit" className="secondary">
@@ -583,7 +589,7 @@ export default async function ConceptPage({
         </section>
 
         {problemBacklinks.length + conceptBacklinks.length > 0 && (
-        <section className="sidebar-section">
+        <section className="concept-rail-section">
           <h2 className="mb-3 font-semibold">{t.conceptDetail.backlinks}</h2>
           <div className="grid gap-2 text-sm">
             {problemBacklinks.map((problem) => (
@@ -601,7 +607,7 @@ export default async function ConceptPage({
         )}
 
         {uniqueOutgoingLinks.length > 0 && (
-        <section className="sidebar-section">
+        <section className="concept-rail-section">
           <h2 className="mb-3 font-semibold">{t.conceptDetail.outgoingLinks}</h2>
           <div className="grid gap-2 text-sm">
             {uniqueOutgoingLinks.map((link) => {

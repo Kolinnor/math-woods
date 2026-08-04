@@ -49,6 +49,7 @@ export async function POST(
     const message = await prisma.chatMessage.findFirst({
       where: {
         id: messageId,
+        deletedAt: null,
         directChat: {
           userAId: pair.userAId,
           userBId: pair.userBId

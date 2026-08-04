@@ -10,6 +10,7 @@ import {
 } from "@/lib/chat-images";
 import { CONTENT_LIMITS, boundedText } from "@/lib/content-limits";
 import type { ChatReactionSummary } from "@/lib/chat-reactions";
+import { normalizeChatReplyToId, type ChatReplyPreview } from "@/lib/chat-replies";
 import { prisma } from "@/lib/db";
 import { getChatImageStorageConfig } from "@/lib/image-storage";
 import { createNotification } from "@/lib/notifications";
@@ -29,8 +30,31 @@ export type DirectChatMessage = {
   imageUrl: string | null;
   imageWidth: number | null;
   imageHeight: number | null;
+  replyTo: ChatReplyPreview | null;
   reactions: ChatReactionSummary[];
 };
+
+type DirectChatReplySource = {
+  id: number;
+  authorId: number;
+  bodyMarkdown: string;
+  imageKey: string | null;
+  author: {
+    username: string;
+    displayName: string | null;
+  };
+};
+
+export function directChatReplyPreview(replyTo: DirectChatReplySource | null): ChatReplyPreview | null {
+  if (!replyTo) return null;
+  return {
+    id: replyTo.id,
+    authorId: replyTo.authorId,
+    authorName: displayNameForUser(replyTo.author),
+    bodyMarkdown: replyTo.bodyMarkdown,
+    hasImage: Boolean(replyTo.imageKey)
+  };
+}
 
 export function directChatPair(userId: number, otherUserId: number) {
   return userId < otherUserId
@@ -61,7 +85,8 @@ export async function sendDirectChatMessage(
   },
   otherUsername: string,
   rawBodyMarkdown: FormDataEntryValue | string | null | undefined,
-  rawImage?: FormDataEntryValue | null
+  rawImage?: FormDataEntryValue | null,
+  rawReplyToId?: FormDataEntryValue | string | number | null
 ): Promise<DirectChatMessage> {
   const bodyMarkdown = boundedText(rawBodyMarkdown, CONTENT_LIMITS.discussionPost, "Message");
   const image = rawImage instanceof File && rawImage.size > 0 ? rawImage : null;
@@ -83,6 +108,25 @@ export async function sendDirectChatMessage(
     update: { updatedAt: new Date() },
     create: pair
   });
+  const replyToId = normalizeChatReplyToId(rawReplyToId);
+  const replyToMessage = replyToId
+    ? await prisma.chatMessage.findFirst({
+        where: { id: replyToId, directChatId: chat.id },
+        select: {
+          id: true,
+          authorId: true,
+          bodyMarkdown: true,
+          imageKey: true,
+          author: {
+            select: {
+              username: true,
+              displayName: true
+            }
+          }
+        }
+      })
+    : null;
+  if (replyToId && !replyToMessage) throw new Error("The message you are replying to was not found.");
   let storedImage = null;
   if (image) {
     const dailyLimit = chatImageDailyLimitForRole(user.role);
@@ -108,6 +152,7 @@ export async function sendDirectChatMessage(
       data: {
         directChatId: chat.id,
         authorId: user.id,
+        replyToId: replyToMessage?.id ?? null,
         bodyMarkdown,
         bodyHtml: bodyMarkdown ? await renderMarkdown(bodyMarkdown) : "",
         imageKey: storedImage?.key ?? null,
@@ -147,6 +192,7 @@ export async function sendDirectChatMessage(
     imageUrl: chatImageUrl(otherUsername, message.id, Boolean(message.imageKey)),
     imageWidth: message.imageWidth,
     imageHeight: message.imageHeight,
+    replyTo: directChatReplyPreview(replyToMessage),
     reactions: []
   };
 }

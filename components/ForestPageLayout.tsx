@@ -11,6 +11,7 @@ type ForestPageLayoutProps = {
   meta?: ReactNode;
   sidebar?: ReactNode;
   title: ReactNode;
+  titleBelowHero?: boolean;
   workspaceClassName?: string;
 };
 
@@ -25,6 +26,7 @@ export function ForestPageLayout({
   meta,
   sidebar,
   title,
+  titleBelowHero = false,
   workspaceClassName
 }: ForestPageLayoutProps) {
   const shellClassName = className ? `forest-page-shell ${className}` : "forest-page-shell";
@@ -36,25 +38,31 @@ export function ForestPageLayout({
     .filter(Boolean)
     .join(" ");
 
+  const titleContent = (
+    <div className="forest-page-hero-content">
+      <div>
+        {eyebrow && <p className="forest-page-hero-kicker">{eyebrow}</p>}
+        <h1>{title}</h1>
+        {description && <p className="forest-page-hero-description">{description}</p>}
+      </div>
+      {(meta || actions) && (
+        <div className="forest-page-hero-meta">
+          {meta}
+          {actions && <div className="forest-page-hero-actions">{actions}</div>}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className={shellClassName}>
-      <section className="forest-page-hero">
+      <section className={`forest-page-hero${titleBelowHero ? " forest-page-hero-compact" : ""}`}>
         <img src={heroImage} alt={heroAlt} />
         <div className="forest-page-hero-overlay" />
-        <div className="forest-page-hero-content">
-          <div>
-            {eyebrow && <p className="forest-page-hero-kicker">{eyebrow}</p>}
-            <h1>{title}</h1>
-            {description && <p className="forest-page-hero-description">{description}</p>}
-          </div>
-          {(meta || actions) && (
-            <div className="forest-page-hero-meta">
-              {meta}
-              {actions && <div className="forest-page-hero-actions">{actions}</div>}
-            </div>
-          )}
-        </div>
+        {!titleBelowHero && titleContent}
       </section>
+
+      {titleBelowHero && <header className="forest-page-title-strip">{titleContent}</header>}
 
       <div className={workspaceClassNames}>
         <div className="forest-page-primary">{children}</div>

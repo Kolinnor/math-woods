@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, Reply, Trash2, X } from "lucide-react";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { shouldSendChatOnEnter } from "@/lib/chat-compose";
@@ -15,29 +15,40 @@ export type EditedChatMessage = {
 type ChatMessageEditorProps = {
   bodyHtml: string;
   bodyMarkdown: string;
+  canDelete: boolean;
   canEdit: boolean;
   labels: {
     cancel: string;
+    confirmDeleteMessage: string;
+    deleteMessage: string;
+    deletingMessage: string;
     editMessage: string;
+    reply: string;
     saveChanges: string;
   };
   messageId: number;
   onChange: (message: EditedChatMessage) => void;
+  onDelete: (messageId: number) => void;
+  onReply: () => void;
   otherUsername: string;
 };
 
 export function ChatMessageEditor({
   bodyHtml,
   bodyMarkdown,
+  canDelete,
   canEdit,
   labels,
   messageId,
   onChange,
+  onDelete,
+  onReply,
   otherUsername
 }: ChatMessageEditorProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(bodyMarkdown);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function cancelEditing() {
@@ -72,6 +83,27 @@ export function ChatMessageEditor({
       setError(saveError instanceof Error ? saveError.message : "Message could not be edited.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteMessage() {
+    if (deleting || !window.confirm(labels.confirmDeleteMessage)) return;
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/chat/${encodeURIComponent(otherUsername)}/messages/${messageId}`,
+        { method: "DELETE" }
+      );
+      const result = await response.json() as { error?: string; messageId?: number };
+      if (!response.ok || result.messageId !== messageId) {
+        throw new Error(result.error || "Message could not be deleted.");
+      }
+      onDelete(messageId);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Message could not be deleted.");
+      setDeleting(false);
     }
   }
 
@@ -130,23 +162,49 @@ export function ChatMessageEditor({
   }
 
   return (
-    <div className={canEdit ? "chat-message-content is-editable" : "chat-message-content"}>
+    <div className={canDelete ? "chat-message-content has-actions has-edit-action" : "chat-message-content has-actions"}>
       <MarkdownBlock html={bodyHtml} />
-      {canEdit && (
+      <div className="chat-message-actions">
         <button
           type="button"
-          className="chat-message-edit-button icon-button secondary"
-          title={labels.editMessage}
-          aria-label={labels.editMessage}
-          onClick={() => {
-            setDraft(bodyMarkdown);
-            setError(null);
-            setEditing(true);
-          }}
+          className="chat-message-action-button icon-button secondary"
+          title={labels.reply}
+          aria-label={labels.reply}
+          onClick={onReply}
         >
-          <Pencil size={13} />
+          <Reply size={13} aria-hidden="true" />
         </button>
-      )}
+        {canDelete && (
+          <>
+            {canEdit && (
+              <button
+                type="button"
+                className="chat-message-action-button is-owner-action icon-button secondary"
+                title={labels.editMessage}
+                aria-label={labels.editMessage}
+                onClick={() => {
+                  setDraft(bodyMarkdown);
+                  setError(null);
+                  setEditing(true);
+                }}
+              >
+                <Pencil size={11} aria-hidden="true" />
+              </button>
+            )}
+            <button
+              type="button"
+              className="chat-message-action-button is-owner-action icon-button danger"
+              title={deleting ? labels.deletingMessage : labels.deleteMessage}
+              aria-label={deleting ? labels.deletingMessage : labels.deleteMessage}
+              disabled={deleting}
+              onClick={() => void deleteMessage()}
+            >
+              <Trash2 size={11} aria-hidden="true" />
+            </button>
+          </>
+        )}
+      </div>
+      {error && !editing && <p className="chat-message-edit-error" role="alert">{error}</p>}
     </div>
   );
 }
