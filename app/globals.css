@@ -2463,20 +2463,21 @@ a {
 }
 
 .chat-message-content.has-actions {
-  padding-right: 1.65rem;
+  padding-right: 0;
 }
 
 .chat-message-content.has-edit-action {
-  padding-right: 4.15rem;
+  padding-right: 0;
 }
 
 .chat-message-actions {
+  bottom: -1.65rem;
   display: flex;
   gap: 0.18rem;
   opacity: 0;
+  pointer-events: none;
   position: absolute;
   right: -0.35rem;
-  top: -0.35rem;
   transition: opacity 140ms ease;
   z-index: 2;
 }
@@ -2497,11 +2498,13 @@ a {
 .friends-mini-message:hover .chat-message-actions,
 .friends-mini-message:focus-within .chat-message-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 @media (hover: none) {
   .chat-message-actions {
     opacity: 0.72;
+    pointer-events: auto;
   }
 }
 
@@ -13025,7 +13028,7 @@ button.live-search-reset:hover {
   margin-top: 0;
 }
 
-.concept-reading-surface {
+.concept-detail-page .concept-reading-surface {
   background: var(--mw-reading-surface);
   border-color: #d8d0bd;
   border-radius: 9px;
@@ -14896,6 +14899,10 @@ button.relation-remove-button {
 }
 
 .friends-mini-message .chat-reactions {
+  bottom: -0.85rem;
+}
+
+.friends-mini-message .chat-message-actions {
   bottom: -0.85rem;
 }
 
