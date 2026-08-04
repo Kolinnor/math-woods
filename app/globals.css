@@ -258,7 +258,7 @@ body:has(.problem-detail-shell) {
 }
 
 .home-daily-problem {
-  background: var(--mw-surface);
+  background: var(--mw-reading-surface);
   border: 1px solid var(--mw-border);
   border-radius: 12px;
   color: var(--mw-text);
@@ -269,7 +269,7 @@ body:has(.problem-detail-shell) {
 }
 
 .home-daily-problem:hover {
-  background: #fbf8f0;
+  background: var(--mw-reading-surface);
   border-color: var(--mw-green);
   color: var(--mw-text);
 }
