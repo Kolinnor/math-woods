@@ -3,6 +3,7 @@ import { marked, Renderer } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { findLatexRanges } from "./latex-ranges.ts";
 import { jsxGraphCodeBlockHtml } from "./jsxgraph.ts";
+import { extractMarkdownFolds } from "./markdown-folds.ts";
 import { markdownImageSizingFromSrc } from "./markdown-images.ts";
 import { normalizeMarkdownQuestionMarkers } from "./markdown-question-markers.ts";
 import { replaceWikiLinks } from "./wikilinks.ts";
@@ -97,13 +98,23 @@ markdownRenderer.code = (token) => {
   return language === "jsxgraph" ? jsxGraphCodeBlockHtml(token.text) : defaultCodeRenderer(token);
 };
 
-export async function renderMarkdown(
+function unwrapSingleParagraph(html: string) {
+  const trimmed = html.trim();
+  const singleParagraph = trimmed.match(/^<p>([\s\S]*)<\/p>$/);
+  return singleParagraph ? singleParagraph[1] : trimmed;
+}
+
+async function renderMarkdownContent(
   markdown: string,
   missingSlugs = new Set<string>(),
   blockDisplayMath = true,
-  resolveWikiHref = (link: { targetSlug: string }) => `/concepts/${link.targetSlug}`
+  resolveWikiHref = (link: { targetSlug: string }) => `/concepts/${link.targetSlug}`,
+  allowFolds = true
 ) {
-  const normalizedMarkdown = normalizeMarkdownQuestionMarkers(normalizeLatexLists(markdown));
+  const extracted = allowFolds && blockDisplayMath
+    ? extractMarkdownFolds(markdown)
+    : { folds: [], markdown };
+  const normalizedMarkdown = normalizeMarkdownQuestionMarkers(normalizeLatexLists(extracted.markdown));
   const { markdown: withLatexTokens, replacements } = protectLatex(normalizedMarkdown, blockDisplayMath);
   const withWikiLinks = replaceWikiLinks(
     withLatexTokens,
@@ -116,11 +127,25 @@ export async function renderMarkdown(
     gfm: true,
     renderer: markdownRenderer
   });
-  const htmlWithLatex = restoreLatex(html, replacements);
+  let htmlWithLatex = restoreLatex(html, replacements);
+
+  for (const fold of extracted.folds) {
+    const [summaryHtml, bodyHtml] = await Promise.all([
+      renderMarkdownContent(fold.title, missingSlugs, false, resolveWikiHref, false).then(unwrapSingleParagraph),
+      renderMarkdownContent(fold.body, missingSlugs, true, resolveWikiHref, false)
+    ]);
+    const foldHtml = `<details class="markdown-fold"><summary>${summaryHtml}</summary><div class="markdown-fold-body">${bodyHtml}</div></details>`;
+    const escapedToken = fold.token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    htmlWithLatex = htmlWithLatex
+      .replace(new RegExp(`<p>\\s*${escapedToken}\\s*</p>`), foldHtml)
+      .replace(fold.token, foldHtml);
+  }
 
   return sanitizeHtml(htmlWithLatex, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
       "span",
+      "details",
+      "summary",
       "math",
       "semantics",
       "annotation",
@@ -156,6 +181,7 @@ export async function renderMarkdown(
     allowedAttributes: {
       a: ["href", "class", "rel", "target"],
       code: ["class"],
+      details: ["class"],
       div: ["aria-busy", "aria-label", "class", "data-jsxgraph", "role"],
       img: ["src", "alt", "title", "loading", "decoding", "style"],
       ol: ["start"],
@@ -234,10 +260,16 @@ export async function renderMarkdown(
   });
 }
 
+export async function renderMarkdown(
+  markdown: string,
+  missingSlugs = new Set<string>(),
+  blockDisplayMath = true,
+  resolveWikiHref = (link: { targetSlug: string }) => `/concepts/${link.targetSlug}`
+) {
+  return renderMarkdownContent(markdown, missingSlugs, blockDisplayMath, resolveWikiHref);
+}
+
 export async function renderInlineMarkdown(markdown: string, missingSlugs = new Set<string>()) {
   const html = await renderMarkdown(markdown, missingSlugs, false);
-  const trimmed = html.trim();
-  const singleParagraph = trimmed.match(/^<p>([\s\S]*)<\/p>$/);
-
-  return singleParagraph ? singleParagraph[1] : trimmed;
+  return unwrapSingleParagraph(html);
 }

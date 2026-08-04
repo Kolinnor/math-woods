@@ -179,6 +179,11 @@ import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
 import { renderInlineMarkdown, renderMarkdown } from "../lib/markdown.ts";
 import {
+  DEFAULT_MARKDOWN_FOLD_TITLE,
+  extractMarkdownFolds,
+  markdownFoldBlock
+} from "../lib/markdown-folds.ts";
+import {
   decodeJsxGraphConfig,
   encodeJsxGraphConfig,
   parseJsxGraphConfig
@@ -1178,6 +1183,55 @@ assert.match(renderedStandaloneDisplayLatex, /<\/span>after<\/p>\s*$/);
 
 const renderedInlineDisplayLatex = await renderInlineMarkdown("Title $$x^2 + 1$$");
 assert.match(renderedInlineDisplayLatex, /^Title <span class="katex-display"/);
+
+assert.equal(
+  markdownFoldBlock("Selected text"),
+  `:::fold ${DEFAULT_MARKDOWN_FOLD_TITLE}\nSelected text\n:::`
+);
+const extractedFold = extractMarkdownFolds("Before\n\n:::fold A hint\nUse $x^2$.\n:::\n\nAfter");
+assert.equal(extractedFold.folds.length, 1);
+assert.equal(extractedFold.folds[0].title, "A hint");
+assert.equal(extractedFold.folds[0].body, "Use $x^2$.");
+assert.equal(extractedFold.markdown.includes(":::fold"), false);
+
+const renderedFold = await renderMarkdown(`Before
+
+:::fold **See the hint**
+Use $x^2$ and [[group]].
+
+- First
+- Second
+:::
+
+After`);
+assert.match(renderedFold, /<details class="markdown-fold">/);
+assert.match(renderedFold, /<summary><strong>See the hint<\/strong><\/summary>/);
+assert.match(renderedFold, /<div class="markdown-fold-body">/);
+assert.match(renderedFold, /class="katex"/);
+assert.match(renderedFold, /href="\/concepts\/group"/);
+assert.match(renderedFold, /<ul>/);
+assert.equal(renderedFold.includes(":::fold"), false);
+
+const renderedFoldWithFence = await renderMarkdown(`:::fold Code example
+\`\`\`
+:::
+\`\`\`
+Still inside the fold.
+:::`);
+assert.match(renderedFoldWithFence, /<details class="markdown-fold">/);
+assert.match(renderedFoldWithFence, /<code>:::\n<\/code>/);
+assert.match(renderedFoldWithFence, /Still inside the fold/);
+
+const renderedFoldInCode = await renderMarkdown("```\n:::fold Not a fold\nBody\n:::\n```");
+assert.equal(renderedFoldInCode.includes('<details class="markdown-fold">'), false);
+assert.match(renderedFoldInCode, /:::fold Not a fold/);
+
+const renderedUnclosedFold = await renderMarkdown(":::fold Open\nBody");
+assert.equal(renderedUnclosedFold.includes('<details class="markdown-fold">'), false);
+assert.match(renderedUnclosedFold, /:::fold Open/);
+
+const renderedInlineFold = await renderInlineMarkdown(":::fold Inline\nBody\n:::");
+assert.equal(renderedInlineFold.includes('<details class="markdown-fold">'), false);
 
 const renderedLatexList = await renderMarkdown(String.raw`\begin{itemize}
 \item Either $z$ is a complex eigenvalue.

@@ -15,7 +15,7 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
-import { ImageIcon, Loader2, Orbit } from "lucide-react";
+import { ChevronDown, ImageIcon, Loader2, Orbit } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import { FieldHelp } from "@/components/FieldHelp";
 import {
@@ -72,6 +72,7 @@ import {
 } from "@/lib/markdown-preview";
 import { findMarkdownQuestionMarkers } from "@/lib/markdown-question-markers";
 import { markdownDraftConflictsWithSource, type MarkdownDraft } from "@/lib/markdown-drafts";
+import { DEFAULT_MARKDOWN_FOLD_TITLE, markdownFoldBlock } from "@/lib/markdown-folds";
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
 import { JSXGRAPH_MARKDOWN_TEMPLATE } from "@/lib/jsxgraph";
@@ -1991,6 +1992,26 @@ export function MarkdownEditor({
     view.focus();
   }
 
+  function insertFold() {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const selection = view.state.selection.main;
+    const selectedText = view.state.doc.sliceString(selection.from, selection.to);
+    const insertion = imageInsertText(view, markdownFoldBlock(selectedText));
+    const titleStart = insertion.from + insertion.insert.indexOf(DEFAULT_MARKDOWN_FOLD_TITLE);
+    view.dispatch({
+      changes: insertion,
+      selection: {
+        anchor: titleStart,
+        head: titleStart + DEFAULT_MARKDOWN_FOLD_TITLE.length
+      },
+      effects: setPreviewFocus.of(true),
+      scrollIntoView: true
+    });
+    view.focus();
+  }
+
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
   const cleanLinkText = cleanWikiLinkLabel(linkText || linkMenu?.selectedText || "");
   const exactLinkSuggestion = linkSuggestions.find((suggestion) => {
@@ -2051,6 +2072,15 @@ export function MarkdownEditor({
         >
           <Orbit size={14} aria-hidden="true" />
           <span>Graph</span>
+        </button>
+        <button
+          type="button"
+          className="secondary markdown-editor-tool-button"
+          onClick={insertFold}
+          title="Insert collapsible section"
+        >
+          <ChevronDown size={14} aria-hidden="true" />
+          <span>Fold</span>
         </button>
         {imageUploadEnabled && imageUploadMessage && (
           <span className="markdown-editor-toolbar-status">

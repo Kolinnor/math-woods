@@ -840,13 +840,15 @@ export default async function ProblemPage({
                               relatedSolvedIds.has(targetProblem.id)
                             )}
                           >
-                            <strong>
-                              <AsyncMarkdownInline markdown={targetProblem.title} />
-                            </strong>
-                            <span>
-                              {t.problemDetail.by} <UserName user={targetProblem.author} />
-                              {targetProblem.difficulty ? ` \u00b7 ${t.problemDetail.difficulty.toLowerCase()} ${targetProblem.difficulty}/100` : ""}
-                              {!targetProblem.listed ? ` \u00b7 ${t.problemDetail.playlistSpecific.toLowerCase()}` : ""}
+                            <Difficulty compact value={targetProblem.difficulty} />
+                            <span className="related-problem-copy">
+                              <strong>
+                                <AsyncMarkdownInline markdown={targetProblem.title} />
+                              </strong>
+                              <span>
+                                {t.problemDetail.by} <UserName user={targetProblem.author} />
+                                {!targetProblem.listed ? ` \u00b7 ${t.problemDetail.playlistSpecific.toLowerCase()}` : ""}
+                              </span>
                             </span>
                           </Link>
                         ))}

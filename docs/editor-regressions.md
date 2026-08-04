@@ -493,3 +493,25 @@ Guardrail:
   not mount the secondary active display preview.
 - Keep the active preview for cursor-only edits and single-line selections.
 - Preserve the existing one-state global preview suppression after transactions that remove line breaks.
+
+## 2026-08-04 - Collapsible sections remain ordinary editor source
+
+Syntax:
+
+```md
+:::fold Section title
+Markdown, wiki links and LaTeX remain available here.
+:::
+```
+
+Guardrail:
+
+- The shared Fold toolbar inserts the source block and selects its placeholder title. If text is selected, preserve it
+  as the body of the new section.
+- Keep the complete block visible and editable in CodeMirror. Do not replace it with a widget or hide its body in the
+  live editor; collapsing happens only in rendered Markdown through native `details` and `summary` elements.
+- A fold marker inside a fenced code block stays literal. An unclosed fold also stays literal rather than swallowing the
+  rest of the document.
+- Fold bodies use the normal Markdown, wiki-link, image and KaTeX rendering pipeline. Inline-only Markdown rendering
+  must not interpret fold blocks.
+- Nested fold blocks are intentionally unsupported in this first version.

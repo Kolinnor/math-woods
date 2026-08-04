@@ -9245,6 +9245,42 @@ button.danger:hover,
   padding-left: 1rem;
 }
 
+.prose-math .markdown-fold {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.prose-math .markdown-fold > summary {
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 0.72rem 0.9rem;
+}
+
+.prose-math .markdown-fold > summary::marker {
+  color: var(--accent);
+}
+
+.prose-math .markdown-fold[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.prose-math .markdown-fold-body {
+  padding: 0.85rem 0.9rem;
+}
+
+.prose-math .markdown-fold-body > :first-child {
+  margin-top: 0;
+}
+
+.prose-math .markdown-fold-body > :last-child {
+  margin-bottom: 0;
+}
+
 .prose-math img {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -14109,12 +14145,14 @@ button.problem-favorite-count {
 }
 
 .related-problem-link {
+  align-items: center;
   background: var(--panel-muted);
   border: 1px solid var(--line);
   border-left: 3px solid var(--accent);
   border-radius: 6px;
   display: grid;
-  gap: 0.18rem;
+  gap: 0.8rem;
+  grid-template-columns: auto minmax(0, 1fr);
   padding: 0.7rem 0.8rem;
 }
 
@@ -14122,7 +14160,17 @@ button.problem-favorite-count {
   border-left-color: var(--link);
 }
 
-.related-problem-link span {
+.related-problem-copy {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.related-problem-copy > strong {
+  min-width: 0;
+}
+
+.related-problem-copy > span {
   color: var(--muted);
   font-size: 0.78rem;
 }
