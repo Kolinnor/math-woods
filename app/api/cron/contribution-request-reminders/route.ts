@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendContributionRequestReminders } from "@/lib/contribution-request-reminders";
+import { sendDailyConceptReviews } from "@/lib/daily-concept-reviews";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +16,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  const result = await sendContributionRequestReminders();
-  return NextResponse.json(result);
+  const [contributionRequests, dailyConceptReviews] = await Promise.all([
+    sendContributionRequestReminders(),
+    sendDailyConceptReviews()
+  ]);
+  return NextResponse.json({ ok: true, contributionRequests, dailyConceptReviews });
 }
 
 export async function POST(request: Request) {

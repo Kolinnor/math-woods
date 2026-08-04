@@ -231,6 +231,7 @@ enum NotificationType {
   PROBLEM_SHARED
   PROBLEM_OF_THE_DAY
   EXPLORATION_PUBLISHED
+  DAILY_CONCEPT_REVIEW
 }
 
 enum ProblemVerificationMode {
@@ -328,6 +329,7 @@ model User {
   explorationEditionsPublished    ExplorationEdition[]         @relation("ExplorationEditionPublisher")
   explorationSessions             ExplorationSession[]
   mathematiciansCreated           Mathematician[]              @relation("MathematicianCreatedBy")
+  dailyConceptReviews             DailyConceptReview[]
 }
 
 model ExternalIdentity {
@@ -608,26 +610,26 @@ model ProblemDomain {
 }
 
 model Concept {
-  id                        Int                @id @default(autoincrement())
-  slug                      String             @unique
-  language                  String             @default("en")
-  translationGroupId        String             @default(cuid())
+  id                        Int                  @id @default(autoincrement())
+  slug                      String               @unique
+  language                  String               @default("en")
+  translationGroupId        String               @default(cuid())
   translatedFromConceptId   Int?
   translatedFromRevisionId  Int?
   title                     String
   bodyMarkdown              String
   bodyHtml                  String
-  domain                    MathDomain         @default(OTHER)
-  domainCode                String             @default("other")
-  kind                      ConceptKind        @default(DEFINITION)
-  status                    ConceptStatus      @default(STUB)
-  canAppearInConceptBrowser Boolean            @default(false)
-  createdAt                 DateTime           @default(now())
-  updatedAt                 DateTime           @updatedAt
+  domain                    MathDomain           @default(OTHER)
+  domainCode                String               @default("other")
+  kind                      ConceptKind          @default(DEFINITION)
+  status                    ConceptStatus        @default(STUB)
+  canAppearInConceptBrowser Boolean              @default(false)
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
   createdById               Int?
   lastEditedById            Int?
-  createdBy                 User?              @relation("ConceptCreatedBy", fields: [createdById], references: [id])
-  lastEditedBy              User?              @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
+  createdBy                 User?                @relation("ConceptCreatedBy", fields: [createdById], references: [id])
+  lastEditedBy              User?                @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
   aliases                   ConceptAlias[]
   references                ConceptReference[]
   practiceExercises         ConceptExercise[]
@@ -635,8 +637,9 @@ model Concept {
   circuitNodes              PlaylistNode[]
   explorationBlocks         ExplorationBlock[]
   quoteLinks                QuoteConcept[]
-  translatedFromConcept     Concept?           @relation("ConceptTranslationSource", fields: [translatedFromConceptId], references: [id], onDelete: SetNull)
-  derivedTranslations       Concept[]          @relation("ConceptTranslationSource")
+  translatedFromConcept     Concept?             @relation("ConceptTranslationSource", fields: [translatedFromConceptId], references: [id], onDelete: SetNull)
+  derivedTranslations       Concept[]            @relation("ConceptTranslationSource")
+  dailyReviewAssignments    DailyConceptReview[]
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
@@ -1500,20 +1503,37 @@ model DailyProblemSchedule {
 }
 
 model Notification {
-  id        Int              @id @default(autoincrement())
-  userId    Int
-  actorId   Int?
-  type      NotificationType
-  title     String
-  body      String
-  href      String
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
-  user      User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
-  actor     User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  id                 Int                 @id @default(autoincrement())
+  userId             Int
+  actorId            Int?
+  type               NotificationType
+  title              String
+  body               String
+  href               String
+  readAt             DateTime?
+  createdAt          DateTime            @default(now())
+  user               User                @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor              User?               @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  dailyConceptReview DailyConceptReview?
 
   @@index([userId, readAt, createdAt])
   @@index([actorId])
+}
+
+model DailyConceptReview {
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  conceptId      Int
+  notificationId Int?          @unique
+  assignedStatus ConceptStatus
+  createdAt      DateTime      @default(now())
+  completedAt    DateTime?
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  concept        Concept       @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  notification   Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, completedAt, createdAt])
+  @@index([conceptId, completedAt])
 }
 
 model NotificationPreference {

@@ -28,6 +28,7 @@ type OrderedProblemPickerLabels = {
 type OrderedProblemPickerProps = {
   createHref?: string;
   createLabel?: string;
+  createInNewTab?: boolean;
   initialProblems: TipPickerProblem[];
   inputName?: string;
   labels?: Partial<OrderedProblemPickerLabels>;
@@ -73,6 +74,7 @@ function formatPickerLabel(template: string, values: { maximum?: number; title?:
 export function OrderedProblemPicker({
   createHref,
   createLabel,
+  createInNewTab = false,
   initialProblems,
   inputName = "problemIds",
   labels: labelOverrides,
@@ -242,7 +244,12 @@ export function OrderedProblemPicker({
       </label>
 
       {createHref && createLabel && (
-        <Link href={createHref as Route} className="button secondary tip-problem-create-link">
+        <Link
+          href={createHref as Route}
+          className="button secondary tip-problem-create-link"
+          target={createInNewTab ? "_blank" : undefined}
+          rel={createInNewTab ? "noopener noreferrer" : undefined}
+        >
           <Plus size={16} aria-hidden="true" />
           {createLabel}
         </Link>

@@ -174,6 +174,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
             <OrderedProblemPicker
               createHref="/problems/new?exercise=1"
               createLabel="Add exercise"
+              createInNewTab
               initialProblems={initialExercises}
               inputName="exerciseIds"
               maxProblems={MAX_CONCEPT_EXERCISES}

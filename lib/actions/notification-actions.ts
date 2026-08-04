@@ -30,7 +30,8 @@ const configurableNotificationTypes = [
   NotificationType.PROBLEM_CHALLENGE,
   NotificationType.PROBLEM_SHARED,
   NotificationType.PROBLEM_OF_THE_DAY,
-  NotificationType.EXPLORATION_PUBLISHED
+  NotificationType.EXPLORATION_PUBLISHED,
+  NotificationType.DAILY_CONCEPT_REVIEW
 ] as const;
 
 export async function markNotificationReadAction(notificationId: number) {

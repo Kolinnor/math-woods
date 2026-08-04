@@ -166,6 +166,11 @@ const notificationOptions = [
     type: NotificationType.EXPLORATION_PUBLISHED,
     title: "Exploration publications",
     description: "When an exploration you follow is published."
+  },
+  {
+    type: NotificationType.DAILY_CONCEPT_REVIEW,
+    title: "Daily concept review",
+    description: "For trusted users and admins: one older concept to improve, with no new suggestion until it is handled."
   }
 ] as const;
 

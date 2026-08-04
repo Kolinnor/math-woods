@@ -78,6 +78,13 @@ import {
   upcomingDailyProblemDateKeys
 } from "../lib/daily-problem-schedule.ts";
 import {
+  DAILY_CONCEPT_REVIEW_STALE_POOL_SIZE,
+  dailyConceptReviewStatusRank,
+  isDailyConceptReviewStatus,
+  pickStaleConceptCandidate
+} from "../lib/daily-concept-review-selection.ts";
+import { dailyReminderWindow } from "../lib/daily-reminder-window.ts";
+import {
   DEFAULT_TIP_IMAGE_POSITION,
   DEFAULT_TIP_IMAGE_URL,
   normalizeTipImagePosition,
@@ -2093,6 +2100,29 @@ assert.equal(
 );
 assert.equal(automaticDailyProblemGroup([], "2026-08-03"), null);
 assert.ok(DEFAULT_DAILY_PROBLEM_IMAGE_URLS.includes(dailyProblemDefaultImageUrl("2026-08-03")));
+
+assert.equal(dailyConceptReviewStatusRank(ConceptStatus.MISSING), 0);
+assert.equal(dailyConceptReviewStatusRank(ConceptStatus.STUB), 1);
+assert.equal(dailyConceptReviewStatusRank(ConceptStatus.USABLE), 2);
+assert.equal(isDailyConceptReviewStatus(ConceptStatus.REVIEWED), false);
+const staleConceptCandidates = Array.from({ length: DAILY_CONCEPT_REVIEW_STALE_POOL_SIZE + 2 }, (_, index) => ({
+  id: index + 1,
+  updatedAt: new Date(Date.UTC(2026, 0, index + 1))
+}));
+assert.equal(pickStaleConceptCandidate(staleConceptCandidates, () => 0)?.id, 1);
+assert.equal(
+  pickStaleConceptCandidate(staleConceptCandidates, () => 0.999)?.id,
+  DAILY_CONCEPT_REVIEW_STALE_POOL_SIZE
+);
+assert.equal(pickStaleConceptCandidate([], () => 0), null);
+assert.deepEqual(dailyReminderWindow(new Date("2026-08-04T08:00:00.000Z")), {
+  start: new Date("2026-08-03T22:00:00.000Z"),
+  end: new Date("2026-08-04T22:00:00.000Z")
+});
+assert.deepEqual(dailyReminderWindow(new Date("2026-01-04T08:00:00.000Z")), {
+  start: new Date("2026-01-03T23:00:00.000Z"),
+  end: new Date("2026-01-04T23:00:00.000Z")
+});
 
 assert.equal(pickRandomDifferent([], undefined, () => 0), undefined);
 assert.equal(pickRandomDifferent(["only"], "only", () => 0), "only");

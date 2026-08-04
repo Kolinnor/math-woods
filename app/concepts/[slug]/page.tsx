@@ -196,7 +196,8 @@ export default async function ConceptPage({
   if (user) {
     await markNotificationsReadForHref(user.id, `/concepts/${concept.slug}`, [
       NotificationType.CONCEPT_CREATED,
-      NotificationType.CONCEPT_EDITED
+      NotificationType.CONCEPT_EDITED,
+      NotificationType.DAILY_CONCEPT_REVIEW
     ]);
   }
 

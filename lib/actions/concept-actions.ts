@@ -12,6 +12,7 @@ import { parseConceptKind } from "@/lib/concept-kinds";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { prisma } from "@/lib/db";
+import { completeDailyConceptReviewForUser } from "@/lib/daily-concept-reviews";
 import { notifyConceptAuthor, notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
@@ -305,6 +306,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         editSummary
       }
     });
+    await completeDailyConceptReviewForUser(tx, user.id, updated.id);
 
     return updated;
   });
@@ -374,6 +376,7 @@ export async function markConceptReviewedAction(conceptId: number) {
         editSummary: "Concept reviewed"
       }
     });
+    await completeDailyConceptReviewForUser(tx, user.id, current.id);
 
     return updated;
   });
@@ -427,6 +430,7 @@ export async function markConceptUsableAction(conceptId: number) {
         editSummary: "Concept marked usable"
       }
     });
+    await completeDailyConceptReviewForUser(tx, user.id, current.id);
 
     return updated;
   });
@@ -582,6 +586,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
         editSummary: `Rolled back to revision ${revision.id}`
       }
     });
+    await completeDailyConceptReviewForUser(tx, user.id, conceptId);
 
     return updated;
   });
