@@ -22,7 +22,6 @@ import {
   parseMinimumConceptExercises
 } from "../lib/concept-exercises.ts";
 import { parseConceptKind } from "../lib/concept-kinds.ts";
-import { conceptReviewChecklist } from "../lib/concept-review.ts";
 import { slugify } from "../lib/slug.ts";
 import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
@@ -1946,27 +1945,6 @@ assert.equal(parseConceptKind("THEOREM"), ConceptKind.THEOREM);
 assert.equal(parseConceptKind("INTUITIVE_NOTION"), ConceptKind.INTUITIVE_NOTION);
 assert.equal(parseConceptKind("unexpected"), ConceptKind.DEFINITION);
 assert.equal(parseConceptKind(undefined, ConceptKind.THEOREM), ConceptKind.THEOREM);
-assert.deepEqual(conceptReviewChecklist("## Definition\n\nTo be completed.\n\n## Examples\n\nTo be completed.", 0), {
-  hasCoreContent: false,
-  hasExamples: false,
-  exerciseCount: 0,
-  exerciseTarget: 3,
-  hasExerciseTarget: false
-});
-assert.deepEqual(
-  conceptReviewChecklist(
-    "## Definition\n\nA group is a set equipped with an associative operation and an identity element.\n\n## Example\n\nThe integers form a group under addition.",
-    3
-  ),
-  {
-    hasCoreContent: true,
-    hasExamples: true,
-    exerciseCount: 3,
-    exerciseTarget: 3,
-    hasExerciseTarget: true
-  }
-);
-
 const multilingualHints = [
   {
     id: 1,

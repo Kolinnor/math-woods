@@ -6,6 +6,24 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-08-05 - Focus events must not dispatch during a CodeMirror update
+
+Symptom:
+
+- Editing a problem could occasionally throw `Calls to EditorView.update are not allowed while an update is in progress`.
+- The recorded stack originated from a focus handler on the editor DOM while CodeMirror was synchronizing its view.
+
+Root cause:
+
+- Preview focus was updated synchronously by overlapping CodeMirror and host-level `focusin`/`focusout` handlers.
+- A browser focus event can fire while CodeMirror is updating its DOM, making a nested `view.dispatch` illegal.
+
+Guardrail:
+
+- Coalesce preview-focus changes and dispatch them in a microtask after the current CodeMirror update completes.
+- Keep only one editor-level focus handler; do not add a second host listener that dispatches the same effect.
+- Text edits, selection commands, LaTeX normalization and preview restoration keep their existing transaction paths.
+
 ## 2026-08-04 - Missing concept links must lead to a contribution page
 
 Expected behavior:

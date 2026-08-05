@@ -1,6 +1,6 @@
 import { NotificationType } from "@prisma/client";
 import Link from "next/link";
-import { Bell, Trash2 } from "lucide-react";
+import { Bell, Trash2, X } from "lucide-react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { UserAvatar } from "@/components/UserAvatar";
 import { clearNotificationsAction } from "@/lib/actions/notification-actions";
@@ -53,6 +53,15 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
                 </button>
               </form>
             )}
+            <button
+              type="button"
+              className="notification-close-button"
+              data-close-details
+              aria-label={t.notifications.closeMenu}
+              title={t.notifications.closeMenu}
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
           </div>
         </div>
         <div className="notification-list">

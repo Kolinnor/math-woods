@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 
 type AutoClosingDetailsProps = {
   children: ReactNode;
@@ -10,12 +10,19 @@ type AutoClosingDetailsProps = {
 export function AutoClosingDetails({ children, className }: AutoClosingDetailsProps) {
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
 
-  useEffect(() => {
-    function closeDetails() {
-      const details = detailsRef.current;
-      if (details?.open) details.open = false;
-    }
+  function closeDetails() {
+    const details = detailsRef.current;
+    if (details?.open) details.open = false;
+  }
 
+  function handleClick(event: ReactMouseEvent<HTMLDetailsElement>) {
+    const target = event.target;
+    if (target instanceof Element && target.closest("[data-close-details]")) {
+      closeDetails();
+    }
+  }
+
+  useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
       const details = detailsRef.current;
       if (!details?.open) return;
@@ -38,7 +45,7 @@ export function AutoClosingDetails({ children, className }: AutoClosingDetailsPr
   }, []);
 
   return (
-    <details ref={detailsRef} className={className}>
+    <details ref={detailsRef} className={className} onClick={handleClick}>
       {children}
     </details>
   );

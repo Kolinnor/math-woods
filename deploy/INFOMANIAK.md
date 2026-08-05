@@ -170,7 +170,7 @@ Contribution request reminders are sent by the app through a protected cron endp
 
 ```cron
 CRON_TZ=Europe/Paris
-0 8 * * * cd /opt/math-woods && sh deploy/run-daily-reminders.sh >/var/log/math-woods-daily-reminders.log 2>&1
+0 8 * * * cd /opt/math-woods && sh deploy/run-daily-reminders.sh >>/home/ubuntu/math-woods-daily-reminders.log 2>&1
 ```
 
 ## Updating Math Woods

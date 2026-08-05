@@ -1063,6 +1063,22 @@ const previewFocusField = StateField.define<boolean>({
   }
 });
 
+const pendingPreviewFocus = new WeakMap<EditorView, boolean>();
+
+function schedulePreviewFocus(view: EditorView, focused: boolean) {
+  pendingPreviewFocus.set(view, focused);
+  queueMicrotask(() => {
+    if (pendingPreviewFocus.get(view) !== focused) return;
+    pendingPreviewFocus.delete(view);
+    if (!view.dom.isConnected || view.state.field(previewFocusField) === focused) return;
+
+    view.dispatch({
+      effects: setPreviewFocus.of(focused),
+      annotations: previewOnly
+    });
+  });
+}
+
 const suppressLatexPreviewOnJoinedLine = StateField.define<boolean>({
   create: () => false,
   update(_value, transaction) {
@@ -1406,15 +1422,17 @@ const liveMarkdownPreview = StateField.define<DecorationSet>({
 
 const previewFocusEvents = EditorView.domEventHandlers({
   mousedown(_event, view) {
-    view.dispatch({ effects: setPreviewFocus.of(true), annotations: previewOnly });
+    schedulePreviewFocus(view, true);
     return false;
   },
   focusin(_event, view) {
-    view.dispatch({ effects: setPreviewFocus.of(true), annotations: previewOnly });
+    schedulePreviewFocus(view, true);
     return false;
   },
-  focusout(_event, view) {
-    view.dispatch({ effects: setPreviewFocus.of(false), annotations: previewOnly });
+  focusout(event, view) {
+    const relatedTarget = event.relatedTarget;
+    if (relatedTarget instanceof Node && view.dom.contains(relatedTarget)) return false;
+    schedulePreviewFocus(view, false);
     return false;
   }
 });
@@ -1603,19 +1621,13 @@ export function MarkdownEditor({
 
     viewRef.current = view;
     const host = hostRef.current;
-    const focusIn = () => view.dispatch({ effects: setPreviewFocus.of(true), annotations: previewOnly });
-    const focusOut = (event: FocusEvent) => {
-      if (!host.contains(event.relatedTarget as Node | null)) {
-        view.dispatch({ effects: setPreviewFocus.of(false), annotations: previewOnly });
-      }
-    };
     const outsideInteraction = (event: Event) => {
       const target = event.target as Node | null;
       const targetElement = target instanceof Element ? target : null;
       if (targetElement?.closest(".markdown-link-menu")) return;
 
       if (!host.contains(target)) {
-        view.dispatch({ effects: setPreviewFocus.of(false), annotations: previewOnly });
+        schedulePreviewFocus(view, false);
         setLinkMenu(null);
       }
     };
@@ -1630,7 +1642,7 @@ export function MarkdownEditor({
 
       event.preventDefault();
       view.focus();
-      view.dispatch({ effects: setPreviewFocus.of(true), annotations: previewOnly });
+      schedulePreviewFocus(view, true);
       setLinkTargetType(selectedProblemLink ? "problem" : "concept");
       setSelectedProblemSlug(selectedProblemLink?.slug ?? null);
       setLinkTarget(selectedProblemLink?.slug ?? selectedLink?.target ?? cleanWikiLinkTarget(selectedText));
@@ -1643,8 +1655,6 @@ export function MarkdownEditor({
         selectedText
       });
     };
-    host.addEventListener("focusin", focusIn);
-    host.addEventListener("focusout", focusOut);
     host.addEventListener("contextmenu", openLinkMenu);
     document.addEventListener("focusin", outsideInteraction, true);
     document.addEventListener("mousedown", outsideInteraction, true);
@@ -1658,8 +1668,6 @@ export function MarkdownEditor({
     form?.addEventListener("submit", markDraftSubmitted);
 
     return () => {
-      host.removeEventListener("focusin", focusIn);
-      host.removeEventListener("focusout", focusOut);
       host.removeEventListener("contextmenu", openLinkMenu);
       document.removeEventListener("focusin", outsideInteraction, true);
       document.removeEventListener("mousedown", outsideInteraction, true);

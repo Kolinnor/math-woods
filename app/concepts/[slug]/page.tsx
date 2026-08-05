@@ -16,7 +16,6 @@ import {
 } from "@/lib/actions/concept-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
-import { conceptReviewChecklist } from "@/lib/concept-review";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
@@ -331,7 +330,6 @@ export default async function ConceptPage({
   ]);
   const isLanguageFallback = targetViewLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
-  const reviewChecklist = conceptReviewChecklist(concept.bodyMarkdown, concept.practiceExercises.length);
   const conceptKindLabel = t.concepts.kinds[concept.kind];
   const conceptDomainLabel = translatedDomainLabel(concept.domainCode, t);
   const hasReadingHeader =
@@ -532,27 +530,6 @@ export default async function ConceptPage({
           <div className="quality-banner quality-usable mb-4">
             <strong>{t.concepts.statuses.USABLE}.</strong>{" "}
             {t.conceptDetail.usableNotice}
-            <div className="concept-review-checklist">
-              <strong>{t.conceptDetail.reviewChecklistTitle}</strong>
-              <ul>
-                <li data-complete={reviewChecklist.hasCoreContent}>
-                  <span aria-hidden="true">{reviewChecklist.hasCoreContent ? "✓" : "○"}</span>
-                  {t.conceptDetail.coreContentReady}
-                </li>
-                <li data-complete={reviewChecklist.hasExamples}>
-                  <span aria-hidden="true">{reviewChecklist.hasExamples ? "✓" : "○"}</span>
-                  {t.conceptDetail.examplesPresent}
-                </li>
-                <li data-complete={reviewChecklist.hasExerciseTarget}>
-                  <span aria-hidden="true">{reviewChecklist.hasExerciseTarget ? "✓" : "○"}</span>
-                  {t.conceptDetail.linkedExercisesProgress(
-                    reviewChecklist.exerciseCount,
-                    reviewChecklist.exerciseTarget
-                  )}
-                </li>
-              </ul>
-              <p>{t.conceptDetail.reviewChecklistGuidance}</p>
-            </div>
             {user && canReviewConcept(user, concept) ? (
               <form action={markConceptReviewedAction.bind(null, concept.id)} className="mt-2">
                 <button type="submit" className="secondary">
