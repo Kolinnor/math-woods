@@ -623,6 +623,7 @@ model Concept {
   domainCode                String               @default("other")
   kind                      ConceptKind          @default(DEFINITION)
   status                    ConceptStatus        @default(STUB)
+  needsReviewAfterEdit      Boolean              @default(false)
   canAppearInConceptBrowser Boolean              @default(false)
   createdAt                 DateTime             @default(now())
   updatedAt                 DateTime             @updatedAt
@@ -1475,6 +1476,22 @@ model Tip {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   problems       TipProblem[]
+  images         TipImage[]
+}
+
+model TipImage {
+  id             Int      @id @default(autoincrement())
+  tipId          Int
+  position       Int      @default(0)
+  imageUrl       String
+  imagePositionX Int      @default(50)
+  imagePositionY Int      @default(50)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tip            Tip      @relation(fields: [tipId], references: [id], onDelete: Cascade)
+
+  @@unique([tipId, position])
+  @@index([tipId, position])
 }
 
 model TipProblem {

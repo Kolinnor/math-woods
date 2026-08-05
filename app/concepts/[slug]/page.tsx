@@ -16,6 +16,7 @@ import {
 } from "@/lib/actions/concept-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { conceptReviewChecklist } from "@/lib/concept-review";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
@@ -330,6 +331,7 @@ export default async function ConceptPage({
   ]);
   const isLanguageFallback = targetViewLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
+  const reviewChecklist = conceptReviewChecklist(concept.bodyMarkdown, concept.practiceExercises.length);
   const conceptKindLabel = t.concepts.kinds[concept.kind];
   const conceptDomainLabel = translatedDomainLabel(concept.domainCode, t);
   const hasReadingHeader =
@@ -407,6 +409,11 @@ export default async function ConceptPage({
           <span className={`concept-status-badge concept-status-${concept.status.toLowerCase()}`}>
             {conceptStatusLabel}
           </span>
+          {concept.needsReviewAfterEdit && (
+            <span className="concept-status-badge concept-status-edited">
+              {t.conceptDetail.editedSinceReview}
+            </span>
+          )}
           {concept.lastEditedBy && (
             <>
               {" / "}
@@ -488,6 +495,22 @@ export default async function ConceptPage({
           </p>
         )}
 
+        {concept.needsReviewAfterEdit && (
+          <div className="quality-banner quality-needs-work mb-4">
+            <strong>{t.conceptDetail.editedSinceReview}.</strong>{" "}
+            {t.conceptDetail.editedSinceReviewNotice}
+            {user && canReviewConcept(user, concept) ? (
+              <form action={markConceptReviewedAction.bind(null, concept.id)} className="mt-2">
+                <button type="submit" className="secondary">
+                  {t.conceptDetail.confirmReview}
+                </button>
+              </form>
+            ) : user && concept.createdById === user.id ? (
+              <p className="concept-review-requirement mt-2">{t.conceptDetail.reviewRequiresAnotherUser}</p>
+            ) : null}
+          </div>
+        )}
+
         {(concept.status === "STUB" || concept.status === "MISSING") && (
           <div className="quality-banner quality-stub mb-4">
             <strong>{t.concepts.statuses[concept.status]}.</strong>{" "}
@@ -499,6 +522,9 @@ export default async function ConceptPage({
                 </button>
               </form>
             )}
+            {user && concept.createdById === user.id && (
+              <p className="concept-review-requirement mt-2">{t.conceptDetail.usableRequiresAnotherUser}</p>
+            )}
           </div>
         )}
 
@@ -506,6 +532,27 @@ export default async function ConceptPage({
           <div className="quality-banner quality-usable mb-4">
             <strong>{t.concepts.statuses.USABLE}.</strong>{" "}
             {t.conceptDetail.usableNotice}
+            <div className="concept-review-checklist">
+              <strong>{t.conceptDetail.reviewChecklistTitle}</strong>
+              <ul>
+                <li data-complete={reviewChecklist.hasCoreContent}>
+                  <span aria-hidden="true">{reviewChecklist.hasCoreContent ? "✓" : "○"}</span>
+                  {t.conceptDetail.coreContentReady}
+                </li>
+                <li data-complete={reviewChecklist.hasExamples}>
+                  <span aria-hidden="true">{reviewChecklist.hasExamples ? "✓" : "○"}</span>
+                  {t.conceptDetail.examplesPresent}
+                </li>
+                <li data-complete={reviewChecklist.hasExerciseTarget}>
+                  <span aria-hidden="true">{reviewChecklist.hasExerciseTarget ? "✓" : "○"}</span>
+                  {t.conceptDetail.linkedExercisesProgress(
+                    reviewChecklist.exerciseCount,
+                    reviewChecklist.exerciseTarget
+                  )}
+                </li>
+              </ul>
+              <p>{t.conceptDetail.reviewChecklistGuidance}</p>
+            </div>
             {user && canReviewConcept(user, concept) ? (
               <form action={markConceptReviewedAction.bind(null, concept.id)} className="mt-2">
                 <button type="submit" className="secondary">

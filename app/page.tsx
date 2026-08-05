@@ -25,7 +25,7 @@ import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { displayNameForUser } from "@/lib/user-display";
-import { tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
+import { dailyTipImage, tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
 
 export const dynamic = "force-dynamic";
 
@@ -451,6 +451,7 @@ export default async function HomePage() {
       })
     : null;
   const tipBodyHtml = tip ? await renderMarkdown(tip.body) : "";
+  const selectedTipImage = tip ? dailyTipImage(tip.images, tip.id) : null;
 
   const solvedSet = new Set(solvedGroups.map((attempt) => attempt.problem.translationGroupId));
   const dailyProblemIsSolved = Boolean(
@@ -594,9 +595,14 @@ export default async function HomePage() {
             <section className="home-tip-card">
               <div className="home-tip-image">
                 <img
-                  src={tipImageUrl(tip.imageUrl)}
+                  src={tipImageUrl(selectedTipImage?.imageUrl ?? tip.imageUrl)}
                   alt=""
-                  style={{ objectPosition: tipImageObjectPosition(tip.imagePositionX, tip.imagePositionY) }}
+                  style={{
+                    objectPosition: tipImageObjectPosition(
+                      selectedTipImage?.imagePositionX ?? tip.imagePositionX,
+                      selectedTipImage?.imagePositionY ?? tip.imagePositionY
+                    )
+                  }}
                 />
               </div>
               <div className="home-tip-copy">

@@ -156,10 +156,15 @@ export default async function TipsPage({
             <div className="tip-card-summary">
               <div className="tip-card-image">
                 <img
-                  src={tipImageUrl(tip.imageUrl)}
+                  src={tipImageUrl(tip.images[0]?.imageUrl ?? tip.imageUrl)}
                   alt=""
                   loading="lazy"
-                  style={{ objectPosition: tipImageObjectPosition(tip.imagePositionX, tip.imagePositionY) }}
+                  style={{
+                    objectPosition: tipImageObjectPosition(
+                      tip.images[0]?.imagePositionX ?? tip.imagePositionX,
+                      tip.images[0]?.imagePositionY ?? tip.imagePositionY
+                    )
+                  }}
                 />
               </div>
               <div className="tip-card-summary-copy">
@@ -170,6 +175,9 @@ export default async function TipsPage({
                   </Link>
                 </div>
                 {tip.showInMainMenu && <span className="tip-main-menu-badge">Main menu</span>}
+                {tip.images.length > 1 && (
+                  <span className="muted text-sm">{tip.images.length} daily image variants</span>
+                )}
                 <h2>
                   <AsyncMarkdownInline markdown={tip.title} />
                 </h2>

@@ -81,9 +81,15 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
           values={{
             title: tip.title,
             body: tip.body,
-            imageUrl: tip.imageUrl,
-            imagePositionX: tip.imagePositionX,
-            imagePositionY: tip.imagePositionY,
+            images: tip.images.length > 0
+              ? tip.images
+              : tip.imageUrl
+                ? [{
+                    imageUrl: tip.imageUrl,
+                    imagePositionX: tip.imagePositionX,
+                    imagePositionY: tip.imagePositionY
+                  }]
+                : [],
             showInMainMenu: tip.showInMainMenu
           }}
         />

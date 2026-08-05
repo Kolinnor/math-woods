@@ -5,7 +5,6 @@ import { TipEditorFields } from "@/components/TipEditorFields";
 import { createTipAction } from "@/lib/actions/tip-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canUseAdminTools } from "@/lib/permissions";
-import { DEFAULT_TIP_IMAGE_POSITION } from "@/lib/tip-images";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +33,7 @@ export default async function NewTipPage() {
           values={{
             title: "",
             body: "",
-            imageUrl: null,
-            imagePositionX: DEFAULT_TIP_IMAGE_POSITION,
-            imagePositionY: DEFAULT_TIP_IMAGE_POSITION,
+            images: [],
             showInMainMenu: true
           }}
         />

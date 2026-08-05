@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ConceptStatus, SourceType } from "@prisma/client";
+import { SourceType } from "@prisma/client";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -14,7 +14,7 @@ import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS, translatedDomainLabel, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { canChangeConceptStatus, canDeleteConcept, canEditConcept, canUseAdminTools } from "@/lib/permissions";
+import { canDeleteConcept, canEditConcept, canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -51,19 +51,6 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
   if (!canEditConcept(user, concept)) notFound();
   const canFeatureConcept = canUseAdminTools(user);
   const canDeleteCurrentConcept = canDeleteConcept(user, concept);
-  const canSetStubStatus = canChangeConceptStatus(user, concept, ConceptStatus.STUB);
-  const canSetUsableStatus = canChangeConceptStatus(user, concept, ConceptStatus.USABLE);
-  const canSetReviewedStatus = canChangeConceptStatus(user, concept, ConceptStatus.REVIEWED);
-  const canSetExcellentStatus = canChangeConceptStatus(user, concept, ConceptStatus.EXCELLENT);
-  const canSetControversialStatus = canChangeConceptStatus(user, concept, ConceptStatus.CONTROVERSIAL);
-  const canSetCurrentStatus = canChangeConceptStatus(user, concept, concept.status);
-  const canSetAnyStatus =
-    canSetCurrentStatus &&
-    (canSetStubStatus ||
-      canSetUsableStatus ||
-      canSetReviewedStatus ||
-      canSetExcellentStatus ||
-      canSetControversialStatus);
   const [siblingTranslations, sourceRevision] = await Promise.all([
     prisma.concept.findMany({
       where: {
@@ -200,18 +187,6 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
               .join("\n")}
           />
         </label>
-        {canSetAnyStatus && (
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Status</span>
-            <select name="status" defaultValue={concept.status}>
-              {canSetStubStatus && <option value="STUB">Stub</option>}
-              {canSetUsableStatus && <option value="USABLE">Usable</option>}
-              {canSetReviewedStatus && <option value="REVIEWED">Reviewed</option>}
-              {canSetExcellentStatus && <option value="EXCELLENT">Excellent</option>}
-              {canSetControversialStatus && <option value="CONTROVERSIAL">Controversial</option>}
-            </select>
-          </label>
-        )}
         {canFeatureConcept && (
           <label className="checkbox-field">
             <input

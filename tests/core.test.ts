@@ -22,6 +22,7 @@ import {
   parseMinimumConceptExercises
 } from "../lib/concept-exercises.ts";
 import { parseConceptKind } from "../lib/concept-kinds.ts";
+import { conceptReviewChecklist } from "../lib/concept-review.ts";
 import { slugify } from "../lib/slug.ts";
 import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
@@ -94,8 +95,10 @@ import { dailyReminderWindow } from "../lib/daily-reminder-window.ts";
 import {
   DEFAULT_TIP_IMAGE_POSITION,
   DEFAULT_TIP_IMAGE_URL,
+  dailyTipImage,
   normalizeTipImagePosition,
   normalizeTipImageUrl,
+  tipImageDateKey,
   tipImageObjectPosition,
   tipImageUrl
 } from "../lib/tip-images.ts";
@@ -931,6 +934,14 @@ assert.equal(
     { createdById: 1, status: ConceptStatus.STUB },
     ConceptStatus.USABLE
   ),
+  false
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.MODERATOR },
+    { createdById: 2, status: ConceptStatus.STUB },
+    ConceptStatus.USABLE
+  ),
   true
 );
 assert.equal(
@@ -1567,6 +1578,16 @@ assert.equal(normalizeTipImagePosition("72.4"), 72);
 assert.equal(normalizeTipImagePosition(-10), 0);
 assert.equal(normalizeTipImagePosition(140), 100);
 assert.equal(tipImageObjectPosition(25, 80), "25% 80%");
+const tipImages = [
+  { imageUrl: "/one.jpg", imagePositionX: 20, imagePositionY: 30 },
+  { imageUrl: "/two.jpg", imagePositionX: 40, imagePositionY: 50 },
+  { imageUrl: "/three.jpg", imagePositionX: 60, imagePositionY: 70 }
+];
+const imageDate = new Date(2026, 7, 4, 9, 30);
+assert.equal(tipImageDateKey(imageDate), "2026-08-04");
+assert.equal(dailyTipImage([], 12, imageDate), null);
+assert.deepEqual(dailyTipImage(tipImages, 12, imageDate), dailyTipImage(tipImages, 12, imageDate));
+assert.ok(tipImages.includes(dailyTipImage(tipImages, 12, imageDate)!));
 const presignedDelete = createPresignedImageDelete(
   testImageStorageConfig,
   "avatars/user-7/example.webp",
@@ -1925,6 +1946,26 @@ assert.equal(parseConceptKind("THEOREM"), ConceptKind.THEOREM);
 assert.equal(parseConceptKind("INTUITIVE_NOTION"), ConceptKind.INTUITIVE_NOTION);
 assert.equal(parseConceptKind("unexpected"), ConceptKind.DEFINITION);
 assert.equal(parseConceptKind(undefined, ConceptKind.THEOREM), ConceptKind.THEOREM);
+assert.deepEqual(conceptReviewChecklist("## Definition\n\nTo be completed.\n\n## Examples\n\nTo be completed.", 0), {
+  hasCoreContent: false,
+  hasExamples: false,
+  exerciseCount: 0,
+  exerciseTarget: 3,
+  hasExerciseTarget: false
+});
+assert.deepEqual(
+  conceptReviewChecklist(
+    "## Definition\n\nA group is a set equipped with an associative operation and an identity element.\n\n## Example\n\nThe integers form a group under addition.",
+    3
+  ),
+  {
+    hasCoreContent: true,
+    hasExamples: true,
+    exerciseCount: 3,
+    exerciseTarget: 3,
+    hasExerciseTarget: true
+  }
+);
 
 const multilingualHints = [
   {

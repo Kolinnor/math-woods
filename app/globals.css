@@ -9867,6 +9867,46 @@ button.domain-picker-tile > span:last-child {
   font-size: 0.8rem;
 }
 
+.concept-review-checklist {
+  background: rgb(255 255 255 / 0.58);
+  border: 1px solid rgb(49 95 65 / 0.18);
+  border-radius: 6px;
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+  padding: 0.8rem;
+}
+
+.concept-review-checklist > strong,
+.concept-review-checklist > p {
+  font-size: 0.8rem;
+}
+
+.concept-review-checklist > p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.concept-review-checklist ul {
+  display: grid;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.concept-review-checklist li {
+  align-items: center;
+  display: flex;
+  font-size: 0.85rem;
+  gap: 0.45rem;
+}
+
+.concept-review-checklist li[data-complete="true"] {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .quality-controversial {
   background: var(--notice-red-bg);
   border-color: var(--notice-red-border);
@@ -10560,6 +10600,48 @@ button.domain-picker-tile > span:last-child {
   gap: 1rem;
   grid-template-columns: minmax(12rem, 14rem) minmax(0, 1fr);
   padding: 1rem;
+}
+
+.tip-image-editor-heading {
+  align-items: center;
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+}
+
+.tip-image-collection {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 1rem;
+}
+
+.tip-image-collection > legend {
+  font-weight: 750;
+  padding: 0 0.25rem;
+}
+
+.tip-image-collection > p {
+  margin: 0;
+}
+
+.tip-image-collection-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.tip-image-collection > button {
+  justify-self: start;
+}
+
+.tip-image-empty {
+  background: var(--panel-muted);
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  padding: 0.85rem;
 }
 
 .tip-image-previews {
@@ -13037,6 +13119,12 @@ button.live-search-reset:hover {
   background: var(--notice-red-bg);
   border-color: var(--notice-red-border);
   color: #7f362f;
+}
+
+.concept-status-edited {
+  background: var(--notice-orange-bg);
+  border-color: var(--notice-orange-border);
+  color: var(--notice-text);
 }
 
 .concept-discovery-panel {
@@ -16973,7 +17061,13 @@ body:has(.home-shell) > .site-footer {
   .home-duo-grid,
   .home-recent-grid,
   .home-footer > div {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-footer nav {
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    min-width: 0;
   }
 
   .home-trail-band div {

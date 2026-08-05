@@ -132,6 +132,8 @@ export async function createConceptAction(formData: FormData) {
         domain,
         domainCode,
         kind,
+        status: ConceptStatus.STUB,
+        needsReviewAfterEdit: false,
         createdById: user.id,
         lastEditedById: user.id
       }
@@ -180,7 +182,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       kind: true,
       translationGroupId: true,
       translatedFromConceptId: true,
-      status: true
+      status: true,
+      bodyMarkdown: true,
+      needsReviewAfterEdit: true
     }
   });
   if (!existingConcept) throw new Error("Concept not found.");
@@ -199,20 +203,17 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const exerciseIds = parseConceptExerciseIds(formData.getAll("exerciseIds"));
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Concept edited";
   const markTranslationFresh = formData.get("markTranslationFresh") === "on";
-  const statusInput = formData.get("status");
-  const requestedStatus = String(statusInput ?? "") as ConceptStatus;
-  const status =
-    statusInput && canChangeConceptStatus(user, existingConcept, requestedStatus)
-      ? requestedStatus
-      : undefined;
-  if (statusInput && !status) {
-    throw new Error("A concept must be reviewed by another trusted user.");
-  }
   const canAppearInConceptBrowser = canUseAdminTools(user)
     ? formData.get("canAppearInConceptBrowser") === "on"
     : undefined;
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
+  const hasReviewSensitiveChanges =
+    title.trim() !== existingConcept.title.trim() || bodyMarkdown !== existingConcept.bodyMarkdown;
+  const needsReviewAfterEdit =
+    existingConcept.needsReviewAfterEdit ||
+    ((existingConcept.status === ConceptStatus.REVIEWED || existingConcept.status === ConceptStatus.EXCELLENT) &&
+      hasReviewSensitiveChanges);
   const concept = await prisma.$transaction(async (tx) => {
     await pinLatestConceptRevisionMetadata(tx, conceptId, existingConcept.title, existingConcept.kind);
     const titleOrLanguageChanged =
@@ -261,7 +262,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         domain,
         domainCode,
         kind,
-        ...(status ? { status } : {}),
+        needsReviewAfterEdit,
         ...(canAppearInConceptBrowser !== undefined ? { canAppearInConceptBrowser } : {}),
         ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {}),
         lastEditedById: user.id
@@ -346,24 +347,36 @@ export async function markConceptReviewedAction(conceptId: number) {
         bodyMarkdown: true,
         kind: true,
         status: true,
-        createdById: true
+        createdById: true,
+        needsReviewAfterEdit: true
       }
     });
     if (!current) throw new Error("Concept not found.");
-    if (current.status === ConceptStatus.REVIEWED || current.status === ConceptStatus.EXCELLENT) {
+    if (
+      (current.status === ConceptStatus.REVIEWED || current.status === ConceptStatus.EXCELLENT) &&
+      !current.needsReviewAfterEdit
+    ) {
       return current;
     }
-    if (current.status !== ConceptStatus.USABLE) {
+    if (
+      current.status !== ConceptStatus.USABLE &&
+      current.status !== ConceptStatus.REVIEWED &&
+      current.status !== ConceptStatus.EXCELLENT
+    ) {
       throw new Error("A concept must be marked usable before it can be reviewed.");
     }
     if (!canReviewConcept(user, current)) {
       throw new Error("You cannot review this concept.");
     }
 
+    const isReReview = current.needsReviewAfterEdit;
     await pinLatestConceptRevisionMetadata(tx, current.id, current.title, current.kind);
     const updated = await tx.concept.update({
       where: { id: current.id },
-      data: { status: ConceptStatus.REVIEWED }
+      data: {
+        status: current.status === ConceptStatus.EXCELLENT ? ConceptStatus.EXCELLENT : ConceptStatus.REVIEWED,
+        needsReviewAfterEdit: false
+      }
     });
     await tx.pageRevision.create({
       data: {
@@ -373,7 +386,7 @@ export async function markConceptReviewedAction(conceptId: number) {
         conceptTitle: current.title,
         conceptKind: current.kind,
         editedById: user.id,
-        editSummary: "Concept reviewed"
+        editSummary: isReReview ? "Concept re-reviewed after edits" : "Concept reviewed"
       }
     });
     await completeDailyConceptReviewForUser(tx, user.id, current.id);
@@ -417,7 +430,7 @@ export async function markConceptUsableAction(conceptId: number) {
     await pinLatestConceptRevisionMetadata(tx, current.id, current.title, current.kind);
     const updated = await tx.concept.update({
       where: { id: current.id },
-      data: { status: ConceptStatus.USABLE }
+      data: { status: ConceptStatus.USABLE, needsReviewAfterEdit: false }
     });
     await tx.pageRevision.create({
       data: {
@@ -552,7 +565,14 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
     }),
     prisma.concept.findUnique({
       where: { id: conceptId },
-      select: { createdById: true, title: true, kind: true }
+      select: {
+        createdById: true,
+        title: true,
+        kind: true,
+        bodyMarkdown: true,
+        status: true,
+        needsReviewAfterEdit: true
+      }
     })
   ]);
 
@@ -570,6 +590,10 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
         bodyMarkdown: revision.markdown,
         bodyHtml: await renderMarkdownContent(revision.markdown),
         ...(revision.conceptKind ? { kind: revision.conceptKind } : {}),
+        needsReviewAfterEdit:
+          existingConcept.needsReviewAfterEdit ||
+          ((existingConcept.status === ConceptStatus.REVIEWED || existingConcept.status === ConceptStatus.EXCELLENT) &&
+            revision.markdown !== existingConcept.bodyMarkdown),
         lastEditedById: user.id
       }
     });

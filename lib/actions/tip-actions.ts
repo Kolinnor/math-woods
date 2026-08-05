@@ -9,7 +9,12 @@ import { prisma } from "@/lib/db";
 import { ensureDefaultTips } from "@/lib/daily-tip";
 import { canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { normalizeTipImagePosition, normalizeTipImageUrl } from "@/lib/tip-images";
+import {
+  MAX_TIP_IMAGES,
+  normalizeTipImagePosition,
+  normalizeTipImageUrl,
+  type TipImageValue
+} from "@/lib/tip-images";
 
 function parseTipProblemIds(values: FormDataEntryValue[]) {
   const seen = new Set<number>();
@@ -26,6 +31,25 @@ function parseTipProblemIds(values: FormDataEntryValue[]) {
   return problemIds;
 }
 
+function parseTipImages(formData: FormData): TipImageValue[] {
+  const imageUrls = formData.getAll("imageUrls");
+  const positionXs = formData.getAll("imagePositionXs");
+  const positionYs = formData.getAll("imagePositionYs");
+  const images: TipImageValue[] = [];
+
+  for (let index = 0; index < imageUrls.length && images.length < MAX_TIP_IMAGES; index += 1) {
+    const imageUrl = normalizeTipImageUrl(imageUrls[index]);
+    if (!imageUrl) continue;
+    images.push({
+      imageUrl,
+      imagePositionX: normalizeTipImagePosition(positionXs[index]),
+      imagePositionY: normalizeTipImagePosition(positionYs[index])
+    });
+  }
+
+  return images;
+}
+
 export async function createTipAction(formData: FormData) {
   const user = await requireUser();
   if (!canUseAdminTools(user)) throw new Error("Only admins can create tips.");
@@ -34,9 +58,8 @@ export async function createTipAction(formData: FormData) {
 
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const body = requiredBoundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Tip text");
-  const imageUrl = normalizeTipImageUrl(formData.get("imageUrl"));
-  const imagePositionX = normalizeTipImagePosition(formData.get("imagePositionX"));
-  const imagePositionY = normalizeTipImagePosition(formData.get("imagePositionY"));
+  const images = parseTipImages(formData);
+  const primaryImage = images[0] ?? null;
   const showInMainMenu = formData.get("showInMainMenu") === "on";
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
@@ -60,12 +83,22 @@ export async function createTipAction(formData: FormData) {
         title,
         description: body,
         body,
-        imageUrl,
-        imagePositionX,
-        imagePositionY,
+        imageUrl: primaryImage?.imageUrl ?? null,
+        imagePositionX: primaryImage?.imagePositionX ?? 50,
+        imagePositionY: primaryImage?.imagePositionY ?? 50,
         showInMainMenu
       }
     });
+
+    if (images.length > 0) {
+      await tx.tipImage.createMany({
+        data: images.map((image, index) => ({
+          tipId: createdTip.id,
+          position: index,
+          ...image
+        }))
+      });
+    }
 
     for (const [index, problemId] of orderedProblemIds.entries()) {
       await tx.$executeRaw(
@@ -89,9 +122,8 @@ export async function updateTipAction(tipId: number, formData: FormData) {
 
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const body = requiredBoundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Tip text");
-  const imageUrl = normalizeTipImageUrl(formData.get("imageUrl"));
-  const imagePositionX = normalizeTipImagePosition(formData.get("imagePositionX"));
-  const imagePositionY = normalizeTipImagePosition(formData.get("imagePositionY"));
+  const images = parseTipImages(formData);
+  const primaryImage = images[0] ?? null;
   const showInMainMenu = formData.get("showInMainMenu") === "on";
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
@@ -111,12 +143,19 @@ export async function updateTipAction(tipId: number, formData: FormData) {
         title,
         description: body,
         body,
-        imageUrl,
-        imagePositionX,
-        imagePositionY,
+        imageUrl: primaryImage?.imageUrl ?? null,
+        imagePositionX: primaryImage?.imagePositionX ?? 50,
+        imagePositionY: primaryImage?.imagePositionY ?? 50,
         showInMainMenu
       }
     });
+
+    await tx.tipImage.deleteMany({ where: { tipId } });
+    if (images.length > 0) {
+      await tx.tipImage.createMany({
+        data: images.map((image, index) => ({ tipId, position: index, ...image }))
+      });
+    }
 
     await tx.$executeRaw`DELETE FROM "TipProblem" WHERE "tipId" = ${tipId}`;
     for (const [index, problemId] of orderedProblemIds.entries()) {

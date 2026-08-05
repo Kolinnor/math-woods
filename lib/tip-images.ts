@@ -1,5 +1,12 @@
 export const DEFAULT_TIP_IMAGE_URL = "/art/oak-grove.jpg";
 export const DEFAULT_TIP_IMAGE_POSITION = 50;
+export const MAX_TIP_IMAGES = 12;
+
+export type TipImageValue = {
+  imageUrl: string;
+  imagePositionX: number;
+  imagePositionY: number;
+};
 
 export function normalizeTipImageUrl(value: unknown) {
   const imageUrl = String(value ?? "").trim();
@@ -31,4 +38,31 @@ export function normalizeTipImagePosition(value: unknown) {
 
 export function tipImageObjectPosition(positionX: unknown, positionY: unknown) {
   return `${normalizeTipImagePosition(positionX)}% ${normalizeTipImagePosition(positionY)}%`;
+}
+
+export function tipImageDateKey(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function stableHash(value: string) {
+  let hash = 2_166_136_261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return hash >>> 0;
+}
+
+export function dailyTipImage<T extends TipImageValue>(
+  images: readonly T[],
+  tipId: number,
+  date = new Date()
+) {
+  if (images.length === 0) return null;
+  const index = stableHash(`${tipId}:${tipImageDateKey(date)}`) % images.length;
+  return images[index] ?? null;
 }

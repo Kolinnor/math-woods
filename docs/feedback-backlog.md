@@ -14,12 +14,6 @@ work that still needs verification or a product decision.
 
 ## Next maintenance batch
 
-- [ ] **P1 - `VERIFY` Anonymous mobile journey.** On a signed-out session, open the
-  home page, problem browser, and direct URLs for both reviewed and unreviewed
-  problems. Check for overlapping hero titles, horizontal scrolling, broken cards,
-  and 404 pages. Record the exact viewport and URL for any remaining failure. The
-  redesigned error and 404 surfaces pass at 320, 390 and 1440 px; database-backed
-  pages still need this pass on an environment with `DATABASE_URL` configured.
 - [ ] **P2 - Allow users to change their email address safely.** Require recent
   authentication, verify the new address before replacing the old one, reject an
   address already attached to an active account, and notify the old address after
@@ -51,6 +45,11 @@ work that still needs verification or a product decision.
 
 ## Already addressed
 
+- [x] The anonymous mobile journey was audited in production at 320 px and 390 px
+  across the home page, problem browser, a reviewed problem, and an unreviewed
+  problem. Direct routes remain available, the mobile navigation is usable, and no
+  page creates horizontal scrolling. The guest-home footer now wraps its navigation
+  instead of clipping `Legal & brand` at the narrowest width.
 - [x] Signed-out visitors can open unreviewed problems. The current visibility
   policy no longer hides them from the problem browser or direct problem routes.
 - [x] The home page has a curated problem of the day.

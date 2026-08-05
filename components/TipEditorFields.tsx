@@ -1,4 +1,4 @@
-import { TipImageField } from "@/components/TipImageField";
+import { TipImageCollectionField, type TipImageFieldValue } from "@/components/TipImageField";
 import { TipProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { CONTENT_LIMITS } from "@/lib/content-limits";
@@ -11,9 +11,7 @@ type TipEditorFieldsProps = {
   values: {
     title: string;
     body: string;
-    imageUrl: string | null;
-    imagePositionX: number;
-    imagePositionY: number;
+    images: TipImageFieldValue[];
     showInMainMenu: boolean;
   };
 };
@@ -38,11 +36,7 @@ export function TipEditorFields({ draftKey, initialProblems, submitLabel, source
           Main text shown in the Tips library and Tip of the Day. Markdown and LaTeX are supported.
         </span>
       </div>
-      <TipImageField
-        initialImageUrl={values.imageUrl}
-        initialPositionX={values.imagePositionX}
-        initialPositionY={values.imagePositionY}
-      />
+      <TipImageCollectionField initialImages={values.images} />
       <label className="checkbox-inline">
         <input name="showInMainMenu" type="checkbox" defaultChecked={values.showInMainMenu} />
         <span>Show in the Tip of the Day rotation</span>

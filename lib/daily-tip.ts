@@ -94,6 +94,13 @@ export type TipEntry = {
   imageUrl: string | null;
   imagePositionX: number;
   imagePositionY: number;
+  images: Array<{
+    id: number;
+    position: number;
+    imageUrl: string;
+    imagePositionX: number;
+    imagePositionY: number;
+  }>;
 };
 
 export const DAILY_TIPS = DEFAULT_TIPS;
@@ -106,6 +113,7 @@ function defaultTipsWithIds(): TipEntry[] {
     imageUrl: null,
     imagePositionX: 50,
     imagePositionY: 50,
+    images: [],
     ...tip
   }));
 }
@@ -138,7 +146,10 @@ export async function ensureDefaultTips() {
 export async function loadTips(): Promise<TipEntry[]> {
   try {
     await ensureDefaultTips();
-    const tips = await prisma.tip.findMany({ orderBy: { position: "asc" } });
+    const tips = await prisma.tip.findMany({
+      orderBy: { position: "asc" },
+      include: { images: { orderBy: { position: "asc" } } }
+    });
     if (tips.length > 0) return tips;
   } catch (error) {
     if (!isMissingTipTable(error)) throw error;
@@ -150,7 +161,10 @@ export async function loadTips(): Promise<TipEntry[]> {
 export async function loadTip(id: number) {
   try {
     await ensureDefaultTips();
-    return prisma.tip.findUnique({ where: { id } });
+    return prisma.tip.findUnique({
+      where: { id },
+      include: { images: { orderBy: { position: "asc" } } }
+    });
   } catch (error) {
     if (isMissingTipTable(error)) return null;
     throw error;

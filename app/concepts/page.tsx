@@ -197,7 +197,8 @@ export default async function ConceptsPage({
         title: true,
         domain: true,
         domainCode: true,
-        status: true
+        status: true,
+        needsReviewAfterEdit: true
       }
     })
   ]);
@@ -328,6 +329,11 @@ export default async function ConceptsPage({
                     <span className={`concept-status-badge concept-status-${concept.status.toLowerCase()}`}>
                       {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
                     </span>
+                    {concept.needsReviewAfterEdit && (
+                      <span className="concept-status-badge concept-status-edited">
+                        {t.conceptDetail.editedSinceReview}
+                      </span>
+                    )}
                   </div>
                   <p className="concept-ledger-meta">
                     <span>{t.concepts.kinds[concept.kind]}</span>

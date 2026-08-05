@@ -155,6 +155,12 @@ export function canChangeConceptStatus(
 ) {
   if (!canSetConceptStatus(user.role, nextStatus)) return false;
   if (nextStatus === concept.status) return true;
+  if (nextStatus === ConceptStatus.USABLE) {
+    return (
+      (concept.status === ConceptStatus.STUB || concept.status === ConceptStatus.MISSING) &&
+      canReviewConcept(user, concept)
+    );
+  }
   if (nextStatus === ConceptStatus.REVIEWED) {
     return concept.status === ConceptStatus.USABLE && canReviewConcept(user, concept);
   }

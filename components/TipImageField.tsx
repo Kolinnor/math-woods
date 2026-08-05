@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, RotateCcw } from "lucide-react";
+import { ImagePlus, RotateCcw, Trash2 } from "lucide-react";
 import {
   useRef,
   useState,
@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_TIP_IMAGE_POSITION,
   DEFAULT_TIP_IMAGE_URL,
+  MAX_TIP_IMAGES,
   tipImageObjectPosition
 } from "@/lib/tip-images";
 
@@ -41,6 +42,8 @@ type TipImageFieldProps = {
     imagePositionY: string;
   };
   saveLabel?: string;
+  heading?: string;
+  onRemove?: () => void;
 };
 
 export function TipImageField({
@@ -54,7 +57,9 @@ export function TipImageField({
     imagePositionX: "imagePositionX",
     imagePositionY: "imagePositionY"
   },
-  saveLabel = "Save the tip"
+  saveLabel = "Save the tip",
+  heading,
+  onRemove
 }: TipImageFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState(initialImageUrl ?? "");
@@ -152,6 +157,17 @@ export function TipImageField({
 
   return (
     <section className="tip-image-editor">
+      {heading && (
+        <div className="tip-image-editor-heading">
+          <strong>{heading}</strong>
+          {onRemove && (
+            <button type="button" className="secondary icon-button" title={`Remove ${heading}`} onClick={onRemove}>
+              <Trash2 size={16} aria-hidden="true" />
+              <span className="sr-only">Remove {heading}</span>
+            </button>
+          )}
+        </div>
+      )}
       <div className="tip-image-previews">
         {!previewFailed ? (
           <figure>
@@ -257,5 +273,72 @@ export function TipImageField({
         {message && <p className="tip-image-message" role="status">{message}</p>}
       </div>
     </section>
+  );
+}
+
+export type TipImageFieldValue = {
+  id?: number;
+  imageUrl: string;
+  imagePositionX: number;
+  imagePositionY: number;
+};
+
+type EditableTipImage = TipImageFieldValue & { clientId: string };
+
+export function TipImageCollectionField({ initialImages }: { initialImages: TipImageFieldValue[] }) {
+  const nextId = useRef(initialImages.length);
+  const [images, setImages] = useState<EditableTipImage[]>(() =>
+    initialImages.map((image, index) => ({
+      ...image,
+      clientId: image.id ? `saved-${image.id}` : `initial-${index}`
+    }))
+  );
+
+  function addImage() {
+    if (images.length >= MAX_TIP_IMAGES) return;
+    const clientId = `new-${nextId.current}`;
+    nextId.current += 1;
+    setImages((current) => [
+      ...current,
+      {
+        clientId,
+        imageUrl: "",
+        imagePositionX: DEFAULT_TIP_IMAGE_POSITION,
+        imagePositionY: DEFAULT_TIP_IMAGE_POSITION
+      }
+    ]);
+  }
+
+  return (
+    <fieldset className="tip-image-collection">
+      <legend>Tip images</legend>
+      <p className="muted text-sm">
+        Add up to {MAX_TIP_IMAGES} square images. Math Woods chooses one for this tip each day and keeps it unchanged until the next day.
+      </p>
+      {images.length === 0 && (
+        <p className="tip-image-empty">No custom image. Oak Grove will be used.</p>
+      )}
+      <div className="tip-image-collection-list">
+        {images.map((image, index) => (
+          <TipImageField
+            key={image.clientId}
+            heading={`Image ${index + 1}`}
+            initialImageUrl={image.imageUrl}
+            initialPositionX={image.imagePositionX}
+            initialPositionY={image.imagePositionY}
+            inputNames={{
+              imageUrl: "imageUrls",
+              imagePositionX: "imagePositionXs",
+              imagePositionY: "imagePositionYs"
+            }}
+            onRemove={() => setImages((current) => current.filter((entry) => entry.clientId !== image.clientId))}
+          />
+        ))}
+      </div>
+      <button type="button" className="secondary" disabled={images.length >= MAX_TIP_IMAGES} onClick={addImage}>
+        <ImagePlus size={16} aria-hidden="true" />
+        Add image
+      </button>
+    </fieldset>
   );
 }
