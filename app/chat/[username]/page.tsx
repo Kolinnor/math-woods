@@ -196,7 +196,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
               live: t.social.live,
               livePaused: t.social.livePaused,
               scrollToLatestMessages: t.social.scrollToLatestMessages,
-              newMessagesBelow: t.social.newMessagesBelow,
+              newMessagesBelow: t.social.newMessagesBelowLabel,
               noMessagesYet: t.social.noMessagesYet,
               cancel: t.social.cancel,
               confirmDeleteMessage: t.social.confirmDeleteMessage,

@@ -47,7 +47,7 @@ export type FriendsMenuData = {
     imageRequirements: string;
     noFriendsYet: string;
     noMessagesYet: string;
-    newMessagesBelow: (count: number) => string;
+    newMessagesBelow: string;
     offline: string;
     online: string;
     onlineShort: string;
@@ -184,7 +184,7 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
       imageRequirements: t.social.imageRequirements,
       noFriendsYet: t.social.noFriendsYet,
       noMessagesYet: t.social.noMessagesYet,
-      newMessagesBelow: t.social.newMessagesBelow,
+      newMessagesBelow: t.social.newMessagesBelowLabel,
       offline: t.social.offline,
       online: t.social.online,
       onlineShort: t.social.friendsOnline(onlineCount),

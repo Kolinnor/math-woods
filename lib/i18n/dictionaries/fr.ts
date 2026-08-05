@@ -127,6 +127,7 @@ export const fr = {
     live: "En direct",
     livePaused: "Mises à jour en direct suspendues",
     scrollToLatestMessages: "Aller aux derniers messages",
+    newMessagesBelowLabel: "nouveaux messages plus bas",
     newMessagesBelow: (count: number) => `${count} nouveau${count > 1 ? "x" : ""} message${count > 1 ? "s" : ""} plus bas`,
     editMessage: "Modifier le message",
     deleteMessage: "Supprimer le message",

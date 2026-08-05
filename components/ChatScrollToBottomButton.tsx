@@ -3,7 +3,7 @@
 import { ArrowDown } from "lucide-react";
 
 type ChatScrollToBottomButtonProps = {
-  newMessageLabel: (count: number) => string;
+  newMessageLabel: string;
   newMessages: number;
   onClick: () => void;
   scrollLabel: string;
@@ -15,7 +15,7 @@ export function ChatScrollToBottomButton({
   onClick,
   scrollLabel
 }: ChatScrollToBottomButtonProps) {
-  const label = newMessages > 0 ? newMessageLabel(newMessages) : scrollLabel;
+  const label = newMessages > 0 ? `${newMessages} ${newMessageLabel}` : scrollLabel;
 
   return (
     <button

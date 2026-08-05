@@ -39,7 +39,7 @@ type LiveChatThreadProps = {
     live: string;
     livePaused: string;
     scrollToLatestMessages: string;
-    newMessagesBelow: (count: number) => string;
+    newMessagesBelow: string;
     noMessagesYet: string;
     cancel: string;
     confirmDeleteMessage: string;

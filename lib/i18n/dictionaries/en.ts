@@ -125,6 +125,7 @@ export const en = {
     live: "Live",
     livePaused: "Live updates paused",
     scrollToLatestMessages: "Jump to the latest messages",
+    newMessagesBelowLabel: "new messages below",
     newMessagesBelow: (count: number) => `${count} new ${count === 1 ? "message" : "messages"} below`,
     editMessage: "Edit message",
     deleteMessage: "Delete message",
