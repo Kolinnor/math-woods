@@ -2,13 +2,21 @@
 
 import type { Route } from "next";
 import { ConceptStatus, NotificationType, SourceType, TargetType } from "@prisma/client";
-import type { ConceptKind, Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { parseConceptExerciseIds } from "@/lib/concept-exercises";
 import { parseConceptKind } from "@/lib/concept-kinds";
+import {
+  buildConceptRevisionSnapshot,
+  changedConceptSnapshotFields,
+  conceptRevisionAutomaticSummary,
+  conceptRevisionSnapshotInclude,
+  conceptRevisionSnapshotJson,
+  type ConceptSnapshotSource
+} from "@/lib/concept-revisions";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { prisma } from "@/lib/db";
@@ -21,6 +29,7 @@ import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
 import {
   canChangeConceptStatus,
   canDeleteConcept,
+  canDowngradeConceptStatus,
   canEditConcept,
   canReviewConcept,
   canRollbackConcept,
@@ -43,24 +52,40 @@ function duplicateConceptTitleError() {
 
 async function pinLatestConceptRevisionMetadata(
   tx: Prisma.TransactionClient,
-  conceptId: number,
-  title: string,
-  kind: ConceptKind
+  concept: ConceptSnapshotSource
 ) {
+  const snapshot = buildConceptRevisionSnapshot(concept);
   const latestRevision = await tx.pageRevision.findFirst({
-    where: { pageType: SourceType.CONCEPT, pageId: conceptId },
+    where: { pageType: SourceType.CONCEPT, pageId: concept.id },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    select: { id: true, conceptTitle: true, conceptKind: true }
+    select: { id: true, conceptTitle: true, conceptKind: true, conceptSnapshot: true }
   });
-  if (latestRevision && (latestRevision.conceptTitle === null || latestRevision.conceptKind === null)) {
+  if (
+    latestRevision &&
+    (latestRevision.conceptTitle === null ||
+      latestRevision.conceptKind === null ||
+      latestRevision.conceptSnapshot === null)
+  ) {
     await tx.pageRevision.update({
       where: { id: latestRevision.id },
       data: {
-        ...(latestRevision.conceptTitle === null ? { conceptTitle: title } : {}),
-        ...(latestRevision.conceptKind === null ? { conceptKind: kind } : {})
+        ...(latestRevision.conceptTitle === null ? { conceptTitle: concept.title } : {}),
+        ...(latestRevision.conceptKind === null ? { conceptKind: concept.kind } : {}),
+        ...(latestRevision.conceptSnapshot === null
+          ? { conceptSnapshot: conceptRevisionSnapshotJson(snapshot) }
+          : {})
       }
     });
   }
+}
+
+async function conceptSnapshotSource(tx: Prisma.TransactionClient, conceptId: number) {
+  const concept = await tx.concept.findUnique({
+    where: { id: conceptId },
+    include: conceptRevisionSnapshotInclude
+  });
+  if (!concept) throw new Error("Concept not found.");
+  return concept;
 }
 
 export async function createConceptAction(formData: FormData) {
@@ -142,6 +167,7 @@ export async function createConceptAction(formData: FormData) {
     await syncConceptAliases(created.id, aliases, tx);
     await syncConceptReferences(created.id, references, tx);
     await refreshLinksForConceptId(created.id, tx);
+    const createdSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, created.id));
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.CONCEPT,
@@ -149,6 +175,7 @@ export async function createConceptAction(formData: FormData) {
         markdown: bodyMarkdown,
         conceptTitle: created.title,
         conceptKind: created.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(createdSnapshot),
         editedById: user.id,
         isCreation: true,
         editSummary: "Concept created"
@@ -201,7 +228,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
   const exerciseIds = parseConceptExerciseIds(formData.getAll("exerciseIds"));
-  const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Concept edited";
+  const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary");
   const markTranslationFresh = formData.get("markTranslationFresh") === "on";
   const canAppearInConceptBrowser = canUseAdminTools(user)
     ? formData.get("canAppearInConceptBrowser") === "on"
@@ -215,7 +242,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     ((existingConcept.status === ConceptStatus.REVIEWED || existingConcept.status === ConceptStatus.EXCELLENT) &&
       hasReviewSensitiveChanges);
   const concept = await prisma.$transaction(async (tx) => {
-    await pinLatestConceptRevisionMetadata(tx, conceptId, existingConcept.title, existingConcept.kind);
+    const currentSnapshotSource = await conceptSnapshotSource(tx, conceptId);
+    await pinLatestConceptRevisionMetadata(tx, currentSnapshotSource);
+    const currentSnapshot = buildConceptRevisionSnapshot(currentSnapshotSource);
     const titleOrLanguageChanged =
       title.toLowerCase() !== existingConcept.title.toLowerCase() || language !== existingConcept.language;
     if (titleOrLanguageChanged) {
@@ -296,6 +325,8 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       });
     }
     await refreshLinksForConceptId(updated.id, tx);
+    const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));
+    const changedFields = changedConceptSnapshotFields(currentSnapshot, updatedSnapshot);
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.CONCEPT,
@@ -303,8 +334,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         markdown: bodyMarkdown,
         conceptTitle: updated.title,
         conceptKind: updated.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(updatedSnapshot),
         editedById: user.id,
-        editSummary
+        editSummary: editSummary || conceptRevisionAutomaticSummary(changedFields)
       }
     });
     await completeDailyConceptReviewForUser(tx, user.id, updated.id);
@@ -370,7 +402,7 @@ export async function markConceptReviewedAction(conceptId: number) {
     }
 
     const isReReview = current.needsReviewAfterEdit;
-    await pinLatestConceptRevisionMetadata(tx, current.id, current.title, current.kind);
+    await pinLatestConceptRevisionMetadata(tx, await conceptSnapshotSource(tx, current.id));
     const updated = await tx.concept.update({
       where: { id: current.id },
       data: {
@@ -378,6 +410,7 @@ export async function markConceptReviewedAction(conceptId: number) {
         needsReviewAfterEdit: false
       }
     });
+    const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.CONCEPT,
@@ -385,6 +418,7 @@ export async function markConceptReviewedAction(conceptId: number) {
         markdown: current.bodyMarkdown,
         conceptTitle: current.title,
         conceptKind: current.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(updatedSnapshot),
         editedById: user.id,
         editSummary: isReReview ? "Concept re-reviewed after edits" : "Concept reviewed"
       }
@@ -427,11 +461,12 @@ export async function markConceptUsableAction(conceptId: number) {
       throw new Error("You cannot mark this concept as usable.");
     }
 
-    await pinLatestConceptRevisionMetadata(tx, current.id, current.title, current.kind);
+    await pinLatestConceptRevisionMetadata(tx, await conceptSnapshotSource(tx, current.id));
     const updated = await tx.concept.update({
       where: { id: current.id },
       data: { status: ConceptStatus.USABLE, needsReviewAfterEdit: false }
     });
+    const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.CONCEPT,
@@ -439,6 +474,7 @@ export async function markConceptUsableAction(conceptId: number) {
         markdown: current.bodyMarkdown,
         conceptTitle: current.title,
         conceptKind: current.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(updatedSnapshot),
         editedById: user.id,
         editSummary: "Concept marked usable"
       }
@@ -452,6 +488,87 @@ export async function markConceptUsableAction(conceptId: number) {
   revalidatePath(`/concepts/${concept.slug}`);
   revalidatePath(`/concepts/${concept.slug}/edit`);
   revalidatePath(`/concepts/${concept.slug}/history`);
+}
+
+export async function downgradeConceptStatusAction(conceptId: number, formData: FormData) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`concept:downgrade:${user.id}`, 20, 60_000);
+
+  const requestedStatus = String(formData.get("status") ?? "");
+  if (!Object.values(ConceptStatus).includes(requestedStatus as ConceptStatus)) {
+    throw new Error("Invalid concept status.");
+  }
+  const nextStatus = requestedStatus as ConceptStatus;
+  const reason = requiredBoundedText(formData.get("reason"), CONTENT_LIMITS.shortText, "Reason");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const current = await tx.concept.findUnique({
+      where: { id: conceptId },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        bodyMarkdown: true,
+        kind: true,
+        status: true,
+        createdById: true
+      }
+    });
+    if (!current) throw new Error("Concept not found.");
+    if (!canDowngradeConceptStatus(user, current, nextStatus)) {
+      throw new Error("You cannot downgrade this concept to that status.");
+    }
+
+    await pinLatestConceptRevisionMetadata(tx, await conceptSnapshotSource(tx, current.id));
+    const updated = await tx.concept.update({
+      where: { id: current.id },
+      data: {
+        status: nextStatus,
+        needsReviewAfterEdit: false
+      }
+    });
+    const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.CONCEPT,
+        pageId: current.id,
+        markdown: current.bodyMarkdown,
+        conceptTitle: current.title,
+        conceptKind: current.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(updatedSnapshot),
+        editedById: user.id,
+        editSummary: `Status changed from ${current.status.toLowerCase()} to ${nextStatus.toLowerCase()}: ${reason}`
+      }
+    });
+    await completeDailyConceptReviewForUser(tx, user.id, current.id);
+
+    return { current, updated };
+  });
+
+  revalidatePath("/concepts");
+  revalidatePath(`/concepts/${result.updated.slug}`);
+  revalidatePath(`/concepts/${result.updated.slug}/edit`);
+  revalidatePath(`/concepts/${result.updated.slug}/history`);
+
+  if (result.current.status !== result.updated.status) {
+    const notification = {
+      title: "Concept status changed",
+      body: `${displayNameForUser(user)} changed \"${result.updated.title}\" from ${result.current.status.toLowerCase()} to ${result.updated.status.toLowerCase()}.`,
+      href: `/concepts/${result.updated.slug}/history`
+    };
+    await Promise.all([
+      notifyOwnerOfSiteActivity({
+        actor: user,
+        type: NotificationType.CONCEPT_EDITED,
+        ...notification
+      }),
+      notifyConceptAuthor({
+        conceptId: result.updated.id,
+        actorId: user.id,
+        ...notification
+      })
+    ]);
+  }
 }
 
 export async function dismissConceptTranslationStaleNoticeAction(conceptId: number) {
@@ -482,12 +599,31 @@ export async function dismissConceptTranslationStaleNoticeAction(conceptId: numb
     throw new Error("Source revision not found.");
   }
 
-  await prisma.concept.update({
-    where: { id: conceptId },
-    data: { translatedFromRevisionId: latestSourceRevision.id }
+  await prisma.$transaction(async (tx) => {
+    const current = await conceptSnapshotSource(tx, conceptId);
+    if (current.translatedFromRevisionId === latestSourceRevision.id) return;
+    await pinLatestConceptRevisionMetadata(tx, current);
+    const updated = await tx.concept.update({
+      where: { id: conceptId },
+      data: { translatedFromRevisionId: latestSourceRevision.id }
+    });
+    const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.CONCEPT,
+        pageId: updated.id,
+        markdown: updated.bodyMarkdown,
+        conceptTitle: updated.title,
+        conceptKind: updated.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(updatedSnapshot),
+        editedById: user.id,
+        editSummary: "Translation marked up to date"
+      }
+    });
   });
 
   revalidatePath(`/concepts/${concept.slug}`);
+  revalidatePath(`/concepts/${concept.slug}/history`);
   redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
 }
 
@@ -514,7 +650,9 @@ export async function deleteConceptAction(conceptId: number) {
 
   const targetSlugs = [concept.slug, ...concept.aliases.map((alias) => alias.aliasSlug)];
   await prisma.$transaction(async (tx) => {
-    await pinLatestConceptRevisionMetadata(tx, concept.id, concept.title, concept.kind);
+    const current = await conceptSnapshotSource(tx, concept.id);
+    const conceptSnapshot = buildConceptRevisionSnapshot(current);
+    await pinLatestConceptRevisionMetadata(tx, current);
     await tx.internalLink.deleteMany({
       where: {
         sourceType: SourceType.CONCEPT,
@@ -537,6 +675,7 @@ export async function deleteConceptAction(conceptId: number) {
         markdown: concept.bodyMarkdown,
         conceptTitle: concept.title,
         conceptKind: concept.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(conceptSnapshot),
         editedById: user.id,
         editSummary: "Concept deleted"
       }
@@ -583,7 +722,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
   }
 
   const concept = await prisma.$transaction(async (tx) => {
-    await pinLatestConceptRevisionMetadata(tx, conceptId, existingConcept.title, existingConcept.kind);
+    await pinLatestConceptRevisionMetadata(tx, await conceptSnapshotSource(tx, conceptId));
     const updated = await tx.concept.update({
       where: { id: conceptId },
       data: {
@@ -599,6 +738,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
     });
 
     await syncInternalLinks(SourceType.CONCEPT, conceptId, revision.markdown, tx);
+    const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.CONCEPT,
@@ -606,6 +746,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
         markdown: revision.markdown,
         conceptTitle: existingConcept.title,
         conceptKind: revision.conceptKind ?? existingConcept.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(updatedSnapshot),
         editedById: user.id,
         editSummary: `Rolled back to revision ${revision.id}`
       }

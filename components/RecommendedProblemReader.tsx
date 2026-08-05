@@ -73,7 +73,7 @@ export function RecommendedProblemReader({
           </button>
         ))}
       </div>
-      <div className={`recommendation-reader-panel${selected.isExercise ? " is-exercise" : ""}`}>
+      <div className="recommendation-reader-panel">
         <header>
           <div>
             <p>{selected.domain}</p>

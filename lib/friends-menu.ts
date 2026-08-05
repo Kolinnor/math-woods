@@ -5,6 +5,8 @@ import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
 import type { InterfaceLocale } from "@/lib/i18n/types";
 import type { ProblemChallengeLabels } from "@/lib/problem-challenges";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
+import { canUseOwnerTools, type PermissionUser } from "@/lib/permissions";
+import { activeSitePresenceCount } from "@/lib/site-presence";
 import { displayNameForUser } from "@/lib/user-display";
 
 const ONLINE_WINDOW_MS = 10 * 60 * 1000;
@@ -25,6 +27,7 @@ export type FriendsMenuData = {
     username: string;
   }>;
   timeZone: string | null;
+  totalOnlineCount: number | null;
   unreadChatCount: number;
   labels: {
     friends: string;
@@ -44,6 +47,7 @@ export type FriendsMenuData = {
     imageRequirements: string;
     noFriendsYet: string;
     noMessagesYet: string;
+    newMessagesBelow: (count: number) => string;
     offline: string;
     online: string;
     onlineShort: string;
@@ -51,6 +55,7 @@ export type FriendsMenuData = {
     pendingRequests: string | null;
     send: string;
     saveChanges: string;
+    scrollToLatestMessages: string;
     removeImage: string;
     reply: string;
     replyingTo: string;
@@ -60,8 +65,13 @@ export type FriendsMenuData = {
   };
 };
 
-export async function friendsMenuDataForUser(userId: number): Promise<FriendsMenuData> {
-  const [locale, timeZone] = await Promise.all([getInterfaceLocale(), getRequestTimeZone()]);
+export async function friendsMenuDataForUser(user: PermissionUser): Promise<FriendsMenuData> {
+  const userId = user.id;
+  const [locale, timeZone, totalOnlineCount] = await Promise.all([
+    getInterfaceLocale(),
+    getRequestTimeZone(),
+    canUseOwnerTools(user) ? activeSitePresenceCount() : Promise.resolve(null)
+  ]);
   const t = dictionaryForLocale(locale);
   const now = new Date();
   const onlineSince = new Date(now.getTime() - ONLINE_WINDOW_MS);
@@ -151,6 +161,7 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
     locale,
     friends,
     timeZone,
+    totalOnlineCount,
     unreadChatCount,
     labels: {
       friends: t.social.friends,
@@ -173,6 +184,7 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
       imageRequirements: t.social.imageRequirements,
       noFriendsYet: t.social.noFriendsYet,
       noMessagesYet: t.social.noMessagesYet,
+      newMessagesBelow: t.social.newMessagesBelow,
       offline: t.social.offline,
       online: t.social.online,
       onlineShort: t.social.friendsOnline(onlineCount),
@@ -180,6 +192,7 @@ export async function friendsMenuDataForUser(userId: number): Promise<FriendsMen
       pendingRequests: incomingCount > 0 ? t.social.pendingRequests(incomingCount) : null,
       send: t.social.send,
       saveChanges: t.social.saveChanges,
+      scrollToLatestMessages: t.social.scrollToLatestMessages,
       removeImage: t.social.removeImage,
       reply: t.social.reply,
       replyingTo: t.social.replyingTo,

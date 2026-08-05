@@ -904,7 +904,9 @@ export default async function SettingsPage({
         <section className="panel p-5">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">User roles</h2>
-            <p className="muted text-sm">Only the owner can manage trusted users and deleted-user visibility.</p>
+            <p className="muted text-sm">
+              Deactivation is reversible and keeps the account&apos;s email and connected sign-in identities reserved.
+            </p>
           </div>
 
           <nav className="tab-nav mb-4" aria-label="Admin user sections">
@@ -915,7 +917,7 @@ export default async function SettingsPage({
               href="/settings?tab=admin&adminUsers=deleted"
               className={adminUsersTab === "deleted" ? "active" : ""}
             >
-              Deleted users ({deletedUsers.length})
+              Deactivated users ({deletedUsers.length})
             </Link>
           </nav>
 
@@ -940,7 +942,7 @@ export default async function SettingsPage({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {lockedRole ? (
-                        <span className="tag">{deleted ? "Deleted user" : roleLabel(managedUser.role)}</span>
+                        <span className="tag">{deleted ? "Deactivated" : roleLabel(managedUser.role)}</span>
                       ) : (
                         <form action={updateUserRoleAction.bind(null, managedUser.id)} className="flex flex-wrap gap-2">
                           <select name="role" defaultValue={managedUser.role} aria-label={`Role for ${managedUser.username}`}>
@@ -960,7 +962,7 @@ export default async function SettingsPage({
                           action={updateUserDeletedStatusAction.bind(null, managedUser.id, deleted ? "active" : "deleted")}
                         >
                           <button type="submit" className="secondary">
-                            {deleted ? "Move to active" : "Move to deleted"}
+                            {deleted ? "Reactivate" : "Deactivate"}
                           </button>
                         </form>
                       )}
@@ -971,7 +973,7 @@ export default async function SettingsPage({
             })}
             {shownAdminUsers.length === 0 && (
               <p className="muted rounded-md border border-line p-3 text-sm">
-                {adminUsersTab === "deleted" ? "No deleted users." : "No active users."}
+                {adminUsersTab === "deleted" ? "No deactivated users." : "No active users."}
               </p>
             )}
           </div>

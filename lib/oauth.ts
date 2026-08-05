@@ -330,6 +330,13 @@ async function finishGithubCallback(
   };
 }
 
+export class OAuthAccountDeactivatedError extends Error {
+  constructor() {
+    super("This external identity belongs to a deactivated Math Woods account.");
+    this.name = "OAuthAccountDeactivatedError";
+  }
+}
+
 export async function finishOAuthCallback(providerKey: OAuthProviderKey, currentUrl: URL) {
   const provider = configuredProvider(providerKey);
   const attempt = await attemptFromCookie(provider.provider);
@@ -350,7 +357,7 @@ export async function finishOAuthCallback(providerKey: OAuthProviderKey, current
     include: { user: true }
   });
   if (identity) {
-    if (identity.user.deletedAt) throw new Error("This account is no longer active.");
+    if (identity.user.deletedAt) throw new OAuthAccountDeactivatedError();
     if (attempt.linkUserId && attempt.linkUserId !== identity.userId) {
       throw new Error("This external account is already connected to another Math Woods account.");
     }

@@ -5,9 +5,11 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
 import { ChatMessageAttachment } from "@/components/ChatMessageAttachment";
 import { ChatMessageReactions } from "@/components/ChatMessageReactions";
+import { ChatScrollToBottomButton } from "@/components/ChatScrollToBottomButton";
 import { useChatReply } from "@/components/ChatReplyContext";
 import { ChatReplyQuote } from "@/components/ChatReplyQuote";
 import { UserAvatar } from "@/components/UserAvatar";
+import { useChatScroll } from "@/components/useChatScroll";
 import {
   applyChatMessageDeletions,
   applyChatMessageUpdates,
@@ -36,6 +38,8 @@ type LiveChatThreadProps = {
   labels: {
     live: string;
     livePaused: string;
+    scrollToLatestMessages: string;
+    newMessagesBelow: (count: number) => string;
     noMessagesYet: string;
     cancel: string;
     confirmDeleteMessage: string;
@@ -65,12 +69,12 @@ export function LiveChatThread({
   const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLElement | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
-
-  const scrollToEnd = useCallback(() => {
-    const thread = threadRef.current;
-    if (!thread) return;
-    thread.scrollTop = thread.scrollHeight;
-  }, []);
+  const {
+    isAtBottom,
+    newMessagesBelow,
+    noteNewMessages,
+    scrollToBottom
+  } = useChatScroll(threadRef);
 
   useEffect(() => {
     latestIdRef.current = messages.at(-1)?.id ?? 0;
@@ -114,9 +118,8 @@ export function LiveChatThread({
   }
 
   useEffect(() => {
-    scrollToEnd();
     window.dispatchEvent(new Event(CHAT_READ_EVENT));
-  }, [scrollToEnd]);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -157,6 +160,7 @@ export function LiveChatThread({
             || (Array.isArray(data.messageUpdates) && data.messageUpdates.length > 0)
             || (Array.isArray(data.reactionUpdates) && data.reactionUpdates.length > 0)
           ) {
+            const newMessages = data.messages ?? [];
             setMessages((current) => {
               const seen = new Set(current.map((message) => message.id));
               const withNewMessages = [
@@ -171,8 +175,11 @@ export function LiveChatThread({
                 data.deletedMessageIds ?? []
               );
             });
-            if ((data.messages?.length ?? 0) > 0) {
-              window.setTimeout(scrollToEnd, 0);
+            if (newMessages.length > 0) {
+              noteNewMessages(
+                newMessages.filter((message) => message.authorId !== currentUserId).length,
+                newMessages.some((message) => message.authorId === currentUserId)
+              );
               window.dispatchEvent(new Event(CHAT_READ_EVENT));
             }
           }
@@ -194,10 +201,11 @@ export function LiveChatThread({
       if (timeoutId) window.clearTimeout(timeoutId);
       if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
     };
-  }, [otherUsername, scrollToEnd]);
+  }, [currentUserId, noteNewMessages, otherUsername]);
 
   return (
-    <section className="chat-thread panel p-5" ref={threadRef}>
+    <div className="chat-thread-wrap">
+      <section className="chat-thread panel p-5" ref={threadRef}>
       <div className="chat-live-status" aria-live="polite">
         <span className={status === "paused" ? "friend-offline-dot" : "friend-online-dot"} aria-hidden="true" />
         <span>{status === "paused" ? labels.livePaused : labels.live}</span>
@@ -271,6 +279,15 @@ export function LiveChatThread({
         );
       })}
       {messages.length === 0 && <p className="muted">{labels.noMessagesYet}</p>}
-    </section>
+      </section>
+      {!isAtBottom && (
+        <ChatScrollToBottomButton
+          newMessageLabel={labels.newMessagesBelow}
+          newMessages={newMessagesBelow}
+          onClick={() => scrollToBottom()}
+          scrollLabel={labels.scrollToLatestMessages}
+        />
+      )}
+    </div>
   );
 }

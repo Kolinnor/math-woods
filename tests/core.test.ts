@@ -23,6 +23,7 @@ import {
 } from "../lib/concept-exercises.ts";
 import { parseConceptKind } from "../lib/concept-kinds.ts";
 import { slugify } from "../lib/slug.ts";
+import { isSitePresenceId, sitePresenceIsActive } from "../lib/site-presence-config.ts";
 import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
@@ -65,6 +66,7 @@ import {
 import { chatImageDailyLimitForRole, chatImageUrl } from "../lib/chat-image-config.ts";
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
+import { chatDistanceFromBottom, chatIsNearBottom } from "../lib/chat-scroll.ts";
 import { shouldSendChatOnEnter } from "../lib/chat-compose.ts";
 import { normalizeChatReplyToId } from "../lib/chat-replies.ts";
 import { applyChatMessageDeletions, applyChatMessageUpdates } from "../lib/chat-message-updates.ts";
@@ -260,6 +262,12 @@ import {
   parseProblemRevisionSnapshot,
   type ProblemRevisionSnapshot
 } from "../lib/problem-revisions.ts";
+import {
+  changedConceptSnapshotFields,
+  conceptRevisionAutomaticSummary,
+  parseConceptRevisionSnapshot,
+  type ConceptRevisionSnapshot
+} from "../lib/concept-revisions.ts";
 import { buildRevisionDiff } from "../lib/revision-diff.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
@@ -448,6 +456,45 @@ assert.equal(
   parseProblemRevisionSnapshot(legacyExerciseSnapshot)?.showRelatedProblems,
   false
 );
+const baseConceptSnapshot: ConceptRevisionSnapshot = {
+  schemaVersion: 1,
+  title: "Group",
+  language: "en",
+  bodyMarkdown: "A group is...",
+  domainCode: "algebra",
+  kind: ConceptKind.DEFINITION,
+  status: ConceptStatus.USABLE,
+  needsReviewAfterEdit: false,
+  canAppearInConceptBrowser: true,
+  translatedFromRevisionId: null,
+  aliases: [{ alias: "Groups", aliasSlug: "groups" }],
+  references: [],
+  practiceExercises: []
+};
+const editedConceptSnapshot: ConceptRevisionSnapshot = {
+  ...baseConceptSnapshot,
+  domainCode: "20-XX",
+  aliases: [...baseConceptSnapshot.aliases, { alias: "Group structure", aliasSlug: "group-structure" }],
+  practiceExercises: [{ id: 7, slug: "identity-is-unique", title: "Identity is unique" }]
+};
+assert.deepEqual(changedConceptSnapshotFields(baseConceptSnapshot, editedConceptSnapshot), [
+  "domainCode",
+  "aliases",
+  "practiceExercises"
+]);
+assert.deepEqual(
+  changedConceptSnapshotFields(editedConceptSnapshot, {
+    ...editedConceptSnapshot,
+    practiceExercises: [{ ...editedConceptSnapshot.practiceExercises[0], title: "Renamed exercise" }]
+  }),
+  []
+);
+assert.equal(
+  conceptRevisionAutomaticSummary(changedConceptSnapshotFields(baseConceptSnapshot, editedConceptSnapshot)),
+  "Updated domain, aliases and linked exercises"
+);
+assert.deepEqual(parseConceptRevisionSnapshot(baseConceptSnapshot), baseConceptSnapshot);
+assert.equal(parseConceptRevisionSnapshot({ ...baseConceptSnapshot, schemaVersion: 2 }), null);
 assert.deepEqual(parseProblemContentTypes(undefined), ["problem"]);
 assert.deepEqual(parseProblemContentTypes(["exercise"]), ["exercise"]);
 assert.deepEqual(parseProblemContentTypes(["exercise", "problem", "unknown"]), ["problem", "exercise"]);
@@ -478,6 +525,9 @@ assert.equal(discussionIsUnlocked(new Date("2099-01-01T00:00:00.000Z"), start), 
 assert.equal(formatUnlockDistance(new Date("2026-06-04T11:30:00.000Z"), start), "1 h 30");
 assert.equal(chatDayKey("2026-07-19T00:30:00.000Z", "UTC"), "2026-07-19");
 assert.equal(chatDayKey("2026-07-19T00:30:00.000Z", "America/New_York"), "2026-07-18");
+assert.equal(chatDistanceFromBottom({ clientHeight: 400, scrollHeight: 1000, scrollTop: 520 }), 80);
+assert.equal(chatIsNearBottom({ clientHeight: 400, scrollHeight: 1000, scrollTop: 520 }), false);
+assert.equal(chatIsNearBottom({ clientHeight: 400, scrollHeight: 1000, scrollTop: 540 }), true);
 assert.equal(chatUnreadDocumentTitle("Math Woods", 1), "(1) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(1) Math Woods", 3), "(3) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(99+) Math Woods", 0), "Math Woods");
@@ -939,6 +989,30 @@ assert.equal(
   canChangeConceptStatus(
     { id: 1, role: Role.MODERATOR },
     { createdById: 2, status: ConceptStatus.STUB },
+    ConceptStatus.USABLE
+  ),
+  true
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.USER },
+    { createdById: 1, status: ConceptStatus.USABLE },
+    ConceptStatus.STUB
+  ),
+  true
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.USER },
+    { createdById: 2, status: ConceptStatus.USABLE },
+    ConceptStatus.STUB
+  ),
+  false
+);
+assert.equal(
+  canChangeConceptStatus(
+    { id: 1, role: Role.MODERATOR },
+    { createdById: 1, status: ConceptStatus.REVIEWED },
     ConceptStatus.USABLE
   ),
   true
@@ -2217,5 +2291,10 @@ assert.equal(
   ]),
   false
 );
+
+assert.equal(isSitePresenceId("65b34742-92dc-4ec0-a928-216063f96a30"), true);
+assert.equal(isSitePresenceId("not-a-presence-id"), false);
+assert.equal(sitePresenceIsActive(100_001, 190_000), true);
+assert.equal(sitePresenceIsActive(100_000, 190_000), false);
 
 console.log("core tests ok");

@@ -43,7 +43,14 @@ export async function registerAction(formData: FormData) {
   let user;
   try {
     await assertRateLimit(`register:${email.toLowerCase()}`, 3, 60_000);
-    user = await registerUser(displayName, email, password, mathLevel);
+    user = await registerUser(
+      displayName,
+      email,
+      password,
+      mathLevel,
+      formData.get("avatarPreset"),
+      formData.get("avatarBackground")
+    );
   } catch (error) {
     const reason = errorMessage(error).startsWith("Too many requests")
       ? "rate-limited"

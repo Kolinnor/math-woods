@@ -14,6 +14,7 @@ import { FriendsMenu } from "@/components/FriendsMenu";
 import { GuestProgressPrompt } from "@/components/GuestProgressPrompt";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
+import { SitePresenceHeartbeat } from "@/components/SitePresenceHeartbeat";
 import { TimeZoneReporter } from "@/components/TimeZoneReporter";
 import { UserAvatar } from "@/components/UserAvatar";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
@@ -143,6 +144,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={`${inter.variable} ${spectral.variable}`}>
         <ErrorReporter />
+        <SitePresenceHeartbeat />
         <TimeZoneReporter />
         <header className="site-header">
           <nav className="site-nav site-content-width mx-auto px-4">
@@ -212,7 +214,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {user && (
           <div className="floating-friends-menu">
             <NotificationsMenu userId={user.id} />
-            <FriendsMenu userId={user.id} />
+            <FriendsMenu user={user} />
           </div>
         )}
         <main className="site-main site-content-width mx-auto px-4 py-8">{children}</main>

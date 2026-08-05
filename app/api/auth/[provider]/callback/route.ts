@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearOAuthCookie, finishOAuthCallback, oauthAppUrl, parseOAuthProvider } from "@/lib/oauth";
+import {
+  clearOAuthCookie,
+  finishOAuthCallback,
+  OAuthAccountDeactivatedError,
+  oauthAppUrl,
+  parseOAuthProvider
+} from "@/lib/oauth";
 
 export async function GET(
   request: NextRequest,
@@ -13,6 +19,7 @@ export async function GET(
   } catch (error) {
     console.error("OAuth callback failed", provider, error);
     await clearOAuthCookie();
-    return NextResponse.redirect(oauthAppUrl("/login?oauthError=failed"));
+    const reason = error instanceof OAuthAccountDeactivatedError ? "deactivated" : "failed";
+    return NextResponse.redirect(oauthAppUrl(`/login?oauthError=${reason}`));
   }
 }

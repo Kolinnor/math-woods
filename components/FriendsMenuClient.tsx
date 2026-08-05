@@ -7,9 +7,11 @@ import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
 import { ChatMessageAttachment } from "@/components/ChatMessageAttachment";
 import { ChatMessageReactions } from "@/components/ChatMessageReactions";
+import { ChatScrollToBottomButton } from "@/components/ChatScrollToBottomButton";
 import { ChatReplyComposerPreview, ChatReplyQuote } from "@/components/ChatReplyQuote";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
+import { useChatScroll } from "@/components/useChatScroll";
 import { shouldSendChatOnEnter } from "@/lib/chat-compose";
 import {
   applyChatMessageDeletions,
@@ -45,6 +47,13 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   const latestMessageIdRef = useRef(0);
   const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLDivElement | null>(null);
+  const {
+    isAtBottom,
+    newMessagesBelow,
+    noteNewMessages,
+    resetScroll,
+    scrollToBottom
+  } = useChatScroll(threadRef, selectedFriend?.username);
 
   useEffect(() => {
     function updateTitle() {
@@ -140,6 +149,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     setReplyingTo(null);
     setChatError(null);
     setChatLoading(true);
+    resetScroll();
 
     async function refresh(initial = false) {
       if (document.visibilityState === "hidden") {
@@ -173,6 +183,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
             || (Array.isArray(result.reactionUpdates) && result.reactionUpdates.length > 0)
           )
         ) {
+          const newMessages = result.messages ?? [];
           setMessages((current) => {
             const seen = new Set(current.map((message) => message.id));
             const withNewMessages = [
@@ -188,6 +199,12 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
             );
           });
           latestMessageIdRef.current = result.messages?.at(-1)?.id ?? latestMessageIdRef.current;
+          if (initial || newMessages.length > 0) {
+            noteNewMessages(
+              newMessages.filter((message) => message.authorId !== data.currentUserId).length,
+              initial || newMessages.some((message) => message.authorId === data.currentUserId)
+            );
+          }
         }
         if (!stopped && typeof result.reactionCursor === "number") {
           reactionCursorRef.current = result.reactionCursor;
@@ -218,12 +235,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         highlightTimerRef.current = null;
       }
     };
-  }, [selectedFriend?.username]);
-
-  useEffect(() => {
-    const thread = threadRef.current;
-    if (thread) thread.scrollTop = thread.scrollHeight;
-  }, [messages]);
+  }, [data.currentUserId, noteNewMessages, resetScroll, selectedFriend?.username]);
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -247,6 +259,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
       latestMessageIdRef.current = Math.max(latestMessageIdRef.current, result.message.id);
       setDraft("");
       setReplyingTo(null);
+      noteNewMessages(0, true);
     } catch (error) {
       setChatError(error instanceof Error ? error.message : "Message could not be sent.");
     } finally {
@@ -380,7 +393,8 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
               </button>
             </header>
 
-            <div className="friends-mini-chat-thread" ref={threadRef} aria-live="polite">
+            <div className="friends-mini-chat-thread-wrap">
+              <div className="friends-mini-chat-thread" ref={threadRef} aria-live="polite">
               {!chatLoading && messages.length === 0 && !chatError && <p>{data.labels.noMessagesYet}</p>}
               {messages.map((message, index) => {
                 const dayKey = chatDayKey(message.createdAt, data.timeZone);
@@ -439,6 +453,15 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                   </Fragment>
                 );
               })}
+              </div>
+              {!isAtBottom && (
+                <ChatScrollToBottomButton
+                  newMessageLabel={data.labels.newMessagesBelow}
+                  newMessages={newMessagesBelow}
+                  onClick={() => scrollToBottom()}
+                  scrollLabel={data.labels.scrollToLatestMessages}
+                />
+              )}
             </div>
 
             {chatError && <p className="friends-mini-chat-error" role="alert">{chatError}</p>}
@@ -477,9 +500,14 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
           </div>
         ) : (
           <div className="friends-menu-list-view">
-            <Link href={"/friends" as never} className="friends-menu-title">
-              {data.labels.friends}
-            </Link>
+            <div className="friends-menu-heading">
+              <Link href={"/friends" as never} className="friends-menu-title">
+                {data.labels.friends}
+              </Link>
+              {data.totalOnlineCount !== null && (
+                <span className="friends-menu-total-online">Total online: {data.totalOnlineCount}</span>
+              )}
+            </div>
             {data.unreadChatCount > 0 && data.labels.unreadMessages && (
               <Link href={"/friends" as never} className="friends-menu-request">
                 {data.labels.unreadMessages}

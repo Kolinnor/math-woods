@@ -738,10 +738,6 @@ body:has(.problem-detail-shell) {
   padding: 16px 24px 18px;
 }
 
-.recommendation-reader-panel.is-exercise {
-  background: #e3ede6;
-}
-
 .recommendation-reader-panel > header {
   align-items: center;
   display: flex;
@@ -756,10 +752,6 @@ body:has(.problem-detail-shell) {
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
-}
-
-.recommendation-reader-panel.is-exercise > header p {
-  color: #2c4a38;
 }
 
 .recommendation-reader-panel h3 {
@@ -822,10 +814,6 @@ body:has(.problem-detail-shell) {
   right: 0;
 }
 
-.recommendation-reader-panel.is-exercise .recommendation-statement-fade {
-  background: linear-gradient(180deg, rgba(227,237,230,0), rgba(227,237,230,.96) 55%, #e3ede6 85%);
-}
-
 .recommendation-statement:focus-visible {
   outline: 2px solid var(--mw-green);
   outline-offset: 2px;
@@ -881,7 +869,7 @@ body:has(.problem-detail-shell) .site-main {
 }
 
 .problem-detail-shell .problem-hero > img {
-  object-position: 50% 50%;
+  object-position: 50% 60%;
 }
 
 .problem-detail-shell .problem-hero-overlay {
@@ -918,12 +906,6 @@ body:has(.problem-detail-shell) .site-main {
   font-size: 11.5px;
   font-weight: 700;
   padding: 2px 9px;
-}
-
-.problem-type-badge.is-exercise {
-  background: #e3ede6;
-  border-color: #b9cfc2;
-  color: #2c4a38;
 }
 
 .problem-title-block h1 {
@@ -1093,11 +1075,6 @@ body:has(.problem-detail-shell) .site-main {
   border: 1px solid var(--mw-border);
   border-radius: 12px;
   padding: 32px 36px;
-}
-
-.problem-detail-shell .problem-statement.is-exercise {
-  background: #e3ede6;
-  border-color: #b9cfc2;
 }
 
 .problem-detail-shell .problem-statement .prose-math {
@@ -2241,6 +2218,22 @@ a {
   font-weight: 750;
 }
 
+.friends-menu-heading {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  min-width: 0;
+  padding-right: 0.6rem;
+}
+
+.friends-menu-total-online {
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-style: italic;
+  white-space: nowrap;
+}
+
 .friends-menu-row:hover,
 .friends-menu-title:hover,
 .friends-menu-request:hover {
@@ -2405,10 +2398,17 @@ a {
   width: 0.5rem;
 }
 
+.friends-mini-chat-thread-wrap {
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
 .friends-mini-chat-thread {
   align-content: start;
   display: grid;
   gap: 0.45rem;
+  height: 100%;
   min-height: 0;
   min-width: 0;
   overflow-x: hidden;
@@ -9887,6 +9887,46 @@ button.domain-picker-tile > span:last-child {
   font-size: 0.8rem;
 }
 
+.concept-status-controls {
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  padding: 0.7rem 0;
+}
+
+.concept-status-controls > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.concept-status-controls > form {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+  max-width: 38rem;
+}
+
+.concept-status-controls p,
+.concept-status-controls label > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.concept-status-controls label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.concept-status-controls textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.concept-status-controls button {
+  justify-self: start;
+}
+
 .quality-controversial {
   background: var(--notice-red-bg);
   border-color: var(--notice-red-border);
@@ -10796,6 +10836,17 @@ button.domain-picker-tile > span:last-child {
 .tip-selected-problem span {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.tip-problem-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tip-problem-meta .mw-difficulty strong {
+  font-size: 1rem;
 }
 
 .tip-selected-problem.is-dragging {
@@ -13461,12 +13512,6 @@ button.problem-favorite-count:disabled {
   padding: 0.18rem 0.34rem;
 }
 
-.problem-exercise-badge {
-  background: #e3ede6;
-  border-color: #b9cfc2;
-  color: #2c4a38;
-}
-
 .problem-review-badge {
   align-items: center;
   border: 1px solid;
@@ -14852,6 +14897,134 @@ button.relation-remove-button {
   color: var(--accent-strong);
 }
 
+.signup-avatar-picker {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  min-width: 0;
+  padding: 0.7rem;
+}
+
+.signup-avatar-picker legend {
+  font-size: 0.84rem;
+  font-weight: 750;
+  padding: 0 0.25rem;
+}
+
+.signup-avatar-picker > p {
+  color: var(--muted);
+  font-size: 0.76rem;
+  margin: 0 0 0.65rem;
+}
+
+.signup-avatar-picker-layout {
+  align-items: center;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+}
+
+.signup-avatar-preview {
+  align-items: center;
+  aspect-ratio: 1;
+  border: 1px solid rgb(32 70 45 / 0.2);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0.25rem;
+  width: 3.5rem;
+}
+
+.signup-avatar-preview img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.signup-avatar-picker-controls {
+  display: grid;
+  gap: 0.32rem;
+  min-width: 0;
+}
+
+.signup-avatar-picker-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.signup-avatar-presets {
+  display: flex;
+  gap: 0.3rem;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.15rem 0.12rem 0.3rem;
+  scrollbar-width: thin;
+}
+
+.signup-avatar-presets button {
+  align-items: center;
+  aspect-ratio: 1;
+  border: 1px solid rgb(32 70 45 / 0.18);
+  border-radius: 5px;
+  display: inline-flex;
+  flex: 0 0 2.4rem;
+  justify-content: center;
+  min-height: 2.4rem;
+  overflow: hidden;
+  padding: 0.15rem;
+  position: relative;
+  width: 2.4rem;
+}
+
+.signup-avatar-presets button img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.signup-avatar-presets button > svg {
+  background: var(--accent-strong);
+  border-radius: 999px;
+  bottom: 0.08rem;
+  color: #fff;
+  padding: 0.08rem;
+  position: absolute;
+  right: 0.08rem;
+}
+
+.signup-avatar-presets button.selected,
+.signup-avatar-presets button:hover {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 1px rgb(47 111 75 / 0.2);
+}
+
+.signup-avatar-backgrounds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+}
+
+.signup-avatar-backgrounds button {
+  align-items: center;
+  border: 1px solid rgb(32 70 45 / 0.22);
+  border-radius: 999px;
+  color: #294632;
+  display: inline-flex;
+  height: 1.35rem;
+  justify-content: center;
+  min-height: 1.35rem;
+  padding: 0;
+  width: 1.35rem;
+}
+
+.signup-avatar-backgrounds button.selected,
+.signup-avatar-backgrounds button:hover {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px rgb(47 111 75 / 0.18);
+}
+
 .profile-avatar-editor .form-error {
   margin-top: 0.6rem;
 }
@@ -14983,6 +15156,11 @@ button.relation-remove-button {
   white-space: nowrap;
 }
 
+.chat-thread-wrap {
+  min-width: 0;
+  position: relative;
+}
+
 .chat-thread {
   display: grid;
   gap: 0.9rem;
@@ -14991,6 +15169,49 @@ button.relation-remove-button {
   overflow-x: hidden;
   overflow-y: auto;
   scroll-behavior: smooth;
+}
+
+.chat-scroll-to-bottom {
+  align-items: center;
+  background: var(--accent);
+  border-color: var(--accent);
+  bottom: 0.75rem;
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--ink) 18%, transparent);
+  color: #fff;
+  display: inline-flex;
+  gap: 0.3rem;
+  justify-content: center;
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  padding: 0.4rem 0.55rem;
+  position: absolute;
+  right: 0.75rem;
+  z-index: 4;
+}
+
+.chat-scroll-to-bottom:hover {
+  background: color-mix(in srgb, var(--accent) 82%, #000);
+  border-color: color-mix(in srgb, var(--accent) 82%, #000);
+}
+
+.chat-scroll-to-bottom > span {
+  align-items: center;
+  background: #fff;
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 850;
+  height: 1.2rem;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1.2rem;
+  padding: 0 0.25rem;
+}
+
+.friends-mini-chat-thread-wrap .chat-scroll-to-bottom {
+  bottom: 0.6rem;
+  right: 0.6rem;
 }
 
 .chat-day-separator {

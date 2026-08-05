@@ -3,6 +3,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { NotificationType } from "@prisma/client";
+import {
+  defaultAvatarPath,
+  parseAvatarBackground,
+  parseDefaultAvatarPreset
+} from "@/lib/avatar-presets";
 import { prisma } from "@/lib/db";
 import { parseMathLevel } from "@/lib/math-levels";
 import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
@@ -125,12 +130,16 @@ export async function registerUser(
   displayNameInput: string,
   emailInput: string,
   password: string,
-  mathLevelInput: FormDataEntryValue | string | null | undefined
+  mathLevelInput: FormDataEntryValue | string | null | undefined,
+  avatarPresetInput?: FormDataEntryValue | string | null,
+  avatarBackgroundInput?: FormDataEntryValue | string | null
 ) {
   const displayName = normalizeDisplayName(displayNameInput);
   const username = ensureSlug(displayName, "user");
   const email = emailInput.trim().toLowerCase();
   const mathLevel = parseMathLevel(mathLevelInput);
+  const avatarPreset = parseDefaultAvatarPreset(avatarPresetInput);
+  const avatarBackground = parseAvatarBackground(avatarBackgroundInput);
 
   if (username.length < 3) throw new Error("Username must be at least 3 characters.");
   if (!email.includes("@")) throw new Error("A valid email is required.");
@@ -149,6 +158,8 @@ export async function registerUser(
       displayName,
       email,
       mathLevel,
+      avatarUrl: avatarPreset ? defaultAvatarPath(avatarPreset) : null,
+      avatarBackground,
       passwordHash: hashPassword(password)
     }
   });

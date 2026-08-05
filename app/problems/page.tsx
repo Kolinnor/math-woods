@@ -960,7 +960,7 @@ export default async function ProblemsPage({
                           </span>
                         )}
                         {problem.canAppearOnFrontPage && <span className="problem-language-badge">{t.problems.featured}</span>}
-                        {problem.isExercise && <span className="problem-language-badge problem-exercise-badge">{t.problems.exerciseType}</span>}
+                        {problem.isExercise && <span className="problem-language-badge">{t.problems.exerciseType}</span>}
                       </h3>
                       <span
                         className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}

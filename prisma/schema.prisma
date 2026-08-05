@@ -660,6 +660,7 @@ model PageRevision {
   conceptKind     ConceptKind?
   problemVersion  Int?
   problemSnapshot Json?
+  conceptSnapshot Json?
   isCreation      Boolean      @default(false)
   editedById      Int?
   editSummary     String?

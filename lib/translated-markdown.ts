@@ -39,6 +39,36 @@ export async function resolveConceptHrefsForLanguage(slugs: readonly string[], l
   );
 }
 
+export async function resolveConceptTitlesForLanguage(slugs: readonly string[], language: string) {
+  const uniqueSlugs = [...new Set(slugs)];
+  if (uniqueSlugs.length === 0) return new Map<string, string>();
+
+  const targetLanguage = parseContentLanguage(language);
+  const concepts = await prisma.concept.findMany({
+    where: { slug: { in: uniqueSlugs } },
+    select: { slug: true, title: true, translationGroupId: true }
+  });
+  if (concepts.length === 0) return new Map<string, string>();
+
+  const translatedConcepts = await prisma.concept.findMany({
+    where: {
+      translationGroupId: { in: [...new Set(concepts.map((concept) => concept.translationGroupId))] },
+      language: targetLanguage
+    },
+    select: { title: true, translationGroupId: true }
+  });
+  const translatedTitleByGroup = new Map(
+    translatedConcepts.map((concept) => [concept.translationGroupId, concept.title])
+  );
+
+  return new Map(
+    concepts.map((concept) => [
+      concept.slug,
+      translatedTitleByGroup.get(concept.translationGroupId) ?? concept.title
+    ])
+  );
+}
+
 export async function renderMarkdownCollectionForContentLanguage(
   markdowns: readonly string[],
   language: string

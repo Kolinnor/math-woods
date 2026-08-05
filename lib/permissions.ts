@@ -148,13 +148,34 @@ export function canReviewConcept(user: PermissionUser, concept: CreatedResource)
   return concept.createdById !== user.id && canSetConceptStatus(user.role, ConceptStatus.REVIEWED);
 }
 
+const CONCEPT_COMPLETENESS_RANK: Partial<Record<ConceptStatus, number>> = {
+  [ConceptStatus.STUB]: 0,
+  [ConceptStatus.USABLE]: 1,
+  [ConceptStatus.REVIEWED]: 2,
+  [ConceptStatus.EXCELLENT]: 3
+};
+
+export function canDowngradeConceptStatus(
+  user: PermissionUser,
+  concept: CreatedResource & { status: ConceptStatus },
+  nextStatus: ConceptStatus
+) {
+  const currentRank = CONCEPT_COMPLETENESS_RANK[concept.status];
+  const nextRank = CONCEPT_COMPLETENESS_RANK[nextStatus];
+  if (currentRank === undefined || nextRank === undefined || nextRank >= currentRank) return false;
+  if (nextStatus !== ConceptStatus.STUB && nextStatus !== ConceptStatus.USABLE) return false;
+
+  return concept.createdById === user.id || hasTrustedPrivileges(user.role);
+}
+
 export function canChangeConceptStatus(
   user: PermissionUser,
   concept: CreatedResource & { status: ConceptStatus },
   nextStatus: ConceptStatus
 ) {
-  if (!canSetConceptStatus(user.role, nextStatus)) return false;
   if (nextStatus === concept.status) return true;
+  if (canDowngradeConceptStatus(user, concept, nextStatus)) return true;
+  if (!canSetConceptStatus(user.role, nextStatus)) return false;
   if (nextStatus === ConceptStatus.USABLE) {
     return (
       (concept.status === ConceptStatus.STUB || concept.status === ConceptStatus.MISSING) &&

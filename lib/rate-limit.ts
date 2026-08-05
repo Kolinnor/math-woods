@@ -56,6 +56,12 @@ function rateLimitStorageKey(key: string) {
 }
 
 async function incrementRedisBucket(redisUrl: string, key: string, windowMs: number): Promise<number> {
+  const result = await executeRedisCommand(redisUrl, ["EVAL", REDIS_RATE_LIMIT_SCRIPT, "1", key, String(windowMs)]);
+  if (typeof result !== "number") throw new Error("Unexpected Redis rate-limit response.");
+  return result;
+}
+
+export async function executeRedisCommand(redisUrl: string, parts: string[]): Promise<RedisValue> {
   const url = new URL(redisUrl);
   if (url.protocol !== "redis:") throw new Error("Only redis:// URLs are supported for RATE_LIMIT_REDIS_URL.");
 
@@ -72,9 +78,7 @@ async function incrementRedisBucket(redisUrl: string, key: string, windowMs: num
       await sendRedisCommand(socket, ["SELECT", String(database)]);
     }
 
-    const result = await sendRedisCommand(socket, ["EVAL", REDIS_RATE_LIMIT_SCRIPT, "1", key, String(windowMs)]);
-    if (typeof result !== "number") throw new Error("Unexpected Redis rate-limit response.");
-    return result;
+    return await sendRedisCommand(socket, parts);
   } finally {
     socket.destroy();
   }

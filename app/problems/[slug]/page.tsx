@@ -52,7 +52,8 @@ import { problemLinkClass } from "@/lib/problem-link";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import {
   renderMarkdownCollectionForContentLanguage,
-  resolveConceptHrefsForLanguage
+  resolveConceptHrefsForLanguage,
+  resolveConceptTitlesForLanguage
 } from "@/lib/translated-markdown";
 import { problemTranslationFreshness } from "@/lib/translation-freshness";
 import {
@@ -65,6 +66,13 @@ import { displayNameForUser } from "@/lib/user-display";
 import { missingConceptHref } from "@/lib/wikilinks";
 
 export const dynamic = "force-dynamic";
+
+function titleFromConceptSlug(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .join(" ");
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -452,13 +460,22 @@ export default async function ProblemPage({
       : "";
     redirect(`/problems/${preferredTranslation.slug}${viewLanguageQuery}`);
   }
-  const [renderedProblemContent, translationFreshness, linkedConceptHrefBySlug] = await Promise.all([
+  const [
+    renderedProblemContent,
+    translationFreshness,
+    linkedConceptHrefBySlug,
+    linkedConceptTitleBySlug
+  ] = await Promise.all([
     renderMarkdownCollectionForContentLanguage(
       [problem.bodyMarkdown, ...problem.proofs.map((proof) => proof.bodyMarkdown)],
       problem.language
     ),
     problemTranslationFreshness(problem.translatedFromProblem, problem.translatedFromRevisionId),
     resolveConceptHrefsForLanguage(
+      links.filter((link) => link.exists).map((link) => link.targetSlug),
+      problem.language
+    ),
+    resolveConceptTitlesForLanguage(
       links.filter((link) => link.exists).map((link) => link.targetSlug),
       problem.language
     )
@@ -578,7 +595,7 @@ export default async function ProblemPage({
   return (
     <div className="problem-detail-shell">
       <section className="problem-hero">
-        <img src="/art/brook-in-the-forest.jpg" alt="Ivan Shishkin, Brook in the Forest" />
+        <img src="/art/hero-rye.jpg" alt="Ivan Shishkin, Rye (1878)" />
         <div className="problem-hero-overlay" />
       </section>
 
@@ -592,7 +609,7 @@ export default async function ProblemPage({
               {translatedDomainLabel(heroDomain, t.home.domainLabels)}
             </Link>
             {problem.isExercise && (
-              <span className="problem-type-badge is-exercise">
+              <span className="problem-type-badge">
                 {t.problems.exerciseBadge}
               </span>
             )}
@@ -764,7 +781,7 @@ export default async function ProblemPage({
 
         <article className="problem-detail-article" aria-labelledby="problem-title">
 
-        <section className={`problem-statement reading-surface${problem.isExercise ? " is-exercise" : ""}`}>
+        <section className="problem-statement reading-surface">
           <MarkdownBlock html={problemBodyHtml} />
         </section>
         <section className="problem-primary-actions" aria-label="Problem progress">
@@ -1294,15 +1311,21 @@ export default async function ProblemPage({
           <section className="sidebar-section">
             <h2 className="mb-3 font-semibold">{t.problemDetail.linkedConcepts}</h2>
             <div className="grid gap-2 text-sm">
-              {links.map((link) => (
-                <Link
-                  key={link.id}
-                  href={(link.exists ? (linkedConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : missingConceptHref(link.label ?? link.targetSlug)) as never}
-                  className={link.exists ? "wiki-link" : "wiki-link missing"}
-                >
-                  {link.label ?? link.targetSlug}
-                </Link>
-              ))}
+              {links.map((link) => {
+                const title = link.exists
+                  ? (linkedConceptTitleBySlug.get(link.targetSlug) ?? titleFromConceptSlug(link.targetSlug))
+                  : (link.label ?? titleFromConceptSlug(link.targetSlug));
+
+                return (
+                  <Link
+                    key={link.id}
+                    href={(link.exists ? (linkedConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : missingConceptHref(title)) as never}
+                    className={link.exists ? "wiki-link" : "wiki-link missing"}
+                  >
+                    {title}
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}

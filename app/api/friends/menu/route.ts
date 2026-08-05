@@ -8,7 +8,7 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
 
-  return NextResponse.json(await friendsMenuDataForUser(user.id), {
+  return NextResponse.json(await friendsMenuDataForUser(user), {
     headers: { "Cache-Control": "no-store" }
   });
 }

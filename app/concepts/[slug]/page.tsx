@@ -5,11 +5,13 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserAvatar } from "@/components/UserAvatar";
 import {
+  downgradeConceptStatusAction,
   dismissConceptTranslationStaleNoticeAction,
   markConceptReviewedAction,
   markConceptUsableAction
@@ -20,15 +22,24 @@ import { prisma } from "@/lib/db";
 import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
-import { contentLanguageLabel, parseContentLanguage } from "@/lib/languages";
+import { contentLanguageLabel } from "@/lib/languages";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
-import { canChangeConceptStatus, canReviewConcept, canUseAdminTools } from "@/lib/permissions";
+import {
+  canChangeConceptStatus,
+  canDowngradeConceptStatus,
+  canReviewConcept,
+  canUseAdminTools
+} from "@/lib/permissions";
 import { problemDifficultyTone } from "@/lib/problem-difficulty";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { renderMarkdownForContentLanguage, resolveConceptHrefsForLanguage } from "@/lib/translated-markdown";
+import {
+  renderMarkdownForContentLanguage,
+  resolveConceptHrefsForLanguage,
+  resolveConceptTitlesForLanguage
+} from "@/lib/translated-markdown";
 import { conceptTranslationFreshness } from "@/lib/translation-freshness";
 import {
   nextMissingTranslationLanguage,
@@ -59,36 +70,6 @@ function uniqueLinksByTargetSlug<T extends { targetSlug: string }>(links: T[]) {
     seen.add(link.targetSlug);
     return true;
   });
-}
-
-async function resolveConceptTitlesForLanguage(slugs: readonly string[], language: string) {
-  const uniqueSlugs = [...new Set(slugs)];
-  if (uniqueSlugs.length === 0) return new Map<string, string>();
-
-  const targetLanguage = parseContentLanguage(language);
-  const concepts = await prisma.concept.findMany({
-    where: { slug: { in: uniqueSlugs } },
-    select: { slug: true, title: true, translationGroupId: true }
-  });
-  if (concepts.length === 0) return new Map<string, string>();
-
-  const translatedConcepts = await prisma.concept.findMany({
-    where: {
-      translationGroupId: { in: [...new Set(concepts.map((concept) => concept.translationGroupId))] },
-      language: targetLanguage
-    },
-    select: { title: true, translationGroupId: true }
-  });
-  const translatedTitleByGroup = new Map(
-    translatedConcepts.map((concept) => [concept.translationGroupId, concept.title])
-  );
-
-  return new Map(
-    concepts.map((concept) => [
-      concept.slug,
-      translatedTitleByGroup.get(concept.translationGroupId) ?? concept.title
-    ])
-  );
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -330,6 +311,11 @@ export default async function ConceptPage({
   ]);
   const isLanguageFallback = targetViewLanguage !== concept.language;
   const conceptStatusLabel = t.concepts.statuses[concept.status] ?? concept.status.toLowerCase();
+  const downgradeTargets = user
+    ? [ConceptStatus.STUB, ConceptStatus.USABLE].filter((status) =>
+        canDowngradeConceptStatus(user, concept, status)
+      )
+    : [];
   const conceptKindLabel = t.concepts.kinds[concept.kind];
   const conceptDomainLabel = translatedDomainLabel(concept.domainCode, t);
   const hasReadingHeader =
@@ -540,6 +526,37 @@ export default async function ConceptPage({
               <p className="concept-review-requirement mt-2">{t.conceptDetail.reviewRequiresAnotherUser}</p>
             ) : null}
           </div>
+        )}
+
+        {downgradeTargets.length > 0 && (
+          <details className="concept-status-controls mb-4">
+            <summary>{t.conceptDetail.changeStatus}</summary>
+            <form action={downgradeConceptStatusAction.bind(null, concept.id)}>
+              <p>{t.conceptDetail.changeStatusHelp}</p>
+              <label>
+                <span>{t.conceptDetail.status}</span>
+                <select name="status" defaultValue={downgradeTargets[0]} required>
+                  {downgradeTargets.map((status) => (
+                    <option key={status} value={status}>
+                      {t.concepts.statuses[status]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t.conceptDetail.statusChangeReason}</span>
+                <textarea
+                  name="reason"
+                  maxLength={240}
+                  placeholder={t.conceptDetail.statusChangeReasonPlaceholder}
+                  required
+                />
+              </label>
+              <ConfirmSubmitButton className="secondary" message={t.conceptDetail.confirmStatusChange}>
+                {t.conceptDetail.applyStatusChange}
+              </ConfirmSubmitButton>
+            </form>
+          </details>
         )}
 
         <section className="reading-surface concept-reading-surface">

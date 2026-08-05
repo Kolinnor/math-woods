@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { GripVertical, Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState, type DragEvent, type KeyboardEvent } from "react";
+import { Difficulty } from "@/components/Difficulty";
 
 export type TipPickerProblem = {
   id: number;
@@ -45,12 +46,14 @@ type SuggestResponse = {
   problems?: ProblemSuggestion[];
 };
 
-function problemMeta(problem: TipPickerProblem) {
-  return [
-    problem.domainLabel,
-    problem.difficulty !== null ? `difficulty ${problem.difficulty}/100` : "difficulty not set",
-    problem.slug
-  ].join(" / ");
+function ProblemMeta({ problem }: { problem: TipPickerProblem }) {
+  return (
+    <span className="tip-problem-meta">
+      <span>{problem.domainLabel}</span>
+      <span aria-hidden="true">·</span>
+      <Difficulty compact value={problem.difficulty} />
+    </span>
+  );
 }
 
 const DEFAULT_LABELS: OrderedProblemPickerLabels = {
@@ -211,7 +214,7 @@ export function OrderedProblemPicker({
             </button>
             <div className="tip-selected-problem-copy">
               <strong>{problem.title}</strong>
-              <span>{problemMeta(problem)}</span>
+              <ProblemMeta problem={problem} />
             </div>
             <button
               type="button"
@@ -262,7 +265,7 @@ export function OrderedProblemPicker({
             suggestions.map((problem) => (
               <button key={problem.id} type="button" onClick={() => addProblem(problem)}>
                 <strong>{problem.title}</strong>
-                <span>{problemMeta(problem)}</span>
+                <ProblemMeta problem={problem} />
               </button>
             ))}
           {!isSearching && suggestions.length === 0 && <p className="muted text-sm">{labels.noMatches}</p>}
