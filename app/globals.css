@@ -8927,6 +8927,18 @@ button.markdown-editor-tool-button:disabled svg {
   min-width: 0;
 }
 
+.translation-link-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.translation-link-note code {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .translation-companions,
 .translation-exercise-options {
   display: grid;

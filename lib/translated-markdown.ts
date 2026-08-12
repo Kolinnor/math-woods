@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { parseContentLanguage } from "@/lib/languages";
 import { renderMarkdown } from "@/lib/markdown";
 import { selectContentTranslationsByGroup, selectContentTranslation } from "@/lib/translation-routing";
-import { extractWikiLinks } from "@/lib/wikilinks";
+import { extractWikiLinks, replaceWikiLinkLabels } from "@/lib/wikilinks";
 
 type ResolvedConcept = {
   language: string;
@@ -190,4 +190,87 @@ export async function renderMarkdownCollectionForContentLanguage(
 export async function renderMarkdownForContentLanguage(markdown: string, language: string) {
   const [html] = await renderMarkdownCollectionForContentLanguage([markdown], language);
   return html;
+}
+
+export async function prepareMarkdownCollectionForTranslation(
+  markdowns: readonly string[],
+  language: string
+) {
+  if (markdowns.length === 0) return [];
+
+  const links = markdowns.flatMap((markdown) => extractWikiLinks(markdown));
+  if (links.length === 0) return [...markdowns];
+
+  const targetLanguage = parseContentLanguage(language);
+  const targetSlugs = [...new Set(links.map((link) => link.targetSlug))];
+  const targetTitles = [...new Set(links.map((link) => link.target.trim()).filter(Boolean))];
+  const concepts = await prisma.concept.findMany({
+    where: {
+      OR: [
+        { slug: { in: targetSlugs } },
+        { aliases: { some: { aliasSlug: { in: targetSlugs } } } },
+        ...targetTitles.map((title) => ({ title: { equals: title, mode: "insensitive" as const } }))
+      ]
+    },
+    select: {
+      title: true,
+      language: true,
+      slug: true,
+      translationGroupId: true,
+      translatedFromConceptId: true,
+      aliases: {
+        where: { aliasSlug: { in: targetSlugs } },
+        select: { aliasSlug: true }
+      }
+    }
+  });
+  const groups = [...new Set(concepts.map((concept) => concept.translationGroupId))];
+  const translations = groups.length
+    ? await prisma.concept.findMany({
+        where: { translationGroupId: { in: groups } },
+        select: {
+          title: true,
+          language: true,
+          translationGroupId: true,
+          translatedFromConceptId: true
+        }
+      })
+    : [];
+  const translatedTitleByGroup = new Map(
+    selectContentTranslationsByGroup(
+      translations.map((translation) => ({
+        ...translation,
+        isSource: translation.translatedFromConceptId === null
+      })),
+      targetLanguage
+    ).map((translation) => [translation.translationGroupId, translation.title])
+  );
+  const labelsByTargetSlug = new Map<string, string>();
+
+  for (const link of links) {
+    const candidates = concepts.filter(
+      (concept) =>
+        concept.slug === link.targetSlug ||
+        concept.aliases.some((alias) => alias.aliasSlug === link.targetSlug) ||
+        concept.title.toLowerCase() === link.target.trim().toLowerCase()
+    );
+    const matched = selectContentTranslation(
+      candidates.map((concept) => ({
+        ...concept,
+        isSource: concept.translatedFromConceptId === null
+      })),
+      targetLanguage
+    );
+    const translatedTitle = matched
+      ? translatedTitleByGroup.get(matched.translationGroupId)
+      : null;
+    if (translatedTitle) labelsByTargetSlug.set(link.targetSlug, translatedTitle);
+  }
+
+  return markdowns.map((markdown) => replaceWikiLinkLabels(markdown, labelsByTargetSlug));
+}
+
+export async function prepareMarkdownForTranslation(markdown: string, language: string) {
+  const [prepared] = await prepareMarkdownCollectionForTranslation([markdown], language);
+  return prepared;
 }

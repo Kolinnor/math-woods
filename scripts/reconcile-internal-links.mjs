@@ -21,6 +21,7 @@ async function main() {
       title: true,
       slug: true,
       language: true,
+      translationGroupId: true,
       aliases: { select: { aliasSlug: true } }
     }
   });
@@ -85,38 +86,65 @@ async function main() {
     for (const alias of concept.aliases) addCandidate(alias.aliasSlug, concept);
   }
 
-  const proofs = await prisma.problemProof.findMany({
-    select: {
-      id: true,
-      bodyMarkdown: true,
-      problem: { select: { language: true } }
-    }
-  });
-  const proofLinks = [];
-  for (const proof of proofs) {
-    for (const link of extractWikiLinks(proof.bodyMarkdown)) {
+  const [problems, conceptPages, proofs] = await Promise.all([
+    prisma.problem.findMany({
+      select: { id: true, bodyMarkdown: true, language: true }
+    }),
+    prisma.concept.findMany({
+      select: { id: true, bodyMarkdown: true, language: true }
+    }),
+    prisma.problemProof.findMany({
+      select: {
+        id: true,
+        bodyMarkdown: true,
+        problem: { select: { language: true } }
+      }
+    })
+  ]);
+  const sourcePages = [
+    ...problems.map((problem) => ({ ...problem, sourceType: "PROBLEM" })),
+    ...conceptPages.map((concept) => ({ ...concept, sourceType: "CONCEPT" })),
+    ...proofs.map((proof) => ({
+      id: proof.id,
+      bodyMarkdown: proof.bodyMarkdown,
+      language: proof.problem.language,
+      sourceType: "PROOF"
+    }))
+  ];
+  const indexedLinks = [];
+  for (const source of sourcePages) {
+    for (const link of extractWikiLinks(source.bodyMarkdown)) {
       const candidates = candidatesByLookup.get(link.targetSlug) ?? [];
-      const concept = candidates.find((candidate) => candidate.language === proof.problem.language) ?? candidates[0];
-      proofLinks.push({
-        sourceType: "PROOF",
-        sourceId: proof.id,
-        targetSlug: concept?.slug ?? link.targetSlug,
-        targetType: concept ? "CONCEPT" : "UNKNOWN",
-        exists: Boolean(concept),
+      const matchedConcept = candidates.find((candidate) => candidate.language === source.language) ?? candidates[0];
+      const translatedConcept = matchedConcept
+        ? concepts.find(
+            (concept) =>
+              concept.translationGroupId === matchedConcept.translationGroupId &&
+              concept.language === source.language
+          )
+        : null;
+      indexedLinks.push({
+        sourceType: source.sourceType,
+        sourceId: source.id,
+        targetSlug: translatedConcept?.slug ?? matchedConcept?.slug ?? link.targetSlug,
+        targetType: matchedConcept ? "CONCEPT" : "UNKNOWN",
+        exists: Boolean(matchedConcept),
         label: link.label
       });
     }
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.internalLink.deleteMany({ where: { sourceType: "PROOF" } });
-    if (proofLinks.length > 0) {
-      await tx.internalLink.createMany({ data: proofLinks, skipDuplicates: true });
+    await tx.internalLink.deleteMany({
+      where: { sourceType: { in: ["PROBLEM", "CONCEPT", "PROOF"] } }
+    });
+    if (indexedLinks.length > 0) {
+      await tx.internalLink.createMany({ data: indexedLinks, skipDuplicates: true });
     }
   });
 
   console.log(
-    `Internal link reconciliation complete. Canonical links fixed: ${canonicalLinks}. Title links fixed: ${titleLinks}. Alias links fixed: ${aliasLinks}. Solution links indexed: ${proofLinks.length}.`
+    `Internal link reconciliation complete. Canonical links fixed: ${canonicalLinks}. Title links fixed: ${titleLinks}. Alias links fixed: ${aliasLinks}. Content links indexed: ${indexedLinks.length}.`
   );
 }
 

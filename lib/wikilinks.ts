@@ -74,6 +74,24 @@ export function extractWikiLinks(markdown: string): WikiLink[] {
   return links;
 }
 
+export function replaceWikiLinkLabels(
+  markdown: string,
+  labelsByTargetSlug: ReadonlyMap<string, string>
+) {
+  if (labelsByTargetSlug.size === 0) return markdown;
+  const excluded = findMarkdownCodeRanges(markdown);
+
+  return markdown.replace(wikiLinkPattern, (raw: string, inner: string, offset: number) => {
+    if (overlapsRanges(offset, offset + raw.length, excluded)) return raw;
+
+    const link = parseWikiLink(raw, inner);
+    if (!link) return raw;
+
+    const translatedLabel = cleanWikiLinkLabel(labelsByTargetSlug.get(link.targetSlug) ?? "");
+    return translatedLabel ? wikiLinkMarkup(link.target, translatedLabel) : raw;
+  });
+}
+
 export function replaceWikiLinks(
   markdown: string,
   resolveHref: (link: WikiLink) => string,

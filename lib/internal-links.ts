@@ -38,23 +38,83 @@ export async function syncInternalLinks(
           { aliases: { some: { aliasSlug: link.targetSlug } } }
         ]
       },
-      select: { id: true, slug: true, language: true },
+      select: { id: true, slug: true, language: true, translationGroupId: true },
       orderBy: { id: "asc" }
     });
-    const concept =
+    const matchedConcept =
       (sourceLanguage ? concepts.find((candidate) => candidate.language === sourceLanguage) : null) ??
       concepts[0];
+    const translatedConcept =
+      matchedConcept && sourceLanguage && matchedConcept.language !== sourceLanguage
+        ? await tx.concept.findFirst({
+            where: {
+              translationGroupId: matchedConcept.translationGroupId,
+              language: sourceLanguage
+            },
+            select: { slug: true }
+          })
+        : null;
+    const targetSlug = translatedConcept?.slug ?? matchedConcept?.slug ?? link.targetSlug;
 
     await tx.internalLink.create({
       data: {
         sourceType,
         sourceId,
-        targetSlug: concept?.slug ?? link.targetSlug,
-        targetType: concept ? TargetType.CONCEPT : TargetType.UNKNOWN,
-        exists: Boolean(concept),
+        targetSlug,
+        targetType: matchedConcept ? TargetType.CONCEPT : TargetType.UNKNOWN,
+        exists: Boolean(matchedConcept),
         label: link.label
       }
     });
+  }
+}
+
+async function translationLinkIdentity(
+  link: ReturnType<typeof extractWikiLinks>[number],
+  preferredLanguage: string,
+  tx: Prisma.TransactionClient
+) {
+  const concepts = await tx.concept.findMany({
+    where: {
+      OR: [
+        { slug: link.targetSlug },
+        { title: { equals: link.target, mode: "insensitive" } },
+        { aliases: { some: { aliasSlug: link.targetSlug } } }
+      ]
+    },
+    select: { language: true, translationGroupId: true },
+    orderBy: { id: "asc" }
+  });
+  const concept = concepts.find((candidate) => candidate.language === preferredLanguage) ?? concepts[0];
+  return concept ? `concept:${concept.translationGroupId}` : `missing:${link.targetSlug}`;
+}
+
+export async function assertTranslationWikiLinksPreserved(
+  sourceMarkdown: string,
+  translatedMarkdown: string,
+  sourceLanguage: string,
+  translatedLanguage: string,
+  tx: Prisma.TransactionClient
+) {
+  const sourceLinks = extractWikiLinks(sourceMarkdown);
+  if (sourceLinks.length === 0) return;
+
+  const translatedLinks = extractWikiLinks(translatedMarkdown);
+  const translatedIdentities = new Set(
+    await Promise.all(
+      translatedLinks.map((link) => translationLinkIdentity(link, translatedLanguage, tx))
+    )
+  );
+  const missingLabels: string[] = [];
+  for (const link of sourceLinks) {
+    const identity = await translationLinkIdentity(link, sourceLanguage, tx);
+    if (!translatedIdentities.has(identity)) missingLabels.push(link.label);
+  }
+
+  if (missingLabels.length > 0) {
+    throw new Error(
+      `Keep every concept link from the source translation. Missing: ${[...new Set(missingLabels)].join(", ")}. You may translate the text after the | character without changing the link target.`
+    );
   }
 }
 
@@ -82,7 +142,13 @@ export async function refreshLinksForConceptId(
 }
 
 async function refreshLinksForConceptRecord(
-  concept: { slug: string; title: string; aliases: { aliasSlug: string }[] },
+  concept: {
+    slug: string;
+    title: string;
+    language: string;
+    translationGroupId: string;
+    aliases: { aliasSlug: string }[];
+  },
   tx: Prisma.TransactionClient = prisma
 ) {
   const titleSlug = ensureSlug(concept.title, "");
@@ -117,6 +183,76 @@ async function refreshLinksForConceptRecord(
         targetType: TargetType.CONCEPT
       }
     });
+  }
+
+  const siblingSlugs = (
+    await tx.concept.findMany({
+      where: { translationGroupId: concept.translationGroupId },
+      select: { slug: true }
+    })
+  ).map(({ slug }) => slug);
+  if (siblingSlugs.length <= 1) return;
+
+  const [problemSources, conceptSources, proofSources] = await Promise.all([
+    tx.problem.findMany({
+      where: { language: concept.language },
+      select: { id: true }
+    }),
+    tx.concept.findMany({
+      where: { language: concept.language },
+      select: { id: true }
+    }),
+    tx.problemProof.findMany({
+      where: { problem: { language: concept.language } },
+      select: { id: true }
+    })
+  ]);
+  const translatedSourceFilters = [
+    { sourceType: SourceType.PROBLEM, sourceId: { in: problemSources.map(({ id }) => id) } },
+    { sourceType: SourceType.CONCEPT, sourceId: { in: conceptSources.map(({ id }) => id) } },
+    { sourceType: SourceType.PROOF, sourceId: { in: proofSources.map(({ id }) => id) } }
+  ].filter((filter) => filter.sourceId.in.length > 0);
+  if (translatedSourceFilters.length === 0) return;
+
+  const impactedLinks = await tx.internalLink.findMany({
+    where: {
+      targetSlug: { in: siblingSlugs },
+      OR: translatedSourceFilters
+    },
+    select: { sourceType: true, sourceId: true }
+  });
+  const impactedKeys = new Set(impactedLinks.map((link) => `${link.sourceType}:${link.sourceId}`));
+  const impactedProblemIds = problemSources
+    .map(({ id }) => id)
+    .filter((id) => impactedKeys.has(`${SourceType.PROBLEM}:${id}`));
+  const impactedConceptIds = conceptSources
+    .map(({ id }) => id)
+    .filter((id) => impactedKeys.has(`${SourceType.CONCEPT}:${id}`));
+  const impactedProofIds = proofSources
+    .map(({ id }) => id)
+    .filter((id) => impactedKeys.has(`${SourceType.PROOF}:${id}`));
+  const [impactedProblems, impactedConcepts, impactedProofs] = await Promise.all([
+    tx.problem.findMany({
+      where: { id: { in: impactedProblemIds } },
+      select: { id: true, bodyMarkdown: true }
+    }),
+    tx.concept.findMany({
+      where: { id: { in: impactedConceptIds } },
+      select: { id: true, bodyMarkdown: true }
+    }),
+    tx.problemProof.findMany({
+      where: { id: { in: impactedProofIds } },
+      select: { id: true, bodyMarkdown: true }
+    })
+  ]);
+  for (const problem of impactedProblems) {
+    await syncInternalLinks(SourceType.PROBLEM, problem.id, problem.bodyMarkdown, tx, concept.language);
+  }
+  for (const sourceConcept of impactedConcepts) {
+    await syncInternalLinks(SourceType.CONCEPT, sourceConcept.id, sourceConcept.bodyMarkdown, tx, concept.language);
+  }
+  for (const proof of impactedProofs) {
+    await syncInternalLinks(SourceType.PROOF, proof.id, proof.bodyMarkdown, tx, concept.language);
   }
 }
 

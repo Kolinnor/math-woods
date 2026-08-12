@@ -27,7 +27,7 @@ import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
-import { syncInternalLinks } from "@/lib/internal-links";
+import { assertTranslationWikiLinksPreserved, syncInternalLinks } from "@/lib/internal-links";
 import { canEditExploration } from "@/lib/explorations";
 import {
   createNotification,
@@ -453,6 +453,15 @@ export async function createProblemAction(formData: FormData) {
     if (translationGroupId && !translationSource) {
       throw new Error("The selected problem translation source does not belong to this translation group.");
     }
+    if (translationSource) {
+      await assertTranslationWikiLinksPreserved(
+        translationSource.bodyMarkdown,
+        bodyMarkdown,
+        translationSource.language,
+        language,
+        tx
+      );
+    }
     const originalProblem = translationGroupId
       ? await tx.problem.findFirst({
           where: { translationGroupId, translatedFromProblemId: null },
@@ -674,6 +683,13 @@ export async function createProblemAction(formData: FormData) {
       for (const sourceProof of sourceProofs) {
         const translatedBody = translatedProofBodies.get(sourceProof.id);
         if (!translatedBody) throw new Error("Translated solution content is missing.");
+        await assertTranslationWikiLinksPreserved(
+          sourceProof.bodyMarkdown,
+          translatedBody.markdown,
+          translationSource.language,
+          language,
+          tx
+        );
         const translatedProof = await tx.problemProof.create({
           data: {
             translationGroupId: sourceProof.translationGroupId,
@@ -691,6 +707,13 @@ export async function createProblemAction(formData: FormData) {
         if (sourceProof.hint && translatedProofHintIds.includes(sourceProof.hint.id)) {
           const translatedHintBody = translatedProofHintBodies.get(sourceProof.hint.id);
           if (!translatedHintBody) throw new Error("Translated solution hint content is missing.");
+          await assertTranslationWikiLinksPreserved(
+            sourceProof.hint.bodyMarkdown,
+            translatedHintBody.markdown,
+            translationSource.language,
+            language,
+            tx
+          );
           await tx.problemHint.create({
             data: {
               translationGroupId: sourceProof.hint.translationGroupId,
@@ -718,6 +741,13 @@ export async function createProblemAction(formData: FormData) {
       for (const sourceHint of sourceHints) {
         const translatedBody = translatedHintBodies.get(sourceHint.id);
         if (!translatedBody) throw new Error("Translated hint content is missing.");
+        await assertTranslationWikiLinksPreserved(
+          sourceHint.bodyMarkdown,
+          translatedBody.markdown,
+          translationSource.language,
+          language,
+          tx
+        );
         await tx.problemHint.create({
           data: {
             translationGroupId: sourceHint.translationGroupId,

@@ -67,6 +67,7 @@ import { pickRandomDifferent } from "../lib/random-content.ts";
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
 import {
   extractWikiLinks,
+  replaceWikiLinkLabels,
   missingConceptHref,
   problemLinkMarkup,
   replaceWikiLinks,
@@ -472,6 +473,17 @@ assert.equal(
 );
 assert.equal(wikiLinkMarkup("Category", "this is a category"), "[[Category|this is a category]]");
 assert.equal(wikiLinkMarkup("Category", "Category"), "[[Category|Category]]");
+assert.equal(
+  replaceWikiLinkLabels(
+    "A [[Group|group]] and `[[Ring|ring]]`.",
+    new Map([["group", "groupe"], ["ring", "anneau"]])
+  ),
+  "A [[Group|groupe]] and `[[Ring|ring]]`."
+);
+assert.equal(
+  replaceWikiLinkLabels("[[Group]] and [[Unknown concept|unknown]].", new Map([["group", "Groupe"]])),
+  "[[Group|Groupe]] and [[Unknown concept|unknown]]."
+);
 assert.equal(problemLinkMarkup("A problem slug", "this problem"), "[this problem](/problems/a-problem-slug)");
 assert.equal(markdownExcerpt("Use [[polynomial|polynomials]] and $x^2$.", "fallback"), "Use polynomials and formula .");
 assert.equal(

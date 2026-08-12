@@ -12,6 +12,7 @@ import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { prepareMarkdownForTranslation } from "@/lib/translated-markdown";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
@@ -76,9 +77,9 @@ export default async function NewConceptPage({
   const translatedExerciseByGroup = new Map(
     translatedExercises.map((exercise) => [exercise.translationGroupId, exercise.slug])
   );
-  const defaultContent =
-    sourceConcept?.bodyMarkdown ??
-    "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to [[polynomial]].";
+  const defaultContent = sourceConcept
+    ? await prepareMarkdownForTranslation(sourceConcept.bodyMarkdown, initialLanguage)
+    : "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to [[polynomial]].";
 
   return (
     <ForestPageLayout
@@ -146,6 +147,12 @@ export default async function NewConceptPage({
         </div>
         <div className="grid gap-2">
           <span className="text-sm font-medium">Content</span>
+          {sourceConcept && (
+            <p className="translation-link-note">
+              Concept links are carried over automatically. Translate the visible text after <code>|</code>, but
+              keep the target before it so every language stays connected to the same mathematical idea.
+            </p>
+          )}
           <MarkdownEditor
             name="bodyMarkdown"
             initialValue={defaultContent}

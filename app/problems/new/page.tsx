@@ -19,6 +19,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { prepareMarkdownCollectionForTranslation } from "@/lib/translated-markdown";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -110,7 +111,41 @@ export default async function NewProblemPage({
     ? nextMissingTranslationLanguage(sourceProblem.language, sourceTranslationLanguages, requestedLanguage)
     : requestedLanguage;
   const initialLanguage = targetTranslationLanguage ?? requestedLanguage;
-  const defaultStatement = sourceProblem?.bodyMarkdown ?? "";
+  const sourceTranslationMarkdowns = sourceProblem
+    ? [
+        sourceProblem.bodyMarkdown,
+        ...sourceProblem.hints.map((hint) => hint.bodyMarkdown),
+        ...sourceProblem.proofs.flatMap((proof) => [
+          proof.bodyMarkdown,
+          ...(proof.hint ? [proof.hint.bodyMarkdown] : [])
+        ])
+      ]
+    : [];
+  const preparedTranslationMarkdowns = sourceProblem
+    ? await prepareMarkdownCollectionForTranslation(sourceTranslationMarkdowns, initialLanguage)
+    : [];
+  let preparedTranslationIndex = 0;
+  const defaultStatement = sourceProblem
+    ? preparedTranslationMarkdowns[preparedTranslationIndex++] ?? sourceProblem.bodyMarkdown
+    : "";
+  const preparedHints = sourceProblem
+    ? sourceProblem.hints.map((hint) => ({
+        ...hint,
+        bodyMarkdown: preparedTranslationMarkdowns[preparedTranslationIndex++] ?? hint.bodyMarkdown
+      }))
+    : [];
+  const preparedProofs = sourceProblem
+    ? sourceProblem.proofs.map((proof) => ({
+        ...proof,
+        bodyMarkdown: preparedTranslationMarkdowns[preparedTranslationIndex++] ?? proof.bodyMarkdown,
+        hint: proof.hint
+          ? {
+              ...proof.hint,
+              bodyMarkdown: preparedTranslationMarkdowns[preparedTranslationIndex++] ?? proof.hint.bodyMarkdown
+            }
+          : null
+      }))
+    : [];
   const initialDomains = sourceProblem
     ? sourceProblem.domains.length
       ? sourceProblem.domains.map((item) => item.mscCode)
@@ -147,6 +182,12 @@ export default async function NewProblemPage({
 
             <div className="grid gap-2">
               <span className="text-sm font-medium">Statement</span>
+              {sourceProblem && (
+                <p className="translation-link-note">
+                  Concept links are carried over automatically. Translate the visible text after <code>|</code>, but
+                  keep the target before it so every language stays connected to the same mathematical idea.
+                </p>
+              )}
               <MarkdownEditor
                 name="bodyMarkdown"
                 initialValue={defaultStatement}
@@ -180,8 +221,8 @@ export default async function NewProblemPage({
           {sourceProblem && (
             <TranslationCompanionFields
               draftSession={draftSession}
-              hints={sourceProblem.hints}
-              proofs={sourceProblem.proofs.map((proof) => ({
+              hints={preparedHints}
+              proofs={preparedProofs.map((proof) => ({
                 id: proof.id,
                 bodyMarkdown: proof.bodyMarkdown,
                 authorName: displayNameForUser(proof.author),

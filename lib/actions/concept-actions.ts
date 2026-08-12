@@ -24,7 +24,12 @@ import { completeDailyConceptReviewForUser } from "@/lib/daily-concept-reviews";
 import { notifyConceptAuthor, notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
-import { refreshLinksForConcept, refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
+import {
+  assertTranslationWikiLinksPreserved,
+  refreshLinksForConcept,
+  refreshLinksForConceptId,
+  syncInternalLinks
+} from "@/lib/internal-links";
 import {
   editableContentLanguage,
   parseTranslationGroupId,
@@ -140,6 +145,15 @@ export async function createConceptAction(formData: FormData) {
         : null;
     if (translationGroupId && !translationSource) {
       throw new Error("The selected concept translation source does not belong to this translation group.");
+    }
+    if (translationSource) {
+      await assertTranslationWikiLinksPreserved(
+        translationSource.bodyMarkdown,
+        bodyMarkdown,
+        translationSource.language,
+        language,
+        tx
+      );
     }
     const originalConcept = translationGroupId
       ? await tx.concept.findFirst({
