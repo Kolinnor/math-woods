@@ -43,13 +43,13 @@ import { renderInlineMarkdown } from "@/lib/markdown";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import {
   canEditProblem,
-  canPublishProblemEdit,
   canProposeProblemEdit,
   canEditSolution,
   canReviewProblem,
   canUseAdminTools,
   canViewArchivedProblem
 } from "@/lib/permissions";
+import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
@@ -572,8 +572,10 @@ export default async function ProblemPage({
   const isProblemAuthor = Boolean(user && problem.authorId === user.id);
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
   const canProposeCurrentProblem = Boolean(user && canProposeProblemEdit(user));
-  const publishesProblemEdits = Boolean(user && canPublishProblemEdit(user));
-  const canManageProblemHints = Boolean(user && canEditProblem(user, problem) && publishesProblemEdits);
+  const publishesProblemEdits = user
+    ? await canPublishProblemEditForProblem(user, problem)
+    : false;
+  const canManageProblemHints = publishesProblemEdits;
   const requiresSolutionVerification = problem.verificationMode !== ProblemVerificationMode.NONE;
   const canViewSolutions = !requiresSolutionVerification || attempt?.status === "SOLVED" || canEditCurrentProblem;
   const discussionPostCount = problem.thread?.posts.length ?? 0;

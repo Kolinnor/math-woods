@@ -218,16 +218,30 @@ body:has(.problem-detail-shell) {
   min-height: 168px;
 }
 
-/* The public home keeps the full landing artwork; signed-in dashboards stay compact. */
+/* Keep the complete public artwork visible without turning the hero into a full-page poster. */
 .home-dashboard .home-hero-guest {
-  aspect-ratio: 1920 / 1301;
-  height: auto;
-  min-height: 600px;
+  height: clamp(390px, 30vw, 460px);
+  min-height: 390px;
+}
+
+.home-dashboard .home-hero-guest::before {
+  background: url("/art/morning-in-a-pine-forest.jpg") center / cover no-repeat;
+  content: "";
+  filter: blur(12px);
+  inset: -18px;
+  opacity: 0.7;
+  position: absolute;
+  transform: scale(1.03);
 }
 
 .home-dashboard .home-hero-guest .home-hero-image {
   object-fit: contain;
   object-position: center;
+  z-index: 1;
+}
+
+.home-dashboard .home-hero-guest .home-hero-overlay {
+  z-index: 2;
 }
 
 .home-dashboard .home-guest-dashboard-hero {
@@ -236,6 +250,7 @@ body:has(.problem-detail-shell) {
   gap: 2rem;
   justify-content: space-between;
   width: 100%;
+  z-index: 3;
 }
 
 .home-dashboard .home-hero-image {
@@ -288,37 +303,6 @@ body:has(.problem-detail-shell) {
 
 .home-guest-dashboard-hero h1 {
   margin-bottom: 0.4rem;
-}
-
-.home-guest-dashboard-hero p {
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 0.95rem;
-  line-height: 1.45;
-  margin: 0;
-  max-width: 680px;
-}
-
-.home-guest-dashboard-cta {
-  align-items: center;
-  display: flex;
-  gap: 1.5rem;
-  justify-content: space-between;
-  padding: 1.25rem 1.4rem;
-}
-
-.home-guest-dashboard-cta h2 {
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 1.35rem;
-  margin-bottom: 0.25rem;
-}
-
-.home-guest-dashboard-cta p {
-  color: var(--mw-secondary);
-  margin: 0;
-}
-
-.home-guest-dashboard-cta .mw-primary-button {
-  flex: 0 0 auto;
 }
 
 .home-daily-problem {
@@ -3133,54 +3117,66 @@ a {
 }
 
 .guest-progress-prompt {
-  align-items: center;
   background: var(--panel);
   border: 1px solid var(--accent-border);
-  border-left: 4px solid var(--accent);
-  border-radius: 6px;
+  border-radius: 7px;
   bottom: max(1rem, env(safe-area-inset-bottom));
   box-shadow: var(--shadow);
-  display: flex;
-  gap: 0.8rem;
-  justify-content: space-between;
+  display: grid;
+  gap: 1rem;
   left: 50%;
-  max-width: min(32rem, calc(100vw - 2rem));
-  padding: 0.8rem 0.85rem;
+  max-width: min(27rem, calc(100vw - 2rem));
+  padding: 1.25rem 3.2rem 1.2rem 1.25rem;
   position: fixed;
   transform: translateX(-50%);
-  width: max-content;
+  width: 100%;
   z-index: 60;
 }
 
 .guest-progress-prompt p {
-  line-height: 1.4;
+  font-size: 1rem;
+  line-height: 1.5;
   margin: 0;
 }
 
-.guest-progress-prompt a {
-  color: var(--accent);
-  font-weight: 750;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
+.guest-progress-prompt .guest-progress-prompt-action {
+  justify-self: start;
 }
 
-.guest-progress-prompt button {
+.guest-progress-prompt .guest-progress-prompt-close {
   align-items: center;
   background: transparent;
-  border: 0;
-  color: var(--muted);
+  border: 1px solid var(--line);
+  color: var(--ink);
   display: inline-flex;
   flex: 0 0 auto;
-  height: 1.8rem;
+  height: 2.25rem;
   justify-content: center;
   min-height: 0;
   padding: 0;
-  width: 1.8rem;
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  width: 2.25rem;
 }
 
-.guest-progress-prompt button:hover {
+.guest-progress-prompt .guest-progress-prompt-close:hover {
   background: var(--panel-muted);
+  border-color: var(--line-strong);
   color: var(--ink);
+}
+
+@media (max-width: 520px) {
+  .guest-progress-prompt {
+    bottom: max(0.65rem, env(safe-area-inset-bottom));
+    max-width: calc(100vw - 1rem);
+    padding: 1rem 3rem 1rem 1rem;
+  }
+
+  .guest-progress-prompt .guest-progress-prompt-action {
+    justify-self: stretch;
+    text-align: center;
+  }
 }
 
 .achievement-grid {
@@ -18318,26 +18314,14 @@ body:has(.home-dashboard) > .site-footer {
   }
 
   .home-dashboard .home-hero-guest {
-    aspect-ratio: auto;
-    height: min(760px, 100svh);
-    min-height: 620px;
+    height: 520px;
+    min-height: 520px;
   }
 
   .home-dashboard .home-hero-guest .home-hero-image {
-    object-position: 50% top;
+    object-position: center;
   }
 
-  .home-guest-dashboard-hero .home-button,
-  .home-guest-dashboard-cta .mw-primary-button {
-    text-align: center;
-    width: 100%;
-  }
-
-  .home-guest-dashboard-cta {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 1rem;
-  }
 }
 
 /* Keep the dashboard tip compact regardless of the amount of authored text. */

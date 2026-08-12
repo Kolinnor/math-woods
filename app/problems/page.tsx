@@ -720,7 +720,7 @@ export default async function ProblemsPage({
         labels={t.problems.domainBrowser}
         locale={interfaceLocale}
         problemCounts={domainProblemCounts}
-        progress={user ? domainProgress : undefined}
+        progress={domainProgress}
         selectedDomain={domainValue}
       />
 
@@ -895,9 +895,6 @@ export default async function ProblemsPage({
               const authorName = displayNameForUser(problem.author);
               const showLanguageBadge = problem.language !== preferredLanguage;
               const problemHref = `/problems/${problem.slug}`;
-              const openProblemHref = user
-                ? problemHref
-                : `/login?returnTo=${encodeURIComponent(problemHref)}`;
 
               return (
                 <ProblemLedgerInteractiveRow
@@ -944,7 +941,7 @@ export default async function ProblemsPage({
                   requiresVerification={problem.verificationMode !== "NONE" && !isOwnProblem}
                   signedIn={Boolean(user)}
                 >
-                  <Link href={openProblemHref as never} className="problem-ledger-content">
+                  <Link href={problemHref as never} className="problem-ledger-content">
                     <div className="problem-ledger-difficulty" style={{ color: tone }}>
                     <span>{difficulty ? String(difficulty).padStart(2, "0") : "--"}</span>
                     <span className="problem-ledger-bars" aria-hidden="true">

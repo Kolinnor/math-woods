@@ -72,7 +72,6 @@ import {
   canEditVerificationMessage,
   canEditProblem,
   canProposeProblemEdit,
-  canPublishProblemEdit,
   canJoinProblemDiscussion,
   canJoinVerificationDiscussion,
   canReviewProblemVerification,
@@ -81,6 +80,7 @@ import {
   canSetProblemQualityStatus,
   canUseAdminTools
 } from "@/lib/permissions";
+import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { ensureSlug } from "@/lib/slug";
 import { parseTagInput, syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
@@ -225,8 +225,8 @@ async function requireProblemHintEditor(problemId: number) {
     select: { id: true, authorId: true, slug: true, language: true, translationGroupId: true }
   });
   if (!problem) throw new Error("Problem not found.");
-  if (!canEditProblem(user, problem) || !canPublishProblemEdit(user)) {
-    throw new Error("Only trusted contributors can edit hints directly.");
+  if (!(await canPublishProblemEditForProblem(user, problem))) {
+    throw new Error("You cannot edit hints for this problem directly.");
   }
   await assertRateLimit(`problem-hint:${user.id}`, 60, 60_000);
   return { problem, user };
@@ -821,7 +821,7 @@ export async function updateProblemAction(
   if (!canProposeProblemEdit(user)) {
     throw new Error("You cannot propose changes to this problem.");
   }
-  const publishesImmediately = canPublishProblemEdit(user);
+  const publishesImmediately = await canPublishProblemEditForProblem(user, previous);
   if (Number.isInteger(approvedProposalId) && approvedProposalId > 0 && !canUseAdminTools(user)) {
     throw new Error("Only admins can approve proposed edits.");
   }

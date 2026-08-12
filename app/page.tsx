@@ -79,28 +79,12 @@ const dashboardCopy = {
 
 const guestDashboardCopy = {
   en: {
-    signIn: "Sign in to start solving",
-    introduction: "Discover today's mathematics. Sign in or create a free account to open problems and exercises, save your progress, and receive personal recommendations.",
-    recommendations: "Recommended problems",
-    recommendationNote: "Sign in to open",
-    ready: "Ready to start solving?",
-    readyBody: "Your account keeps your progress, favorites and recommendations in one place.",
-    readyAction: "Sign in or create an account"
+    recommendations: "Recommended problems"
   },
   fr: {
-    signIn: "Se connecter pour commencer",
-    introduction: "Découvrez les mathématiques du jour. Connectez-vous ou créez un compte gratuit pour ouvrir les problèmes et exercices, enregistrer votre progression et recevoir des recommandations personnelles.",
-    recommendations: "Problèmes recommandés",
-    recommendationNote: "Se connecter pour ouvrir",
-    ready: "Prêt à résoudre des problèmes ?",
-    readyBody: "Votre compte rassemble votre progression, vos favoris et vos recommandations.",
-    readyAction: "Se connecter ou créer un compte"
+    recommendations: "Problèmes recommandés"
   }
 } as const;
-
-function loginHref(returnTo: string) {
-  return `/login?returnTo=${encodeURIComponent(returnTo)}` as Route;
-}
 
 function dayStart(now = new Date()) {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -516,7 +500,7 @@ export default async function HomePage() {
     .slice(0, 3);
   const dailyProblemCard = dailyProblem ? (
     <Link
-      href={user ? `/problems/${dailyProblem.slug}` : loginHref(`/problems/${dailyProblem.slug}`)}
+      href={`/problems/${dailyProblem.slug}`}
       className="home-daily-problem"
     >
       <div>
@@ -531,7 +515,7 @@ export default async function HomePage() {
           <Difficulty value={dailyProblem.difficulty} compact />
         </div>
         <div className="home-daily-action">
-          <span className="mw-primary-button">{user ? copy.solveToday : guestCopy.signIn}</span>
+          <span className="mw-primary-button">{copy.solveToday}</span>
           {dailySolvers.length > 0 && (
             <>
               <span className="home-solver-stack">
@@ -566,11 +550,7 @@ export default async function HomePage() {
           <div className="home-guest-hero-copy home-guest-dashboard-hero">
             <div>
               <h1>{t.home.hero.guestTitle}</h1>
-              <p>{guestCopy.introduction}</p>
             </div>
-            <Link href={loginHref("/problems")} className="home-button home-button-light">
-              {guestCopy.signIn}
-            </Link>
           </div>
         </section>
 
@@ -589,12 +569,12 @@ export default async function HomePage() {
                       problem.domains[0]?.mscCode ?? problem.domain
                     )?.value ?? problem.domain;
                     return (
-                      <Link key={problem.id} href={loginHref(`/problems/${problem.slug}`)}>
+                      <Link key={problem.id} href={`/problems/${problem.slug}`}>
                         <Difficulty value={problem.difficulty} />
                         <span>
                           <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
                           <small>
-                            {translatedDomainLabel(domain, t.home.domainLabels)} · {guestCopy.recommendationNote}
+                            {translatedDomainLabel(domain, t.home.domainLabels)}
                           </small>
                         </span>
                       </Link>
@@ -624,7 +604,7 @@ export default async function HomePage() {
                   <MarkdownBlock html={tipBodyHtml} />
                   {tipPracticeLink && (
                     <Link
-                      href={loginHref(`/problems/${tipPracticeLink.problem.slug}`)}
+                      href={`/problems/${tipPracticeLink.problem.slug}`}
                       className="home-tip-practice"
                     >
                       <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeLink.problem.title} /></strong>
@@ -638,15 +618,6 @@ export default async function HomePage() {
               </section>
             )}
 
-            <section className="mw-card home-guest-dashboard-cta">
-              <div>
-                <h2>{guestCopy.ready}</h2>
-                <p>{guestCopy.readyBody}</p>
-              </div>
-              <Link href={loginHref("/problems")} className="mw-primary-button">
-                {guestCopy.readyAction}
-              </Link>
-            </section>
           </div>
         </main>
       </div>

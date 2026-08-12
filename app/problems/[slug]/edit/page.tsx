@@ -28,10 +28,10 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import {
   canDeleteProblem,
   canEditProblem,
-  canPublishProblemEdit,
   canSetProblemQualityStatus,
   canUseAdminTools
 } from "@/lib/permissions";
+import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { latestProblemTextRevisionId } from "@/lib/translation-freshness";
@@ -72,9 +72,9 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
   const canEditArchivedProblem = canEditProblem(user, problem);
   const canDeleteCurrentProblem = canDeleteProblem(user, problem);
-  const canManageProblemHints = canEditProblem(user, problem);
   const canManageFrontPageEligibility = canUseAdminTools(user);
-  const publishesImmediately = canPublishProblemEdit(user);
+  const publishesImmediately = await canPublishProblemEditForProblem(user, problem);
+  const canManageProblemHints = publishesImmediately;
   const pendingProposal = publishesImmediately
     ? null
     : await prisma.problemEditProposal.findFirst({

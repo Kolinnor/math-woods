@@ -101,6 +101,14 @@ export function canPublishProblemEdit(user: PermissionUser) {
   return hasTrustedPrivileges(user.role);
 }
 
+export function canPublishProblemEditForTarget(
+  user: PermissionUser,
+  problem: ProblemPermissionTarget,
+  hasApprovedProposal: boolean
+) {
+  return canPublishProblemEdit(user) || problem.authorId === user.id || hasApprovedProposal;
+}
+
 export function canRollbackProblem(user: PermissionUser, problem: ProblemPermissionTarget) {
   return canEditProblem(user, problem);
 }

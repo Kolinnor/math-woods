@@ -191,7 +191,6 @@ import {
   visibleExplorationBlocks
 } from "../lib/exploration-branches.ts";
 import { evaluateExplorationQuizSelection } from "../lib/exploration-quiz.ts";
-import { guestProgressContentKey } from "../lib/guest-progress.ts";
 import { parseOAuthProvider, safeReturnTo, selectVerifiedGithubEmail } from "../lib/oauth-utils.ts";
 import {
   filterMathematicians,
@@ -243,6 +242,7 @@ import {
   canEditSolution,
   canProposeProblemEdit,
   canPublishProblemEdit,
+  canPublishProblemEditForTarget,
   canManageUserRoles,
   canReviewConcept,
   canReviewProblem,
@@ -1222,6 +1222,10 @@ assert.equal(canProposeProblemEdit({ id: 1, role: Role.MODERATOR, emailVerifiedA
 assert.equal(canPublishProblemEdit({ id: 1, role: Role.USER }), false);
 assert.equal(canPublishProblemEdit({ id: 1, role: Role.MODERATOR }), true);
 assert.equal(canPublishProblemEdit({ id: 1, role: Role.ADMIN }), true);
+assert.equal(canPublishProblemEditForTarget({ id: 1, role: Role.USER }, { authorId: 1 }, false), true);
+assert.equal(canPublishProblemEditForTarget({ id: 1, role: Role.USER }, { authorId: 2 }, true), true);
+assert.equal(canPublishProblemEditForTarget({ id: 1, role: Role.USER }, { authorId: 2 }, false), false);
+assert.equal(canPublishProblemEditForTarget({ id: 1, role: Role.MODERATOR }, { authorId: 2 }, false), true);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 1 }), true);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 2 }), false);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.ADMIN }, { authorId: 2 }), true);
@@ -1680,10 +1684,6 @@ assert.equal(hasReachableExplorationExit({ continueToPageId: 2, choiceTargetPage
 assert.equal(hasReachableExplorationExit({ continueToPageId: 4, choiceTargetPageIds: [], readablePageIds: readableExplorationPages }), false);
 assert.equal(hasReachableExplorationExit({ continueToPageId: null, choiceTargetPageIds: [null, 3], readablePageIds: readableExplorationPages }), true);
 
-assert.equal(guestProgressContentKey("/problems/group-action", new URLSearchParams()), "problems:group-action");
-assert.equal(guestProgressContentKey("/concepts/group", new URLSearchParams()), "concepts:group");
-assert.equal(guestProgressContentKey("/problems/new", new URLSearchParams()), null);
-assert.equal(guestProgressContentKey("/concepts/group/edit", new URLSearchParams()), null);
 assert.equal(parseOAuthProvider("google"), "google");
 assert.equal(parseOAuthProvider("orcid"), "orcid");
 assert.equal(parseOAuthProvider("github"), "github");
@@ -1702,11 +1702,6 @@ assert.equal(safeReturnTo("https://malicious.example"), "/");
 assert.equal(safeReturnTo("//malicious.example"), "/");
 assert.equal(safeReturnTo("/\\malicious.example"), "/");
 assert.equal(safeReturnTo(null, "/settings"), "/settings");
-assert.equal(
-  guestProgressContentKey("/explorations/space-rotations/start", new URLSearchParams("block=groups")),
-  "exploration:space-rotations:groups"
-);
-
 const staleChunkError = new Error(
   "Loading chunk 7330 failed. (error: https://mathwoods.org/_next/static/chunks/d3ac728e-652fe3530429dda0.js)"
 );
