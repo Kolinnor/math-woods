@@ -9,6 +9,7 @@ type ProblemHintItem = {
   html: string;
   label: string;
   fallbackLabel: string | null;
+  translatorLabel: string | null;
   translateHref: string | null;
 };
 
@@ -37,6 +38,7 @@ export function ProblemHints({ hints, labels }: ProblemHintsProps) {
                 {hint.fallbackLabel}
               </span>
             )}
+            {hint.translatorLabel && <span className="problem-hint-language">{hint.translatorLabel}</span>}
           </div>
           <MarkdownBlock html={hint.html} />
           {hint.translateHref && (

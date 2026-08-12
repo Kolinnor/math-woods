@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { ensureSlug } from "@/lib/slug";
 import { renderInlineMarkdown } from "@/lib/markdown";
+import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +23,15 @@ export async function GET(request: Request) {
   const conceptSelect = {
     title: true,
     slug: true,
+    language: true,
+    translationGroupId: true,
+    translatedFromConceptId: true,
     aliases: { select: { alias: true } }
   } as const;
   const [exactConcepts, matchingConcepts] = await Promise.all([
     prisma.concept.findMany({
       where: {
-        language,
+        language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
           { title: { in: morphologyVariants, mode: "insensitive" } },
           { slug: { in: morphologySlugs, mode: "insensitive" } },
@@ -38,7 +43,7 @@ export async function GET(request: Request) {
     }),
     prisma.concept.findMany({
     where: {
-      language,
+      language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
       OR: [
         { title: { contains: query, mode: "insensitive" } },
         { slug: { contains: query.toLowerCase(), mode: "insensitive" } },
@@ -51,10 +56,15 @@ export async function GET(request: Request) {
     })
   ]);
   const concepts = rankSearchMatches(
-    [...new Map([...exactConcepts, ...matchingConcepts].map((concept) => [concept.slug, concept])).values()].map((concept) => ({
-      ...concept,
-      aliases: concept.aliases.map((alias) => alias.alias)
-    })),
+    selectContentTranslationsByGroup(
+      [...new Map([...exactConcepts, ...matchingConcepts].map((concept) => [concept.slug, concept])).values()]
+        .map((concept) => ({
+          ...concept,
+          aliases: concept.aliases.map((alias) => alias.alias),
+          isSource: concept.translatedFromConceptId === null
+        })),
+      language
+    ),
     query,
     undefined,
     morphologyVariants

@@ -10,10 +10,11 @@ import { createQuoteAction } from "@/lib/actions/quote-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
-import { contentLanguageLabel } from "@/lib/languages";
+import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export default async function QuotesPage({
   const query = q.trim();
   const where: Prisma.QuoteWhereInput = query
     ? {
-        language: preferredLanguage,
+        language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
           { text: { contains: query, mode: "insensitive" } },
           { attributedTo: { contains: query, mode: "insensitive" } },
@@ -66,9 +67,10 @@ export default async function QuotesPage({
           { provenanceDetails: { contains: query, mode: "insensitive" } }
         ]
       }
-    : { language: preferredLanguage };
+    : { language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) } };
 
-  const { quotes, unavailable } = await findQuotes(where, user);
+  const { quotes: quoteRows, unavailable } = await findQuotes(where, user);
+  const quotes = selectContentTranslationsByGroup(quoteRows, preferredLanguage);
 
   return (
     <ForestPageLayout

@@ -1,6 +1,10 @@
 import { SourceType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
+import {
+  latestConceptTextRevisionIdFromRevisions,
+  latestProblemTextRevisionIdFromRevisions
+} from "@/lib/translation-text-revisions";
 
 type TranslationSource = {
   id: number;
@@ -18,24 +22,38 @@ export type TranslationFreshness = {
   stale: boolean;
 };
 
+export async function latestProblemTextRevisionId(pageId: number) {
+  const revisions = await prisma.pageRevision.findMany({
+    where: { pageType: SourceType.PROBLEM, pageId },
+    orderBy: { id: "asc" },
+    select: { id: true, markdown: true, problemSnapshot: true }
+  });
+  return latestProblemTextRevisionIdFromRevisions(revisions);
+}
+
+export async function latestConceptTextRevisionId(pageId: number) {
+  const revisions = await prisma.pageRevision.findMany({
+    where: { pageType: SourceType.CONCEPT, pageId },
+    orderBy: { id: "asc" },
+    select: { id: true, markdown: true, conceptTitle: true, conceptSnapshot: true }
+  });
+  return latestConceptTextRevisionIdFromRevisions(revisions);
+}
+
 export async function problemTranslationFreshness(
   source: TranslationSource,
   basedOnRevisionId: number | null
 ): Promise<TranslationFreshness | null> {
   if (!source) return null;
-  const latestRevision = await prisma.pageRevision.findFirst({
-    where: { pageType: SourceType.PROBLEM, pageId: source.id },
-    orderBy: { id: "desc" },
-    select: { id: true }
-  });
+  const latestRevisionId = await latestProblemTextRevisionId(source.id);
 
   return {
     basedOnRevisionId,
-    latestRevisionId: latestRevision?.id ?? null,
+    latestRevisionId,
     sourceHref: contentLanguageViewHref("/problems", source.slug, source.language),
     sourceLanguage: source.language,
     sourceTitle: source.title,
-    stale: Boolean(latestRevision && basedOnRevisionId && latestRevision.id > basedOnRevisionId)
+    stale: Boolean(latestRevisionId && basedOnRevisionId && latestRevisionId > basedOnRevisionId)
   };
 }
 
@@ -44,18 +62,14 @@ export async function conceptTranslationFreshness(
   basedOnRevisionId: number | null
 ): Promise<TranslationFreshness | null> {
   if (!source) return null;
-  const latestRevision = await prisma.pageRevision.findFirst({
-    where: { pageType: SourceType.CONCEPT, pageId: source.id },
-    orderBy: { id: "desc" },
-    select: { id: true }
-  });
+  const latestRevisionId = await latestConceptTextRevisionId(source.id);
 
   return {
     basedOnRevisionId,
-    latestRevisionId: latestRevision?.id ?? null,
+    latestRevisionId,
     sourceHref: contentLanguageViewHref("/concepts", source.slug, source.language),
     sourceLanguage: source.language,
     sourceTitle: source.title,
-    stale: Boolean(latestRevision && basedOnRevisionId && latestRevision.id > basedOnRevisionId)
+    stale: Boolean(latestRevisionId && basedOnRevisionId && latestRevisionId > basedOnRevisionId)
   };
 }

@@ -7,6 +7,8 @@ import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { rankSearchMatches } from "@/lib/search-ranking";
 import { renderInlineMarkdown } from "@/lib/markdown";
+import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
+import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +40,15 @@ export async function GET(request: Request) {
     domain: true,
     difficulty: true,
     listed: true,
-    language: true
+    language: true,
+    translationGroupId: true,
+    translatedFromProblemId: true
   } as const;
   const [exactProblems, matchingProblems] = await Promise.all([
     prisma.problem.findMany({
       where: {
         ...commonWhere,
+        language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
           { title: { equals: query, mode: "insensitive" } },
           { slug: { equals: query.toLowerCase(), mode: "insensitive" } }
@@ -55,14 +60,8 @@ export async function GET(request: Request) {
     prisma.problem.findMany({
     where: {
       ...commonWhere,
+      language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
       OR: [
-        {
-          language,
-          OR: [
-            { title: { contains: query, mode: "insensitive" } },
-            { slug: { contains: query.toLowerCase(), mode: "insensitive" } }
-          ]
-        },
         { title: { contains: query, mode: "insensitive" } },
         { slug: { contains: query.toLowerCase(), mode: "insensitive" } }
       ]
@@ -73,7 +72,14 @@ export async function GET(request: Request) {
     })
   ]);
   const problems = rankSearchMatches(
-    [...new Map([...exactProblems, ...matchingProblems].map((problem) => [problem.id, problem])).values()],
+    selectContentTranslationsByGroup(
+      [...new Map([...exactProblems, ...matchingProblems].map((problem) => [problem.id, problem])).values()]
+        .map((problem) => ({
+          ...problem,
+          isSource: problem.translatedFromProblemId === null
+        })),
+      language
+    ),
     query,
     language
   ).slice(0, 20);

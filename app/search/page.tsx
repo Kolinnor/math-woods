@@ -7,18 +7,19 @@ import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getTranslations } from "@/lib/i18n/server";
-import { contentLanguageLabel } from "@/lib/languages";
+import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
 async function searchQuotes(query: string, language: string) {
   try {
-    return await prisma.quote.findMany({
+    const quotes = await prisma.quote.findMany({
       where: {
-        language,
+        language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
           { text: { contains: query, mode: "insensitive" } },
           { attributedTo: { contains: query, mode: "insensitive" } },
@@ -27,6 +28,7 @@ async function searchQuotes(query: string, language: string) {
       },
       take: 20
     });
+    return selectContentTranslationsByGroup(quotes, language);
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2021") {
       return [];
@@ -44,11 +46,11 @@ export default async function SearchPage({
   const user = await getCurrentUser();
   const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
-  const [concepts, problems, explorations, quotes] = query
+  const [conceptRows, problemRows, explorationRows, quotes] = query
     ? await Promise.all([
         prisma.concept.findMany({
           where: {
-            language: preferredLanguage,
+            language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { bodyMarkdown: { contains: query, mode: "insensitive" } },
@@ -62,7 +64,7 @@ export default async function SearchPage({
           where: {
             status: "PUBLISHED",
             listed: true,
-            language: preferredLanguage,
+            language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
             ...visibleProblemWhere(user),
             OR: [
               { title: { contains: query, mode: "insensitive" } },
@@ -77,7 +79,7 @@ export default async function SearchPage({
               where: {
                 visibility: "PUBLIC",
                 status: "PUBLISHED",
-                language: preferredLanguage,
+                language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
                 OR: [
                   { title: { contains: query, mode: "insensitive" } },
                   { descriptionMarkdown: { contains: query, mode: "insensitive" } }
@@ -89,6 +91,21 @@ export default async function SearchPage({
         searchQuotes(query, preferredLanguage)
       ])
     : [[], [], [], []];
+  const concepts = selectContentTranslationsByGroup(
+    conceptRows.map((concept) => ({
+      ...concept,
+      isSource: concept.translatedFromConceptId === null
+    })),
+    preferredLanguage
+  );
+  const problems = selectContentTranslationsByGroup(
+    problemRows.map((problem) => ({
+      ...problem,
+      isSource: problem.translatedFromProblemId === null
+    })),
+    preferredLanguage
+  );
+  const explorations = selectContentTranslationsByGroup(explorationRows, preferredLanguage);
   const solvedAttempts = user
     ? await prisma.problemAttempt.findMany({
         where: {

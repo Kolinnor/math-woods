@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { SourceType } from "@prisma/client";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -16,6 +15,7 @@ import { PROBLEM_DOMAINS, translatedDomainLabel, translatedDomainOptions } from 
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canDeleteConcept, canEditConcept, canUseAdminTools } from "@/lib/permissions";
 import { renderInlineMarkdown } from "@/lib/markdown";
+import { latestConceptTextRevisionId } from "@/lib/translation-freshness";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +52,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
   if (!canEditConcept(user, concept)) notFound();
   const canFeatureConcept = canUseAdminTools(user);
   const canDeleteCurrentConcept = canDeleteConcept(user, concept);
-  const [siblingTranslations, sourceRevision] = await Promise.all([
+  const [siblingTranslations, sourceRevisionId] = await Promise.all([
     prisma.concept.findMany({
       where: {
         translationGroupId: concept.translationGroupId,
@@ -61,15 +61,11 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
       select: { language: true }
     }),
     concept.translatedFromConceptId
-      ? prisma.pageRevision.findFirst({
-          where: { pageType: SourceType.CONCEPT, pageId: concept.translatedFromConceptId },
-          orderBy: { id: "desc" },
-          select: { id: true }
-        })
+      ? latestConceptTextRevisionId(concept.translatedFromConceptId)
       : null
   ]);
   const staleTranslation = Boolean(
-    sourceRevision && concept.translatedFromRevisionId && sourceRevision.id > concept.translatedFromRevisionId
+    sourceRevisionId && concept.translatedFromRevisionId && sourceRevisionId > concept.translatedFromRevisionId
   );
   const initialExercises: TipPickerProblem[] = await Promise.all(
     concept.practiceExercises.map(async ({ problem }) => ({
@@ -118,7 +114,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
               <strong>Mark translation up to date</strong>
               <small>
                 Source: {concept.translatedFromConcept.title}
-                {staleTranslation ? ` / newer revision ${sourceRevision?.id} available` : " / no newer source revision detected"}
+                {staleTranslation ? ` / newer text revision ${sourceRevisionId} available` : " / no newer source text detected"}
               </small>
             </span>
           </label>
@@ -228,7 +224,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           basedOnRevisionId={concept.translatedFromRevisionId}
           href={`/concepts/${concept.translatedFromConcept.slug}`}
           idPrefix={`concept-${concept.id}-translation-source`}
-          latestRevisionId={sourceRevision?.id ?? null}
+          latestRevisionId={sourceRevisionId}
           markdown={concept.translatedFromConcept.bodyMarkdown}
           language={concept.translatedFromConcept.language}
           stale={staleTranslation}

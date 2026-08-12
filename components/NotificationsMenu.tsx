@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Bell, Trash2, X } from "lucide-react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { UserAvatar } from "@/components/UserAvatar";
-import { clearNotificationsAction } from "@/lib/actions/notification-actions";
+import { clearNotificationMenuAction } from "@/lib/actions/notification-actions";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
@@ -18,9 +18,9 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
   const hiddenNotificationTypes = EXPLORATIONS_ENABLED
     ? [NotificationType.CHAT_MESSAGE]
     : [NotificationType.CHAT_MESSAGE, NotificationType.EXPLORATION_PUBLISHED];
-  const [unreadNotifications, unreadCount, notificationCount] = await Promise.all([
+  const [unreadNotifications, unreadCount] = await Promise.all([
     prisma.notification.findMany({
-      where: { userId, readAt: null, type: { notIn: hiddenNotificationTypes } },
+      where: { userId, readAt: null, dismissedFromMenuAt: null, type: { notIn: hiddenNotificationTypes } },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: {
@@ -30,10 +30,7 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       }
     }),
     prisma.notification.count({
-      where: { userId, readAt: null, type: { notIn: hiddenNotificationTypes } }
-    }),
-    prisma.notification.count({
-      where: { userId, type: { notIn: hiddenNotificationTypes } }
+      where: { userId, readAt: null, dismissedFromMenuAt: null, type: { notIn: hiddenNotificationTypes } }
     })
   ]);
 
@@ -49,8 +46,8 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
             {t.notifications.title}
           </Link>
           <div className="notification-actions">
-            {notificationCount > 0 && (
-              <form action={clearNotificationsAction}>
+            {unreadCount > 0 && (
+              <form action={clearNotificationMenuAction}>
                 <button type="submit" className="notification-clear-button">
                   <Trash2 size={15} />
                   {t.notifications.clear}

@@ -42,7 +42,7 @@ import {
 import { shouldCoalesceExplorationChange } from "@/lib/exploration-history";
 import { orderExplorationBlocksByFolders } from "@/lib/exploration-block-folders";
 import { syncExplorationProblemGroups } from "@/lib/exploration-problem-groups";
-import { parseContentLanguage } from "@/lib/languages";
+import { requireActiveContentLanguage } from "@/lib/languages";
 import { createNotification } from "@/lib/notifications";
 import { hasAdminPrivileges } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
@@ -180,7 +180,7 @@ export async function createExplorationAction(formData: FormData) {
   assertExplorationsEnabled();
   const user = await requireVerifiedUser();
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const language = parseContentLanguage(formData.get("language"));
+  const language = requireActiveContentLanguage(formData.get("language"));
   const summary = boundedText(formData.get("summary"), CONTENT_LIMITS.shortText, "Summary") || null;
   const descriptionMarkdown = boundedText(
     formData.get("descriptionMarkdown"),
@@ -1930,7 +1930,7 @@ export async function removeExplorationCollaboratorAction(playlistId: number, co
 
 export async function cloneExplorationTranslationAction(playlistId: number, formData: FormData) {
   const user = await requireVerifiedUser();
-  const targetLanguage = parseContentLanguage(formData.get("language"));
+  const targetLanguage = requireActiveContentLanguage(formData.get("language"));
   const source = await prisma.playlist.findUnique({
     where: { id: playlistId },
     include: {

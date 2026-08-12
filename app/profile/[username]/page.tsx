@@ -22,6 +22,7 @@ import { problemLinkClass } from "@/lib/problem-link";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { hasTrustedPrivileges } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 import { getUserReputation } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
 import { usernameLookupFilter } from "@/lib/usernames";
@@ -127,33 +128,36 @@ export default async function ProfilePage({
       : null
   ]);
 
-  const problemByGroup = new Map<string, (typeof problemRows)[number]>();
-  for (const problem of problemRows) {
-    const selected = problemByGroup.get(problem.translationGroupId);
-    if (!selected || (selected.language !== preferredLanguage && problem.language === preferredLanguage)) {
-      problemByGroup.set(problem.translationGroupId, problem);
-    }
-  }
-  const solvedByGroup = new Map<string, (typeof solvedRows)[number]>();
-  for (const attempt of solvedRows) {
-    const selected = solvedByGroup.get(attempt.problem.translationGroupId);
-    if (!selected || (selected.problem.language !== preferredLanguage && attempt.problem.language === preferredLanguage)) {
-      solvedByGroup.set(attempt.problem.translationGroupId, attempt);
-    }
-  }
-  const favoritesByGroup = new Map<string, (typeof favoriteRows)[number]>();
-  for (const favorite of favoriteRows) {
-    const selected = favoritesByGroup.get(favorite.problem.translationGroupId);
-    if (!selected || (selected.problem.language !== preferredLanguage && favorite.problem.language === preferredLanguage)) {
-      favoritesByGroup.set(favorite.problem.translationGroupId, favorite);
-    }
-  }
-  const problems = [...problemByGroup.values()];
-  const solved = [...solvedByGroup.values()].slice(0, 50);
-  const favorites = [...favoritesByGroup.values()].slice(0, 50);
-  const authoredProblemCount = problemByGroup.size;
-  const solvedCount = solvedByGroup.size;
-  const externalFavoriteCount = favoritesByGroup.size;
+  const problems = selectContentTranslationsByGroup(
+    problemRows.map((problem) => ({
+      ...problem,
+      isSource: problem.translatedFromProblemId === null
+    })),
+    preferredLanguage
+  );
+  const allSolved = selectContentTranslationsByGroup(
+    solvedRows.map((attempt) => ({
+      ...attempt,
+      translationGroupId: attempt.problem.translationGroupId,
+      language: attempt.problem.language,
+      isSource: attempt.problem.translatedFromProblemId === null
+    })),
+    preferredLanguage
+  );
+  const solved = allSolved.slice(0, 50);
+  const allFavorites = selectContentTranslationsByGroup(
+    favoriteRows.map((favorite) => ({
+      ...favorite,
+      translationGroupId: favorite.problem.translationGroupId,
+      language: favorite.problem.language,
+      isSource: favorite.problem.translatedFromProblemId === null
+    })),
+    preferredLanguage
+  );
+  const favorites = allFavorites.slice(0, 50);
+  const authoredProblemCount = problems.length;
+  const solvedCount = allSolved.length;
+  const externalFavoriteCount = allFavorites.length;
   const isSelf = currentUser?.id === user.id;
   const currentUserSolvedIds = new Set(currentUserSolved.map((attempt) => attempt.problemId));
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));

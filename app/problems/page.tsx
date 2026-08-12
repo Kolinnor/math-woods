@@ -28,7 +28,7 @@ import {
 } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
-import { contentLanguageLabel, SUPPORTED_CONTENT_LANGUAGES } from "@/lib/languages";
+import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import {
@@ -58,7 +58,7 @@ type ProgressFilter = "unsolved" | "solved" | "all";
 type OwnershipFilter = "all" | "mine" | "others";
 type SolutionFilter = "with" | "without" | "all";
 
-const SUPPORTED_LANGUAGE_CODES = SUPPORTED_CONTENT_LANGUAGES.map((language) => language.code);
+const SUPPORTED_LANGUAGE_CODES = ACTIVE_CONTENT_LANGUAGES.map((language) => language.code);
 const SUPPORTED_LANGUAGE_CODE_SET = new Set(SUPPORTED_LANGUAGE_CODES);
 
 const DIFFICULTY_RANGES: DifficultyRange[] = [
@@ -788,7 +788,7 @@ export default async function ProblemsPage({
             <div className="problem-filter-section">
               <fieldset className="problem-language-filter">
                 <legend>{t.problems.languages}</legend>
-                {SUPPORTED_CONTENT_LANGUAGES.map((languageOption) => (
+                {ACTIVE_CONTENT_LANGUAGES.map((languageOption) => (
                   <label key={languageOption.code}>
                     <input
                       name="language"

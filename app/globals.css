@@ -8927,6 +8927,101 @@ button.markdown-editor-tool-button:disabled svg {
   min-width: 0;
 }
 
+.translation-companions,
+.translation-exercise-options {
+  display: grid;
+  gap: 1rem;
+}
+
+.translation-companion-group,
+.translation-exercise-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.translation-companion-group h2,
+.translation-exercise-options h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.translation-companion-item,
+.translation-exercise-item {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.8rem;
+}
+
+.translation-companion-item.selected {
+  border-color: var(--accent);
+}
+
+.translation-companion-toggle {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 750;
+  gap: 0.5rem;
+}
+
+.translation-companion-item.selected .translation-companion-toggle {
+  margin-bottom: 0.75rem;
+}
+
+.translation-companion-toggle input {
+  width: auto;
+}
+
+.translation-companion-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  margin: 0 0 0.35rem;
+}
+
+.translation-companion-proof,
+.translation-companion-nested {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.translation-companion-nested {
+  border-left: 3px solid var(--line);
+  margin: 0.2rem 0 0 0.65rem;
+  padding-left: 0.75rem;
+}
+
+.translation-exercise-item {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.translation-exercise-item > div:first-child {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.translation-exercise-item .button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .translation-exercise-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .translation-exercise-item .button {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
 .translation-reference-panel {
   align-self: start;
   background: var(--panel);
@@ -13125,6 +13220,15 @@ button.live-search-reset:hover {
   padding: 0 40px 1.8rem;
 }
 
+.concepts-page-shell .forest-page-hero h1 {
+  font-size: 32px;
+}
+
+.concepts-page-shell .forest-page-hero-meta {
+  margin-right: 3rem;
+  min-width: 0;
+}
+
 .concepts-page-shell .forest-page-hero-actions .button,
 .concepts-page-shell .forest-page-hero-actions button {
   font-size: 0.9rem;
@@ -13535,6 +13639,10 @@ button.live-search-reset:hover {
 }
 
 @media (max-width: 760px) {
+  .concepts-page-shell .forest-page-hero-meta {
+    margin-right: 0;
+  }
+
   .concepts-page-shell .forest-page-hero-content,
   .concept-detail-page .forest-page-title-strip {
     padding-left: 18px;

@@ -1,4 +1,9 @@
-import { parseContentLanguage, SUPPORTED_CONTENT_LANGUAGES } from "./languages.ts";
+import {
+  ACTIVE_CONTENT_LANGUAGES,
+  DEFAULT_CONTENT_LANGUAGE,
+  KNOWN_CONTENT_LANGUAGES,
+  parseContentLanguage
+} from "./languages.ts";
 
 export const TRANSLATION_VIEW_LANGUAGE_PARAM = "viewLanguage";
 type TranslatableHrefPrefix = "/problems" | "/concepts" | "/explorations" | "/playlists" | "/quotes";
@@ -6,11 +11,56 @@ type TranslatableHrefPrefix = "/problems" | "/concepts" | "/explorations" | "/pl
 type TranslationEntry = {
   language: string;
   slug?: string;
+  isSource?: boolean;
+  createdAt?: Date | string;
 };
+
+function sourceTranslation<T extends TranslationEntry>(translations: readonly T[]) {
+  const explicitSource = translations.find((translation) => translation.isSource);
+  if (explicitSource) return explicitSource;
+
+  return [...translations]
+    .filter((translation) => translation.createdAt)
+    .sort((left, right) => new Date(left.createdAt!).getTime() - new Date(right.createdAt!).getTime())[0];
+}
+
+/**
+ * Selects the page readers should see without changing the translation lineage.
+ * The source remains canonical; English is only the architectural display fallback.
+ */
+export function selectContentTranslation<T extends TranslationEntry>(
+  translations: readonly T[],
+  preferredLanguage: string
+) {
+  const preferred = parseContentLanguage(preferredLanguage);
+  return translations.find((translation) => parseContentLanguage(translation.language) === preferred)
+    ?? translations.find(
+      (translation) => parseContentLanguage(translation.language) === DEFAULT_CONTENT_LANGUAGE
+    )
+    ?? sourceTranslation(translations)
+    ?? translations[0]
+    ?? null;
+}
+
+export function selectContentTranslationsByGroup<
+  T extends TranslationEntry & { translationGroupId: string }
+>(translations: readonly T[], preferredLanguage: string) {
+  const groups = new Map<string, T[]>();
+  for (const translation of translations) {
+    groups.set(translation.translationGroupId, [
+      ...(groups.get(translation.translationGroupId) ?? []),
+      translation
+    ]);
+  }
+  return [...groups.values()].flatMap((group) => {
+    const selected = selectContentTranslation(group, preferredLanguage);
+    return selected ? [selected] : [];
+  });
+}
 
 export function requestedTranslationLanguage(value: unknown) {
   const normalized = String(value ?? "").trim().toLowerCase();
-  return SUPPORTED_CONTENT_LANGUAGES.some((language) => language.code === normalized)
+  return KNOWN_CONTENT_LANGUAGES.some((language) => language.code === normalized)
     ? parseContentLanguage(normalized)
     : null;
 }
@@ -53,7 +103,12 @@ export function nextMissingTranslationLanguage(
   const existingLanguages = translationLanguageSet(currentLanguage, translations);
   const preferred = parseContentLanguage(preferredLanguage);
 
-  if (!existingLanguages.has(preferred)) return preferred;
+  if (
+    ACTIVE_CONTENT_LANGUAGES.some((language) => language.code === preferred) &&
+    !existingLanguages.has(preferred)
+  ) {
+    return preferred;
+  }
 
-  return SUPPORTED_CONTENT_LANGUAGES.find((language) => !existingLanguages.has(language.code))?.code ?? null;
+  return ACTIVE_CONTENT_LANGUAGES.find((language) => !existingLanguages.has(language.code))?.code ?? null;
 }

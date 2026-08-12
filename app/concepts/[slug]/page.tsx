@@ -10,6 +10,7 @@ import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserAvatar } from "@/components/UserAvatar";
+import { UserName } from "@/components/UserName";
 import {
   downgradeConceptStatusAction,
   dismissConceptTranslationStaleNoticeAction,
@@ -43,8 +44,8 @@ import {
 import { conceptTranslationFreshness } from "@/lib/translation-freshness";
 import {
   nextMissingTranslationLanguage,
-  preferredTranslationForLanguage,
   requestedTranslationLanguage,
+  selectContentTranslation,
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
@@ -210,6 +211,13 @@ export default async function ConceptPage({
       </ForestPageLayout>
     );
   }
+  const translationCreator = concept.translatedFromConceptId
+    ? await prisma.pageRevision.findFirst({
+        where: { pageType: "CONCEPT", pageId: concept.id, isCreation: true },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { editedBy: true }
+      })
+    : null;
   if (user) {
     await markNotificationsReadForHref(user.id, `/concepts/${concept.slug}`, [
       NotificationType.CONCEPT_CREATED,
@@ -227,7 +235,7 @@ export default async function ConceptPage({
         translationGroupId: concept.translationGroupId,
         id: { not: concept.id }
       },
-      select: { slug: true, title: true, language: true },
+      select: { slug: true, title: true, language: true, translatedFromConceptId: true },
       orderBy: { language: "asc" }
     }),
     prisma.internalLink.findMany({
@@ -260,12 +268,25 @@ export default async function ConceptPage({
   }
   const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
   const targetViewLanguage = requestedLanguage ?? preferredLanguage;
-  const preferredTranslation = preferredTranslationForLanguage(concept.language, translations, targetViewLanguage);
-  if (preferredTranslation?.slug && preferredTranslation.slug !== concept.slug) {
+  const selectedTranslation = selectContentTranslation(
+    [
+      {
+        slug: concept.slug,
+        language: concept.language,
+        isSource: concept.translatedFromConceptId === null
+      },
+      ...translations.map((translation) => ({
+        ...translation,
+        isSource: translation.translatedFromConceptId === null
+      }))
+    ],
+    targetViewLanguage
+  );
+  if (selectedTranslation?.slug && selectedTranslation.slug !== concept.slug) {
     const viewLanguageQuery = requestedLanguage
       ? `?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(requestedLanguage)}`
       : "";
-    redirect(`/concepts/${preferredTranslation.slug}${viewLanguageQuery}`);
+    redirect(`/concepts/${selectedTranslation.slug}${viewLanguageQuery}`);
   }
   const uniqueOutgoingLinks = uniqueLinksByTargetSlug(outgoingLinks);
   const existingOutgoingSlugs = uniqueOutgoingLinks.filter((link) => link.exists).map((link) => link.targetSlug);
@@ -411,6 +432,21 @@ export default async function ConceptPage({
       }
       meta={
         <>
+          {concept.createdBy && (
+            <p className="concept-translation-credit">
+              <Link href={`/profile/${concept.createdBy.username}`}>
+                {t.common.by} <UserName user={concept.createdBy} />
+              </Link>
+              {translationCreator?.editedBy && translationCreator.editedBy.id !== concept.createdById && (
+                <>
+                  <span> · </span>
+                  <Link href={`/profile/${translationCreator.editedBy.username}`}>
+                    {t.translations.translatedBy} <UserName user={translationCreator.editedBy} />
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
           <p>{t.conceptDetail.talkPosts(concept._count.talkPosts)}</p>
         </>
       }

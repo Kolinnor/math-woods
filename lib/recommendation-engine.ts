@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { selectContentTranslation } from "@/lib/translation-routing";
 import {
   buildRecommendationProfile,
   scoreProblemRecommendation,
@@ -200,11 +201,14 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
 
   const recommendations = [...candidatesByGroup.values()]
     .map((translations) => {
-      const problem =
-        translations.find((item) => item.language === preferredLanguage) ??
-        translations.find((item) => item.translatedFromProblemId === null) ??
-        translations.find((item) => item.language === "en") ??
-        translations[0];
+      const problem = selectContentTranslation(
+        translations.map((item) => ({
+          ...item,
+          isSource: item.translatedFromProblemId === null
+        })),
+        preferredLanguage
+      );
+      if (!problem) return null;
       const attempt = attemptByGroup.get(problem.translationGroupId);
       const exposure = exposureByGroup.get(problem.translationGroupId);
       const score = scoreProblemRecommendation(

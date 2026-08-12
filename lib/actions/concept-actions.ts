@@ -25,7 +25,11 @@ import { notifyConceptAuthor, notifyOwnerOfSiteActivity } from "@/lib/notificati
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import { refreshLinksForConcept, refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
-import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
+import {
+  editableContentLanguage,
+  parseTranslationGroupId,
+  requireActiveContentLanguage
+} from "@/lib/languages";
 import {
   canChangeConceptStatus,
   canDeleteConcept,
@@ -38,6 +42,8 @@ import {
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
+import { conceptTranslationSharedChanges } from "@/lib/translation-properties";
+import { latestConceptTextRevisionIdFromRevisions } from "@/lib/translation-text-revisions";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -92,7 +98,7 @@ export async function createConceptAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`concept:create:${user.id}`, 5, 60_000);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const language = parseContentLanguage(formData.get("language"));
+  const language = requireActiveContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
@@ -129,15 +135,26 @@ export async function createConceptAction(formData: FormData) {
       translationGroupId && translationSourceSlug
         ? await tx.concept.findFirst({
             where: { slug: translationSourceSlug, translationGroupId },
-            select: { id: true }
+            include: conceptRevisionSnapshotInclude
           })
         : null;
-    const sourceRevision = translationSource
-      ? await tx.pageRevision.findFirst({
-          where: { pageType: SourceType.CONCEPT, pageId: translationSource.id },
-          orderBy: { id: "desc" },
-          select: { id: true }
+    if (translationGroupId && !translationSource) {
+      throw new Error("The selected concept translation source does not belong to this translation group.");
+    }
+    const originalConcept = translationGroupId
+      ? await tx.concept.findFirst({
+          where: { translationGroupId, translatedFromConceptId: null },
+          orderBy: { createdAt: "asc" },
+          include: conceptRevisionSnapshotInclude
         })
+      : null;
+    const sharedConcept = originalConcept ?? translationSource;
+    const sourceRevisionId = translationSource
+      ? latestConceptTextRevisionIdFromRevisions(await tx.pageRevision.findMany({
+          where: { pageType: SourceType.CONCEPT, pageId: translationSource.id },
+          orderBy: { id: "asc" },
+          select: { id: true, markdown: true, conceptTitle: true, conceptSnapshot: true }
+        }))
       : null;
 
     const created = await tx.concept.create({
@@ -148,24 +165,41 @@ export async function createConceptAction(formData: FormData) {
         ...(translationSource
           ? {
               translatedFromConceptId: translationSource.id,
-              translatedFromRevisionId: sourceRevision?.id ?? null
+              translatedFromRevisionId: sourceRevisionId
             }
           : {}),
         title,
         bodyMarkdown,
         bodyHtml,
-        domain,
-        domainCode,
-        kind,
+        domain: sharedConcept?.domain ?? domain,
+        domainCode: sharedConcept?.domainCode ?? domainCode,
+        kind: sharedConcept?.kind ?? kind,
         status: ConceptStatus.STUB,
         needsReviewAfterEdit: false,
-        createdById: user.id,
+        canAppearInConceptBrowser: sharedConcept?.canAppearInConceptBrowser ?? false,
+        ...(translationGroupId ? { createdAt: sharedConcept?.createdAt } : {}),
+        createdById: sharedConcept ? sharedConcept.createdById : user.id,
         lastEditedById: user.id
       }
     });
     await syncInternalLinks(SourceType.CONCEPT, created.id, bodyMarkdown, tx, language);
     await syncConceptAliases(created.id, aliases, tx);
-    await syncConceptReferences(created.id, references, tx);
+    await syncConceptReferences(
+      created.id,
+      sharedConcept
+        ? sharedConcept.references.map(({ title, url, note, position }) => ({ title, url, note, position }))
+        : references,
+      tx
+    );
+    if (sharedConcept?.practiceExercises.length) {
+      await tx.conceptExercise.createMany({
+        data: sharedConcept.practiceExercises.map(({ problemId, position }) => ({
+          conceptId: created.id,
+          problemId,
+          position
+        }))
+      });
+    }
     await refreshLinksForConceptId(created.id, tx);
     const createdSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, created.id));
     await tx.pageRevision.create({
@@ -220,7 +254,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   }
 
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const language = parseContentLanguage(formData.get("language"));
+  const language = editableContentLanguage(formData.get("language"), existingConcept.language);
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
   const kind = parseConceptKind(formData.get("kind"), existingConcept.kind);
   const domainCode = parseDomainCode(formData.get("domain"));
@@ -272,13 +306,13 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       }
     }
 
-    const refreshedSourceRevision =
+    const refreshedSourceRevisionId =
       markTranslationFresh && existingConcept.translatedFromConceptId
-        ? await tx.pageRevision.findFirst({
+        ? latestConceptTextRevisionIdFromRevisions(await tx.pageRevision.findMany({
             where: { pageType: SourceType.CONCEPT, pageId: existingConcept.translatedFromConceptId },
-            orderBy: { id: "desc" },
-            select: { id: true }
-          })
+            orderBy: { id: "asc" },
+            select: { id: true, markdown: true, conceptTitle: true, conceptSnapshot: true }
+          }))
         : null;
 
     const updated = await tx.concept.update({
@@ -293,7 +327,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         kind,
         needsReviewAfterEdit,
         ...(canAppearInConceptBrowser !== undefined ? { canAppearInConceptBrowser } : {}),
-        ...(refreshedSourceRevision ? { translatedFromRevisionId: refreshedSourceRevision.id } : {}),
+        ...(refreshedSourceRevisionId ? { translatedFromRevisionId: refreshedSourceRevisionId } : {}),
         lastEditedById: user.id
       }
     });
@@ -341,27 +375,80 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     });
     await completeDailyConceptReviewForUser(tx, user.id, updated.id);
 
-    return updated;
+    const sharedChangedFields = conceptTranslationSharedChanges(changedFields);
+    const sharedChangedFieldSet = new Set(sharedChangedFields);
+    const siblings = sharedChangedFields.length > 0
+      ? (
+          await tx.concept.findMany({
+            where: { translationGroupId: existingConcept.translationGroupId, id: { not: updated.id } },
+            select: { id: true, slug: true }
+          })
+        )
+      : [];
+    for (const sibling of siblings) {
+      const siblingBefore = await conceptSnapshotSource(tx, sibling.id);
+      await pinLatestConceptRevisionMetadata(tx, siblingBefore);
+      await tx.concept.update({
+        where: { id: sibling.id },
+        data: {
+          ...(sharedChangedFieldSet.has("domainCode") ? { domain, domainCode } : {}),
+          ...(sharedChangedFieldSet.has("kind") ? { kind } : {}),
+          ...(sharedChangedFieldSet.has("canAppearInConceptBrowser")
+            ? { canAppearInConceptBrowser: updated.canAppearInConceptBrowser }
+            : {})
+        }
+      });
+      if (sharedChangedFieldSet.has("practiceExercises")) {
+        await tx.conceptExercise.deleteMany({ where: { conceptId: sibling.id } });
+        if (orderedExerciseIds.length > 0) {
+          await tx.conceptExercise.createMany({
+            data: orderedExerciseIds.map((problemId, position) => ({ conceptId: sibling.id, problemId, position }))
+          });
+        }
+      }
+      const siblingAfter = await conceptSnapshotSource(tx, sibling.id);
+      await tx.pageRevision.create({
+        data: {
+          pageType: SourceType.CONCEPT,
+          pageId: sibling.id,
+          markdown: siblingAfter.bodyMarkdown,
+          conceptTitle: siblingAfter.title,
+          conceptKind: siblingAfter.kind,
+          conceptSnapshot: conceptRevisionSnapshotJson(buildConceptRevisionSnapshot(siblingAfter)),
+          editedById: user.id,
+          editSummary: `Shared settings updated from ${updated.language} translation`
+        }
+      });
+    }
+
+    return { updated, synchronizedTranslationSlugs: siblings.map(({ slug }) => slug) };
   });
 
-  await refreshLinksForConcept(concept.slug);
+  await refreshLinksForConcept(concept.updated.slug);
   revalidatePath("/concepts");
-  revalidatePath(`/concepts/${concept.slug}`);
+  revalidatePath(`/concepts/${concept.updated.slug}`);
+  revalidatePath(`/concepts/${concept.updated.slug}/edit`);
+  revalidatePath(`/concepts/${concept.updated.slug}/history`);
+  for (const siblingSlug of concept.synchronizedTranslationSlugs) {
+    revalidatePath(`/concepts/${siblingSlug}`);
+    revalidatePath(`/concepts/${siblingSlug}/edit`);
+    revalidatePath(`/concepts/${siblingSlug}/history`);
+  }
   await notifyOwnerOfSiteActivity({
     actor: user,
     type: NotificationType.CONCEPT_EDITED,
     title: "Concept edited",
-    body: `${displayNameForUser(user)} edited "${concept.title}".`,
-    href: `/concepts/${concept.slug}`
+    body: `${displayNameForUser(user)} edited "${concept.updated.title}".`,
+    href: `/concepts/${concept.updated.slug}`
   });
   await notifyConceptAuthor({
-    conceptId: concept.id,
+    conceptId: concept.updated.id,
     actorId: user.id,
     title: "Concept edited",
-    body: `${displayNameForUser(user)} edited "${concept.title}".`,
-    href: `/concepts/${concept.slug}`
+    body: `${displayNameForUser(user)} edited "${concept.updated.title}".`,
+    href: `/concepts/${concept.updated.slug}`
   });
-  redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
+  redirect(contentLanguageViewHref("/concepts", concept.updated.slug, concept.updated.language) as Route);
 }
 
 export async function markConceptReviewedAction(conceptId: number) {
@@ -590,22 +677,22 @@ export async function dismissConceptTranslationStaleNoticeAction(conceptId: numb
     throw new Error("You cannot dismiss this translation notice.");
   }
 
-  const latestSourceRevision = await prisma.pageRevision.findFirst({
+  const latestSourceRevisionId = latestConceptTextRevisionIdFromRevisions(await prisma.pageRevision.findMany({
     where: { pageType: SourceType.CONCEPT, pageId: concept.translatedFromConcept.id },
-    orderBy: { id: "desc" },
-    select: { id: true }
-  });
-  if (!latestSourceRevision) {
+    orderBy: { id: "asc" },
+    select: { id: true, markdown: true, conceptTitle: true, conceptSnapshot: true }
+  }));
+  if (!latestSourceRevisionId) {
     throw new Error("Source revision not found.");
   }
 
   await prisma.$transaction(async (tx) => {
     const current = await conceptSnapshotSource(tx, conceptId);
-    if (current.translatedFromRevisionId === latestSourceRevision.id) return;
+    if (current.translatedFromRevisionId === latestSourceRevisionId) return;
     await pinLatestConceptRevisionMetadata(tx, current);
     const updated = await tx.concept.update({
       where: { id: conceptId },
-      data: { translatedFromRevisionId: latestSourceRevision.id }
+      data: { translatedFromRevisionId: latestSourceRevisionId }
     });
     const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));
     await tx.pageRevision.create({

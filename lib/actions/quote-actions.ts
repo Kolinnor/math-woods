@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { parseContentLanguage } from "@/lib/languages";
+import { requireActiveContentLanguage } from "@/lib/languages";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -34,7 +34,7 @@ export async function createQuoteAction(formData: FormData) {
   await assertRateLimit(`quote:${user.id}`, 8, 60_000);
 
   const text = requiredBoundedText(formData.get("text"), CONTENT_LIMITS.mediumText, "Quote text");
-  const language = parseContentLanguage(formData.get("language"));
+  const language = requireActiveContentLanguage(formData.get("language"));
   const attributedTo = boundedText(formData.get("attributedTo"), CONTENT_LIMITS.title, "Attribution") || null;
   const provenance = boundedText(formData.get("provenance"), CONTENT_LIMITS.shortText, "Provenance") || "Unknown";
   const provenanceDetails = boundedText(formData.get("provenanceDetails"), CONTENT_LIMITS.longNote, "Provenance details") || null;

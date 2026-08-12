@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { QualityStatus, SourceType } from "@prisma/client";
+import { QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
 import { FieldHelp } from "@/components/FieldHelp";
@@ -34,6 +34,7 @@ import {
 } from "@/lib/permissions";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { renderInlineMarkdown } from "@/lib/markdown";
+import { latestProblemTextRevisionId } from "@/lib/translation-freshness";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
     problem.qualityStatus === QualityStatus.REVIEWED &&
     canSetProblemQualityStatus(user.role, QualityStatus.REVIEWED);
   if (problem.status === "ARCHIVED" && !canEditArchivedProblem) notFound();
-  const [siblingTranslations, sourceRevision] = await Promise.all([
+  const [siblingTranslations, sourceRevisionId] = await Promise.all([
     prisma.problem.findMany({
       where: {
         translationGroupId: problem.translationGroupId,
@@ -97,15 +98,11 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
       select: { language: true }
     }),
     problem.translatedFromProblemId
-      ? prisma.pageRevision.findFirst({
-          where: { pageType: SourceType.PROBLEM, pageId: problem.translatedFromProblemId },
-          orderBy: { id: "desc" },
-          select: { id: true }
-        })
+      ? latestProblemTextRevisionId(problem.translatedFromProblemId)
       : null
   ]);
   const staleTranslation = Boolean(
-    sourceRevision && problem.translatedFromRevisionId && sourceRevision.id > problem.translatedFromRevisionId
+    sourceRevisionId && problem.translatedFromRevisionId && sourceRevisionId > problem.translatedFromRevisionId
   );
   const relatedGroups = await Promise.all(problem.relatedGroups.map(async (group) => ({
     title: group.title,
@@ -394,7 +391,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             basedOnRevisionId={problem.translatedFromRevisionId}
             href={`/problems/${problem.translatedFromProblem.slug}`}
             idPrefix={`problem-${problem.id}-translation-source`}
-            latestRevisionId={sourceRevision?.id ?? null}
+            latestRevisionId={sourceRevisionId}
             markdown={problem.translatedFromProblem.bodyMarkdown}
             language={problem.translatedFromProblem.language}
             stale={staleTranslation}

@@ -32,7 +32,7 @@ export async function TranslationReferencePanel({
     <aside className="translation-reference-panel">
       <div className="translation-reference-header">
         <div>
-          <span>Original</span>
+          <span>Reference</span>
           <strong>{contentLanguageLabel(language)}</strong>
         </div>
         {href && (
@@ -45,9 +45,9 @@ export async function TranslationReferencePanel({
       {(stale || latestRevisionId || basedOnRevisionId) && (
         <p className={stale ? "translation-reference-status stale" : "translation-reference-status"}>
           {stale
-            ? `Source changed after revision ${basedOnRevisionId ?? "unknown"}. Latest source revision: ${latestRevisionId}.`
+            ? `Source text changed after revision ${basedOnRevisionId ?? "unknown"}. Latest source text revision: ${latestRevisionId}.`
             : latestRevisionId
-              ? `Based on source revision ${basedOnRevisionId ?? latestRevisionId}.`
+              ? `Based on source text revision ${basedOnRevisionId ?? latestRevisionId}.`
               : "Source revision unavailable."}
         </p>
       )}
@@ -67,7 +67,7 @@ export async function TranslationReferencePanel({
           name={groupName}
           value="markdown"
         />
-        <div className="translation-reference-tab-list" aria-label="Original view">
+        <div className="translation-reference-tab-list" aria-label="Reference view">
           <label htmlFor={renderedId}>Rendered</label>
           <label htmlFor={markdownId}>Markdown</label>
         </div>

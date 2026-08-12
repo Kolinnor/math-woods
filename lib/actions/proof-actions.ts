@@ -68,7 +68,11 @@ export async function saveSolutionHintAction(problemId: number, proofId: number,
   const problem = await prisma.$transaction(async (tx) => {
     await acquireTransactionLock(tx, `solution-hint:${proofId}`);
     const proof = await tx.problemProof.findFirst({
-      where: { id: proofId, problemId, authorId: user.id },
+      where: {
+        id: proofId,
+        problemId,
+        OR: [{ authorId: user.id }, { translatedById: user.id }]
+      },
       select: {
         id: true,
         problem: { select: { id: true, slug: true, language: true, translationGroupId: true } }
@@ -88,7 +92,9 @@ export async function saveSolutionHintAction(problemId: number, proofId: number,
 
     const existingHint = await tx.problemHint.findUnique({ where: { proofId: proof.id } });
     if (existingHint) {
-      if (existingHint.authorId !== user.id) throw new Error("You cannot edit this hint.");
+      if (existingHint.authorId !== user.id && existingHint.translatedById !== user.id) {
+        throw new Error("You cannot edit this hint.");
+      }
       await tx.problemHint.update({
         where: { id: existingHint.id },
         data: { bodyMarkdown, bodyHtml }
@@ -127,7 +133,7 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
 
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
-    select: { authorId: true, problem: { select: { slug: true, language: true } } }
+    select: { authorId: true, translatedById: true, problem: { select: { slug: true, language: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
@@ -155,7 +161,7 @@ export async function deleteProofAction(proofId: number, problemSlug: string) {
 
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
-    select: { authorId: true, problem: { select: { slug: true, language: true } } }
+    select: { authorId: true, translatedById: true, problem: { select: { slug: true, language: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
@@ -179,12 +185,12 @@ export async function voteProofAction(proofId: number, problemSlug: string) {
   await assertRateLimit(`vote:${user.id}`, 120, 60_000);
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
-    select: { authorId: true, problem: { select: { slug: true, title: true } } }
+    select: { authorId: true, translatedById: true, problem: { select: { slug: true, title: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
   }
-  if (proof.authorId === user.id) {
+  if (proof.authorId === user.id || proof.translatedById === user.id) {
     revalidatePath(`/problems/${problemSlug}`);
     return;
   }

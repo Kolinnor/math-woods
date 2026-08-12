@@ -8,8 +8,9 @@ import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
 import { explorationCatalogWhere } from "@/lib/explorations";
 import { getTranslations } from "@/lib/i18n/server";
-import { contentLanguageLabel } from "@/lib/languages";
+import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +27,10 @@ export default async function ExplorationsPage({
   const domain = Object.values(MathDomain).includes(filters.domain as MathDomain) ? filters.domain as MathDomain : null;
   const maxDuration = Number(filters.duration) || null;
   const maxDifficulty = Number(filters.difficulty) || null;
-  const explorations = await prisma.playlist.findMany({
+  const explorationRows = await prisma.playlist.findMany({
     where: {
       ...explorationCatalogWhere,
-      language: preferredLanguage,
+      language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
       ...(domain ? { domain } : {}),
       ...(maxDuration ? { estimatedMinutes: { lte: maxDuration } } : {}),
       ...(maxDifficulty ? { difficulty: { lte: maxDifficulty } } : {}),
@@ -51,6 +52,7 @@ export default async function ExplorationsPage({
       _count: { select: { explorationSessions: true } }
     }
   });
+  const explorations = selectContentTranslationsByGroup(explorationRows, preferredLanguage);
   const sessions = user
     ? await prisma.explorationSession.findMany({
         where: { userId: user.id, playlistId: { in: explorations.map((exploration) => exploration.id) } },

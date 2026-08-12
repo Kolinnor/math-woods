@@ -9,7 +9,7 @@ import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-
 import { prisma } from "@/lib/db";
 import { canEditExploration } from "@/lib/explorations";
 import { assertExplorationsEnabled } from "@/lib/feature-flags";
-import { parseContentLanguage } from "@/lib/languages";
+import { requireActiveContentLanguage } from "@/lib/languages";
 import { canDeletePlaylist } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
@@ -41,7 +41,7 @@ export async function createPlaylistAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`playlist:create:${user.id}`, 5, 60_000);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const language = parseContentLanguage(formData.get("language"));
+  const language = requireActiveContentLanguage(formData.get("language"));
   const descriptionMarkdown = boundedText(
     formData.get("descriptionMarkdown"),
     CONTENT_LIMITS.markdown,

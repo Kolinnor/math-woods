@@ -24,8 +24,10 @@ import {
 import { getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { missingConcepts } from "@/lib/internal-links";
+import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { canUseAdminTools } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -140,7 +142,7 @@ export default async function ConceptsPage({
         })
       ).map((group) => group.conceptId);
   const where: Prisma.ConceptWhereInput = {
-    language: preferredLanguage,
+    language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
     ...(query
       ? {
           OR: [
@@ -165,7 +167,7 @@ export default async function ConceptsPage({
         : {})
   };
 
-  const conceptCandidates = await prisma.concept.findMany({
+  const conceptCandidateRows = await prisma.concept.findMany({
     where,
     orderBy: { updatedAt: "desc" },
     ...(sortValue === "updated" ? { take: 75 } : {}),
@@ -174,6 +176,13 @@ export default async function ConceptsPage({
       _count: { select: { practiceExercises: true, references: true, talkPosts: true } }
     }
   });
+  const conceptCandidates = selectContentTranslationsByGroup(
+    conceptCandidateRows.map((concept) => ({
+      ...concept,
+      isSource: concept.translatedFromConceptId === null
+    })),
+    preferredLanguage
+  );
   const candidateSlugs = conceptCandidates.map((concept) => concept.slug);
 
   const [incomingLinkGroups, missing, featuredConcepts] = await Promise.all([
@@ -187,7 +196,7 @@ export default async function ConceptsPage({
     missingConcepts(30),
     prisma.concept.findMany({
       where: {
-        language: preferredLanguage,
+        language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         canAppearInConceptBrowser: true
       },
       orderBy: { updatedAt: "desc" },
@@ -196,12 +205,21 @@ export default async function ConceptsPage({
         id: true,
         slug: true,
         title: true,
+        language: true,
         domain: true,
         domainCode: true,
         status: true,
+        translationGroupId: true,
+        translatedFromConceptId: true,
         needsReviewAfterEdit: true
       }
-    })
+    }).then((concepts) => selectContentTranslationsByGroup(
+      concepts.map((concept) => ({
+        ...concept,
+        isSource: concept.translatedFromConceptId === null
+      })),
+      preferredLanguage
+    ))
   ]);
   const incomingLinkCountBySlug = new Map(
     incomingLinkGroups.map((item) => [item.targetSlug, item._count.targetSlug])
@@ -224,12 +242,6 @@ export default async function ConceptsPage({
       title={t.concepts.title}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      meta={
-        <>
-          <p>{t.concepts.conceptsShown(concepts.length)}</p>
-          <p>{t.concepts.linkedGaps(missing.length)}</p>
-        </>
-      }
       actions={
         <>
           <Link href="/concepts/random" prefetch={false} className="button secondary concept-browser-action-button">

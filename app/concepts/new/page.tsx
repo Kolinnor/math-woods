@@ -10,9 +10,11 @@ import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { parseContentLanguage } from "@/lib/languages";
+import { parseActiveContentLanguage } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 export default async function NewConceptPage({
   searchParams
@@ -25,7 +27,7 @@ export default async function NewConceptPage({
   const draftSession = requireDraftSession("/concepts/new", queryParams);
   const { title = "", translateOf = "", language = "" } = queryParams;
   const preferredLanguage = await getPreferredContentLanguage();
-  const requestedLanguage = language ? parseContentLanguage(language) : preferredLanguage;
+  const requestedLanguage = language ? parseActiveContentLanguage(language) : preferredLanguage;
   const sourceConcept = translateOf
     ? await prisma.concept.findUnique({
         where: { slug: translateOf },
@@ -36,7 +38,15 @@ export default async function NewConceptPage({
           domainCode: true,
           kind: true,
           language: true,
-          translationGroupId: true
+          translationGroupId: true,
+          practiceExercises: {
+            orderBy: { position: "asc" },
+            select: {
+              problem: {
+                select: { slug: true, title: true, language: true, translationGroupId: true }
+              }
+            }
+          }
         }
       })
     : null;
@@ -51,6 +61,21 @@ export default async function NewConceptPage({
     ? nextMissingTranslationLanguage(sourceConcept.language, sourceTranslationLanguages, requestedLanguage)
     : requestedLanguage;
   const initialLanguage = targetTranslationLanguage ?? requestedLanguage;
+  const translatedExercises =
+    sourceConcept && targetTranslationLanguage && sourceConcept.practiceExercises.length > 0
+      ? await prisma.problem.findMany({
+          where: {
+            translationGroupId: {
+              in: sourceConcept.practiceExercises.map(({ problem }) => problem.translationGroupId)
+            },
+            language: targetTranslationLanguage
+          },
+          select: { slug: true, translationGroupId: true }
+        })
+      : [];
+  const translatedExerciseByGroup = new Map(
+    translatedExercises.map((exercise) => [exercise.translationGroupId, exercise.slug])
+  );
   const defaultContent =
     sourceConcept?.bodyMarkdown ??
     "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to [[polynomial]].";
@@ -127,6 +152,37 @@ export default async function NewConceptPage({
             draftKey={`concept:new:${draftSession}:body`}
           />
         </div>
+        {sourceConcept && targetTranslationLanguage && sourceConcept.practiceExercises.length > 0 && (
+          <section className="translation-exercise-options">
+            <div>
+              <h2>Linked exercises</h2>
+              <p className="muted text-sm">
+                Exercises are full problem pages. Translate any of them in a separate tab; their translated version
+                will remain linked to this concept automatically.
+              </p>
+            </div>
+            <div className="translation-exercise-list">
+              {sourceConcept.practiceExercises.map(({ problem }) => {
+                const translatedSlug = translatedExerciseByGroup.get(problem.translationGroupId);
+                const href = translatedSlug
+                  ? `/problems/${translatedSlug}`
+                  : `/problems/new?translateOf=${encodeURIComponent(problem.slug)}&language=${encodeURIComponent(initialLanguage)}`;
+                return (
+                  <div key={problem.translationGroupId} className="translation-exercise-item">
+                    <div>
+                      <strong>{problem.title}</strong>
+                      <span className="meta">Source: {problem.language.toUpperCase()}</span>
+                    </div>
+                    <Link href={href as never} target="_blank" rel="noreferrer" className="button secondary">
+                      {translatedSlug ? `Open ${initialLanguage.toUpperCase()} version` : "Also translate this exercise"}
+                      <ExternalLink size={15} aria-hidden="true" />
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
         <label className="grid gap-2">
           <span className="text-sm font-medium">References</span>
           <textarea

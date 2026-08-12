@@ -36,7 +36,12 @@ import {
   notifyProblemAuthor,
   notifyProblemEditSubscribers
 } from "@/lib/notifications";
-import { parseContentLanguage, parseTranslationGroupId } from "@/lib/languages";
+import {
+  editableContentLanguage,
+  parseTranslationGroupId,
+  requireActiveContentLanguage
+} from "@/lib/languages";
+import { problemCreationNotificationCopy } from "@/lib/problem-creation-notifications";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { linkSpecificProblem, parseProblemRelationGroups, syncProblemRelationGroups } from "@/lib/problem-relations";
 import {
@@ -79,8 +84,17 @@ import {
 import { ensureSlug } from "@/lib/slug";
 import { parseTagInput, syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
+import { problemTranslationSharedChanges } from "@/lib/translation-properties";
+import { latestProblemTextRevisionIdFromRevisions } from "@/lib/translation-text-revisions";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
+import {
+  parseSelectedTranslationIds,
+  TRANSLATED_HINT_BODY_PREFIX,
+  TRANSLATED_PROOF_BODY_PREFIX,
+  TRANSLATED_PROOF_HINT_BODY_PREFIX,
+  translationBodyFieldName
+} from "@/lib/translation-companions";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
 
 export type ProblemEditActionState =
@@ -243,13 +257,14 @@ async function createProblemHint(
   const sourceHintId = Number(formData.get("sourceHintId"));
   let position = intField(formData.get("position"), (lastHint?.position ?? -1) + 1);
   let translationGroupId: string | undefined;
+  let translatedSourceHint: { id: number; authorId: number | null } | null = null;
   if (Number.isInteger(sourceHintId) && sourceHintId > 0) {
     const sourceHint = await prisma.problemHint.findFirst({
       where: {
         id: sourceHintId,
         problem: { translationGroupId: problem.translationGroupId }
       },
-      select: { position: true, translationGroupId: true }
+      select: { id: true, position: true, translationGroupId: true, authorId: true }
     });
     if (!sourceHint) throw new Error("Source hint not found.");
     const existingTranslation = await prisma.problemHint.findFirst({
@@ -259,16 +274,23 @@ async function createProblemHint(
     if (existingTranslation) throw new Error("This hint already has a translation on this problem.");
     position = sourceHint.position;
     translationGroupId = sourceHint.translationGroupId;
+    translatedSourceHint = sourceHint;
   }
 
   await prisma.problemHint.create({
     data: {
       problemId,
-      authorId: user.id,
+      authorId: translatedSourceHint?.authorId ?? user.id,
       bodyMarkdown,
       bodyHtml: await renderMarkdownContent(bodyMarkdown),
       position,
-      ...(translationGroupId ? { translationGroupId } : {})
+      ...(translationGroupId
+        ? {
+            translationGroupId,
+            translatedFromHintId: translatedSourceHint?.id,
+            translatedById: translatedSourceHint?.authorId === user.id ? null : user.id
+          }
+        : {})
     }
   });
 
@@ -324,7 +346,7 @@ export async function createProblemAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:create:${user.id}`, 5, 60_000);
   const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Title") || "Untitled problem";
-  const language = parseContentLanguage(formData.get("language"));
+  const language = requireActiveContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const bodyMarkdown =
@@ -363,6 +385,45 @@ export async function createProblemAction(formData: FormData) {
     CONTENT_LIMITS.relationGroups,
     "Related problem groups"
   );
+  const translatedHintIds = parseSelectedTranslationIds(formData.getAll("translateHintIds"));
+  const translatedProofIds = parseSelectedTranslationIds(formData.getAll("translateProofIds"));
+  const translatedProofHintIds = parseSelectedTranslationIds(formData.getAll("translateProofHintIds"));
+  const translatedHintBodies = new Map(
+    await Promise.all(
+      translatedHintIds.map(async (sourceId) => {
+        const markdown = requiredBoundedText(
+          formData.get(translationBodyFieldName(TRANSLATED_HINT_BODY_PREFIX, sourceId)),
+          CONTENT_LIMITS.discussionPost,
+          "Translated hint"
+        );
+        return [sourceId, { markdown, html: await renderMarkdownContent(markdown) }] as const;
+      })
+    )
+  );
+  const translatedProofBodies = new Map(
+    await Promise.all(
+      translatedProofIds.map(async (sourceId) => {
+        const markdown = requiredBoundedText(
+          formData.get(translationBodyFieldName(TRANSLATED_PROOF_BODY_PREFIX, sourceId)),
+          CONTENT_LIMITS.markdown,
+          "Translated solution"
+        );
+        return [sourceId, { markdown, html: await renderMarkdownContent(markdown) }] as const;
+      })
+    )
+  );
+  const translatedProofHintBodies = new Map(
+    await Promise.all(
+      translatedProofHintIds.map(async (sourceId) => {
+        const markdown = requiredBoundedText(
+          formData.get(translationBodyFieldName(TRANSLATED_PROOF_HINT_BODY_PREFIX, sourceId)),
+          CONTENT_LIMITS.discussionPost,
+          "Translated solution hint"
+        );
+        return [sourceId, { markdown, html: await renderMarkdownContent(markdown) }] as const;
+      })
+    )
+  );
 
   if (verificationMode === ProblemVerificationMode.SELF_CHECK && !verificationAnswer) {
     throw new Error("Short answer verification requires an expected answer.");
@@ -386,42 +447,32 @@ export async function createProblemAction(formData: FormData) {
       translationGroupId && translationSourceSlug
         ? await tx.problem.findFirst({
             where: { slug: translationSourceSlug, translationGroupId },
-            select: {
-              id: true,
-              authorId: true,
-              difficulty: true,
-              isExercise: true,
-              showRelatedProblems: true,
-              canAppearOnFrontPage: true,
-              createdAt: true
-            }
+            include: problemRevisionSnapshotInclude
           })
         : null;
+    if (translationGroupId && !translationSource) {
+      throw new Error("The selected problem translation source does not belong to this translation group.");
+    }
     const originalProblem = translationGroupId
       ? await tx.problem.findFirst({
           where: { translationGroupId, translatedFromProblemId: null },
           orderBy: { createdAt: "asc" },
-          select: {
-            authorId: true,
-            difficulty: true,
-            isExercise: true,
-            showRelatedProblems: true,
-            canAppearOnFrontPage: true,
-            createdAt: true
-          }
+          include: problemRevisionSnapshotInclude
         })
       : null;
-    const sourceRevision = translationSource
-      ? await tx.pageRevision.findFirst({
+    const sharedProblem = originalProblem ?? translationSource;
+    const sharedSnapshot = sharedProblem ? buildProblemRevisionSnapshot(sharedProblem) : null;
+    const effectiveVerificationMode = sharedSnapshot?.verificationMode ?? verificationMode;
+    if (effectiveVerificationMode === ProblemVerificationMode.SELF_CHECK && !verificationAnswer) {
+      throw new Error("Short answer verification requires a translated expected answer.");
+    }
+    const sourceRevisionId = translationSource
+      ? latestProblemTextRevisionIdFromRevisions(await tx.pageRevision.findMany({
           where: { pageType: SourceType.PROBLEM, pageId: translationSource.id },
-          orderBy: { id: "desc" },
-          select: { id: true }
-        })
+          orderBy: { id: "asc" },
+          select: { id: true, markdown: true, problemSnapshot: true }
+        }))
       : null;
-    const sharedDifficulty = translationSource
-      ? (originalProblem?.difficulty ?? translationSource.difficulty ?? difficulty)
-      : difficulty;
-
     const created = await tx.problem.create({
       data: {
         slug,
@@ -430,32 +481,30 @@ export async function createProblemAction(formData: FormData) {
         ...(translationSource
           ? {
               translatedFromProblemId: translationSource.id,
-              translatedFromRevisionId: sourceRevision?.id ?? null
+              translatedFromRevisionId: sourceRevisionId
             }
           : {}),
         title,
         bodyMarkdown,
         bodyHtml,
-        difficulty: sharedDifficulty,
-        domain,
-        origin,
-        originChapter,
-        originPage,
-        originNote,
-        listed,
-        isExercise: originalProblem?.isExercise ?? translationSource?.isExercise ?? isExercise,
-        showRelatedProblems:
-          originalProblem?.showRelatedProblems ??
-          translationSource?.showRelatedProblems ??
-          showRelatedProblems,
-        ...(translationGroupId ? { createdAt: originalProblem?.createdAt ?? translationSource?.createdAt } : {}),
-        canAppearOnFrontPage:
-          originalProblem?.canAppearOnFrontPage ?? translationSource?.canAppearOnFrontPage ?? false,
+        difficulty: sharedSnapshot?.difficulty ?? difficulty,
+        domain: sharedSnapshot?.domains.find((item) => !item.spoiler)?.domain ?? domain,
+        origin: sharedSnapshot?.origin ?? origin,
+        originChapter: sharedSnapshot?.originChapter ?? originChapter,
+        originPage: sharedSnapshot?.originPage ?? originPage,
+        originNote: sharedSnapshot?.originNote ?? originNote,
+        license: sharedProblem?.license,
+        listed: sharedSnapshot?.listed ?? listed,
+        isExercise: sharedSnapshot?.isExercise ?? isExercise,
+        showRelatedProblems: sharedSnapshot?.showRelatedProblems ?? showRelatedProblems,
+        ...(translationGroupId ? { createdAt: sharedProblem?.createdAt } : {}),
+        canAppearOnFrontPage: sharedSnapshot?.canAppearOnFrontPage ?? false,
+        status: sharedProblem?.status,
         qualityStatus,
-        verificationMode,
-        verificationPrompt: verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt,
-        verificationAnswer: verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null,
-        authorId: translationSource ? (originalProblem?.authorId ?? translationSource.authorId) : user.id,
+        verificationMode: effectiveVerificationMode,
+        verificationPrompt: effectiveVerificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt,
+        verificationAnswer: effectiveVerificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null,
+        authorId: sharedProblem?.authorId ?? user.id,
         thread: { create: {} }
       }
     });
@@ -469,7 +518,7 @@ export async function createProblemAction(formData: FormData) {
       const [groupAttempts, groupFavoriteUsers, groupProblems] = await Promise.all([
         tx.problemAttempt.findMany({
           where: { problem: { translationGroupId }, problemId: { not: created.id } },
-          select: { userId: true, status: true, startedAt: true, discussionUnlockAt: true }
+          select: { userId: true, status: true, solvedAt: true, startedAt: true, discussionUnlockAt: true }
         }),
         tx.problemFavorite.findMany({
           where: { problem: { translationGroupId } },
@@ -488,6 +537,12 @@ export async function createProblemAction(formData: FormData) {
         attemptsByUser.set(attempt.userId, {
           ...existing,
           status: mergedAttemptStatus(existing.status, attempt.status),
+          solvedAt:
+            existing.solvedAt && attempt.solvedAt
+              ? existing.solvedAt < attempt.solvedAt
+                ? existing.solvedAt
+                : attempt.solvedAt
+              : existing.solvedAt ?? attempt.solvedAt,
           startedAt: existing.startedAt < attempt.startedAt ? existing.startedAt : attempt.startedAt,
           discussionUnlockAt:
             existing.discussionUnlockAt < attempt.discussionUnlockAt
@@ -501,6 +556,7 @@ export async function createProblemAction(formData: FormData) {
             userId: attempt.userId,
             problemId: created.id,
             status: attempt.status,
+            solvedAt: attempt.status === AttemptStatus.SOLVED ? attempt.solvedAt : null,
             startedAt: attempt.startedAt,
             discussionUnlockAt: attempt.discussionUnlockAt
           })),
@@ -574,10 +630,111 @@ export async function createProblemAction(formData: FormData) {
       }
     }
     await syncInternalLinks(SourceType.PROBLEM, created.id, bodyMarkdown, tx, language);
-    await syncProblemDomains(tx, created.id, domains);
-    await syncProblemRelationGroups(tx, created.id, relatedProblemGroups);
-    await syncProblemTags(created.id, tags, tx);
-    await syncProblemSpoilerTags(created.id, spoilerTags, tx);
+    await syncProblemDomains(tx, created.id, sharedSnapshot?.domains ?? domains);
+    await syncProblemRelationGroups(
+      tx,
+      created.id,
+      sharedSnapshot ? problemSnapshotRelationInput(sharedSnapshot) : relatedProblemGroups
+    );
+    await syncProblemTags(
+      created.id,
+      sharedSnapshot ? problemSnapshotTagInput(sharedSnapshot.tags) : tags,
+      tx
+    );
+    await syncProblemSpoilerTags(
+      created.id,
+      sharedSnapshot ? problemSnapshotTagInput(sharedSnapshot.spoilerTags) : spoilerTags,
+      tx
+    );
+    if (translationSource) {
+      const [sourceHints, sourceProofs] = await Promise.all([
+        translatedHintIds.length
+          ? tx.problemHint.findMany({
+              where: {
+                id: { in: translatedHintIds },
+                problemId: translationSource.id,
+                proofId: null
+              }
+            })
+          : [],
+        translatedProofIds.length
+          ? tx.problemProof.findMany({
+              where: { id: { in: translatedProofIds }, problemId: translationSource.id },
+              include: { hint: true }
+            })
+          : []
+      ]);
+      if (sourceHints.length !== translatedHintIds.length) {
+        throw new Error("One of the selected hints does not belong to the translation source.");
+      }
+      if (sourceProofs.length !== translatedProofIds.length) {
+        throw new Error("One of the selected solutions does not belong to the translation source.");
+      }
+
+      for (const sourceProof of sourceProofs) {
+        const translatedBody = translatedProofBodies.get(sourceProof.id);
+        if (!translatedBody) throw new Error("Translated solution content is missing.");
+        const translatedProof = await tx.problemProof.create({
+          data: {
+            translationGroupId: sourceProof.translationGroupId,
+            problemId: created.id,
+            authorId: sourceProof.authorId,
+            translatedFromProofId: sourceProof.id,
+            translatedById: sourceProof.authorId === user.id ? null : user.id,
+            bodyMarkdown: translatedBody.markdown,
+            bodyHtml: translatedBody.html,
+            createdAt: sourceProof.createdAt
+          }
+        });
+        await syncInternalLinks(SourceType.PROOF, translatedProof.id, translatedBody.markdown, tx, language);
+
+        if (sourceProof.hint && translatedProofHintIds.includes(sourceProof.hint.id)) {
+          const translatedHintBody = translatedProofHintBodies.get(sourceProof.hint.id);
+          if (!translatedHintBody) throw new Error("Translated solution hint content is missing.");
+          await tx.problemHint.create({
+            data: {
+              translationGroupId: sourceProof.hint.translationGroupId,
+              problemId: created.id,
+              proofId: translatedProof.id,
+              authorId: sourceProof.hint.authorId,
+              translatedFromHintId: sourceProof.hint.id,
+              translatedById: sourceProof.hint.authorId === user.id ? null : user.id,
+              position: sourceProof.hint.position,
+              bodyMarkdown: translatedHintBody.markdown,
+              bodyHtml: translatedHintBody.html,
+              createdAt: sourceProof.hint.createdAt
+            }
+          });
+        }
+      }
+
+      const selectedProofHintIds = new Set(
+        sourceProofs.flatMap((proof) => (proof.hint ? [proof.hint.id] : []))
+      );
+      if (translatedProofHintIds.some((hintId) => !selectedProofHintIds.has(hintId))) {
+        throw new Error("A solution hint can only be translated with its solution.");
+      }
+
+      for (const sourceHint of sourceHints) {
+        const translatedBody = translatedHintBodies.get(sourceHint.id);
+        if (!translatedBody) throw new Error("Translated hint content is missing.");
+        await tx.problemHint.create({
+          data: {
+            translationGroupId: sourceHint.translationGroupId,
+            problemId: created.id,
+            authorId: sourceHint.authorId,
+            translatedFromHintId: sourceHint.id,
+            translatedById: sourceHint.authorId === user.id ? null : user.id,
+            position: sourceHint.position,
+            bodyMarkdown: translatedBody.markdown,
+            bodyHtml: translatedBody.html,
+            createdAt: sourceHint.createdAt
+          }
+        });
+      }
+    } else if (translatedHintIds.length || translatedProofIds.length || translatedProofHintIds.length) {
+      throw new Error("Accompanying content can only be translated from a linked source problem.");
+    }
     const createdSnapshotSource = await problemSnapshotSource(tx, created.id);
     await tx.pageRevision.create({
       data: {
@@ -588,21 +745,31 @@ export async function createProblemAction(formData: FormData) {
         problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(createdSnapshotSource)),
         editedById: user.id,
         isCreation: true,
-        editSummary: "Problem created"
+        editSummary: translationSource ? "Problem translation created" : "Problem created"
       }
     });
-    return created;
+    return {
+      created,
+      translationSourceTitle: translationSource?.title ?? null
+    };
+  });
+
+  const problemNotification = problemCreationNotificationCopy({
+    actorName: displayNameForUser(user),
+    problemTitle: problem.created.title,
+    sourceTitle: problem.translationSourceTitle,
+    targetLanguage: problem.created.language
   });
 
   revalidatePath("/");
   await notifyOwnerOfSiteActivity({
     actor: user,
     type: NotificationType.PROBLEM_CREATED,
-    title: "New problem created",
-    body: `${displayNameForUser(user)} created "${problem.title}".`,
-    href: `/problems/${problem.slug}`
+    title: problemNotification.title,
+    body: problemNotification.body,
+    href: `/problems/${problem.created.slug}`
   });
-  redirect(contentLanguageViewHref("/problems", problem.slug, problem.language) as Route);
+  redirect(contentLanguageViewHref("/problems", problem.created.slug, problem.created.language) as Route);
 }
 
 export async function updateProblemAction(
@@ -630,7 +797,7 @@ export async function updateProblemAction(
   }
 
   const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Title") || previous.title;
-  const language = parseContentLanguage(formData.get("language"));
+  const language = editableContentLanguage(formData.get("language"), previous.language);
   const bodyMarkdown =
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
@@ -858,12 +1025,12 @@ export async function updateProblemAction(
       }
 
       if (markTranslationFresh && current.translatedFromProblemId) {
-        const refreshedSourceRevision = await tx.pageRevision.findFirst({
+        const refreshedSourceRevisionId = latestProblemTextRevisionIdFromRevisions(await tx.pageRevision.findMany({
           where: { pageType: SourceType.PROBLEM, pageId: current.translatedFromProblemId },
-          orderBy: { id: "desc" },
-          select: { id: true }
-        });
-        if (refreshedSourceRevision) resolvedSnapshot.translatedFromRevisionId = refreshedSourceRevision.id;
+          orderBy: { id: "asc" },
+          select: { id: true, markdown: true, problemSnapshot: true }
+        }));
+        if (refreshedSourceRevisionId) resolvedSnapshot.translatedFromRevisionId = refreshedSourceRevisionId;
       }
 
       const bodyHtml = await renderMarkdownContent(resolvedSnapshot.bodyMarkdown);
@@ -895,35 +1062,14 @@ export async function updateProblemAction(
       });
       if (updateResult.count !== 1) throw new ProblemEditConflictError(current.version + 1);
 
-      const syncFrontPage = resolvedSnapshot.canAppearOnFrontPage !== current.canAppearOnFrontPage;
-      const syncExerciseType = resolvedSnapshot.isExercise !== current.isExercise;
-      const syncRelatedVisibility = resolvedSnapshot.showRelatedProblems !== current.showRelatedProblems;
-      const siblingCandidates = await tx.problem.findMany({
-        where: {
-          translationGroupId: current.translationGroupId,
-          id: { not: problemId },
-          OR: [
-            resolvedSnapshot.difficulty === null
-              ? { difficulty: { not: null } }
-              : { OR: [{ difficulty: null }, { difficulty: { not: resolvedSnapshot.difficulty } }] },
-            ...(syncFrontPage
-              ? [{ canAppearOnFrontPage: { not: resolvedSnapshot.canAppearOnFrontPage } }]
-              : []),
-            ...(syncExerciseType
-              ? [{ isExercise: { not: resolvedSnapshot.isExercise } }]
-              : []),
-            ...(syncRelatedVisibility
-              ? [{ showRelatedProblems: { not: resolvedSnapshot.showRelatedProblems } }]
-              : [])
-          ]
-        },
-        select: {
-          id: true,
-          difficulty: true,
-          isExercise: true,
-          showRelatedProblems: true
-        }
-      });
+      const sharedChangedFields = problemTranslationSharedChanges(changedSnapshotFields);
+      const sharedChangedFieldSet = new Set(sharedChangedFields);
+      const siblingCandidates = sharedChangedFields.length
+        ? await tx.problem.findMany({
+            where: { translationGroupId: current.translationGroupId, id: { not: problemId } },
+            select: { id: true }
+          })
+        : [];
       for (const sibling of siblingCandidates) {
         await ensureProblemSnapshotRevision(tx, await problemSnapshotSource(tx, sibling.id));
       }
@@ -931,13 +1077,40 @@ export async function updateProblemAction(
         await tx.problem.updateMany({
           where: { id: { in: siblingCandidates.map((item) => item.id) } },
           data: {
-            difficulty: resolvedSnapshot.difficulty,
-            ...(syncFrontPage ? { canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage } : {}),
-            ...(syncExerciseType ? { isExercise: resolvedSnapshot.isExercise } : {}),
-            ...(syncRelatedVisibility ? { showRelatedProblems: resolvedSnapshot.showRelatedProblems } : {}),
+            ...(sharedChangedFieldSet.has("difficulty") ? { difficulty: resolvedSnapshot.difficulty } : {}),
+            ...(sharedChangedFieldSet.has("domains")
+              ? {
+                  domain:
+                    resolvedSnapshot.domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER
+                }
+              : {}),
+            ...(sharedChangedFieldSet.has("origin") ? { origin: resolvedSnapshot.origin } : {}),
+            ...(sharedChangedFieldSet.has("originChapter")
+              ? { originChapter: resolvedSnapshot.originChapter }
+              : {}),
+            ...(sharedChangedFieldSet.has("originPage") ? { originPage: resolvedSnapshot.originPage } : {}),
+            ...(sharedChangedFieldSet.has("listed") ? { listed: resolvedSnapshot.listed } : {}),
+            ...(sharedChangedFieldSet.has("isExercise") ? { isExercise: resolvedSnapshot.isExercise } : {}),
+            ...(sharedChangedFieldSet.has("showRelatedProblems")
+              ? { showRelatedProblems: resolvedSnapshot.showRelatedProblems }
+              : {}),
+            ...(sharedChangedFieldSet.has("canAppearOnFrontPage")
+              ? { canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage }
+              : {}),
             version: { increment: 1 }
           }
         });
+        for (const sibling of siblingCandidates) {
+          if (sharedChangedFieldSet.has("domains")) {
+            await syncProblemDomains(tx, sibling.id, resolvedSnapshot.domains);
+          }
+          if (sharedChangedFieldSet.has("tags")) {
+            await syncProblemTags(sibling.id, problemSnapshotTagInput(resolvedSnapshot.tags), tx);
+          }
+          if (sharedChangedFieldSet.has("spoilerTags")) {
+            await syncProblemSpoilerTags(sibling.id, problemSnapshotTagInput(resolvedSnapshot.spoilerTags), tx);
+          }
+        }
       }
 
       await syncInternalLinks(SourceType.PROBLEM, problemId, resolvedSnapshot.bodyMarkdown, tx, resolvedSnapshot.language);
@@ -1168,18 +1341,18 @@ export async function dismissProblemTranslationStaleNoticeAction(problemId: numb
     throw new Error("You cannot dismiss this translation notice.");
   }
 
-  const latestSourceRevision = await prisma.pageRevision.findFirst({
+  const latestSourceRevisionId = latestProblemTextRevisionIdFromRevisions(await prisma.pageRevision.findMany({
     where: { pageType: SourceType.PROBLEM, pageId: problem.translatedFromProblem.id },
-    orderBy: { id: "desc" },
-    select: { id: true }
-  });
-  if (!latestSourceRevision) {
+    orderBy: { id: "asc" },
+    select: { id: true, markdown: true, problemSnapshot: true }
+  }));
+  if (!latestSourceRevisionId) {
     throw new Error("Source revision not found.");
   }
 
   await prisma.problem.update({
     where: { id: problemId },
-    data: { translatedFromRevisionId: latestSourceRevision.id }
+    data: { translatedFromRevisionId: latestSourceRevisionId }
   });
 
   revalidatePath(`/problems/${problem.slug}`);
@@ -1555,13 +1728,27 @@ async function markSolvedNow(problemId: number, problemSlug: string, user: { id:
         problemId: translationProblemId,
         startedAt: now,
         discussionUnlockAt: unlockDate(now),
-        status: "SOLVED" as const
+        status: "SOLVED" as const,
+        solvedAt: now
       })),
       skipDuplicates: true
     });
     await tx.problemAttempt.updateMany({
-      where: { userId: user.id, problemId: { in: translationIds } },
-      data: { status: "SOLVED" }
+      where: {
+        userId: user.id,
+        problemId: { in: translationIds },
+        status: { not: "SOLVED" }
+      },
+      data: { status: "SOLVED", solvedAt: now }
+    });
+    await tx.problemAttempt.updateMany({
+      where: {
+        userId: user.id,
+        problemId: { in: translationIds },
+        status: "SOLVED",
+        solvedAt: null
+      },
+      data: { solvedAt: now }
     });
     await tx.problemRecommendationExposure.deleteMany({
       where: { userId: user.id, translationGroupId: problem.translationGroupId }
@@ -1668,7 +1855,7 @@ export async function unmarkProblemSolvedAction(problemId: number, problemSlug: 
       problemId: { in: translations.map((translation) => translation.id) },
       status: "SOLVED"
     },
-    data: { status: "STARTED" }
+    data: { status: "STARTED", solvedAt: null }
   });
 
   revalidatePath("/problems");
@@ -1720,13 +1907,27 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
           problemId: translatedProblemId,
           startedAt: now,
           discussionUnlockAt: unlockDate(now),
-          status: "SOLVED" as const
+          status: "SOLVED" as const,
+          solvedAt: now
         })),
         skipDuplicates: true
       });
       await tx.problemAttempt.updateMany({
-        where: { userId: request.userId, problemId: { in: translatedProblemIds } },
-        data: { status: "SOLVED" }
+        where: {
+          userId: request.userId,
+          problemId: { in: translatedProblemIds },
+          status: { not: "SOLVED" }
+        },
+        data: { status: "SOLVED", solvedAt: now }
+      });
+      await tx.problemAttempt.updateMany({
+        where: {
+          userId: request.userId,
+          problemId: { in: translatedProblemIds },
+          status: "SOLVED",
+          solvedAt: null
+        },
+        data: { solvedAt: now }
       });
     }
   });

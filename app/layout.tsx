@@ -21,7 +21,7 @@ import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { dictionaryForContentLanguage } from "@/lib/i18n/server";
-import { CONTENT_LANGUAGE_COOKIE, parseContentLanguage } from "@/lib/languages";
+import { CONTENT_LANGUAGE_COOKIE, parseActiveContentLanguage } from "@/lib/languages";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -123,7 +123,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const cookieStore = await cookies();
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";
   const initialBackgroundTone = validBackgroundTone(cookieStore.get("math-woods-background-tone")?.value) ?? "sage";
-  const initialLanguage = parseContentLanguage(cookieStore.get(CONTENT_LANGUAGE_COOKIE)?.value);
+  const initialLanguage = parseActiveContentLanguage(cookieStore.get(CONTENT_LANGUAGE_COOKIE)?.value);
   const t = dictionaryForContentLanguage(initialLanguage);
   const needsEmailVerification = Boolean(user && !user.emailVerifiedAt && !canUseModerationTools(user));
 

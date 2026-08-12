@@ -10,15 +10,17 @@ import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
 import { ProblemVerificationFields } from "@/components/ProblemVerificationFields";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
+import { TranslationCompanionFields } from "@/components/TranslationCompanionFields";
 import { requireVerifiedUser } from "@/lib/auth";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { parseContentLanguage } from "@/lib/languages";
+import { parseActiveContentLanguage } from "@/lib/languages";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
+import { displayNameForUser } from "@/lib/user-display";
 
 export default async function NewProblemPage({
   searchParams
@@ -49,7 +51,7 @@ export default async function NewProblemPage({
   } = queryParams;
   const explorationSlug = exploration || playlist;
   const preferredLanguage = await getPreferredContentLanguage();
-  const requestedLanguage = language ? parseContentLanguage(language) : preferredLanguage;
+  const requestedLanguage = language ? parseActiveContentLanguage(language) : preferredLanguage;
   const isListedByDefault = listed !== "0";
   const isExerciseByDefault = exercise === "1" || exercise === "true";
   const parentProblem = parent
@@ -70,8 +72,30 @@ export default async function NewProblemPage({
           difficulty: true,
           isExercise: true,
           showRelatedProblems: true,
+          origin: true,
+          originChapter: true,
+          originPage: true,
+          originNote: true,
+          listed: true,
+          verificationMode: true,
+          verificationPrompt: true,
+          verificationAnswer: true,
           domain: true,
-          domains: { orderBy: { position: "asc" } }
+          domains: { orderBy: { position: "asc" } },
+          hints: {
+            where: { proofId: null },
+            orderBy: [{ position: "asc" }, { id: "asc" }],
+            select: { id: true, bodyMarkdown: true }
+          },
+          proofs: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              bodyMarkdown: true,
+              author: { select: { username: true, displayName: true } },
+              hint: { select: { id: true, bodyMarkdown: true } }
+            }
+          }
         }
       })
     : null;
@@ -153,6 +177,19 @@ export default async function NewProblemPage({
             />
           </section>
 
+          {sourceProblem && (
+            <TranslationCompanionFields
+              draftSession={draftSession}
+              hints={sourceProblem.hints}
+              proofs={sourceProblem.proofs.map((proof) => ({
+                id: proof.id,
+                bodyMarkdown: proof.bodyMarkdown,
+                authorName: displayNameForUser(proof.author),
+                hint: proof.hint
+              }))}
+            />
+          )}
+
           <div className="problem-compose-actions">
             <button type="submit" disabled={Boolean(sourceProblem && !targetTranslationLanguage)}>
               Publish
@@ -165,16 +202,16 @@ export default async function NewProblemPage({
                       Approximate origin
                       <FieldHelp text="Where the problem comes from, if known. Unknown is fine." />
                     </span>
-                    <input name="origin" defaultValue="Unknown" placeholder="Unknown, IMO 1988, a textbook..." />
+                    <input name="origin" defaultValue={sourceProblem?.origin ?? "Unknown"} placeholder="Unknown, IMO 1988, a textbook..." />
                   </label>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="grid gap-2">
                       <span className="text-sm font-medium">Chapter or section</span>
-                      <input name="originChapter" placeholder="Chapter 4, Algebra" />
+                      <input name="originChapter" defaultValue={sourceProblem?.originChapter ?? ""} placeholder="Chapter 4, Algebra" />
                     </label>
                     <label className="grid gap-2">
                       <span className="text-sm font-medium">Page or problem number</span>
-                      <input name="originPage" placeholder="p. 127, Problem 6" />
+                      <input name="originPage" defaultValue={sourceProblem?.originPage ?? ""} placeholder="p. 127, Problem 6" />
                     </label>
                   </div>
                   <label className="grid gap-2">
@@ -182,7 +219,7 @@ export default async function NewProblemPage({
                       Provenance note
                       <FieldHelp text="Add uncertainty, publication details, or context about the source." />
                     </span>
-                    <textarea className="compact-textarea" name="originNote" />
+                    <textarea className="compact-textarea" name="originNote" defaultValue={sourceProblem?.originNote ?? ""} />
                   </label>
                 </section>
 
@@ -213,7 +250,7 @@ export default async function NewProblemPage({
                 <section className="problem-compose-subsection">
                   <h2>Publishing options</h2>
                   <label className="checkbox-field">
-                    <input name="listed" type="checkbox" defaultChecked={isListedByDefault} />
+                    <input name="listed" type="checkbox" defaultChecked={sourceProblem?.listed ?? isListedByDefault} />
                     <span>
                       <strong>Listed in the problem browser</strong>
                     </span>
@@ -224,7 +261,12 @@ export default async function NewProblemPage({
                       sourceProblem?.showRelatedProblems ?? !isExerciseByDefault
                     }
                   />
-                  <ProblemVerificationFields modeOptions={Object.entries(VERIFICATION_MODE_LABELS)} />
+                  <ProblemVerificationFields
+                    initialMode={sourceProblem?.verificationMode}
+                    initialPrompt={sourceProblem?.verificationPrompt ?? ""}
+                    initialAnswer={sourceProblem?.verificationAnswer ?? ""}
+                    modeOptions={Object.entries(VERIFICATION_MODE_LABELS)}
+                  />
                 </section>
 
                 <section className="problem-compose-subsection">

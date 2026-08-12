@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/db";
 import { parseContentLanguage } from "@/lib/languages";
 import { renderMarkdown } from "@/lib/markdown";
+import { selectContentTranslationsByGroup, selectContentTranslation } from "@/lib/translation-routing";
 import { extractWikiLinks } from "@/lib/wikilinks";
 
 type ResolvedConcept = {
   language: string;
   slug: string;
   translationGroupId: string;
+  isSource?: boolean;
 };
 
 export async function resolveConceptHrefsForLanguage(slugs: readonly string[], language: string) {
@@ -22,13 +24,18 @@ export async function resolveConceptHrefsForLanguage(slugs: readonly string[], l
 
   const translatedConcepts = await prisma.concept.findMany({
     where: {
-      translationGroupId: { in: [...new Set(concepts.map((concept) => concept.translationGroupId))] },
-      language: targetLanguage
+      translationGroupId: { in: [...new Set(concepts.map((concept) => concept.translationGroupId))] }
     },
-    select: { slug: true, translationGroupId: true }
+    select: { slug: true, language: true, translationGroupId: true, translatedFromConceptId: true }
   });
   const translatedSlugByGroup = new Map(
-    translatedConcepts.map((concept) => [concept.translationGroupId, concept.slug])
+    selectContentTranslationsByGroup(
+      translatedConcepts.map((concept) => ({
+        ...concept,
+        isSource: concept.translatedFromConceptId === null
+      })),
+      targetLanguage
+    ).map((concept) => [concept.translationGroupId, concept.slug])
   );
 
   return new Map(
@@ -52,13 +59,23 @@ export async function resolveConceptTitlesForLanguage(slugs: readonly string[], 
 
   const translatedConcepts = await prisma.concept.findMany({
     where: {
-      translationGroupId: { in: [...new Set(concepts.map((concept) => concept.translationGroupId))] },
-      language: targetLanguage
+      translationGroupId: { in: [...new Set(concepts.map((concept) => concept.translationGroupId))] }
     },
-    select: { title: true, translationGroupId: true }
+    select: {
+      title: true,
+      language: true,
+      translationGroupId: true,
+      translatedFromConceptId: true
+    }
   });
   const translatedTitleByGroup = new Map(
-    translatedConcepts.map((concept) => [concept.translationGroupId, concept.title])
+    selectContentTranslationsByGroup(
+      translatedConcepts.map((concept) => ({
+        ...concept,
+        isSource: concept.translatedFromConceptId === null
+      })),
+      targetLanguage
+    ).map((concept) => [concept.translationGroupId, concept.title])
   );
 
   return new Map(
@@ -97,6 +114,7 @@ export async function renderMarkdownCollectionForContentLanguage(
       language: true,
       slug: true,
       translationGroupId: true,
+      translatedFromConceptId: true,
       aliases: {
         where: { aliasSlug: { in: targetSlugs } },
         select: { aliasSlug: true }
@@ -114,37 +132,46 @@ export async function renderMarkdownCollectionForContentLanguage(
 
   const conceptByLookupSlug = new Map<string, ResolvedConcept>();
   for (const concept of concepts) {
+    const candidate = {
+      ...concept,
+      isSource: concept.translatedFromConceptId === null
+    };
     if (targetSlugs.includes(concept.slug)) {
-      addConceptCandidate(concept.slug, concept);
+      addConceptCandidate(concept.slug, candidate);
     }
     for (const alias of concept.aliases) {
-      addConceptCandidate(alias.aliasSlug, concept);
+      addConceptCandidate(alias.aliasSlug, candidate);
     }
     for (const link of links) {
       if (concept.title.toLowerCase() === link.target.trim().toLowerCase()) {
-        addConceptCandidate(link.targetSlug, concept);
+        addConceptCandidate(link.targetSlug, candidate);
       }
     }
   }
   for (const [lookupSlug, candidates] of conceptCandidatesByLookupSlug) {
     conceptByLookupSlug.set(
       lookupSlug,
-      candidates.find((candidate) => candidate.language === targetLanguage) ?? candidates[0]
+      selectContentTranslation(candidates, targetLanguage) ?? candidates[0]
     );
   }
 
   const translationGroups = [...new Set(concepts.map((concept) => concept.translationGroupId))];
   const translatedConcepts = translationGroups.length
-    ? await prisma.concept.findMany({
+      ? await prisma.concept.findMany({
         where: {
-          translationGroupId: { in: translationGroups },
-          language: targetLanguage
+          translationGroupId: { in: translationGroups }
         },
-        select: { slug: true, translationGroupId: true }
+        select: { slug: true, language: true, translationGroupId: true, translatedFromConceptId: true }
       })
     : [];
   const translatedSlugByGroup = new Map(
-    translatedConcepts.map((concept) => [concept.translationGroupId, concept.slug])
+    selectContentTranslationsByGroup(
+      translatedConcepts.map((concept) => ({
+        ...concept,
+        isSource: concept.translatedFromConceptId === null
+      })),
+      targetLanguage
+    ).map((concept) => [concept.translationGroupId, concept.slug])
   );
   const missingSlugs = new Set(targetSlugs.filter((slug) => !conceptByLookupSlug.has(slug)));
 

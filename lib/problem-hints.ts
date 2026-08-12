@@ -1,4 +1,4 @@
-export type ProblemHintCandidate = {
+export type ProblemHintCandidate<TTranslator = unknown> = {
   id: number;
   translationGroupId: string;
   problemId: number;
@@ -8,17 +8,18 @@ export type ProblemHintCandidate = {
   bodyHtml: string;
   language: string;
   translatedFromProblemId: number | null;
+  translatedBy?: TTranslator;
 };
 
-export type SelectedProblemHint = ProblemHintCandidate & {
+export type SelectedProblemHint<TTranslator = unknown> = ProblemHintCandidate<TTranslator> & {
   isLanguageFallback: boolean;
 };
 
-function orderedHints<T extends ProblemHintCandidate>(hints: T[]) {
+function orderedHints<T extends ProblemHintCandidate<unknown>>(hints: T[]) {
   return [...hints].sort((left, right) => left.position - right.position || left.id - right.id);
 }
 
-function preferredFallbackProblemId(hints: ProblemHintCandidate[], currentProblemId: number) {
+function preferredFallbackProblemId(hints: ProblemHintCandidate<unknown>[], currentProblemId: number) {
   const alternatives = hints.filter((hint) => hint.problemId !== currentProblemId);
   if (!alternatives.length) return null;
 
@@ -31,24 +32,24 @@ function preferredFallbackProblemId(hints: ProblemHintCandidate[], currentProble
   return candidateProblemIds.sort((leftId, rightId) => {
     const leftHints = alternatives.filter((hint) => hint.problemId === leftId);
     const rightHints = alternatives.filter((hint) => hint.problemId === rightId);
-    const leftIsOriginal = leftHints.some((hint) => hint.translatedFromProblemId === null);
-    const rightIsOriginal = rightHints.some((hint) => hint.translatedFromProblemId === null);
-    if (leftIsOriginal !== rightIsOriginal) return leftIsOriginal ? -1 : 1;
-
     const leftIsEnglish = leftHints.some((hint) => hint.language === "en");
     const rightIsEnglish = rightHints.some((hint) => hint.language === "en");
     if (leftIsEnglish !== rightIsEnglish) return leftIsEnglish ? -1 : 1;
+
+    const leftIsOriginal = leftHints.some((hint) => hint.translatedFromProblemId === null);
+    const rightIsOriginal = rightHints.some((hint) => hint.translatedFromProblemId === null);
+    if (leftIsOriginal !== rightIsOriginal) return leftIsOriginal ? -1 : 1;
 
     return (counts.get(rightId) ?? 0) - (counts.get(leftId) ?? 0) || leftId - rightId;
   })[0] ?? null;
 }
 
-export function selectProblemHintsForLanguage(
-  candidates: ProblemHintCandidate[],
+export function selectProblemHintsForLanguage<TTranslator = unknown>(
+  candidates: ProblemHintCandidate<TTranslator>[],
   currentProblemId: number
-): SelectedProblemHint[] {
+): SelectedProblemHint<TTranslator>[] {
   const fallbackProblemId = preferredFallbackProblemId(candidates, currentProblemId);
-  const groups = new Map<string, ProblemHintCandidate[]>();
+  const groups = new Map<string, ProblemHintCandidate<TTranslator>[]>();
   for (const hint of candidates) {
     groups.set(hint.translationGroupId, [
       ...(groups.get(hint.translationGroupId) ?? []),

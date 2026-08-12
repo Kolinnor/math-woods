@@ -67,6 +67,26 @@ export async function clearNotificationsAction() {
   revalidatePath("/notifications");
 }
 
+export async function clearNotificationMenuAction() {
+  const user = await requireUser();
+  await assertRateLimit(`notifications-clear-menu:${user.id}`, 30, 60_000);
+  const hiddenTypes = EXPLORATIONS_ENABLED
+    ? [NotificationType.CHAT_MESSAGE]
+    : [NotificationType.CHAT_MESSAGE, NotificationType.EXPLORATION_PUBLISHED];
+
+  await prisma.notification.updateMany({
+    where: {
+      userId: user.id,
+      readAt: null,
+      dismissedFromMenuAt: null,
+      type: { notIn: hiddenTypes }
+    },
+    data: { dismissedFromMenuAt: new Date() }
+  });
+
+  revalidatePath("/", "layout");
+}
+
 export async function updateNotificationPreferencesAction(formData: FormData) {
   const user = await requireUser();
   await assertRateLimit(`notification-preferences:${user.id}`, 20, 60_000);

@@ -1,7 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { Check, ChevronDown, Languages, Plus } from "lucide-react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
-import { contentLanguageNativeLabel } from "@/lib/languages";
+import {
+  CONTENT_LANGUAGE_COOKIE,
+  contentLanguageNativeLabel,
+  parseActiveContentLanguage
+} from "@/lib/languages";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 
 type Translation = {
@@ -28,6 +34,13 @@ export function ContentTranslations({
   const currentLabel = contentLanguageNativeLabel(currentLanguage);
   const hasMenuItems = translations.length > 0 || Boolean(createHref);
 
+  function rememberLanguage(nextLanguage: string) {
+    const language = parseActiveContentLanguage(nextLanguage);
+    document.cookie = `${CONTENT_LANGUAGE_COOKIE}=${encodeURIComponent(
+      language
+    )}; max-age=31536000; path=/; samesite=lax${location.protocol === "https:" ? "; secure" : ""}`;
+  }
+
   return (
     <AutoClosingDetails className="translation-menu zen-hide">
       <summary className="translation-menu-button">
@@ -46,6 +59,7 @@ export function ContentTranslations({
               key={`${translation.language}-${translation.slug}`}
               href={contentLanguageViewHref(hrefPrefix, translation.slug, translation.language) as never}
               className="translation-menu-link"
+              onClick={() => rememberLanguage(translation.language)}
             >
               {contentLanguageNativeLabel(translation.language)}
             </Link>

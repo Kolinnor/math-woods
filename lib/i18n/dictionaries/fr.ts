@@ -15,8 +15,9 @@ export const fr = {
     fallbackNotice: (shownLanguage: string, preferredLanguage: string) =>
       `Version ${shownLanguage} affichée, car il n'existe pas encore de traduction ${preferredLanguage}.`,
     staleNotice: (revisionId: number | null) =>
-      `Cette traduction est peut-être obsolète. Sa page source a changé depuis la révision ${revisionId}.`,
+      `Cette traduction est peut-être obsolète. Le texte source a changé depuis la révision ${revisionId}.`,
     compareWith: (title: string) => `Comparer avec ${title}`,
+    translatedBy: "traduit par",
     dismiss: "Masquer"
   },
   quality: {

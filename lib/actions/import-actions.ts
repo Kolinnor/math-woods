@@ -16,7 +16,7 @@ import { prisma } from "@/lib/db";
 import { parseAliases, syncConceptAliases } from "@/lib/concept-metadata";
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import { refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
-import { parseContentLanguage } from "@/lib/languages";
+import { requireActiveContentLanguage } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -43,7 +43,7 @@ export async function importMarkdownAction(formData: FormData) {
     "Untitled";
   const safeTitle = boundedText(title, CONTENT_LIMITS.title, "Title");
   const bodyMarkdown = requiredBoundedText(parsed.body, CONTENT_LIMITS.markdown, "Imported body");
-  const language = parseContentLanguage(getStringAttribute(parsed.attributes, "language"));
+  const language = requireActiveContentLanguage(getStringAttribute(parsed.attributes, "language") ?? "en");
 
   if (importType === "concept") {
     const slug = await uniqueSlug("concept", safeTitle);

@@ -32,6 +32,21 @@ import { slugify } from "../lib/slug.ts";
 import { isSitePresenceId, sitePresenceIsActive } from "../lib/site-presence-config.ts";
 import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
+import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
+import { problemCreationNotificationCopy } from "../lib/problem-creation-notifications.ts";
+import {
+  conceptTranslationSharedChanges,
+  problemTranslationSharedChanges
+} from "../lib/translation-properties.ts";
+import {
+  latestTranslationTextRevisionId,
+  revisionSnapshotTitle
+} from "../lib/translation-text-revisions.ts";
+import {
+  parseSelectedTranslationIds,
+  TRANSLATED_PROOF_BODY_PREFIX,
+  translationBodyFieldName
+} from "../lib/translation-companions.ts";
 import {
   hasProblemReviewSensitiveChanges,
   needsReviewAfterProblemEdit
@@ -224,6 +239,7 @@ import {
   canChangeConceptStatus,
   canDeletePlaylist,
   canEditProblem,
+  canEditSolution,
   canProposeProblemEdit,
   canPublishProblemEdit,
   canManageUserRoles,
@@ -289,9 +305,20 @@ import { parseTagInput } from "../lib/tags.ts";
 import {
   nextMissingTranslationLanguage,
   preferredTranslationForLanguage,
+  selectContentTranslation,
+  selectContentTranslationsByGroup,
   translationLanguageSet
 } from "../lib/translation-routing.ts";
 import { dictionaryForContentLanguage, interfaceLocaleForContentLanguage } from "../lib/i18n/dictionary.ts";
+import {
+  ACTIVE_CONTENT_LANGUAGES,
+  FUTURE_CONTENT_LANGUAGES,
+  editableContentLanguage,
+  isActiveContentLanguage,
+  parseActiveContentLanguage,
+  parseContentLanguage,
+  requireActiveContentLanguage
+} from "../lib/languages.ts";
 import {
   applyEffects,
   conditionMatches,
@@ -336,12 +363,82 @@ const groupedTranslations = [
 ];
 assert.equal(preferredTranslationForLanguage("en", groupedTranslations, "fr")?.slug, "relations-de-viete");
 assert.equal(preferredTranslationForLanguage("fr", groupedTranslations, "fr"), null);
-assert.equal(nextMissingTranslationLanguage("en", groupedTranslations, "fr"), "de");
-assert.equal(nextMissingTranslationLanguage("en", groupedTranslations, "it"), "it");
+assert.equal(nextMissingTranslationLanguage("en", groupedTranslations, "fr"), null);
+assert.equal(nextMissingTranslationLanguage("fr", [{ language: "es", slug: "relaciones-de-vieta" }], "it"), "en");
 assert.deepEqual([...translationLanguageSet("en", groupedTranslations)], ["en", "fr", "es"]);
+const fallbackTranslations = [
+  { language: "fr", slug: "groupes", isSource: true },
+  { language: "en", slug: "groups" },
+  { language: "de", slug: "gruppen" }
+];
+assert.equal(selectContentTranslation(fallbackTranslations, "de")?.slug, "gruppen");
+assert.equal(selectContentTranslation(fallbackTranslations, "it")?.slug, "groups");
+assert.equal(
+  selectContentTranslation(
+    fallbackTranslations.filter((translation) => translation.language !== "en"),
+    "it"
+  )?.slug,
+  "groupes"
+);
+assert.equal(
+  selectContentTranslation(
+    [
+      { language: "fr", slug: "groupes", createdAt: new Date("2026-01-01") },
+      { language: "de", slug: "gruppen", createdAt: new Date("2026-02-01") }
+    ],
+    "it"
+  )?.slug,
+  "groupes"
+);
+assert.deepEqual(
+  selectContentTranslationsByGroup(
+    [
+      { translationGroupId: "a", language: "fr", slug: "groupes", isSource: true },
+      { translationGroupId: "a", language: "en", slug: "groups" },
+      { translationGroupId: "b", language: "fr", slug: "anneaux", isSource: true }
+    ],
+    "it"
+  ).map(({ slug }) => slug),
+  ["groups", "anneaux"]
+);
+assert.deepEqual(ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code), ["en", "fr"]);
+assert.deepEqual(FUTURE_CONTENT_LANGUAGES.map(({ code }) => code), ["es", "de", "it", "pt"]);
+assert.equal(parseContentLanguage("es"), "es");
+assert.equal(parseActiveContentLanguage("es"), "en");
+assert.equal(isActiveContentLanguage("fr"), true);
+assert.equal(isActiveContentLanguage("de"), false);
+assert.equal(requireActiveContentLanguage("fr"), "fr");
+assert.throws(() => requireActiveContentLanguage("es"), /English and French only/);
+assert.equal(editableContentLanguage("de", "de"), "de");
+assert.throws(() => editableContentLanguage("es", "de"), /English and French only/);
 assert.equal(interfaceLocaleForContentLanguage("fr"), "fr");
 assert.equal(interfaceLocaleForContentLanguage("es"), "en");
+assert.deepEqual(
+  problemCreationNotificationCopy({
+    actorName: "Sequoia",
+    problemTitle: "Groups of order 6",
+    targetLanguage: "en"
+  }),
+  {
+    title: "New problem created",
+    body: 'Sequoia created "Groups of order 6".'
+  }
+);
+assert.deepEqual(
+  problemCreationNotificationCopy({
+    actorName: "Sequoia",
+    problemTitle: "Groupes d'ordre 6",
+    sourceTitle: "Groups of order 6",
+    targetLanguage: "fr"
+  }),
+  {
+    title: "New problem translation",
+    body: 'Sequoia created a French translation of "Groups of order 6" titled "Groupes d\'ordre 6".'
+  }
+);
 assert.equal(dictionaryForContentLanguage("fr").nav.problems, "Problèmes");
+assert.deepEqual(parseSelectedTranslationIds(["3", "2", "3", "bad", "0"]), [3, 2]);
+assert.equal(translationBodyFieldName(TRANSLATED_PROOF_BODY_PREFIX, 17), "translatedProofBody:17");
 assert.equal(dictionaryForContentLanguage("es").nav.problems, "Problems");
 
 const links = extractWikiLinks(
@@ -911,6 +1008,20 @@ assert.equal(parseContributorQualityStatus("REVIEWED", Role.MODERATOR), QualityS
 assert.equal(parseContributorQualityStatus("REVIEWED", Role.OWNER), QualityStatus.REVIEWED);
 assert.equal(hasTrustedPrivileges(Role.USER), false);
 assert.equal(hasTrustedPrivileges(Role.MODERATOR), true);
+assert.equal(
+  canEditSolution(
+    { id: 12, role: Role.USER },
+    { authorId: 4, translatedById: 12 }
+  ),
+  true
+);
+assert.equal(
+  canEditSolution(
+    { id: 13, role: Role.USER },
+    { authorId: 4, translatedById: 12 }
+  ),
+  false
+);
 assert.equal(dailyContentCreationLimitForRole(Role.USER), 20);
 assert.equal(dailyContentCreationLimitForRole(Role.MODERATOR), 100);
 assert.equal(dailyContentCreationLimitForRole(Role.ADMIN), null);
@@ -2417,6 +2528,28 @@ assert.equal(
 assert.equal(hasProblemReviewSensitiveChanges(["title"]), true);
 assert.equal(hasProblemReviewSensitiveChanges(["bodyMarkdown"]), true);
 assert.equal(hasProblemReviewSensitiveChanges(["difficulty"]), false);
+const historicalSolvedAt = new Date("2026-07-14T08:30:00.000Z");
+assert.equal(
+  problemSolvedAt([
+    {
+      solvedAt: historicalSolvedAt,
+      status: "SOLVED",
+      updatedAt: new Date("2026-08-12T10:00:00.000Z")
+    }
+  ])?.toISOString(),
+  historicalSolvedAt.toISOString()
+);
+assert.equal(
+  problemSolvedAt([
+    {
+      solvedAt: null,
+      status: "SOLVED",
+      updatedAt: historicalSolvedAt
+    }
+  ])?.toISOString(),
+  historicalSolvedAt.toISOString()
+);
+assert.equal(formatProblemSolvedDate(new Date("2026-07-14T12:00:00.000Z"), "en"), "Jul 14, 2026");
 assert.equal(
   hasProblemReviewSensitiveChanges([
     "domains",
@@ -2430,6 +2563,52 @@ assert.equal(
   ]),
   false
 );
+
+assert.deepEqual(
+  problemTranslationSharedChanges([
+    "title",
+    "bodyMarkdown",
+    "difficulty",
+    "domains",
+    "qualityStatus",
+    "verificationPrompt",
+    "relatedProblemGroups"
+  ]),
+  ["difficulty", "domains"]
+);
+assert.deepEqual(
+  conceptTranslationSharedChanges([
+    "title",
+    "bodyMarkdown",
+    "domainCode",
+    "status",
+    "aliases",
+    "references",
+    "practiceExercises"
+  ]),
+  ["domainCode", "practiceExercises"]
+);
+
+assert.equal(
+  latestTranslationTextRevisionId([
+    { id: 1, markdown: "First text", title: "First title" },
+    { id: 2, markdown: "First text", title: "First title" },
+    { id: 3, markdown: "Second text", title: "First title" },
+    { id: 4, markdown: "Second text", title: "First title" },
+    { id: 5, markdown: "Second text", title: "Second title" },
+    { id: 6, markdown: "Second text", title: "Second title" }
+  ]),
+  5
+);
+assert.equal(
+  latestTranslationTextRevisionId([
+    { id: 1, markdown: "Text", title: null },
+    { id: 2, markdown: "Text", title: "Backfilled title" }
+  ]),
+  1
+);
+assert.equal(revisionSnapshotTitle({ schemaVersion: 1, title: "A title" }), "A title");
+assert.equal(revisionSnapshotTitle({ schemaVersion: 1, title: 42 }), null);
 
 assert.equal(isSitePresenceId("65b34742-92dc-4ec0-a928-216063f96a30"), true);
 assert.equal(isSitePresenceId("not-a-presence-id"), false);

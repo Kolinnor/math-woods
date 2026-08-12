@@ -36,6 +36,7 @@ import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { translatedDomainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
+import { formatProblemSolvedDate, problemSolvedAt } from "@/lib/problem-solved-date";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { renderInlineMarkdown } from "@/lib/markdown";
@@ -63,8 +64,8 @@ import {
 import { problemTranslationFreshness } from "@/lib/translation-freshness";
 import {
   nextMissingTranslationLanguage,
-  preferredTranslationForLanguage,
   requestedTranslationLanguage,
+  selectContentTranslation,
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
@@ -142,7 +143,6 @@ const redesignCopy = {
     open: "Open it",
     tiles: {
       solveSub: "Mark it done",
-      solvedSub: "Just now",
       verifySub: "Check your answer",
       attemptSub: "Keep it in your list",
       attemptedSub: "In progress",
@@ -172,7 +172,6 @@ const redesignCopy = {
     open: "Ouvrir",
     tiles: {
       solveSub: "Marquer comme résolu",
-      solvedSub: "À l'instant",
       verifySub: "Vérifier votre réponse",
       attemptSub: "Le garder dans votre liste",
       attemptedSub: "En cours",
@@ -230,7 +229,8 @@ export default async function ProblemPage({
       },
       proofs: {
         include: {
-          author: true
+          author: true,
+          translatedBy: true
         },
         orderBy: { createdAt: "asc" }
       },
@@ -250,6 +250,13 @@ export default async function ProblemPage({
   });
 
   if (!problem) notFound();
+  const translationCreator = problem.translatedFromProblemId
+    ? await prisma.pageRevision.findFirst({
+        where: { pageType: "PROBLEM", pageId: problem.id, isCreation: true },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { editedBy: true }
+      })
+    : null;
   const isOwnProblem = user?.id === problem.authorId;
   const canViewArchived = canViewArchivedProblem(user, problem);
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
@@ -307,7 +314,7 @@ export default async function ProblemPage({
         ...visibleProblemWhere(user),
         ...(canViewArchived ? {} : { status: { not: "ARCHIVED" } })
       },
-      select: { slug: true, title: true, language: true },
+      select: { slug: true, title: true, language: true, translatedFromProblemId: true },
       orderBy: { language: "asc" }
     }),
     prisma.problemHint.findMany({
@@ -322,6 +329,9 @@ export default async function ProblemPage({
         position: true,
         bodyMarkdown: true,
         bodyHtml: true,
+        translatedBy: {
+          select: { username: true, displayName: true }
+        },
         problem: {
           select: {
             language: true,
@@ -459,15 +469,29 @@ export default async function ProblemPage({
     attemptsInTranslationGroup.find((translationAttempt) => translationAttempt.status === "SOLVED") ??
     attemptsInTranslationGroup[0] ??
     null;
+  const solvedAt = problemSolvedAt(attemptsInTranslationGroup);
   const favoriteCount = groupFavoriteRows.length;
   const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
   const targetViewLanguage = requestedLanguage ?? preferredLanguage;
-  const preferredTranslation = preferredTranslationForLanguage(problem.language, translations, targetViewLanguage);
-  if (preferredTranslation?.slug && preferredTranslation.slug !== problem.slug) {
+  const selectedTranslation = selectContentTranslation(
+    [
+      {
+        slug: problem.slug,
+        language: problem.language,
+        isSource: problem.translatedFromProblemId === null
+      },
+      ...translations.map((translation) => ({
+        ...translation,
+        isSource: translation.translatedFromProblemId === null
+      }))
+    ],
+    targetViewLanguage
+  );
+  if (selectedTranslation?.slug && selectedTranslation.slug !== problem.slug) {
     const viewLanguageQuery = requestedLanguage
       ? `?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(requestedLanguage)}`
       : "";
-    redirect(`/problems/${preferredTranslation.slug}${viewLanguageQuery}`);
+    redirect(`/problems/${selectedTranslation.slug}${viewLanguageQuery}`);
   }
   const [
     renderedProblemContent,
@@ -523,7 +547,8 @@ export default async function ProblemPage({
       bodyMarkdown: hint.bodyMarkdown,
       bodyHtml: hint.bodyHtml,
       language: hint.problem.language,
-      translatedFromProblemId: hint.problem.translatedFromProblemId
+      translatedFromProblemId: hint.problem.translatedFromProblemId,
+      translatedBy: hint.translatedBy
     })),
     problem.id
   );
@@ -643,6 +668,14 @@ export default async function ProblemPage({
             <Link href={`/profile/${problem.author.username}`}>
               {t.problemDetail.by} <UserName user={problem.author} />
             </Link>
+            {translationCreator?.editedBy && translationCreator.editedBy.id !== problem.authorId && (
+              <>
+                <span>·</span>
+                <Link href={`/profile/${translationCreator.editedBy.username}`}>
+                  {t.translations.translatedBy} <UserName user={translationCreator.editedBy} />
+                </Link>
+              </>
+            )}
             <span>·</span>
             <Difficulty value={problem.difficulty} compact />
             <span>·</span>
@@ -816,7 +849,16 @@ export default async function ProblemPage({
               <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)}>
                 <button type="submit" className="problem-action-tile solved" title={t.problemDetail.unmarkSolved}>
                   <Check size={25} />
-                  <span><strong>{t.problemDetail.solved}</strong><small>{copy.tiles.solvedSub}</small></span>
+                  <span>
+                    <strong>{t.problemDetail.solved}</strong>
+                    {solvedAt && (
+                      <small>
+                        <time dateTime={solvedAt.toISOString()} title={solvedAt.toLocaleString(interfaceLocale)}>
+                          {formatProblemSolvedDate(solvedAt, interfaceLocale)}
+                        </time>
+                      </small>
+                    )}
+                  </span>
                 </button>
               </form>
             ) : problem.verificationMode === ProblemVerificationMode.NONE || user.id === problem.authorId ? (
@@ -966,6 +1008,9 @@ export default async function ProblemPage({
                   fallbackLabel: hint.isLanguageFallback
                     ? t.problemDetail.hintLanguageFallback(contentLanguageLabel(hint.language))
                     : null,
+                  translatorLabel: hint.translatedBy
+                    ? `${t.translations.translatedBy} ${displayNameForUser(hint.translatedBy)}`
+                    : null,
                   translateHref:
                     canManageProblemHints && hint.isLanguageFallback
                       ? `/problems/${problem.slug}?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(
@@ -1055,7 +1100,7 @@ export default async function ProblemPage({
                   const userVotedProof = ownProofVoteIds.has(proof.id);
                   const accepted = proof.id === acceptedProofId;
                   const canEditProof = Boolean(user && canEditSolution(user, proof));
-                  const isOwnProof = user?.id === proof.authorId;
+                  const isOwnProof = user?.id === proof.authorId || user?.id === proof.translatedById;
                   return (
                     <article id={`solution-${proof.id}`} key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
                       <header className="proof-header">
@@ -1066,6 +1111,14 @@ export default async function ProblemPage({
                             <Link href={`/profile/${proof.author.username}`}>
                               <UserName user={proof.author} />
                             </Link>
+                            {proof.translatedBy && (
+                              <>
+                                {" · "}{t.translations.translatedBy}{" "}
+                                <Link href={`/profile/${proof.translatedBy.username}`}>
+                                  <UserName user={proof.translatedBy} />
+                                </Link>
+                              </>
+                            )}
                           </p>
                         </div>
                         <div className="proof-actions">

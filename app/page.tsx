@@ -20,11 +20,13 @@ import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { parentProblemDomainForCode, PROBLEM_DOMAINS, translatedDomainLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
+import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { renderMarkdown } from "@/lib/markdown";
 import { buildProgressMap } from "@/lib/progress";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { selectContentTranslation, selectContentTranslationsByGroup } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 import { dailyTipImage, tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
 
@@ -187,17 +189,46 @@ export default async function HomePage() {
         include: { author: true }
       })
     : [];
+  const fallbackDailySource = dailyTranslations.length === 0
+    ? await prisma.problem.findFirst({
+        where: {
+          status: "PUBLISHED",
+          listed: true,
+          isExercise: false,
+          translatedFromProblemId: null
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, translationGroupId: true }
+      })
+    : null;
+  const fallbackDailyTranslations = fallbackDailySource
+    ? await prisma.problem.findMany({
+        where: {
+          translationGroupId: fallbackDailySource.translationGroupId,
+          status: "PUBLISHED",
+          listed: true
+        },
+        include: { author: true }
+      })
+    : [];
   const dailyProblem =
-    dailyTranslations.find((problem) => problem.language === preferredLanguage) ??
-    dailyTranslations.find((problem) => problem.translatedFromProblemId === null) ??
-    dailyTranslations[0] ??
-    (await prisma.problem.findFirst({
-      where: { status: "PUBLISHED", listed: true, isExercise: false, language: preferredLanguage },
-      orderBy: { createdAt: "desc" },
-      include: { author: true }
-    }));
+    selectContentTranslation(
+      dailyTranslations.map((problem) => ({
+        ...problem,
+        isSource: problem.translatedFromProblemId === null
+      })),
+      preferredLanguage
+    ) ??
+    selectContentTranslation(
+      fallbackDailyTranslations.map((problem) => ({
+        ...problem,
+        isSource: problem.translatedFromProblemId === null
+      })),
+      preferredLanguage
+    );
   if (!scheduledDailyProblem && dailyProblem) {
     const storedDailyProblem = dailyTranslations.find((problem) => problem.translatedFromProblemId === null)
+      ?? fallbackDailyTranslations.find((problem) => problem.translatedFromProblemId === null)
       ?? dailyProblem;
     await prisma.dailyProblemSchedule.upsert({
       where: { dateKey: todayDateKey },
@@ -217,7 +248,7 @@ export default async function HomePage() {
     usesScheduledDailyProblem ? scheduledDailyProblem?.imagePositionY : 50
   );
 
-  const [recommendedData, guestRecommendations, tip, recentProblems, explorations, friendships] = await Promise.all([
+  const [recommendedData, guestRecommendationRows, tip, recentProblemRows, explorationRows, friendships] = await Promise.all([
     user ? recommendationsForUser(user.id, 5, preferredLanguage) : null,
     !user
       ? prisma.problem.findMany({
@@ -225,7 +256,7 @@ export default async function HomePage() {
             status: "PUBLISHED",
             listed: true,
             isExercise: false,
-            language: preferredLanguage,
+            language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
             OR: [
               { canAppearOnFrontPage: true },
               { qualityStatus: "REVIEWED" }
@@ -234,11 +265,14 @@ export default async function HomePage() {
             ...visibleProblemWhere(null)
           },
           orderBy: { createdAt: "desc" },
-          take: 12,
+          take: 30,
           select: {
             id: true,
             slug: true,
             title: true,
+            language: true,
+            translationGroupId: true,
+            translatedFromProblemId: true,
             difficulty: true,
             domain: true,
             qualityStatus: true,
@@ -254,17 +288,25 @@ export default async function HomePage() {
     loadDailyTip(),
     user
       ? prisma.problem.findMany({
-          where: { status: "PUBLISHED", listed: true, language: preferredLanguage },
+          where: {
+            status: "PUBLISHED",
+            listed: true,
+            language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) }
+          },
           orderBy: { createdAt: "desc" },
-          take: 5,
+          take: 20,
           include: { author: true }
         })
       : [],
     user && EXPLORATIONS_ENABLED
       ? prisma.playlist.findMany({
-          where: { status: "PUBLISHED", visibility: "PUBLIC", language: preferredLanguage },
+          where: {
+            status: "PUBLISHED",
+            visibility: "PUBLIC",
+            language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) }
+          },
           orderBy: { updatedAt: "desc" },
-          take: 3,
+          take: 12,
           include: { _count: { select: { circuitNodes: true } } }
         })
       : [],
@@ -278,6 +320,21 @@ export default async function HomePage() {
         })
       : []
   ]);
+  const guestRecommendations = selectContentTranslationsByGroup(
+    guestRecommendationRows.map((problem) => ({
+      ...problem,
+      isSource: problem.translatedFromProblemId === null
+    })),
+    preferredLanguage
+  );
+  const recentProblems = selectContentTranslationsByGroup(
+    recentProblemRows.map((problem) => ({
+      ...problem,
+      isSource: problem.translatedFromProblemId === null
+    })),
+    preferredLanguage
+  ).slice(0, 5);
+  const explorations = selectContentTranslationsByGroup(explorationRows, preferredLanguage).slice(0, 3);
 
   const friendIds = user
     ? friendships.map((friendship) =>
@@ -308,8 +365,7 @@ export default async function HomePage() {
       : [],
     user
       ? prisma.problem.findMany({
-          where: { status: "PUBLISHED", listed: true, language: preferredLanguage },
-          distinct: ["translationGroupId"],
+          where: { status: "PUBLISHED", listed: true, translatedFromProblemId: null },
           select: {
             translationGroupId: true,
             domain: true,

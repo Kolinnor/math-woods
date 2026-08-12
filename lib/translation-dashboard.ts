@@ -1,6 +1,10 @@
 import { SourceType } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { SUPPORTED_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
+import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
+import {
+  latestConceptTextRevisionIdFromRevisions,
+  latestProblemTextRevisionIdFromRevisions
+} from "@/lib/translation-text-revisions";
 
 type TranslationDashboardPage = {
   href: string;
@@ -28,7 +32,7 @@ type StaleTranslation = TranslationDashboardPage & {
 
 function missingLanguages(existingLanguages: string[]) {
   const existing = new Set(existingLanguages);
-  return SUPPORTED_CONTENT_LANGUAGES.filter((language) => !existing.has(language.code));
+  return ACTIVE_CONTENT_LANGUAGES.filter((language) => !existing.has(language.code));
 }
 
 export async function translationDashboard() {
@@ -115,17 +119,17 @@ export async function translationDashboard() {
   ];
   const [problemSourceRevisions, conceptSourceRevisions, sourceProblems, sourceConcepts] = await Promise.all([
     problemSourceIds.length
-      ? prisma.pageRevision.groupBy({
-          by: ["pageId"],
+      ? prisma.pageRevision.findMany({
           where: { pageType: SourceType.PROBLEM, pageId: { in: problemSourceIds } },
-          _max: { id: true }
+          orderBy: { id: "asc" },
+          select: { pageId: true, id: true, markdown: true, problemSnapshot: true }
         })
       : Promise.resolve([]),
     conceptSourceIds.length
-      ? prisma.pageRevision.groupBy({
-          by: ["pageId"],
+      ? prisma.pageRevision.findMany({
           where: { pageType: SourceType.CONCEPT, pageId: { in: conceptSourceIds } },
-          _max: { id: true }
+          orderBy: { id: "asc" },
+          select: { pageId: true, id: true, markdown: true, conceptTitle: true, conceptSnapshot: true }
         })
       : Promise.resolve([]),
     problemSourceIds.length
@@ -141,8 +145,18 @@ export async function translationDashboard() {
         })
       : Promise.resolve([])
   ]);
-  const problemLatestRevision = new Map(problemSourceRevisions.map((item) => [item.pageId, item._max.id ?? 0]));
-  const conceptLatestRevision = new Map(conceptSourceRevisions.map((item) => [item.pageId, item._max.id ?? 0]));
+  const problemLatestRevision = new Map(
+    problemSourceIds.map((pageId) => [
+      pageId,
+      latestProblemTextRevisionIdFromRevisions(problemSourceRevisions.filter((item) => item.pageId === pageId)) ?? 0
+    ])
+  );
+  const conceptLatestRevision = new Map(
+    conceptSourceIds.map((pageId) => [
+      pageId,
+      latestConceptTextRevisionIdFromRevisions(conceptSourceRevisions.filter((item) => item.pageId === pageId)) ?? 0
+    ])
+  );
   const sourceProblemById = new Map(sourceProblems.map((problem) => [problem.id, problem]));
   const sourceConceptById = new Map(sourceConcepts.map((concept) => [concept.id, concept]));
 

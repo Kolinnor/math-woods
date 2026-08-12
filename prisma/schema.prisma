@@ -273,29 +273,29 @@ enum UserMathLevel {
 }
 
 model User {
-  id                              Int                          @id @default(autoincrement())
+  id                              Int                             @id @default(autoincrement())
   // A migration also maintains a case-insensitive unique index on this field.
-  username                        String                       @unique
+  username                        String                          @unique
   displayName                     String?
   avatarUrl                       String?
   avatarBackground                String?
-  email                           String?                      @unique
+  email                           String?                         @unique
   emailVerifiedAt                 DateTime?
   passwordHash                    String?
   bio                             String?
   affiliation                     String?
   websiteUrl                      String?
-  mathematicalDomains             MathDomain[]                 @default([])
-  openToCollaboration             Boolean                      @default(false)
+  mathematicalDomains             MathDomain[]                    @default([])
+  openToCollaboration             Boolean                         @default(false)
   mathLevel                       UserMathLevel?
-  reputation                      Int                          @default(0)
-  role                            Role                         @default(USER)
-  createdAt                       DateTime                     @default(now())
-  updatedAt                       DateTime                     @updatedAt
+  reputation                      Int                             @default(0)
+  role                            Role                            @default(USER)
+  createdAt                       DateTime                        @default(now())
+  updatedAt                       DateTime                        @updatedAt
   deletedAt                       DateTime?
   problems                        Problem[]
-  conceptsCreated                 Concept[]                    @relation("ConceptCreatedBy")
-  conceptsEdited                  Concept[]                    @relation("ConceptLastEditedBy")
+  conceptsCreated                 Concept[]                       @relation("ConceptCreatedBy")
+  conceptsEdited                  Concept[]                       @relation("ConceptLastEditedBy")
   revisions                       PageRevision[]
   conceptTalkPosts                ConceptTalkPost[]
   attempts                        ProblemAttempt[]
@@ -307,43 +307,45 @@ model User {
   reports                         Report[]
   sessions                        Session[]
   externalIdentities              ExternalIdentity[]
-  oauthLinkAttempts               OAuthAttempt[]               @relation("OAuthAttemptLinkUser")
+  oauthLinkAttempts               OAuthAttempt[]                  @relation("OAuthAttemptLinkUser")
   emailVerificationTokens         EmailVerificationToken[]
   favorites                       ProblemFavorite[]
   problemHints                    ProblemHint[]
+  problemHintTranslations         ProblemHint[]                   @relation("ProblemHintTranslator")
   proofs                          ProblemProof[]
+  proofTranslations               ProblemProof[]                  @relation("ProblemProofTranslator")
   proofComments                   ProofComment[]
   suggestions                     Suggestion[]
   playlistFollows                 PlaylistFollow[]
   quotes                          Quote[]
-  notifications                   Notification[]               @relation("NotificationRecipient")
-  notificationsSent               Notification[]               @relation("NotificationActor")
+  notifications                   Notification[]                  @relation("NotificationRecipient")
+  notificationsSent               Notification[]                  @relation("NotificationActor")
   notificationPreferences         NotificationPreference[]
   achievementUnlocks              AchievementUnlock[]
   latexPreference                 LatexPreference?
   errorReports                    ErrorReport[]
-  verificationRequests            ProblemVerificationRequest[] @relation("ProblemVerificationRequester")
-  reviewedVerificationRequests    ProblemVerificationRequest[] @relation("ProblemVerificationReviewer")
+  verificationRequests            ProblemVerificationRequest[]    @relation("ProblemVerificationRequester")
+  reviewedVerificationRequests    ProblemVerificationRequest[]    @relation("ProblemVerificationReviewer")
   verificationMessages            ProblemVerificationMessage[]
-  friendRequestsSent              Friendship[]                 @relation("FriendshipRequester")
-  friendRequestsReceived          Friendship[]                 @relation("FriendshipAddressee")
-  directChatsAsA                  DirectChat[]                 @relation("DirectChatUserA")
-  directChatsAsB                  DirectChat[]                 @relation("DirectChatUserB")
+  friendRequestsSent              Friendship[]                    @relation("FriendshipRequester")
+  friendRequestsReceived          Friendship[]                    @relation("FriendshipAddressee")
+  directChatsAsA                  DirectChat[]                    @relation("DirectChatUserA")
+  directChatsAsB                  DirectChat[]                    @relation("DirectChatUserB")
   chatMessages                    ChatMessage[]
   chatMessageReactions            ChatMessageReaction[]
-  problemChallengesSent           ProblemChallenge[]           @relation("ProblemChallengeChallenger")
-  problemChallengesReceived       ProblemChallenge[]           @relation("ProblemChallengeRecipient")
-  problemChallengeInvitesSent     ProblemChallengeInvite[]     @relation("ProblemChallengeInviteChallenger")
-  problemChallengeInvitesAccepted ProblemChallengeInvite[]     @relation("ProblemChallengeInviteAcceptedBy")
-  contributionRequestsCreated     ContributionRequest[]        @relation("ContributionRequestRequester")
-  contributionRequestsClaimed     ContributionRequest[]        @relation("ContributionRequestClaimedBy")
+  problemChallengesSent           ProblemChallenge[]              @relation("ProblemChallengeChallenger")
+  problemChallengesReceived       ProblemChallenge[]              @relation("ProblemChallengeRecipient")
+  problemChallengeInvitesSent     ProblemChallengeInvite[]        @relation("ProblemChallengeInviteChallenger")
+  problemChallengeInvitesAccepted ProblemChallengeInvite[]        @relation("ProblemChallengeInviteAcceptedBy")
+  contributionRequestsCreated     ContributionRequest[]           @relation("ContributionRequestRequester")
+  contributionRequestsClaimed     ContributionRequest[]           @relation("ContributionRequestClaimedBy")
   explorationCollaborations       ExplorationCollaborator[]
-  explorationEditionsPublished    ExplorationEdition[]         @relation("ExplorationEditionPublisher")
+  explorationEditionsPublished    ExplorationEdition[]            @relation("ExplorationEditionPublisher")
   explorationSessions             ExplorationSession[]
-  mathematiciansCreated           Mathematician[]              @relation("MathematicianCreatedBy")
+  mathematiciansCreated           Mathematician[]                 @relation("MathematicianCreatedBy")
   dailyConceptReviews             DailyConceptReview[]
-  problemEditProposals            ProblemEditProposal[]        @relation("ProblemEditProposalAuthor")
-  reviewedProblemEditProposals    ProblemEditProposal[]        @relation("ProblemEditProposalReviewer")
+  problemEditProposals            ProblemEditProposal[]           @relation("ProblemEditProposalAuthor")
+  reviewedProblemEditProposals    ProblemEditProposal[]           @relation("ProblemEditProposalReviewer")
 }
 
 model ExternalIdentity {
@@ -509,11 +511,11 @@ model ChatMessageReaction {
 }
 
 model Problem {
-  id                       Int                          @id @default(autoincrement())
-  version                  Int                          @default(1)
-  slug                     String                       @unique
-  language                 String                       @default("en")
-  translationGroupId       String                       @default(cuid())
+  id                       Int                             @id @default(autoincrement())
+  version                  Int                             @default(1)
+  slug                     String                          @unique
+  language                 String                          @default("en")
+  translationGroupId       String                          @default(cuid())
   translatedFromProblemId  Int?
   translatedFromRevisionId Int?
   title                    String
@@ -521,25 +523,25 @@ model Problem {
   bodyHtml                 String
   authorId                 Int
   difficulty               Int?
-  domain                   MathDomain                   @default(OTHER)
-  origin                   String                       @default("Unknown")
+  domain                   MathDomain                      @default(OTHER)
+  origin                   String                          @default("Unknown")
   originChapter            String?
   originPage               String?
   originNote               String?
-  license                  String                       @default("CC BY-SA 4.0")
-  listed                   Boolean                      @default(true)
-  isExercise               Boolean                      @default(false)
-  showRelatedProblems      Boolean                      @default(true)
-  canAppearOnFrontPage     Boolean                      @default(false)
-  status                   ProblemStatus                @default(PUBLISHED)
-  qualityStatus            QualityStatus                @default(UNREVIEWED)
-  needsReviewAfterEdit     Boolean                      @default(false)
-  verificationMode         ProblemVerificationMode      @default(NONE)
+  license                  String                          @default("CC BY-SA 4.0")
+  listed                   Boolean                         @default(true)
+  isExercise               Boolean                         @default(false)
+  showRelatedProblems      Boolean                         @default(true)
+  canAppearOnFrontPage     Boolean                         @default(false)
+  status                   ProblemStatus                   @default(PUBLISHED)
+  qualityStatus            QualityStatus                   @default(UNREVIEWED)
+  needsReviewAfterEdit     Boolean                         @default(false)
+  verificationMode         ProblemVerificationMode         @default(NONE)
   verificationPrompt       String?
   verificationAnswer       String?
-  createdAt                DateTime                     @default(now())
-  updatedAt                DateTime                     @updatedAt
-  author                   User                         @relation(fields: [authorId], references: [id])
+  createdAt                DateTime                        @default(now())
+  updatedAt                DateTime                        @updatedAt
+  author                   User                            @relation(fields: [authorId], references: [id])
   thread                   DiscussionThread?
   attempts                 ProblemAttempt[]
   recommendationExposures  ProblemRecommendationExposure[]
@@ -555,8 +557,8 @@ model Problem {
   explorationBlocks        ExplorationBlock[]
   explorationProblemLinks  ExplorationBlockProblem[]
   quoteLinks               QuoteProblem[]
-  relatedGroups            ProblemRelationGroup[]       @relation("ProblemRelationSource")
-  incomingRelations        ProblemRelation[]            @relation("ProblemRelationTarget")
+  relatedGroups            ProblemRelationGroup[]          @relation("ProblemRelationSource")
+  incomingRelations        ProblemRelation[]               @relation("ProblemRelationTarget")
   verificationRequests     ProblemVerificationRequest[]
   tipLinks                 TipProblem[]
   dailyProblemSchedules    DailyProblemSchedule[]
@@ -564,8 +566,8 @@ model Problem {
   challenges               ProblemChallenge[]
   challengeInvites         ProblemChallengeInvite[]
   editProposals            ProblemEditProposal[]
-  translatedFromProblem    Problem?                     @relation("ProblemTranslationSource", fields: [translatedFromProblemId], references: [id], onDelete: SetNull)
-  derivedTranslations      Problem[]                    @relation("ProblemTranslationSource")
+  translatedFromProblem    Problem?                        @relation("ProblemTranslationSource", fields: [translatedFromProblemId], references: [id], onDelete: SetNull)
+  derivedTranslations      Problem[]                       @relation("ProblemTranslationSource")
 
   @@unique([translationGroupId, language])
   @@index([status, createdAt])
@@ -807,6 +809,7 @@ model ProblemAttempt {
   startedAt            DateTime      @default(now())
   discussionUnlockAt   DateTime
   status               AttemptStatus @default(STARTED)
+  solvedAt             DateTime?
   privateNotesMarkdown String?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
@@ -861,40 +864,57 @@ model ProblemReaction {
 }
 
 model ProblemHint {
-  id                 Int           @id @default(autoincrement())
-  translationGroupId String        @default(cuid())
-  problemId          Int
-  proofId            Int?          @unique
-  authorId           Int?
-  position           Int           @default(0)
-  bodyMarkdown       String
-  bodyHtml           String
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  problem            Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  proof              ProblemProof? @relation(fields: [proofId], references: [id], onDelete: Cascade)
-  author             User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  id                   Int           @id @default(autoincrement())
+  translationGroupId   String        @default(cuid())
+  problemId            Int
+  proofId              Int?          @unique
+  authorId             Int?
+  translatedFromHintId Int?
+  translatedById       Int?
+  position             Int           @default(0)
+  bodyMarkdown         String
+  bodyHtml             String
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  problem              Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  proof                ProblemProof? @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  author               User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  translatedFromHint   ProblemHint?  @relation("ProblemHintTranslationSource", fields: [translatedFromHintId], references: [id], onDelete: SetNull)
+  derivedTranslations  ProblemHint[] @relation("ProblemHintTranslationSource")
+  translatedBy         User?         @relation("ProblemHintTranslator", fields: [translatedById], references: [id], onDelete: SetNull)
 
   @@unique([translationGroupId, problemId])
   @@index([problemId, position])
   @@index([translationGroupId])
   @@index([authorId])
+  @@index([translatedFromHintId])
+  @@index([translatedById])
 }
 
 model ProblemProof {
-  id           Int            @id @default(autoincrement())
-  problemId    Int
-  authorId     Int
-  bodyMarkdown String
-  bodyHtml     String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  problem      Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  author       User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments     ProofComment[]
-  hint         ProblemHint?
+  id                    Int            @id @default(autoincrement())
+  translationGroupId    String         @default(cuid())
+  problemId             Int
+  authorId              Int
+  translatedFromProofId Int?
+  translatedById        Int?
+  bodyMarkdown          String
+  bodyHtml              String
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  problem               Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  author                User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  translatedFromProof   ProblemProof?  @relation("ProblemProofTranslationSource", fields: [translatedFromProofId], references: [id], onDelete: SetNull)
+  derivedTranslations   ProblemProof[] @relation("ProblemProofTranslationSource")
+  translatedBy          User?          @relation("ProblemProofTranslator", fields: [translatedById], references: [id], onDelete: SetNull)
+  comments              ProofComment[]
+  hint                  ProblemHint?
 
+  @@unique([translationGroupId, problemId])
   @@index([problemId, createdAt])
+  @@index([translationGroupId])
+  @@index([translatedFromProofId])
+  @@index([translatedById])
 }
 
 model ProofComment {
@@ -1585,6 +1605,7 @@ model Notification {
   body               String
   href               String
   readAt             DateTime?
+  dismissedFromMenuAt DateTime?
   createdAt          DateTime            @default(now())
   user               User                @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
   actor              User?               @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)

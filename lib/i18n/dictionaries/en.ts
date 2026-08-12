@@ -13,8 +13,9 @@ export const en = {
     fallbackNotice: (shownLanguage: string, preferredLanguage: string) =>
       `Showing the ${shownLanguage} version because no ${preferredLanguage} translation exists yet.`,
     staleNotice: (revisionId: number | null) =>
-      `This translation may be outdated. Its source page has changed since revision ${revisionId}.`,
+      `This translation may be outdated. Its source text has changed since revision ${revisionId}.`,
     compareWith: (title: string) => `Compare with ${title}`,
+    translatedBy: "translated by",
     dismiss: "Dismiss"
   },
   quality: {

@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { parseContentLanguage } from "@/lib/languages";
+import { parseActiveContentLanguage } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export default async function TranslateConceptPage({
@@ -24,6 +24,6 @@ export default async function TranslateConceptPage({
 
   if (!concept) notFound();
 
-  const language = parseContentLanguage(queryParams.language ?? queryParams.to ?? preferredLanguage);
+  const language = parseActiveContentLanguage(queryParams.language ?? queryParams.to ?? preferredLanguage);
   redirect(`/concepts/new?translateOf=${concept.slug}&language=${language}`);
 }

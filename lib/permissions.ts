@@ -8,6 +8,7 @@ export type PermissionUser = {
 
 type AuthoredResource = {
   authorId: number | null;
+  translatedById?: number | null;
 };
 
 type CreatedResource = {
@@ -126,7 +127,7 @@ export function canReviewProblem(user: PermissionUser, problem: ProblemPermissio
 }
 
 export function canEditSolution(user: PermissionUser, solution: AuthoredResource) {
-  return solution.authorId === user.id || hasTrustedPrivileges(user.role);
+  return solution.authorId === user.id || solution.translatedById === user.id || hasTrustedPrivileges(user.role);
 }
 
 export function canDeleteSolution(user: PermissionUser, solution: AuthoredResource) {
