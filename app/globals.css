@@ -218,25 +218,15 @@ body:has(.problem-detail-shell) {
   min-height: 168px;
 }
 
-/* Keep the complete public artwork visible without turning the hero into a full-page poster. */
+/* Keep the public hero compact while preserving the artwork's natural sharpness. */
 .home-dashboard .home-hero-guest {
   height: clamp(390px, 30vw, 460px);
   min-height: 390px;
 }
 
-.home-dashboard .home-hero-guest::before {
-  background: url("/art/morning-in-a-pine-forest.jpg") center / cover no-repeat;
-  content: "";
-  filter: blur(12px);
-  inset: -18px;
-  opacity: 0.7;
-  position: absolute;
-  transform: scale(1.03);
-}
-
 .home-dashboard .home-hero-guest .home-hero-image {
-  object-fit: contain;
-  object-position: center;
+  object-fit: cover;
+  object-position: 50% 58%;
   z-index: 1;
 }
 
@@ -294,7 +284,12 @@ body:has(.problem-detail-shell) {
 
 .home-dashboard-grid-guest {
   display: block;
-  max-width: 1040px;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 62rem;
+  padding-left: 0;
+  padding-right: 0;
+  width: calc(100% - 2rem);
 }
 
 .home-guest-dashboard-hero > div {
@@ -17102,8 +17097,8 @@ body:has(.home-shell) > .site-footer {
 }
 
 .home-guest-hero-copy h1 {
-  font-size: 3.9rem;
-  line-height: 1.03;
+  font-size: 3.1rem;
+  line-height: 1.06;
   margin: 1rem 0 0;
   max-width: 20ch;
 }
@@ -17574,7 +17569,7 @@ body:has(.home-shell) > .site-footer {
   }
 
   .home-guest-hero-copy h1 {
-    font-size: 2.75rem;
+    font-size: 2.35rem;
   }
 
   .home-member-hero-copy {
@@ -17629,7 +17624,7 @@ body:has(.home-shell) > .site-footer {
   }
 
   .home-guest-hero-copy h1 {
-    font-size: 2.25rem;
+    font-size: 1.9rem;
   }
 
   .home-member-hero-copy h1 {
