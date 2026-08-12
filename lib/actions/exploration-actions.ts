@@ -28,6 +28,7 @@ import {
   type ExplorationState
 } from "@/lib/exploration-engine";
 import { evaluateExplorationQuizSelection } from "@/lib/exploration-quiz";
+import { assertExplorationsEnabled } from "@/lib/feature-flags";
 import {
   clearExplorationBranches,
   explorationBranchStateKey
@@ -79,6 +80,7 @@ function revalidateExploration(slug: string, { editor = true }: { editor?: boole
 }
 
 async function requireExplorationEditor(playlistId: number) {
+  assertExplorationsEnabled();
   const user = await requireVerifiedUser();
   const exploration = await prisma.playlist.findUnique({
     where: { id: playlistId },
@@ -90,6 +92,7 @@ async function requireExplorationEditor(playlistId: number) {
 }
 
 async function requirePageEditor(pageId: number) {
+  assertExplorationsEnabled();
   const page = await prisma.explorationPage.findUnique({
     where: { id: pageId },
     include: { playlist: { include: { collaborators: true } } }
@@ -101,6 +104,7 @@ async function requirePageEditor(pageId: number) {
 }
 
 async function requireBlockEditor(blockId: number) {
+  assertExplorationsEnabled();
   const block = await prisma.explorationBlock.findUnique({
     where: { id: blockId },
     include: { page: { include: { playlist: { include: { collaborators: true } } } } }
@@ -112,6 +116,7 @@ async function requireBlockEditor(blockId: number) {
 }
 
 async function requireBlockFolderEditor(folderId: number) {
+  assertExplorationsEnabled();
   const folder = await prisma.explorationBlockFolder.findUnique({
     where: { id: folderId },
     include: { playlist: { include: { collaborators: true } } }
@@ -133,6 +138,7 @@ async function requireOutcomeEditor(outcomeId: number) {
 }
 
 async function requireBranchEditor(branchId: number) {
+  assertExplorationsEnabled();
   const branch = await prisma.explorationBranch.findUnique({
     where: { id: branchId },
     include: {
@@ -171,6 +177,7 @@ function ruleFromForm(formData: FormData) {
 }
 
 export async function createExplorationAction(formData: FormData) {
+  assertExplorationsEnabled();
   const user = await requireVerifiedUser();
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const language = parseContentLanguage(formData.get("language"));
@@ -2288,6 +2295,7 @@ export async function submitExplorationResponseAction(
   rawState?: ExplorationState,
   rawPathBlockKeys: string[] = []
 ) {
+  assertExplorationsEnabled();
   const user = await getCurrentUser();
   const exploration = await prisma.playlist.findUnique({
     where: { id: playlistId },
@@ -2533,6 +2541,7 @@ export async function saveExplorationBlockProgressAction(
   completed = false,
   rawPathBlockKeys: string[] = []
 ) {
+  assertExplorationsEnabled();
   const user = await getCurrentUser();
   if (!user) return { saved: false };
   const exploration = await prisma.playlist.findUnique({
@@ -2602,6 +2611,7 @@ export async function saveExplorationProgressAction(
   rawState: ExplorationState,
   completed = false
 ) {
+  assertExplorationsEnabled();
   const user = await getCurrentUser();
   if (!user) return { saved: false };
   const exploration = await prisma.playlist.findUnique({

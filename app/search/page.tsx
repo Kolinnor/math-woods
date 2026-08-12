@@ -5,6 +5,7 @@ import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
+import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getTranslations } from "@/lib/i18n/server";
 import { contentLanguageLabel } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
@@ -71,18 +72,20 @@ export default async function SearchPage({
           },
           take: 20
         }),
-        prisma.playlist.findMany({
-          where: {
-            visibility: "PUBLIC",
-            status: "PUBLISHED",
-            language: preferredLanguage,
-            OR: [
-              { title: { contains: query, mode: "insensitive" } },
-              { descriptionMarkdown: { contains: query, mode: "insensitive" } }
-            ]
-          },
-          take: 20
-        }),
+        EXPLORATIONS_ENABLED
+          ? prisma.playlist.findMany({
+              where: {
+                visibility: "PUBLIC",
+                status: "PUBLISHED",
+                language: preferredLanguage,
+                OR: [
+                  { title: { contains: query, mode: "insensitive" } },
+                  { descriptionMarkdown: { contains: query, mode: "insensitive" } }
+                ]
+              },
+              take: 20
+            })
+          : Promise.resolve([]),
         searchQuotes(query, preferredLanguage)
       ])
     : [[], [], [], []];
@@ -109,7 +112,7 @@ export default async function SearchPage({
       eyebrow="Find your way"
       heroImage="/art/brook-in-the-forest.jpg"
       heroAlt="Ivan Shishkin, Brook in the Forest"
-      description="Search across concepts, problems, explorations, and quotes."
+      description="Search across concepts, problems, and quotes."
       meta={
         query ? (
           <p>
@@ -132,7 +135,7 @@ export default async function SearchPage({
         )}
       </div>
 
-      <div className="grid gap-7 lg:grid-cols-4">
+      <div className="grid gap-7 lg:grid-cols-3">
         <section>
           <h2 className="mb-3 font-semibold">Concepts</h2>
           <div className="grid gap-3">
@@ -168,7 +171,7 @@ export default async function SearchPage({
           </div>
         </section>
 
-        <section>
+        {EXPLORATIONS_ENABLED && <section>
           <h2 className="mb-3 font-semibold">Explorations</h2>
           <div className="grid gap-3">
             {explorations.map((exploration) => (
@@ -177,7 +180,7 @@ export default async function SearchPage({
               </Link>
             ))}
           </div>
-        </section>
+        </section>}
 
         <section>
           <h2 className="mb-3 font-semibold">Quotes</h2>

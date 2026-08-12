@@ -1,4 +1,4 @@
-import { AttemptStatus, FriendshipStatus, MathDomain } from "@prisma/client";
+import { AttemptStatus, FriendshipStatus } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/daily-problem-schedule";
 import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
+import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { parentProblemDomainForCode, PROBLEM_DOMAINS, translatedDomainLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
@@ -74,109 +75,29 @@ const dashboardCopy = {
   }
 } as const;
 
-type HomeTranslations = Dictionary["home"];
+const guestDashboardCopy = {
+  en: {
+    signIn: "Sign in to start solving",
+    introduction: "Discover today's mathematics. Sign in or create a free account to open problems and exercises, save your progress, and receive personal recommendations.",
+    recommendations: "Recommended problems",
+    recommendationNote: "Sign in to open",
+    ready: "Ready to start solving?",
+    readyBody: "Your account keeps your progress, favorites and recommendations in one place.",
+    readyAction: "Sign in or create an account"
+  },
+  fr: {
+    signIn: "Se connecter pour commencer",
+    introduction: "Découvrez les mathématiques du jour. Connectez-vous ou créez un compte gratuit pour ouvrir les problèmes et exercices, enregistrer votre progression et recevoir des recommandations personnelles.",
+    recommendations: "Problèmes recommandés",
+    recommendationNote: "Se connecter pour ouvrir",
+    ready: "Prêt à résoudre des problèmes ?",
+    readyBody: "Votre compte rassemble votre progression, vos favoris et vos recommandations.",
+    readyAction: "Se connecter ou créer un compte"
+  }
+} as const;
 
-function homeDomainLabel(domain: MathDomain, t: HomeTranslations) {
-  return translatedDomainLabel(domain, t.domainLabels);
-}
-
-function GuestHomePage({
-  featured,
-  t
-}: {
-  featured: {
-    slug: string;
-    title: string;
-    domain: MathDomain;
-    difficulty: number | null;
-    _count: { attempts: number; favorites: number };
-  } | null;
-  t: HomeTranslations;
-}) {
-  return (
-    <div className="home-shell">
-      <section className="home-hero-forest">
-        <Image
-          src="/art/morning-in-a-pine-forest.jpg"
-          alt="Ivan Shishkin, Morning in a Pine Forest"
-          fill
-          priority
-          sizes="100vw"
-          className="home-hero-image"
-        />
-        <div className="home-hero-overlay" />
-        <div className="home-guest-hero-copy">
-          <h1>{t.hero.guestTitle}</h1>
-          <div className="home-hero-actions">
-            <Link href="/problems" className="home-button home-button-accent">
-              {t.hero.startSolving}
-            </Link>
-            <Link href="/contributing" className="home-button home-button-ghost">
-              {t.hero.contributeQuestion}
-            </Link>
-          </div>
-          <p className="home-art-credit">{t.hero.artCredit}</p>
-        </div>
-      </section>
-
-      <main className="home-main">
-        <section className="home-trail-band" aria-label={t.trail.ariaLabel}>
-          {t.trail.items.map((item, index) => (
-            <div key={item}>
-              <strong>{String(index + 1).padStart(2, "0")}</strong>
-              <p>{item}</p>
-            </div>
-          ))}
-        </section>
-
-        <section>
-          <div className="home-section-heading">
-            <h2>{t.problemToTry.title}</h2>
-            <Link href="/problems">{t.problemToTry.allProblems}</Link>
-          </div>
-          {featured ? (
-            <Link href={`/problems/${featured.slug}`} className="home-featured-problem">
-              <p>{homeDomainLabel(featured.domain, t)}</p>
-              <h3><AsyncMarkdownInline markdown={featured.title} /></h3>
-              <span>
-                {t.problemToTry.difficultyLine(
-                  featured.difficulty,
-                  t.problemToTry.attempts(featured._count.attempts),
-                  t.problemToTry.favorites(featured._count.favorites)
-                )}
-              </span>
-            </Link>
-          ) : (
-            <p className="home-empty-card">{t.problemToTry.empty}</p>
-          )}
-        </section>
-      </main>
-
-      <section className="home-trail-cta">
-        <Image src="/art/pine-forest.jpg" alt="Ivan Shishkin, Pine Forest" fill sizes="100vw" />
-        <div className="home-trail-cta-overlay" />
-        <div>
-          <h2>{t.cta.title}</h2>
-          <Link href="/problems" className="home-button home-button-light">
-            {t.cta.action}
-          </Link>
-          <p>{t.cta.artCredit}</p>
-        </div>
-      </section>
-
-      <footer className="home-footer">
-        <div>
-          <p>{t.footer.legal}</p>
-          <nav aria-label="Footer navigation">
-            <Link href="/about">{t.footer.about}</Link>
-            <Link href="/suggestions">{t.footer.suggestions}</Link>
-            <Link href="/contributing">{t.footer.contribute}</Link>
-            <Link href={"/legal" as Route}>{t.footer.legalAndBrand}</Link>
-          </nav>
-        </div>
-      </footer>
-    </div>
-  );
+function loginHref(returnTo: string) {
+  return `/login?returnTo=${encodeURIComponent(returnTo)}` as Route;
 }
 
 function dayStart(now = new Date()) {
@@ -201,29 +122,7 @@ export default async function HomePage() {
     getPreferredContentLanguage()
   ]);
   const copy = dashboardCopy[locale];
-
-  if (!user) {
-    const featured = await prisma.problem.findFirst({
-      where: {
-        status: "PUBLISHED",
-        listed: true,
-        isExercise: false,
-        language: preferredLanguage,
-        canAppearOnFrontPage: true,
-        ...visibleProblemWhere(null)
-      },
-      orderBy: { createdAt: "desc" },
-      select: {
-        slug: true,
-        title: true,
-        domain: true,
-        difficulty: true,
-        _count: { select: { attempts: true, favorites: true } }
-      }
-    });
-
-    return <GuestHomePage featured={featured} t={t.home} />;
-  }
+  const guestCopy = guestDashboardCopy[locale];
 
   const resumeAttempt = user
     ? await prisma.problemAttempt.findFirst({
@@ -263,14 +162,24 @@ export default async function HomePage() {
     && !scheduledDailyProblem.problem.isExercise
       ? scheduledDailyProblem.problem.translationGroupId
       : null;
-  const dailyCandidates = scheduledDailyGroup
-    ? []
-    : await prisma.problem.findMany({
-        where: { ...dailyWhere, translatedFromProblemId: null },
-        select: { createdAt: true, qualityStatus: true, translationGroupId: true }
-      });
+  const [dailyCandidates, previousDailyProblems] = scheduledDailyGroup
+    ? [[], []]
+    : await Promise.all([
+        prisma.problem.findMany({
+          where: { ...dailyWhere, translatedFromProblemId: null },
+          select: { translationGroupId: true }
+        }),
+        prisma.dailyProblemSchedule.findMany({
+          where: { dateKey: { lt: todayDateKey } },
+          select: { problem: { select: { translationGroupId: true } } }
+        })
+      ]);
   const chosenDailyGroup = scheduledDailyGroup
-    ?? automaticDailyProblemGroup(dailyCandidates, todayDateKey)
+    ?? automaticDailyProblemGroup(
+      dailyCandidates,
+      todayDateKey,
+      previousDailyProblems.map((schedule) => schedule.problem.translationGroupId)
+    )
     ?? null;
   const dailyTranslations = chosenDailyGroup
     ? await prisma.problem.findMany({
@@ -308,21 +217,57 @@ export default async function HomePage() {
     usesScheduledDailyProblem ? scheduledDailyProblem?.imagePositionY : 50
   );
 
-  const [recommendedData, tip, recentProblems, explorations, friendships] = await Promise.all([
+  const [recommendedData, guestRecommendations, tip, recentProblems, explorations, friendships] = await Promise.all([
     user ? recommendationsForUser(user.id, 5, preferredLanguage) : null,
+    !user
+      ? prisma.problem.findMany({
+          where: {
+            status: "PUBLISHED",
+            listed: true,
+            isExercise: false,
+            language: preferredLanguage,
+            OR: [
+              { canAppearOnFrontPage: true },
+              { qualityStatus: "REVIEWED" }
+            ],
+            ...(dailyProblem ? { translationGroupId: { not: dailyProblem.translationGroupId } } : {}),
+            ...visibleProblemWhere(null)
+          },
+          orderBy: { createdAt: "desc" },
+          take: 12,
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            difficulty: true,
+            domain: true,
+            qualityStatus: true,
+            canAppearOnFrontPage: true,
+            domains: {
+              orderBy: { position: "asc" },
+              take: 1,
+              select: { mscCode: true }
+            }
+          }
+        })
+      : [],
     loadDailyTip(),
-    prisma.problem.findMany({
-      where: { status: "PUBLISHED", listed: true, language: preferredLanguage },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: { author: true }
-    }),
-    prisma.playlist.findMany({
-      where: { status: "PUBLISHED", visibility: "PUBLIC", language: preferredLanguage },
-      orderBy: { updatedAt: "desc" },
-      take: 3,
-      include: { _count: { select: { circuitNodes: true } } }
-    }),
+    user
+      ? prisma.problem.findMany({
+          where: { status: "PUBLISHED", listed: true, language: preferredLanguage },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          include: { author: true }
+        })
+      : [],
+    user && EXPLORATIONS_ENABLED
+      ? prisma.playlist.findMany({
+          where: { status: "PUBLISHED", visibility: "PUBLIC", language: preferredLanguage },
+          orderBy: { updatedAt: "desc" },
+          take: 3,
+          include: { _count: { select: { circuitNodes: true } } }
+        })
+      : [],
     user
       ? prisma.friendship.findMany({
           where: {
@@ -415,7 +360,7 @@ export default async function HomePage() {
           select: { createdAt: true, slug: true, title: true, createdBy: true }
         })
       : [],
-    friendIds.length
+    friendIds.length && EXPLORATIONS_ENABLED
       ? prisma.playlist.findMany({
           where: {
             authorId: { in: friendIds },
@@ -452,12 +397,19 @@ export default async function HomePage() {
     : null;
   const tipBodyHtml = tip ? await renderMarkdown(tip.body) : "";
   const selectedTipImage = tip ? dailyTipImage(tip.images, tip.id) : null;
+  const publicRecommendations = guestRecommendations
+    .sort((left, right) => {
+      const frontPageDifference = Number(right.canAppearOnFrontPage) - Number(left.canAppearOnFrontPage);
+      const reviewDifference = Number(right.qualityStatus === "REVIEWED") - Number(left.qualityStatus === "REVIEWED");
+      return frontPageDifference || reviewDifference || right.id - left.id;
+    })
+    .slice(0, 4);
 
   const solvedSet = new Set(solvedGroups.map((attempt) => attempt.problem.translationGroupId));
   const dailyProblemIsSolved = Boolean(
     dailyProblem && solvedSet.has(dailyProblem.translationGroupId)
   );
-  const dailyProblemIsOwn = dailyProblem?.authorId === user.id;
+  const dailyProblemIsOwn = Boolean(user && dailyProblem?.authorId === user.id);
   const progressMap = buildProgressMap(allProblemGroups, solvedSet, (problem) =>
     parentProblemDomainForCode(problem.domains[0]?.mscCode ?? problem.domain)?.value ?? String(problem.domain)
   );
@@ -507,7 +459,10 @@ export default async function HomePage() {
     .sort((left, right) => right.date.getTime() - left.date.getTime())
     .slice(0, 3);
   const dailyProblemCard = dailyProblem ? (
-    <Link href={`/problems/${dailyProblem.slug}`} className="home-daily-problem">
+    <Link
+      href={user ? `/problems/${dailyProblem.slug}` : loginHref(`/problems/${dailyProblem.slug}`)}
+      className="home-daily-problem"
+    >
       <div>
         <p className="mw-kicker">{copy.problemOfDay}</p>
         <h2><AsyncMarkdownInline markdown={dailyProblem.title} /></h2>
@@ -520,7 +475,7 @@ export default async function HomePage() {
           <Difficulty value={dailyProblem.difficulty} compact />
         </div>
         <div className="home-daily-action">
-          <span className="mw-primary-button">{copy.solveToday}</span>
+          <span className="mw-primary-button">{user ? copy.solveToday : guestCopy.signIn}</span>
           {dailySolvers.length > 0 && (
             <>
               <span className="home-solver-stack">
@@ -538,6 +493,109 @@ export default async function HomePage() {
       </div>
     </Link>
   ) : null;
+
+  if (!user) {
+    return (
+      <div className="home-shell home-dashboard home-dashboard-guest">
+        <section className="home-hero-forest home-hero-member">
+          <Image
+            src="/art/morning-in-a-pine-forest.jpg"
+            alt="Ivan Shishkin, Morning in a Pine Forest"
+            fill
+            priority
+            sizes="100vw"
+            className="home-hero-image"
+          />
+          <div className="home-hero-overlay home-hero-overlay-member" />
+          <div className="home-member-hero-copy home-guest-dashboard-hero">
+            <div>
+              <h1>{t.home.hero.guestTitle}</h1>
+              <p>{guestCopy.introduction}</p>
+            </div>
+            <Link href={loginHref("/problems")} className="home-button home-button-light">
+              {guestCopy.signIn}
+            </Link>
+          </div>
+        </section>
+
+        <main className="home-dashboard-grid home-dashboard-grid-guest">
+          <div className="home-dashboard-main">
+            {dailyProblemCard}
+
+            {publicRecommendations.length > 0 && (
+              <section>
+                <div className="mw-section-heading">
+                  <h2>{guestCopy.recommendations}</h2>
+                </div>
+                <div className="home-recommendation-grid">
+                  {publicRecommendations.map((problem) => {
+                    const domain = parentProblemDomainForCode(
+                      problem.domains[0]?.mscCode ?? problem.domain
+                    )?.value ?? problem.domain;
+                    return (
+                      <Link key={problem.id} href={loginHref(`/problems/${problem.slug}`)}>
+                        <Difficulty value={problem.difficulty} />
+                        <span>
+                          <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
+                          <small>
+                            {translatedDomainLabel(domain, t.home.domainLabels)} · {guestCopy.recommendationNote}
+                          </small>
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {tip && (
+              <section className="home-tip-card">
+                <div className="home-tip-image">
+                  <img
+                    src={tipImageUrl(selectedTipImage?.imageUrl ?? tip.imageUrl)}
+                    alt=""
+                    style={{
+                      objectPosition: tipImageObjectPosition(
+                        selectedTipImage?.imagePositionX ?? tip.imagePositionX,
+                        selectedTipImage?.imagePositionY ?? tip.imagePositionY
+                      )
+                    }}
+                  />
+                </div>
+                <div className="home-tip-copy">
+                  <p className="mw-kicker">{copy.tip}</p>
+                  <h2><AsyncMarkdownInline markdown={tip.title} /></h2>
+                  <MarkdownBlock html={tipBodyHtml} />
+                  {tipPracticeLink && (
+                    <Link
+                      href={loginHref(`/problems/${tipPracticeLink.problem.slug}`)}
+                      className="home-tip-practice"
+                    >
+                      <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeLink.problem.title} /></strong>
+                      <span className="home-tip-practice-meta">
+                        {translatedDomainLabel(tipPracticeLink.problem.domain, t.home.domainLabels)}
+                        <Difficulty value={tipPracticeLink.problem.difficulty} compact />
+                      </span>
+                    </Link>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <section className="mw-card home-guest-dashboard-cta">
+              <div>
+                <h2>{guestCopy.ready}</h2>
+                <p>{guestCopy.readyBody}</p>
+              </div>
+              <Link href={loginHref("/problems")} className="mw-primary-button">
+                {guestCopy.readyAction}
+              </Link>
+            </section>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="home-shell home-dashboard">
@@ -682,7 +740,7 @@ export default async function HomePage() {
               </div>
             )) : <p className="muted">{copy.noActivity}</p>}
           </section>
-          {explorations.length > 0 && (
+          {EXPLORATIONS_ENABLED && explorations.length > 0 && (
             <section className="home-exploration-card">
               <h2>{copy.explorations}</h2>
               {explorations.map((exploration) => (

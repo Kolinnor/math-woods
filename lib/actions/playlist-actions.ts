@@ -8,6 +8,7 @@ import { requireUser, requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { canEditExploration } from "@/lib/explorations";
+import { assertExplorationsEnabled } from "@/lib/feature-flags";
 import { parseContentLanguage } from "@/lib/languages";
 import { canDeletePlaylist } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -20,6 +21,7 @@ async function renderMarkdownContent(markdown: string) {
 }
 
 async function requirePlaylistEditor(playlistId: number, requireVerified = false) {
+  assertExplorationsEnabled();
   const user = requireVerified ? await requireVerifiedUser() : await requireUser();
   const playlist = await prisma.playlist.findUnique({
     where: { id: playlistId },
@@ -35,6 +37,7 @@ async function requirePlaylistEditor(playlistId: number, requireVerified = false
 }
 
 export async function createPlaylistAction(formData: FormData) {
+  assertExplorationsEnabled();
   const user = await requireVerifiedUser();
   await assertRateLimit(`playlist:create:${user.id}`, 5, 60_000);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");

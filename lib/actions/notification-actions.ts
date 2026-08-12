@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { assertRateLimit } from "@/lib/rate-limit";
 
 const configurableNotificationTypes = [
+  NotificationType.PROBLEM_ATTEMPTED,
   NotificationType.PROBLEM_SOLVED,
   NotificationType.PROBLEM_EDITED,
   NotificationType.PROOF_ADDED,
@@ -30,7 +32,7 @@ const configurableNotificationTypes = [
   NotificationType.PROBLEM_CHALLENGE,
   NotificationType.PROBLEM_SHARED,
   NotificationType.PROBLEM_OF_THE_DAY,
-  NotificationType.EXPLORATION_PUBLISHED,
+  ...(EXPLORATIONS_ENABLED ? [NotificationType.EXPLORATION_PUBLISHED] : []),
   NotificationType.DAILY_CONCEPT_REVIEW
 ] as const;
 

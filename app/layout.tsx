@@ -155,7 +155,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="primary-nav">
               <Link href="/problems">{t.nav.problems}</Link>
               <Link href="/concepts">{t.nav.concepts}</Link>
-              <Link href={"/explorations" as Route}>{t.nav.playlists}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
               <Link href={usersRoute}>{t.nav.users}</Link>
               {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}
@@ -170,7 +169,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <div className="nav-menu-primary-mobile">
                     <Link href="/problems">{t.nav.problems}</Link>
                     <Link href="/concepts">{t.nav.concepts}</Link>
-                    <Link href={"/explorations" as Route}>{t.nav.playlists}</Link>
                     {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
                     <Link href={usersRoute}>{t.nav.users}</Link>
                     {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}

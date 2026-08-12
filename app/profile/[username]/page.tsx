@@ -16,6 +16,7 @@ import {
 } from "@/lib/actions/social-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getTranslations } from "@/lib/i18n/server";
 import { problemLinkClass } from "@/lib/problem-link";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
@@ -76,16 +77,18 @@ export default async function ProfilePage({
       where: { authorId: user.id, status: "PUBLISHED" },
       orderBy: { createdAt: "desc" }
     }),
-    prisma.playlist.findMany({
-      where: {
-        authorId: user.id,
-        ...(currentUser && (currentUser.id === user.id || hasTrustedPrivileges(currentUser.role))
-          ? {}
-          : { status: "PUBLISHED", visibility: "PUBLIC" })
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10
-    }),
+    EXPLORATIONS_ENABLED
+      ? prisma.playlist.findMany({
+          where: {
+            authorId: user.id,
+            ...(currentUser && (currentUser.id === user.id || hasTrustedPrivileges(currentUser.role))
+              ? {}
+              : { status: "PUBLISHED", visibility: "PUBLIC" })
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10
+        })
+      : Promise.resolve([]),
     prisma.pageRevision.findMany({
       where: { editedById: user.id },
       orderBy: { createdAt: "desc" },
@@ -145,7 +148,7 @@ export default async function ProfilePage({
       favoritesByGroup.set(favorite.problem.translationGroupId, favorite);
     }
   }
-  const problems = [...problemByGroup.values()].slice(0, 10);
+  const problems = [...problemByGroup.values()];
   const solved = [...solvedByGroup.values()].slice(0, 50);
   const favorites = [...favoritesByGroup.values()].slice(0, 50);
   const authoredProblemCount = problemByGroup.size;
@@ -257,7 +260,7 @@ export default async function ProfilePage({
               </div>
             </section>
 
-            <section>
+            {EXPLORATIONS_ENABLED && <section>
               <h2 className="mb-3 font-semibold">{t.profile.playlists}</h2>
               <div className="grid gap-3">
                 {playlists.map((playlist) => (
@@ -267,7 +270,7 @@ export default async function ProfilePage({
                 ))}
                 {playlists.length === 0 && <p className="muted panel p-5">{t.profile.noPlaylists}</p>}
               </div>
-            </section>
+            </section>}
           </>
         )}
 
@@ -358,10 +361,10 @@ export default async function ProfilePage({
               <span>{t.profile.problems}</span>
               <span>{authoredProblemCount}</span>
             </div>
-            <div className="flex justify-between gap-3">
+            {EXPLORATIONS_ENABLED && <div className="flex justify-between gap-3">
               <span>{t.profile.playlists}</span>
               <span>{user._count.playlists}</span>
-            </div>
+            </div>}
             <div className="flex justify-between gap-3">
               <span>{t.profile.conceptsCreated}</span>
               <span>{user._count.conceptsCreated}</span>

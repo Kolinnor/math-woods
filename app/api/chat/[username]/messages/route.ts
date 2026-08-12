@@ -28,6 +28,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
   const url = new URL(request.url);
   const afterIdRaw = Number(url.searchParams.get("afterId") ?? 0);
   const afterId = Number.isInteger(afterIdRaw) && afterIdRaw > 0 ? afterIdRaw : 0;
+  const beforeIdRaw = Number(url.searchParams.get("beforeId") ?? 0);
+  const beforeId = Number.isInteger(beforeIdRaw) && beforeIdRaw > 0 ? beforeIdRaw : 0;
   const reactionCursor = Date.now();
   const reactionsAfterRaw = Number(url.searchParams.get("reactionsAfter") ?? 0);
   const reactionsAfter = Number.isFinite(reactionsAfterRaw)
@@ -75,7 +77,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     prisma.chatMessage.findMany({
       where: {
         directChatId: chat.id,
-        id: { gt: afterId },
+        id: beforeId > 0 ? { lt: beforeId } : { gt: afterId },
         deletedAt: null
       },
       include: {
@@ -109,8 +111,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
           }
         }
       },
-      orderBy: { id: afterId > 0 ? "asc" : "desc" },
-      take: 50
+      orderBy: { id: afterId > 0 && beforeId === 0 ? "asc" : "desc" },
+      take: beforeId > 0 ? 51 : 50
     }),
     prisma.chatMessage.findMany({
       where: {
@@ -134,7 +136,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
       take: 100
     })
   ]);
-  if (afterId === 0) messages.reverse();
+  const hasOlderMessages = beforeId > 0 && messages.length > 50;
+  if (hasOlderMessages) messages.pop();
+  if (afterId === 0 || beforeId > 0) messages.reverse();
 
   return NextResponse.json(
     {
@@ -155,6 +159,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
         replyTo: directChatReplyPreview(message.replyTo),
         reactions: summarizeChatReactions(message.reactions, user.id)
       })),
+      hasOlderMessages,
       reactionCursor,
       deletedMessageIds: updatedMessages
         .filter((message) => Boolean(message.deletedAt))

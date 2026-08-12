@@ -208,6 +208,7 @@ enum ContributionRequestStatus {
 }
 
 enum NotificationType {
+  PROBLEM_ATTEMPTED
   PROBLEM_SOLVED
   PROBLEM_EDITED
   PROOF_ADDED

@@ -6,6 +6,22 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-08-12 - Heading markers must remain visible and editable
+
+Symptom:
+
+- A heading such as `##### Examples` was replaced by a preview widget when the cursor reached the end or left the line.
+- Backspace at the end of the heading could then collide with the replacement widget instead of deleting the final
+  character normally.
+- Heading shortcuts appeared to add invisible Markdown because the inserted `#` markers immediately disappeared.
+
+Guardrail:
+
+- Keep heading source, including every leading `#`, visible at all times.
+- Heading shortcuts may still apply heading typography, but must not replace the heading line with a widget or hide its
+  `HeaderMark` nodes.
+- A caret at either edge of a heading must retain ordinary character-by-character editing behavior.
+
 ## 2026-08-05 - Focus events must not dispatch during a CodeMirror update
 
 Symptom:

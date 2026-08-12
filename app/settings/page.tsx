@@ -17,6 +17,7 @@ import { updateNotificationPreferencesAction } from "@/lib/actions/notification-
 import { disconnectExternalIdentityAction, setInitialPasswordAction } from "@/lib/actions/oauth-actions";
 import { getCurrentSession, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { mailStatusLabel } from "@/lib/email-verification";
 import { mergeLatexPreferences, type LatexPreferenceValues } from "@/lib/latex-preferences";
 import { contentLanguageLabel } from "@/lib/languages";
@@ -52,6 +53,11 @@ function isDeletedUser(user: ManagedUser) {
 }
 
 const notificationOptions = [
+  {
+    type: NotificationType.PROBLEM_ATTEMPTED,
+    title: "Someone started attempting your problem",
+    description: "When another user starts working on one of your problems."
+  },
   {
     type: NotificationType.PROBLEM_SOLVED,
     title: "Someone solved your problem",
@@ -162,11 +168,13 @@ const notificationOptions = [
     title: "Problem of the day selections",
     description: "When one of your problems is selected as the problem of the day."
   },
-  {
-    type: NotificationType.EXPLORATION_PUBLISHED,
-    title: "Exploration publications",
-    description: "When an exploration you follow is published."
-  },
+  ...(EXPLORATIONS_ENABLED
+    ? [{
+        type: NotificationType.EXPLORATION_PUBLISHED,
+        title: "Exploration publications",
+        description: "When an exploration you follow is published."
+      }]
+    : []),
   {
     type: NotificationType.DAILY_CONCEPT_REVIEW,
     title: "Daily concept review",

@@ -14,9 +14,8 @@ export function markdownPreviewClass(nodeName: string) {
   return null;
 }
 
-export function markdownHeadingPreviewText(source: string) {
-  const text = source.replace(/^#{1,6}\s*/, "");
-  return text.trim() ? text : null;
+export function markdownMarkupShouldRemainVisible(nodeName: string) {
+  return nodeName === "HeaderMark";
 }
 
 export type WikiLinkRange = {

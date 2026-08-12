@@ -67,7 +67,7 @@ import {
   findProblemLinkRanges,
   findWikiLinkRanges,
   headingLevel,
-  markdownHeadingPreviewText,
+  markdownMarkupShouldRemainVisible,
   markdownPreviewClass
 } from "@/lib/markdown-preview";
 import { findMarkdownQuestionMarkers } from "@/lib/markdown-question-markers";
@@ -725,43 +725,6 @@ class MarkdownImageWidget extends WidgetType {
   }
 }
 
-class MarkdownHeadingWidget extends WidgetType {
-  constructor(
-    readonly text: string,
-    readonly level: number,
-    readonly from: number
-  ) {
-    super();
-  }
-
-  eq(other: MarkdownHeadingWidget) {
-    return other.text === this.text && other.level === this.level && other.from === this.from;
-  }
-
-  toDOM(view: EditorView) {
-    const element = document.createElement("span");
-    element.className = `cm-md-heading cm-md-heading-${this.level}`;
-    element.textContent = this.text;
-    element.title = "Click to edit heading";
-    element.addEventListener("mousedown", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      view.focus();
-      view.dispatch({
-        selection: { anchor: this.from + this.level + 1 },
-        effects: setPreviewFocus.of(true),
-        annotations: previewOnly,
-        scrollIntoView: true
-      });
-    });
-    return element;
-  }
-
-  ignoreEvent() {
-    return true;
-  }
-}
-
 class MarkdownListMarkWidget extends WidgetType {
   constructor(
     readonly marker: string,
@@ -1382,23 +1345,17 @@ function buildLivePreviewDecorations(state: EditorState) {
       const level = headingLevel(node.name);
       const previewClass = markdownPreviewClass(node.name);
 
-      if (level && !active) {
-        const headingText = markdownHeadingPreviewText(state.doc.sliceString(node.from, node.to));
-        if (!headingText) return;
+      if (level) {
         decorations.push(
-          Decoration.replace({
-            widget: new MarkdownHeadingWidget(headingText, level, node.from),
-            inclusive: false
-          }).range(node.from, node.to)
+          Decoration.mark({ class: `cm-md-heading cm-md-heading-${level}` }).range(node.from, node.to)
         );
-        return false;
       }
 
       if (previewClass && !active) {
         decorations.push(Decoration.mark({ class: previewClass }).range(node.from, node.to));
       }
 
-      if (!active && isMarkup) {
+      if (!active && isMarkup && !markdownMarkupShouldRemainVisible(node.name)) {
         decorations.push(Decoration.replace({}).range(node.from, node.to));
       }
     }

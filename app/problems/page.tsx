@@ -482,8 +482,7 @@ export default async function ProblemsPage({
     listed: true,
     ...(contentTypeWhere ?? {}),
     ...(languageWhere ?? {}),
-    ...(ownershipWhere ?? {}),
-    ...(authorWhere ?? {})
+    ...(ownershipWhere ?? {})
   };
 
   const [tags, progressProblemGroups, domainProgressProblemGroups, problemCandidateKeys] = await Promise.all([

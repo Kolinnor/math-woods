@@ -58,25 +58,31 @@ export function dailyProblemRotationIndex(total: number, dateKey: string) {
   return dayNumber % total;
 }
 
+function dailyProblemRandomIndex(total: number, dateKey: string) {
+  if (!total || !isDailyProblemDateKey(dateKey)) return 0;
+
+  let hash = 2166136261;
+  for (const character of dateKey) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0) % total;
+}
+
 export function automaticDailyProblemGroup(
-  candidates: Array<{ createdAt: Date; qualityStatus: string; translationGroupId: string }>,
+  candidates: Array<{ translationGroupId: string }>,
   dateKey: string,
-  timeZone = DAILY_PROBLEM_TIME_ZONE
+  previouslyFeaturedGroupIds: Iterable<string> = []
 ) {
   if (!candidates.length) return null;
 
-  const mostRecentPublicationDay = candidates.reduce((latest, candidate) => {
-    const candidateDay = dailyProblemDateKey(candidate.createdAt, timeZone);
-    return candidateDay > latest ? candidateDay : latest;
-  }, "");
-  const recentCandidates = candidates.filter(
-    (candidate) => dailyProblemDateKey(candidate.createdAt, timeZone) === mostRecentPublicationDay
-  );
-  const reviewedCandidates = recentCandidates.filter((candidate) => candidate.qualityStatus === "REVIEWED");
-  const preferredCandidates = reviewedCandidates.length ? reviewedCandidates : recentCandidates;
-  const groups = [...new Set(preferredCandidates.map((candidate) => candidate.translationGroupId))].sort();
+  const groups = [...new Set(candidates.map((candidate) => candidate.translationGroupId))].sort();
+  const previouslyFeatured = new Set(previouslyFeaturedGroupIds);
+  const unusedGroups = groups.filter((groupId) => !previouslyFeatured.has(groupId));
+  const pool = unusedGroups.length ? unusedGroups : groups;
 
-  return groups[dailyProblemRotationIndex(groups.length, dateKey)] ?? null;
+  return pool[dailyProblemRandomIndex(pool.length, dateKey)] ?? null;
 }
 
 export function dailyProblemDefaultImageUrl(dateKey: string) {

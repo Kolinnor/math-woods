@@ -133,13 +133,15 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
             }
           }
         },
-        orderBy: { createdAt: "asc" },
-        take: 100
+        orderBy: { createdAt: "desc" },
+        take: 101
       }
     }
   });
+  const hasOlderMessages = (chat?.messages.length ?? 0) > 100;
+  const recentMessages = chat?.messages.slice(0, 100).reverse() ?? [];
   const messages: LiveChatMessage[] =
-    chat?.messages.map((message) => ({
+    recentMessages.map((message) => ({
       id: message.id,
       authorId: message.authorId,
       authorUsername: message.author.username,
@@ -188,6 +190,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           <LiveChatThread
             key={otherUser.username}
             currentUserId={user.id}
+            initialHasOlderMessages={hasOlderMessages}
             otherUsername={otherUser.username}
             initialMessages={messages}
             locale={locale}

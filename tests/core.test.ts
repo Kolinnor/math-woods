@@ -66,7 +66,7 @@ import {
 import { chatImageDailyLimitForRole, chatImageUrl } from "../lib/chat-image-config.ts";
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
-import { chatDistanceFromBottom, chatIsNearBottom } from "../lib/chat-scroll.ts";
+import { chatDistanceFromBottom, chatIsNearBottom, chatScrollTopAfterPrepend } from "../lib/chat-scroll.ts";
 import { shouldSendChatOnEnter } from "../lib/chat-compose.ts";
 import { normalizeChatReplyToId } from "../lib/chat-replies.ts";
 import { applyChatMessageDeletions, applyChatMessageUpdates } from "../lib/chat-message-updates.ts";
@@ -247,7 +247,7 @@ import {
   findProblemLinkRanges,
   findWikiLinkRanges,
   headingLevel,
-  markdownHeadingPreviewText,
+  markdownMarkupShouldRemainVisible,
   markdownPreviewClass
 } from "../lib/markdown-preview.ts";
 import {
@@ -528,6 +528,7 @@ assert.equal(chatDayKey("2026-07-19T00:30:00.000Z", "America/New_York"), "2026-0
 assert.equal(chatDistanceFromBottom({ clientHeight: 400, scrollHeight: 1000, scrollTop: 520 }), 80);
 assert.equal(chatIsNearBottom({ clientHeight: 400, scrollHeight: 1000, scrollTop: 520 }), false);
 assert.equal(chatIsNearBottom({ clientHeight: 400, scrollHeight: 1000, scrollTop: 540 }), true);
+assert.equal(chatScrollTopAfterPrepend(120, 1000, 1800), 920);
 assert.equal(chatUnreadDocumentTitle("Math Woods", 1), "(1) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(1) Math Woods", 3), "(3) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(99+) Math Woods", 0), "Math Woods");
@@ -1090,8 +1091,8 @@ assert.equal(markdownPreviewClass("StrongEmphasis"), "cm-md-strong");
 assert.equal(markdownHeadingLineText("Existing title", 4), "#### Existing title");
 assert.equal(markdownHeadingLineText("## Existing title", 4), "#### Existing title");
 assert.equal(markdownHeadingLineText("", 5), "##### ");
-assert.equal(markdownHeadingPreviewText("##### "), null);
-assert.equal(markdownHeadingPreviewText("##### Title"), "Title");
+assert.equal(markdownMarkupShouldRemainVisible("HeaderMark"), true);
+assert.equal(markdownMarkupShouldRemainVisible("EmphasisMark"), false);
 const latexPreferenceModel = Prisma.dmmf.datamodel.models.find((model) => model.name === "LatexPreference");
 assert.ok(latexPreferenceModel, "Prisma must expose the LatexPreference model");
 type PrismaDmmfField = (typeof Prisma.dmmf.datamodel.models)[number]["fields"][number];
@@ -1903,8 +1904,11 @@ const mathematicianFixtures = [
 ] satisfies UserReputationSummary[];
 
 assert.equal(DAILY_PROBLEM_REPUTATION_POINTS, 50);
-assert.equal(dailyProblemReputationBonus(3), 150);
-assert.equal(dailyProblemReputationBonus(-2), 0);
+assert.equal(dailyProblemReputationBonus(3, Role.USER), 150);
+assert.equal(dailyProblemReputationBonus(3, Role.MODERATOR), 150);
+assert.equal(dailyProblemReputationBonus(3, Role.ADMIN), 0);
+assert.equal(dailyProblemReputationBonus(3, Role.OWNER), 0);
+assert.equal(dailyProblemReputationBonus(-2, Role.USER), 0);
 
 assert.equal(defaultAvatarPresetForUsername("ada"), defaultAvatarPresetForUsername("Ada"));
 assert.ok(DEFAULT_AVATAR_PRESETS.includes(defaultAvatarPresetForUsername("emmy")));
@@ -2206,18 +2210,24 @@ assert.deepEqual(
 assert.equal(dailyProblemRotationIndex(5, "2026-08-01"), dailyProblemRotationIndex(5, "2026-08-06"));
 assert.equal(
   automaticDailyProblemGroup([
-    { createdAt: new Date("2026-07-30T12:00:00.000Z"), qualityStatus: "REVIEWED", translationGroupId: "old" },
-    { createdAt: new Date("2026-08-01T09:00:00.000Z"), qualityStatus: "UNREVIEWED", translationGroupId: "recent-unreviewed" },
-    { createdAt: new Date("2026-08-01T10:00:00.000Z"), qualityStatus: "REVIEWED", translationGroupId: "recent-reviewed" }
-  ], "2026-08-03"),
-  "recent-reviewed"
+    { translationGroupId: "already-featured" },
+    { translationGroupId: "not-featured" }
+  ], "2026-08-03", ["already-featured"]),
+  "not-featured"
 );
+const exhaustedDailyProblemChoice = automaticDailyProblemGroup(
+  [{ translationGroupId: "first" }, { translationGroupId: "second" }],
+  "2026-08-03",
+  ["first", "second"]
+);
+assert.ok(exhaustedDailyProblemChoice === "first" || exhaustedDailyProblemChoice === "second");
 assert.equal(
-  automaticDailyProblemGroup([
-    { createdAt: new Date("2026-08-01T09:00:00.000Z"), qualityStatus: "UNREVIEWED", translationGroupId: "recent" },
-    { createdAt: new Date("2026-07-31T10:00:00.000Z"), qualityStatus: "REVIEWED", translationGroupId: "old-reviewed" }
-  ], "2026-08-03"),
-  "recent"
+  automaticDailyProblemGroup(
+    [{ translationGroupId: "first" }, { translationGroupId: "second" }],
+    "2026-08-03",
+    ["first", "second"]
+  ),
+  exhaustedDailyProblemChoice
 );
 assert.equal(automaticDailyProblemGroup([], "2026-08-03"), null);
 assert.ok(DEFAULT_DAILY_PROBLEM_IMAGE_URLS.includes(dailyProblemDefaultImageUrl("2026-08-03")));

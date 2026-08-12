@@ -1222,7 +1222,7 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
   const now = new Date();
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { translationGroupId: true }
+    select: { authorId: true, title: true, translationGroupId: true }
   });
   if (!problem) throw new Error("Problem not found.");
   const translations = await prisma.problem.findMany({
@@ -1230,7 +1230,16 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
     select: { id: true, slug: true }
   });
 
-  await prisma.problemAttempt.createMany({
+  const translationIds = translations.map((translation) => translation.id);
+  const existingAttempt = await prisma.problemAttempt.findFirst({
+    where: {
+      userId: user.id,
+      problemId: { in: translationIds }
+    },
+    select: { id: true }
+  });
+
+  const createdAttempts = await prisma.problemAttempt.createMany({
     data: translations.map((translation) => ({
       userId: user.id,
       problemId: translation.id,
@@ -1239,6 +1248,29 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
     })),
     skipDuplicates: true
   });
+
+  if (!existingAttempt && createdAttempts.count > 0 && problem.authorId !== user.id) {
+    const previousNotification = await prisma.notification.findFirst({
+      where: {
+        userId: problem.authorId,
+        actorId: user.id,
+        type: NotificationType.PROBLEM_ATTEMPTED,
+        href: { in: translations.map((translation) => `/problems/${translation.slug}`) }
+      },
+      select: { id: true }
+    });
+
+    if (!previousNotification) {
+      await createNotification({
+        userId: problem.authorId,
+        actorId: user.id,
+        type: NotificationType.PROBLEM_ATTEMPTED,
+        title: "Someone is attempting your problem",
+        body: `${displayNameForUser(user)} started working on "${problem.title}".`,
+        href: `/problems/${problemSlug}`
+      });
+    }
+  }
 
   revalidatePath("/problems");
   for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);

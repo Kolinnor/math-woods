@@ -32,6 +32,7 @@ import {
 } from "@/lib/actions/proof-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { translatedDomainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
@@ -250,6 +251,7 @@ export default async function ProblemPage({
   if (!canViewProblem(user, problem)) notFound();
   if (user) {
     await markNotificationsReadForHref(user.id, `/problems/${problem.slug}`, [
+      NotificationType.PROBLEM_ATTEMPTED,
       NotificationType.PROOF_ADDED,
       NotificationType.SOLUTION_VOTED,
       NotificationType.PROBLEM_SOLVED,
@@ -351,11 +353,13 @@ export default async function ProblemPage({
           }
         })
       : null,
-    prisma.playlistItem.findMany({
-      where: { problemId: problem.id },
-      include: { playlist: true },
-      take: 6
-    }),
+    EXPLORATIONS_ENABLED
+      ? prisma.playlistItem.findMany({
+          where: { problemId: problem.id },
+          include: { playlist: true },
+          take: 6
+        })
+      : Promise.resolve([]),
     user
       ? prisma.problemVerificationRequest.findMany({
           where: { problemId: problem.id, userId: user.id },

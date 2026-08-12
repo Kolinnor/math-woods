@@ -129,7 +129,7 @@ function summarizeUser(
     joinedAt: user.createdAt,
     reputation:
       problems.reduce((total, problem) => total + scoreProblem(problem), 0)
-      + dailyProblemReputationBonus(dailyProblemCount),
+      + dailyProblemReputationBonus(dailyProblemCount, user.role),
     problemCount: problems.length,
     solvedCount: problems.reduce((total, problem) => total + solvedCount(problem), 0),
     favoriteCount: problems.reduce((total, problem) => total + favoriteCount(problem), 0),
@@ -230,7 +230,11 @@ export async function getReputationLeaderboard() {
 }
 
 export async function getUserReputation(userId: number) {
-  const [problems, dailyProblemCount] = await Promise.all([
+  const [user, problems, dailyProblemCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    }),
     prisma.problem.findMany({
       where: {
         authorId: userId,
@@ -263,5 +267,5 @@ export async function getUserReputation(userId: number) {
   ]);
 
   return mergeTranslatedProblems(problems).reduce((total, problem) => total + scoreProblem(problem), 0)
-    + dailyProblemReputationBonus(dailyProblemCount);
+    + (user ? dailyProblemReputationBonus(dailyProblemCount, user.role) : 0);
 }

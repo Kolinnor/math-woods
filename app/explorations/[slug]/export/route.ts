@@ -3,8 +3,11 @@ import { frontmatter, markdownResponse } from "@/lib/export-markdown";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canViewExploration } from "@/lib/explorations";
+import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  if (!EXPLORATIONS_ENABLED) notFound();
+
   const { slug } = await params;
   const user = await getCurrentUser();
   const exploration = await prisma.playlist.findUnique({

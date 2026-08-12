@@ -6,6 +6,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { clearNotificationsAction } from "@/lib/actions/notification-actions";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
+import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getTranslations } from "@/lib/i18n/server";
 import { cleanupNotificationsForUser, notificationOpenHref } from "@/lib/notification-lifecycle";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
@@ -14,9 +15,12 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
   const t = await getTranslations();
   const timeZone = await getRequestTimeZone();
   await cleanupNotificationsForUser(userId);
+  const hiddenNotificationTypes = EXPLORATIONS_ENABLED
+    ? [NotificationType.CHAT_MESSAGE]
+    : [NotificationType.CHAT_MESSAGE, NotificationType.EXPLORATION_PUBLISHED];
   const [unreadNotifications, unreadCount, notificationCount] = await Promise.all([
     prisma.notification.findMany({
-      where: { userId, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } },
+      where: { userId, readAt: null, type: { notIn: hiddenNotificationTypes } },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: {
@@ -26,10 +30,10 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       }
     }),
     prisma.notification.count({
-      where: { userId, readAt: null, type: { not: NotificationType.CHAT_MESSAGE } }
+      where: { userId, readAt: null, type: { notIn: hiddenNotificationTypes } }
     }),
     prisma.notification.count({
-      where: { userId, type: { not: NotificationType.CHAT_MESSAGE } }
+      where: { userId, type: { notIn: hiddenNotificationTypes } }
     })
   ]);
 

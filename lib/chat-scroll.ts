@@ -13,3 +13,11 @@ export function chatDistanceFromBottom({ clientHeight, scrollHeight, scrollTop }
 export function chatIsNearBottom(metrics: ChatScrollMetrics, threshold = CHAT_NEAR_BOTTOM_PX) {
   return chatDistanceFromBottom(metrics) <= threshold;
 }
+
+export function chatScrollTopAfterPrepend(
+  previousScrollTop: number,
+  previousScrollHeight: number,
+  nextScrollHeight: number
+) {
+  return previousScrollTop + Math.max(0, nextScrollHeight - previousScrollHeight);
+}

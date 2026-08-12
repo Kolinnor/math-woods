@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
 import { ChatMessageAttachment } from "@/components/ChatMessageAttachment";
 import { ChatMessageReactions } from "@/components/ChatMessageReactions";
@@ -23,6 +23,7 @@ import {
 } from "@/lib/chat-reactions";
 import { CHAT_READ_EVENT } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
+import { chatScrollTopAfterPrepend } from "@/lib/chat-scroll";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { ChatReplyPreview } from "@/lib/chat-replies";
 import type { InterfaceLocale } from "@/lib/i18n/types";
@@ -31,6 +32,7 @@ export type LiveChatMessage = DirectChatMessage;
 
 type LiveChatThreadProps = {
   currentUserId: number;
+  initialHasOlderMessages: boolean;
   otherUsername: string;
   initialMessages: LiveChatMessage[];
   locale: InterfaceLocale;
@@ -56,6 +58,7 @@ type LiveChatThreadProps = {
 
 export function LiveChatThread({
   currentUserId,
+  initialHasOlderMessages,
   otherUsername,
   initialMessages,
   locale,
@@ -63,22 +66,85 @@ export function LiveChatThread({
   labels
 }: LiveChatThreadProps) {
   const [messages, setMessages] = useState(initialMessages);
+  const [hasOlderMessages, setHasOlderMessages] = useState(initialHasOlderMessages);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const { setReplyingTo } = useChatReply();
   const [status, setStatus] = useState<"live" | "checking" | "paused">("live");
   const latestIdRef = useRef(initialMessages.at(-1)?.id ?? 0);
   const reactionCursorRef = useRef(0);
   const threadRef = useRef<HTMLElement | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
+  const prependScrollRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
   const {
     isAtBottom,
     newMessagesBelow,
     noteNewMessages,
     scrollToBottom
-  } = useChatScroll(threadRef);
+  } = useChatScroll(threadRef, otherUsername);
 
   useEffect(() => {
     latestIdRef.current = messages.at(-1)?.id ?? 0;
   }, [messages]);
+
+  useLayoutEffect(() => {
+    const pending = prependScrollRef.current;
+    const thread = threadRef.current;
+    if (!pending || !thread) return;
+    thread.scrollTop = chatScrollTopAfterPrepend(
+      pending.scrollTop,
+      pending.scrollHeight,
+      thread.scrollHeight
+    );
+    prependScrollRef.current = null;
+  }, [messages]);
+
+  const loadOlderMessages = useCallback(async () => {
+    const thread = threadRef.current;
+    const oldestMessageId = messages.at(0)?.id;
+    if (!thread || !oldestMessageId || !hasOlderMessages || loadingOlderMessages) return;
+
+    setLoadingOlderMessages(true);
+    try {
+      const response = await fetch(
+        `/api/chat/${encodeURIComponent(otherUsername)}/messages?beforeId=${oldestMessageId}`,
+        { cache: "no-store" }
+      );
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        messages?: LiveChatMessage[];
+        hasOlderMessages?: boolean;
+      };
+      const olderMessages = data.messages ?? [];
+      setHasOlderMessages(Boolean(data.hasOlderMessages));
+      if (olderMessages.length === 0) return;
+
+      prependScrollRef.current = {
+        scrollHeight: thread.scrollHeight,
+        scrollTop: thread.scrollTop
+      };
+      setMessages((current) => {
+        const seen = new Set(current.map((message) => message.id));
+        return [
+          ...olderMessages.filter((message) => !seen.has(message.id)),
+          ...current
+        ];
+      });
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  }, [hasOlderMessages, loadingOlderMessages, messages, otherUsername]);
+
+  useEffect(() => {
+    const thread = threadRef.current;
+    if (!thread) return;
+
+    function loadMoreNearTop() {
+      if (thread && thread.scrollTop <= 96) void loadOlderMessages();
+    }
+
+    thread.addEventListener("scroll", loadMoreNearTop, { passive: true });
+    return () => thread.removeEventListener("scroll", loadMoreNearTop);
+  }, [loadOlderMessages]);
 
   const updateMessageReactions = useCallback((messageId: number, reactions: ChatReactionSummary[]) => {
     setMessages((current) => applyChatReactionUpdates(current, [{ messageId, reactions }]));

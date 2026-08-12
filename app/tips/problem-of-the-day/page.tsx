@@ -67,8 +67,8 @@ export default async function ProblemOfTheDaySchedulePage({
       <div className="daily-problem-schedule-intro">
         <CalendarDays size={21} aria-hidden="true" />
         <p>
-          Each choice applies to that calendar date only. Leave a day empty to use a recent problem,
-          preferring reviewed ones, with automatic Shishkin artwork.
+          Each choice applies to that calendar date only. Leave a day empty to randomly feature a problem
+          that has not been problem of the day before, with automatic Shishkin artwork.
         </p>
       </div>
 

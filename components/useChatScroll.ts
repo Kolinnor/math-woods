@@ -38,15 +38,54 @@ export function useChatScroll(threadRef: RefObject<HTMLElement | null>, activeKe
   useLayoutEffect(() => {
     const thread = threadRef.current;
     if (!thread) return;
+    let animationFrame: number | null = null;
+    let disposed = false;
+
+    function keepLatestMessageAnchored() {
+      if (!thread || !isAtBottomRef.current) return;
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = null;
+        if (disposed || !isAtBottomRef.current) return;
+        thread.scrollTop = thread.scrollHeight;
+        setBottomState(true);
+      });
+    }
 
     function updatePosition() {
       if (!thread) return;
       setBottomState(chatIsNearBottom(thread));
     }
 
+    const observedChildren = new Set<Element>();
+    const resizeObserver = new ResizeObserver(() => keepLatestMessageAnchored());
+    const observeChildren = () => {
+      for (const child of Array.from(thread.children)) {
+        if (observedChildren.has(child)) continue;
+        observedChildren.add(child);
+        resizeObserver.observe(child);
+      }
+    };
+    const mutationObserver = new MutationObserver(() => {
+      observeChildren();
+      keepLatestMessageAnchored();
+    });
+
     thread.addEventListener("scroll", updatePosition, { passive: true });
-    scrollToBottom("auto");
-    return () => thread.removeEventListener("scroll", updatePosition);
+    setBottomState(true);
+    thread.scrollTop = thread.scrollHeight;
+    observeChildren();
+    mutationObserver.observe(thread, { childList: true });
+    keepLatestMessageAnchored();
+    void document.fonts?.ready.then(() => keepLatestMessageAnchored());
+
+    return () => {
+      disposed = true;
+      thread.removeEventListener("scroll", updatePosition);
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+    };
   }, [activeKey, scrollToBottom, setBottomState, threadRef]);
 
   return {
