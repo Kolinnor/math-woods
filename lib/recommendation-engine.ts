@@ -120,6 +120,13 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
             }
           }
         }
+      },
+      recommendationExposures: {
+        select: {
+          translationGroupId: true,
+          exposureCount: true,
+          lastOpenedAt: true
+        }
       }
     }
   });
@@ -130,6 +137,9 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
   const favorites = dedupeFavorites(user.favorites);
   const attemptByGroup = new Map(attempts.map((attempt) => [attempt.translationGroupId, attempt]));
   const favoriteGroups = new Set(favorites.map((favorite) => favorite.translationGroupId));
+  const exposureByGroup = new Map(
+    user.recommendationExposures.map((exposure) => [exposure.translationGroupId, exposure])
+  );
   const solvedGroups = attempts.filter((attempt) => attempt.status === "SOLVED").map((attempt) => attempt.translationGroupId);
   const profile = buildRecommendationProfile(
     {
@@ -196,6 +206,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
         translations.find((item) => item.language === "en") ??
         translations[0];
       const attempt = attemptByGroup.get(problem.translationGroupId);
+      const exposure = exposureByGroup.get(problem.translationGroupId);
       const score = scoreProblemRecommendation(
         profile,
         {
@@ -208,7 +219,9 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
           createdAt: problem.createdAt,
           attemptStatus: attempt?.status,
           attemptUpdatedAt: attempt?.updatedAt,
-          favorite: favoriteGroups.has(problem.translationGroupId)
+          favorite: favoriteGroups.has(problem.translationGroupId),
+          exposureCount: exposure?.exposureCount,
+          lastOpenedAt: exposure?.lastOpenedAt
         },
         { mathLevel: user.mathLevel as RecommendationMathLevel | null, now }
       );

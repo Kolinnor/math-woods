@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
@@ -30,7 +31,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
 
   return (
     <ForestPageLayout
-      title={concept.title}
+      title={<AsyncMarkdownInline markdown={concept.title} />}
       eyebrow="Editorial discussion"
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"

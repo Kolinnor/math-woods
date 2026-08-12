@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RevisionDiff } from "@/components/RevisionDiff";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserName } from "@/components/UserName";
 import { rollbackProblemRevisionAction } from "@/lib/actions/problem-actions";
 import { requireUser } from "@/lib/auth";
@@ -27,7 +28,7 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Problem history</h1>
-          <p className="muted mt-1">{problem.title}</p>
+          <p className="muted mt-1"><AsyncMarkdownInline markdown={problem.title} /></p>
         </div>
         <Link href={`/problems/${problem.slug}`} className="button secondary">
           Back

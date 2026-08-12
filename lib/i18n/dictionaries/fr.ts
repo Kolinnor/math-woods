@@ -38,6 +38,7 @@ export const fr = {
     moreTitle: "Plus",
     recentChanges: "Modifications récentes",
     contributing: "Contribuer",
+    contributionTasks: "Travail à faire",
     suggestions: "Suggestions",
     about: "À propos",
     friends: "Amis",
@@ -910,6 +911,32 @@ export const fr = {
       CONCEPT: "Concept",
       PLAYLIST: "Exploration",
       PROOF: "Solution"
+    }
+  },
+  contributionTasks: {
+    title: "Ce qu'il reste à faire",
+    description: "Choisissez une tâche concrète et améliorez Math Woods une page après l'autre.",
+    remaining: (count: number) => `${count} élément${count > 1 ? "s" : ""} restant${count > 1 ? "s" : ""}`,
+    back: "Contribuer",
+    concepts: "Concepts",
+    problems: "Problèmes",
+    translations: "Traductions",
+    openRandom: "Ouvrir une page au hasard",
+    complete: "Terminé",
+    examplesNote: "La présence d'exemples est détectée grâce aux titres Markdown Example, Examples, Exemple ou Exemples.",
+    tasks: {
+      stubConcepts: { title: "Concepts à l'état d'ébauche", description: "Transformez une ébauche minimale en page claire et utilisable." },
+      usableConcepts: { title: "Concepts utilisables à relire", description: "Vérifiez un concept utilisable afin qu'il puisse être marqué comme relu." },
+      editedConcepts: { title: "Concepts modifiés après relecture", description: "Vérifiez le dernier texte et confirmez sa nouvelle version." },
+      conceptsWithoutExamples: { title: "Concepts sans exemples", description: "Ajoutez une section avec un exemple ou un contre-exemple concret." },
+      conceptsWithoutExercises: { title: "Concepts sans exercices", description: "Associez un exercice permettant de pratiquer le concept." },
+      conceptsWithoutReferences: { title: "Concepts sans références", description: "Ajoutez une source fiable pour la définition ou le résultat." },
+      unreviewedProblems: { title: "Problèmes non relus", description: "Lisez attentivement l'énoncé et relisez-le lorsqu'il est prêt." },
+      needsWorkProblems: { title: "Problèmes à retravailler", description: "Clarifiez ou corrigez un problème qui a été signalé." },
+      problemsMissingFr: { title: "Problèmes sans traduction française", description: "Traduisez un problème qui n'existe pas encore en français." },
+      problemsMissingEn: { title: "Problèmes sans traduction anglaise", description: "Traduisez un problème qui n'existe pas encore en anglais." },
+      conceptsMissingFr: { title: "Concepts sans traduction française", description: "Traduisez un concept qui n'existe pas encore en français." },
+      conceptsMissingEn: { title: "Concepts sans traduction anglaise", description: "Traduisez un concept qui n'existe pas encore en anglais." }
     }
   },
   conceptDetail: {

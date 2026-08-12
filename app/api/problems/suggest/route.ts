@@ -6,6 +6,7 @@ import { getTranslations } from "@/lib/i18n/server";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { rankSearchMatches } from "@/lib/search-ranking";
+import { renderInlineMarkdown } from "@/lib/markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -78,14 +79,15 @@ export async function GET(request: Request) {
   ).slice(0, 20);
 
   return NextResponse.json({
-    problems: problems.map((problem) => ({
+    problems: await Promise.all(problems.map(async (problem) => ({
       id: problem.id,
       title: problem.title,
+      titleHtml: await renderInlineMarkdown(problem.title),
       slug: problem.slug,
       domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
       difficulty: problem.difficulty,
       listed: problem.listed,
       language: problem.language
-    }))
+    })))
   });
 }

@@ -181,7 +181,7 @@ export default async function QuotesPage({
               ))}
               {quote.relatedConcepts.map(({ concept }) => (
                 <Link key={concept.id} href={`/concepts/${concept.slug}`}>
-                  {concept.title}
+                  <AsyncMarkdownInline markdown={concept.title} />
                 </Link>
               ))}
               {quote._count.relatedProblems + quote._count.relatedConcepts === 0 && (

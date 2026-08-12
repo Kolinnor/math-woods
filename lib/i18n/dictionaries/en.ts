@@ -36,6 +36,7 @@ export const en = {
     moreTitle: "More",
     recentChanges: "Recent changes",
     contributing: "Contributing",
+    contributionTasks: "Work to do",
     suggestions: "Suggestions",
     about: "About",
     friends: "Friends",
@@ -905,6 +906,32 @@ export const en = {
       CONCEPT: "Concept",
       PLAYLIST: "Exploration",
       PROOF: "Solution"
+    }
+  },
+  contributionTasks: {
+    title: "What remains to be done",
+    description: "Pick a concrete task and help improve one page at a time.",
+    remaining: (count: number) => `${count} remaining items`,
+    back: "Contributing",
+    concepts: "Concepts",
+    problems: "Problems",
+    translations: "Translations",
+    openRandom: "Open a random page",
+    complete: "Complete",
+    examplesNote: "Example coverage is detected from Markdown headings named Example, Examples, Exemple, or Exemples.",
+    tasks: {
+      stubConcepts: { title: "Stub concepts", description: "Develop a minimal draft into a clear, usable page." },
+      usableConcepts: { title: "Usable concepts to review", description: "Check a usable concept and help it reach reviewed status." },
+      editedConcepts: { title: "Concepts changed after review", description: "Check the latest text and confirm the new version." },
+      conceptsWithoutExamples: { title: "Concepts without examples", description: "Add a concrete example or counterexample section." },
+      conceptsWithoutExercises: { title: "Concepts without exercises", description: "Attach an exercise that lets readers practise the concept." },
+      conceptsWithoutReferences: { title: "Concepts without references", description: "Add a reliable source for the definition or result." },
+      unreviewedProblems: { title: "Unreviewed problems", description: "Read the statement carefully and review it when it is ready." },
+      needsWorkProblems: { title: "Problems needing work", description: "Clarify or correct a problem that has been flagged." },
+      problemsMissingFr: { title: "Problems missing French", description: "Translate a problem that has no French version yet." },
+      problemsMissingEn: { title: "Problems missing English", description: "Translate a problem that has no English version yet." },
+      conceptsMissingFr: { title: "Concepts missing French", description: "Translate a concept that has no French version yet." },
+      conceptsMissingEn: { title: "Concepts missing English", description: "Translate a concept that has no English version yet." }
     }
   },
   conceptDetail: {

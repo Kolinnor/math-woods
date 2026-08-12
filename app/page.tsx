@@ -497,7 +497,7 @@ export default async function HomePage() {
   if (!user) {
     return (
       <div className="home-shell home-dashboard home-dashboard-guest">
-        <section className="home-hero-forest home-hero-member">
+        <section className="home-hero-forest home-hero-guest">
           <Image
             src="/art/morning-in-a-pine-forest.jpg"
             alt="Ivan Shishkin, Morning in a Pine Forest"
@@ -506,8 +506,8 @@ export default async function HomePage() {
             sizes="100vw"
             className="home-hero-image"
           />
-          <div className="home-hero-overlay home-hero-overlay-member" />
-          <div className="home-member-hero-copy home-guest-dashboard-hero">
+          <div className="home-hero-overlay" />
+          <div className="home-guest-hero-copy home-guest-dashboard-hero">
             <div>
               <h1>{t.home.hero.guestTitle}</h1>
               <p>{guestCopy.introduction}</p>

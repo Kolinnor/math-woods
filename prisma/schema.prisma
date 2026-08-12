@@ -211,6 +211,9 @@ enum NotificationType {
   PROBLEM_ATTEMPTED
   PROBLEM_SOLVED
   PROBLEM_EDITED
+  PROBLEM_EDIT_PROPOSED
+  PROBLEM_EDIT_APPROVED
+  PROBLEM_EDIT_REJECTED
   PROOF_ADDED
   SOLUTION_VOTED
   DISCUSSION_POSTED
@@ -233,6 +236,13 @@ enum NotificationType {
   PROBLEM_OF_THE_DAY
   EXPLORATION_PUBLISHED
   DAILY_CONCEPT_REVIEW
+}
+
+enum ProblemEditProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUPERSEDED
 }
 
 enum ProblemVerificationMode {
@@ -289,6 +299,7 @@ model User {
   revisions                       PageRevision[]
   conceptTalkPosts                ConceptTalkPost[]
   attempts                        ProblemAttempt[]
+  recommendationExposures         ProblemRecommendationExposure[]
   problemReactions                ProblemReaction[]
   posts                           DiscussionPost[]
   playlists                       Playlist[]
@@ -331,6 +342,8 @@ model User {
   explorationSessions             ExplorationSession[]
   mathematiciansCreated           Mathematician[]              @relation("MathematicianCreatedBy")
   dailyConceptReviews             DailyConceptReview[]
+  problemEditProposals            ProblemEditProposal[]        @relation("ProblemEditProposalAuthor")
+  reviewedProblemEditProposals    ProblemEditProposal[]        @relation("ProblemEditProposalReviewer")
 }
 
 model ExternalIdentity {
@@ -529,6 +542,7 @@ model Problem {
   author                   User                         @relation(fields: [authorId], references: [id])
   thread                   DiscussionThread?
   attempts                 ProblemAttempt[]
+  recommendationExposures  ProblemRecommendationExposure[]
   reactions                ProblemReaction[]
   playlistItems            PlaylistItem[]
   tags                     ProblemTag[]
@@ -549,6 +563,7 @@ model Problem {
   conceptExerciseLinks     ConceptExercise[]
   challenges               ProblemChallenge[]
   challengeInvites         ProblemChallengeInvite[]
+  editProposals            ProblemEditProposal[]
   translatedFromProblem    Problem?                     @relation("ProblemTranslationSource", fields: [translatedFromProblemId], references: [id], onDelete: SetNull)
   derivedTranslations      Problem[]                    @relation("ProblemTranslationSource")
 
@@ -558,6 +573,28 @@ model Problem {
   @@index([language, status, createdAt])
   @@index([translationGroupId])
   @@index([translatedFromProblemId])
+}
+
+model ProblemEditProposal {
+  id           Int                       @id @default(autoincrement())
+  problemId    Int
+  proposerId   Int
+  baseVersion  Int
+  snapshot     Json
+  editSummary  String?
+  status       ProblemEditProposalStatus @default(PENDING)
+  reviewedById Int?
+  reviewNote   String?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  reviewedAt   DateTime?
+  problem      Problem                   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  proposer     User                      @relation("ProblemEditProposalAuthor", fields: [proposerId], references: [id], onDelete: Cascade)
+  reviewedBy   User?                     @relation("ProblemEditProposalReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([problemId, status, createdAt])
+  @@index([proposerId, status, createdAt])
 }
 
 model ProblemChallenge {
@@ -777,6 +814,24 @@ model ProblemAttempt {
   problem              Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, problemId])
+}
+
+model ProblemRecommendationExposure {
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  problemId          Int
+  translationGroupId String
+  exposureCount      Int      @default(1)
+  firstOpenedAt      DateTime @default(now())
+  lastOpenedAt       DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem            Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, translationGroupId])
+  @@index([userId, lastOpenedAt])
+  @@index([problemId])
 }
 
 model ProblemFavorite {

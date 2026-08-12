@@ -13,6 +13,7 @@ import {
   MAX_TIP_IMAGES,
   tipImageObjectPosition
 } from "@/lib/tip-images";
+import { imageUploadNetworkError, imageUploadResponseError } from "@/lib/image-upload-errors";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const KEYBOARD_POSITION_STEP = 3;
@@ -142,13 +143,14 @@ export function TipImageField({
       const response = await fetch("/api/images/upload", { method: "POST", body: formData });
       const result = await response.json().catch(() => null) as UploadResponse | null;
       const publicUrl = result?.image?.publicUrl;
-      if (!response.ok || !publicUrl) throw new Error(result?.error || "Image upload failed.");
+      if (!response.ok) throw new Error(imageUploadResponseError(response.status, result));
+      if (!publicUrl) throw new Error("The upload service accepted the image but did not return its public URL.");
 
       setImageUrl(publicUrl);
       setPreviewFailed(false);
       setMessage(`Image uploaded. ${saveLabel} to keep it.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Image upload failed.");
+      setMessage(imageUploadNetworkError(error));
     } finally {
       setBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

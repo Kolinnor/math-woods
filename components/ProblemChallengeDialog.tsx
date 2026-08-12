@@ -13,6 +13,7 @@ import {
   type ProblemChallengeLabels
 } from "@/lib/problem-challenges";
 import { UserAvatar } from "@/components/UserAvatar";
+import { MarkdownInline } from "@/components/MarkdownInline";
 
 export type ProblemChallengeProblem = {
   difficulty: number | null;
@@ -21,6 +22,7 @@ export type ProblemChallengeProblem = {
   listed: boolean;
   slug: string;
   title: string;
+  titleHtml: string;
 };
 
 type SuggestedUser = {
@@ -332,7 +334,7 @@ function ProblemChallengeDialog({
             {selectedProblem ? (
               <div className="problem-challenge-selected">
                 <div>
-                  <strong>{selectedProblem.title}</strong>
+                  <strong><MarkdownInline html={selectedProblem.titleHtml} /></strong>
                   <span>
                     {selectedProblem.domainLabel}
                     {selectedProblem.difficulty !== null ? ` · ${selectedProblem.difficulty}/100` : ""}
@@ -377,7 +379,7 @@ function ProblemChallengeDialog({
                           setSuggestions([]);
                         }}
                       >
-                        <strong>{problem.title}</strong>
+                        <strong><MarkdownInline html={problem.titleHtml} /></strong>
                         <span>
                           {problem.domainLabel}
                           {problem.difficulty !== null ? ` · ${problem.difficulty}/100` : ""}

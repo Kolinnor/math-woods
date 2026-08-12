@@ -15,6 +15,7 @@ import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS, translatedDomainLabel, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canDeleteConcept, canEditConcept, canUseAdminTools } from "@/lib/permissions";
+import { renderInlineMarkdown } from "@/lib/markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -70,13 +71,16 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
   const staleTranslation = Boolean(
     sourceRevision && concept.translatedFromRevisionId && sourceRevision.id > concept.translatedFromRevisionId
   );
-  const initialExercises: TipPickerProblem[] = concept.practiceExercises.map(({ problem }) => ({
-    id: problem.id,
-    title: problem.title,
-    slug: problem.slug,
-    domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
-    difficulty: problem.difficulty
-  }));
+  const initialExercises: TipPickerProblem[] = await Promise.all(
+    concept.practiceExercises.map(async ({ problem }) => ({
+      id: problem.id,
+      title: problem.title,
+      titleHtml: await renderInlineMarkdown(problem.title),
+      slug: problem.slug,
+      domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
+      difficulty: problem.difficulty
+    }))
+  );
 
   return (
     <ForestPageLayout

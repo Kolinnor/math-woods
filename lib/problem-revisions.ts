@@ -85,7 +85,7 @@ export const PROBLEM_SNAPSHOT_FIELD_LABELS = {
   relatedProblemGroups: "related problems"
 } as const;
 
-type ProblemSnapshotField = keyof typeof PROBLEM_SNAPSHOT_FIELD_LABELS;
+export type ProblemSnapshotField = keyof typeof PROBLEM_SNAPSHOT_FIELD_LABELS;
 const PROBLEM_SNAPSHOT_FIELDS = Object.keys(PROBLEM_SNAPSHOT_FIELD_LABELS) as ProblemSnapshotField[];
 
 function sameValue(left: unknown, right: unknown) {
@@ -167,6 +167,28 @@ export function changedProblemSnapshotFields(
   after: ProblemRevisionSnapshot
 ): ProblemSnapshotField[] {
   return PROBLEM_SNAPSHOT_FIELDS.filter((field) => !sameValue(before[field], after[field]));
+}
+
+export function formatProblemSnapshotFieldValue(
+  field: ProblemSnapshotField,
+  value: ProblemRevisionSnapshot[ProblemSnapshotField]
+) {
+  if (value === null || value === "") return "None";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (field === "domains" && Array.isArray(value)) {
+    return (value as ProblemRevisionSnapshot["domains"])
+      .map((domain) => `${domain.mscCode}${domain.spoiler ? " (spoiler)" : ""}`)
+      .join(", ") || "None";
+  }
+  if ((field === "tags" || field === "spoilerTags") && Array.isArray(value)) {
+    return (value as ProblemRevisionSnapshot["tags"]).map((tag) => tag.name).join(", ") || "None";
+  }
+  if (field === "relatedProblemGroups" && Array.isArray(value)) {
+    return (value as ProblemRevisionSnapshot["relatedProblemGroups"])
+      .map((group) => `${group.title}: ${group.slugs.join(", ")}`)
+      .join("; ") || "None";
+  }
+  return String(value);
 }
 
 export function mergeProblemRevisionSnapshots(

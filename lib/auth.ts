@@ -11,7 +11,7 @@ import {
 import { prisma } from "@/lib/db";
 import { parseMathLevel } from "@/lib/math-levels";
 import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
-import { canUseModerationTools, canUseOwnerTools } from "@/lib/permissions";
+import { canUseAdminTools, canUseModerationTools, canUseOwnerTools } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
 import { usernameLookupFilter } from "@/lib/usernames";
@@ -117,6 +117,12 @@ export async function requireVerifiedUser() {
 export async function requireModerator() {
   const user = await requireUser();
   if (!canUseModerationTools(user)) redirect("/");
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!canUseAdminTools(user)) redirect("/");
   return user;
 }
 

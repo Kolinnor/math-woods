@@ -13,6 +13,7 @@ import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
 import { ProblemHints } from "@/components/ProblemHints";
 import { ProblemReactions } from "@/components/ProblemReactions";
+import { ProblemRecommendationExposure } from "@/components/ProblemRecommendationExposure";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
@@ -37,9 +38,12 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
+import { renderInlineMarkdown } from "@/lib/markdown";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import {
   canEditProblem,
+  canPublishProblemEdit,
+  canProposeProblemEdit,
   canEditSolution,
   canReviewProblem,
   canUseAdminTools,
@@ -197,6 +201,7 @@ export default async function ProblemPage({
     solution?: string;
     translateHint?: string;
     verification?: string;
+    editProposal?: string;
     viewLanguage?: string;
   }>;
 }) {
@@ -541,6 +546,9 @@ export default async function ProblemPage({
     .filter((group) => group.relations.length > 0);
   const isProblemAuthor = Boolean(user && problem.authorId === user.id);
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
+  const canProposeCurrentProblem = Boolean(user && canProposeProblemEdit(user));
+  const publishesProblemEdits = Boolean(user && canPublishProblemEdit(user));
+  const canManageProblemHints = Boolean(user && canEditProblem(user, problem) && publishesProblemEdits);
   const requiresSolutionVerification = problem.verificationMode !== ProblemVerificationMode.NONE;
   const canViewSolutions = !requiresSolutionVerification || attempt?.status === "SOLVED" || canEditCurrentProblem;
   const discussionPostCount = problem.thread?.posts.length ?? 0;
@@ -570,6 +578,7 @@ export default async function ProblemPage({
   const verificationMessage =
     queryParams.verification === "incorrect" ? t.problemDetail.verificationIncorrect : null;
   const heroDomain = problemDomains[0] ?? (problem.domains.length ? "other" : problem.domain);
+  const problemTitleHtml = await renderInlineMarkdown(problem.title);
   const [domainProblemGroups, domainSolvedGroups, nextRecommendationData] = attempt?.status === "SOLVED" && user
     ? await Promise.all([
         prisma.problem.findMany({
@@ -598,6 +607,9 @@ export default async function ProblemPage({
 
   return (
     <div className="problem-detail-shell">
+      {user && !isOwnProblem && attempt?.status !== "SOLVED" && (
+        <ProblemRecommendationExposure problemId={problem.id} />
+      )}
       <section className="problem-hero">
         <img src="/art/hero-rye.jpg" alt="Ivan Shishkin, Rye (1878)" />
         <div className="problem-hero-overlay" />
@@ -697,6 +709,16 @@ export default async function ProblemPage({
         {verificationMessage && (
           <p className="quality-banner quality-needs-work mb-4" role="status">
             {verificationMessage}
+          </p>
+        )}
+        {queryParams.editProposal === "submitted" && (
+          <p className="quality-banner quality-unreviewed mb-4" role="status">
+            Your proposed changes were sent to the admins. The public problem has not changed yet.
+          </p>
+        )}
+        {queryParams.editProposal === "unchanged" && (
+          <p className="quality-banner quality-unreviewed mb-4" role="status">
+            No changes were submitted.
           </p>
         )}
 
@@ -926,7 +948,7 @@ export default async function ProblemPage({
           </section>
         )}
 
-        {(selectedHints.length > 0 || canEditCurrentProblem) && (
+        {(selectedHints.length > 0 || canManageProblemHints) && (
           <section id="problem-hints" className="zen-hide problem-hints-section mt-8">
             <div className="section-heading">
               <h2>{t.problemDetail.hints}</h2>
@@ -945,7 +967,7 @@ export default async function ProblemPage({
                     ? t.problemDetail.hintLanguageFallback(contentLanguageLabel(hint.language))
                     : null,
                   translateHref:
-                    canEditCurrentProblem && hint.isLanguageFallback
+                    canManageProblemHints && hint.isLanguageFallback
                       ? `/problems/${problem.slug}?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(
                           problem.language
                         )}&translateHint=${hint.id}#add-problem-hint`
@@ -959,7 +981,7 @@ export default async function ProblemPage({
                 }}
               />
             )}
-            {canEditCurrentProblem && (
+            {canManageProblemHints && (
               <details
                 id="add-problem-hint"
                 className="problem-hint-composer"
@@ -1148,11 +1170,11 @@ export default async function ProblemPage({
 
         <aside className="problem-rail zen-hide">
         <nav className="problem-rail-actions" aria-label={t.problemDetail.problem}>
-          {canEditCurrentProblem && (
+          {canProposeCurrentProblem && (
             <Link href={`/problems/${problem.slug}/edit`}>
               <span className="problem-rail-action-label">
                 <Pencil size={16} aria-hidden="true" />
-                <span>{t.problemDetail.edit}</span>
+                <span>{publishesProblemEdits ? t.problemDetail.edit : "Propose an edit"}</span>
               </span>
             </Link>
           )}
@@ -1208,7 +1230,8 @@ export default async function ProblemPage({
                 language: problem.language,
                 listed: problem.listed,
                 slug: problem.slug,
-                title: problem.title
+                title: problem.title,
+                titleHtml: problemTitleHtml
               }}
             />
           )}

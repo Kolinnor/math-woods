@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { ensureSlug } from "@/lib/slug";
+import { renderInlineMarkdown } from "@/lib/markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -60,10 +61,11 @@ export async function GET(request: Request) {
   ).slice(0, 20);
 
   return NextResponse.json({
-    concepts: concepts.map((concept) => ({
+    concepts: await Promise.all(concepts.map(async (concept) => ({
       title: concept.title,
+      titleHtml: await renderInlineMarkdown(concept.title),
       slug: concept.slug,
       aliases: concept.aliases
-    }))
+    })))
   });
 }

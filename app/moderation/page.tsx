@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserName } from "@/components/UserName";
 import { markErrorReportReviewedAction } from "@/lib/actions/error-report-actions";
 import {
@@ -15,12 +16,14 @@ import { requireModerator } from "@/lib/auth";
 import { formatUserDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { qualityLabel } from "@/lib/quality";
+import { canUseAdminTools } from "@/lib/permissions";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export const dynamic = "force-dynamic";
 
 export default async function ModerationPage() {
-  await requireModerator();
+  const user = await requireModerator();
+  const canReviewProposedEdits = canUseAdminTools(user);
   const timeZone = await getRequestTimeZone();
 
   const reports = await prisma.report.findMany({
@@ -33,7 +36,7 @@ export default async function ModerationPage() {
   const conceptIds = reports.filter((report) => report.targetType === "CONCEPT").map((report) => report.targetId);
   const postIds = reports.filter((report) => report.targetType === "POST").map((report) => report.targetId);
 
-  const [problems, concepts, posts, flaggedProblems, controversialConcepts, errorReports] = await Promise.all([
+  const [problems, concepts, posts, flaggedProblems, controversialConcepts, errorReports, proposedEdits] = await Promise.all([
     prisma.problem.findMany({
       where: { id: { in: problemIds } },
       select: { id: true, slug: true, title: true, status: true, qualityStatus: true }
@@ -61,7 +64,15 @@ export default async function ModerationPage() {
       orderBy: { createdAt: "desc" },
       include: { user: true },
       take: 30
-    })
+    }),
+    canReviewProposedEdits
+      ? prisma.problemEditProposal.findMany({
+          where: { status: "PENDING" },
+          orderBy: { createdAt: "asc" },
+          include: { problem: { select: { title: true } }, proposer: true },
+          take: 100
+        })
+      : []
   ]);
 
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
@@ -82,6 +93,31 @@ export default async function ModerationPage() {
         </>
       }
     >
+      {canReviewProposedEdits && (
+        <section className="mb-8">
+          <h2 className="mb-3 font-semibold">Proposed problem edits</h2>
+          <div className="grid gap-3">
+            {proposedEdits.map((proposal) => (
+              <div key={proposal.id} className="panel flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <Link href={`/moderation/problem-edits/${proposal.id}` as never} className="font-medium underline">
+                    <AsyncMarkdownInline markdown={proposal.problem.title} />
+                  </Link>
+                  <p className="muted text-sm">
+                    proposed by <UserName user={proposal.proposer} /> - {formatUserDateTime(proposal.createdAt, timeZone)}
+                  </p>
+                  {proposal.editSummary && <p className="mt-1 text-sm">{proposal.editSummary}</p>}
+                </div>
+                <Link href={`/moderation/problem-edits/${proposal.id}` as never} className="button">
+                  Review changes
+                </Link>
+              </div>
+            ))}
+            {proposedEdits.length === 0 && <p className="muted panel p-5">No proposed problem edits.</p>}
+          </div>
+        </section>
+      )}
+
       <section className="mb-8">
         <h2 className="mb-3 font-semibold">Site errors</h2>
         <div className="grid gap-3">
@@ -129,7 +165,7 @@ export default async function ModerationPage() {
             <div key={problem.id} className="panel flex flex-wrap items-center justify-between gap-3 p-4">
               <div>
                 <Link href={`/problems/${problem.slug}`} className="font-medium underline">
-                  {problem.title}
+                  <AsyncMarkdownInline markdown={problem.title} />
                 </Link>
                 <p className="muted text-sm">updated {formatUserDateTime(problem.updatedAt, timeZone)}</p>
               </div>
@@ -151,7 +187,7 @@ export default async function ModerationPage() {
             <div key={concept.id} className="panel flex flex-wrap items-center justify-between gap-3 p-4">
               <div>
                 <Link href={`/concepts/${concept.slug}`} className="font-medium underline">
-                  {concept.title}
+                  <AsyncMarkdownInline markdown={concept.title} />
                 </Link>
                 <p className="muted text-sm">updated {formatUserDateTime(concept.updatedAt, timeZone)}</p>
               </div>
@@ -187,19 +223,19 @@ export default async function ModerationPage() {
                 {report.targetType === "PROBLEM" && problem && (
                   <div className="text-right">
                     <Link href={`/problems/${problem.slug}`} className="underline">
-                      {problem.title}
+                      <AsyncMarkdownInline markdown={problem.title} />
                     </Link>
                     <p className="muted text-sm">{qualityLabel(problem.qualityStatus)}</p>
                   </div>
                 )}
                 {report.targetType === "CONCEPT" && concept && (
                   <Link href={`/concepts/${concept.slug}`} className="underline">
-                    {concept.title}
+                    <AsyncMarkdownInline markdown={concept.title} />
                   </Link>
                 )}
                 {report.targetType === "POST" && post && (
                   <Link href={`/problems/${post.thread.problem.slug}`} className="underline">
-                    Post on {post.thread.problem.title}
+                    Post on <AsyncMarkdownInline markdown={post.thread.problem.title} />
                   </Link>
                 )}
               </div>

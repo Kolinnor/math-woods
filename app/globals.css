@@ -218,6 +218,26 @@ body:has(.problem-detail-shell) {
   min-height: 168px;
 }
 
+/* The public home keeps the full landing artwork; signed-in dashboards stay compact. */
+.home-dashboard .home-hero-guest {
+  aspect-ratio: 1920 / 1301;
+  height: auto;
+  min-height: 600px;
+}
+
+.home-dashboard .home-hero-guest .home-hero-image {
+  object-fit: contain;
+  object-position: center;
+}
+
+.home-dashboard .home-guest-dashboard-hero {
+  align-items: flex-end;
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .home-dashboard .home-hero-image {
   object-position: 50% 35%;
 }
@@ -4067,6 +4087,139 @@ a {
   border-radius: 8px;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 34px rgb(83 52 21 / 0.08);
   padding: 1rem;
+}
+
+.contribution-task-sections {
+  display: grid;
+  gap: 2rem;
+}
+
+.contribution-task-section {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.contribution-task-section-heading {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  color: var(--accent);
+  display: flex;
+  gap: 0.55rem;
+  padding-bottom: 0.55rem;
+}
+
+.contribution-task-section-heading h2 {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.contribution-task-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contribution-task-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--request-action);
+  border-radius: 7px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.contribution-task-card > header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.contribution-task-card h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.contribution-task-card p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
+}
+
+.contribution-task-count {
+  color: var(--request-action);
+  flex: none;
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.contribution-task-count span {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.contribution-task-progress {
+  background: var(--panel-muted);
+  border-radius: 999px;
+  height: 0.35rem;
+  overflow: hidden;
+}
+
+.contribution-task-progress span {
+  background: var(--accent);
+  display: block;
+  height: 100%;
+}
+
+.contribution-task-card > footer {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.contribution-task-card > footer > span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.contribution-task-card > footer .button {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.7rem;
+}
+
+.contribution-task-complete {
+  border-left-color: var(--problem-solved);
+}
+
+.contribution-task-complete .contribution-task-count {
+  color: var(--problem-solved);
+}
+
+.contribution-task-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 1.25rem 0 0;
+}
+
+@media (max-width: 760px) {
+  .contribution-task-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contribution-task-card > header {
+    gap: 0.65rem;
+  }
 }
 
 .contribution-request-board-header {
@@ -8173,7 +8326,7 @@ button.markdown-editor-tool-button:disabled svg {
 }
 
 .markdown-editor .cm-latex-preview .katex {
-  font-size: 1em;
+  font-size: 1.08em;
 }
 
 .markdown-editor .cm-latex-inline {
@@ -12959,8 +13112,8 @@ button.live-search-reset:hover {
 
 /* Concepts browser and reading pages share the problem area's compact ledger language. */
 .concepts-page-shell .forest-page-hero {
-  height: 196px;
-  min-height: 196px;
+  height: 168px;
+  min-height: 168px;
 }
 
 .concepts-page-shell .forest-page-hero > img {
@@ -12969,7 +13122,7 @@ button.live-search-reset:hover {
 
 .concepts-page-shell .forest-page-hero-content {
   max-width: 1240px;
-  padding: 5rem 40px 1.25rem;
+  padding: 0 40px 1.8rem;
 }
 
 .concepts-page-shell .forest-page-hero-actions .button,
@@ -13437,11 +13590,6 @@ button.live-search-reset:hover {
     grid-template-columns: 1fr;
   }
 
-  .concepts-page-shell .forest-page-hero {
-    height: auto;
-    min-height: 230px;
-  }
-
   .concept-detail-page .forest-page-hero {
     height: 96px;
     min-height: 96px;
@@ -13552,6 +13700,12 @@ button.problem-favorite-count:disabled {
   letter-spacing: 0.08em;
   line-height: 1;
   padding: 0.18rem 0.34rem;
+}
+
+.problem-language-badge-translation {
+  background: var(--problem-opened-bg);
+  border-color: var(--problem-opened-border);
+  color: #174f9e;
 }
 
 .problem-review-badge {
@@ -18041,6 +18195,16 @@ body:has(.home-dashboard) > .site-footer {
     align-items: flex-start;
     flex-direction: column;
     justify-content: flex-end;
+  }
+
+  .home-dashboard .home-hero-guest {
+    aspect-ratio: auto;
+    height: min(760px, 100svh);
+    min-height: 620px;
+  }
+
+  .home-dashboard .home-hero-guest .home-hero-image {
+    object-position: 50% top;
   }
 
   .home-guest-dashboard-hero .home-button,

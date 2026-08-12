@@ -15,6 +15,7 @@ import {
 import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
+import { renderInlineMarkdown } from "@/lib/markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,12 @@ export default async function ProblemOfTheDaySchedulePage({
     }
   });
   const scheduleByDate = new Map(schedules.map((schedule) => [schedule.dateKey, schedule]));
+  const titleHtmlByProblemId = new Map(
+    await Promise.all(schedules.map(async (schedule) => [
+      schedule.problem.id,
+      await renderInlineMarkdown(schedule.problem.title)
+    ] as const))
+  );
 
   return (
     <ForestPageLayout
@@ -80,6 +87,7 @@ export default async function ProblemOfTheDaySchedulePage({
               ? [{
                   id: schedule.problem.id,
                   title: schedule.problem.title,
+                  titleHtml: titleHtmlByProblemId.get(schedule.problem.id),
                   slug: schedule.problem.slug,
                   domainLabel: translatedDomainLabel(schedule.problem.domain, t.home.domainLabels),
                   difficulty: schedule.problem.difficulty

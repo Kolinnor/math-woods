@@ -383,7 +383,7 @@ export default async function ConceptPage({
   return (
     <ForestPageLayout
       className="concept-detail-page"
-      title={concept.title}
+      title={<AsyncMarkdownInline markdown={concept.title} />}
       eyebrow={t.conceptDetail.concept}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"

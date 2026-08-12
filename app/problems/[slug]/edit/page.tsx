@@ -25,8 +25,15 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { canDeleteProblem, canEditProblem, canSetProblemQualityStatus, canUseAdminTools } from "@/lib/permissions";
+import {
+  canDeleteProblem,
+  canEditProblem,
+  canPublishProblemEdit,
+  canSetProblemQualityStatus,
+  canUseAdminTools
+} from "@/lib/permissions";
 import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
+import { renderInlineMarkdown } from "@/lib/markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +73,15 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const canDeleteCurrentProblem = canDeleteProblem(user, problem);
   const canManageProblemHints = canEditProblem(user, problem);
   const canManageFrontPageEligibility = canUseAdminTools(user);
-  const canSetCurrentQualityStatus = canSetProblemQualityStatus(user.role, problem.qualityStatus);
+  const publishesImmediately = canPublishProblemEdit(user);
+  const pendingProposal = publishesImmediately
+    ? null
+    : await prisma.problemEditProposal.findFirst({
+        where: { problemId: problem.id, proposerId: user.id, status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true, editSummary: true }
+      });
+  const canSetCurrentQualityStatus = publishesImmediately && canSetProblemQualityStatus(user.role, problem.qualityStatus);
   const canSetUnreviewedStatus = canSetProblemQualityStatus(user.role, QualityStatus.UNREVIEWED);
   const canSetNeedsWorkStatus = canSetProblemQualityStatus(user.role, QualityStatus.NEEDS_WORK);
   const canKeepReviewedStatus =
@@ -92,14 +107,23 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const staleTranslation = Boolean(
     sourceRevision && problem.translatedFromRevisionId && sourceRevision.id > problem.translatedFromRevisionId
   );
+  const relatedGroups = await Promise.all(problem.relatedGroups.map(async (group) => ({
+    title: group.title,
+    problems: await Promise.all(group.relations.map(async ({ targetProblem }) => ({
+      ...targetProblem,
+      titleHtml: await renderInlineMarkdown(targetProblem.title)
+    })))
+  })));
 
   return (
     <ForestPageLayout
-      title="Edit problem"
+      title={publishesImmediately ? "Edit problem" : "Propose an edit"}
       eyebrow={problem.title}
       heroImage="/art/rye.jpg"
       heroAlt="Ivan Shishkin, Rye"
-      description="Changes create a revision and refresh wikilinks automatically."
+      description={publishesImmediately
+        ? "Changes create a revision and refresh wikilinks automatically."
+        : "Your changes will be sent to an admin for review before anyone else can see them."}
       workspaceClassName={problem.translatedFromProblem ? undefined : "forest-page-workspace-narrow"}
       actions={
         <>
@@ -114,6 +138,13 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
     >
       <div className={problem.translatedFromProblem ? "translation-compose-page" : ""}>
         <div className="translation-compose-main">
+          {pendingProposal && (
+            <section className="quality-banner quality-unreviewed mb-4" role="status">
+              <strong>You already have a proposed edit awaiting review.</strong>{" "}
+              Submitting this form again will replace it with a proposal based on the current public version.
+              {pendingProposal.editSummary ? ` Current summary: ${pendingProposal.editSummary}.` : ""}
+            </section>
+          )}
           <ProblemConcurrentEditForm
             action={updateProblemAction.bind(null, problem.id)}
             baseVersion={problem.version}
@@ -121,7 +152,9 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             historyHref={`/problems/${problem.slug}/history`}
           >
             <section className="problem-compose-card">
-              <div className="problem-compose-section-title">Essential information</div>
+              <div className="problem-compose-section-title">
+                {publishesImmediately ? "Essential information" : "Propose an edit"}
+              </div>
               <label className="grid gap-2">
                 <span className="text-sm font-medium">Title</span>
                 <input name="title" defaultValue={problem.title} />
@@ -155,7 +188,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             </section>
 
             <div className="problem-compose-actions">
-              <button type="submit">Save changes</button>
+              <button type="submit">{publishesImmediately ? "Save changes" : "Submit for review"}</button>
               <ProblemDetailsDisclosure>
                   <section className="problem-compose-subsection">
                     <h2>Origin</h2>
@@ -252,7 +285,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                         </select>
                       </label>
                     )}
-                    {problem.translatedFromProblem && (
+                    {publishesImmediately && problem.translatedFromProblem && (
                       <label className="checkbox-field">
                         <input name="markTranslationFresh" type="checkbox" defaultChecked={false} />
                         <span>
@@ -260,12 +293,14 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                         </span>
                       </label>
                     )}
-                    <ProblemVerificationFields
-                      initialMode={problem.verificationMode}
-                      initialPrompt={problem.verificationPrompt ?? ""}
-                      initialAnswer={problem.verificationAnswer ?? ""}
-                      modeOptions={Object.entries(VERIFICATION_MODE_LABELS)}
-                    />
+                    {publishesImmediately && (
+                      <ProblemVerificationFields
+                        initialMode={problem.verificationMode}
+                        initialPrompt={problem.verificationPrompt ?? ""}
+                        initialAnswer={problem.verificationAnswer ?? ""}
+                        modeOptions={Object.entries(VERIFICATION_MODE_LABELS)}
+                      />
+                    )}
                     <label className="grid gap-2">
                       <span className="field-label-with-help text-sm font-medium">
                         Edit summary
@@ -279,17 +314,14 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                     <h2>Related problems</h2>
                     <ProblemRelationPicker
                       excludeSlug={problem.slug}
-                      initialGroups={problem.relatedGroups.map((group) => ({
-                        title: group.title,
-                        problems: group.relations.map(({ targetProblem }) => targetProblem)
-                      }))}
+                      initialGroups={relatedGroups}
                     />
                   </section>
               </ProblemDetailsDisclosure>
             </div>
           </ProblemConcurrentEditForm>
 
-          {canManageProblemHints && (
+          {canManageProblemHints && publishesImmediately && (
             <section className="problem-hint-admin panel mt-6 grid gap-5 p-5">
               <div>
                 <h2 className="text-lg font-semibold">Hints before solutions</h2>

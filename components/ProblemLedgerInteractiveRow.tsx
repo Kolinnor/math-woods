@@ -80,6 +80,7 @@ export function ProblemLedgerInteractiveRow({
   const rowTitle = isOwnProblem ? labels.yourProblem : favorite ? labels.favoriteProblem : undefined;
   const solveLabel = solved ? labels.unmarkSolved : labels.markSolved;
   const attemptLabel = attempted ? labels.attempted : labels.startAttempting;
+  const signInHref = `/login?returnTo=${encodeURIComponent(`/problems/${problemSlug}`)}`;
 
   return (
     <div
@@ -88,7 +89,7 @@ export function ProblemLedgerInteractiveRow({
     >
       <div className="problem-ledger-progress-action">
         {!signedIn ? (
-          <Link href="/login" className="problem-ledger-check" title={labels.markSolved} aria-label={labels.markSolved}>
+          <Link href={signInHref as never} className="problem-ledger-check" title={labels.markSolved} aria-label={labels.markSolved}>
             <Check size={14} strokeWidth={3} />
           </Link>
         ) : !solved && requiresVerification ? (
@@ -134,7 +135,7 @@ export function ProblemLedgerInteractiveRow({
       <div className="problem-ledger-side">
         {author}
         {!solved && (!signedIn ? (
-          <Link href="/login" className="problem-ledger-attempt" title={labels.startAttempting} aria-label={labels.startAttempting}>
+          <Link href={signInHref as never} className="problem-ledger-attempt" title={labels.startAttempting} aria-label={labels.startAttempting}>
             <Target size={16} strokeWidth={2.5} />
           </Link>
         ) : (
@@ -170,7 +171,7 @@ export function ProblemLedgerInteractiveRow({
             {favoriteCount}
           </span>
         ) : !signedIn ? (
-          <Link href="/login" className="problem-favorite-count" title={labels.addFavorite} aria-label={labels.addFavorite}>
+          <Link href={signInHref as never} className="problem-favorite-count" title={labels.addFavorite} aria-label={labels.addFavorite}>
             <Heart size={15} />
             {favoriteCount}
           </Link>

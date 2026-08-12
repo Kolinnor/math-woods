@@ -2,6 +2,7 @@ import { ConceptKind, ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import type { Route } from "next";
 import Link from "next/link";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
@@ -325,7 +326,7 @@ export default async function ConceptsPage({
               >
                 <div className="concept-ledger-main">
                   <div className="concept-ledger-title-row">
-                    <h2>{concept.title}</h2>
+                    <h2><AsyncMarkdownInline markdown={concept.title} /></h2>
                     <span className={`concept-status-badge concept-status-${concept.status.toLowerCase()}`}>
                       {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
                     </span>
@@ -360,7 +361,7 @@ export default async function ConceptsPage({
               <div className="concept-discovery-links">
                 {featuredConcepts.map((concept) => (
                   <Link key={concept.id} href={`/concepts/${concept.slug}`} className="featured-concept-link">
-                    <strong>{concept.title}</strong>
+                    <strong><AsyncMarkdownInline markdown={concept.title} /></strong>
                     <span>{translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}</span>
                   </Link>
                 ))}

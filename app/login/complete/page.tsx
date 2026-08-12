@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { SignupAvatarPicker } from "@/components/SignupAvatarPicker";
 import {
   completeOAuthSignupAction,
   linkOAuthToExistingAccountAction
 } from "@/lib/actions/oauth-actions";
-import { DEFAULT_AVATAR_PRESETS, type DefaultAvatarPreset } from "@/lib/avatar-presets";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
@@ -51,9 +49,6 @@ export default async function CompleteOAuthPage({
       })
     : null;
   const providerLabel = oauthProviderLabel(attempt.provider);
-  const avatarPresetLabels = Object.fromEntries(
-    DEFAULT_AVATAR_PRESETS.map((preset) => [preset, t.profile.profileImagePresetLabel(preset)])
-  ) as Record<DefaultAvatarPreset, string>;
 
   return (
     <ForestPageLayout
@@ -106,17 +101,6 @@ export default async function CompleteOAuthPage({
                 required
               />
             </label>
-            <SignupAvatarPicker
-              seed={attempt.providerDisplayName ?? attempt.providerEmail ?? "new-account"}
-              labels={{
-                animal: t.auth.avatarAnimal,
-                background: t.auth.avatarBackground,
-                backgroundColors: t.profile.profileImageBackgroundColors,
-                help: t.auth.avatarHelp,
-                presetLabels: avatarPresetLabels,
-                title: t.auth.avatarTitle
-              }}
-            />
             <label className="grid gap-2">
               <span className="text-sm font-medium">Email</span>
               <input

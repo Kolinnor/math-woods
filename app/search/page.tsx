@@ -141,7 +141,7 @@ export default async function SearchPage({
           <div className="grid gap-3">
             {concepts.map((concept) => (
               <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
-                <div className="font-medium">{concept.title}</div>
+                <div className="font-medium"><AsyncMarkdownInline markdown={concept.title} /></div>
                 <div className="muted mt-1 text-xs">
                   {translatedDomainLabel(concept.domainCode, t.home.domainLabels)} / {t.concepts.statuses[concept.status]}
                 </div>

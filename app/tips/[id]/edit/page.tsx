@@ -12,6 +12,7 @@ import { loadTip } from "@/lib/daily-tip";
 import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
+import { renderInlineMarkdown } from "@/lib/markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -47,16 +48,17 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
       })
     : [];
   const selectedProblemsById = new Map(selectedProblems.map((problem) => [problem.id, problem]));
-  const initialProblems: TipPickerProblem[] = tipProblems
+  const initialProblems: TipPickerProblem[] = await Promise.all(tipProblems
     .map((link) => selectedProblemsById.get(link.problemId))
     .filter((problem): problem is NonNullable<typeof problem> => Boolean(problem))
-    .map((problem) => ({
+    .map(async (problem) => ({
       id: problem.id,
       title: problem.title,
+      titleHtml: await renderInlineMarkdown(problem.title),
       slug: problem.slug,
       domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
       difficulty: problem.difficulty
-    }));
+    })));
 
   return (
     <ForestPageLayout

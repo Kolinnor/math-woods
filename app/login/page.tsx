@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { OAuthProviderIcon } from "@/components/OAuthProviderIcon";
-import { SignupAvatarPicker } from "@/components/SignupAvatarPicker";
 import { loginAction, registerAction } from "@/lib/actions/auth-actions";
-import { DEFAULT_AVATAR_PRESETS, type DefaultAvatarPreset } from "@/lib/avatar-presets";
 import { getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { configuredOAuthProviders, safeReturnTo } from "@/lib/oauth";
@@ -44,9 +42,6 @@ export default async function LoginPage({
   const oauthError = oauthErrorMessage(params.oauthError);
   const providers = configuredOAuthProviders();
   const returnTo = safeReturnTo(params.returnTo);
-  const avatarPresetLabels = Object.fromEntries(
-    DEFAULT_AVATAR_PRESETS.map((preset) => [preset, t.profile.profileImagePresetLabel(preset)])
-  ) as Record<DefaultAvatarPreset, string>;
 
   return (
     <ForestPageLayout
@@ -102,20 +97,9 @@ export default async function LoginPage({
             <input name="displayName" minLength={2} maxLength={DISPLAY_NAME_MAX_LENGTH} required />
             <small className="muted">{t.auth.profileNameHelp}</small>
           </label>
-          <SignupAvatarPicker
-            seed="new-account"
-            labels={{
-              animal: t.auth.avatarAnimal,
-              background: t.auth.avatarBackground,
-              backgroundColors: t.profile.profileImageBackgroundColors,
-              help: t.auth.avatarHelp,
-              presetLabels: avatarPresetLabels,
-              title: t.auth.avatarTitle
-            }}
-          />
           <label className="grid gap-2">
             <span className="text-sm font-medium">{t.auth.email}</span>
-            <input name="email" type="email" placeholder="you@example.com" required />
+            <input name="email" type="email" required />
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-medium">{t.auth.password}</span>

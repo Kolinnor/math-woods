@@ -101,7 +101,7 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
             <div className="grid gap-3">
               {quote.relatedConcepts.map(({ concept }) => (
                 <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
-                  <div className="font-medium">{concept.title}</div>
+                  <div className="font-medium"><AsyncMarkdownInline markdown={concept.title} /></div>
                   {concept.aliases.length > 0 && (
                     <div className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</div>
                   )}

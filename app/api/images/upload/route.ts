@@ -9,6 +9,7 @@ import {
 } from "@/lib/image-storage";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { objectStorageUploadError } from "@/lib/image-upload-errors";
 
 const MAX_UPLOAD_BODY_BYTES = IMAGE_UPLOAD_MAX_BYTES + 16_000;
 
@@ -33,7 +34,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Too many upload requests. Please wait a moment." }, { status: 429 });
   }
 
-  const config = getImageStorageConfig();
+  let config: ReturnType<typeof getImageStorageConfig>;
+  try {
+    config = getImageStorageConfig();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Image storage configuration is invalid. Check the endpoint and public image URL." },
+      { status: 503 }
+    );
+  }
   if (!config) {
     return NextResponse.json({ ok: false, error: "Image storage is not configured." }, { status: 503 });
   }
@@ -50,33 +59,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Image file is required." }, { status: 400 });
   }
 
+  let upload: ReturnType<typeof validateImageUploadInput>;
   try {
-    const upload = validateImageUploadInput({
+    upload = validateImageUploadInput({
       filename: image.name,
       contentType: image.type,
       sizeBytes: image.size
-    });
-    const key = buildImageObjectKey({ userId: user.id, filename: upload.filename, contentType: upload.contentType });
-    const presigned = createPresignedImageUpload(config, key, upload.contentType);
-    const response = await fetch(presigned.url, {
-      method: presigned.method,
-      headers: presigned.headers,
-      body: Buffer.from(await image.arrayBuffer())
-    });
-
-    if (!response.ok) {
-      return NextResponse.json({ ok: false, error: "Image storage rejected the upload." }, { status: 502 });
-    }
-
-    return NextResponse.json({
-      ok: true,
-      image: {
-        key: presigned.key,
-        publicUrl: presigned.publicUrl
-      }
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid image upload.";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
+
+  const key = buildImageObjectKey({ userId: user.id, filename: upload.filename, contentType: upload.contentType });
+  let presigned: ReturnType<typeof createPresignedImageUpload>;
+  try {
+    presigned = createPresignedImageUpload(config, key, upload.contentType);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Math Woods could not prepare the Object Storage request. Check the endpoint, region, and public image URL." },
+      { status: 503 }
+    );
+  }
+  let imageBody: ArrayBuffer;
+  try {
+    imageBody = await image.arrayBuffer();
+  } catch {
+    return NextResponse.json({ ok: false, error: "The server could not read the selected image file." }, { status: 400 });
+  }
+  let response: Response;
+  try {
+    response = await fetch(presigned.url, {
+      method: presigned.method,
+      headers: presigned.headers,
+      body: imageBody
+    });
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Math Woods could not connect to Object Storage. Check the storage endpoint and network access." },
+      { status: 502 }
+    );
+  }
+
+  if (!response.ok) {
+    const responseBody = await response.text().catch(() => "");
+    return NextResponse.json({ ok: false, error: objectStorageUploadError(response.status, responseBody) }, { status: 502 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    image: {
+      key: presigned.key,
+      publicUrl: presigned.publicUrl
+    }
+  });
 }

@@ -12,6 +12,7 @@ import {
   PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH,
   type ProblemDeliveryIntent
 } from "@/lib/problem-challenges";
+import { MarkdownInline } from "@/components/MarkdownInline";
 
 type ProblemChallengeLinkDialogProps = {
   buttonClassName?: string;
@@ -23,6 +24,7 @@ type ProblemChallengeLinkDialogProps = {
     domainLabel: string;
     slug: string;
     title: string;
+    titleHtml: string;
   };
 };
 
@@ -235,7 +237,7 @@ export const ProblemChallengeLinkDialog = forwardRef<
               <span className="text-sm font-medium">{isShare ? labels.shareProblem : labels.problem}</span>
               <div className="problem-challenge-selected">
                 <div>
-                  <strong>{problem.title}</strong>
+                  <strong><MarkdownInline html={problem.titleHtml} /></strong>
                   <span>
                     {problem.domainLabel}
                     {problem.difficulty !== null ? ` · ${problem.difficulty}/100` : ""}

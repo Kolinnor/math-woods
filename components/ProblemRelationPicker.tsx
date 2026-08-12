@@ -2,9 +2,11 @@
 
 import { Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MarkdownInline } from "@/components/MarkdownInline";
 
 type RelatedProblem = {
   title: string;
+  titleHtml?: string;
   slug: string;
   difficulty: number | null;
   listed: boolean;
@@ -197,7 +199,7 @@ export function ProblemRelationPicker({
               {group.problems.map((problem) => (
                 <div key={problem.slug} className="relation-selected-problem">
                   <div>
-                    <strong>{problem.title}</strong>
+                    <strong>{problem.titleHtml ? <MarkdownInline html={problem.titleHtml} /> : problem.title}</strong>
                     <span>{problemMeta(problem)}</span>
                   </div>
                   <button
@@ -238,7 +240,7 @@ export function ProblemRelationPicker({
             {!isSearching &&
               suggestions.map((problem) => (
                 <button key={problem.slug} type="button" onClick={() => addProblem(problem)}>
-                  <strong>{problem.title}</strong>
+                  <strong>{problem.titleHtml ? <MarkdownInline html={problem.titleHtml} /> : problem.title}</strong>
                   <span>{problemMeta(problem)}</span>
                 </button>
               ))}

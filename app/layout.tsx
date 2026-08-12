@@ -175,6 +175,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   </div>
                   <div className="nav-menu-divider nav-menu-primary-divider" />
                   <Link href="/recent-changes">{t.nav.recentChanges}</Link>
+                  <Link href={"/contributing/tasks" as Route}>{t.nav.contributionTasks}</Link>
                   {user && canUseAdminTools(user) && <Link href="/contributing">{t.nav.contributing}</Link>}
                   <Link href="/suggestions">{t.nav.suggestions}</Link>
                   <Link href="/about">{t.nav.about}</Link>

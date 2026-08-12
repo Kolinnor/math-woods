@@ -69,11 +69,16 @@ export default async function ContributingPage({
       heroAlt="Ivan Shishkin, Oak Grove"
       meta={<p>{allRequests.length} open or recent requests</p>}
       actions={
-        canEditPage && (
-          <Link href={"/contributing/edit" as Route} className="button secondary">
-            Edit page
+        <>
+          <Link href={"/contributing/tasks" as Route} className="button">
+            What remains to be done
           </Link>
-        )
+          {canEditPage && (
+            <Link href={"/contributing/edit" as Route} className="button secondary">
+              Edit page
+            </Link>
+          )}
+        </>
       }
     >
       <div className="mt-8 grid gap-7">

@@ -894,6 +894,10 @@ export default async function ProblemsPage({
               const tone = problemDifficultyTone(difficulty);
               const authorName = displayNameForUser(problem.author);
               const showLanguageBadge = problem.language !== preferredLanguage;
+              const problemHref = `/problems/${problem.slug}`;
+              const openProblemHref = user
+                ? problemHref
+                : `/login?returnTo=${encodeURIComponent(problemHref)}`;
 
               return (
                 <ProblemLedgerInteractiveRow
@@ -940,7 +944,7 @@ export default async function ProblemsPage({
                   requiresVerification={problem.verificationMode !== "NONE" && !isOwnProblem}
                   signedIn={Boolean(user)}
                 >
-                  <Link href={`/problems/${problem.slug}`} className="problem-ledger-content">
+                  <Link href={openProblemHref as never} className="problem-ledger-content">
                     <div className="problem-ledger-difficulty" style={{ color: tone }}>
                     <span>{difficulty ? String(difficulty).padStart(2, "0") : "--"}</span>
                     <span className="problem-ledger-bars" aria-hidden="true">
@@ -954,7 +958,10 @@ export default async function ProblemsPage({
                       <h3>
                         <AsyncMarkdownInline markdown={problem.title} />
                         {showLanguageBadge && (
-                          <span className="problem-language-badge" title={contentLanguageLabel(problem.language)}>
+                          <span
+                            className="problem-language-badge problem-language-badge-translation"
+                            title={contentLanguageLabel(problem.language)}
+                          >
                             {problem.language.toUpperCase()}
                           </span>
                         )}

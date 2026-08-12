@@ -142,6 +142,40 @@ export async function notifyProblemEditSubscribers({
   );
 }
 
+export async function notifyAdminsOfProblemEditProposal({
+  actorId,
+  actorName,
+  problemTitle,
+  proposalId
+}: {
+  actorId: number;
+  actorName: string;
+  problemTitle: string;
+  proposalId: number;
+}) {
+  const admins = await prisma.user.findMany({
+    where: {
+      role: { in: [Role.ADMIN, Role.OWNER] },
+      deletedAt: null,
+      id: { not: actorId }
+    },
+    select: { id: true }
+  });
+
+  return Promise.all(
+    admins.map(({ id: userId }) =>
+      createNotification({
+        userId,
+        actorId,
+        type: NotificationType.PROBLEM_EDIT_PROPOSED,
+        title: "Problem edit proposed",
+        body: `${actorName} proposed changes to "${problemTitle}".`,
+        href: `/moderation/problem-edits/${proposalId}`
+      })
+    )
+  );
+}
+
 export async function notifyConceptAuthor({
   conceptId,
   actorId,

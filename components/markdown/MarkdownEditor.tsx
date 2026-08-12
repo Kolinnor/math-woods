@@ -18,6 +18,8 @@ import katex from "katex";
 import { ChevronDown, ImageIcon, Loader2, Orbit } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import { FieldHelp } from "@/components/FieldHelp";
+import { MarkdownInline } from "@/components/MarkdownInline";
+import { imageUploadNetworkError, imageUploadResponseError } from "@/lib/image-upload-errors";
 import {
   DEFAULT_LATEX_PREFERENCES,
   type LatexPreferenceValues
@@ -184,6 +186,7 @@ type LinkTargetType = "concept" | "problem";
 type LinkSuggestion = {
   targetType: LinkTargetType;
   title: string;
+  titleHtml: string;
   slug: string;
   aliases: string[];
   meta?: string;
@@ -193,6 +196,7 @@ type ConceptSuggestionResponse = Omit<LinkSuggestion, "targetType">;
 
 type ProblemSuggestionResponse = {
   title: string;
+  titleHtml: string;
   slug: string;
   domainLabel: string;
   difficulty: number | null;
@@ -1782,7 +1786,8 @@ export function MarkdownEditor({
                     .join(" / "),
                   slug: suggestion.slug,
                   targetType: "problem" as const,
-                  title: suggestion.title
+                  title: suggestion.title,
+                  titleHtml: suggestion.titleHtml
                 }))
               : []
           );
@@ -1934,8 +1939,11 @@ export function MarkdownEditor({
       });
       const data = (await response.json().catch(() => null)) as ImageUploadResponse | null;
 
-      if (!response.ok || !data?.ok || !data.image?.publicUrl) {
-        throw new Error(data?.error || "Image upload failed.");
+      if (!response.ok || !data?.ok) {
+        throw new Error(imageUploadResponseError(response.status, data));
+      }
+      if (!data.image?.publicUrl) {
+        throw new Error("The upload service accepted the image but did not return its public URL.");
       }
 
       const insert = imageInsertText(view, markdownImage(data.image.publicUrl, imageAltText(file.name, selectedText)));
@@ -1949,7 +1957,7 @@ export function MarkdownEditor({
       setImageUploadMessage("Image inserted.");
       window.setTimeout(() => setImageUploadMessage(null), 2400);
     } catch (error) {
-      setImageUploadMessage(error instanceof Error ? error.message : "Image upload failed.");
+      setImageUploadMessage(imageUploadNetworkError(error));
     } finally {
       imageUploadingRef.current = false;
       setImageUploading(false);
@@ -2175,7 +2183,7 @@ export function MarkdownEditor({
                   type="button"
                   onClick={() => selectLinkSuggestion(suggestion)}
                 >
-                  <strong>{suggestion.title}</strong>
+                  <strong><MarkdownInline html={suggestion.titleHtml} /></strong>
                   {suggestion.aliases.length > 0 && <span>{suggestion.aliases.slice(0, 3).join(", ")}</span>}
                   {suggestion.meta && <span>{suggestion.meta}</span>}
                 </button>

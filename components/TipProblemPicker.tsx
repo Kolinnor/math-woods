@@ -5,10 +5,12 @@ import Link from "next/link";
 import { GripVertical, Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState, type DragEvent, type KeyboardEvent } from "react";
 import { Difficulty } from "@/components/Difficulty";
+import { MarkdownInline } from "@/components/MarkdownInline";
 
 export type TipPickerProblem = {
   id: number;
   title: string;
+  titleHtml?: string;
   slug: string;
   domainLabel: string;
   difficulty: number | null;
@@ -213,7 +215,7 @@ export function OrderedProblemPicker({
               <GripVertical size={16} aria-hidden="true" />
             </button>
             <div className="tip-selected-problem-copy">
-              <strong>{problem.title}</strong>
+              <strong>{problem.titleHtml ? <MarkdownInline html={problem.titleHtml} /> : problem.title}</strong>
               <ProblemMeta problem={problem} />
             </div>
             <button
@@ -264,7 +266,7 @@ export function OrderedProblemPicker({
           {!isSearching &&
             suggestions.map((problem) => (
               <button key={problem.id} type="button" onClick={() => addProblem(problem)}>
-                <strong>{problem.title}</strong>
+                <strong>{problem.titleHtml ? <MarkdownInline html={problem.titleHtml} /> : problem.title}</strong>
                 <ProblemMeta problem={problem} />
               </button>
             ))}

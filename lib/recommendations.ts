@@ -1,4 +1,4 @@
-export const RECOMMENDATION_MODEL_VERSION = 2;
+export const RECOMMENDATION_MODEL_VERSION = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -70,6 +70,8 @@ export type RecommendationCandidate = {
   attemptStatus?: RecommendationAttemptStatus | null;
   attemptUpdatedAt?: Date | null;
   favorite?: boolean;
+  exposureCount?: number;
+  lastOpenedAt?: Date | null;
 };
 
 export type RecommendationScorePart = {
@@ -254,7 +256,11 @@ export function scoreProblemRecommendation(
   parts.push(scorePart("quality", `Quality status: ${candidate.qualityStatus.toLowerCase()}`, qualityPoints));
 
   if (candidate.attemptStatus === "STARTED") {
-    parts.push(scorePart("resume", "Continue a started problem", 15));
+    const ageDays = candidate.attemptUpdatedAt
+      ? Math.max(0, now.getTime() - candidate.attemptUpdatedAt.getTime()) / DAY_MS
+      : 0;
+    const resumePoints = ageDays < 2 ? 15 : ageDays < 5 ? 7 : ageDays < 10 ? -4 : -10;
+    parts.push(scorePart("resume", "Continue a started problem", resumePoints));
   } else if (candidate.attemptStatus === "REVIEW_LATER") {
     parts.push(scorePart("review_later", "Saved to revisit", 11));
   } else if (candidate.attemptStatus === "BLOCKED") {
@@ -266,6 +272,16 @@ export function scoreProblemRecommendation(
         ? scorePart("recently_blocked", "Recently marked as blocked", -9)
         : scorePart("blocked_return", "Ready to revisit after a pause", 2)
     );
+  }
+
+  if (candidate.exposureCount && candidate.lastOpenedAt) {
+    const daysSinceLastOpen = Math.max(0, now.getTime() - candidate.lastOpenedAt.getTime()) / DAY_MS;
+    const activeExposureCount = Math.min(6, candidate.exposureCount);
+    const recency = 0.5 ** (daysSinceLastOpen / 14);
+    const fatiguePoints = -Math.round(Math.max(0, activeExposureCount - 1) * 6 * recency);
+    if (fatiguePoints < 0) {
+      parts.push(scorePart("exposure_fatigue", "Repeatedly opened without solving", fatiguePoints));
+    }
   }
 
   if (candidate.favorite) parts.push(scorePart("favorite", "Previously favorited", 7));

@@ -92,6 +92,14 @@ export function canEditProblem(user: PermissionUser, problem: ProblemPermissionT
   return problem.authorId === user.id || hasTrustedPrivileges(user.role);
 }
 
+export function canProposeProblemEdit(user: PermissionUser) {
+  return isVerifiedContributor(user);
+}
+
+export function canPublishProblemEdit(user: PermissionUser) {
+  return hasTrustedPrivileges(user.role);
+}
+
 export function canRollbackProblem(user: PermissionUser, problem: ProblemPermissionTarget) {
   return canEditProblem(user, problem);
 }

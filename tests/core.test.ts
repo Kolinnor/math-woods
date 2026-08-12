@@ -22,6 +22,12 @@ import {
   parseMinimumConceptExercises
 } from "../lib/concept-exercises.ts";
 import { parseConceptKind } from "../lib/concept-kinds.ts";
+import {
+  hasExamplesSection,
+  parseContributionTaskKey,
+  translationGroupCount,
+  translationSourcesMissingLanguage
+} from "../lib/contribution-tasks.ts";
 import { slugify } from "../lib/slug.ts";
 import { isSitePresenceId, sitePresenceIsActive } from "../lib/site-presence-config.ts";
 import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
@@ -63,6 +69,11 @@ import {
   validateImageUploadInput,
   type ImageStorageConfig
 } from "../lib/image-storage.ts";
+import {
+  imageUploadNetworkError,
+  imageUploadResponseError,
+  objectStorageUploadError
+} from "../lib/image-upload-errors.ts";
 import { chatImageDailyLimitForRole, chatImageUrl } from "../lib/chat-image-config.ts";
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
@@ -213,6 +224,8 @@ import {
   canChangeConceptStatus,
   canDeletePlaylist,
   canEditProblem,
+  canProposeProblemEdit,
+  canPublishProblemEdit,
   canManageUserRoles,
   canReviewConcept,
   canReviewProblem,
@@ -1080,6 +1093,12 @@ assert.equal(isVerifiedContributor({ id: 1, role: Role.MODERATOR, emailVerifiedA
 assert.equal(canEditProblem({ id: 1, role: Role.USER }, { authorId: 1 }), true);
 assert.equal(canEditProblem({ id: 1, role: Role.USER }, { authorId: 2 }), false);
 assert.equal(canEditProblem({ id: 1, role: Role.MODERATOR }, { authorId: 2 }), true);
+assert.equal(canProposeProblemEdit({ id: 1, role: Role.USER, emailVerifiedAt: null }), false);
+assert.equal(canProposeProblemEdit({ id: 1, role: Role.USER, emailVerifiedAt: new Date(0) }), true);
+assert.equal(canProposeProblemEdit({ id: 1, role: Role.MODERATOR, emailVerifiedAt: null }), true);
+assert.equal(canPublishProblemEdit({ id: 1, role: Role.USER }), false);
+assert.equal(canPublishProblemEdit({ id: 1, role: Role.MODERATOR }), true);
+assert.equal(canPublishProblemEdit({ id: 1, role: Role.ADMIN }), true);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 1 }), true);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 2 }), false);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.ADMIN }, { authorId: 2 }), true);
@@ -1290,6 +1309,10 @@ assert.match(renderedStandaloneDisplayLatex, /<\/span>after<\/p>\s*$/);
 
 const renderedInlineDisplayLatex = await renderInlineMarkdown("Title $$x^2 + 1$$");
 assert.match(renderedInlineDisplayLatex, /^Title <span class="katex-display"/);
+const renderedInlineLatexTitle = await renderInlineMarkdown("$K$-morphism");
+assert.match(renderedInlineLatexTitle, /class="katex"/);
+assert.match(renderedInlineLatexTitle, /-morphism$/);
+assert.equal(renderedInlineLatexTitle.includes("$K$"), false);
 
 assert.equal(
   markdownFoldBlock("Selected text"),
@@ -1672,6 +1695,22 @@ assert.equal(presignedUpload.headers["Cache-Control"], "public, max-age=31536000
 assert.equal(presignedUpload.publicUrl, "https://images.mathwoods.org/uploads/2026/07/user-7/example.webp");
 assert.match(presignedUpload.url, /^https:\/\/s3\.example\.test\/mathwoods-images\/uploads\/2026\/07\/user-7\/example\.webp\?/);
 assert.match(presignedUpload.url, /X-Amz-Signature=/);
+assert.equal(imageUploadResponseError(401), "Your session has expired. Sign in again, then retry the upload.");
+assert.equal(
+  imageUploadResponseError(502, { error: "Object Storage refused the upload (403)." }),
+  "Object Storage refused the upload (403)."
+);
+assert.equal(
+  imageUploadResponseError(413),
+  "The server rejected this image because it is too large. Use an image smaller than 5 MB."
+);
+assert.match(imageUploadResponseError(504), /server error 504/);
+assert.match(imageUploadNetworkError(new TypeError("Failed to fetch")), /could not reach/);
+assert.match(objectStorageUploadError(403), /access keys/);
+assert.match(objectStorageUploadError(404), /bucket name/);
+assert.match(objectStorageUploadError(403, "<Error><Code>AccessDenied</Code></Error>"), /bucket permissions/);
+assert.match(objectStorageUploadError(403, "<Error><Code>SignatureDoesNotMatch</Code></Error>"), /region/);
+assert.match(objectStorageUploadError(404, "<Error><Code>NoSuchBucket</Code></Error>"), /does not exist/);
 
 assert.equal(parseExplorationValue("true"), true);
 assert.equal(parseExplorationValue("42"), 42);
@@ -2186,6 +2225,74 @@ assert.equal(
   -9
 );
 
+const freshStartedRecommendation = scoreProblemRecommendation(
+  recommendationProfile,
+  {
+    id: 5,
+    translationGroupId: "fresh-started",
+    difficulty: 42,
+    domains: ["ALGEBRA"],
+    qualityStatus: "REVIEWED",
+    isExercise: false,
+    createdAt: recommendationNow,
+    attemptStatus: "STARTED",
+    attemptUpdatedAt: new Date("2026-07-31T12:00:00.000Z")
+  },
+  { mathLevel: "UNDERGRAD", now: recommendationNow }
+);
+const staleStartedRecommendation = scoreProblemRecommendation(
+  recommendationProfile,
+  {
+    id: 6,
+    translationGroupId: "stale-started",
+    difficulty: 42,
+    domains: ["ALGEBRA"],
+    qualityStatus: "REVIEWED",
+    isExercise: false,
+    createdAt: recommendationNow,
+    attemptStatus: "STARTED",
+    attemptUpdatedAt: new Date("2026-07-20T12:00:00.000Z")
+  },
+  { mathLevel: "UNDERGRAD", now: recommendationNow }
+);
+assert.ok(freshStartedRecommendation && staleStartedRecommendation);
+assert.ok(freshStartedRecommendation.score > staleStartedRecommendation.score);
+assert.equal(staleStartedRecommendation.parts.find((part) => part.code === "resume")?.points, -10);
+
+const fatiguedRecommendation = scoreProblemRecommendation(
+  recommendationProfile,
+  {
+    id: 7,
+    translationGroupId: "repeatedly-opened",
+    difficulty: 42,
+    domains: ["ALGEBRA"],
+    qualityStatus: "REVIEWED",
+    isExercise: false,
+    createdAt: recommendationNow,
+    exposureCount: 5,
+    lastOpenedAt: recommendationNow
+  },
+  { mathLevel: "UNDERGRAD", now: recommendationNow }
+);
+const restedRecommendation = scoreProblemRecommendation(
+  recommendationProfile,
+  {
+    id: 8,
+    translationGroupId: "rested-after-openings",
+    difficulty: 42,
+    domains: ["ALGEBRA"],
+    qualityStatus: "REVIEWED",
+    isExercise: false,
+    createdAt: recommendationNow,
+    exposureCount: 5,
+    lastOpenedAt: new Date("2026-05-01T12:00:00.000Z")
+  },
+  { mathLevel: "UNDERGRAD", now: recommendationNow }
+);
+assert.ok(fatiguedRecommendation && restedRecommendation);
+assert.ok(restedRecommendation.score > fatiguedRecommendation.score);
+assert.equal(fatiguedRecommendation.parts.find((part) => part.code === "exposure_fatigue")?.points, -24);
+
 const progressMap = buildProgressMap(
   [
     { translationGroupId: "algebra-1", domain: "algebra" },
@@ -2259,6 +2366,28 @@ assert.equal(pickRandomDifferent([], undefined, () => 0), undefined);
 assert.equal(pickRandomDifferent(["only"], "only", () => 0), "only");
 assert.equal(pickRandomDifferent(["first", "second", "third"], "first", () => 0), "second");
 assert.equal(pickRandomDifferent(["first", "second", "third"], "second", () => 0.99), "third");
+
+assert.equal(hasExamplesSection("## Examples\n\n- A square."), true);
+assert.equal(hasExamplesSection("### Exemple\n\nUn carré."), true);
+assert.equal(hasExamplesSection("An example appears in this sentence."), false);
+assert.equal(hasExamplesSection("## Counterexamples\n\nNone yet."), false);
+assert.equal(parseContributionTaskKey("stub-concepts"), "stub-concepts");
+assert.equal(parseContributionTaskKey("unknown-task"), null);
+const contributionTranslationPages = [
+  { language: "en", slug: "groups", translationGroupId: "group-a" },
+  { language: "fr", slug: "groupes", translationGroupId: "group-a" },
+  { language: "en", slug: "rings", translationGroupId: "group-b" },
+  { language: "fr", slug: "corps", translationGroupId: "group-c" }
+];
+assert.equal(translationGroupCount(contributionTranslationPages), 3);
+assert.deepEqual(
+  translationSourcesMissingLanguage(contributionTranslationPages, "fr").map((page) => page.slug),
+  ["rings"]
+);
+assert.deepEqual(
+  translationSourcesMissingLanguage(contributionTranslationPages, "en").map((page) => page.slug),
+  ["corps"]
+);
 
 assert.equal(
   needsReviewAfterProblemEdit({

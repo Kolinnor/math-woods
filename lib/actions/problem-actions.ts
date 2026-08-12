@@ -31,6 +31,7 @@ import { syncInternalLinks } from "@/lib/internal-links";
 import { canEditExploration } from "@/lib/explorations";
 import {
   createNotification,
+  notifyAdminsOfProblemEditProposal,
   notifyOwnerOfSiteActivity,
   notifyProblemAuthor,
   notifyProblemEditSubscribers
@@ -65,6 +66,8 @@ import {
   canEditDiscussionHint,
   canEditVerificationMessage,
   canEditProblem,
+  canProposeProblemEdit,
+  canPublishProblemEdit,
   canJoinProblemDiscussion,
   canJoinVerificationDiscussion,
   canReviewProblemVerification,
@@ -208,7 +211,9 @@ async function requireProblemHintEditor(problemId: number) {
     select: { id: true, authorId: true, slug: true, language: true, translationGroupId: true }
   });
   if (!problem) throw new Error("Problem not found.");
-  if (!canEditProblem(user, problem)) throw new Error("You cannot edit hints for this problem.");
+  if (!canEditProblem(user, problem) || !canPublishProblemEdit(user)) {
+    throw new Error("Only trusted contributors can edit hints directly.");
+  }
   await assertRateLimit(`problem-hint:${user.id}`, 60, 60_000);
   return { problem, user };
 }
@@ -610,13 +615,18 @@ export async function updateProblemAction(
   const baseVersion = Number(formData.get("baseVersion"));
   if (!Number.isInteger(baseVersion) || baseVersion < 1) throw new Error("Invalid problem version.");
   const acceptedConflictVersion = Number(formData.get("acceptedConflictVersion"));
+  const approvedProposalId = Number(formData.get("approvedProposalId"));
   const previous = await prisma.problem.findUnique({
     where: { id: problemId },
     include: problemRevisionSnapshotInclude
   });
   if (!previous) throw new Error("Problem not found.");
-  if (!canEditProblem(user, previous)) {
-    throw new Error("You cannot edit this problem.");
+  if (!canProposeProblemEdit(user)) {
+    throw new Error("You cannot propose changes to this problem.");
+  }
+  const publishesImmediately = canPublishProblemEdit(user);
+  if (Number.isInteger(approvedProposalId) && approvedProposalId > 0 && !canUseAdminTools(user)) {
+    throw new Error("Only admins can approve proposed edits.");
   }
 
   const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Title") || previous.title;
@@ -635,19 +645,21 @@ export async function updateProblemAction(
   const canAppearOnFrontPage = canUseAdminTools(user)
     ? formData.get("canAppearOnFrontPage") === "on"
     : previous.canAppearOnFrontPage;
-  const verificationMode = parseProblemVerificationMode(formData.get("verificationMode"));
-  const verificationPrompt = optionalBoundedText(
+  const verificationMode = publishesImmediately
+    ? parseProblemVerificationMode(formData.get("verificationMode"))
+    : previous.verificationMode;
+  const verificationPrompt = publishesImmediately ? optionalBoundedText(
     formData.get("verificationPrompt"),
     CONTENT_LIMITS.mediumText,
     "Verification prompt"
-  );
-  const verificationAnswer = optionalBoundedText(
+  ) : previous.verificationPrompt;
+  const verificationAnswer = publishesImmediately ? optionalBoundedText(
     formData.get("verificationAnswer"),
     CONTENT_LIMITS.mediumText,
     "Verification answer"
-  );
+  ) : previous.verificationAnswer;
   const qualityStatusInput = formData.get("qualityStatus");
-  const requestedQualityStatus = qualityStatusInput
+  const requestedQualityStatus = publishesImmediately && qualityStatusInput
     ? parseContributorQualityStatus(qualityStatusInput, user.role)
     : previous.qualityStatus;
   const qualityStatus =
@@ -699,11 +711,97 @@ export async function updateProblemAction(
     relatedProblemGroups: parseProblemRelationGroups(relatedProblemGroups)
   };
 
+  if (!publishesImmediately) {
+    let proposal;
+    try {
+      proposal = await prisma.$transaction(async (tx) => {
+        await acquireTransactionLock(tx, `problem-edit:${previous.translationGroupId}`);
+        const current = await problemSnapshotSource(tx, problemId);
+        if (current.version !== baseVersion) throw new ProblemEditConflictError(current.version);
+
+        const currentSnapshot = buildProblemRevisionSnapshot(current);
+        submittedSnapshot.status = current.status;
+        submittedSnapshot.qualityStatus = current.qualityStatus;
+        submittedSnapshot.canAppearOnFrontPage = current.canAppearOnFrontPage;
+        submittedSnapshot.verificationMode = current.verificationMode;
+        submittedSnapshot.verificationPrompt = current.verificationPrompt;
+        submittedSnapshot.verificationAnswer = current.verificationAnswer;
+        submittedSnapshot.translatedFromRevisionId = current.translatedFromRevisionId;
+        const changedFields = changedProblemSnapshotFields(currentSnapshot, submittedSnapshot);
+        if (changedFields.length === 0) return null;
+
+        const superseded = await tx.problemEditProposal.findMany({
+          where: { problemId, proposerId: user.id, status: "PENDING" },
+          select: { id: true }
+        });
+        if (superseded.length > 0) {
+          const reviewedAt = new Date();
+          await tx.problemEditProposal.updateMany({
+            where: { id: { in: superseded.map((item) => item.id) } },
+            data: { status: "SUPERSEDED", reviewedAt }
+          });
+          await tx.notification.updateMany({
+            where: {
+              type: NotificationType.PROBLEM_EDIT_PROPOSED,
+              href: { in: superseded.map((item) => `/moderation/problem-edits/${item.id}`) },
+              readAt: null
+            },
+            data: { readAt: reviewedAt }
+          });
+        }
+        return tx.problemEditProposal.create({
+          data: {
+            problemId,
+            proposerId: user.id,
+            baseVersion: current.version,
+            snapshot: problemRevisionSnapshotJson(submittedSnapshot),
+            editSummary
+          }
+        });
+      });
+    } catch (error) {
+      if (!(error instanceof ProblemEditConflictError)) throw error;
+      const latestRevision = await prisma.pageRevision.findFirst({
+        where: { pageType: SourceType.PROBLEM, pageId: problemId },
+        orderBy: { id: "desc" },
+        include: { editedBy: true }
+      });
+      return {
+        status: "conflict",
+        currentVersion: error.currentVersion,
+        editorName: latestRevision?.editedBy ? displayNameForUser(latestRevision.editedBy) : null,
+        editedAt: latestRevision?.createdAt.toISOString() ?? null,
+        conflictingFields: []
+      };
+    }
+
+    if (proposal) {
+      await notifyAdminsOfProblemEditProposal({
+        actorId: user.id,
+        actorName: displayNameForUser(user),
+        problemTitle: previous.title,
+        proposalId: proposal.id
+      });
+    }
+    redirect(
+      contentLanguageViewHref("/problems", previous.slug, previous.language, {
+        editProposal: proposal ? "submitted" : "unchanged"
+      }) as Route
+    );
+  }
+
   let problem;
   try {
     problem = await prisma.$transaction(async (tx) => {
       await acquireTransactionLock(tx, `problem-edit:${previous.translationGroupId}`);
       const current = await problemSnapshotSource(tx, problemId);
+      const approvedProposal = Number.isInteger(approvedProposalId) && approvedProposalId > 0
+        ? await tx.problemEditProposal.findFirst({
+            where: { id: approvedProposalId, problemId, status: "PENDING" },
+            select: { id: true, proposerId: true, proposer: true }
+          })
+        : null;
+      if (approvedProposalId > 0 && !approvedProposal) throw new Error("This proposed edit is no longer pending.");
       await ensureProblemSnapshotRevision(tx, current);
       const currentSnapshot = buildProblemRevisionSnapshot(current);
       let resolvedSnapshot = submittedSnapshot;
@@ -856,11 +954,31 @@ export async function updateProblemAction(
           markdown: updated.bodyMarkdown,
           problemVersion: updated.version,
           problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(updated)),
-          editedById: user.id,
+          editedById: approvedProposal?.proposerId ?? user.id,
           editSummary: autoMerged ? `${editSummary} (merged with concurrent changes)` : editSummary
         },
         select: { id: true }
       });
+
+      if (approvedProposal) {
+        const reviewedAt = new Date();
+        await tx.problemEditProposal.update({
+          where: { id: approvedProposal.id },
+          data: {
+            status: "APPROVED",
+            reviewedById: user.id,
+            reviewedAt
+          }
+        });
+        await tx.notification.updateMany({
+          where: {
+            type: NotificationType.PROBLEM_EDIT_PROPOSED,
+            href: `/moderation/problem-edits/${approvedProposal.id}`,
+            readAt: null
+          },
+          data: { readAt: reviewedAt }
+        });
+      }
 
       const siblingSlugs: string[] = [];
       for (const sibling of siblingCandidates) {
@@ -873,7 +991,7 @@ export async function updateProblemAction(
             markdown: siblingAfter.bodyMarkdown,
             problemVersion: siblingAfter.version,
             problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(siblingAfter)),
-            editedById: user.id,
+            editedById: approvedProposal?.proposerId ?? user.id,
             editSummary: `Shared settings updated from ${updated.language} translation`
           }
         });
@@ -882,7 +1000,14 @@ export async function updateProblemAction(
       const changedFields = changedProblemSnapshotFields(currentSnapshot, buildProblemRevisionSnapshot(updated)).map(
         (field) => PROBLEM_SNAPSHOT_FIELD_LABELS[field]
       );
-      return { updated, revisionId: revision.id, changedFields, siblingSlugs, previousTitle: current.title };
+      return {
+        updated,
+        revisionId: revision.id,
+        changedFields,
+        siblingSlugs,
+        previousTitle: current.title,
+        approvedProposal
+      };
     });
   } catch (error) {
     if (!(error instanceof ProblemEditConflictError)) throw error;
@@ -910,17 +1035,118 @@ export async function updateProblemAction(
   }
   await notifyProblemEditSubscribers({
     problemId,
-    actorId: user.id,
+    actorId: problem.approvedProposal?.proposerId ?? user.id,
     title: "Problem edited",
     body: problemEditNotificationBody({
-      actorName: displayNameForUser(user),
+      actorName: problem.approvedProposal?.proposer
+        ? displayNameForUser(problem.approvedProposal.proposer)
+        : displayNameForUser(user),
       title: problem.previousTitle,
       changedFields: problem.changedFields,
       editSummary
     }),
     href: `/problems/${problem.updated.slug}/history#revision-${problem.revisionId}`
   });
+  if (problem.approvedProposal) {
+    await createNotification({
+      userId: problem.approvedProposal.proposerId,
+      actorId: user.id,
+      type: NotificationType.PROBLEM_EDIT_APPROVED,
+      title: "Proposed edit approved",
+      body: `Your proposed changes to "${problem.previousTitle}" are now public.`,
+      href: `/problems/${problem.updated.slug}/history#revision-${problem.revisionId}`
+    });
+  }
   redirect(contentLanguageViewHref("/problems", problem.updated.slug, problem.updated.language) as Route);
+}
+
+export async function approveProblemEditProposalAction(proposalId: number) {
+  const user = await requireVerifiedUser();
+  if (!canUseAdminTools(user)) throw new Error("Only admins can approve proposed edits.");
+  await assertRateLimit(`problem-proposal-review:${user.id}`, 40, 60_000);
+
+  const proposal = await prisma.problemEditProposal.findFirst({
+    where: { id: proposalId, status: "PENDING" },
+    include: { problem: true }
+  });
+  if (!proposal) throw new Error("This proposed edit is no longer pending.");
+  const snapshot = parseProblemRevisionSnapshot(proposal.snapshot);
+  if (!snapshot) throw new Error("This proposed edit is invalid.");
+
+  const formData = new FormData();
+  formData.set("baseVersion", String(proposal.baseVersion));
+  formData.set("approvedProposalId", String(proposal.id));
+  formData.set("title", snapshot.title);
+  formData.set("language", snapshot.language);
+  formData.set("bodyMarkdown", snapshot.bodyMarkdown);
+  if (snapshot.difficulty !== null) formData.set("difficulty", String(snapshot.difficulty));
+  for (const domain of snapshot.domains) {
+    formData.append("domains", domain.mscCode);
+    if (domain.spoiler) formData.append("domainSpoilers", domain.mscCode);
+  }
+  formData.set("origin", snapshot.origin);
+  if (snapshot.originChapter) formData.set("originChapter", snapshot.originChapter);
+  if (snapshot.originPage) formData.set("originPage", snapshot.originPage);
+  if (snapshot.originNote) formData.set("originNote", snapshot.originNote);
+  if (snapshot.listed) formData.set("listed", "on");
+  if (snapshot.isExercise) formData.set("isExercise", "on");
+  if (snapshot.showRelatedProblems) formData.set("showRelatedProblems", "on");
+  if (snapshot.canAppearOnFrontPage) formData.set("canAppearOnFrontPage", "on");
+  formData.set("qualityStatus", snapshot.qualityStatus);
+  formData.set("verificationMode", snapshot.verificationMode);
+  if (snapshot.verificationPrompt) formData.set("verificationPrompt", snapshot.verificationPrompt);
+  if (snapshot.verificationAnswer) formData.set("verificationAnswer", snapshot.verificationAnswer);
+  formData.set("tags", problemSnapshotTagInput(snapshot.tags.filter((tag) => tag.slug !== "conjecture")));
+  if (snapshot.tags.some((tag) => tag.slug === "conjecture")) formData.set("conjecture", "on");
+  formData.set("spoilerTags", problemSnapshotTagInput(snapshot.spoilerTags));
+  formData.set("relatedProblemGroups", problemSnapshotRelationInput(snapshot));
+  formData.set("editSummary", proposal.editSummary || "Community edit approved");
+
+  const result = await updateProblemAction(proposal.problemId, { status: "idle" }, formData);
+  if (result.status === "conflict") {
+    redirect(`/moderation/problem-edits/${proposal.id}?conflict=1` as Route);
+  }
+}
+
+export async function rejectProblemEditProposalAction(proposalId: number, formData: FormData) {
+  const user = await requireVerifiedUser();
+  if (!canUseAdminTools(user)) throw new Error("Only admins can reject proposed edits.");
+  await assertRateLimit(`problem-proposal-review:${user.id}`, 40, 60_000);
+  const reviewNote = optionalBoundedText(formData.get("reviewNote"), CONTENT_LIMITS.longNote, "Review note");
+  const proposal = await prisma.$transaction(async (tx) => {
+    const reviewedAt = new Date();
+    const rejected = await tx.problemEditProposal.update({
+      where: { id: proposalId, status: "PENDING" },
+      data: {
+        status: "REJECTED",
+        reviewedById: user.id,
+        reviewedAt,
+        reviewNote
+      },
+      include: { problem: { select: { slug: true, title: true } } }
+    });
+    await tx.notification.updateMany({
+      where: {
+        type: NotificationType.PROBLEM_EDIT_PROPOSED,
+        href: `/moderation/problem-edits/${proposalId}`,
+        readAt: null
+      },
+      data: { readAt: reviewedAt }
+    });
+    return rejected;
+  });
+  await createNotification({
+    userId: proposal.proposerId,
+    actorId: user.id,
+    type: NotificationType.PROBLEM_EDIT_REJECTED,
+    title: "Proposed edit not accepted",
+    body: reviewNote
+      ? `Your proposed changes to "${proposal.problem.title}" were not accepted: ${reviewNote}`
+      : `Your proposed changes to "${proposal.problem.title}" were not accepted.`,
+    href: `/problems/${proposal.problem.slug}`
+  });
+  revalidatePath("/moderation");
+  redirect("/moderation" as Route);
 }
 
 export async function dismissProblemTranslationStaleNoticeAction(problemId: number) {
@@ -1336,6 +1562,9 @@ async function markSolvedNow(problemId: number, problemSlug: string, user: { id:
     await tx.problemAttempt.updateMany({
       where: { userId: user.id, problemId: { in: translationIds } },
       data: { status: "SOLVED" }
+    });
+    await tx.problemRecommendationExposure.deleteMany({
+      where: { userId: user.id, translationGroupId: problem.translationGroupId }
     });
   });
 
