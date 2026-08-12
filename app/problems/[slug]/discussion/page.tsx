@@ -17,7 +17,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
-import { canEditDiscussionHint, canEditProblem, canViewArchivedProblem } from "@/lib/permissions";
+import { canEditDiscussionHint, canViewArchivedProblem } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
 
 export const dynamic = "force-dynamic";
@@ -49,13 +49,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
     await markNotificationsReadForHref(user.id, `/problems/${problem.slug}/discussion`, NotificationType.DISCUSSION_POSTED);
   }
 
-  const [attempt, postVoteGroups, userVotes] = await Promise.all([
-    user
-      ? prisma.problemAttempt.findFirst({
-          where: { userId: user.id, problem: { translationGroupId: problem.translationGroupId } },
-          orderBy: { discussionUnlockAt: "asc" }
-        })
-      : null,
+  const [postVoteGroups, userVotes] = await Promise.all([
     problem.thread?.posts.length
       ? prisma.vote.groupBy({
           by: ["targetId"],
@@ -75,8 +69,6 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
       : Promise.resolve([])
   ]);
 
-  const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
-  const discussionVisible = Boolean(attempt || canEditCurrentProblem);
   const postVotes = new Map(postVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const ownPostVoteIds = new Set(userVotes.map((vote) => vote.targetId));
   const ownDiscussionPostResetSignal =
@@ -101,26 +93,18 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
           <Link href="/login" className="underline">
             {t.nav.signIn}
           </Link>{" "}
-          to start this problem and reveal the discussion.
+          to join the discussion.
         </p>
       )}
 
-      {user && !discussionVisible && (
-        <p className="muted panel p-5">
-          Start this problem from the problem page to reveal and join the discussion.
-        </p>
-      )}
+      <div className="grid gap-4">
+        {(problem.thread?.posts ?? []).map((post) => {
+          const canManageHint = Boolean(user && post.type === "HINT" && canEditDiscussionHint(user, post));
 
-      {discussionVisible && (
-        <>
-          <div className="grid gap-4">
-            {(problem.thread?.posts ?? []).map((post) => {
-              const canManageHint = Boolean(user && post.type === "HINT" && canEditDiscussionHint(user, post));
-
-              return (
-                <article key={post.id} className="panel p-5">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <div className="muted text-sm">
+          return (
+            <article key={post.id} className="panel p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="muted text-sm">
                       <span className="rounded border border-line px-2 py-0.5 text-xs">
                         {post.type.toLowerCase()}
                       </span>{" "}
@@ -129,8 +113,9 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                         <UserName user={post.author} />
                       </Link>{" "}
                       {"\u00b7"} {post.createdAt.toLocaleString("en-US")}
-                    </div>
-                    <form action={votePostAction.bind(null, post.id, problem.slug, true)}>
+                </div>
+                {user && (
+                  <form action={votePostAction.bind(null, post.id, problem.slug, true)}>
                       <button
                         type="submit"
                         className={ownPostVoteIds.has(post.id) ? "secondary vote-button-active" : "secondary"}
@@ -139,10 +124,11 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                       >
                         Useful {"\u00b7"} {postVotes.get(post.id) ?? 0}
                       </button>
-                    </form>
-                  </div>
-                  {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
-                  {canManageHint && (
+                  </form>
+                )}
+              </div>
+              {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
+              {canManageHint && (
                     <div className="mt-3 grid gap-3 text-sm">
                       <details>
                         <summary className="cursor-pointer font-medium">Edit hint</summary>
@@ -164,8 +150,9 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                         </button>
                       </form>
                     </div>
-                  )}
-                  <details className="mt-3 text-sm">
+              )}
+              {user && (
+                <details className="mt-3 text-sm">
                     <summary className="cursor-pointer font-medium">Report post</summary>
                     <form action={reportPostAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
                       <textarea name="reason" placeholder="Off-topic, spoiler, incorrect solution..." required />
@@ -173,25 +160,28 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                         Submit report
                       </button>
                     </form>
-                  </details>
-                </article>
-              );
-            })}
-            {(problem.thread?.posts.length ?? 0) === 0 && <p className="muted panel p-5">{t.problemDetail.noMessagesYet}</p>}
-          </div>
+                </details>
+              )}
+            </article>
+          );
+        })}
+        {(problem.thread?.posts.length ?? 0) === 0 && (
+          <p className="muted panel p-5">{t.problemDetail.noMessagesYet}</p>
+        )}
+      </div>
 
-          <form action={createDiscussionPostAction.bind(null, problem.id, true)} className="panel mt-6 grid gap-3 p-5">
-            <h2 className="text-sm font-medium">Add to the discussion</h2>
-            <LazyMarkdownEditor
-              name="bodyMarkdown"
-              minHeight="9rem"
-              lineNumbers={false}
-              draftKey={`problem-discussion:${problem.id}:reply`}
-              resetSignal={ownDiscussionPostResetSignal}
-            />
-            <button type="submit">Post</button>
-          </form>
-        </>
+      {user && (
+        <form action={createDiscussionPostAction.bind(null, problem.id, true)} className="panel mt-6 grid gap-3 p-5">
+          <h2 className="text-sm font-medium">Add to the discussion</h2>
+          <LazyMarkdownEditor
+            name="bodyMarkdown"
+            minHeight="9rem"
+            lineNumbers={false}
+            draftKey={`problem-discussion:${problem.id}:reply`}
+            resetSignal={ownDiscussionPostResetSignal}
+          />
+          <button type="submit">Post</button>
+        </form>
       )}
     </div>
   );

@@ -55,7 +55,7 @@ function isDeletedUser(user: ManagedUser) {
 const notificationOptions = [
   {
     type: NotificationType.PROBLEM_ATTEMPTED,
-    title: "Someone started attempting your problem",
+    title: "Someone started working on your problem",
     description: "When another user starts working on one of your problems."
   },
   {

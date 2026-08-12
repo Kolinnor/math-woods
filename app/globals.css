@@ -1902,25 +1902,26 @@ a {
   display: grid;
   gap: 1.5rem;
   grid-template-columns: auto 1fr auto;
-  min-height: 4rem;
+  min-height: 4.5rem;
   position: relative;
 }
 
 .site-brand {
   align-items: center;
   display: flex;
-  font-size: 1rem;
-  font-weight: 750;
-  gap: 0.55rem;
+  font-size: 1.45rem;
+  font-weight: 700;
+  gap: 0.7rem;
+  line-height: 1;
   white-space: nowrap;
 }
 
 .site-brand-logo {
-  border-radius: 7px;
   display: block;
   flex: 0 0 auto;
-  height: 1.9rem;
-  width: 1.9rem;
+  height: 3rem;
+  object-fit: contain;
+  width: 3rem;
 }
 
 .primary-nav,
@@ -11985,7 +11986,14 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   }
 
   .site-brand {
+    font-size: 1.12rem;
+    gap: 0.5rem;
     min-width: 0;
+  }
+
+  .site-brand-logo {
+    height: 2.4rem;
+    width: 2.4rem;
   }
 
   .site-brand > span {
@@ -12446,12 +12454,12 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 
 @media (max-width: 430px) {
   .site-brand-logo {
-    height: 1.7rem;
-    width: 1.7rem;
+    height: 2.15rem;
+    width: 2.15rem;
   }
 
   .site-brand {
-    font-size: 0.92rem;
+    font-size: 1rem;
   }
 
   .language-selector svg {

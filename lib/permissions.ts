@@ -216,28 +216,12 @@ export function canDeletePlaylist(user: PermissionUser, playlist: PlaylistPermis
   return playlist.authorId === user.id || hasAdminPrivileges(user.role);
 }
 
-export function canJoinProblemDiscussion(
-  user: PermissionUser,
-  problem: ProblemPermissionTarget,
-  attempt: { id: number } | null | undefined
-) {
-  return Boolean(attempt) || problem.authorId === user.id || hasTrustedPrivileges(user.role);
-}
-
 export function canEditDiscussionHint(user: PermissionUser, hint: AuthoredResource) {
   return hint.authorId === user.id || hasTrustedPrivileges(user.role);
 }
 
 export function canEditVerificationMessage(user: PermissionUser, message: AuthoredResource) {
   return message.authorId === user.id;
-}
-
-export function canRevealHintWithoutAttempt(
-  user: PermissionUser,
-  hint: AuthoredResource,
-  problem: ProblemPermissionTarget
-) {
-  return hint.authorId === user.id || problem.authorId === user.id || hasTrustedPrivileges(user.role);
 }
 
 export function canReviewProblemVerification(user: PermissionUser, problem: ProblemPermissionTarget) {

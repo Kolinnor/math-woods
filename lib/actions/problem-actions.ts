@@ -72,7 +72,6 @@ import {
   canEditVerificationMessage,
   canEditProblem,
   canProposeProblemEdit,
-  canJoinProblemDiscussion,
   canJoinVerificationDiscussion,
   canReviewProblemVerification,
   canReviewProblem,
@@ -1694,7 +1693,7 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
         userId: problem.authorId,
         actorId: user.id,
         type: NotificationType.PROBLEM_ATTEMPTED,
-        title: "Someone is attempting your problem",
+        title: "Someone is working on your problem",
         body: `${displayNameForUser(user)} started working on "${problem.title}".`,
         href: `/problems/${problemSlug}`
       });
@@ -2187,14 +2186,6 @@ export async function createDiscussionPostAction(
   });
 
   if (!problem) throw new Error("Problem not found.");
-  const attempt = await prisma.problemAttempt.findFirst({
-    where: { userId: user.id, problem: { translationGroupId: problem.translationGroupId } },
-    orderBy: { discussionUnlockAt: "asc" }
-  });
-  if (!canJoinProblemDiscussion(user, problem, attempt)) {
-    throw new Error("Start this problem before joining the discussion.");
-  }
-
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Discussion message");
   const typeInput = String(formData.get("type") ?? "COMMENT").toUpperCase();
   const type = Object.values(PostType).includes(typeInput as PostType) ? (typeInput as PostType) : PostType.COMMENT;

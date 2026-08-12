@@ -149,7 +149,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="site-header">
           <nav className="site-nav site-content-width mx-auto px-4">
             <Link href="/" className="site-brand" aria-label={t.nav.homeAriaLabel}>
-              <img src="/icon.svg" alt="" className="site-brand-logo" aria-hidden="true" />
+              <img src="/math-woods-bear.png" alt="" className="site-brand-logo" aria-hidden="true" />
               <span>Math Woods</span>
             </Link>
             <div className="primary-nav">

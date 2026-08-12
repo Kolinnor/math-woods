@@ -145,7 +145,7 @@ const redesignCopy = {
       solveSub: "Mark it done",
       verifySub: "Check your answer",
       attemptSub: "Keep it in your list",
-      attemptedSub: "In progress",
+      attemptedSub: "In your working list",
       favoriteSub: (count: number) => `${count} ${count === 1 ? "favorite" : "favorites"}`
     },
     reactions: {
@@ -174,7 +174,7 @@ const redesignCopy = {
       solveSub: "Marquer comme résolu",
       verifySub: "Vérifier votre réponse",
       attemptSub: "Le garder dans votre liste",
-      attemptedSub: "En cours",
+      attemptedSub: "Dans votre liste de travail",
       favoriteSub: (count: number) => `${count} favori${count > 1 ? "s" : ""}`
     },
     reactions: {
