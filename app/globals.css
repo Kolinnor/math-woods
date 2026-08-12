@@ -1902,7 +1902,7 @@ a {
   display: grid;
   gap: 1.5rem;
   grid-template-columns: auto 1fr auto;
-  min-height: 4.5rem;
+  min-height: 6.75rem;
   position: relative;
 }
 
@@ -1919,9 +1919,9 @@ a {
 .site-brand-logo {
   display: block;
   flex: 0 0 auto;
-  height: 3rem;
+  height: 6rem;
   object-fit: contain;
-  width: 3rem;
+  width: 6rem;
 }
 
 .primary-nav,
@@ -11981,7 +11981,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   .site-nav {
     gap: 0.65rem;
     grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 3.65rem;
+    min-height: 5.9rem;
     padding: 0.55rem 0.75rem;
   }
 
@@ -11992,8 +11992,8 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   }
 
   .site-brand-logo {
-    height: 2.4rem;
-    width: 2.4rem;
+    height: 4.8rem;
+    width: 4.8rem;
   }
 
   .site-brand > span {
@@ -12454,8 +12454,8 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 
 @media (max-width: 430px) {
   .site-brand-logo {
-    height: 2.15rem;
-    width: 2.15rem;
+    height: 4.3rem;
+    width: 4.3rem;
   }
 
   .site-brand {
