@@ -1902,7 +1902,7 @@ a {
   display: grid;
   gap: 1.5rem;
   grid-template-columns: auto 1fr auto;
-  min-height: 6.75rem;
+  min-height: 7.75rem;
   position: relative;
 }
 
@@ -1919,9 +1919,15 @@ a {
 .site-brand-logo {
   display: block;
   flex: 0 0 auto;
-  height: 6rem;
+  height: 7rem;
   object-fit: contain;
-  width: 6rem;
+  width: 7rem;
+}
+
+@media (min-width: 761px) {
+  .site-brand {
+    margin-left: -1.5rem;
+  }
 }
 
 .primary-nav,
@@ -17103,7 +17109,7 @@ body:has(.home-shell) > .site-footer {
 }
 
 .home-member-hero-copy h1 {
-  font-size: 2.4rem;
+  font-size: 2.15rem;
   line-height: 1.05;
   margin: 0.5rem 0 0;
 }
