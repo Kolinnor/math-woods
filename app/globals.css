@@ -9,6 +9,9 @@
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-serif: Charter, "Bitstream Charter", Georgia, serif;
   --site-content-width: 82rem;
+  --mw-header-height: 124px;
+  --mw-hero-band: 210px;
+  --mw-logo-size: 110px;
   --paper: #f4f6f4;
   --panel: #ffffff;
   --panel-muted: #f2f6f2;
@@ -214,14 +217,14 @@ body:has(.problem-detail-shell) {
 
 .home-dashboard .home-hero-forest,
 .problems-page-shell .problems-hero {
-  height: 168px;
-  min-height: 168px;
+  height: var(--mw-hero-band);
+  min-height: var(--mw-hero-band);
 }
 
-/* Keep the public hero compact while preserving the artwork's natural sharpness. */
+/* Give the public home enough room for the painting without turning it into a full screen. */
 .home-dashboard .home-hero-guest {
-  height: clamp(390px, 30vw, 460px);
-  min-height: 390px;
+  height: 500px;
+  min-height: 500px;
 }
 
 .home-dashboard .home-hero-guest .home-hero-image {
@@ -231,6 +234,13 @@ body:has(.problem-detail-shell) {
 }
 
 .home-dashboard .home-hero-guest .home-hero-overlay {
+  background:
+    radial-gradient(115% 95% at 0% 108%,
+      rgb(12 20 14 / 0.86) 0%,
+      rgb(12 20 14 / 0.5) 34%,
+      rgb(12 20 14 / 0.12) 60%,
+      rgb(12 20 14 / 0) 78%),
+    linear-gradient(180deg, rgb(12 20 14 / 0.46) 0%, rgb(12 20 14 / 0) 24%);
   z-index: 2;
 }
 
@@ -253,12 +263,12 @@ body:has(.problem-detail-shell) {
 }
 
 .home-dashboard .home-member-hero-copy {
-  align-items: center;
+  align-items: flex-end;
   display: flex;
   inset: 0;
   justify-content: space-between;
   max-width: 1240px;
-  padding: 0 40px;
+  padding: 0 40px 26px;
 }
 
 .home-dashboard .home-member-hero-copy h1 {
@@ -907,8 +917,8 @@ body:has(.problem-detail-shell) .site-main {
 }
 
 .problem-detail-shell .problem-hero {
-  height: 96px;
-  min-height: 96px;
+  height: var(--mw-hero-band);
+  min-height: var(--mw-hero-band);
 }
 
 .problem-detail-shell .problem-hero > img {
@@ -1419,10 +1429,11 @@ body:has(.problem-detail-shell) .site-main {
 
 /* Redesign corrections with enough specificity to beat legacy layout rules. */
 .home-dashboard .home-member-hero-copy {
+  align-items: flex-end;
   inset: auto;
   margin: auto;
   max-width: 1240px;
-  padding: 0 40px;
+  padding: 0 40px 26px;
   width: 100%;
 }
 
@@ -1506,7 +1517,7 @@ body:has(.problem-detail-shell) .site-main {
 .problems-page-shell .problems-hero-content {
   margin-bottom: 0;
   margin-top: auto;
-  padding-bottom: 1.8rem;
+  padding-bottom: 26px;
 }
 
 .problems-page-shell .problem-domain-tile-grid {
@@ -1897,7 +1908,7 @@ a {
   display: grid;
   gap: 1.5rem;
   grid-template-columns: auto 1fr auto;
-  min-height: 7.75rem;
+  min-height: var(--mw-header-height);
   position: relative;
 }
 
@@ -1914,9 +1925,10 @@ a {
 .site-brand-logo {
   display: block;
   flex: 0 0 auto;
-  height: 7rem;
+  filter: drop-shadow(0 3px 12px rgb(0 0 0 / 0.5));
+  height: var(--mw-logo-size);
   object-fit: contain;
-  width: 7rem;
+  width: var(--mw-logo-size);
 }
 
 @media (min-width: 761px) {
@@ -5327,7 +5339,7 @@ textarea {
 }
 
 .exploration-studio-page .forest-page-hero {
-  min-height: 160px;
+  min-height: var(--mw-hero-band);
 }
 
 .exploration-studio-page .forest-page-hero-content {
@@ -11635,88 +11647,59 @@ body:has(.forest-page-shell) {
   background: #e8e2d3;
 }
 
-body:has(.problems-page-shell) .site-header,
-body:has(.home-shell) .site-header,
-body:has(.forest-page-shell) .site-header {
-  background: transparent;
+/* The same light-on-forest header is used throughout the site. Pages with a
+   hero let the painting show through; utility pages keep a real dark band. */
+.site-header {
+  background: #14201a;
   border-bottom: 0;
   color: #fff;
+}
+
+body:has(.problems-page-shell) .site-header,
+body:has(.home-shell) .site-header,
+body:has(.forest-page-shell) .site-header,
+body:has(.problem-detail-shell) .site-header {
+  background: transparent;
   position: absolute;
   width: 100%;
 }
 
-body:has(.problems-page-shell) .site-brand,
-body:has(.home-shell) .site-brand,
-body:has(.forest-page-shell) .site-brand,
-body:has(.problems-page-shell) .primary-nav a,
-body:has(.home-shell) .primary-nav a,
-body:has(.forest-page-shell) .primary-nav a {
+.site-brand,
+.primary-nav a {
   color: rgb(255 255 255 / 0.9);
   text-shadow: 0 1px 10px rgb(0 0 0 / 0.5);
 }
 
-body:has(.problems-page-shell) .site-brand-logo,
-body:has(.home-shell) .site-brand-logo,
-body:has(.forest-page-shell) .site-brand-logo {
-  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
-}
-
-body:has(.problems-page-shell) .primary-nav a:hover,
-body:has(.home-shell) .primary-nav a:hover,
-body:has(.forest-page-shell) .primary-nav a:hover {
+.primary-nav a:hover {
   background: rgb(255 255 255 / 0.14);
   color: #fff;
 }
 
-body:has(.problems-page-shell) .language-selector,
-body:has(.home-shell) .language-selector,
-body:has(.forest-page-shell) .language-selector,
-body:has(.problems-page-shell) .header-search,
-body:has(.home-shell) .header-search,
-body:has(.forest-page-shell) .header-search,
-body:has(.problems-page-shell) .site-header .icon-button.secondary,
-body:has(.home-shell) .site-header .icon-button.secondary,
-body:has(.forest-page-shell) .site-header .icon-button.secondary,
-body:has(.problems-page-shell) .nav-menu summary,
-body:has(.home-shell) .nav-menu summary,
-body:has(.forest-page-shell) .nav-menu summary {
+.site-header .language-selector,
+.site-header .header-search,
+.site-header .icon-button.secondary,
+.site-header .nav-menu summary {
   background: rgb(255 255 255 / 0.14);
   border-color: rgb(255 255 255 / 0.22);
   color: #fff;
 }
 
-body:has(.problems-page-shell) .language-selector:hover,
-body:has(.home-shell) .language-selector:hover,
-body:has(.forest-page-shell) .language-selector:hover,
-body:has(.problems-page-shell) .language-selector:focus-within,
-body:has(.home-shell) .language-selector:focus-within,
-body:has(.forest-page-shell) .language-selector:focus-within,
-body:has(.problems-page-shell) .header-search:focus-within,
-body:has(.home-shell) .header-search:focus-within,
-body:has(.forest-page-shell) .header-search:focus-within,
-body:has(.problems-page-shell) .site-header .icon-button.secondary:hover,
-body:has(.home-shell) .site-header .icon-button.secondary:hover,
-body:has(.forest-page-shell) .site-header .icon-button.secondary:hover,
-body:has(.problems-page-shell) .nav-menu[open] summary,
-body:has(.home-shell) .nav-menu[open] summary,
-body:has(.forest-page-shell) .nav-menu[open] summary,
-body:has(.problems-page-shell) .nav-menu summary:hover,
-body:has(.home-shell) .nav-menu summary:hover,
-body:has(.forest-page-shell) .nav-menu summary:hover {
+.site-header .language-selector:hover,
+.site-header .language-selector:focus-within,
+.site-header .header-search:focus-within,
+.site-header .icon-button.secondary:hover,
+.site-header .nav-menu[open] summary,
+.site-header .nav-menu summary:hover {
   background: rgb(255 255 255 / 0.22);
   border-color: rgb(255 255 255 / 0.36);
   color: #fff;
 }
 
-body:has(.problems-page-shell) .header-search input,
-body:has(.home-shell) .header-search input,
-body:has(.forest-page-shell) .header-search input {
+.site-header .header-search input {
   color: #fff;
 }
 
-body:has(.problems-page-shell) .header-search input::placeholder,
-body:has(.home-shell) .header-search input::placeholder,
-body:has(.forest-page-shell) .header-search input::placeholder {
+.site-header .header-search input::placeholder {
   color: rgb(255 255 255 / 0.72);
 }
 
@@ -11982,7 +11965,7 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   .site-nav {
     gap: 0.65rem;
     grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 5.9rem;
+    min-height: calc(var(--mw-logo-size) * 0.62 + 1.1rem);
     padding: 0.55rem 0.75rem;
   }
 
@@ -11993,8 +11976,8 @@ body:has(.forest-page-shell) .header-search input::placeholder {
   }
 
   .site-brand-logo {
-    height: 4.8rem;
-    width: 4.8rem;
+    height: calc(var(--mw-logo-size) * 0.62);
+    width: calc(var(--mw-logo-size) * 0.62);
   }
 
   .site-brand > span {
@@ -12455,8 +12438,8 @@ body:has(.forest-page-shell) .header-search input::placeholder {
 
 @media (max-width: 430px) {
   .site-brand-logo {
-    height: 4.3rem;
-    width: 4.3rem;
+    height: calc(var(--mw-logo-size) * 0.62);
+    width: calc(var(--mw-logo-size) * 0.62);
   }
 
   .site-brand {
@@ -13224,8 +13207,8 @@ button.live-search-reset:hover {
 
 /* Concepts browser and reading pages share the problem area's compact ledger language. */
 .concepts-page-shell .forest-page-hero {
-  height: 168px;
-  min-height: 168px;
+  height: var(--mw-hero-band);
+  min-height: var(--mw-hero-band);
 }
 
 .concepts-page-shell .forest-page-hero > img {
@@ -13510,8 +13493,8 @@ button.live-search-reset:hover {
 }
 
 .concept-detail-page .forest-page-hero {
-  height: 96px;
-  min-height: 96px;
+  height: var(--mw-hero-band);
+  min-height: var(--mw-hero-band);
 }
 
 .concept-detail-page .forest-page-hero > img {
@@ -13716,8 +13699,8 @@ button.live-search-reset:hover {
   }
 
   .concept-detail-page .forest-page-hero {
-    height: 96px;
-    min-height: 96px;
+    height: var(--mw-hero-band);
+    min-height: var(--mw-hero-band);
   }
 
   .concept-reading-surface {
@@ -17060,7 +17043,7 @@ body:has(.home-shell) > .site-footer {
 
 .home-guest-hero-copy {
   margin-top: auto;
-  padding: 0 3rem 3.4rem;
+  padding: 0 3rem 2.9rem;
 }
 
 .home-member-hero-copy {
@@ -17097,10 +17080,12 @@ body:has(.home-shell) > .site-footer {
 }
 
 .home-guest-hero-copy h1 {
-  font-size: 3.1rem;
-  line-height: 1.06;
-  margin: 1rem 0 0;
-  max-width: 20ch;
+  font-size: 38px;
+  line-height: 1.08;
+  margin: 0;
+  max-width: 660px;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.75), 0 1px 40px rgb(0 0 0 / 0.5);
+  text-wrap: pretty;
 }
 
 .home-member-hero-copy h1 {
@@ -17113,7 +17098,7 @@ body:has(.home-shell) > .site-footer {
   display: flex;
   flex-wrap: wrap;
   gap: 0.9rem;
-  margin-top: 2rem;
+  margin-top: 1.6rem;
 }
 
 .home-member-hero-copy .home-hero-actions {
@@ -17957,57 +17942,6 @@ body:has(.problem-detail-shell) {
   background: #e8e2d3;
 }
 
-body:has(.problem-detail-shell) .site-header {
-  background: transparent;
-  border-bottom: 0;
-  color: #fff;
-  position: absolute;
-  width: 100%;
-}
-
-body:has(.problem-detail-shell) .site-brand,
-body:has(.problem-detail-shell) .primary-nav a {
-  color: rgb(255 255 255 / 0.9);
-  text-shadow: 0 1px 10px rgb(0 0 0 / 0.5);
-}
-
-body:has(.problem-detail-shell) .site-brand-logo {
-  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
-}
-
-body:has(.problem-detail-shell) .primary-nav a:hover {
-  background: rgb(255 255 255 / 0.14);
-  color: #fff;
-}
-
-body:has(.problem-detail-shell) .language-selector,
-body:has(.problem-detail-shell) .header-search,
-body:has(.problem-detail-shell) .site-header .icon-button.secondary,
-body:has(.problem-detail-shell) .nav-menu summary {
-  background: rgb(255 255 255 / 0.14);
-  border-color: rgb(255 255 255 / 0.22);
-  color: #fff;
-}
-
-body:has(.problem-detail-shell) .language-selector:hover,
-body:has(.problem-detail-shell) .language-selector:focus-within,
-body:has(.problem-detail-shell) .header-search:focus-within,
-body:has(.problem-detail-shell) .site-header .icon-button.secondary:hover,
-body:has(.problem-detail-shell) .nav-menu[open] summary,
-body:has(.problem-detail-shell) .nav-menu summary:hover {
-  background: rgb(255 255 255 / 0.22);
-  border-color: rgb(255 255 255 / 0.36);
-  color: #fff;
-}
-
-body:has(.problem-detail-shell) .header-search input {
-  color: #fff;
-}
-
-body:has(.problem-detail-shell) .header-search input::placeholder {
-  color: rgb(255 255 255 / 0.72);
-}
-
 .site-main:has(.problem-detail-shell) {
   max-width: none;
   min-height: 0;
@@ -18238,6 +18172,13 @@ body:has(.home-dashboard) > .site-footer {
   padding: 20px 40px 60px;
 }
 
+.home-dashboard .home-dashboard-grid.home-dashboard-grid-guest {
+  display: block;
+  max-width: 62rem;
+  padding: 20px 0 60px;
+  width: calc(100% - 2rem);
+}
+
 .problems-page-shell .problems-recommendations,
 .problems-page-shell .problem-domain-strip,
 .problems-page-shell .problems-workspace {
@@ -18257,8 +18198,8 @@ body:has(.home-dashboard) > .site-footer {
 }
 
 .problem-detail-shell .problem-hero {
-  height: 96px;
-  min-height: 96px;
+  height: var(--mw-hero-band);
+  min-height: var(--mw-hero-band);
 }
 
 .problem-detail-shell .problem-detail-body {
@@ -18305,6 +18246,11 @@ body:has(.home-dashboard) > .site-footer {
   .problem-detail-shell .problem-detail-body {
     padding-left: 14px;
     padding-right: 14px;
+  }
+
+  .home-dashboard .home-dashboard-grid.home-dashboard-grid-guest {
+    padding: 1rem 0 3rem;
+    width: calc(100% - 1.75rem);
   }
 
   .problems-page-shell .problem-domain-tile-grid {
@@ -18437,7 +18383,7 @@ body:has(.home-dashboard) > .site-footer {
 @media (max-width: 760px) {
   .site-nav {
     grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 3.65rem;
+    min-height: calc(var(--mw-logo-size) * 0.62 + 1.1rem);
     padding: 0.55rem 0.75rem;
   }
 
@@ -18450,8 +18396,8 @@ body:has(.home-dashboard) > .site-footer {
   }
 
   .problem-detail-shell .problem-hero {
-    height: auto;
-    min-height: 190px;
+    height: var(--mw-hero-band);
+    min-height: var(--mw-hero-band);
   }
 
   .problems-page-shell .problems-workspace {

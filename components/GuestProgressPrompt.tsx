@@ -17,7 +17,7 @@ export function GuestProgressPrompt() {
     [pathname, searchParams]
   );
   const signInHref = `/login?returnTo=${encodeURIComponent(returnTo)}`;
-  const shouldSchedule = pathname !== "/login";
+  const shouldSchedule = pathname !== "/" && pathname !== "/login";
 
   useEffect(() => {
     if (!shouldSchedule) return;
@@ -44,7 +44,7 @@ export function GuestProgressPrompt() {
     setVisible(false);
   }
 
-  if (!visible || pathname === "/login") return null;
+  if (!visible || !shouldSchedule) return null;
 
   return (
     <aside className="guest-progress-prompt" role="dialog" aria-live="polite" aria-labelledby="guest-progress-message">
