@@ -278,11 +278,11 @@ export default async function HomePage() {
           where: {
             status: "PUBLISHED",
             listed: true,
-            language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) }
+            translatedFromProblemId: null
           },
           orderBy: { createdAt: "desc" },
-          take: 20,
-          include: { author: true }
+          take: 5,
+          select: { translationGroupId: true }
         })
       : [],
     user && EXPLORATIONS_ENABLED
@@ -314,13 +314,30 @@ export default async function HomePage() {
     })),
     preferredLanguage
   );
-  const recentProblems = selectContentTranslationsByGroup(
-    recentProblemRows.map((problem) => ({
-      ...problem,
-      isSource: problem.translatedFromProblemId === null
-    })),
-    preferredLanguage
-  ).slice(0, 5);
+  const recentProblemTranslations = recentProblemRows.length
+    ? await prisma.problem.findMany({
+        where: {
+          translationGroupId: { in: recentProblemRows.map((problem) => problem.translationGroupId) },
+          status: "PUBLISHED",
+          listed: true,
+          language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) }
+        },
+        include: { author: true }
+      })
+    : [];
+  const recentProblemByGroup = new Map(
+    selectContentTranslationsByGroup(
+      recentProblemTranslations.map((problem) => ({
+        ...problem,
+        isSource: problem.translatedFromProblemId === null
+      })),
+      locale
+    ).map((problem) => [problem.translationGroupId, problem])
+  );
+  const recentProblems = recentProblemRows.flatMap((problem) => {
+    const translation = recentProblemByGroup.get(problem.translationGroupId);
+    return translation ? [translation] : [];
+  });
   const explorations = selectContentTranslationsByGroup(explorationRows, preferredLanguage).slice(0, 3);
 
   const friendIds = user
