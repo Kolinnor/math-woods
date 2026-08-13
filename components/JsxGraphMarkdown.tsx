@@ -20,7 +20,13 @@ type MountedBoard = {
   dispose: () => void;
 };
 
+type PendingMount = {
+  cancelled: boolean;
+  timeoutId: number;
+};
+
 let boardCounter = 0;
+const GRAPH_LOAD_TIMEOUT_MS = 12_000;
 
 function isAnimatable(value: unknown): value is AnimatableElement {
   if (!value || typeof value !== "object") return false;
@@ -36,6 +42,7 @@ function graphHeight(config: JsxGraphConfig, width: number) {
 function showGraphError(holder: HTMLElement, message: string) {
   holder.className = "jsxgraph-error";
   holder.removeAttribute("data-jsxgraph");
+  holder.removeAttribute("data-jsxgraph-state");
   holder.removeAttribute("aria-busy");
   holder.replaceChildren();
 
@@ -106,47 +113,64 @@ async function mountBoard(
   holder.replaceChildren(boardElement);
   holder.setAttribute("aria-busy", "true");
 
-  const board = JXG.JSXGraph.initBoard(boardId, {
-    boundingbox: config.boundingBox,
-    axis: config.axis,
-    grid: config.grid,
-    keepaspectratio: config.keepAspectRatio,
-    showCopyright: false,
-    showNavigation: false,
-    pan: { enabled: true, needShift: false },
-    zoom: { wheel: true, needShift: false }
-  }) as unknown as BoardLike;
+  let board: BoardLike | null = null;
+  try {
+    board = JXG.JSXGraph.initBoard(boardId, {
+      boundingbox: config.boundingBox,
+      axis: config.axis,
+      grid: config.grid,
+      keepaspectratio: config.keepAspectRatio,
+      showCopyright: false,
+      showNavigation: false,
+      pan: { enabled: true, needShift: false },
+      zoom: { wheel: true, needShift: false }
+    }) as unknown as BoardLike;
 
-  for (const element of config.elements) {
-    board.create(element.type, element.parents, {
-      ...element.attributes,
-      ...(element.id ? { id: element.id } : {})
-    });
-  }
-  board.update();
-  holder.setAttribute("aria-busy", "false");
+    for (const element of config.elements) {
+      board.create(element.type, element.parents, {
+        ...element.attributes,
+        ...(element.id ? { id: element.id } : {})
+      });
+    }
+    board.update();
+    holder.setAttribute("aria-busy", "false");
 
-  const disposeAnimation = animationControl(board, config, holder);
-  let resizeFrame = 0;
-  const resizeObserver = new ResizeObserver((entries) => {
-    const width = Math.round(entries[0]?.contentRect.width ?? holder.clientWidth);
-    if (width <= 0) return;
-    window.cancelAnimationFrame(resizeFrame);
-    resizeFrame = window.requestAnimationFrame(() => {
-      board.resizeContainer(width, graphHeight(config, width));
-    });
-  });
-  resizeObserver.observe(holder);
-
-  return {
-    board,
-    dispose: () => {
-      disposeAnimation();
-      resizeObserver.disconnect();
+    const disposeAnimation = animationControl(board, config, holder);
+    let resizeFrame = 0;
+    let boardDisposed = false;
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (boardDisposed || isCancelled()) return;
+      const width = Math.round(entries[0]?.contentRect.width ?? holder.clientWidth);
+      if (width <= 0) return;
       window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => {
+        if (boardDisposed || isCancelled()) return;
+        board?.resizeContainer(width, graphHeight(config, width));
+      });
+    });
+    resizeObserver.observe(holder);
+
+    return {
+      board,
+      dispose: () => {
+        if (boardDisposed) return;
+        boardDisposed = true;
+        disposeAnimation();
+        resizeObserver.disconnect();
+        window.cancelAnimationFrame(resizeFrame);
+        JXG.JSXGraph.freeBoard(board as never);
+      }
+    };
+  } catch (error) {
+    if (board) {
       JXG.JSXGraph.freeBoard(board as never);
     }
-  };
+    throw error;
+  }
+}
+
+function loadingTimedOut(holder: HTMLElement) {
+  showGraphError(holder, "The interactive graph took too long to load. Reload the page to try again.");
 }
 
 export function JsxGraphMarkdown({ html }: { html: string }) {
@@ -157,31 +181,95 @@ export function JsxGraphMarkdown({ html }: { html: string }) {
     if (!root) return;
 
     let disposed = false;
-    const mounted: MountedBoard[] = [];
-    const placeholders = Array.from(root.querySelectorAll<HTMLElement>(".jsxgraph-embed[data-jsxgraph]"));
+    let scanFrame = 0;
+    const mounted = new Map<HTMLElement, MountedBoard>();
+    const pending = new Map<HTMLElement, PendingMount>();
 
-    void Promise.all(
-      placeholders.map(async (holder) => {
-        const parsed = decodeJsxGraphConfig(holder.dataset.jsxgraph ?? "");
-        if (!parsed.ok) {
-          showGraphError(holder, parsed.error);
+    const mountHolder = async (holder: HTMLElement) => {
+      if (disposed || mounted.has(holder) || pending.has(holder) || holder.dataset.jsxgraphState) return;
+
+      const parsed = decodeJsxGraphConfig(holder.dataset.jsxgraph ?? "");
+      if (!parsed.ok) {
+        showGraphError(holder, parsed.error);
+        return;
+      }
+
+      holder.dataset.jsxgraphState = "loading";
+      holder.setAttribute("aria-busy", "true");
+      const mount: PendingMount = {
+        cancelled: false,
+        timeoutId: window.setTimeout(() => {
+          mount.cancelled = true;
+          pending.delete(holder);
+          if (!disposed && root.contains(holder)) loadingTimedOut(holder);
+        }, GRAPH_LOAD_TIMEOUT_MS)
+      };
+      pending.set(holder, mount);
+
+      try {
+        const graph = await mountBoard(
+          holder,
+          parsed.config,
+          () => disposed || mount.cancelled || !root.contains(holder)
+        );
+        if (!graph) return;
+        if (disposed || mount.cancelled || !root.contains(holder)) {
+          graph.dispose();
           return;
         }
 
-        try {
-          const graph = await mountBoard(holder, parsed.config, () => disposed);
-          if (!graph) return;
-          if (disposed) graph.dispose();
-          else mounted.push(graph);
-        } catch (error) {
-          if (!disposed) showGraphError(holder, error instanceof Error ? error.message : "Unknown JSXGraph error.");
+        holder.dataset.jsxgraphState = "ready";
+        mounted.set(holder, graph);
+      } catch (error) {
+        if (!disposed && !mount.cancelled && root.contains(holder)) {
+          showGraphError(holder, error instanceof Error ? error.message : "Unknown JSXGraph error.");
         }
-      })
-    );
+      } finally {
+        window.clearTimeout(mount.timeoutId);
+        if (pending.get(holder) === mount) pending.delete(holder);
+      }
+    };
+
+    const scan = () => {
+      scanFrame = 0;
+      if (disposed) return;
+
+      for (const [holder, graph] of mounted) {
+        if (root.contains(holder)) continue;
+        graph.dispose();
+        mounted.delete(holder);
+      }
+      for (const [holder, mount] of pending) {
+        if (root.contains(holder)) continue;
+        mount.cancelled = true;
+        window.clearTimeout(mount.timeoutId);
+        pending.delete(holder);
+      }
+
+      const placeholders = root.querySelectorAll<HTMLElement>(
+        ".jsxgraph-embed[data-jsxgraph]:not([data-jsxgraph-state])"
+      );
+      for (const holder of placeholders) void mountHolder(holder);
+    };
+
+    const observer = new MutationObserver(() => {
+      window.cancelAnimationFrame(scanFrame);
+      scanFrame = window.requestAnimationFrame(scan);
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    scan();
 
     return () => {
       disposed = true;
-      for (const graph of mounted) graph.dispose();
+      observer.disconnect();
+      window.cancelAnimationFrame(scanFrame);
+      for (const mount of pending.values()) {
+        mount.cancelled = true;
+        window.clearTimeout(mount.timeoutId);
+      }
+      pending.clear();
+      for (const graph of mounted.values()) graph.dispose();
+      mounted.clear();
     };
   }, [html]);
 

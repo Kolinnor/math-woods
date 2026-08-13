@@ -580,3 +580,25 @@ Guardrail:
 - Fold bodies use the normal Markdown, wiki-link, image and KaTeX rendering pipeline. Inline-only Markdown rendering
   must not interpret fold blocks.
 - Nested fold blocks are intentionally unsupported in this first version.
+
+## 2026-08-13 - JSXGraph must recover after an unchanged Server Component refresh
+
+Symptom:
+
+- An interactive graph could occasionally remain on `Loading interactive graph...` after an unrelated action on the
+  same page, notably marking a problem as solved.
+
+Root cause:
+
+- The action refreshed the Server Component tree without changing the rendered Markdown string.
+- React could consequently restore a fresh JSXGraph placeholder while the client effect, keyed only by that unchanged
+  string, had no reason to run again.
+
+Guardrail:
+
+- Observe the rendered Markdown subtree and initialize every new JSXGraph placeholder exactly once, including a
+  placeholder reintroduced by a Server Component refresh.
+- Dispose boards and pending mounts when their holder leaves the subtree. Resize callbacks must also stop touching a
+  board after disposal.
+- A stalled module load must leave the loading state after a finite delay and expose an error instead of spinning
+  forever.
