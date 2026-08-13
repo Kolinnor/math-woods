@@ -18,7 +18,8 @@
   }
 
   request_body {
-    max_size 1MB
+    # The app accepts images up to 5 MiB; leave room for multipart metadata.
+    max_size 6MB
   }
 
   reverse_proxy app:3000

@@ -1,7 +1,9 @@
 import { NotificationType, TargetType } from "@prisma/client";
+import { ArrowLeft, Flag, Lightbulb, MessageCircle, MessageSquarePlus, Pencil, Send, ThumbsUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { HiddenHint } from "@/components/HiddenHint";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -15,17 +17,62 @@ import {
 } from "@/lib/actions/problem-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canEditDiscussionHint, canViewArchivedProblem } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
+import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export const dynamic = "force-dynamic";
 
+const discussionCopy = {
+  en: {
+    add: "Add to the discussion",
+    back: "Back to problem",
+    by: "by",
+    deleteHint: "Delete hint",
+    editHint: "Edit hint",
+    hint: "Hint",
+    join: "to join the discussion.",
+    markUseful: "Mark as useful",
+    messages: (count: number) => `${count} ${count === 1 ? "message" : "messages"}`,
+    noMessages: "No messages yet.",
+    post: "Post",
+    removeUseful: "Remove useful vote",
+    report: "Report",
+    reportPlaceholder: "Off-topic, spoiler, or incorrect information...",
+    saveHint: "Save hint",
+    submitReport: "Submit report"
+  },
+  fr: {
+    add: "Ajouter à la discussion",
+    back: "Retour au problème",
+    by: "par",
+    deleteHint: "Supprimer l'indication",
+    editHint: "Modifier l'indication",
+    hint: "Indication",
+    join: "pour participer a la discussion.",
+    markUseful: "Marquer comme utile",
+    messages: (count: number) => `${count} message${count === 1 ? "" : "s"}`,
+    noMessages: "Aucun message pour l'instant.",
+    post: "Publier",
+    removeUseful: "Retirer le vote utile",
+    report: "Signaler",
+    reportPlaceholder: "Hors sujet, divulgation, information incorrecte...",
+    saveHint: "Enregistrer l'indication",
+    submitReport: "Envoyer le signalement"
+  }
+} as const;
+
 export default async function ProblemDiscussionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const t = await getTranslations();
-  const user = await getCurrentUser();
+  const [t, interfaceLocale, user, timeZone] = await Promise.all([
+    getTranslations(),
+    getInterfaceLocale(),
+    getCurrentUser(),
+    getRequestTimeZone()
+  ]);
+  const copy = discussionCopy[interfaceLocale];
   const problem = await prisma.problem.findUnique({
     where: { slug },
     include: {
@@ -49,20 +96,21 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
     await markNotificationsReadForHref(user.id, `/problems/${problem.slug}/discussion`, NotificationType.DISCUSSION_POSTED);
   }
 
+  const posts = problem.thread?.posts ?? [];
   const [postVoteGroups, userVotes] = await Promise.all([
-    problem.thread?.posts.length
+    posts.length
       ? prisma.vote.groupBy({
           by: ["targetId"],
-          where: { targetType: TargetType.POST, targetId: { in: problem.thread.posts.map((post) => post.id) } },
+          where: { targetType: TargetType.POST, targetId: { in: posts.map((post) => post.id) } },
           _count: { targetId: true }
         })
       : Promise.resolve([]),
-    user && problem.thread?.posts.length
+    user && posts.length
       ? prisma.vote.findMany({
           where: {
             userId: user.id,
             targetType: TargetType.POST,
-            targetId: { in: problem.thread.posts.map((post) => post.id) }
+            targetId: { in: posts.map((post) => post.id) }
           },
           select: { targetId: true }
         })
@@ -72,67 +120,88 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
   const postVotes = new Map(postVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const ownPostVoteIds = new Set(userVotes.map((vote) => vote.targetId));
   const ownDiscussionPostResetSignal =
-    user && problem.thread ? problem.thread.posts.filter((post) => post.authorId === user.id).at(-1)?.id ?? 0 : 0;
+    user && problem.thread ? posts.filter((post) => post.authorId === user.id).at(-1)?.id ?? 0 : 0;
+  const dateFormatter = new Intl.DateTimeFormat(interfaceLocale === "fr" ? "fr-FR" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: timeZone ?? undefined
+  });
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="muted text-sm">{t.problemDetail.discussions}</p>
-          <h1 className="text-2xl font-bold">
-            <AsyncMarkdownInline markdown={problem.title} />
-          </h1>
-        </div>
-        <Link href={`/problems/${problem.slug}`} className="button secondary">
-          {t.problemDetail.problem}
+    <ForestPageLayout
+      className="discussion-page discussion-page-problem"
+      title={<AsyncMarkdownInline markdown={problem.title} />}
+      eyebrow={t.problemDetail.discussions}
+      heroImage="/art/hero-rye.jpg"
+      heroAlt="Ivan Shishkin, Rye (1878)"
+      description={copy.messages(posts.length)}
+      titleBelowHero
+      workspaceClassName="discussion-page-workspace"
+      actions={
+        <Link href={`/problems/${problem.slug}`} className="button secondary discussion-back-link">
+          <ArrowLeft size={17} aria-hidden="true" />
+          {copy.back}
         </Link>
-      </div>
-
+      }
+    >
       {!user && (
-        <p className="muted panel p-5">
-          <Link href="/login" className="underline">
-            {t.nav.signIn}
-          </Link>{" "}
-          to join the discussion.
+        <p className="discussion-sign-in">
+          <Link href="/login">{t.nav.signIn}</Link> {copy.join}
         </p>
       )}
 
-      <div className="grid gap-4">
-        {(problem.thread?.posts ?? []).map((post) => {
+      <section className="discussion-thread" aria-label={t.problemDetail.discussions}>
+        {posts.map((post) => {
           const canManageHint = Boolean(user && post.type === "HINT" && canEditDiscussionHint(user, post));
+          const hasUsefulVote = ownPostVoteIds.has(post.id);
 
           return (
-            <article key={post.id} className="panel p-5">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="muted text-sm">
-                      <span className="rounded border border-line px-2 py-0.5 text-xs">
-                        {post.type.toLowerCase()}
-                      </span>{" "}
-                      by{" "}
-                      <Link href={`/profile/${post.author.username}`} className="underline">
-                        <UserName user={post.author} />
-                      </Link>{" "}
-                      {"\u00b7"} {post.createdAt.toLocaleString("en-US")}
+            <article key={post.id} className={`discussion-post${post.type === "HINT" ? " discussion-post-hint" : ""}`}>
+              <header className="discussion-post-header">
+                <div className="discussion-post-author">
+                  <Link href={`/profile/${post.author.username}`}>
+                    <UserName user={post.author} />
+                  </Link>
+                  <span className="discussion-post-byline">{copy.by}</span>
+                  <time dateTime={post.createdAt.toISOString()}>{dateFormatter.format(post.createdAt)}</time>
                 </div>
-                {user && (
-                  <form action={votePostAction.bind(null, post.id, problem.slug, true)}>
+                <div className="discussion-post-header-actions">
+                  {post.type === "HINT" && (
+                    <span className="discussion-hint-badge">
+                      <Lightbulb size={14} aria-hidden="true" />
+                      {copy.hint}
+                    </span>
+                  )}
+                  {user && (
+                    <form action={votePostAction.bind(null, post.id, problem.slug, true)}>
                       <button
                         type="submit"
-                        className={ownPostVoteIds.has(post.id) ? "secondary vote-button-active" : "secondary"}
-                        aria-pressed={ownPostVoteIds.has(post.id)}
-                        title={ownPostVoteIds.has(post.id) ? "Remove useful vote" : "Mark as useful"}
+                        className={`discussion-useful-button${hasUsefulVote ? " is-active" : ""}`}
+                        aria-pressed={hasUsefulVote}
+                        title={hasUsefulVote ? copy.removeUseful : copy.markUseful}
                       >
-                        Useful {"\u00b7"} {postVotes.get(post.id) ?? 0}
+                        <ThumbsUp size={15} aria-hidden="true" />
+                        <span>{postVotes.get(post.id) ?? 0}</span>
                       </button>
-                  </form>
-                )}
+                    </form>
+                  )}
+                </div>
+              </header>
+
+              <div className="discussion-post-body">
+                {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
               </div>
-              {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
-              {canManageHint && (
-                    <div className="mt-3 grid gap-3 text-sm">
+
+              {(canManageHint || user) && (
+                <footer className="discussion-post-footer">
+                  {canManageHint && (
+                    <>
                       <details>
-                        <summary className="cursor-pointer font-medium">Edit hint</summary>
-                        <form action={updateHintAction.bind(null, post.id, problem.slug, true)} className="mt-3 grid gap-2">
+                        <summary>
+                          <Pencil size={14} aria-hidden="true" />
+                          {copy.editHint}
+                        </summary>
+                        <form action={updateHintAction.bind(null, post.id, problem.slug, true)} className="discussion-inline-form">
                           <LazyMarkdownEditor
                             name="bodyMarkdown"
                             initialValue={post.bodyMarkdown}
@@ -140,39 +209,52 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                             lineNumbers={false}
                           />
                           <button type="submit" className="secondary">
-                            Save hint
+                            {copy.saveHint}
                           </button>
                         </form>
                       </details>
                       <form action={deleteHintAction.bind(null, post.id, problem.slug, true)}>
-                        <button type="submit" className="secondary">
-                          Delete hint
+                        <button type="submit" className="discussion-text-action discussion-delete-action">
+                          <Trash2 size={14} aria-hidden="true" />
+                          {copy.deleteHint}
                         </button>
                       </form>
-                    </div>
-              )}
-              {user && (
-                <details className="mt-3 text-sm">
-                    <summary className="cursor-pointer font-medium">Report post</summary>
-                    <form action={reportPostAction.bind(null, post.id, problem.slug)} className="mt-3 grid gap-2">
-                      <textarea name="reason" placeholder="Off-topic, spoiler, incorrect solution..." required />
-                      <button type="submit" className="secondary">
-                        Submit report
-                      </button>
-                    </form>
-                </details>
+                    </>
+                  )}
+                  {user && (
+                    <details className="discussion-report">
+                      <summary>
+                        <Flag size={14} aria-hidden="true" />
+                        {copy.report}
+                      </summary>
+                      <form action={reportPostAction.bind(null, post.id, problem.slug)} className="discussion-inline-form">
+                        <textarea name="reason" placeholder={copy.reportPlaceholder} required />
+                        <button type="submit" className="secondary">
+                          {copy.submitReport}
+                        </button>
+                      </form>
+                    </details>
+                  )}
+                </footer>
               )}
             </article>
           );
         })}
-        {(problem.thread?.posts.length ?? 0) === 0 && (
-          <p className="muted panel p-5">{t.problemDetail.noMessagesYet}</p>
+
+        {posts.length === 0 && (
+          <div className="discussion-empty-state">
+            <MessageCircle size={25} aria-hidden="true" />
+            <p>{copy.noMessages}</p>
+          </div>
         )}
-      </div>
+      </section>
 
       {user && (
-        <form action={createDiscussionPostAction.bind(null, problem.id, true)} className="panel mt-6 grid gap-3 p-5">
-          <h2 className="text-sm font-medium">Add to the discussion</h2>
+        <form action={createDiscussionPostAction.bind(null, problem.id, true)} className="discussion-composer">
+          <h2>
+            <MessageSquarePlus size={19} aria-hidden="true" />
+            {copy.add}
+          </h2>
           <LazyMarkdownEditor
             name="bodyMarkdown"
             minHeight="9rem"
@@ -180,9 +262,14 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
             draftKey={`problem-discussion:${problem.id}:reply`}
             resetSignal={ownDiscussionPostResetSignal}
           />
-          <button type="submit">Post</button>
+          <div className="discussion-composer-actions">
+            <button type="submit">
+              <Send size={16} aria-hidden="true" />
+              {copy.post}
+            </button>
+          </div>
         </form>
       )}
-    </div>
+    </ForestPageLayout>
   );
 }

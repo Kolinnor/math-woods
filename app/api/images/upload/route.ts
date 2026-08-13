@@ -10,6 +10,7 @@ import {
 import { isVerifiedContributor } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { objectStorageUploadError } from "@/lib/image-upload-errors";
+import { processContentImage } from "@/lib/content-images";
 
 const MAX_UPLOAD_BODY_BYTES = IMAGE_UPLOAD_MAX_BYTES + 16_000;
 
@@ -71,28 +72,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 
-  const key = buildImageObjectKey({ userId: user.id, filename: upload.filename, contentType: upload.contentType });
+  let processedImage: Awaited<ReturnType<typeof processContentImage>>;
+  try {
+    processedImage = await processContentImage(image);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The server could not process this image.";
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+  }
+
+  const key = buildImageObjectKey({
+    userId: user.id,
+    filename: upload.filename,
+    contentType: processedImage.contentType
+  });
   let presigned: ReturnType<typeof createPresignedImageUpload>;
   try {
-    presigned = createPresignedImageUpload(config, key, upload.contentType);
+    presigned = createPresignedImageUpload(config, key, processedImage.contentType);
   } catch {
     return NextResponse.json(
       { ok: false, error: "Math Woods could not prepare the Object Storage request. Check the endpoint, region, and public image URL." },
       { status: 503 }
     );
   }
-  let imageBody: ArrayBuffer;
-  try {
-    imageBody = await image.arrayBuffer();
-  } catch {
-    return NextResponse.json({ ok: false, error: "The server could not read the selected image file." }, { status: 400 });
-  }
   let response: Response;
   try {
     response = await fetch(presigned.url, {
       method: presigned.method,
       headers: presigned.headers,
-      body: imageBody
+      body: Uint8Array.from(processedImage.body).buffer
     });
   } catch {
     return NextResponse.json(

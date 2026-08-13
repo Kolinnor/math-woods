@@ -1,21 +1,49 @@
+import { ArrowLeft, MessageCircle, MessageSquarePlus, Send } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
-import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { createConceptTalkPostAction } from "@/lib/actions/concept-community-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
+import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export const dynamic = "force-dynamic";
 
+const talkCopy = {
+  en: {
+    add: "Add to the discussion",
+    back: "Back to concept",
+    discussion: "Discussion",
+    join: "to join the discussion.",
+    messages: (count: number) => `${count} ${count === 1 ? "message" : "messages"}`,
+    noMessages: "No messages yet.",
+    post: "Post"
+  },
+  fr: {
+    add: "Ajouter à la discussion",
+    back: "Retour au concept",
+    discussion: "Discussion",
+    join: "pour participer a la discussion.",
+    messages: (count: number) => `${count} message${count === 1 ? "" : "s"}`,
+    noMessages: "Aucun message pour l'instant.",
+    post: "Publier"
+  }
+} as const;
+
 export default async function ConceptTalkPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const t = await getTranslations();
-  const user = await getCurrentUser();
+  const [t, interfaceLocale, user, timeZone] = await Promise.all([
+    getTranslations(),
+    getInterfaceLocale(),
+    getCurrentUser(),
+    getRequestTimeZone()
+  ]);
+  const copy = talkCopy[interfaceLocale];
   const concept = await prisma.concept.findUnique({
     where: { slug },
     include: {
@@ -28,63 +56,80 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
 
   if (!concept) notFound();
   const ownTalkPostResetSignal = user ? concept.talkPosts.filter((post) => post.authorId === user.id).at(-1)?.id ?? 0 : 0;
+  const dateFormatter = new Intl.DateTimeFormat(interfaceLocale === "fr" ? "fr-FR" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: timeZone ?? undefined
+  });
 
   return (
     <ForestPageLayout
+      className="discussion-page discussion-page-concept"
       title={<AsyncMarkdownInline markdown={concept.title} />}
-      eyebrow="Editorial discussion"
+      eyebrow={copy.discussion}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description="Discuss scope, sources, ambiguity, notation, and proposed improvements."
-      workspaceClassName="forest-page-workspace-narrow"
-      meta={<p>{concept.talkPosts.length} posts</p>}
+      description={copy.messages(concept.talkPosts.length)}
+      titleBelowHero
+      workspaceClassName="discussion-page-workspace"
       actions={
-        <Link href={`/concepts/${concept.slug}`} className="button secondary">
-          Article
+        <Link href={`/concepts/${concept.slug}`} className="button secondary discussion-back-link">
+          <ArrowLeft size={17} aria-hidden="true" />
+          {copy.back}
         </Link>
       }
     >
-      <p className="muted mb-6">
-        Use this page to discuss scope, sources, ambiguity, notation, and proposed improvements. Mathematical problem
-        solving belongs on problem discussions.
-      </p>
+      {!user && (
+        <p className="discussion-sign-in">
+          <Link href="/login">{t.nav.signIn}</Link> {copy.join}
+        </p>
+      )}
 
-      <div className="grid gap-4">
+      <section className="discussion-thread" aria-label={copy.discussion}>
         {concept.talkPosts.map((post) => (
-          <article key={post.id} className="panel p-5">
-            <p className="muted mb-3 text-sm">
-              <Link href={`/profile/${post.author.username}`} className="underline">
-                <UserName user={post.author} />
-              </Link>{" "}
-              · {post.createdAt.toLocaleString("en-US")}
-            </p>
-            <MarkdownBlock html={post.bodyHtml} />
+          <article key={post.id} className="discussion-post">
+            <header className="discussion-post-header">
+              <div className="discussion-post-author">
+                <Link href={`/profile/${post.author.username}`}>
+                  <UserName user={post.author} />
+                </Link>
+                <time dateTime={post.createdAt.toISOString()}>{dateFormatter.format(post.createdAt)}</time>
+              </div>
+            </header>
+            <div className="discussion-post-body">
+              <MarkdownBlock html={post.bodyHtml} />
+            </div>
           </article>
         ))}
-        {concept.talkPosts.length === 0 && <p className="muted panel p-5">No editorial discussion yet.</p>}
-      </div>
 
-      {user ? (
-        <form action={createConceptTalkPostAction.bind(null, concept.id, concept.slug)} className="panel mt-6 grid gap-3 p-5">
-          <div className="grid gap-2">
-            <span className="text-sm font-medium">Add to the discussion</span>
-            <LazyMarkdownEditor
-              name="bodyMarkdown"
-              minHeight="9rem"
-              lineNumbers={false}
-              draftKey={`concept-talk:${concept.id}:reply`}
-              resetSignal={ownTalkPostResetSignal}
-            />
+        {concept.talkPosts.length === 0 && (
+          <div className="discussion-empty-state">
+            <MessageCircle size={25} aria-hidden="true" />
+            <p>{copy.noMessages}</p>
           </div>
-          <button type="submit">Post</button>
+        )}
+      </section>
+
+      {user && (
+        <form action={createConceptTalkPostAction.bind(null, concept.id, concept.slug)} className="discussion-composer">
+          <h2>
+            <MessageSquarePlus size={19} aria-hidden="true" />
+            {copy.add}
+          </h2>
+          <LazyMarkdownEditor
+            name="bodyMarkdown"
+            minHeight="9rem"
+            lineNumbers={false}
+            draftKey={`concept-talk:${concept.id}:reply`}
+            resetSignal={ownTalkPostResetSignal}
+          />
+          <div className="discussion-composer-actions">
+            <button type="submit">
+              <Send size={16} aria-hidden="true" />
+              {copy.post}
+            </button>
+          </div>
         </form>
-      ) : (
-        <p className="muted mt-6">
-          <Link href="/login" className="underline">
-            {t.nav.signIn}
-          </Link>{" "}
-          to join the editorial discussion.
-        </p>
       )}
     </ForestPageLayout>
   );

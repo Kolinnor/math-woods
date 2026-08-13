@@ -92,6 +92,7 @@ export default async function AboutPage() {
             </a>
             .
           </p>
+          <p>Logo hand drawn by Nugget.</p>
           <AvatarArtworkCredit label="Default avatar artwork" />
         </div>
       </section>

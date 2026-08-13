@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ConceptKind, ConceptStatus, MathDomain, Prisma, QualityStatus, Role, UserMathLevel } from "@prisma/client";
 import { EditorState, StateEffect } from "@codemirror/state";
+import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import {
   getBooleanAttribute,
@@ -87,6 +88,7 @@ import {
   validateImageUploadInput,
   type ImageStorageConfig
 } from "../lib/image-storage.ts";
+import { processContentImage } from "../lib/content-images.ts";
 import {
   imageUploadNetworkError,
   imageUploadResponseError,
@@ -1810,6 +1812,16 @@ assert.deepEqual(validateImageUploadInput({ filename: "diagram.png", contentType
   sizeBytes: 42
 });
 assert.throws(() => validateImageUploadInput({ filename: "diagram.svg", contentType: "image/svg+xml", sizeBytes: 42 }));
+
+const oversizedContentImage = await sharp({
+  create: { width: 3000, height: 1200, channels: 3, background: "#f8f6ef" }
+}).png().toBuffer();
+const processedContentImage = await processContentImage(
+  new File([Uint8Array.from(oversizedContentImage)], "diagram.png", { type: "image/png" })
+);
+assert.equal(processedContentImage.contentType, "image/png");
+assert.equal(processedContentImage.width, 2560);
+assert.equal(processedContentImage.height, 1024);
 
 const testImageStorageConfig: ImageStorageConfig = {
   endpoint: new URL("https://s3.example.test"),
