@@ -31,6 +31,10 @@ import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
+type SearchValue = string | string[] | undefined;
+const ACTIVE_LANGUAGE_CODES = ACTIVE_CONTENT_LANGUAGES.map((language) => language.code);
+const ACTIVE_LANGUAGE_CODE_SET = new Set(ACTIVE_LANGUAGE_CODES);
+
 function conceptTitleFromSlug(slug: string) {
   return slug
     .split("-")
@@ -58,6 +62,14 @@ function parseProblemLinkFilter(value: string | undefined): ProblemLinkFilter {
   return "all";
 }
 
+function parseLanguageFilters(value: SearchValue) {
+  const values = (Array.isArray(value) ? value : value ? [value] : [])
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => ACTIVE_LANGUAGE_CODE_SET.has(item));
+  const uniqueValues = [...new Set(values)];
+  return uniqueValues.length ? uniqueValues : ACTIVE_LANGUAGE_CODES;
+}
+
 export default async function ConceptsPage({
   searchParams
 }: {
@@ -67,6 +79,7 @@ export default async function ConceptsPage({
     exerciseCount?: string;
     exerciseCountMode?: string;
     kind?: string;
+    language?: SearchValue;
     minExercises?: string;
     problemLinks?: string;
     sort?: string;
@@ -82,12 +95,14 @@ export default async function ConceptsPage({
     exerciseCount = "",
     exerciseCountMode = "",
     kind = "",
+    language,
     minExercises = "",
     status = "",
     sort = "",
     problemLinks = ""
   } = await searchParams;
   const query = q.trim();
+  const languageValues = parseLanguageFilters(language);
   const sortValue = parseConceptSort(sort);
   const exerciseCountValue = parseConceptExerciseCount(exerciseCount || minExercises);
   const exerciseCountModeValue = parseConceptExerciseCountMode(exerciseCountMode);
@@ -142,7 +157,7 @@ export default async function ConceptsPage({
         })
       ).map((group) => group.conceptId);
   const where: Prisma.ConceptWhereInput = {
-    language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
+    language: { in: languageValues },
     ...(query
       ? {
           OR: [
@@ -196,7 +211,7 @@ export default async function ConceptsPage({
     missingConcepts(30),
     prisma.concept.findMany({
       where: {
-        language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
+        language: { in: languageValues },
         canAppearInConceptBrowser: true
       },
       orderBy: { updatedAt: "desc" },
@@ -302,6 +317,22 @@ export default async function ConceptsPage({
                   <option value="without">{t.concepts.withoutLinkedProblems}</option>
                 </select>
               )}
+            </div>
+            <div className="concept-filter-section">
+              <fieldset className="problem-language-filter concept-language-filter">
+                <legend>{t.concepts.languages}</legend>
+                {ACTIVE_CONTENT_LANGUAGES.map((languageOption) => (
+                  <label key={languageOption.code}>
+                    <input
+                      name="language"
+                      type="checkbox"
+                      value={languageOption.code}
+                      defaultChecked={languageValues.includes(languageOption.code)}
+                    />
+                    <span>{languageOption.code.toUpperCase()}</span>
+                  </label>
+                ))}
+              </fieldset>
             </div>
             <div className="concept-filter-section">
               <span className="concept-filter-section-title">{t.concepts.exerciseCountLabel}</span>

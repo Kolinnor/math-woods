@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { selectTipTranslation, type TipTranslationValue } from "@/lib/tip-translations";
 
 export const DEFAULT_TIPS = [
   {
@@ -101,6 +102,7 @@ export type TipEntry = {
     imagePositionX: number;
     imagePositionY: number;
   }>;
+  translations: TipTranslationValue[];
 };
 
 export const DAILY_TIPS = DEFAULT_TIPS;
@@ -114,6 +116,7 @@ function defaultTipsWithIds(): TipEntry[] {
     imagePositionX: 50,
     imagePositionY: 50,
     images: [],
+    translations: [{ language: "en", title: tip.title, body: tip.body }],
     ...tip
   }));
 }
@@ -125,32 +128,50 @@ function isMissingTipTable(error: unknown) {
 export async function ensureDefaultTips() {
   try {
     const count = await prisma.tip.count();
-    if (count > 0) return;
+    if (count === 0) {
+      await prisma.tip.createMany({
+        data: DEFAULT_TIPS.map((tip, index) => ({
+          position: index,
+          showInMainMenu: false,
+          title: tip.title,
+          description: tip.description,
+          body: tip.body
+        })),
+        skipDuplicates: true
+      });
+    }
 
-    await prisma.tip.createMany({
-      data: DEFAULT_TIPS.map((tip, index) => ({
-        position: index,
-        showInMainMenu: false,
-        title: tip.title,
-        description: tip.description,
-        body: tip.body
-      })),
-      skipDuplicates: true
-    });
+    const tipCount = count === 0 ? await prisma.tip.count() : count;
+    const englishTranslationCount = await prisma.tipTranslation.count({ where: { language: "en" } });
+    if (englishTranslationCount < tipCount) {
+      const tips = await prisma.tip.findMany({ select: { id: true, title: true, body: true } });
+      await prisma.tipTranslation.createMany({
+        data: tips.map((tip) => ({ tipId: tip.id, language: "en", title: tip.title, body: tip.body })),
+        skipDuplicates: true
+      });
+    }
   } catch (error) {
     if (isMissingTipTable(error)) return;
     throw error;
   }
 }
 
-export async function loadTips(): Promise<TipEntry[]> {
+export async function loadTips(preferredLanguage = "en"): Promise<TipEntry[]> {
   try {
     await ensureDefaultTips();
     const tips = await prisma.tip.findMany({
       orderBy: { position: "asc" },
-      include: { images: { orderBy: { position: "asc" } } }
+      include: {
+        images: { orderBy: { position: "asc" } },
+        translations: { orderBy: { language: "asc" } }
+      }
     });
-    if (tips.length > 0) return tips;
+    if (tips.length > 0) {
+      return tips.map((tip) => ({
+        ...tip,
+        ...selectTipTranslation(tip.translations, preferredLanguage, tip)
+      }));
+    }
   } catch (error) {
     if (!isMissingTipTable(error)) throw error;
   }
@@ -163,7 +184,10 @@ export async function loadTip(id: number) {
     await ensureDefaultTips();
     return prisma.tip.findUnique({
       where: { id },
-      include: { images: { orderBy: { position: "asc" } } }
+      include: {
+        images: { orderBy: { position: "asc" } },
+        translations: { orderBy: { language: "asc" } }
+      }
     });
   } catch (error) {
     if (isMissingTipTable(error)) return null;
@@ -179,8 +203,8 @@ export function dailyTip(date = new Date()) {
   return DEFAULT_TIPS[dayNumber % DEFAULT_TIPS.length];
 }
 
-export async function loadDailyTip(date = new Date()) {
-  const tips = await loadTips();
+export async function loadDailyTip(date = new Date(), preferredLanguage = "en") {
+  const tips = await loadTips(preferredLanguage);
   const mainMenuTips = tips.filter((tip) => tip.showInMainMenu);
   if (mainMenuTips.length === 0) return null;
   const dayNumber = Math.floor(

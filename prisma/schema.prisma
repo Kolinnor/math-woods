@@ -1553,7 +1553,23 @@ model Tip {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   problems       TipProblem[]
+  problemGroups  TipProblemGroup[]
   images         TipImage[]
+  translations   TipTranslation[]
+}
+
+model TipTranslation {
+  id        Int      @id @default(autoincrement())
+  tipId     Int
+  language  String
+  title     String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tip       Tip      @relation(fields: [tipId], references: [id], onDelete: Cascade)
+
+  @@unique([tipId, language])
+  @@index([language])
 }
 
 model TipImage {
@@ -1581,6 +1597,17 @@ model TipProblem {
   @@id([tipId, problemId])
   @@index([tipId, position])
   @@index([problemId])
+}
+
+model TipProblemGroup {
+  tipId              Int
+  translationGroupId String
+  position           Int @default(0)
+  tip                Tip @relation(fields: [tipId], references: [id], onDelete: Cascade)
+
+  @@id([tipId, translationGroupId])
+  @@index([tipId, position])
+  @@index([translationGroupId])
 }
 
 model DailyProblemSchedule {

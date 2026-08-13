@@ -15,6 +15,8 @@ import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
 import { tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
+import { getPreferredContentLanguage } from "@/lib/server-language";
+import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,7 @@ type TipProblem = Prisma.ProblemGetPayload<{
 type TipProblemLink = {
   tipId: number;
   position: number;
-  problemId: number;
+  translationGroupId: string;
 };
 
 function tipMatchesQuery(
@@ -60,53 +62,61 @@ export default async function TipsPage({
 }) {
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
-  const t = await getTranslations();
+  const [t, preferredLanguage] = await Promise.all([
+    getTranslations(),
+    getPreferredContentLanguage()
+  ]);
 
   const { q = "", created, updated, deleted } = await searchParams;
   const query = q.trim();
-  const tipRows = await loadTips();
+  const tipRows = await loadTips(preferredLanguage);
   const tipIds = tipRows.map((tip) => tip.id);
   const tipProblemLinks = tipIds.length
     ? await prisma.$queryRaw<TipProblemLink[]>`
-        SELECT "tipId", "problemId", "position"
-        FROM "TipProblem"
+        SELECT "tipId", "translationGroupId", "position"
+        FROM "TipProblemGroup"
         WHERE "tipId" IN (${Prisma.join(tipIds)})
         ORDER BY "tipId" ASC, "position" ASC
       `
     : [];
-  const linkedProblemIds = [...new Set(tipProblemLinks.map((link) => link.problemId))];
-  const linkedProblems = linkedProblemIds.length
+  const linkedTranslationGroupIds = [...new Set(tipProblemLinks.map((link) => link.translationGroupId))];
+  const linkedProblems = linkedTranslationGroupIds.length
     ? await prisma.problem.findMany({
-        where: { id: { in: linkedProblemIds }, status: "PUBLISHED", listed: true },
+        where: {
+          status: "PUBLISHED",
+          listed: true,
+          translationGroupId: { in: linkedTranslationGroupIds }
+        },
         include: {
           tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
           _count: { select: { attempts: true } }
         }
       })
     : [];
-  const linkedProblemsById = new Map(linkedProblems.map((problem) => [problem.id, problem]));
   const tipProblemsByTipId = new Map<number, TipProblem[]>();
-  for (const link of tipProblemLinks) {
-    const problem = linkedProblemsById.get(link.problemId);
-    if (!problem) continue;
-    const current = tipProblemsByTipId.get(link.tipId) ?? [];
-    current.push(problem);
-    tipProblemsByTipId.set(link.tipId, current);
+  for (const tipId of tipIds) {
+    const selectedProblems = selectTipProblemTranslations(
+      tipProblemLinks.filter((link) => link.tipId === tipId),
+      linkedProblems,
+      preferredLanguage
+    );
+    tipProblemsByTipId.set(tipId, selectedProblems);
   }
+  const displayedProblems = [...tipProblemsByTipId.values()].flat();
   const solvedAttempts =
-    user && linkedProblemIds.length
+    user && displayedProblems.length
       ? await prisma.problemAttempt.findMany({
           where: {
             userId: user.id,
             status: "SOLVED",
-            problem: { translationGroupId: { in: linkedProblems.map((problem) => problem.translationGroupId) } }
+            problem: { translationGroupId: { in: displayedProblems.map((problem) => problem.translationGroupId) } }
           },
           select: { problem: { select: { translationGroupId: true } } }
         })
       : [];
   const solvedGroupIds = new Set(solvedAttempts.map((attempt) => attempt.problem.translationGroupId));
   const solvedIds = new Set(
-    linkedProblems.filter((problem) => solvedGroupIds.has(problem.translationGroupId)).map((problem) => problem.id)
+    displayedProblems.filter((problem) => solvedGroupIds.has(problem.translationGroupId)).map((problem) => problem.id)
   );
   const tips = tipRows.map((tip, index) => ({
     tip,

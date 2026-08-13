@@ -253,6 +253,26 @@ body:has(.problem-detail-shell) {
   z-index: 3;
 }
 
+.home-guest-hero-credit {
+  bottom: 0.7rem;
+  color: rgb(255 255 255 / 0.72);
+  font-size: 0.68rem;
+  line-height: 1.25;
+  max-width: min(22rem, calc(100% - 2rem));
+  position: absolute;
+  right: 0.9rem;
+  text-align: right;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.85);
+  z-index: 4;
+}
+
+.home-guest-hero-credit:hover,
+.home-guest-hero-credit:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .home-dashboard .home-hero-image {
   object-position: 50% 35%;
 }
@@ -1964,6 +1984,39 @@ a {
   gap: 0.5rem;
 }
 
+.guest-home-sign-in {
+  align-items: center;
+  background: #f8f4ea;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+  color: #173525;
+  display: none;
+  font-size: 1.15rem;
+  font-weight: 800;
+  height: 3rem;
+  justify-content: center;
+  padding: 0 1.35rem;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+body:has(.home-dashboard-guest) .guest-home-sign-in {
+  display: inline-flex;
+}
+
+.guest-home-sign-in:hover,
+.guest-home-sign-in:focus-visible {
+  background: #fff;
+  color: #0f2b1c;
+  transform: translateY(-1px);
+}
+
+.guest-home-sign-in:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .language-selector {
   align-items: center;
   background: var(--panel-muted);
@@ -2281,11 +2334,78 @@ a {
 }
 
 .friends-menu-heading {
-  align-items: baseline;
+  align-items: center;
   display: flex;
   justify-content: space-between;
   min-width: 0;
   padding-right: 0.6rem;
+}
+
+.friends-menu-heading-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.friends-menu-settings-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 1.8rem;
+  justify-content: center;
+  padding: 0;
+  width: 1.8rem;
+}
+
+.friends-menu-settings-button:hover,
+.friends-menu-settings-button.is-active {
+  background: var(--panel-muted);
+  color: var(--accent-strong);
+}
+
+.friends-menu-settings-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.friends-menu-settings {
+  background: var(--panel-muted);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem 0.6rem;
+}
+
+.friends-menu-settings > label:first-child {
+  align-items: center;
+  display: grid;
+  font-size: 0.76rem;
+  gap: 0.5rem;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.friends-menu-settings select {
+  font-size: 0.78rem;
+  height: 2rem;
+  min-width: 0;
+  padding: 0 1.8rem 0 0.55rem;
+}
+
+.friends-menu-offline-setting {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.76rem;
+  gap: 0.4rem;
+}
+
+.friends-menu-offline-setting input {
+  margin: 0;
 }
 
 .friends-menu-total-online {
@@ -11995,6 +12115,12 @@ body:has(.problem-detail-shell) .site-header {
     justify-self: end;
   }
 
+  .guest-home-sign-in {
+    font-size: 0.9rem;
+    height: 2.35rem;
+    padding: 0 0.75rem;
+  }
+
   .language-selector {
     height: 2.35rem;
     padding-left: 0.45rem;
@@ -12444,6 +12570,11 @@ body:has(.problem-detail-shell) .site-header {
 
   .site-brand {
     font-size: 1rem;
+  }
+
+  .guest-home-sign-in {
+    font-size: 0.82rem;
+    padding: 0 0.6rem;
   }
 
   .language-selector svg {
@@ -13292,6 +13423,13 @@ button.live-search-reset:hover {
   font-size: 0.84rem;
 }
 
+.concept-filter-form .concept-language-filter input {
+  height: 1rem;
+  min-height: 0;
+  padding: 0;
+  width: 1rem;
+}
+
 .concept-filter-form .concept-exercise-count-filter {
   background: transparent;
   border: 0;
@@ -13604,6 +13742,29 @@ button.live-search-reset:hover {
   font-family: var(--font-serif);
   font-size: 1.05rem;
   font-weight: 600;
+}
+
+.concept-contributors h2 {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.concept-contributor-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.9rem;
+}
+
+.concept-contributor-link {
+  color: var(--mw-link);
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.concept-contributor-link:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 1080px) {
@@ -18441,4 +18602,17 @@ body:has(.home-dashboard) > .site-footer {
   .home-dashboard .home-tip-copy > .prose-math {
     font-size: 0.82rem;
   }
+}
+.tip-translation-editor {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line, #bac8be);
+  border-radius: 6px;
+  background: var(--panel, #fff);
+}
+
+.tip-translation-editor > legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
 }

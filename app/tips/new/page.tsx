@@ -31,8 +31,10 @@ export default async function NewTipPage() {
           initialProblems={[]}
           submitLabel="Create tip"
           values={{
-            title: "",
-            body: "",
+            translations: {
+              en: { title: "", body: "" },
+              fr: { title: "", body: "" }
+            },
             images: [],
             showInMainMenu: true
           }}

@@ -13,13 +13,14 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { renderInlineMarkdown } from "@/lib/markdown";
+import { tipTranslationValues } from "@/lib/tip-translations";
 
 export const dynamic = "force-dynamic";
 
 type TipProblemRow = {
   tipId: number;
-  problemId: number;
   position: number;
+  translationGroupId: string;
 };
 
 export default async function EditTipPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,23 +34,39 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
 
   const tip = await loadTip(tipId);
   if (!tip) notFound();
-  const tipProblems = await prisma.$queryRaw<TipProblemRow[]>`SELECT "tipId", "problemId", "position" FROM "TipProblem" WHERE "tipId" = ${tipId} ORDER BY "position" ASC`;
-  const selectedProblemIds = new Set(tipProblems.map((link) => link.problemId));
-  const selectedProblems = selectedProblemIds.size
+  const tipProblems = await prisma.$queryRaw<TipProblemRow[]>`SELECT "tipId", "translationGroupId", "position" FROM "TipProblemGroup" WHERE "tipId" = ${tipId} ORDER BY "position" ASC`;
+  const selectedTranslationGroupIds = new Set(tipProblems.map((link) => link.translationGroupId));
+  const selectedProblems = selectedTranslationGroupIds.size
     ? await prisma.problem.findMany({
-        where: { id: { in: [...selectedProblemIds] } },
+        where: {
+          translationGroupId: { in: [...selectedTranslationGroupIds] }
+        },
         select: {
           id: true,
           title: true,
           slug: true,
           domain: true,
-          difficulty: true
+          difficulty: true,
+          language: true,
+          translationGroupId: true,
+          translatedFromProblemId: true
         }
       })
     : [];
-  const selectedProblemsById = new Map(selectedProblems.map((problem) => [problem.id, problem]));
+  const selectedProblemsByGroup = new Map<string, typeof selectedProblems>();
+  for (const problem of selectedProblems) {
+    selectedProblemsByGroup.set(problem.translationGroupId, [
+      ...(selectedProblemsByGroup.get(problem.translationGroupId) ?? []),
+      problem
+    ]);
+  }
   const initialProblems: TipPickerProblem[] = await Promise.all(tipProblems
-    .map((link) => selectedProblemsById.get(link.problemId))
+    .map((link) => {
+      const group = selectedProblemsByGroup.get(link.translationGroupId) ?? [];
+      return group.find((problem) => problem.language === "en")
+        ?? group.find((problem) => problem.translatedFromProblemId === null)
+        ?? group[0];
+    })
     .filter((problem): problem is NonNullable<typeof problem> => Boolean(problem))
     .map(async (problem) => ({
       id: problem.id,
@@ -57,8 +74,10 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
       titleHtml: await renderInlineMarkdown(problem.title),
       slug: problem.slug,
       domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
-      difficulty: problem.difficulty
+      difficulty: problem.difficulty,
+      translationGroupId: problem.translationGroupId
     })));
+  const translations = tipTranslationValues(tip.translations, tip);
 
   return (
     <ForestPageLayout
@@ -81,8 +100,7 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
           submitLabel="Save tip"
           sourceUpdatedAt={tip.updatedAt.getTime()}
           values={{
-            title: tip.title,
-            body: tip.body,
+            translations,
             images: tip.images.length > 0
               ? tip.images
               : tip.imageUrl

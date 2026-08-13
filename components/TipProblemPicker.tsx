@@ -14,6 +14,7 @@ export type TipPickerProblem = {
   slug: string;
   domainLabel: string;
   difficulty: number | null;
+  translationGroupId?: string;
 };
 
 type OrderedProblemPickerLabels = {
@@ -37,6 +38,7 @@ type OrderedProblemPickerProps = {
   labels?: Partial<OrderedProblemPickerLabels>;
   maxProblems?: number;
   searchParams?: string;
+  deduplicateByTranslationGroup?: boolean;
 };
 
 type ProblemSuggestion = TipPickerProblem & {
@@ -84,7 +86,8 @@ export function OrderedProblemPicker({
   inputName = "problemIds",
   labels: labelOverrides,
   maxProblems = 8,
-  searchParams = ""
+  searchParams = "",
+  deduplicateByTranslationGroup = false
 }: OrderedProblemPickerProps) {
   const labels = { ...DEFAULT_LABELS, ...labelOverrides };
   const [selectedProblems, setSelectedProblems] = useState<TipPickerProblem[]>(initialProblems);
@@ -94,7 +97,14 @@ export function OrderedProblemPicker({
   const [suggestions, setSuggestions] = useState<ProblemSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const selectedIds = useMemo(() => new Set(selectedProblems.map((problem) => problem.id)), [selectedProblems]);
+  const selectedKeys = useMemo(
+    () => new Set(selectedProblems.map((problem) =>
+      deduplicateByTranslationGroup ? problem.translationGroupId ?? String(problem.id) : String(problem.id)
+    )),
+    [deduplicateByTranslationGroup, selectedProblems]
+  );
+  const selectionKey = (problem: TipPickerProblem) =>
+    deduplicateByTranslationGroup ? problem.translationGroupId ?? String(problem.id) : String(problem.id);
   const canAddMore = selectedProblems.length < maxProblems;
   const hasSearchQuery = query.trim().length >= 2;
 
@@ -114,7 +124,7 @@ export function OrderedProblemPicker({
     })
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then((data: SuggestResponse) => {
-        setSuggestions((data.problems ?? []).filter((problem) => !selectedIds.has(problem.id)));
+        setSuggestions((data.problems ?? []).filter((problem) => !selectedKeys.has(selectionKey(problem))));
       })
       .catch(() => {
         if (!controller.signal.aborted) setSuggestions([]);
@@ -124,10 +134,10 @@ export function OrderedProblemPicker({
       });
 
     return () => controller.abort();
-  }, [canAddMore, query, searchParams, selectedIds]);
+  }, [canAddMore, deduplicateByTranslationGroup, query, searchParams, selectedKeys]);
 
   function addProblem(problem: ProblemSuggestion) {
-    if (!canAddMore || selectedIds.has(problem.id)) return;
+    if (!canAddMore || selectedKeys.has(selectionKey(problem))) return;
     setSelectedProblems((current) => [...current, problem]);
     setQuery("");
     setSuggestions([]);

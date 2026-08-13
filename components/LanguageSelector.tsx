@@ -1,24 +1,52 @@
 "use client";
 
 import type { Route } from "next";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Languages } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CONTENT_LANGUAGE_COOKIE,
   ACTIVE_CONTENT_LANGUAGES,
   contentLanguageNativeLabel,
+  isActiveContentLanguage,
   parseActiveContentLanguage
 } from "@/lib/languages";
-import { TRANSLATION_VIEW_LANGUAGE_PARAM } from "@/lib/translation-routing";
+import {
+  requestedTranslationLanguage,
+  TRANSLATION_VIEW_LANGUAGE_PARAM
+} from "@/lib/translation-routing";
 
 type LanguageSelectorProps = {
   initialLanguage: string;
 };
 
+function rememberLanguage(language: string) {
+  document.cookie = `${CONTENT_LANGUAGE_COOKIE}=${encodeURIComponent(
+    language
+  )}; max-age=31536000; path=/; samesite=lax${location.protocol === "https:" ? "; secure" : ""}`;
+}
+
 export function LanguageSelector({ initialLanguage }: LanguageSelectorProps) {
   const router = useRouter();
-  const [language, setLanguage] = useState(parseActiveContentLanguage(initialLanguage));
+  const searchParams = useSearchParams();
+  const initialActiveLanguage = parseActiveContentLanguage(initialLanguage);
+  const requestedLanguage = requestedTranslationLanguage(
+    searchParams.get(TRANSLATION_VIEW_LANGUAGE_PARAM)
+  );
+  const activeRequestedLanguage = isActiveContentLanguage(requestedLanguage)
+    ? requestedLanguage
+    : null;
+  const [language, setLanguage] = useState(activeRequestedLanguage ?? initialActiveLanguage);
+
+  useEffect(() => {
+    const nextLanguage = activeRequestedLanguage ?? initialActiveLanguage;
+    setLanguage(nextLanguage);
+
+    if (activeRequestedLanguage && activeRequestedLanguage !== initialActiveLanguage) {
+      rememberLanguage(activeRequestedLanguage);
+      router.refresh();
+    }
+  }, [activeRequestedLanguage, initialActiveLanguage, router]);
 
   return (
     <label className="language-selector" title="Choose language">
@@ -30,9 +58,7 @@ export function LanguageSelector({ initialLanguage }: LanguageSelectorProps) {
         onChange={(event) => {
           const nextLanguage = parseActiveContentLanguage(event.target.value);
           setLanguage(nextLanguage);
-          document.cookie = `${CONTENT_LANGUAGE_COOKIE}=${encodeURIComponent(
-            nextLanguage
-          )}; max-age=31536000; path=/; samesite=lax${location.protocol === "https:" ? "; secure" : ""}`;
+          rememberLanguage(nextLanguage);
           const currentUrl = new URL(window.location.href);
           const currentHref = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
           currentUrl.searchParams.delete(TRANSLATION_VIEW_LANGUAGE_PARAM);

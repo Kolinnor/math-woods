@@ -92,6 +92,7 @@ export async function GET(request: Request) {
       slug: problem.slug,
       domainLabel: translatedDomainLabel(problem.domain, t.home.domainLabels),
       difficulty: problem.difficulty,
+      translationGroupId: problem.translationGroupId,
       listed: problem.listed,
       language: problem.language
     })))

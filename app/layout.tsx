@@ -160,6 +160,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}
             </div>
             <div className="nav-tools">
+              {!user && (
+                <Link href="/login" className="guest-home-sign-in">
+                  {t.nav.signIn}
+                </Link>
+              )}
               <LanguageSelector initialLanguage={initialLanguage} />
               <AutoClosingDetails className="nav-menu">
                 <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle}>

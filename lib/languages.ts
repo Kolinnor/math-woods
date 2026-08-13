@@ -10,7 +10,7 @@ export type ContentLanguage = {
 
 export const ACTIVE_CONTENT_LANGUAGES: ContentLanguage[] = [
   { code: "en", label: "English", nativeLabel: "English" },
-  { code: "fr", label: "French", nativeLabel: "Francais" }
+  { code: "fr", label: "French", nativeLabel: "Français" }
 ];
 
 export const FUTURE_CONTENT_LANGUAGES: ContentLanguage[] = [

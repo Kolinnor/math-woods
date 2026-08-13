@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { ensureDefaultTips } from "@/lib/daily-tip";
 import { canUseAdminTools } from "@/lib/permissions";
@@ -29,6 +29,43 @@ function parseTipProblemIds(values: FormDataEntryValue[]) {
   }
 
   return problemIds;
+}
+
+function parseTipTranslations(formData: FormData) {
+  const english = {
+    language: "en",
+    title: requiredBoundedText(formData.get("titleEn"), CONTENT_LIMITS.title, "English title"),
+    body: requiredBoundedText(formData.get("bodyEn"), CONTENT_LIMITS.longNote, "English tip text")
+  };
+  const frenchTitle = optionalBoundedText(formData.get("titleFr"), CONTENT_LIMITS.title, "French title");
+  const frenchBody = optionalBoundedText(formData.get("bodyFr"), CONTENT_LIMITS.longNote, "French tip text");
+  if (Boolean(frenchTitle) !== Boolean(frenchBody)) {
+    throw new Error("The French title and tip text must either both be filled in or both be empty.");
+  }
+  return {
+    english,
+    french: frenchTitle && frenchBody ? { language: "fr", title: frenchTitle, body: frenchBody } : null
+  };
+}
+
+async function orderedTipProblems(
+  tx: Prisma.TransactionClient,
+  problemIds: number[]
+) {
+  const problems = problemIds.length
+    ? await tx.problem.findMany({
+        where: { id: { in: problemIds }, status: "PUBLISHED", listed: true },
+        select: { id: true, translationGroupId: true }
+      })
+    : [];
+  const problemsById = new Map(problems.map((problem) => [problem.id, problem]));
+  const seenGroups = new Set<string>();
+  return problemIds.flatMap((problemId) => {
+    const problem = problemsById.get(problemId);
+    if (!problem || seenGroups.has(problem.translationGroupId)) return [];
+    seenGroups.add(problem.translationGroupId);
+    return [problem];
+  });
 }
 
 function parseTipImages(formData: FormData): TipImageValue[] {
@@ -56,8 +93,7 @@ export async function createTipAction(formData: FormData) {
   await assertRateLimit(`tip:create:${user.id}`, 10, 60_000);
   await ensureDefaultTips();
 
-  const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const body = requiredBoundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Tip text");
+  const { english, french } = parseTipTranslations(formData);
   const images = parseTipImages(formData);
   const primaryImage = images[0] ?? null;
   const showInMainMenu = formData.get("showInMainMenu") === "on";
@@ -69,25 +105,25 @@ export async function createTipAction(formData: FormData) {
       orderBy: { position: "desc" },
       select: { position: true }
     });
-    const validProblems = problemIds.length
-      ? await tx.problem.findMany({
-          where: { id: { in: problemIds }, status: "PUBLISHED", listed: true },
-          select: { id: true }
-        })
-      : [];
-    const validProblemIds = new Set(validProblems.map((problem) => problem.id));
-    const orderedProblemIds = problemIds.filter((problemId) => validProblemIds.has(problemId));
+    const orderedProblems = await orderedTipProblems(tx, problemIds);
     const createdTip = await tx.tip.create({
       data: {
         position: (lastTip?.position ?? -1) + 1,
-        title,
-        description: body,
-        body,
+        title: english.title,
+        description: english.body,
+        body: english.body,
         imageUrl: primaryImage?.imageUrl ?? null,
         imagePositionX: primaryImage?.imagePositionX ?? 50,
         imagePositionY: primaryImage?.imagePositionY ?? 50,
         showInMainMenu
       }
+    });
+
+    await tx.tipTranslation.createMany({
+      data: [english, ...(french ? [french] : [])].map((translation) => ({
+        tipId: createdTip.id,
+        ...translation
+      }))
     });
 
     if (images.length > 0) {
@@ -100,9 +136,9 @@ export async function createTipAction(formData: FormData) {
       });
     }
 
-    for (const [index, problemId] of orderedProblemIds.entries()) {
+    for (const [index, problem] of orderedProblems.entries()) {
       await tx.$executeRaw(
-        Prisma.sql`INSERT INTO "TipProblem" ("tipId", "problemId", "position") VALUES (${createdTip.id}, ${problemId}, ${index + 1})`
+        Prisma.sql`INSERT INTO "TipProblemGroup" ("tipId", "translationGroupId", "position") VALUES (${createdTip.id}, ${problem.translationGroupId}, ${index + 1})`
       );
     }
 
@@ -120,35 +156,42 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   await assertRateLimit(`tip:update:${user.id}`, 30, 60_000);
   await ensureDefaultTips();
 
-  const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-  const body = requiredBoundedText(formData.get("body"), CONTENT_LIMITS.longNote, "Tip text");
+  const { english, french } = parseTipTranslations(formData);
   const images = parseTipImages(formData);
   const primaryImage = images[0] ?? null;
   const showInMainMenu = formData.get("showInMainMenu") === "on";
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
   await prisma.$transaction(async (tx) => {
-    const validProblems = problemIds.length
-      ? await tx.problem.findMany({
-          where: { id: { in: problemIds }, status: "PUBLISHED", listed: true },
-          select: { id: true }
-        })
-      : [];
-    const validProblemIds = new Set(validProblems.map((problem) => problem.id));
-    const orderedProblemIds = problemIds.filter((problemId) => validProblemIds.has(problemId));
+    const orderedProblems = await orderedTipProblems(tx, problemIds);
 
     await tx.tip.update({
       where: { id: tipId },
       data: {
-        title,
-        description: body,
-        body,
+        title: english.title,
+        description: english.body,
+        body: english.body,
         imageUrl: primaryImage?.imageUrl ?? null,
         imagePositionX: primaryImage?.imagePositionX ?? 50,
         imagePositionY: primaryImage?.imagePositionY ?? 50,
         showInMainMenu
       }
     });
+
+    await tx.tipTranslation.upsert({
+      where: { tipId_language: { tipId, language: "en" } },
+      create: { tipId, ...english },
+      update: { title: english.title, body: english.body }
+    });
+    if (french) {
+      await tx.tipTranslation.upsert({
+        where: { tipId_language: { tipId, language: "fr" } },
+        create: { tipId, ...french },
+        update: { title: french.title, body: french.body }
+      });
+    } else {
+      await tx.tipTranslation.deleteMany({ where: { tipId, language: "fr" } });
+    }
 
     await tx.tipImage.deleteMany({ where: { tipId } });
     if (images.length > 0) {
@@ -157,10 +200,10 @@ export async function updateTipAction(tipId: number, formData: FormData) {
       });
     }
 
-    await tx.$executeRaw`DELETE FROM "TipProblem" WHERE "tipId" = ${tipId}`;
-    for (const [index, problemId] of orderedProblemIds.entries()) {
+    await tx.$executeRaw`DELETE FROM "TipProblemGroup" WHERE "tipId" = ${tipId}`;
+    for (const [index, problem] of orderedProblems.entries()) {
       await tx.$executeRaw(
-        Prisma.sql`INSERT INTO "TipProblem" ("tipId", "problemId", "position") VALUES (${tipId}, ${problemId}, ${index + 1})`
+        Prisma.sql`INSERT INTO "TipProblemGroup" ("tipId", "translationGroupId", "position") VALUES (${tipId}, ${problem.translationGroupId}, ${index + 1})`
       );
     }
   });

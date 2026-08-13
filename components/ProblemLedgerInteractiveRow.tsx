@@ -134,17 +134,13 @@ export function ProblemLedgerInteractiveRow({
 
       <div className="problem-ledger-side">
         {author}
-        {!solved && (!signedIn ? (
-          <Link href={signInHref as never} className="problem-ledger-attempt" title={labels.startAttempting} aria-label={labels.startAttempting}>
-            <Target size={16} strokeWidth={2.5} />
-          </Link>
-        ) : (
+        {!solved && signedIn && attempted && (
           <button
             type="button"
-            className={`problem-ledger-attempt${attempted ? " is-active" : ""}`}
+            className="problem-ledger-attempt is-active"
             title={attemptLabel}
             aria-label={attemptLabel}
-            aria-pressed={attempted}
+            aria-pressed="true"
             disabled={pending !== null}
             onClick={() => {
               const wasAttempted = attempted;
@@ -157,7 +153,7 @@ export function ProblemLedgerInteractiveRow({
           >
             <Target size={16} strokeWidth={2.5} />
           </button>
-        ))}
+        )}
 
         {isOwnProblem && (
           <span className="problem-favorite-count problem-own-count" title={labels.yourProblem}>

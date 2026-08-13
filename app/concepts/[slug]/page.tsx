@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ConceptStatus, MathDomain, NotificationType } from "@prisma/client";
-import { FileDown, Flag, History, MessageCircle, Pencil } from "lucide-react";
+import { Flag, History, MessageCircle, Pencil, Users } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -9,7 +9,6 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
-import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import {
   downgradeConceptStatusAction,
@@ -48,7 +47,6 @@ import {
   selectContentTranslation,
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
-import { displayNameForUser } from "@/lib/user-display";
 import { cleanWikiLinkTarget, missingConceptHref } from "@/lib/wikilinks";
 
 export const dynamic = "force-dynamic";
@@ -211,13 +209,25 @@ export default async function ConceptPage({
       </ForestPageLayout>
     );
   }
-  const translationCreator = concept.translatedFromConceptId
-    ? await prisma.pageRevision.findFirst({
-        where: { pageType: "CONCEPT", pageId: concept.id, isCreation: true },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        select: { editedBy: true }
-      })
-    : null;
+  const contributorRevisions = await prisma.pageRevision.findMany({
+    where: {
+      pageType: "CONCEPT",
+      pageId: concept.id,
+      editedById: { not: null }
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    distinct: ["editedById"],
+    select: { editedBy: true }
+  });
+  const contributorsById = new Map<number, NonNullable<typeof concept.createdBy>>();
+  for (const contributor of [
+    concept.createdBy,
+    ...contributorRevisions.map((revision) => revision.editedBy),
+    concept.lastEditedBy
+  ]) {
+    if (contributor) contributorsById.set(contributor.id, contributor);
+  }
+  const contributors = [...contributorsById.values()];
   if (user) {
     await markNotificationsReadForHref(user.id, `/concepts/${concept.slug}`, [
       NotificationType.CONCEPT_CREATED,
@@ -405,7 +415,6 @@ export default async function ConceptPage({
     <ForestPageLayout
       className="concept-detail-page"
       title={<AsyncMarkdownInline markdown={concept.title} />}
-      eyebrow={t.conceptDetail.concept}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       description={
@@ -419,35 +428,6 @@ export default async function ConceptPage({
               {t.conceptDetail.editedSinceReview}
             </span>
           )}
-          {concept.lastEditedBy && (
-            <>
-              {" / "}
-              <span className="user-name-with-avatar">
-                <UserAvatar user={concept.lastEditedBy} size="xs" />
-                <span>{t.conceptDetail.editedBy(displayNameForUser(concept.lastEditedBy))}</span>
-              </span>
-            </>
-          )}
-        </>
-      }
-      meta={
-        <>
-          {concept.createdBy && (
-            <p className="concept-translation-credit">
-              <Link href={`/profile/${concept.createdBy.username}`}>
-                {t.common.by} <UserName user={concept.createdBy} />
-              </Link>
-              {translationCreator?.editedBy && translationCreator.editedBy.id !== concept.createdById && (
-                <>
-                  <span> · </span>
-                  <Link href={`/profile/${translationCreator.editedBy.username}`}>
-                    {t.translations.translatedBy} <UserName user={translationCreator.editedBy} />
-                  </Link>
-                </>
-              )}
-            </p>
-          )}
-          <p>{t.conceptDetail.talkPosts(concept._count.talkPosts)}</p>
         </>
       }
       titleBelowHero
@@ -686,10 +666,23 @@ export default async function ConceptPage({
           <Link href={`/concepts/${concept.slug}/history`}>
             <span className="problem-rail-action-label"><History size={16} aria-hidden="true" /><span>{t.conceptDetail.history}</span></span>
           </Link>
-          <Link href={`/concepts/${concept.slug}/export`}>
-            <span className="problem-rail-action-label"><FileDown size={16} aria-hidden="true" /><span>{t.conceptDetail.exportMarkdown}</span></span>
-          </Link>
         </nav>
+        {contributors.length > 0 && (
+          <section className="concept-rail-section concept-contributors">
+            <h2><Users size={16} aria-hidden="true" />{t.conceptDetail.contributors}</h2>
+            <div className="concept-contributor-list">
+              {contributors.map((contributor) => (
+                <Link
+                  key={contributor.id}
+                  href={`/profile/${contributor.username}`}
+                  className="concept-contributor-link"
+                >
+                  <UserName user={contributor} />
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
         <section className="concept-report-surface">
           <details className="text-sm">
             <summary className="cursor-pointer font-medium"><Flag size={15} aria-hidden="true" />{t.conceptDetail.report}</summary>

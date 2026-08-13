@@ -20,6 +20,7 @@ export type FriendsMenuData = {
     id: number;
     avatarBackground: string | null;
     avatarUrl: string | null;
+    lastSeenAt: string | null;
     name: string;
     online: boolean;
     unreadCount: number;
@@ -31,6 +32,11 @@ export type FriendsMenuData = {
   unreadChatCount: number;
   labels: {
     friends: string;
+    friendsMenuSettings: string;
+    sortBy: string;
+    sortRecent: string;
+    sortAlphabetical: string;
+    showOfflineUsers: string;
     backToFriends: string;
     challenge: ProblemChallengeLabels;
     reactions: ChatReactionLabels;
@@ -46,6 +52,7 @@ export type FriendsMenuData = {
     edited: string;
     imageRequirements: string;
     noFriendsYet: string;
+    noFriendsToShow: string;
     noMessagesYet: string;
     newMessagesBelow: string;
     offline: string;
@@ -117,18 +124,28 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
   const friendIds = friendships.map((friendship) =>
     friendship.requesterId === userId ? friendship.addresseeId : friendship.requesterId
   );
-  const onlineSessions = friendIds.length
-    ? await prisma.session.findMany({
-        where: {
-          userId: { in: friendIds },
-          lastSeenAt: { gte: onlineSince },
-          expiresAt: { gt: now }
-        },
-        distinct: ["userId"],
-        select: { userId: true }
-      })
-    : [];
+  const [onlineSessions, latestSessionGroups] = friendIds.length
+    ? await Promise.all([
+        prisma.session.findMany({
+          where: {
+            userId: { in: friendIds },
+            lastSeenAt: { gte: onlineSince },
+            expiresAt: { gt: now }
+          },
+          distinct: ["userId"],
+          select: { userId: true }
+        }),
+        prisma.session.groupBy({
+          by: ["userId"],
+          where: { userId: { in: friendIds } },
+          _max: { lastSeenAt: true }
+        })
+      ])
+    : [[], []];
   const onlineIds = new Set(onlineSessions.map((session) => session.userId));
+  const lastSeenByFriendId = new Map(
+    latestSessionGroups.map((session) => [session.userId, session._max.lastSeenAt?.toISOString() ?? null])
+  );
   const friends = friendships
     .map((friendship) => (friendship.requesterId === userId ? friendship.addressee : friendship.requester))
     .map((friend) => {
@@ -137,6 +154,7 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
         id: friend.id,
         avatarBackground: friend.avatarBackground,
         avatarUrl: friend.avatarUrl,
+        lastSeenAt: lastSeenByFriendId.get(friend.id) ?? null,
         name: displayNameForUser(friend),
         online: onlineIds.has(friend.id),
         unreadCount,
@@ -165,6 +183,11 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
     unreadChatCount,
     labels: {
       friends: t.social.friends,
+      friendsMenuSettings: t.social.friendsMenuSettings,
+      sortBy: t.social.sortBy,
+      sortRecent: t.social.sortRecent,
+      sortAlphabetical: t.social.sortAlphabetical,
+      showOfflineUsers: t.social.showOfflineUsers,
       backToFriends: t.social.backToFriends,
       challenge: t.social.challenge,
       reactions: {
@@ -183,6 +206,7 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
       edited: t.social.edited,
       imageRequirements: t.social.imageRequirements,
       noFriendsYet: t.social.noFriendsYet,
+      noFriendsToShow: t.social.noFriendsToShow,
       noMessagesYet: t.social.noMessagesYet,
       newMessagesBelow: t.social.newMessagesBelowLabel,
       offline: t.social.offline,

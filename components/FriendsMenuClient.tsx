@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Send, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, Send, SlidersHorizontal, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
@@ -28,6 +28,13 @@ import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { ChatReplyPreview } from "@/lib/chat-replies";
 import type { FriendsMenuData } from "@/lib/friends-menu";
+import {
+  DEFAULT_FRIENDS_MENU_PREFERENCES,
+  FRIENDS_MENU_PREFERENCES_STORAGE_KEY,
+  friendsForMenu,
+  parseFriendsMenuPreferences,
+  type FriendsMenuPreferences
+} from "@/lib/friends-menu-preferences";
 
 const FRIENDS_MENU_POLL_MS = 5000;
 const CHAT_POLL_MS = 3000;
@@ -36,6 +43,8 @@ type MenuFriend = FriendsMenuData["friends"][number];
 
 export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuData }) {
   const [data, setData] = useState(initialData);
+  const [preferences, setPreferences] = useState<FriendsMenuPreferences>(DEFAULT_FRIENDS_MENU_PREFERENCES);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<MenuFriend | null>(null);
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -54,6 +63,18 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     resetScroll,
     scrollToBottom
   } = useChatScroll(threadRef, selectedFriend?.username);
+  const visibleFriends = friendsForMenu(data.friends, preferences, data.locale);
+
+  useEffect(() => {
+    setPreferences(parseFriendsMenuPreferences(
+      window.localStorage.getItem(FRIENDS_MENU_PREFERENCES_STORAGE_KEY)
+    ));
+  }, []);
+
+  function updatePreferences(next: FriendsMenuPreferences) {
+    setPreferences(next);
+    window.localStorage.setItem(FRIENDS_MENU_PREFERENCES_STORAGE_KEY, JSON.stringify(next));
+  }
 
   useEffect(() => {
     function updateTitle() {
@@ -504,17 +525,57 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
               <Link href={"/friends" as never} className="friends-menu-title">
                 {data.labels.friends}
               </Link>
-              {data.totalOnlineCount !== null && (
-                <span className="friends-menu-total-online">Total online: {data.totalOnlineCount}</span>
-              )}
+              <div className="friends-menu-heading-actions">
+                {data.totalOnlineCount !== null && (
+                  <span className="friends-menu-total-online">Total online: {data.totalOnlineCount}</span>
+                )}
+                <button
+                  type="button"
+                  className={settingsOpen ? "friends-menu-settings-button is-active" : "friends-menu-settings-button"}
+                  aria-expanded={settingsOpen}
+                  aria-label={data.labels.friendsMenuSettings}
+                  title={data.labels.friendsMenuSettings}
+                  onClick={() => setSettingsOpen((open) => !open)}
+                >
+                  <SlidersHorizontal size={15} />
+                </button>
+              </div>
             </div>
+            {settingsOpen && (
+              <div className="friends-menu-settings">
+                <label>
+                  <span>{data.labels.sortBy}</span>
+                  <select
+                    value={preferences.sort}
+                    onChange={(event) => updatePreferences({
+                      ...preferences,
+                      sort: event.target.value === "alphabetical" ? "alphabetical" : "recent"
+                    })}
+                  >
+                    <option value="recent">{data.labels.sortRecent}</option>
+                    <option value="alphabetical">{data.labels.sortAlphabetical}</option>
+                  </select>
+                </label>
+                <label className="friends-menu-offline-setting">
+                  <input
+                    type="checkbox"
+                    checked={preferences.showOffline}
+                    onChange={(event) => updatePreferences({
+                      ...preferences,
+                      showOffline: event.target.checked
+                    })}
+                  />
+                  <span>{data.labels.showOfflineUsers}</span>
+                </label>
+              </div>
+            )}
             {data.unreadChatCount > 0 && data.labels.unreadMessages && (
               <Link href={"/friends" as never} className="friends-menu-request">
                 {data.labels.unreadMessages}
               </Link>
             )}
             <div className="friends-menu-list">
-              {data.friends.map((friend) => (
+              {visibleFriends.map((friend) => (
                 <button key={friend.id} type="button" className="friends-menu-row" onClick={() => setSelectedFriend(friend)}>
                   <span className="friends-menu-avatar-wrap">
                     <UserAvatar user={{ ...friend, displayName: friend.name }} size="sm" />
@@ -537,6 +598,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 </button>
               ))}
               {data.friends.length === 0 && <p>{data.labels.noFriendsYet}</p>}
+              {data.friends.length > 0 && visibleFriends.length === 0 && <p>{data.labels.noFriendsToShow}</p>}
             </div>
             {data.incomingCount > 0 && data.labels.pendingRequests && (
               <Link href={"/friends" as never} className="friends-menu-request">

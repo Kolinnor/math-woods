@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { parseContentLanguage } from "@/lib/languages";
 import { selectContentTranslation } from "@/lib/translation-routing";
 import {
   buildRecommendationProfile,
@@ -74,6 +75,7 @@ function dedupeFavorites(
 
 export async function recommendationsForUser(userId: number, requestedLimit = 20, preferredLanguage = "en") {
   const limit = Math.min(50, Math.max(1, Math.trunc(requestedLimit) || 20));
+  const recommendationLanguage = parseContentLanguage(preferredLanguage);
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -164,7 +166,11 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
       status: "PUBLISHED",
       listed: true,
       authorId: { not: user.id },
-      translationGroupId: { notIn: solvedGroups }
+      translationGroupId: { notIn: solvedGroups },
+      OR: [
+        { isExercise: false },
+        { isExercise: true, language: recommendationLanguage }
+      ]
     },
     select: {
       id: true,
@@ -206,7 +212,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
           ...item,
           isSource: item.translatedFromProblemId === null
         })),
-        preferredLanguage
+        recommendationLanguage
       );
       if (!problem) return null;
       const attempt = attemptByGroup.get(problem.translationGroupId);

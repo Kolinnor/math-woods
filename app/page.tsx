@@ -27,6 +27,7 @@ import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslation, selectContentTranslationsByGroup } from "@/lib/translation-routing";
+import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
 import { displayNameForUser } from "@/lib/user-display";
 import { dailyTipImage, tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
 
@@ -269,7 +270,7 @@ export default async function HomePage() {
           }
         })
       : [],
-    loadDailyTip(),
+    loadDailyTip(new Date(), preferredLanguage),
     user
       ? prisma.problem.findMany({
           where: {
@@ -428,12 +429,31 @@ export default async function HomePage() {
         })
       : []
   ]);
-  const tipPracticeLink = tip
-    ? await prisma.tipProblem.findFirst({
-        where: { tipId: tip.id, problem: { status: "PUBLISHED", listed: true } },
+  const tipPracticeSourceLink = tip
+    ? await prisma.tipProblemGroup.findFirst({
+        where: { tipId: tip.id },
         orderBy: { position: "asc" },
-        include: { problem: true }
+        select: { translationGroupId: true }
       })
+    : null;
+  const tipPracticeGroupId = tipPracticeSourceLink?.translationGroupId;
+  const tipPracticeCandidates = tipPracticeGroupId
+    ? await prisma.problem.findMany({
+        where: {
+          translationGroupId: tipPracticeGroupId,
+          status: "PUBLISHED",
+          listed: true
+        }
+      })
+    : [];
+  const tipPracticeProblem = tipPracticeSourceLink
+    ? selectTipProblemTranslations(
+        [{
+          translationGroupId: tipPracticeSourceLink.translationGroupId
+        }],
+        tipPracticeCandidates,
+        preferredLanguage
+      )[0] ?? null
     : null;
   const tipBodyHtml = tip ? await renderMarkdown(tip.body) : "";
   const selectedTipImage = tip ? dailyTipImage(tip.images, tip.id) : null;
@@ -552,6 +572,14 @@ export default async function HomePage() {
               <h1>{t.home.hero.guestTitle}</h1>
             </div>
           </div>
+          <a
+            className="home-guest-hero-credit"
+            href="https://commons.wikimedia.org/wiki/File:Shishkin,_Ivan_-_Morning_in_a_Pine_Forest.jpg"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <cite>Morning in a Pine Forest</cite>, Ivan Shishkin · Wikimedia Commons
+          </a>
         </section>
 
         <main className="home-dashboard-grid home-dashboard-grid-guest">
@@ -602,15 +630,15 @@ export default async function HomePage() {
                   <p className="mw-kicker">{copy.tip}</p>
                   <h2><AsyncMarkdownInline markdown={tip.title} /></h2>
                   <MarkdownBlock html={tipBodyHtml} />
-                  {tipPracticeLink && (
+                  {tipPracticeProblem && (
                     <Link
-                      href={`/problems/${tipPracticeLink.problem.slug}`}
+                      href={`/problems/${tipPracticeProblem.slug}`}
                       className="home-tip-practice"
                     >
-                      <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeLink.problem.title} /></strong>
+                      <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeProblem.title} /></strong>
                       <span className="home-tip-practice-meta">
-                        {translatedDomainLabel(tipPracticeLink.problem.domain, t.home.domainLabels)}
-                        <Difficulty value={tipPracticeLink.problem.difficulty} compact />
+                        {translatedDomainLabel(tipPracticeProblem.domain, t.home.domainLabels)}
+                        <Difficulty value={tipPracticeProblem.difficulty} compact />
                       </span>
                     </Link>
                   )}
@@ -694,12 +722,12 @@ export default async function HomePage() {
                 <p className="mw-kicker">{copy.tip}</p>
                 <h2><AsyncMarkdownInline markdown={tip.title} /></h2>
                 <MarkdownBlock html={tipBodyHtml} />
-                {tipPracticeLink && (
-                  <Link href={`/problems/${tipPracticeLink.problem.slug}`} className="home-tip-practice">
-                    <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeLink.problem.title} /></strong>
+                {tipPracticeProblem && (
+                  <Link href={`/problems/${tipPracticeProblem.slug}`} className="home-tip-practice">
+                    <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeProblem.title} /></strong>
                     <span className="home-tip-practice-meta">
-                      {translatedDomainLabel(tipPracticeLink.problem.domain, t.home.domainLabels)}
-                      <Difficulty value={tipPracticeLink.problem.difficulty} compact />
+                      {translatedDomainLabel(tipPracticeProblem.domain, t.home.domainLabels)}
+                      <Difficulty value={tipPracticeProblem.difficulty} compact />
                     </span>
                   </Link>
                 )}

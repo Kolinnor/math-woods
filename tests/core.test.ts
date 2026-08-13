@@ -94,6 +94,7 @@ import { chatImageDailyLimitForRole, chatImageUrl } from "../lib/chat-image-conf
 import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
 import { chatDistanceFromBottom, chatIsNearBottom, chatScrollTopAfterPrepend } from "../lib/chat-scroll.ts";
+import { friendsForMenu, parseFriendsMenuPreferences } from "../lib/friends-menu-preferences.ts";
 import { shouldSendChatOnEnter } from "../lib/chat-compose.ts";
 import { normalizeChatReplyToId } from "../lib/chat-replies.ts";
 import { applyChatMessageDeletions, applyChatMessageUpdates } from "../lib/chat-message-updates.ts";
@@ -130,6 +131,8 @@ import {
   tipImageObjectPosition,
   tipImageUrl
 } from "../lib/tip-images.ts";
+import { selectTipProblemTranslations } from "../lib/tip-problem-translations.ts";
+import { selectTipTranslation } from "../lib/tip-translations.ts";
 import {
   AVATAR_BACKGROUND_OPTIONS,
   DEFAULT_AVATAR_PRESETS,
@@ -2621,5 +2624,41 @@ assert.equal(isSitePresenceId("65b34742-92dc-4ec0-a928-216063f96a30"), true);
 assert.equal(isSitePresenceId("not-a-presence-id"), false);
 assert.equal(sitePresenceIsActive(100_001, 190_000), true);
 assert.equal(sitePresenceIsActive(100_000, 190_000), false);
+
+const menuFriends = [
+  { lastSeenAt: "2026-08-10T10:00:00.000Z", name: "Zo\u00e9", online: false, unreadCount: 1, username: "zoe" },
+  { lastSeenAt: "2026-08-12T10:00:00.000Z", name: "Alice", online: true, unreadCount: 0, username: "alice" },
+  { lastSeenAt: "2026-08-11T10:00:00.000Z", name: "Bernard", online: false, unreadCount: 0, username: "bernard" }
+];
+assert.deepEqual(
+  friendsForMenu(menuFriends, { showOffline: false, sort: "recent" }, "fr").map((friend) => friend.username),
+  ["alice", "zoe"]
+);
+assert.deepEqual(
+  friendsForMenu(menuFriends, { showOffline: true, sort: "alphabetical" }, "fr").map((friend) => friend.username),
+  ["alice", "bernard", "zoe"]
+);
+assert.deepEqual(parseFriendsMenuPreferences("not-json"), { showOffline: true, sort: "recent" });
+
+const translatedTip = [
+  { language: "en", title: "Try a smaller case", body: "Reduce the problem first." },
+  { language: "fr", title: "Essayez un cas plus simple", body: "Réduisez d'abord le problème." }
+];
+assert.equal(selectTipTranslation(translatedTip, "fr", translatedTip[0]).title, "Essayez un cas plus simple");
+assert.equal(selectTipTranslation(translatedTip.slice(0, 1), "fr", translatedTip[0]).language, "en");
+
+const selectedTipProblems = selectTipProblemTranslations(
+  [
+    { translationGroupId: "group-a" },
+    { translationGroupId: "group-b" }
+  ],
+  [
+    { id: 1, language: "en", translationGroupId: "group-a", translatedFromProblemId: null },
+    { id: 2, language: "fr", translationGroupId: "group-a", translatedFromProblemId: 1 },
+    { id: 3, language: "en", translationGroupId: "group-b", translatedFromProblemId: null }
+  ],
+  "fr"
+);
+assert.deepEqual(selectedTipProblems.map((problem) => problem.id), [2, 3]);
 
 console.log("core tests ok");
