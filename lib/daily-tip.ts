@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, TipKind } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { selectTipTranslation, type TipTranslationValue } from "@/lib/tip-translations";
 
@@ -89,6 +89,7 @@ export type TipEntry = {
   id: number;
   position: number;
   showInMainMenu: boolean;
+  kind: TipKind;
   title: string;
   description: string;
   body: string;
@@ -112,6 +113,7 @@ function defaultTipsWithIds(): TipEntry[] {
     id: index + 1,
     position: index,
     showInMainMenu: false,
+    kind: TipKind.TIP,
     imageUrl: null,
     imagePositionX: 50,
     imagePositionY: 50,

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { QualityStatus } from "@prisma/client";
 import Link from "next/link";
+import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -186,6 +187,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
 
             <div className="problem-compose-actions">
               <button type="submit">{publishesImmediately ? "Save changes" : "Submit for review"}</button>
+              <ContentPreviewButton contentType="problem" />
               <ProblemDetailsDisclosure>
                   <section className="problem-compose-subsection">
                     <h2>Origin</h2>

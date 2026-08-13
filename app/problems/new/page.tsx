@@ -1,4 +1,5 @@
-import { createProblemAction } from "@/lib/actions/problem-actions";
+import { ProblemCreateForm } from "@/components/ProblemCreateForm";
+import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
@@ -164,7 +165,7 @@ export default async function NewProblemPage({
     >
     <div className={sourceProblem ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
-        <form action={createProblemAction} className="problem-compose-form">
+        <ProblemCreateForm>
           {explorationSlug && <input type="hidden" name="addToExplorationSlug" value={explorationSlug} />}
           {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
           {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
@@ -235,6 +236,7 @@ export default async function NewProblemPage({
             <button type="submit" disabled={Boolean(sourceProblem && !targetTranslationLanguage)}>
               Publish
             </button>
+            <ContentPreviewButton contentType="problem" />
             <ProblemDetailsDisclosure>
                 <section className="problem-compose-subsection">
                   <h2>Origin</h2>
@@ -322,7 +324,7 @@ export default async function NewProblemPage({
               All supported languages already exist for this problem.
             </p>
           )}
-        </form>
+        </ProblemCreateForm>
       </div>
       {sourceProblem && (
         <TranslationReferencePanel

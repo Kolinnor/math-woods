@@ -16,6 +16,13 @@ export type MissingConcept = {
   sources: MissingConceptSource[];
 };
 
+export class TranslationWikiLinksPreservedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TranslationWikiLinksPreservedError";
+  }
+}
+
 export async function syncInternalLinks(
   sourceType: SourceType,
   sourceId: number,
@@ -112,7 +119,7 @@ export async function assertTranslationWikiLinksPreserved(
   }
 
   if (missingLabels.length > 0) {
-    throw new Error(
+    throw new TranslationWikiLinksPreservedError(
       `Keep every concept link from the source translation. Missing: ${[...new Set(missingLabels)].join(", ")}. You may translate the text after the | character without changing the link target.`
     );
   }

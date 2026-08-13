@@ -3,6 +3,7 @@ export type SearchRankCandidate = {
   slug: string;
   aliases?: readonly string[];
   language?: string;
+  searchText?: readonly (string | null | undefined)[];
 };
 
 export function normalizeSearchText(value: string) {
@@ -85,7 +86,7 @@ export function searchMorphologyVariants(rawQuery: string, language: string) {
 }
 
 function containsWholeWord(value: string, query: string) {
-  return value.split(" ").includes(query);
+  return ` ${value} `.includes(` ${query} `);
 }
 
 function directSearchMatchScore(candidate: SearchRankCandidate, rawQuery: string) {
@@ -95,6 +96,7 @@ function directSearchMatchScore(candidate: SearchRankCandidate, rawQuery: string
   const title = normalizeSearchText(candidate.title);
   const slug = normalizeSearchText(candidate.slug);
   const aliases = (candidate.aliases ?? []).map(normalizeSearchText);
+  const searchText = (candidate.searchText ?? []).map((value) => normalizeSearchText(value ?? ""));
 
   if (title === query) return 0;
   if (aliases.includes(query)) return 1;
@@ -106,7 +108,11 @@ function directSearchMatchScore(candidate: SearchRankCandidate, rawQuery: string
   if (title.includes(query)) return 7;
   if (aliases.some((alias) => alias.includes(query))) return 8;
   if (slug.includes(query)) return 9;
-  return 10;
+  if (searchText.some((value) => value === query)) return 10;
+  if (searchText.some((value) => value.startsWith(query))) return 11;
+  if (searchText.some((value) => containsWholeWord(value, query))) return 12;
+  if (searchText.some((value) => value.includes(query))) return 13;
+  return 14;
 }
 
 export function searchMatchScore(
@@ -130,7 +136,8 @@ export function rankSearchMatches<T extends SearchRankCandidate>(
   candidates: readonly T[],
   query: string,
   preferredLanguage?: string,
-  morphologyVariants: readonly string[] = []
+  morphologyVariants: readonly string[] = [],
+  tieBreaker?: (left: T, right: T) => number
 ) {
   return [...candidates].sort((left, right) => {
     const scoreDifference =
@@ -142,6 +149,9 @@ export function rankSearchMatches<T extends SearchRankCandidate>(
       const rightPreferred = right.language === preferredLanguage ? 0 : 1;
       if (leftPreferred !== rightPreferred) return leftPreferred - rightPreferred;
     }
+
+    const tieDifference = tieBreaker?.(left, right) ?? 0;
+    if (tieDifference) return tieDifference;
 
     const lengthDifference = normalizeSearchText(left.title).length - normalizeSearchText(right.title).length;
     if (lengthDifference) return lengthDifference;

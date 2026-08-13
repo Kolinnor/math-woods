@@ -5,7 +5,7 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { rankSearchMatches } from "@/lib/search-ranking";
+import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
@@ -26,6 +26,7 @@ export async function GET(request: Request) {
   const language = await getPreferredContentLanguage();
   const user = await getCurrentUser();
   const t = await getTranslations();
+  const morphologyVariants = searchMorphologyVariants(query, language);
   const commonWhere = {
     status: listedOnly ? "PUBLISHED" as const : { not: "ARCHIVED" as const },
     listed: listedOnly ? true : undefined,
@@ -61,10 +62,10 @@ export async function GET(request: Request) {
     where: {
       ...commonWhere,
       language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-      OR: [
-        { title: { contains: query, mode: "insensitive" } },
-        { slug: { contains: query.toLowerCase(), mode: "insensitive" } }
-      ]
+      OR: morphologyVariants.flatMap((variant) => [
+        { title: { contains: variant, mode: "insensitive" as const } },
+        { slug: { contains: variant, mode: "insensitive" as const } }
+      ])
     },
     select: problemSelect,
     orderBy: { title: "asc" },
@@ -81,7 +82,8 @@ export async function GET(request: Request) {
       language
     ),
     query,
-    language
+    language,
+    morphologyVariants
   ).slice(0, 20);
 
   return NextResponse.json({

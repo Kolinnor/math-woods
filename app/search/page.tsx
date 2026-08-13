@@ -10,23 +10,24 @@ import { getTranslations } from "@/lib/i18n/server";
 import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
+import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
-async function searchQuotes(query: string, language: string) {
+async function searchQuotes(query: string, language: string, morphologyVariants: readonly string[]) {
   try {
     const quotes = await prisma.quote.findMany({
       where: {
         language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-        OR: [
-          { text: { contains: query, mode: "insensitive" } },
-          { attributedTo: { contains: query, mode: "insensitive" } },
-          { provenance: { contains: query, mode: "insensitive" } }
-        ]
+        OR: morphologyVariants.flatMap((variant) => [
+          { text: { contains: variant, mode: "insensitive" as const } },
+          { attributedTo: { contains: variant, mode: "insensitive" as const } },
+          { provenance: { contains: variant, mode: "insensitive" as const } }
+        ])
       },
-      take: 20
+      take: 100
     });
     return selectContentTranslationsByGroup(quotes, language);
   } catch (error) {
@@ -46,19 +47,20 @@ export default async function SearchPage({
   const user = await getCurrentUser();
   const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
+  const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
   const [conceptRows, problemRows, explorationRows, quotes] = query
     ? await Promise.all([
         prisma.concept.findMany({
           where: {
             language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-            OR: [
-              { title: { contains: query, mode: "insensitive" } },
-              { bodyMarkdown: { contains: query, mode: "insensitive" } },
-              { aliases: { some: { alias: { contains: query, mode: "insensitive" } } } }
-            ]
+            OR: morphologyVariants.flatMap((variant) => [
+              { title: { contains: variant, mode: "insensitive" as const } },
+              { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
+              { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
+            ])
           },
           include: { aliases: true },
-          take: 20
+          take: 100
         }),
         prisma.problem.findMany({
           where: {
@@ -66,13 +68,13 @@ export default async function SearchPage({
             listed: true,
             language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
             ...visibleProblemWhere(user),
-            OR: [
-              { title: { contains: query, mode: "insensitive" } },
-              { bodyMarkdown: { contains: query, mode: "insensitive" } },
-              { origin: { contains: query, mode: "insensitive" } }
-            ]
+            OR: morphologyVariants.flatMap((variant) => [
+              { title: { contains: variant, mode: "insensitive" as const } },
+              { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
+              { origin: { contains: variant, mode: "insensitive" as const } }
+            ])
           },
-          take: 20
+          take: 100
         }),
         EXPLORATIONS_ENABLED
           ? prisma.playlist.findMany({
@@ -80,32 +82,89 @@ export default async function SearchPage({
                 visibility: "PUBLIC",
                 status: "PUBLISHED",
                 language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-                OR: [
-                  { title: { contains: query, mode: "insensitive" } },
-                  { descriptionMarkdown: { contains: query, mode: "insensitive" } }
-                ]
+                OR: morphologyVariants.flatMap((variant) => [
+                  { title: { contains: variant, mode: "insensitive" as const } },
+                  { descriptionMarkdown: { contains: variant, mode: "insensitive" as const } }
+                ])
               },
-              take: 20
+              take: 100
             })
           : Promise.resolve([]),
-        searchQuotes(query, preferredLanguage)
+        searchQuotes(query, preferredLanguage, morphologyVariants)
       ])
     : [[], [], [], []];
-  const concepts = selectContentTranslationsByGroup(
+  const selectedConcepts = selectContentTranslationsByGroup(
     conceptRows.map((concept) => ({
       ...concept,
       isSource: concept.translatedFromConceptId === null
     })),
     preferredLanguage
   );
-  const problems = selectContentTranslationsByGroup(
+  const selectedProblems = selectContentTranslationsByGroup(
     problemRows.map((problem) => ({
       ...problem,
       isSource: problem.translatedFromProblemId === null
     })),
     preferredLanguage
   );
-  const explorations = selectContentTranslationsByGroup(explorationRows, preferredLanguage);
+  const selectedExplorations = selectContentTranslationsByGroup(explorationRows, preferredLanguage);
+  const concepts = query
+    ? rankSearchMatches(
+        selectedConcepts.map((concept) => ({
+          item: concept,
+          title: concept.title,
+          slug: concept.slug,
+          aliases: concept.aliases.map(({ alias }) => alias),
+          language: concept.language,
+          searchText: [concept.bodyMarkdown]
+        })),
+        query,
+        preferredLanguage,
+        morphologyVariants
+      ).slice(0, 20).map(({ item }) => item)
+    : selectedConcepts;
+  const problems = query
+    ? rankSearchMatches(
+        selectedProblems.map((problem) => ({
+          item: problem,
+          title: problem.title,
+          slug: problem.slug,
+          language: problem.language,
+          searchText: [problem.bodyMarkdown, problem.origin]
+        })),
+        query,
+        preferredLanguage,
+        morphologyVariants
+      ).slice(0, 20).map(({ item }) => item)
+    : selectedProblems;
+  const explorations = query
+    ? rankSearchMatches(
+        selectedExplorations.map((exploration) => ({
+          item: exploration,
+          title: exploration.title,
+          slug: exploration.slug,
+          language: exploration.language,
+          searchText: [exploration.descriptionMarkdown]
+        })),
+        query,
+        preferredLanguage,
+        morphologyVariants
+      ).slice(0, 20).map(({ item }) => item)
+    : selectedExplorations;
+  const rankedQuotes = query
+    ? rankSearchMatches(
+        quotes.map((quote) => ({
+          item: quote,
+          title: quote.text,
+          slug: quote.slug,
+          language: quote.language,
+          searchText: [quote.attributedTo ?? "", quote.provenance ?? ""]
+        })),
+        query,
+        preferredLanguage,
+        morphologyVariants
+      ).slice(0, 20).map(({ item }) => item)
+    : quotes;
   const solvedAttempts = user
     ? await prisma.problemAttempt.findMany({
         where: {
@@ -121,7 +180,7 @@ export default async function SearchPage({
     problems.filter((problem) => solvedGroupIds.has(problem.translationGroupId)).map((problem) => problem.id)
   );
 
-  const total = concepts.length + problems.length + explorations.length + quotes.length;
+  const total = concepts.length + problems.length + explorations.length + rankedQuotes.length;
 
   return (
     <ForestPageLayout
@@ -202,7 +261,7 @@ export default async function SearchPage({
         <section>
           <h2 className="mb-3 font-semibold">Quotes</h2>
           <div className="grid gap-3">
-            {quotes.map((quote) => (
+            {rankedQuotes.map((quote) => (
               <Link key={quote.id} href={`/quotes/${quote.slug}`} className="panel block p-4">
                 <div className="font-medium">"{quote.text}"</div>
                 <div className="muted mt-1 text-xs">{quote.attributedTo ?? quote.provenance}</div>

@@ -4,6 +4,7 @@ import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { OrderedProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
@@ -204,7 +205,10 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           <span className="text-sm font-medium">Edit summary</span>
           <input name="editSummary" placeholder="Added example, clarified definition..." />
         </label>
-        <button type="submit">Save changes</button>
+        <div className="content-editor-actions">
+          <button type="submit">Save changes</button>
+          <ContentPreviewButton contentType="concept" />
+        </div>
       </form>
 
       {canDeleteCurrentConcept && (

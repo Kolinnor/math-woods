@@ -27,6 +27,7 @@ import { missingConcepts } from "@/lib/internal-links";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { canUseAdminTools } from "@/lib/permissions";
 import { combineSearchFilters } from "@/lib/search-filters";
+import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
@@ -103,6 +104,7 @@ export default async function ConceptsPage({
     problemLinks = ""
   } = await searchParams;
   const query = q.trim();
+  const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
   const languageValues = parseLanguageFilters(language);
   const sortValue = parseConceptSort(sort);
   const exerciseCountValue = parseConceptExerciseCount(exerciseCount || minExercises);
@@ -161,11 +163,11 @@ export default async function ConceptsPage({
     { language: { in: languageValues } },
     query
       ? {
-          OR: [
-            { title: { contains: query, mode: "insensitive" } },
-            { bodyMarkdown: { contains: query, mode: "insensitive" } },
-            { aliases: { some: { alias: { contains: query, mode: "insensitive" } } } }
-          ]
+          OR: morphologyVariants.flatMap((variant) => [
+            { title: { contains: variant, mode: "insensitive" as const } },
+            { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
+            { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
+          ])
         }
       : null,
     domainValue ? domainWhere : null,
@@ -186,7 +188,7 @@ export default async function ConceptsPage({
   const conceptCandidateRows = await prisma.concept.findMany({
     where,
     orderBy: { updatedAt: "desc" },
-    ...(sortValue === "updated" ? { take: 75 } : {}),
+    ...(sortValue === "updated" && !query ? { take: 75 } : {}),
     include: {
       aliases: true,
       _count: { select: { practiceExercises: true, references: true, talkPosts: true } }
@@ -240,7 +242,7 @@ export default async function ConceptsPage({
   const incomingLinkCountBySlug = new Map(
     incomingLinkGroups.map((item) => [item.targetSlug, item._count.targetSlug])
   );
-  const concepts =
+  const sortedConcepts =
     sortValue === "linked"
       ? [...conceptCandidates]
           .sort((left, right) => {
@@ -251,6 +253,23 @@ export default async function ConceptsPage({
           })
           .slice(0, 75)
       : conceptCandidates;
+  const conceptOrder = new Map(sortedConcepts.map((concept, index) => [concept.id, index]));
+  const concepts = query
+    ? rankSearchMatches(
+        sortedConcepts.map((concept) => ({
+          item: concept,
+          title: concept.title,
+          slug: concept.slug,
+          aliases: concept.aliases.map(({ alias }) => alias),
+          language: concept.language,
+          searchText: [concept.bodyMarkdown]
+        })),
+        query,
+        preferredLanguage,
+        morphologyVariants,
+        (left, right) => (conceptOrder.get(left.item.id) ?? 0) - (conceptOrder.get(right.item.id) ?? 0)
+      ).slice(0, 75).map(({ item }) => item)
+    : sortedConcepts;
 
   return (
     <ForestPageLayout

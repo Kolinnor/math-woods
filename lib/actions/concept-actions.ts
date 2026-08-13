@@ -28,7 +28,8 @@ import {
   assertTranslationWikiLinksPreserved,
   refreshLinksForConcept,
   refreshLinksForConceptId,
-  syncInternalLinks
+  syncInternalLinks,
+  TranslationWikiLinksPreservedError
 } from "@/lib/internal-links";
 import {
   editableContentLanguage,
@@ -243,6 +244,25 @@ export async function createConceptAction(formData: FormData) {
   });
   await checkConceptAchievements(user.id);
   redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
+}
+
+export type ConceptCreateActionState = {
+  error: string | null;
+};
+
+export async function createConceptFormAction(
+  _state: ConceptCreateActionState,
+  formData: FormData
+): Promise<ConceptCreateActionState> {
+  try {
+    await createConceptAction(formData);
+    return { error: null };
+  } catch (error) {
+    if (error instanceof TranslationWikiLinksPreservedError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 }
 
 export async function updateConceptAction(conceptId: number, formData: FormData) {

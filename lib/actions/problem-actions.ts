@@ -27,7 +27,11 @@ import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
-import { assertTranslationWikiLinksPreserved, syncInternalLinks } from "@/lib/internal-links";
+import {
+  assertTranslationWikiLinksPreserved,
+  syncInternalLinks,
+  TranslationWikiLinksPreservedError
+} from "@/lib/internal-links";
 import { canEditExploration } from "@/lib/explorations";
 import {
   createNotification,
@@ -799,6 +803,25 @@ export async function createProblemAction(formData: FormData) {
     href: `/problems/${problem.created.slug}`
   });
   redirect(contentLanguageViewHref("/problems", problem.created.slug, problem.created.language) as Route);
+}
+
+export type ProblemCreateActionState = {
+  error: string | null;
+};
+
+export async function createProblemFormAction(
+  _state: ProblemCreateActionState,
+  formData: FormData
+): Promise<ProblemCreateActionState> {
+  try {
+    await createProblemAction(formData);
+    return { error: null };
+  } catch (error) {
+    if (error instanceof TranslationWikiLinksPreservedError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 }
 
 export async function updateProblemAction(

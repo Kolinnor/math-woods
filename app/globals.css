@@ -4772,7 +4772,7 @@ textarea {
 .problem-compose-actions {
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 }
 
 .problem-compose-actions > button {
@@ -4786,7 +4786,7 @@ textarea {
 }
 
 .problem-compose-details-toggle {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 1;
 }
 
@@ -4898,12 +4898,17 @@ textarea {
 
   .problem-compose-details-toggle {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 3;
   }
 
   .problem-compose-details-body {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
+  }
+
+  .problem-compose-actions > .content-preview-button {
+    grid-column: 1;
+    grid-row: 2;
   }
 }
 
@@ -18666,4 +18671,174 @@ body:has(.home-dashboard) > .site-footer {
 .tip-translation-editor > legend {
   padding: 0 0.35rem;
   font-weight: 700;
+}
+
+.tip-kind-fieldset {
+  border: 0;
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+}
+
+.tip-kind-fieldset > legend {
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+  padding: 0;
+}
+
+.tip-kind-selector {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0.2rem;
+  width: min(100%, 22rem);
+}
+
+.tip-kind-selector label {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 2.6rem;
+  padding: 0.45rem 0.8rem;
+}
+
+.tip-kind-selector label:has(input:checked) {
+  background: var(--panel);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  box-shadow: 0 1px 3px rgb(29 58 39 / 10%);
+}
+
+.tip-kind-selector input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.tip-kind-selector label:has(input:focus-visible) {
+  outline: 2px solid var(--focus, #2c7650);
+  outline-offset: 2px;
+}
+
+.content-editor-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.content-preview-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.content-preview-dialog {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  margin: auto;
+  max-height: min(52rem, calc(100dvh - 2rem));
+  max-width: calc(100vw - 2rem);
+  overflow: hidden;
+  padding: 0;
+  width: 58rem;
+}
+
+.content-preview-dialog::backdrop {
+  background: color-mix(in srgb, #111 45%, transparent);
+}
+
+.content-preview-dialog-header {
+  align-items: center;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  font-weight: 750;
+  justify-content: space-between;
+  min-height: 3.6rem;
+  padding: 0.65rem 0.8rem 0.65rem 1.15rem;
+}
+
+.content-preview-dialog-header .icon-button {
+  align-items: center;
+  display: inline-flex;
+  height: 2.5rem;
+  justify-content: center;
+  padding: 0;
+  width: 2.5rem;
+}
+
+.content-preview-dialog-body {
+  max-height: calc(100dvh - 5.7rem);
+  overflow: auto;
+  padding: clamp(0.75rem, 2.5vw, 1.5rem);
+}
+
+.content-preview-loading {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  min-height: 14rem;
+}
+
+.content-preview-loading svg {
+  animation: markdown-editor-spin 0.85s linear infinite;
+}
+
+.content-preview-sheet {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: clamp(1.25rem, 4vw, 2.75rem);
+}
+
+.content-preview-sheet h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.65rem, 4vw, 2.35rem);
+  line-height: 1.15;
+  margin: 0;
+}
+
+.content-preview-type {
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+}
+
+.content-preview-markdown {
+  border-top: 1px solid var(--line);
+  margin-top: 1.2rem;
+  padding-top: 1.2rem;
+}
+
+@media (max-width: 600px) {
+  .content-preview-dialog {
+    max-height: calc(100dvh - 1rem);
+    max-width: calc(100vw - 1rem);
+  }
+
+  .content-preview-dialog-body {
+    max-height: calc(100dvh - 4.7rem);
+    padding: 0.5rem;
+  }
+
+  .content-preview-sheet {
+    padding: 1rem;
+  }
 }

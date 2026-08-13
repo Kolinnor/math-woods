@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { parseContentLanguage } from "@/lib/languages";
 import { renderMarkdown } from "@/lib/markdown";
 import { selectContentTranslationsByGroup, selectContentTranslation } from "@/lib/translation-routing";
-import { extractWikiLinks, replaceWikiLinkLabels } from "@/lib/wikilinks";
+import { extractWikiLinks, makeWikiLinkLabelsExplicit, replaceWikiLinkLabels } from "@/lib/wikilinks";
 
 type ResolvedConcept = {
   language: string;
@@ -267,7 +267,9 @@ export async function prepareMarkdownCollectionForTranslation(
     if (translatedTitle) labelsByTargetSlug.set(link.targetSlug, translatedTitle);
   }
 
-  return markdowns.map((markdown) => replaceWikiLinkLabels(markdown, labelsByTargetSlug));
+  return markdowns.map((markdown) =>
+    makeWikiLinkLabelsExplicit(replaceWikiLinkLabels(markdown, labelsByTargetSlug))
+  );
 }
 
 export async function prepareMarkdownForTranslation(markdown: string, language: string) {

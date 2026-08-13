@@ -496,6 +496,11 @@ enum ChatReactionType {
   AGREE
 }
 
+enum TipKind {
+  TIP
+  METHOD
+}
+
 model ChatMessageReaction {
   id        Int              @id @default(autoincrement())
   messageId Int
@@ -1550,6 +1555,7 @@ model Tip {
   imagePositionX Int          @default(50)
   imagePositionY Int          @default(50)
   showInMainMenu Boolean      @default(false)
+  kind           TipKind      @default(TIP)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   problems       TipProblem[]

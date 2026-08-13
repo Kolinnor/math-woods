@@ -92,6 +92,19 @@ export function replaceWikiLinkLabels(
   });
 }
 
+export function makeWikiLinkLabelsExplicit(markdown: string) {
+  const excluded = findMarkdownCodeRanges(markdown);
+
+  return markdown.replace(wikiLinkPattern, (raw: string, inner: string, offset: number) => {
+    if (overlapsRanges(offset, offset + raw.length, excluded)) return raw;
+
+    const link = parseWikiLink(raw, inner);
+    if (!link || inner.includes("|")) return raw;
+
+    return wikiLinkMarkup(link.target, link.label);
+  });
+}
+
 export function replaceWikiLinks(
   markdown: string,
   resolveHref: (link: WikiLink) => string,

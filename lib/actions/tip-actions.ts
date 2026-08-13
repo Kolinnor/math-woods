@@ -1,6 +1,6 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, TipKind } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -46,6 +46,10 @@ function parseTipTranslations(formData: FormData) {
     english,
     french: frenchTitle && frenchBody ? { language: "fr", title: frenchTitle, body: frenchBody } : null
   };
+}
+
+function parseTipKind(formData: FormData) {
+  return formData.get("kind") === TipKind.METHOD ? TipKind.METHOD : TipKind.TIP;
 }
 
 async function orderedTipProblems(
@@ -97,6 +101,7 @@ export async function createTipAction(formData: FormData) {
   const images = parseTipImages(formData);
   const primaryImage = images[0] ?? null;
   const showInMainMenu = formData.get("showInMainMenu") === "on";
+  const kind = parseTipKind(formData);
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
   const tip = await prisma.$transaction(async (tx) => {
@@ -115,7 +120,8 @@ export async function createTipAction(formData: FormData) {
         imageUrl: primaryImage?.imageUrl ?? null,
         imagePositionX: primaryImage?.imagePositionX ?? 50,
         imagePositionY: primaryImage?.imagePositionY ?? 50,
-        showInMainMenu
+        showInMainMenu,
+        kind
       }
     });
 
@@ -160,6 +166,7 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   const images = parseTipImages(formData);
   const primaryImage = images[0] ?? null;
   const showInMainMenu = formData.get("showInMainMenu") === "on";
+  const kind = parseTipKind(formData);
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
   await prisma.$transaction(async (tx) => {
@@ -174,7 +181,8 @@ export async function updateTipAction(tipId: number, formData: FormData) {
         imageUrl: primaryImage?.imageUrl ?? null,
         imagePositionX: primaryImage?.imagePositionX ?? 50,
         imagePositionY: primaryImage?.imagePositionY ?? 50,
-        showInMainMenu
+        showInMainMenu,
+        kind
       }
     });
 

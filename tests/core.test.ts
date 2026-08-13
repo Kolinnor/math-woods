@@ -68,6 +68,7 @@ import { combineSearchFilters, searchFilterHref } from "../lib/search-filters.ts
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
 import {
   extractWikiLinks,
+  makeWikiLinkLabelsExplicit,
   replaceWikiLinkLabels,
   missingConceptHref,
   problemLinkMarkup,
@@ -478,6 +479,14 @@ assert.equal(
 );
 assert.equal(wikiLinkMarkup("Category", "this is a category"), "[[Category|this is a category]]");
 assert.equal(wikiLinkMarkup("Category", "Category"), "[[Category|Category]]");
+assert.equal(
+  makeWikiLinkLabelsExplicit("See [[Group theory]] and `[[Leave code alone]]`."),
+  "See [[Group theory|Group theory]] and `[[Leave code alone]]`."
+);
+assert.equal(
+  makeWikiLinkLabelsExplicit("See [[Group theory|groupes]] and [[Ring]]."),
+  "See [[Group theory|groupes]] and [[Ring|Ring]]."
+);
 assert.equal(
   replaceWikiLinkLabels(
     "A [[Group|group]] and `[[Ring|ring]]`.",
@@ -2039,6 +2048,34 @@ const rankedGroupMatches = rankSearchMatches(
   "group"
 );
 assert.deepEqual(rankedGroupMatches.map((item) => item.title), ["Group", "Group action", "Abelian group", "Category of groups"]);
+const rankedStructureMatches = rankSearchMatches(
+  [
+    { title: "Ring", slug: "ring", searchText: ["A ring is an algebraic structure."] },
+    { title: "Structure", slug: "structure", searchText: ["A general mathematical object."] },
+    { title: "Group theory", slug: "group-theory", searchText: ["The study of algebraic structures."] }
+  ],
+  "Structure"
+);
+assert.deepEqual(rankedStructureMatches.map((item) => item.title), ["Structure", "Ring", "Group theory"]);
+assert.ok(
+  searchMatchScore({ title: "Structure theorem", slug: "structure-theorem" }, "structure") <
+    searchMatchScore({ title: "Ring", slug: "ring", searchText: ["An algebraic structure"] }, "structure")
+);
+assert.ok(
+  searchMatchScore({ title: "Ring structure", slug: "ring-structure" }, "structure") <
+    searchMatchScore({ title: "Ring", slug: "ring", searchText: ["An algebraic structure"] }, "structure")
+);
+const stableSearchTieBreak = rankSearchMatches(
+  [
+    { title: "Recent item", slug: "recent-item", searchText: ["structure"], rank: 0 },
+    { title: "Older item", slug: "older-item", searchText: ["structure"], rank: 1 }
+  ],
+  "structure",
+  undefined,
+  [],
+  (left, right) => left.rank - right.rank
+);
+assert.deepEqual(stableSearchTieBreak.map((item) => item.title), ["Recent item", "Older item"]);
 assert.equal(searchMatchScore({ title: "Groupe", slug: "groupe", aliases: ["Group"] }, "group"), 1);
 assert.deepEqual(searchMorphologyVariants("Rings", "en"), ["rings", "ring"]);
 assert.deepEqual(searchMorphologyVariants("Finite rings", "en"), ["finite rings", "finite ring"]);
@@ -2056,9 +2093,9 @@ const rankedRingMatches = rankSearchMatches(
   ringMorphologyVariants
 );
 assert.deepEqual(rankedRingMatches.map((item) => item.title), ["Ring", "Category of rings"]);
-assert.equal(
-  searchMatchScore({ title: "Ring", slug: "ring" }, "Rung", searchMorphologyVariants("Rung", "en")),
-  10
+assert.ok(
+  searchMatchScore({ title: "Ring", slug: "ring" }, "Rung", searchMorphologyVariants("Rung", "en")) >
+    searchMatchScore({ title: "Ring", slug: "ring" }, "Ring", searchMorphologyVariants("Ring", "en"))
 );
 
 const mathematicianFixtures = [

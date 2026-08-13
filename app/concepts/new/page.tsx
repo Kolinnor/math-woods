@@ -1,4 +1,5 @@
-import { createConceptAction } from "@/lib/actions/concept-actions";
+import { ConceptCreateForm } from "@/components/ConceptCreateForm";
+import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
@@ -92,7 +93,7 @@ export default async function NewConceptPage({
     >
     <div className={sourceConcept ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
-        <form action={createConceptAction} className="panel grid gap-4 p-5">
+        <ConceptCreateForm>
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
         {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
         <label className="grid gap-2">
@@ -194,10 +195,13 @@ export default async function NewConceptPage({
               All supported languages already exist for this concept.
             </p>
           )}
-          <button type="submit" disabled={Boolean(sourceConcept && !targetTranslationLanguage)}>
-            {sourceConcept ? "Create translation" : "Create concept"}
-          </button>
-        </form>
+          <div className="content-editor-actions">
+            <button type="submit" disabled={Boolean(sourceConcept && !targetTranslationLanguage)}>
+              {sourceConcept ? "Create translation" : "Create concept"}
+            </button>
+            <ContentPreviewButton contentType="concept" />
+          </div>
+        </ConceptCreateForm>
       </div>
       {sourceConcept && (
         <TranslationReferencePanel

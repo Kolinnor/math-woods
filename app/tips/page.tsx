@@ -16,6 +16,7 @@ import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
 import { tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { normalizeSearchText, rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
 
 export const dynamic = "force-dynamic";
@@ -50,9 +51,9 @@ function tipMatchesQuery(
       translatedDomainLabel(problem.domain, domainLabels),
       ...problem.tags.map(({ tag }) => tag.name)
     ].join(" "))
-  ].join(" ").toLowerCase();
+  ].join(" ");
 
-  return haystack.includes(query.toLowerCase());
+  return normalizeSearchText(haystack).includes(normalizeSearchText(query));
 }
 
 export default async function TipsPage({
@@ -118,11 +119,34 @@ export default async function TipsPage({
   const solvedIds = new Set(
     displayedProblems.filter((problem) => solvedGroupIds.has(problem.translationGroupId)).map((problem) => problem.id)
   );
-  const tips = tipRows.map((tip, index) => ({
+  const matchingTips = tipRows.map((tip, index) => ({
     tip,
     index,
     relatedProblems: tipProblemsByTipId.get(tip.id) ?? []
   })).filter(({ tip, relatedProblems }) => tipMatchesQuery(tip, relatedProblems, query, t.home.domainLabels));
+  const tips = query
+    ? rankSearchMatches(
+        matchingTips.map((entry) => ({
+          item: entry,
+          title: entry.tip.title,
+          slug: String(entry.tip.id),
+          language: preferredLanguage,
+          searchText: [
+            entry.tip.body,
+            ...entry.relatedProblems.flatMap((problem) => [
+              problem.title,
+              problem.origin,
+              translatedDomainLabel(problem.domain, t.home.domainLabels),
+              ...problem.tags.map(({ tag }) => tag.name)
+            ])
+          ]
+        })),
+        query,
+        preferredLanguage,
+        searchMorphologyVariants(query, preferredLanguage),
+        (left, right) => left.item.index - right.item.index
+      ).map(({ item }) => item)
+    : matchingTips;
 
   return (
     <ForestPageLayout
@@ -179,7 +203,9 @@ export default async function TipsPage({
               </div>
               <div className="tip-card-summary-copy">
                 <div className="tip-card-actions">
-                  <p className="eyebrow">Tip {tip.position + 1}</p>
+                  <p className="eyebrow">
+                    {tip.kind === "METHOD" ? "Method" : "Tip"} {tip.position + 1}
+                  </p>
                   <Link href={`/tips/${tip.id}/edit` as Route} className="button secondary">
                     Edit
                   </Link>

@@ -1,0 +1,4 @@
+CREATE TYPE "TipKind" AS ENUM ('TIP', 'METHOD');
+
+ALTER TABLE "Tip"
+ADD COLUMN "kind" "TipKind" NOT NULL DEFAULT 'TIP';

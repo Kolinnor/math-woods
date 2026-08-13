@@ -51,6 +51,7 @@ const dashboardCopy = {
     explorations: "Start an exploration",
     steps: (count: number) => `${count} steps`,
     tip: "Tip of the day",
+    method: "Method of the day",
     practice: "Practice",
     by: "by",
     noActivity: "Your friends' recent activity will appear here."
@@ -72,6 +73,7 @@ const dashboardCopy = {
     explorations: "Commencer une exploration",
     steps: (count: number) => `${count} étapes`,
     tip: "Conseil du jour",
+    method: "Méthode du jour",
     practice: "S'entraîner",
     by: "par",
     noActivity: "L'activité récente de vos amis apparaîtra ici."
@@ -627,7 +629,7 @@ export default async function HomePage() {
                   />
                 </div>
                 <div className="home-tip-copy">
-                  <p className="mw-kicker">{copy.tip}</p>
+                  <p className="mw-kicker">{tip.kind === "METHOD" ? copy.method : copy.tip}</p>
                   <h2><AsyncMarkdownInline markdown={tip.title} /></h2>
                   <MarkdownBlock html={tipBodyHtml} />
                   {tipPracticeProblem && (
@@ -719,7 +721,7 @@ export default async function HomePage() {
                 />
               </div>
               <div className="home-tip-copy">
-                <p className="mw-kicker">{copy.tip}</p>
+                <p className="mw-kicker">{tip.kind === "METHOD" ? copy.method : copy.tip}</p>
                 <h2><AsyncMarkdownInline markdown={tip.title} /></h2>
                 <MarkdownBlock html={tipBodyHtml} />
                 {tipPracticeProblem && (

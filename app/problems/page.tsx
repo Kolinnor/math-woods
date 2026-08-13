@@ -41,6 +41,7 @@ import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-diff
 import { buildProgressMap } from "@/lib/progress";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { combineSearchFilters } from "@/lib/search-filters";
+import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -335,6 +336,7 @@ export default async function ProblemsPage({
   const showsProblems = contentTypeValues.includes("problem");
   const showsExercises = contentTypeValues.includes("exercise");
   const query = q.trim();
+  const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
   const queryTagSlug = ensureSlug(query, "");
   const tagSlug = ensureSlug(tag, "");
   const legacyDifficultyValue = parseDifficultyBound(difficulty);
@@ -433,12 +435,14 @@ export default async function ProblemsPage({
             : { createdAt: "desc" };
   const queryClauses: Prisma.ProblemWhereInput[] = [];
   if (query) {
-    queryClauses.push(
-      { title: { contains: query, mode: "insensitive" } },
-      { bodyMarkdown: { contains: query, mode: "insensitive" } },
-      { origin: { contains: query, mode: "insensitive" } },
-      { tags: { some: { tag: { name: { contains: query, mode: "insensitive" } } } } }
-    );
+    for (const variant of morphologyVariants) {
+      queryClauses.push(
+        { title: { contains: variant, mode: "insensitive" } },
+        { bodyMarkdown: { contains: variant, mode: "insensitive" } },
+        { origin: { contains: variant, mode: "insensitive" } },
+        { tags: { some: { tag: { name: { contains: variant, mode: "insensitive" } } } } }
+      );
+    }
     if (queryTagSlug) {
       queryClauses.push({ tags: { some: { tag: { slug: { contains: queryTagSlug } } } } });
     }
@@ -517,6 +521,11 @@ export default async function ProblemsPage({
       select: {
         id: true,
         slug: true,
+        title: true,
+        bodyMarkdown: true,
+        origin: true,
+        tags: { select: { tag: { select: { name: true } } } },
+        spoilerTags: { select: { tag: { select: { name: true } } } },
         translationGroupId: true,
         language: true,
         translatedFromProblemId: true
@@ -546,7 +555,7 @@ export default async function ProblemsPage({
       candidate
     ]);
   }
-  const dedupedProblems = [...candidatesByTranslationGroup.values()].map((candidates) => {
+  const sortedDedupedProblems = [...candidatesByTranslationGroup.values()].map((candidates) => {
     const sortedCandidates = [...candidates].sort((left, right) => {
       const languageRank =
         languagePreferenceRank(left.language, preferredLanguage, languageValues) -
@@ -558,6 +567,27 @@ export default async function ProblemsPage({
     });
     return sortedCandidates[0];
   });
+  const problemOrder = new Map(sortedDedupedProblems.map((problem, index) => [problem.id, index]));
+  const dedupedProblems = query
+    ? rankSearchMatches(
+        sortedDedupedProblems.map((problem) => ({
+          item: problem,
+          title: problem.title,
+          slug: problem.slug,
+          language: problem.language,
+          searchText: [
+            problem.bodyMarkdown,
+            problem.origin,
+            ...problem.tags.map(({ tag }) => tag.name),
+            ...(showSpoilerTags ? problem.spoilerTags.map(({ tag }) => tag.name) : [])
+          ]
+        })),
+        query,
+        preferredLanguage,
+        morphologyVariants,
+        (left, right) => (problemOrder.get(left.item.id) ?? 0) - (problemOrder.get(right.item.id) ?? 0)
+      ).map(({ item }) => item)
+    : sortedDedupedProblems;
   const totalProblems = dedupedProblems.length;
   const totalPages = showAllProblems ? 1 : Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
   const currentPage = showAllProblems ? 1 : Math.min(requestedPage, totalPages);

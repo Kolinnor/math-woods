@@ -14,6 +14,7 @@ import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages"
 import { isVerifiedContributor } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
@@ -70,7 +71,22 @@ export default async function QuotesPage({
     : { language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) } };
 
   const { quotes: quoteRows, unavailable } = await findQuotes(where, user);
-  const quotes = selectContentTranslationsByGroup(quoteRows, preferredLanguage);
+  const selectedQuotes = selectContentTranslationsByGroup(quoteRows, preferredLanguage);
+  const quotes = query
+    ? rankSearchMatches(
+        selectedQuotes.map((quote) => ({
+          item: quote,
+          title: quote.text,
+          slug: quote.slug,
+          language: quote.language,
+          searchText: [quote.attributedTo, quote.provenance, quote.provenanceDetails]
+        })),
+        query,
+        preferredLanguage,
+        searchMorphologyVariants(query, preferredLanguage),
+        (left, right) => right.item.createdAt.getTime() - left.item.createdAt.getTime()
+      ).map(({ item }) => item)
+    : selectedQuotes;
 
   return (
     <ForestPageLayout

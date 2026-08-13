@@ -5,6 +5,7 @@ import { TipEditorFields } from "@/components/TipEditorFields";
 import { createTipAction } from "@/lib/actions/tip-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canUseAdminTools } from "@/lib/permissions";
+import { TipKind } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,10 @@ export default async function NewTipPage() {
 
   return (
     <ForestPageLayout
-      title="New tip"
+      title="New tip or method"
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      description="Create a new problem-solving tip for the library and the Tip of the Day rotation."
+      description="Create a problem-solving tip or method for the daily rotation."
       workspaceClassName="forest-page-workspace-narrow"
       actions={
         <Link href="/tips" className="button secondary">
@@ -29,14 +30,15 @@ export default async function NewTipPage() {
         <TipEditorFields
           draftKey="tip:new:body"
           initialProblems={[]}
-          submitLabel="Create tip"
+          submitLabel="Create"
           values={{
             translations: {
               en: { title: "", body: "" },
               fr: { title: "", body: "" }
             },
             images: [],
-            showInMainMenu: true
+            showInMainMenu: true,
+            kind: TipKind.TIP
           }}
         />
       </form>

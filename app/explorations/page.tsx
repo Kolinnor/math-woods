@@ -10,6 +10,7 @@ import { explorationCatalogWhere } from "@/lib/explorations";
 import { getTranslations } from "@/lib/i18n/server";
 import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function ExplorationsPage({
   const user = await getCurrentUser();
   const filters = await searchParams;
   const query = String(filters.q ?? "").trim();
+  const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
   const domain = Object.values(MathDomain).includes(filters.domain as MathDomain) ? filters.domain as MathDomain : null;
   const maxDuration = Number(filters.duration) || null;
   const maxDifficulty = Number(filters.difficulty) || null;
@@ -36,12 +38,12 @@ export default async function ExplorationsPage({
       ...(maxDifficulty ? { difficulty: { lte: maxDifficulty } } : {}),
       ...(query
         ? {
-            OR: [
-              { title: { contains: query, mode: "insensitive" } },
-              { summary: { contains: query, mode: "insensitive" } },
-              { descriptionMarkdown: { contains: query, mode: "insensitive" } },
-              { audience: { contains: query, mode: "insensitive" } }
-            ]
+            OR: morphologyVariants.flatMap((variant) => [
+              { title: { contains: variant, mode: "insensitive" as const } },
+              { summary: { contains: variant, mode: "insensitive" as const } },
+              { descriptionMarkdown: { contains: variant, mode: "insensitive" as const } },
+              { audience: { contains: variant, mode: "insensitive" as const } }
+            ])
           }
         : {})
     },
@@ -52,7 +54,25 @@ export default async function ExplorationsPage({
       _count: { select: { explorationSessions: true } }
     }
   });
-  const explorations = selectContentTranslationsByGroup(explorationRows, preferredLanguage);
+  const selectedExplorations = selectContentTranslationsByGroup(explorationRows, preferredLanguage);
+  const explorations = query
+    ? rankSearchMatches(
+        selectedExplorations.map((exploration) => ({
+          item: exploration,
+          title: exploration.title,
+          slug: exploration.slug,
+          language: exploration.language,
+          searchText: [
+            exploration.summary,
+            exploration.descriptionMarkdown,
+            exploration.audience
+          ]
+        })),
+        query,
+        preferredLanguage,
+        morphologyVariants
+      ).map(({ item }) => item)
+    : selectedExplorations;
   const sessions = user
     ? await prisma.explorationSession.findMany({
         where: { userId: user.id, playlistId: { in: explorations.map((exploration) => exploration.id) } },

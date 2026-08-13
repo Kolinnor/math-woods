@@ -78,11 +78,12 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
       translationGroupId: problem.translationGroupId
     })));
   const translations = tipTranslationValues(tip.translations, tip);
+  const entryLabel = tip.kind === "METHOD" ? "method" : "tip";
 
   return (
     <ForestPageLayout
-      title="Edit tip"
-      eyebrow={`Tip ${tip.position + 1}`}
+      title={`Edit ${entryLabel}`}
+      eyebrow={`${entryLabel === "method" ? "Method" : "Tip"} ${tip.position + 1}`}
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
       description={<AsyncMarkdownInline markdown={tip.title} />}
@@ -97,7 +98,7 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
         <TipEditorFields
           draftKey={`tip:${tip.id}:body`}
           initialProblems={initialProblems}
-          submitLabel="Save tip"
+          submitLabel="Save changes"
           sourceUpdatedAt={tip.updatedAt.getTime()}
           values={{
             translations,
@@ -110,15 +111,16 @@ export default async function EditTipPage({ params }: { params: Promise<{ id: st
                     imagePositionY: tip.imagePositionY
                   }]
                 : [],
-            showInMainMenu: tip.showInMainMenu
+            showInMainMenu: tip.showInMainMenu,
+            kind: tip.kind
           }}
         />
       </form>
 
       <section className="danger-zone">
         <div>
-          <h2>Delete tip</h2>
-          <p>This removes the tip from the daily rotation and deletes its selected practice problems.</p>
+          <h2>Delete {entryLabel}</h2>
+          <p>This removes the {entryLabel} from the daily rotation and deletes its selected practice problems.</p>
         </div>
         <form action={deleteTipAction.bind(null, tip.id)}>
           <DeleteTipButton title={tip.title} />
