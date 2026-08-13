@@ -95,14 +95,6 @@ export default async function NewConceptPage({
         <form action={createConceptAction} className="panel grid gap-4 p-5">
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
         {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
-        {!sourceConcept && (
-          <div className="growth-note">
-            <strong>Start small.</strong>
-            <span>
-              A definition, one example, or one reliable reference is enough for a first version.
-            </span>
-          </div>
-        )}
         <label className="grid gap-2">
           <span className="text-sm font-medium">Title</span>
           <input name="title" required defaultValue={sourceConcept?.title ?? title} />

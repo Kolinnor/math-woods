@@ -6,6 +6,16 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-08-13 - JSXGraph source can be folded without changing Markdown
+
+Expected behavior:
+
+- A complete fenced `jsxgraph` block has a small fold control beside its opening line.
+- Folding hides only the editor presentation of the block; the complete fenced source remains in the document and is
+  still used for saving, undo/redo, copy/paste, search, and rendered output.
+- Ordinary Markdown, LaTeX, headings, and non-JSXGraph code blocks do not receive this dedicated fold control.
+- Incomplete JSXGraph fences remain fully visible and editable.
+
 ## 2026-08-12 - Heading markers must remain visible and editable
 
 Symptom:

@@ -12,10 +12,18 @@ export function selectTipTranslation(
   fallback: Pick<TipTranslationValue, "title" | "body">
 ) {
   const preferred = parseActiveContentLanguage(preferredLanguage);
-  return translations.find((translation) => translation.language === preferred)
+  const translation = translations.find((entry) => entry.language === preferred)
     ?? translations.find((translation) => translation.language === DEFAULT_CONTENT_LANGUAGE)
     ?? translations[0]
     ?? { language: DEFAULT_CONTENT_LANGUAGE, ...fallback };
+
+  // Prisma translation rows also contain their own id and timestamps. Return only
+  // localized fields so spreading this value cannot overwrite the parent tip id.
+  return {
+    language: translation.language,
+    title: translation.title,
+    body: translation.body
+  };
 }
 
 export function tipTranslationValues(

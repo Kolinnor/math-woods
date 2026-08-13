@@ -1986,11 +1986,11 @@ a {
 
 .guest-home-sign-in {
   align-items: center;
-  background: #f8f4ea;
-  border: 1px solid rgb(255 255 255 / 0.7);
+  background: #173525;
+  border: 1px solid rgb(255 255 255 / 0.35);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
-  color: #173525;
+  color: #fff;
   display: none;
   font-size: 1.15rem;
   font-weight: 800;
@@ -2007,8 +2007,8 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 
 .guest-home-sign-in:hover,
 .guest-home-sign-in:focus-visible {
-  background: #fff;
-  color: #0f2b1c;
+  background: #226a46;
+  color: #fff;
   transform: translateY(-1px);
 }
 
@@ -2405,7 +2405,9 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 }
 
 .friends-menu-offline-setting input {
+  flex: 0 0 auto;
   margin: 0;
+  width: auto;
 }
 
 .friends-menu-total-online {
@@ -8231,6 +8233,55 @@ button.danger,
 .markdown-editor:focus-within .markdown-editor-host {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.markdown-editor .cm-jsxgraph-fold-gutter {
+  background: var(--panel-muted);
+  color: var(--accent);
+  width: 1.2rem;
+}
+
+.markdown-editor .cm-jsxgraph-fold-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: currentColor;
+  cursor: pointer;
+  display: flex;
+  height: 1.25rem;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+  width: 1.2rem;
+}
+
+.markdown-editor .cm-jsxgraph-fold-button::before {
+  border-bottom: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  content: "";
+  height: 0.38rem;
+  transform: translateY(-0.12rem) rotate(45deg);
+  width: 0.38rem;
+}
+
+.markdown-editor .cm-jsxgraph-fold-button.is-folded::before {
+  transform: translateX(-0.12rem) rotate(-45deg);
+}
+
+.markdown-editor .cm-jsxgraph-fold-button:hover,
+.markdown-editor .cm-jsxgraph-fold-button:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.markdown-editor .cm-foldPlaceholder {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
 }
 
 .markdown-editor-toolbar {

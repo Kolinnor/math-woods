@@ -64,6 +64,7 @@ import {
 import { selectProblemHintsForLanguage } from "../lib/problem-hints.ts";
 import { buildProgressMap } from "../lib/progress.ts";
 import { pickRandomDifferent } from "../lib/random-content.ts";
+import { combineSearchFilters, searchFilterHref } from "../lib/search-filters.ts";
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
 import {
   extractWikiLinks,
@@ -236,6 +237,7 @@ import {
   encodeJsxGraphConfig,
   parseJsxGraphConfig
 } from "../lib/jsxgraph.ts";
+import { jsxGraphFoldRangeAtLine } from "../lib/jsxgraph-folding.ts";
 import {
   assignableRolesFor,
   canAssignRole,
@@ -1596,6 +1598,32 @@ assert.match(renderedGraph, /class="jsxgraph-embed"/);
 assert.match(renderedGraph, /data-jsxgraph="[^"]+"/);
 assert.equal(renderedGraph.includes('"parents"'), false);
 
+const jsxGraphFoldState = EditorState.create({
+  doc: `Before
+
+\`\`\`jsxgraph
+{
+  "axis": true
+}
+\`\`\`
+
+After`
+});
+const jsxGraphOpeningLine = jsxGraphFoldState.doc.line(3);
+assert.deepEqual(jsxGraphFoldRangeAtLine(jsxGraphFoldState, jsxGraphOpeningLine.from), {
+  from: jsxGraphOpeningLine.to,
+  to: jsxGraphFoldState.doc.line(7).to
+});
+const ordinaryCodeFoldState = EditorState.create({ doc: "```json\n{}\n```" });
+assert.equal(jsxGraphFoldRangeAtLine(ordinaryCodeFoldState, 0), null);
+const incompleteJsxGraphFoldState = EditorState.create({ doc: "```jsxgraph\n{}" });
+assert.equal(jsxGraphFoldRangeAtLine(incompleteJsxGraphFoldState, 0), null);
+const tildeJsxGraphFoldState = EditorState.create({ doc: "~~~ JSXGRAPH\n{}\n~~~~" });
+assert.deepEqual(jsxGraphFoldRangeAtLine(tildeJsxGraphFoldState, 0), {
+  from: tildeJsxGraphFoldState.doc.line(1).to,
+  to: tildeJsxGraphFoldState.doc.line(3).to
+});
+
 const rejectedGraph = parseJsxGraphConfig(JSON.stringify({
   elements: [{ type: "text", parents: [0, 0, "<script>alert(1)</script>"], attributes: {} }]
 }));
@@ -1638,6 +1666,25 @@ assert.equal(renderedExternalLink.includes('target="_blank"'), true);
 
 const renderedProtocolRelativeLink = await renderMarkdown("[external](//example.com/path)");
 assert.equal(renderedProtocolRelativeLink.includes('href="//example.com/path"'), false);
+
+const combinedBrowserFilters = combineSearchFilters([
+  { OR: [{ title: { contains: "fundamental group" } }, { bodyMarkdown: { contains: "fundamental group" } }] },
+  { OR: [{ domainCode: "LOGIC" }, { domain: "LOGIC" }] }
+]);
+assert.deepEqual(combinedBrowserFilters, {
+  AND: [
+    { OR: [{ title: { contains: "fundamental group" } }, { bodyMarkdown: { contains: "fundamental group" } }] },
+    { OR: [{ domainCode: "LOGIC" }, { domain: "LOGIC" }] }
+  ]
+});
+assert.equal(
+  searchFilterHref("/problems", "q=fundamental+group&quality=REVIEWED&page=3", "domain", "LOGIC"),
+  "/problems?q=fundamental+group&quality=REVIEWED&domain=LOGIC"
+);
+assert.equal(
+  searchFilterHref("/problems", "q=fundamental+group&domain=LOGIC", "domain"),
+  "/problems?q=fundamental+group"
+);
 
 function tsxFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -2646,6 +2693,17 @@ const translatedTip = [
 ];
 assert.equal(selectTipTranslation(translatedTip, "fr", translatedTip[0]).title, "Essayez un cas plus simple");
 assert.equal(selectTipTranslation(translatedTip.slice(0, 1), "fr", translatedTip[0]).language, "en");
+const persistedTipTranslations = [
+  { id: 37, language: "fr", title: "Titre traduit", body: "Texte traduit" }
+];
+assert.deepEqual(
+  selectTipTranslation(
+    persistedTipTranslations,
+    "fr",
+    translatedTip[0]
+  ),
+  { language: "fr", title: "Titre traduit", body: "Texte traduit" }
+);
 
 const selectedTipProblems = selectTipProblemTranslations(
   [

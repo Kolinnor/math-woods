@@ -26,6 +26,7 @@ import type { Dictionary } from "@/lib/i18n/types";
 import { missingConcepts } from "@/lib/internal-links";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { canUseAdminTools } from "@/lib/permissions";
+import { combineSearchFilters } from "@/lib/search-filters";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
@@ -156,9 +157,9 @@ export default async function ConceptsPage({
           }
         })
       ).map((group) => group.conceptId);
-  const where: Prisma.ConceptWhereInput = {
-    language: { in: languageValues },
-    ...(query
+  const where: Prisma.ConceptWhereInput = combineSearchFilters<Prisma.ConceptWhereInput>([
+    { language: { in: languageValues } },
+    query
       ? {
           OR: [
             { title: { contains: query, mode: "insensitive" } },
@@ -166,21 +167,21 @@ export default async function ConceptsPage({
             { aliases: { some: { alias: { contains: query, mode: "insensitive" } } } }
           ]
         }
-      : {}),
-    ...domainWhere,
-    ...(kindValue ? { kind: kindValue } : {}),
-    ...(statusValue ? { status: statusValue } : {}),
-    ...(!exerciseCountFilterActive
-      ? {}
+      : null,
+    domainValue ? domainWhere : null,
+    kindValue ? { kind: kindValue } : null,
+    statusValue ? { status: statusValue } : null,
+    !exerciseCountFilterActive
+      ? null
       : exerciseCountModeValue === "at-most"
         ? { id: { notIn: exerciseCountBoundaryConceptIds } }
-        : { id: { in: exerciseCountBoundaryConceptIds } }),
-    ...(problemLinkFilter === "with"
+        : { id: { in: exerciseCountBoundaryConceptIds } },
+    problemLinkFilter === "with"
       ? { slug: { in: linkedConceptSlugs } }
       : problemLinkFilter === "without"
         ? { slug: { notIn: linkedConceptSlugs } }
-        : {})
-  };
+        : null
+  ]);
 
   const conceptCandidateRows = await prisma.concept.findMany({
     where,
@@ -342,7 +343,7 @@ export default async function ConceptsPage({
                     <option value="at-least">{t.concepts.exerciseCountAtLeast}</option>
                     <option value="at-most">{t.concepts.exerciseCountAtMost}</option>
                   </select>
-                  <input aria-label={t.concepts.exerciseCountAriaLabel} defaultValue={exerciseCountValue ?? ""} max={MAX_CONCEPT_EXERCISES} min={0} name="exerciseCount" placeholder="X" type="number" />
+                  <input aria-label={t.concepts.exerciseCountAriaLabel} defaultValue={exerciseCountValue ?? 0} max={MAX_CONCEPT_EXERCISES} min={0} name="exerciseCount" type="number" />
                 </div>
               </div>
             </div>

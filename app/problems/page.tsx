@@ -40,6 +40,7 @@ import {
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
 import { buildProgressMap } from "@/lib/progress";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
+import { combineSearchFilters } from "@/lib/search-filters";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -466,8 +467,7 @@ export default async function ProblemsPage({
       ? [{ [advancedLogic]: advancedClauses } satisfies Prisma.ProblemWhereInput]
       : [])
   ];
-  const whereClauses: Prisma.ProblemWhereInput[] = [...baseWhereClauses];
-  const where: Prisma.ProblemWhereInput = { AND: whereClauses };
+  const where: Prisma.ProblemWhereInput = combineSearchFilters<Prisma.ProblemWhereInput>(baseWhereClauses);
   const progressWhere: Prisma.ProblemWhereInput = {
     status: "PUBLISHED",
     listed: true,

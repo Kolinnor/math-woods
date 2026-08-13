@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ProgressTicks } from "@/components/ProgressTicks";
 import type { ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
 import type { Dictionary, InterfaceLocale } from "@/lib/i18n/types";
+import { searchFilterHref } from "@/lib/search-filters";
 
 type SortKey = "count" | "family" | "name" | "diff" | "date";
 
@@ -46,7 +48,9 @@ export function ProblemDomainStrip({
   const [sort, setSort] = useState<SortKey>("count");
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(initiallyExpanded);
+  const searchParams = useSearchParams();
   const activeDomain = normalized(selectedDomain);
+  const domainHref = (domain?: string) => searchFilterHref("/problems", searchParams.toString(), "domain", domain);
   const sortedDomains = useMemo(() => {
     return [...domains].sort((a, b) => {
       if (sort === "count") {
@@ -94,7 +98,7 @@ export function ProblemDomainStrip({
       <div className="problem-domain-strip-header">
         <div className="problem-domain-strip-title-row">
           <h2 id="problem-domain-strip-title">{labels.title}</h2>
-          <Link href="/problems" scroll={false}>
+          <Link href={domainHref() as never} scroll={false}>
             {labels.allDomains}
           </Link>
           {domains.length > 8 && (
@@ -148,7 +152,7 @@ export function ProblemDomainStrip({
           return (
             <div key={domain.value} className="problem-domain-tile-shell">
               <Link
-                href={`/problems?domain=${domain.value}` as never}
+                href={domainHref(domain.value) as never}
                 className={active ? "problem-domain-tile active" : "problem-domain-tile"}
                 scroll={false}
               >
@@ -184,7 +188,7 @@ export function ProblemDomainStrip({
                     {subdomains.map((subdomain) => (
                       <Link
                         key={subdomain.value}
-                        href={`/problems?domain=${subdomain.value}` as never}
+                        href={domainHref(subdomain.value) as never}
                         className={activeSubdomain?.value === subdomain.value ? "active" : undefined}
                         scroll={false}
                       >

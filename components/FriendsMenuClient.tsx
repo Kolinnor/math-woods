@@ -539,6 +539,19 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 >
                   <SlidersHorizontal size={15} />
                 </button>
+                <button
+                  type="button"
+                  className="friends-menu-settings-button"
+                  aria-label={data.labels.closeFriendsMenu}
+                  title={data.labels.closeFriendsMenu}
+                  onClick={(event) => {
+                    setSettingsOpen(false);
+                    const details = event.currentTarget.closest("details");
+                    if (details) details.open = false;
+                  }}
+                >
+                  <X size={15} />
+                </button>
               </div>
             </div>
             {settingsOpen && (

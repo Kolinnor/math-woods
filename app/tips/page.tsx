@@ -162,7 +162,7 @@ export default async function TipsPage({
 
       <div className="tips-grid">
         {tips.map(({ tip, index, relatedProblems }) => (
-          <article key={tip.title} className="tip-card">
+          <article key={tip.id} className="tip-card">
             <div className="tip-card-summary">
               <div className="tip-card-image">
                 <img
@@ -179,7 +179,7 @@ export default async function TipsPage({
               </div>
               <div className="tip-card-summary-copy">
                 <div className="tip-card-actions">
-                  <p className="eyebrow">Tip {index + 1}</p>
+                  <p className="eyebrow">Tip {tip.position + 1}</p>
                   <Link href={`/tips/${tip.id}/edit` as Route} className="button secondary">
                     Edit
                   </Link>

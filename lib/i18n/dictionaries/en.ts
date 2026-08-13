@@ -84,6 +84,7 @@ export const en = {
   social: {
     friends: "Friends",
     friendsMenuSettings: "Friend list settings",
+    closeFriendsMenu: "Close friends",
     sortBy: "Sort by",
     sortRecent: "Recent activity",
     sortAlphabetical: "Alphabetical",

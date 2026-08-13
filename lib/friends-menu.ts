@@ -33,6 +33,7 @@ export type FriendsMenuData = {
   labels: {
     friends: string;
     friendsMenuSettings: string;
+    closeFriendsMenu: string;
     sortBy: string;
     sortRecent: string;
     sortAlphabetical: string;
@@ -184,6 +185,7 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
     labels: {
       friends: t.social.friends,
       friendsMenuSettings: t.social.friendsMenuSettings,
+      closeFriendsMenu: t.social.closeFriendsMenu,
       sortBy: t.social.sortBy,
       sortRecent: t.social.sortRecent,
       sortAlphabetical: t.social.sortAlphabetical,

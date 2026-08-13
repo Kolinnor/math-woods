@@ -2,12 +2,14 @@
 
 import { history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { syntaxTree } from "@codemirror/language";
+import { codeFolding, foldEffect, foldedRanges, syntaxTree, unfoldEffect } from "@codemirror/language";
 import { Compartment, EditorState, Prec, StateEffect, StateField, Transaction } from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
   EditorView,
+  GutterMarker,
+  gutter,
   keymap,
   lineNumbers,
   type ViewUpdate,
@@ -20,6 +22,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "r
 import { FieldHelp } from "@/components/FieldHelp";
 import { MarkdownInline } from "@/components/MarkdownInline";
 import { imageUploadNetworkError, imageUploadResponseError } from "@/lib/image-upload-errors";
+import { jsxGraphFoldRangeAtLine, type JsxGraphFoldRange } from "@/lib/jsxgraph-folding";
 import {
   DEFAULT_LATEX_PREFERENCES,
   type LatexPreferenceValues
@@ -86,6 +89,59 @@ const DRAFT_SUBMIT_PREFIX = `${DRAFT_PREFIX}:submit`;
 const DRAFT_SUBMIT_TTL_MS = 10 * 60 * 1000;
 const LINK_MENU_VIEWPORT_MARGIN = 12;
 const IMAGE_UPLOAD_ACCEPT = "image/avif,image/jpeg,image/png,image/webp";
+
+function rangeIsFolded(state: EditorState, range: JsxGraphFoldRange) {
+  let folded = false;
+  foldedRanges(state).between(range.from, range.to, (from, to) => {
+    if (from === range.from && to === range.to) folded = true;
+  });
+  return folded;
+}
+
+class JsxGraphFoldMarker extends GutterMarker {
+  constructor(
+    readonly folded: boolean,
+    readonly foldRange: JsxGraphFoldRange
+  ) {
+    super();
+  }
+
+  eq(other: GutterMarker) {
+    return other instanceof JsxGraphFoldMarker
+      && this.folded === other.folded
+      && this.foldRange.from === other.foldRange.from
+      && this.foldRange.to === other.foldRange.to;
+  }
+
+  toDOM(view: EditorView) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `cm-jsxgraph-fold-button${this.folded ? " is-folded" : ""}`;
+    button.setAttribute("aria-label", this.folded ? "Show JSXGraph code" : "Hide JSXGraph code");
+    button.title = this.folded ? "Show JSXGraph code" : "Hide JSXGraph code";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      view.dispatch({ effects: (this.folded ? unfoldEffect : foldEffect).of(this.foldRange) });
+      view.focus();
+    });
+    return button;
+  }
+}
+
+const jsxGraphFoldGutter = [
+  codeFolding({ placeholderText: "..." }),
+  gutter({
+    class: "cm-jsxgraph-fold-gutter",
+    lineMarker(view, line) {
+      const range = jsxGraphFoldRangeAtLine(view.state, line.from);
+      return range ? new JsxGraphFoldMarker(rangeIsFolded(view.state, range), range) : null;
+    },
+    lineMarkerChange(update) {
+      return update.docChanged || foldedRanges(update.startState) !== foldedRanges(update.state);
+    }
+  })
+];
 
 type LatexWidgetLayoutDiagnostic = {
   code: "inline-display-widget-measured-wide" | "inline-display-widget-style-drift";
@@ -1477,6 +1533,7 @@ export function MarkdownEditor({
         doc: startValue,
         extensions: [
           showLineNumbers ? lineNumbers() : [],
+          jsxGraphFoldGutter,
           markdown(),
           history(),
           Prec.highest(keymap.of(historyKeymap)),
