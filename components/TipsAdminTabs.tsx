@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 type TipsAdminTabsProps = {
-  active: "library" | "daily-problem";
+  active: "library" | "daily-tip" | "daily-problem";
 };
 
 export function TipsAdminTabs({ active }: TipsAdminTabsProps) {
@@ -9,6 +9,12 @@ export function TipsAdminTabs({ active }: TipsAdminTabsProps) {
     <nav className="tips-admin-tabs" aria-label="Tips administration">
       <Link href="/tips" aria-current={active === "library" ? "page" : undefined}>
         Tips library
+      </Link>
+      <Link
+        href="/tips/tip-of-the-day"
+        aria-current={active === "daily-tip" ? "page" : undefined}
+      >
+        Tip of the day
       </Link>
       <Link
         href="/tips/problem-of-the-day"

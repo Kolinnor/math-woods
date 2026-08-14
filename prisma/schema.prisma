@@ -1578,6 +1578,7 @@ model Tip {
   problemGroups  TipProblemGroup[]
   images         TipImage[]
   translations   TipTranslation[]
+  dailySchedules DailyTipSchedule[]
 }
 
 model TipTranslation {
@@ -1643,6 +1644,16 @@ model DailyProblemSchedule {
   problem        Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@index([problemId])
+}
+
+model DailyTipSchedule {
+  dateKey   String   @id @db.VarChar(10)
+  tipId     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tip       Tip      @relation(fields: [tipId], references: [id], onDelete: Cascade)
+
+  @@index([tipId])
 }
 
 model Notification {

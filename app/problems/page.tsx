@@ -1,4 +1,5 @@
 import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
@@ -48,6 +49,11 @@ import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Mathematics Problems and Exercises | Math Woods",
+  description: "Browse free mathematics problems and exercises by subject, difficulty, and language on Math Woods."
+};
 
 const PROBLEMS_PER_PAGE = 14;
 type SearchValue = string | string[] | undefined;

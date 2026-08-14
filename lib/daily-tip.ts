@@ -1,5 +1,7 @@
 import { Prisma, TipKind } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
+import { selectDailyTipForDate } from "@/lib/daily-tip-schedule";
 import { selectTipTranslation, type TipTranslationValue } from "@/lib/tip-translations";
 
 export const DEFAULT_TIPS = [
@@ -207,11 +209,11 @@ export function dailyTip(date = new Date()) {
 
 export async function loadDailyTip(date = new Date(), preferredLanguage = "en") {
   const tips = await loadTips(preferredLanguage);
-  const mainMenuTips = tips.filter((tip) => tip.showInMainMenu);
-  if (mainMenuTips.length === 0) return null;
-  const dayNumber = Math.floor(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000
-  );
+  const dateKey = dailyProblemDateKey(date);
+  const schedule = await prisma.dailyTipSchedule.findUnique({
+    where: { dateKey },
+    select: { tipId: true }
+  });
 
-  return mainMenuTips[dayNumber % mainMenuTips.length];
+  return selectDailyTipForDate(tips, dateKey, schedule?.tipId ?? null);
 }

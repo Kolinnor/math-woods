@@ -136,6 +136,7 @@ import {
   isDailyProblemDateKey,
   upcomingDailyProblemDateKeys
 } from "../lib/daily-problem-schedule.ts";
+import { selectDailyTipForDate } from "../lib/daily-tip-schedule.ts";
 import {
   DAILY_CONCEPT_REVIEW_STALE_POOL_SIZE,
   dailyConceptReviewStatusRank,
@@ -2633,6 +2634,25 @@ assert.equal(
 );
 assert.equal(automaticDailyProblemGroup([], "2026-08-03"), null);
 assert.ok(DEFAULT_DAILY_PROBLEM_IMAGE_URLS.includes(dailyProblemDefaultImageUrl("2026-08-03")));
+
+const scheduledDailyTipCandidates = [
+  { id: 1, showInMainMenu: true, title: "First" },
+  { id: 2, showInMainMenu: false, title: "Scheduled only" },
+  { id: 3, showInMainMenu: true, title: "Third" }
+];
+assert.equal(
+  selectDailyTipForDate(scheduledDailyTipCandidates, "2026-08-03", 2)?.title,
+  "Scheduled only"
+);
+assert.equal(
+  selectDailyTipForDate(scheduledDailyTipCandidates, "2026-08-03")?.showInMainMenu,
+  true
+);
+assert.equal(selectDailyTipForDate([], "2026-08-03"), null);
+assert.equal(
+  selectDailyTipForDate([{ id: 1, showInMainMenu: false }], "2026-08-03"),
+  null
+);
 
 assert.equal(dailyConceptReviewStatusRank(ConceptStatus.MISSING), 0);
 assert.equal(dailyConceptReviewStatusRank(ConceptStatus.STUB), 1);

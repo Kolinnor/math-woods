@@ -11139,6 +11139,43 @@ button.domain-picker-tile > span:last-child {
   margin-bottom: 0.55rem;
 }
 
+.daily-tip-schedule-picker {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.daily-tip-schedule-picker > span {
+  font-weight: 750;
+}
+
+.daily-tip-schedule-picker select {
+  width: 100%;
+}
+
+.daily-tip-schedule-current {
+  align-items: center;
+  background: var(--panel-muted);
+  border-left: 3px solid var(--accent);
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  min-height: 4.25rem;
+  padding: 0.55rem;
+}
+
+.daily-tip-schedule-current img {
+  aspect-ratio: 1;
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.daily-tip-schedule-current strong {
+  display: block;
+  margin-top: 0.2rem;
+}
+
 .daily-problem-schedule-image .tip-image-editor {
   grid-template-columns: minmax(9rem, 11rem) minmax(0, 1fr);
   padding: 0.8rem;

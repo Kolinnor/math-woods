@@ -1,4 +1,5 @@
 import { ConceptKind, ConceptStatus, MathDomain, Prisma } from "@prisma/client";
+import type { Metadata } from "next";
 import type { Route } from "next";
 import Link from "next/link";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
@@ -32,6 +33,11 @@ import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Mathematical Concepts | Math Woods",
+  description: "Explore a community-curated graph of mathematical definitions, theorems, examples, and exercises."
+};
 
 type SearchValue = string | string[] | undefined;
 const ACTIVE_LANGUAGE_CODES = ACTIVE_CONTENT_LANGUAGES.map((language) => language.code);

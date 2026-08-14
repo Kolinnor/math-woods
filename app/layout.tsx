@@ -27,19 +27,25 @@ import { displayNameForUser } from "@/lib/user-display";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mathwoods.org"),
-  title: "Math Woods",
-  description: "A quiet place for people who enjoy solving mathematics problems.",
+  title: "Math Woods | Free Mathematics Problems and Concepts",
+  description: "A free, open-source knowledge graph of mathematical problems, exercises, and concepts.",
+  robots: {
+    index: true,
+    follow: true
+  },
   openGraph: {
-    title: "Math Woods",
-    description: "A quiet place for people who enjoy solving mathematics problems.",
+    title: "Math Woods | Free Mathematics Problems and Concepts",
+    description: "A free, open-source knowledge graph of mathematical problems, exercises, and concepts.",
     url: "https://mathwoods.org",
     siteName: "Math Woods",
-    type: "website"
+    type: "website",
+    images: [{ url: "/math-woods-bear.png", alt: "Math Woods" }]
   },
   twitter: {
-    card: "summary",
-    title: "Math Woods",
-    description: "A quiet place for people who enjoy solving mathematics problems."
+    card: "summary_large_image",
+    title: "Math Woods | Free Mathematics Problems and Concepts",
+    description: "A free, open-source knowledge graph of mathematical problems, exercises, and concepts.",
+    images: ["/math-woods-bear.png"]
   },
   icons: {
     icon: "/icon.svg",
@@ -94,6 +100,31 @@ try {
 } catch (error) {}
 `;
 
+const siteStructuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://mathwoods.org/#website",
+      url: "https://mathwoods.org/",
+      name: "Math Woods",
+      alternateName: ["MathWoods", "mathwoods.org"],
+      inLanguage: ["en", "fr"]
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://mathwoods.org/#organization",
+      url: "https://mathwoods.org/",
+      name: "Math Woods",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://mathwoods.org/math-woods-bear.png"
+      },
+      sameAs: ["https://github.com/Kolinnor/math-woods"]
+    }
+  ]
+};
+
 const mathematiciansRoute = "/mathematicians" as Route;
 const usersRoute = "/users" as Route;
 
@@ -136,6 +167,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       suppressHydrationWarning
     >
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: appearanceBootScript
