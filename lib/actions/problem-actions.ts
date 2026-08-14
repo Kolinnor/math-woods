@@ -47,6 +47,7 @@ import {
 } from "@/lib/languages";
 import { problemCreationNotificationCopy } from "@/lib/problem-creation-notifications";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
+import { normalizeProblemOrigin } from "@/lib/problem-origin";
 import { linkSpecificProblem, parseProblemRelationGroups, syncProblemRelationGroups } from "@/lib/problem-relations";
 import {
   PROBLEM_SNAPSHOT_FIELD_LABELS,
@@ -90,6 +91,11 @@ import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { translationLinkOverrideRequested } from "@/lib/translation-link-warning";
 import { problemTranslationSharedChanges } from "@/lib/translation-properties";
+import {
+  assertTranslationTitleChanged,
+  sameTranslationTitleOverrideRequested,
+  SameTranslationTitleError
+} from "@/lib/translation-title-guard";
 import { latestProblemTextRevisionIdFromRevisions } from "@/lib/translation-text-revisions";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -355,12 +361,13 @@ export async function createProblemAction(formData: FormData) {
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const allowMissingTranslationLinks = translationLinkOverrideRequested(formData);
+  const allowSameTranslationTitle = sameTranslationTitleOverrideRequested(formData);
   const bodyMarkdown =
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || "Statement to be written.";
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
   const domain = domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER;
-  const origin = boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin") || "Unknown";
+  const origin = normalizeProblemOrigin(boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin"));
   const originChapter = optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter");
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
@@ -435,7 +442,21 @@ export async function createProblemAction(formData: FormData) {
     throw new Error("Short answer verification requires an expected answer.");
   }
 
-  const slug = await uniqueSlug("problem", title);
+  const translationSourceIdentity =
+    translationGroupId && translationSourceSlug
+      ? await prisma.problem.findFirst({
+          where: { slug: translationSourceSlug, translationGroupId },
+          select: { title: true }
+        })
+      : null;
+  if (translationGroupId && !translationSourceIdentity) {
+    throw new Error("The selected problem translation source does not belong to this translation group.");
+  }
+  if (translationSourceIdentity) {
+    assertTranslationTitleChanged(translationSourceIdentity.title, title, allowSameTranslationTitle);
+  }
+
+  const slug = await uniqueSlug("problem", title, translationGroupId ? language : undefined);
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const problem = await prisma.$transaction(async (tx) => {
@@ -504,7 +525,7 @@ export async function createProblemAction(formData: FormData) {
         bodyHtml,
         difficulty: sharedSnapshot?.difficulty ?? difficulty,
         domain: sharedSnapshot?.domains.find((item) => !item.spoiler)?.domain ?? domain,
-        origin: sharedSnapshot?.origin ?? origin,
+        origin: normalizeProblemOrigin(sharedSnapshot?.origin ?? origin),
         originChapter: sharedSnapshot?.originChapter ?? originChapter,
         originPage: sharedSnapshot?.originPage ?? originPage,
         originNote: sharedSnapshot?.originNote ?? originNote,
@@ -818,6 +839,8 @@ export async function createProblemAction(formData: FormData) {
 
 export type ProblemCreateActionState = {
   error: string | null;
+  errorKind?: "translation-links" | "same-translation-title";
+  sameTranslationTitleConfirmed?: boolean;
 };
 
 export async function createProblemFormAction(
@@ -828,8 +851,15 @@ export async function createProblemFormAction(
     await createProblemAction(formData);
     return { error: null };
   } catch (error) {
+    if (error instanceof SameTranslationTitleError) {
+      return { error: error.message, errorKind: "same-translation-title" };
+    }
     if (error instanceof TranslationWikiLinksPreservedError) {
-      return { error: error.message };
+      return {
+        error: error.message,
+        errorKind: "translation-links",
+        sameTranslationTitleConfirmed: sameTranslationTitleOverrideRequested(formData)
+      };
     }
     throw error;
   }
@@ -865,7 +895,7 @@ export async function updateProblemAction(
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
-  const origin = boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin") || "Unknown";
+  const origin = normalizeProblemOrigin(boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin"));
   const originChapter = optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter");
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");

@@ -10,14 +10,14 @@ export type ContentLanguage = {
 
 export const ACTIVE_CONTENT_LANGUAGES: ContentLanguage[] = [
   { code: "en", label: "English", nativeLabel: "English" },
-  { code: "fr", label: "French", nativeLabel: "Français" }
+  { code: "fr", label: "Français", nativeLabel: "Français" }
 ];
 
 export const FUTURE_CONTENT_LANGUAGES: ContentLanguage[] = [
-  { code: "es", label: "Spanish", nativeLabel: "Espanol" },
-  { code: "de", label: "German", nativeLabel: "Deutsch" },
-  { code: "it", label: "Italian", nativeLabel: "Italiano" },
-  { code: "pt", label: "Portuguese", nativeLabel: "Portugues" }
+  { code: "es", label: "Español", nativeLabel: "Español" },
+  { code: "de", label: "Deutsch", nativeLabel: "Deutsch" },
+  { code: "it", label: "Italiano", nativeLabel: "Italiano" },
+  { code: "pt", label: "Português", nativeLabel: "Português" }
 ];
 
 export const KNOWN_CONTENT_LANGUAGES: ContentLanguage[] = [
@@ -45,7 +45,7 @@ export function parseActiveContentLanguage(value: unknown) {
 export function requireActiveContentLanguage(value: unknown) {
   const normalized = String(value ?? "").trim().toLowerCase();
   if (!activeLanguageCodes.has(normalized)) {
-    throw new Error("Math Woods currently accepts new content in English and French only.");
+    throw new Error("Math Woods currently accepts new content in English or Français only.");
   }
   return normalized;
 }
@@ -54,11 +54,11 @@ export function editableContentLanguage(value: unknown, existingLanguage: string
   const normalized = String(value ?? "").trim().toLowerCase();
   const existing = parseContentLanguage(existingLanguage);
   if (activeLanguageCodes.has(normalized) || normalized === existing) return normalized;
-  throw new Error("Math Woods currently accepts new content in English and French only.");
+  throw new Error("Math Woods currently accepts new content in English or Français only.");
 }
 
 export function contentLanguageLabel(code: string) {
-  return KNOWN_CONTENT_LANGUAGES.find((language) => language.code === code)?.label ?? code.toUpperCase();
+  return contentLanguageNativeLabel(code);
 }
 
 export function contentLanguageNativeLabel(code: string) {

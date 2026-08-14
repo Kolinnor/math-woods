@@ -19,12 +19,10 @@ type AvatarUploaderProps = {
   initialAvatarUrl: string | null;
   labels: {
     backgroundColors: Record<AvatarBackgroundId, string>;
-    backgroundHelp: string;
     backgroundTitle: string;
     backgroundUpdated: string;
     choose: string;
     defaultFailed: string;
-    defaultHelp: string;
     defaultOption: string;
     defaultTitle: string;
     defaultUpdated: string;
@@ -225,7 +223,6 @@ export function AvatarUploader({
         ) : (
           <div className="profile-avatar-default" role="tabpanel">
             <strong>{labels.defaultTitle}</strong>
-            <p>{labels.defaultHelp}</p>
             <div className="profile-avatar-presets" role="group" aria-label={labels.defaultTitle}>
               {DEFAULT_AVATAR_PRESETS.map((preset) => {
                 const selected = avatarPreset === preset;
@@ -258,7 +255,6 @@ export function AvatarUploader({
         {mode === "default" && (
           <div className="profile-avatar-background">
             <strong>{labels.backgroundTitle}</strong>
-            <p>{labels.backgroundHelp}</p>
             <div className="profile-avatar-swatches" role="group" aria-label={labels.backgroundTitle}>
               {AVATAR_BACKGROUND_OPTIONS.map((option) => {
                 const selected = avatarBackground === option.id;

@@ -92,12 +92,26 @@ export default async function NewConceptPage({
     >
     <div className={sourceConcept ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
-        <ConceptCreateForm>
+        <ConceptCreateForm
+          labels={{
+            keepSameTranslationTitle: t.contentEditor.keepSameTranslationTitle,
+            publishAnyway: t.contentEditor.publishAnyway,
+            sameTranslationTitleHeading: t.contentEditor.sameTranslationTitleHeading,
+            sameTranslationTitleWarning: t.contentEditor.sameTranslationTitleWarning,
+            translationLinksHeading: t.contentEditor.translationLinksHeading
+          }}
+        >
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
         {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.contentEditor.title}</span>
-          <input name="title" required defaultValue={sourceConcept?.title ?? title} />
+          <input
+            name="title"
+            required
+            defaultValue={sourceConcept ? "" : title}
+            placeholder={sourceConcept ? t.contentEditor.translationTitlePlaceholder(sourceConcept.title) : undefined}
+          />
+          {sourceConcept && <span className="meta">{t.contentEditor.translationTitleHelp}</span>}
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.concepts.kind}</span>

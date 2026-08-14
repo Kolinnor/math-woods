@@ -309,7 +309,7 @@ export const fr = {
       reputation: {
         label: "Réputation",
         title: "Classement par réputation",
-        subtitle: "La réputation est calculée selon plusieurs critères liés à la qualité des contributions."
+        subtitle: "La réputation reflète les contributions, les traductions et une part limitée de l'activité d'apprentissage."
       },
       dailyProblems: {
         label: "Problèmes du jour",
@@ -971,10 +971,10 @@ export const fr = {
       conceptsWithoutReferences: { title: "Concepts sans références", description: "Ajoutez une source fiable pour la définition ou le résultat." },
       unreviewedProblems: { title: "Problèmes non relus", description: "Lisez attentivement l'énoncé et relisez-le lorsqu'il est prêt." },
       needsWorkProblems: { title: "Problèmes à retravailler", description: "Clarifiez ou corrigez un problème qui a été signalé." },
-      problemsMissingFr: { title: "Problèmes sans traduction française", description: "Traduisez un problème qui n'existe pas encore en français." },
-      problemsMissingEn: { title: "Problèmes sans traduction anglaise", description: "Traduisez un problème qui n'existe pas encore en anglais." },
-      conceptsMissingFr: { title: "Concepts sans traduction française", description: "Traduisez un concept qui n'existe pas encore en français." },
-      conceptsMissingEn: { title: "Concepts sans traduction anglaise", description: "Traduisez un concept qui n'existe pas encore en anglais." }
+      problemsMissingFr: { title: "Problèmes sans version « Français »", description: "Traduisez un problème qui n'a pas encore de version « Français »." },
+      problemsMissingEn: { title: "Problèmes sans version « English »", description: "Traduisez un problème qui n'a pas encore de version « English »." },
+      conceptsMissingFr: { title: "Concepts sans version « Français »", description: "Traduisez un concept qui n'a pas encore de version « Français »." },
+      conceptsMissingEn: { title: "Concepts sans version « English »", description: "Traduisez un concept qui n'a pas encore de version « English »." }
     }
   },
   contributingPage: {
@@ -1078,6 +1078,13 @@ export const fr = {
     creatingForExploration: "Création pour une exploration.",
     linkedFrom: (title: string) => `Lié depuis « ${title} ».`,
     title: "Titre",
+    translationTitlePlaceholder: (title: string) => `Traduire « ${title} »`,
+    translationTitleHelp: "Traduisez le titre ainsi que le contenu de la page.",
+    sameTranslationTitleHeading: "Le titre est encore identique à celui de la source.",
+    sameTranslationTitleWarning: "Si le titre est volontairement identique dans les deux langues, confirmez-le ci-dessous. Sinon, traduisez-le avant de publier.",
+    keepSameTranslationTitle: "Conserver volontairement le même titre",
+    translationLinksHeading: "Les liens de la traduction demandent votre attention.",
+    publishAnyway: "Publier quand même",
     statement: "Énoncé",
     content: "Contenu",
     translationLinksNote: "Les liens vers les concepts sont repris automatiquement. Traduisez le texte visible après |, mais conservez la cible placée avant afin que toutes les langues restent reliées à la même idée mathématique.",
@@ -1237,9 +1244,9 @@ export const fr = {
     title: "Rechercher",
     eyebrow: "Trouver son chemin",
     description: "Recherchez parmi les concepts, les problèmes et les citations.",
-    resultCount: (count: number, language: string) => `${count} résultat${count > 1 ? "s" : ""} en ${language === "fr" ? "français" : "anglais"}`,
+    resultCount: (count: number, language: string) => `${count} résultat${count > 1 ? "s" : ""} · ${language === "fr" ? "Français" : "English"}`,
     resultsFor: (count: number, language: string, query: string) =>
-      `${count} résultat${count > 1 ? "s" : ""} en ${language === "fr" ? "français" : "anglais"} pour « ${query} »`,
+      `${count} résultat${count > 1 ? "s" : ""} · ${language === "fr" ? "Français" : "English"} · « ${query} »`,
     enterTerm: "Saisissez un terme pour commencer",
     placeholder: "Rechercher sur Math Woods",
     concepts: "Concepts",

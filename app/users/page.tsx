@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { UserAvatar } from "@/components/UserAvatar";
+import { formatCompactNumber } from "@/lib/compact-number";
 import { getTranslations } from "@/lib/i18n/server";
 import { getReputationLeaderboard, type UserReputationSummary } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
@@ -78,7 +79,9 @@ export default async function UsersPage({
                 <small>{t.users.roles[user.role]}</small>
               </span>
               <span className="users-stat">
-                <strong>{user.reputation}</strong>
+                <strong title={user.reputation >= 1_000 ? String(user.reputation) : undefined}>
+                  {formatCompactNumber(user.reputation)}
+                </strong>
                 <small>{t.users.stats.reputation}</small>
               </span>
               <span className="users-stat">

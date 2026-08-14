@@ -307,7 +307,7 @@ export const en = {
       reputation: {
         label: "Reputation",
         title: "Ranking by reputation",
-        subtitle: "Reputation is calculated based on various criteria for quality submissions."
+        subtitle: "Reputation reflects contributions, translations, and a limited amount of learning activity."
       },
       dailyProblems: {
         label: "Problems of the day",
@@ -966,10 +966,10 @@ export const en = {
       conceptsWithoutReferences: { title: "Concepts without references", description: "Add a reliable source for the definition or result." },
       unreviewedProblems: { title: "Unreviewed problems", description: "Read the statement carefully and review it when it is ready." },
       needsWorkProblems: { title: "Problems needing work", description: "Clarify or correct a problem that has been flagged." },
-      problemsMissingFr: { title: "Problems missing French", description: "Translate a problem that has no French version yet." },
-      problemsMissingEn: { title: "Problems missing English", description: "Translate a problem that has no English version yet." },
-      conceptsMissingFr: { title: "Concepts missing French", description: "Translate a concept that has no French version yet." },
-      conceptsMissingEn: { title: "Concepts missing English", description: "Translate a concept that has no English version yet." }
+      problemsMissingFr: { title: "Problems without a Français version", description: "Translate a problem that has no Français version yet." },
+      problemsMissingEn: { title: "Problems without an English version", description: "Translate a problem that has no English version yet." },
+      conceptsMissingFr: { title: "Concepts without a Français version", description: "Translate a concept that has no Français version yet." },
+      conceptsMissingEn: { title: "Concepts without an English version", description: "Translate a concept that has no English version yet." }
     }
   },
   contributingPage: {
@@ -1073,6 +1073,13 @@ export const en = {
     creatingForExploration: "Creating for an exploration.",
     linkedFrom: (title: string) => `Linked from \"${title}\".`,
     title: "Title",
+    translationTitlePlaceholder: (title: string) => `Translate \"${title}\"`,
+    translationTitleHelp: "Translate the title as well as the page content.",
+    sameTranslationTitleHeading: "The title still matches the source.",
+    sameTranslationTitleWarning: "If the title is intentionally identical in both languages, confirm it below. Otherwise, translate the title before publishing.",
+    keepSameTranslationTitle: "Keep the same title intentionally",
+    translationLinksHeading: "Translation links need attention.",
+    publishAnyway: "Publish anyway",
     statement: "Statement",
     content: "Content",
     translationLinksNote: "Concept links are carried over automatically. Translate the visible text after |, but keep the target before it so every language stays connected to the same mathematical idea.",
@@ -1232,9 +1239,9 @@ export const en = {
     title: "Search",
     eyebrow: "Find your way",
     description: "Search across concepts, problems, and quotes.",
-    resultCount: (count: number, language: string) => `${count} ${language === "fr" ? "French" : "English"} results`,
+    resultCount: (count: number, language: string) => `${count} results · ${language === "fr" ? "Français" : "English"}`,
     resultsFor: (count: number, language: string, query: string) =>
-      `${count} ${language === "fr" ? "French" : "English"} results for \"${query}\"`,
+      `${count} results · ${language === "fr" ? "Français" : "English"} · \"${query}\"`,
     enterTerm: "Enter a term to begin",
     placeholder: "Search Math Woods",
     concepts: "Concepts",

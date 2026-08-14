@@ -25,6 +25,6 @@ export function problemCreationNotificationCopy({
 
   return {
     title: "New problem translation",
-    body: `${actorName} created a ${language} translation of "${sourceTitle}"${translatedTitle}.`
+    body: `${actorName} created a translation of "${sourceTitle}" in ${language}${translatedTitle}.`
   };
 }

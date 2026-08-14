@@ -1,8 +1,14 @@
-import { MathDomain, Role, UserMathLevel } from "@prisma/client";
+import { AttemptStatus, MathDomain, ProblemStatus, Role, SourceType, UserMathLevel } from "@prisma/client";
 import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
 import { prisma } from "@/lib/db";
 import { hasTrustedPrivileges } from "@/lib/permissions";
-import { dailyProblemReputationBonus } from "@/lib/reputation-scoring";
+import {
+  COMPANION_TRANSLATION_REPUTATION_POINTS,
+  dailyProblemReputationBonus,
+  learningSolveReputationBonus,
+  PAGE_TRANSLATION_REPUTATION_POINTS,
+  translationReputationBonus
+} from "@/lib/reputation-scoring";
 import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
 
 type ReputationProblem = {
@@ -93,6 +99,109 @@ function favoriteCount(problem: ReputationProblem) {
   return problem.favorites.filter((favorite) => favorite.userId !== problem.authorId).length;
 }
 
+type TranslationBonusEvent = {
+  key: string;
+  createdAt: Date;
+  points: number;
+};
+
+async function earnedReputationBonuses(userIds: number[]) {
+  const learningByUser = new Map<number, Array<{ translationGroupId: string; solvedAt: Date }>>();
+  const translationsByUser = new Map<number, TranslationBonusEvent[]>();
+  if (userIds.length === 0) return { learningByUser: new Map<number, number>(), translationsByUser: new Map<number, number>() };
+
+  const [attempts, translatedProblems, translatedConcepts, creationRevisions, translatedHints, translatedProofs] =
+    await Promise.all([
+      prisma.problemAttempt.findMany({
+        where: {
+          userId: { in: userIds },
+          status: AttemptStatus.SOLVED,
+          problem: { status: { not: ProblemStatus.ARCHIVED } }
+        },
+        select: {
+          userId: true,
+          solvedAt: true,
+          startedAt: true,
+          problem: { select: { authorId: true, translationGroupId: true } }
+        }
+      }),
+      prisma.problem.findMany({
+        where: { translatedFromProblemId: { not: null }, status: { not: ProblemStatus.ARCHIVED } },
+        select: { id: true }
+      }),
+      prisma.concept.findMany({
+        where: { translatedFromConceptId: { not: null } },
+        select: { id: true }
+      }),
+      prisma.pageRevision.findMany({
+        where: { editedById: { in: userIds }, isCreation: true },
+        select: { pageType: true, pageId: true, editedById: true, createdAt: true }
+      }),
+      prisma.problemHint.findMany({
+        where: { translatedById: { in: userIds }, translatedFromHintId: { not: null } },
+        select: { id: true, translatedById: true, createdAt: true }
+      }),
+      prisma.problemProof.findMany({
+        where: { translatedById: { in: userIds }, translatedFromProofId: { not: null } },
+        select: { id: true, translatedById: true, createdAt: true }
+      })
+    ]);
+
+  for (const attempt of attempts) {
+    if (attempt.problem.authorId === attempt.userId) continue;
+    const events = learningByUser.get(attempt.userId) ?? [];
+    events.push({
+      translationGroupId: attempt.problem.translationGroupId,
+      solvedAt: attempt.solvedAt ?? attempt.startedAt
+    });
+    learningByUser.set(attempt.userId, events);
+  }
+
+  const translatedProblemIds = new Set(translatedProblems.map(({ id }) => id));
+  const translatedConceptIds = new Set(translatedConcepts.map(({ id }) => id));
+  function addTranslationEvent(userId: number | null, event: TranslationBonusEvent) {
+    if (!userId) return;
+    const events = translationsByUser.get(userId) ?? [];
+    events.push(event);
+    translationsByUser.set(userId, events);
+  }
+
+  for (const revision of creationRevisions) {
+    const isCurrentTranslation =
+      (revision.pageType === SourceType.PROBLEM && translatedProblemIds.has(revision.pageId)) ||
+      (revision.pageType === SourceType.CONCEPT && translatedConceptIds.has(revision.pageId));
+    if (!isCurrentTranslation) continue;
+    addTranslationEvent(revision.editedById, {
+      key: `${revision.pageType}:${revision.pageId}`,
+      createdAt: revision.createdAt,
+      points: PAGE_TRANSLATION_REPUTATION_POINTS
+    });
+  }
+  for (const hint of translatedHints) {
+    addTranslationEvent(hint.translatedById, {
+      key: `hint:${hint.id}`,
+      createdAt: hint.createdAt,
+      points: COMPANION_TRANSLATION_REPUTATION_POINTS
+    });
+  }
+  for (const proof of translatedProofs) {
+    addTranslationEvent(proof.translatedById, {
+      key: `proof:${proof.id}`,
+      createdAt: proof.createdAt,
+      points: COMPANION_TRANSLATION_REPUTATION_POINTS
+    });
+  }
+
+  return {
+    learningByUser: new Map(
+      userIds.map((userId) => [userId, learningSolveReputationBonus(learningByUser.get(userId) ?? [])])
+    ),
+    translationsByUser: new Map(
+      userIds.map((userId) => [userId, translationReputationBonus(translationsByUser.get(userId) ?? [])])
+    )
+  };
+}
+
 function summarizeUser(
   user: {
     id: number;
@@ -111,7 +220,9 @@ function summarizeUser(
     _count: { conceptsCreated: number; playlists: number };
   },
   problems: ReputationProblem[],
-  dailyProblemCount: number
+  dailyProblemCount: number,
+  learningReputation: number,
+  translationReputation: number
 ): UserReputationSummary {
   return {
     userId: user.id,
@@ -129,7 +240,9 @@ function summarizeUser(
     joinedAt: user.createdAt,
     reputation:
       problems.reduce((total, problem) => total + scoreProblem(problem), 0)
-      + dailyProblemReputationBonus(dailyProblemCount, user.role),
+      + dailyProblemReputationBonus(dailyProblemCount, user.role)
+      + learningReputation
+      + translationReputation,
     problemCount: problems.length,
     solvedCount: problems.reduce((total, problem) => total + solvedCount(problem), 0),
     favoriteCount: problems.reduce((total, problem) => total + favoriteCount(problem), 0),
@@ -176,7 +289,7 @@ export async function getReputationLeaderboard() {
   const userIds = visibleUsers.map((user) => user.id);
   if (userIds.length === 0) return [];
 
-  const [problems, dailyProblems] = await Promise.all([
+  const [problems, dailyProblems, bonuses] = await Promise.all([
     prisma.problem.findMany({
       where: {
         authorId: { in: userIds },
@@ -206,7 +319,8 @@ export async function getReputationLeaderboard() {
         problem: { authorId: { in: userIds } }
       },
       select: { problem: { select: { authorId: true } } }
-    })
+    }),
+    earnedReputationBonuses(userIds)
   ]);
 
   const problemsByAuthor = new Map<number, ReputationProblem[]>();
@@ -225,12 +339,14 @@ export async function getReputationLeaderboard() {
   return visibleUsers.map((user) => summarizeUser(
     user,
     problemsByAuthor.get(user.id) ?? [],
-    dailyProblemsByAuthor.get(user.id) ?? 0
+    dailyProblemsByAuthor.get(user.id) ?? 0,
+    bonuses.learningByUser.get(user.id) ?? 0,
+    bonuses.translationsByUser.get(user.id) ?? 0
   ));
 }
 
 export async function getUserReputation(userId: number) {
-  const [user, problems, dailyProblemCount] = await Promise.all([
+  const [user, problems, dailyProblemCount, bonuses] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { role: true }
@@ -263,9 +379,12 @@ export async function getUserReputation(userId: number) {
         dateKey: { lte: dailyProblemDateKey() },
         problem: { authorId: userId }
       }
-    })
+    }),
+    earnedReputationBonuses([userId])
   ]);
 
   return mergeTranslatedProblems(problems).reduce((total, problem) => total + scoreProblem(problem), 0)
-    + (user ? dailyProblemReputationBonus(dailyProblemCount, user.role) : 0);
+    + (user ? dailyProblemReputationBonus(dailyProblemCount, user.role) : 0)
+    + (bonuses.learningByUser.get(userId) ?? 0)
+    + (bonuses.translationsByUser.get(userId) ?? 0);
 }

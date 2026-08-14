@@ -36,6 +36,11 @@ import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone }
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
 import { problemCreationNotificationCopy } from "../lib/problem-creation-notifications.ts";
 import {
+  isUnknownProblemOrigin,
+  localizedProblemOrigin,
+  normalizeProblemOrigin
+} from "../lib/problem-origin.ts";
+import {
   conceptTranslationSharedChanges,
   problemTranslationSharedChanges
 } from "../lib/translation-properties.ts";
@@ -47,6 +52,14 @@ import {
   TRANSLATION_LINK_OVERRIDE_FIELD,
   translationLinkOverrideRequested
 } from "../lib/translation-link-warning.ts";
+import {
+  assertTranslationTitleChanged,
+  normalizeTranslationTitle,
+  SAME_TRANSLATION_TITLE_OVERRIDE_FIELD,
+  sameTranslationTitleOverrideRequested,
+  SameTranslationTitleError,
+  translationTitlesMatch
+} from "../lib/translation-title-guard.ts";
 import {
   parseSelectedTranslationIds,
   TRANSLATED_PROOF_BODY_PREFIX,
@@ -112,6 +125,7 @@ import {
   summarizeChatReactions
 } from "../lib/chat-reactions.ts";
 import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
+import { formatCompactNumber } from "../lib/compact-number.ts";
 import {
   addDaysToDateKey,
   automaticDailyProblemGroup,
@@ -211,7 +225,9 @@ import {
 import type { UserReputationSummary } from "../lib/user-reputation.ts";
 import {
   DAILY_PROBLEM_REPUTATION_POINTS,
-  dailyProblemReputationBonus
+  dailyProblemReputationBonus,
+  learningSolveReputationBonus,
+  translationReputationBonus
 } from "../lib/reputation-scoring.ts";
 import {
   createDisplayMathLineBreakNormalizer,
@@ -328,6 +344,8 @@ import {
 import { dictionaryForContentLanguage, interfaceLocaleForContentLanguage } from "../lib/i18n/dictionary.ts";
 import {
   ACTIVE_CONTENT_LANGUAGES,
+  contentLanguageLabel,
+  contentLanguageNativeLabel,
   FUTURE_CONTENT_LANGUAGES,
   editableContentLanguage,
   isActiveContentLanguage,
@@ -432,14 +450,18 @@ assert.deepEqual(
 );
 assert.deepEqual(ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code), ["en", "fr"]);
 assert.deepEqual(FUTURE_CONTENT_LANGUAGES.map(({ code }) => code), ["es", "de", "it", "pt"]);
+assert.deepEqual(ACTIVE_CONTENT_LANGUAGES.map(({ label }) => label), ["English", "Français"]);
+assert.deepEqual(FUTURE_CONTENT_LANGUAGES.map(({ label }) => label), ["Español", "Deutsch", "Italiano", "Português"]);
+assert.equal(contentLanguageLabel("fr"), "Français");
+assert.equal(contentLanguageNativeLabel("pt"), "Português");
 assert.equal(parseContentLanguage("es"), "es");
 assert.equal(parseActiveContentLanguage("es"), "en");
 assert.equal(isActiveContentLanguage("fr"), true);
 assert.equal(isActiveContentLanguage("de"), false);
 assert.equal(requireActiveContentLanguage("fr"), "fr");
-assert.throws(() => requireActiveContentLanguage("es"), /English and French only/);
+assert.throws(() => requireActiveContentLanguage("es"), /English or Français only/);
 assert.equal(editableContentLanguage("de", "de"), "de");
-assert.throws(() => editableContentLanguage("es", "de"), /English and French only/);
+assert.throws(() => editableContentLanguage("es", "de"), /English or Français only/);
 assert.equal(interfaceLocaleForContentLanguage("fr"), "fr");
 assert.equal(interfaceLocaleForContentLanguage("es"), "en");
 assert.deepEqual(
@@ -462,7 +484,7 @@ assert.deepEqual(
   }),
   {
     title: "New problem translation",
-    body: 'Sequoia created a French translation of "Groups of order 6" titled "Groupes d\'ordre 6".'
+    body: 'Sequoia created a translation of "Groups of order 6" in Français titled "Groupes d\'ordre 6".'
   }
 );
 assert.equal(dictionaryForContentLanguage("fr").nav.problems, "Problèmes");
@@ -2193,6 +2215,35 @@ assert.equal(dailyProblemReputationBonus(3, Role.ADMIN), 0);
 assert.equal(dailyProblemReputationBonus(3, Role.OWNER), 0);
 assert.equal(dailyProblemReputationBonus(-2, Role.USER), 0);
 
+const reputationDate = (day: number, hour = 0) => new Date(Date.UTC(2026, 0, day, hour));
+assert.equal(learningSolveReputationBonus([
+  { translationGroupId: "problem-a", solvedAt: reputationDate(1) },
+  { translationGroupId: "problem-a", solvedAt: reputationDate(1, 1) },
+  { translationGroupId: "problem-b", solvedAt: reputationDate(1, 2) },
+  { translationGroupId: "problem-c", solvedAt: reputationDate(1, 3) },
+  { translationGroupId: "problem-d", solvedAt: reputationDate(1, 4) },
+  { translationGroupId: "problem-e", solvedAt: reputationDate(1, 5) },
+  { translationGroupId: "problem-f", solvedAt: reputationDate(1, 6) },
+  { translationGroupId: "problem-g", solvedAt: reputationDate(2) }
+]), 6);
+assert.equal(learningSolveReputationBonus(Array.from({ length: 60 }, (_, index) => ({
+  translationGroupId: `problem-${index}`,
+  solvedAt: reputationDate(1 + Math.floor(index / 5), index % 5)
+}))), 50);
+
+assert.equal(translationReputationBonus([
+  { key: "problem:1", createdAt: reputationDate(1), points: 2 },
+  { key: "problem:1", createdAt: reputationDate(1, 1), points: 2 },
+  { key: "concept:2", createdAt: reputationDate(1, 2), points: 2 },
+  { key: "hint:3", createdAt: reputationDate(1, 3), points: 1 },
+  { key: "proof:4", createdAt: reputationDate(1, 4), points: 1 }
+]), 6);
+assert.equal(translationReputationBonus(Array.from({ length: 7 }, (_, index) => ({
+  key: `problem:${index}`,
+  createdAt: reputationDate(1, index),
+  points: 2
+}))), 10);
+
 assert.equal(defaultAvatarPresetForUsername("ada"), defaultAvatarPresetForUsername("Ada"));
 assert.ok(DEFAULT_AVATAR_PRESETS.includes(defaultAvatarPresetForUsername("emmy")));
 assert.equal(parseDefaultAvatarPreset("owl"), "owl");
@@ -2683,6 +2734,13 @@ assert.equal(
   historicalSolvedAt.toISOString()
 );
 assert.equal(formatProblemSolvedDate(new Date("2026-07-14T12:00:00.000Z"), "en"), "Jul 14, 2026");
+assert.equal(isUnknownProblemOrigin(" Unknown "), true);
+assert.equal(isUnknownProblemOrigin("Inconnue"), true);
+assert.equal(isUnknownProblemOrigin("A classical textbook"), false);
+assert.equal(normalizeProblemOrigin("Inconnue"), "Unknown");
+assert.equal(normalizeProblemOrigin("  Euclid, Elements  "), "Euclid, Elements");
+assert.equal(localizedProblemOrigin("Unknown", "Inconnue"), "Inconnue");
+assert.equal(localizedProblemOrigin("Euler's correspondence", "Inconnue"), "Euler's correspondence");
 assert.equal(
   hasProblemReviewSensitiveChanges([
     "domains",
@@ -2805,5 +2863,28 @@ assert.equal(
   translationLinkOverrideRequested({ get: () => "on" }),
   false
 );
+assert.equal(normalizeTranslationTitle("  Fundamental   Group  "), "fundamental group");
+assert.equal(translationTitlesMatch("K-theory", "  K-THEORY "), true);
+assert.equal(translationTitlesMatch("Group", "Groupe"), false);
+assert.throws(
+  () => assertTranslationTitleChanged("Euler characteristic", "Euler characteristic", false),
+  SameTranslationTitleError
+);
+assert.doesNotThrow(() =>
+  assertTranslationTitleChanged("Euler characteristic", "Euler characteristic", true)
+);
+assert.equal(
+  sameTranslationTitleOverrideRequested({
+    get: (name) => name === SAME_TRANSLATION_TITLE_OVERRIDE_FIELD ? "confirm" : null
+  }),
+  true
+);
+assert.equal(sameTranslationTitleOverrideRequested({ get: () => "on" }), false);
+assert.equal(formatCompactNumber(999), "999");
+assert.equal(formatCompactNumber(1_000), "1k");
+assert.equal(formatCompactNumber(1_250), "1.3k");
+assert.equal(formatCompactNumber(12_500), "12.5k");
+assert.equal(formatCompactNumber(999_999), "1M");
+assert.equal(formatCompactNumber(1_250_000), "1.3M");
 
 console.log("core tests ok");

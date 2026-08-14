@@ -50,6 +50,11 @@ import { ensureSlug } from "@/lib/slug";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { translationLinkOverrideRequested } from "@/lib/translation-link-warning";
 import { conceptTranslationSharedChanges } from "@/lib/translation-properties";
+import {
+  assertTranslationTitleChanged,
+  sameTranslationTitleOverrideRequested,
+  SameTranslationTitleError
+} from "@/lib/translation-title-guard";
 import { latestConceptTextRevisionIdFromRevisions } from "@/lib/translation-text-revisions";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -109,6 +114,7 @@ export async function createConceptAction(formData: FormData) {
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const allowMissingTranslationLinks = translationLinkOverrideRequested(formData);
+  const allowSameTranslationTitle = sameTranslationTitleOverrideRequested(formData);
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
   const kind = parseConceptKind(formData.get("kind"));
   const domainCode = parseDomainCode(formData.get("domain"));
@@ -116,7 +122,21 @@ export async function createConceptAction(formData: FormData) {
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
 
-  const slug = await uniqueSlug("concept", title);
+  const translationSourceIdentity =
+    translationGroupId && translationSourceSlug
+      ? await prisma.concept.findFirst({
+          where: { slug: translationSourceSlug, translationGroupId },
+          select: { title: true }
+        })
+      : null;
+  if (translationGroupId && !translationSourceIdentity) {
+    throw new Error("The selected concept translation source does not belong to this translation group.");
+  }
+  if (translationSourceIdentity) {
+    assertTranslationTitleChanged(translationSourceIdentity.title, title, allowSameTranslationTitle);
+  }
+
+  const slug = await uniqueSlug("concept", title, translationGroupId ? language : undefined);
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const concept = await prisma.$transaction(async (tx) => {
@@ -250,6 +270,8 @@ export async function createConceptAction(formData: FormData) {
 
 export type ConceptCreateActionState = {
   error: string | null;
+  errorKind?: "translation-links" | "same-translation-title";
+  sameTranslationTitleConfirmed?: boolean;
 };
 
 export async function createConceptFormAction(
@@ -260,8 +282,15 @@ export async function createConceptFormAction(
     await createConceptAction(formData);
     return { error: null };
   } catch (error) {
+    if (error instanceof SameTranslationTitleError) {
+      return { error: error.message, errorKind: "same-translation-title" };
+    }
     if (error instanceof TranslationWikiLinksPreservedError) {
-      return { error: error.message };
+      return {
+        error: error.message,
+        errorKind: "translation-links",
+        sameTranslationTitleConfirmed: sameTranslationTitleOverrideRequested(formData)
+      };
     }
     throw error;
   }

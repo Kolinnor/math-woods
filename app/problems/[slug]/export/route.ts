@@ -5,6 +5,7 @@ import { frontmatter, markdownResponse } from "@/lib/export-markdown";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 import { canEditProblem } from "@/lib/permissions";
+import { normalizeProblemOrigin } from "@/lib/problem-origin";
 import { canViewProblem } from "@/lib/problem-visibility";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -64,7 +65,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       difficulty: problem.difficulty,
       qualityStatus: problem.qualityStatus.toLowerCase(),
       listed: problem.listed,
-      origin: problem.origin,
+      origin: normalizeProblemOrigin(problem.origin),
       originChapter: problem.originChapter,
       originPage: problem.originPage,
       originNote: problem.originNote

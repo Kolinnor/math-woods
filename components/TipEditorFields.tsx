@@ -79,7 +79,7 @@ export function TipEditorFields({ draftKey, initialProblems, submitLabel, source
             }}
           />
         </div>
-        <span className="muted text-sm">If left empty, readers using French will see the English version.</span>
+        <span className="muted text-sm">If left empty, readers who selected Français will see the English version.</span>
       </fieldset>
       <p className="muted text-sm">Markdown and LaTeX are supported in both languages.</p>
       <TipImageCollectionField initialImages={values.images} />

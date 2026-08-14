@@ -18,6 +18,7 @@ import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import { refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { requireActiveContentLanguage } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
+import { normalizeProblemOrigin } from "@/lib/problem-origin";
 import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
@@ -118,13 +119,13 @@ export async function importMarkdownAction(formData: FormData) {
         bodyHtml: await renderMarkdownContent(bodyMarkdown),
         difficulty,
         domain: domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER,
-        origin:
+        origin: normalizeProblemOrigin(
           boundedText(
             getStringAttribute(parsed.attributes, "origin") ?? getStringAttribute(parsed.attributes, "source"),
             CONTENT_LIMITS.shortText,
             "Origin"
-          ) ||
-          "Unknown",
+          )
+        ),
         originChapter: boundedText(getStringAttribute(parsed.attributes, "originChapter"), CONTENT_LIMITS.shortText, "Origin chapter") || null,
         originPage: boundedText(getStringAttribute(parsed.attributes, "originPage"), CONTENT_LIMITS.shortText, "Origin page") || null,
         originNote: boundedText(getStringAttribute(parsed.attributes, "originNote"), CONTENT_LIMITS.longNote, "Origin note") || null,

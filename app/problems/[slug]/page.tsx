@@ -50,6 +50,7 @@ import {
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
+import { isUnknownProblemOrigin } from "@/lib/problem-origin";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
@@ -276,7 +277,7 @@ export default async function ProblemPage({
     ]);
   }
   const hasSpecifiedOrigin =
-    problem.origin.trim().toLowerCase() !== "unknown" ||
+    !isUnknownProblemOrigin(problem.origin) ||
     Boolean(problem.originChapter || problem.originPage || problem.originNote);
 
   const proofIds = problem.proofs.map((proof) => proof.id);
@@ -939,7 +940,7 @@ export default async function ProblemPage({
         </section>
         {hasSpecifiedOrigin && (
           <div className="problem-origin-note zen-meta">
-            {problem.origin.trim().toLowerCase() !== "unknown" && <span>{t.problemDetail.origin} {problem.origin}</span>}
+            {!isUnknownProblemOrigin(problem.origin) && <span>{t.problemDetail.origin} {problem.origin}</span>}
             {(problem.originChapter || problem.originPage || problem.originNote) && (
               <details>
                 <summary>{t.problemDetail.details}</summary>

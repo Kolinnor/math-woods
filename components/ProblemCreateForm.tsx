@@ -7,10 +7,25 @@ import {
   type ProblemCreateActionState
 } from "@/lib/actions/problem-actions";
 import { TRANSLATION_LINK_OVERRIDE_FIELD } from "@/lib/translation-link-warning";
+import { SAME_TRANSLATION_TITLE_OVERRIDE_FIELD } from "@/lib/translation-title-guard";
 
 const initialState: ProblemCreateActionState = { error: null };
 
-export function ProblemCreateForm({ children }: { children: ReactNode }) {
+type ProblemCreateFormLabels = {
+  keepSameTranslationTitle: string;
+  publishAnyway: string;
+  sameTranslationTitleHeading: string;
+  sameTranslationTitleWarning: string;
+  translationLinksHeading: string;
+};
+
+export function ProblemCreateForm({
+  children,
+  labels
+}: {
+  children: ReactNode;
+  labels: ProblemCreateFormLabels;
+}) {
   const [state, formAction] = useActionState(createProblemFormAction, initialState);
   const errorRef = useRef<HTMLDivElement | null>(null);
 
@@ -25,17 +40,34 @@ export function ProblemCreateForm({ children }: { children: ReactNode }) {
 
   return (
     <form action={formAction} className="problem-compose-form">
+      {state.sameTranslationTitleConfirmed && (
+        <input type="hidden" name={SAME_TRANSLATION_TITLE_OVERRIDE_FIELD} value="confirm" />
+      )}
       {state.error && (
         <div ref={errorRef} className="quality-banner translation-link-warning" role="alert" tabIndex={-1}>
-          <strong>Translation links need attention.</strong>
-          <p>{state.error}</p>
+          <strong>
+            {state.errorKind === "same-translation-title"
+              ? labels.sameTranslationTitleHeading
+              : labels.translationLinksHeading}
+          </strong>
+          <p>
+            {state.errorKind === "same-translation-title"
+              ? labels.sameTranslationTitleWarning
+              : state.error}
+          </p>
           <button
             type="submit"
-            name={TRANSLATION_LINK_OVERRIDE_FIELD}
+            name={
+              state.errorKind === "same-translation-title"
+                ? SAME_TRANSLATION_TITLE_OVERRIDE_FIELD
+                : TRANSLATION_LINK_OVERRIDE_FIELD
+            }
             value="confirm"
             className="secondary"
           >
-            Publish anyway
+            {state.errorKind === "same-translation-title"
+              ? labels.keepSameTranslationTitle
+              : labels.publishAnyway}
           </button>
         </div>
       )}

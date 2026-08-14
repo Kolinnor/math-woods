@@ -24,6 +24,7 @@ import { hasTrustedPrivileges } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 import { getUserReputation } from "@/lib/user-reputation";
+import { formatCompactNumber } from "@/lib/compact-number";
 import { displayNameForUser } from "@/lib/user-display";
 import { usernameLookupFilter } from "@/lib/usernames";
 
@@ -220,7 +221,12 @@ export default async function ProfilePage({
       eyebrow={t.profile.profile}
       heroImage={SOCIAL_HERO_ART.src}
       heroAlt={SOCIAL_HERO_ART.alt}
-      description={`${user.mathLevel ? t.auth.mathLevels[user.mathLevel] : t.profile.notSet} / ${t.profile.reputation} ${reputation}`}
+      description={
+        <>
+          {user.mathLevel ? t.auth.mathLevels[user.mathLevel] : t.profile.notSet} / {t.profile.reputation}{" "}
+          <span title={reputation >= 1_000 ? String(reputation) : undefined}>{formatCompactNumber(reputation)}</span>
+        </>
+      }
       meta={<p className="profile-hero-role">{user.role.toLowerCase()}</p>}
       actions={profileActions}
     >

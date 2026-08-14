@@ -4,13 +4,19 @@ import { ensureSlug } from "@/lib/slug";
 
 type SlugModel = "problem" | "concept" | "playlist" | "quote" | "mathematician";
 
-export async function uniqueSlug(model: SlugModel, title: string): Promise<string> {
+export async function uniqueSlug(model: SlugModel, title: string, preferredSuffix?: string): Promise<string> {
   const base = ensureSlug(title);
   let slug = base;
   let suffix = 2;
 
+  if (!(await findBySlug(model, slug))) return slug;
+
+  const normalizedPreferredSuffix = preferredSuffix ? ensureSlug(preferredSuffix, "") : "";
+  const collisionBase = normalizedPreferredSuffix ? `${base}-${normalizedPreferredSuffix}` : base;
+  slug = normalizedPreferredSuffix ? collisionBase : `${collisionBase}-${suffix++}`;
+
   while (await findBySlug(model, slug)) {
-    slug = `${base}-${suffix}`;
+    slug = `${collisionBase}-${suffix}`;
     suffix += 1;
   }
 

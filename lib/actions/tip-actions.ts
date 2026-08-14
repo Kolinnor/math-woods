@@ -34,13 +34,13 @@ function parseTipProblemIds(values: FormDataEntryValue[]) {
 function parseTipTranslations(formData: FormData) {
   const english = {
     language: "en",
-    title: requiredBoundedText(formData.get("titleEn"), CONTENT_LIMITS.title, "English title"),
-    body: requiredBoundedText(formData.get("bodyEn"), CONTENT_LIMITS.longNote, "English tip text")
+    title: requiredBoundedText(formData.get("titleEn"), CONTENT_LIMITS.title, "Title (English)"),
+    body: requiredBoundedText(formData.get("bodyEn"), CONTENT_LIMITS.longNote, "Tip text (English)")
   };
-  const frenchTitle = optionalBoundedText(formData.get("titleFr"), CONTENT_LIMITS.title, "French title");
-  const frenchBody = optionalBoundedText(formData.get("bodyFr"), CONTENT_LIMITS.longNote, "French tip text");
+  const frenchTitle = optionalBoundedText(formData.get("titleFr"), CONTENT_LIMITS.title, "Title (Français)");
+  const frenchBody = optionalBoundedText(formData.get("bodyFr"), CONTENT_LIMITS.longNote, "Tip text (Français)");
   if (Boolean(frenchTitle) !== Boolean(frenchBody)) {
-    throw new Error("The French title and tip text must either both be filled in or both be empty.");
+    throw new Error("The title and tip text for Français must either both be filled in or both be empty.");
   }
   return {
     english,

@@ -1,4 +1,3 @@
-import { MathDomain } from "@prisma/client";
 import { notFound, redirect } from "next/navigation";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -35,7 +34,6 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
       eyebrow={displayNameForUser(user)}
       heroImage={SOCIAL_HERO_ART.src}
       heroAlt={SOCIAL_HERO_ART.alt}
-      description={t.profile.editDescription}
       workspaceClassName="forest-page-workspace-narrow"
     >
       <AvatarUploader
@@ -44,12 +42,10 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
         user={{ username: user.username, displayName: user.displayName }}
         labels={{
           backgroundColors: t.profile.profileImageBackgroundColors,
-          backgroundHelp: t.profile.profileImageBackgroundHelp,
           backgroundTitle: t.profile.profileImageBackground,
           backgroundUpdated: t.profile.profileImageBackgroundUpdated,
           choose: t.profile.chooseProfileImage,
           defaultFailed: t.profile.profileImageDefaultFailed,
-          defaultHelp: t.profile.profileImageDefaultHelp,
           defaultOption: t.profile.profileImageDefaultOption,
           defaultTitle: t.profile.profileImageDefault,
           defaultUpdated: t.profile.profileImageDefaultUpdated,
@@ -76,32 +72,6 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
             maxLength={DISPLAY_NAME_MAX_LENGTH}
             required
           />
-          <small className="muted">
-            {t.profile.profileNameUrlHelp(user.username)}
-          </small>
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">{t.profile.affiliation}</span>
-          <input name="affiliation" defaultValue={user.affiliation ?? ""} maxLength={160} placeholder={t.profile.affiliationPlaceholder} />
-        </label>
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">{t.profile.website}</span>
-          <input name="websiteUrl" type="url" defaultValue={user.websiteUrl ?? ""} placeholder="https://" />
-        </label>
-        <fieldset className="profile-domain-picker">
-          <legend>{t.profile.mathematicalInterests}</legend>
-          <div>
-            {Object.values(MathDomain).map((domain) => (
-              <label key={domain}>
-                <input type="checkbox" name="mathematicalDomains" value={domain} defaultChecked={user.mathematicalDomains.includes(domain)} />
-                <span>{t.home.domainLabels[domain]}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <label className="checkbox-field profile-collaboration-field">
-          <input name="openToCollaboration" type="checkbox" defaultChecked={user.openToCollaboration} />
-          <span><strong>{t.profile.openToCollaboration}</strong><small>{t.profile.openToCollaborationHelp}</small></span>
         </label>
         <label className="grid gap-2">
           <span className="field-label-with-help text-sm font-medium">

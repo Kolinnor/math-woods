@@ -1,6 +1,5 @@
 import type { ProblemStyle } from "@prisma/client";
 
-import { FieldHelp } from "@/components/FieldHelp";
 import { PROBLEM_STYLE_OPTIONS, problemStyleLabel } from "@/lib/problem-styles";
 
 export function ProblemClassificationFields({
@@ -17,14 +16,7 @@ export function ProblemClassificationFields({
   return (
     <section className="problem-compose-subsection">
       <h2>{isFrench ? "Forme du problème" : "Problem style"}</h2>
-      <div className="field-label-with-help text-sm font-medium">
-        {isFrench ? "Styles (facultatif)" : "Styles (optional)"}
-        <FieldHelp
-          text={isFrench
-            ? "Décrivez la forme de la recherche, pas son domaine mathématique. Vous pouvez ne rien cocher."
-            : "Describe the form of the work, not its mathematical subject. You may leave every option unchecked."}
-        />
-      </div>
+      <div className="text-sm font-medium">{isFrench ? "Styles (facultatif)" : "Styles (optional)"}</div>
       <div className="problem-style-options">
         {PROBLEM_STYLE_OPTIONS.map((style) => (
           <label className="problem-style-option" key={style}>

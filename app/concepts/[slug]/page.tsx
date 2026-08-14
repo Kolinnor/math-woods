@@ -45,6 +45,7 @@ import {
   nextMissingTranslationLanguage,
   requestedTranslationLanguage,
   selectContentTranslation,
+  selectExactContentTranslationsByGroup,
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
 import { cleanWikiLinkTarget, missingConceptHref } from "@/lib/wikilinks";
@@ -239,7 +240,13 @@ export default async function ConceptPage({
   const practiceTranslationGroupIds = [
     ...new Set(concept.practiceExercises.map(({ problem }) => problem.translationGroupId))
   ];
-  const [translations, outgoingLinks, backlinks, practiceSolvedAttempts] = await Promise.all([
+  const [
+    translations,
+    outgoingLinks,
+    backlinks,
+    practiceSolvedAttempts,
+    localizedPracticeProblems
+  ] = await Promise.all([
     prisma.concept.findMany({
       where: {
         translationGroupId: concept.translationGroupId,
@@ -267,8 +274,40 @@ export default async function ConceptPage({
             problem: { select: { translationGroupId: true } }
           }
         })
+      : [],
+    practiceTranslationGroupIds.length
+      ? prisma.problem.findMany({
+          where: {
+            translationGroupId: { in: practiceTranslationGroupIds },
+            language: concept.language,
+            isExercise: true,
+            listed: true,
+            status: "PUBLISHED",
+            ...visibleProblemWhere(user)
+          },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            bodyMarkdown: true,
+            language: true,
+            difficulty: true,
+            authorId: true,
+            translationGroupId: true,
+            translatedFromProblemId: true
+          }
+        })
       : []
   ]);
+  const localizedPracticeProblemByGroup = new Map(
+    selectExactContentTranslationsByGroup(
+      localizedPracticeProblems.map((problem) => ({
+        ...problem,
+        isSource: problem.translatedFromProblemId === null
+      })),
+      concept.language
+    ).map((problem) => [problem.translationGroupId, problem] as const)
+  );
   const solvedUsersByPracticeGroup = new Map<string, Set<number>>();
   for (const attempt of practiceSolvedAttempts) {
     const groupId = attempt.problem.translationGroupId;
@@ -316,6 +355,10 @@ export default async function ConceptPage({
     resolveConceptTitlesForLanguage(existingOutgoingSlugs, concept.language),
     Promise.all(
       [...concept.practiceExercises]
+        .map(({ position, problem }) => ({
+          position,
+          problem: localizedPracticeProblemByGroup.get(problem.translationGroupId) ?? problem
+        }))
         .sort(
           (left, right) =>
             (left.problem.difficulty ?? 101) - (right.problem.difficulty ?? 101) ||

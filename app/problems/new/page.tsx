@@ -19,6 +19,7 @@ import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
+import { localizedProblemOrigin } from "@/lib/problem-origin";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownCollectionForTranslation } from "@/lib/translated-markdown";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
@@ -167,7 +168,15 @@ export default async function NewProblemPage({
     >
     <div className={sourceProblem ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
-        <ProblemCreateForm>
+        <ProblemCreateForm
+          labels={{
+            keepSameTranslationTitle: t.contentEditor.keepSameTranslationTitle,
+            publishAnyway: t.contentEditor.publishAnyway,
+            sameTranslationTitleHeading: t.contentEditor.sameTranslationTitleHeading,
+            sameTranslationTitleWarning: t.contentEditor.sameTranslationTitleWarning,
+            translationLinksHeading: t.contentEditor.translationLinksHeading
+          }}
+        >
           {explorationSlug && <input type="hidden" name="addToExplorationSlug" value={explorationSlug} />}
           {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
           {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
@@ -180,7 +189,13 @@ export default async function NewProblemPage({
 
             <label className="grid gap-2">
               <span className="text-sm font-medium">{t.contentEditor.title}</span>
-              <input name="title" defaultValue={sourceProblem?.title ?? ""} placeholder="Roots and coefficients" />
+              <input
+                name="title"
+                required
+                defaultValue=""
+                placeholder={sourceProblem ? t.contentEditor.translationTitlePlaceholder(sourceProblem.title) : undefined}
+              />
+              {sourceProblem && <span className="meta">{t.contentEditor.translationTitleHelp}</span>}
             </label>
 
             <div className="grid gap-2">
@@ -251,7 +266,11 @@ export default async function NewProblemPage({
                       {t.contentEditor.approximateOrigin}
                       <FieldHelp text={t.contentEditor.originHelp} />
                     </span>
-                    <input name="origin" defaultValue={sourceProblem?.origin ?? t.contentEditor.unknown} placeholder={t.contentEditor.unknown} />
+                    <input
+                      name="origin"
+                      defaultValue={localizedProblemOrigin(sourceProblem?.origin, t.contentEditor.unknown)}
+                      placeholder={t.contentEditor.unknown}
+                    />
                   </label>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="grid gap-2">

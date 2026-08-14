@@ -34,6 +34,7 @@ import {
   canUseAdminTools
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
+import { localizedProblemOrigin } from "@/lib/problem-origin";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { latestProblemTextRevisionId } from "@/lib/translation-freshness";
 
@@ -199,7 +200,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                         {t.contentEditor.approximateOrigin}
                         <FieldHelp text={t.contentEditor.originHelp} />
                       </span>
-                      <input name="origin" defaultValue={problem.origin} />
+                      <input name="origin" defaultValue={localizedProblemOrigin(problem.origin, t.contentEditor.unknown)} />
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className="grid gap-2">
