@@ -1,8 +1,7 @@
 ﻿import { ProblemVerificationMode } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { TargetType } from "@prisma/client";
-import { NotificationType } from "@prisma/client";
+import { ReportStatus, TargetType } from "@prisma/client";
 import { Check, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -16,7 +15,7 @@ import { ProblemReactions } from "@/components/ProblemReactions";
 import { ProblemRecommendationExposure } from "@/components/ProblemRecommendationExposure";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
-import { reportProblemAction } from "@/lib/actions/moderation-actions";
+import { reportProblemAction, reportProofAction } from "@/lib/actions/moderation-actions";
 import {
   createProblemHintFromProblemAction,
   dismissProblemTranslationStaleNoticeAction,
@@ -40,13 +39,14 @@ import { formatProblemSolvedDate, problemSolvedAt } from "@/lib/problem-solved-d
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { renderInlineMarkdown } from "@/lib/markdown";
-import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import {
   canEditProblem,
   canProposeProblemEdit,
   canEditSolution,
   canReviewProblem,
   canUseAdminTools,
+  canUseModerationTools,
+  isVerifiedContributor,
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
@@ -58,6 +58,7 @@ import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { problemStyleLabel } from "@/lib/problem-styles";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { solutionConcernIsPublic } from "@/lib/solution-reports";
 import {
   renderMarkdownCollectionForContentLanguage,
   resolveConceptHrefsForLanguage,
@@ -264,18 +265,6 @@ export default async function ProblemPage({
   const canViewArchived = canViewArchivedProblem(user, problem);
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
   if (!canViewProblem(user, problem)) notFound();
-  if (user) {
-    await markNotificationsReadForHref(user.id, `/problems/${problem.slug}`, [
-      NotificationType.PROBLEM_ATTEMPTED,
-      NotificationType.PROOF_ADDED,
-      NotificationType.SOLUTION_VOTED,
-      NotificationType.PROBLEM_SOLVED,
-      NotificationType.PROBLEM_CREATED,
-      NotificationType.PROBLEM_CHALLENGE,
-      NotificationType.PROBLEM_SHARED,
-      NotificationType.PROBLEM_OF_THE_DAY
-    ]);
-  }
   const hasSpecifiedOrigin =
     !isUnknownProblemOrigin(problem.origin) ||
     Boolean(problem.originChapter || problem.originPage || problem.originNote);
@@ -292,6 +281,23 @@ export default async function ProblemPage({
         _count: { targetId: true }
       })
     : Promise.resolve([]);
+  const proofReportsPromise = proofIds.length
+    ? prisma.report.findMany({
+        where: {
+          targetType: TargetType.PROOF,
+          targetId: { in: proofIds },
+          status: ReportStatus.OPEN
+        },
+        select: {
+          id: true,
+          targetId: true,
+          reporterId: true,
+          category: true,
+          reason: true,
+          reporter: { select: { role: true } }
+        }
+      })
+    : Promise.resolve([]);
   const [
     translations,
     familyHints,
@@ -302,6 +308,7 @@ export default async function ProblemPage({
     ownVerificationRequests,
     pendingVerificationRequests,
     proofVoteGroups,
+    proofReports,
     userVotes,
     favorite,
     groupFavoriteRows,
@@ -407,6 +414,7 @@ export default async function ProblemPage({
         })
       : Promise.resolve([]),
     proofVoteGroupsPromise,
+    proofReportsPromise,
     user && proofIds.length
       ? prisma.vote.findMany({
           where: {
@@ -524,6 +532,12 @@ export default async function ProblemPage({
 
   const proofVotes = new Map(proofVoteGroups.map((item) => [item.targetId, item._count.targetId]));
   const ownProofVoteIds = new Set(userVotes.filter((vote) => vote.targetType === TargetType.PROOF).map((vote) => vote.targetId));
+  const proofReportsByProofId = new Map<number, typeof proofReports>();
+  for (const report of proofReports) {
+    const reports = proofReportsByProofId.get(report.targetId) ?? [];
+    reports.push(report);
+    proofReportsByProofId.set(report.targetId, reports);
+  }
   const relatedSolvedGroupIds = new Set(
     relatedSolvedAttempts.map((attempt) => attempt.problem.translationGroupId)
   );
@@ -1120,11 +1134,28 @@ export default async function ProblemPage({
                   const accepted = proof.id === acceptedProofId;
                   const canEditProof = Boolean(user && canEditSolution(user, proof));
                   const isOwnProof = user?.id === proof.authorId || user?.id === proof.translatedById;
+                  const openProofReports = proofReportsByProofId.get(proof.id) ?? [];
+                  const ownOpenReport = user
+                    ? openProofReports.find((report) => report.reporterId === user.id) ?? null
+                    : null;
+                  const showConcern =
+                    solutionConcernIsPublic(openProofReports.map((report) => report.reporter.role)) ||
+                    Boolean(isOwnProof) ||
+                    Boolean(ownOpenReport) ||
+                    Boolean(user && canUseModerationTools(user));
+                  const canReportProof = Boolean(user && isVerifiedContributor(user) && !isOwnProof);
                   return (
                     <article id={`solution-${proof.id}`} key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
                       <header className="proof-header">
                         <div>
                           {accepted && <span className="accepted-label">{t.problemDetail.communityAccepted}</span>}
+                          {showConcern && openProofReports.length > 0 && (
+                            <span className="solution-concern-label">
+                              {ownOpenReport
+                                ? t.problemDetail.yourSolutionReportPending
+                                : t.problemDetail.solutionIssueReported}
+                            </span>
+                          )}
                           <p className="meta">
                             {t.problemDetail.solutionBy}{" "}
                             <Link href={`/profile/${proof.author.username}`}>
@@ -1172,6 +1203,62 @@ export default async function ProblemPage({
                         </div>
                       </header>
                       <MarkdownBlock html={proofBodyHtmlById.get(proof.id) ?? proof.bodyHtml} />
+                      {canReportProof && (
+                        <details className="solution-report-control">
+                          <summary>
+                            <Flag size={14} aria-hidden="true" />
+                            {ownOpenReport
+                              ? t.problemDetail.updateSolutionReport
+                              : t.problemDetail.reportSolution}
+                          </summary>
+                          <form
+                            action={reportProofAction.bind(null, proof.id, problem.slug)}
+                            className="solution-report-form"
+                          >
+                            <label>
+                              <span>{t.problemDetail.solutionReportReason}</span>
+                              <select
+                                name="category"
+                                defaultValue={ownOpenReport?.category ?? "MATHEMATICAL_ERROR"}
+                              >
+                                <option value="MATHEMATICAL_ERROR">
+                                  {t.problemDetail.solutionReportReasons.mathematicalError}
+                                </option>
+                                <option value="INCOMPLETE_ARGUMENT">
+                                  {t.problemDetail.solutionReportReasons.incompleteArgument}
+                                </option>
+                                <option value="UNCLEAR_EXPLANATION">
+                                  {t.problemDetail.solutionReportReasons.unclearExplanation}
+                                </option>
+                                <option value="IRRELEVANT_OR_ABUSIVE">
+                                  {t.problemDetail.solutionReportReasons.irrelevantOrAbusive}
+                                </option>
+                                <option value="OTHER">
+                                  {t.problemDetail.solutionReportReasons.other}
+                                </option>
+                              </select>
+                            </label>
+                            <label>
+                              <span>{t.problemDetail.solutionReportExplanation}</span>
+                              <textarea
+                                name="reason"
+                                defaultValue={ownOpenReport?.reason ?? ""}
+                                placeholder={t.problemDetail.solutionReportPlaceholder}
+                                minLength={10}
+                                maxLength={4000}
+                                required
+                              />
+                            </label>
+                            <div className="solution-report-submit">
+                              <small>{t.problemDetail.solutionReportGuidance}</small>
+                              <button type="submit" className="secondary">
+                                <Flag size={15} aria-hidden="true" />
+                                {t.problemDetail.submitSolutionReport}
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+                      )}
                     </article>
                   );
                 })}

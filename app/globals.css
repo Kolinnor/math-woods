@@ -16717,6 +16717,82 @@ button.relation-remove-button {
   text-transform: uppercase;
 }
 
+.solution-concern-label {
+  color: var(--danger);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 750;
+  margin-bottom: 0.15rem;
+  text-transform: uppercase;
+}
+
+.solution-report-control {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 0.65rem;
+}
+
+.solution-report-control > summary {
+  align-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 650;
+  gap: 0.35rem;
+  list-style: none;
+}
+
+.solution-report-control > summary::-webkit-details-marker {
+  display: none;
+}
+
+.solution-report-control[open] > summary {
+  color: var(--text);
+}
+
+.solution-report-form {
+  border-left: 2px solid var(--line-strong);
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.75rem;
+  padding: 0.15rem 0 0.15rem 0.85rem;
+}
+
+.solution-report-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.solution-report-form label > span {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.solution-report-form textarea {
+  min-height: 6rem;
+}
+
+.solution-report-submit {
+  align-items: center;
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+}
+
+.solution-report-submit small {
+  color: var(--muted);
+  line-height: 1.4;
+  max-width: 42rem;
+}
+
+@media (max-width: 620px) {
+  .solution-report-submit {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .proof-discussion {
   border-top: 1px solid var(--line);
   margin-top: 1rem;

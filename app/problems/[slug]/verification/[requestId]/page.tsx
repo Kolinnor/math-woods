@@ -1,4 +1,3 @@
-import { NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
@@ -21,7 +20,6 @@ import {
   canReviewProblemVerification,
   canViewArchivedProblem
 } from "@/lib/permissions";
-import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -73,13 +71,6 @@ export default async function ProblemVerificationPage({
   if (!request || request.problem.slug !== slug) notFound();
   if (request.problem.status === "ARCHIVED" && !canViewArchivedProblem(user, request.problem)) notFound();
   if (!user || !canJoinVerificationDiscussion(user, request)) notFound();
-  await markNotificationsReadForHref(user.id, `/problems/${request.problem.slug}/verification/${request.id}`, [
-    NotificationType.VERIFICATION_REQUESTED,
-    NotificationType.VERIFICATION_MESSAGE,
-    NotificationType.VERIFICATION_APPROVED,
-    NotificationType.VERIFICATION_REJECTED
-  ]);
-
   const canReview = canReviewProblemVerification(user, request.problem);
   const isPending = request.status === "PENDING";
   const ownReplyResetSignal = request.messages.filter((message) => message.authorId === user.id).at(-1)?.id ?? 0;

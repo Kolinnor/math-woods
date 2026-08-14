@@ -204,6 +204,14 @@ enum ReportStatus {
   ACTION_TAKEN
 }
 
+enum ReportCategory {
+  MATHEMATICAL_ERROR
+  INCOMPLETE_ARGUMENT
+  UNCLEAR_EXPLANATION
+  IRRELEVANT_OR_ABUSIVE
+  OTHER
+}
+
 enum SuggestionStatus {
   OPEN
   PLANNED
@@ -230,6 +238,7 @@ enum NotificationType {
   PROBLEM_EDIT_REJECTED
   PROOF_ADDED
   SOLUTION_VOTED
+  SOLUTION_REPORTED
   DISCUSSION_POSTED
   ACHIEVEMENT_UNLOCKED
   VERIFICATION_REQUESTED
@@ -318,7 +327,8 @@ model User {
   posts                           DiscussionPost[]
   playlists                       Playlist[]
   votes                           Vote[]
-  reports                         Report[]
+  reports                         Report[]                        @relation("ReportReporter")
+  reportsReviewed                 Report[]                        @relation("ReportReviewer")
   sessions                        Session[]
   externalIdentities              ExternalIdentity[]
   oauthLinkAttempts               OAuthAttempt[]                  @relation("OAuthAttemptLinkUser")
@@ -1474,14 +1484,24 @@ model QuoteConcept {
 }
 
 model Report {
-  id         Int          @id @default(autoincrement())
-  reporterId Int
-  targetType TargetType
-  targetId   Int
-  reason     String
-  status     ReportStatus @default(OPEN)
-  createdAt  DateTime     @default(now())
-  reporter   User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  id           Int             @id @default(autoincrement())
+  reporterId   Int
+  reviewerId   Int?
+  targetType   TargetType
+  targetId     Int
+  category     ReportCategory?
+  reason       String
+  status       ReportStatus    @default(OPEN)
+  reviewerNote String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  resolvedAt   DateTime?
+  reporter     User            @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer     User?           @relation("ReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId, status])
+  @@index([reporterId, targetType, targetId, status])
+  @@index([reviewerId])
 }
 
 model Suggestion {
@@ -1562,18 +1582,18 @@ model ContributionPageSection {
 }
 
 model Tip {
-  id             Int          @id @default(autoincrement())
-  position       Int          @unique
+  id             Int                @id @default(autoincrement())
+  position       Int                @unique
   title          String
   description    String
-  body           String       @db.Text
+  body           String             @db.Text
   imageUrl       String?
-  imagePositionX Int          @default(50)
-  imagePositionY Int          @default(50)
-  showInMainMenu Boolean      @default(false)
-  kind           TipKind      @default(TIP)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  imagePositionX Int                @default(50)
+  imagePositionY Int                @default(50)
+  showInMainMenu Boolean            @default(false)
+  kind           TipKind            @default(TIP)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
   problems       TipProblem[]
   problemGroups  TipProblemGroup[]
   images         TipImage[]
@@ -1625,8 +1645,8 @@ model TipProblem {
 model TipProblemGroup {
   tipId              Int
   translationGroupId String
-  position           Int @default(0)
-  tip                Tip @relation(fields: [tipId], references: [id], onDelete: Cascade)
+  position           Int    @default(0)
+  tip                Tip    @relation(fields: [tipId], references: [id], onDelete: Cascade)
 
   @@id([tipId, translationGroupId])
   @@index([tipId, position])
@@ -1657,19 +1677,19 @@ model DailyTipSchedule {
 }
 
 model Notification {
-  id                 Int                 @id @default(autoincrement())
-  userId             Int
-  actorId            Int?
-  type               NotificationType
-  title              String
-  body               String
-  href               String
-  readAt             DateTime?
+  id                  Int                 @id @default(autoincrement())
+  userId              Int
+  actorId             Int?
+  type                NotificationType
+  title               String
+  body                String
+  href                String
+  readAt              DateTime?
   dismissedFromMenuAt DateTime?
-  createdAt          DateTime            @default(now())
-  user               User                @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
-  actor              User?               @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
-  dailyConceptReview DailyConceptReview?
+  createdAt           DateTime            @default(now())
+  user                User                @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor               User?               @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  dailyConceptReview  DailyConceptReview?
 
   @@index([userId, readAt, createdAt])
   @@index([actorId])

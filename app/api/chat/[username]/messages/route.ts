@@ -30,6 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
   const afterId = Number.isInteger(afterIdRaw) && afterIdRaw > 0 ? afterIdRaw : 0;
   const beforeIdRaw = Number(url.searchParams.get("beforeId") ?? 0);
   const beforeId = Number.isInteger(beforeIdRaw) && beforeIdRaw > 0 ? beforeIdRaw : 0;
+  const shouldMarkRead = url.searchParams.get("markRead") === "1";
   const reactionCursor = Date.now();
   const reactionsAfterRaw = Number(url.searchParams.get("reactionsAfter") ?? 0);
   const reactionsAfter = Number.isFinite(reactionsAfterRaw)
@@ -58,7 +59,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
   if (!friendship) {
     return NextResponse.json({ error: "You can only chat with accepted friends." }, { status: 403 });
   }
-  await markNotificationsReadForHref(user.id, `/chat/${otherUser.username}`, NotificationType.CHAT_MESSAGE);
+  if (shouldMarkRead) {
+    await markNotificationsReadForHref(user.id, `/chat/${otherUser.username}`, NotificationType.CHAT_MESSAGE);
+  }
 
   const pair = directChatPair(user.id, otherUser.id);
   const chat = await prisma.directChat.findUnique({

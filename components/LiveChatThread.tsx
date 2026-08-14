@@ -21,7 +21,7 @@ import {
   type ChatReactionSummary,
   type ChatReactionUpdate
 } from "@/lib/chat-reactions";
-import { CHAT_READ_EVENT } from "@/lib/chat-unread";
+import { CHAT_READ_EVENT, shouldAcknowledgeChat } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import { chatScrollTopAfterPrepend } from "@/lib/chat-scroll";
 import type { DirectChatMessage } from "@/lib/direct-chat";
@@ -72,6 +72,7 @@ export function LiveChatThread({
   const [status, setStatus] = useState<"live" | "checking" | "paused">("live");
   const latestIdRef = useRef(initialMessages.at(-1)?.id ?? 0);
   const reactionCursorRef = useRef(0);
+  const isAtBottomRef = useRef(true);
   const threadRef = useRef<HTMLElement | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const prependScrollRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
@@ -81,6 +82,10 @@ export function LiveChatThread({
     noteNewMessages,
     scrollToBottom
   } = useChatScroll(threadRef, otherUsername);
+
+  useEffect(() => {
+    isAtBottomRef.current = isAtBottom;
+  }, [isAtBottom]);
 
   useEffect(() => {
     latestIdRef.current = messages.at(-1)?.id ?? 0;
@@ -203,7 +208,12 @@ export function LiveChatThread({
       try {
         const response = await fetch(
           `/api/chat/${encodeURIComponent(otherUsername)}/messages?afterId=${latestIdRef.current}`
-            + `&reactionsAfter=${reactionCursorRef.current}`,
+            + `&reactionsAfter=${reactionCursorRef.current}`
+            + (shouldAcknowledgeChat({
+              conversationOpen: true,
+              documentVisible: document.visibilityState === "visible",
+              isAtBottom: isAtBottomRef.current
+            }) ? "&markRead=1" : ""),
           {
             cache: "no-store",
             signal: controller.signal

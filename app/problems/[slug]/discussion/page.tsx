@@ -1,4 +1,4 @@
-import { NotificationType, TargetType } from "@prisma/client";
+import { TargetType } from "@prisma/client";
 import { ArrowLeft, Flag, Lightbulb, MessageCircle, MessageSquarePlus, Pencil, Send, ThumbsUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,7 +18,6 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canEditDiscussionHint, canViewArchivedProblem } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
@@ -92,10 +91,6 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
   if (!problem) notFound();
   if (problem.status === "ARCHIVED" && !canViewArchivedProblem(user, problem)) notFound();
   if (!canViewProblem(user, problem)) notFound();
-  if (user) {
-    await markNotificationsReadForHref(user.id, `/problems/${problem.slug}/discussion`, NotificationType.DISCUSSION_POSTED);
-  }
-
   const posts = problem.thread?.posts ?? [];
   const [postVoteGroups, userVotes] = await Promise.all([
     posts.length

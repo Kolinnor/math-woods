@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ConceptStatus, MathDomain, NotificationType } from "@prisma/client";
+import { ConceptStatus, MathDomain } from "@prisma/client";
 import { Flag, History, MessageCircle, Pencil, Users } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
@@ -25,7 +25,6 @@ import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel } from "@/lib/languages";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { markdownExcerpt } from "@/lib/metadata-text";
-import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import {
   canChangeConceptStatus,
   canDowngradeConceptStatus,
@@ -229,14 +228,6 @@ export default async function ConceptPage({
     if (contributor) contributorsById.set(contributor.id, contributor);
   }
   const contributors = [...contributorsById.values()];
-  if (user) {
-    await markNotificationsReadForHref(user.id, `/concepts/${concept.slug}`, [
-      NotificationType.CONCEPT_CREATED,
-      NotificationType.CONCEPT_EDITED,
-      NotificationType.DAILY_CONCEPT_REVIEW
-    ]);
-  }
-
   const practiceTranslationGroupIds = [
     ...new Set(concept.practiceExercises.map(({ problem }) => problem.translationGroupId))
   ];

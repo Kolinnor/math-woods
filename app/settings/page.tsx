@@ -79,6 +79,11 @@ const notificationOptions = [
     description: "When another user marks one of your solutions as useful."
   },
   {
+    type: NotificationType.SOLUTION_REPORTED,
+    title: "Solution issue reports",
+    description: "When someone reports a potential issue on your solution or your own report is reviewed."
+  },
+  {
     type: NotificationType.DISCUSSION_POSTED,
     title: "Someone posted in your problem discussion",
     description: "When another user posts a comment, hint, solution, generalization, or correction."

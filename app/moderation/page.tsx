@@ -10,7 +10,8 @@ import {
   markConceptUsableAction,
   markReportedProblemNeedsWorkAction,
   markReportedConceptControversialAction,
-  publishProblemAction
+  publishProblemAction,
+  resolveReportedProofAction
 } from "@/lib/actions/moderation-actions";
 import { requireModerator } from "@/lib/auth";
 import { formatUserDateTime } from "@/lib/date-format";
@@ -35,8 +36,9 @@ export default async function ModerationPage() {
   const problemIds = reports.filter((report) => report.targetType === "PROBLEM").map((report) => report.targetId);
   const conceptIds = reports.filter((report) => report.targetType === "CONCEPT").map((report) => report.targetId);
   const postIds = reports.filter((report) => report.targetType === "POST").map((report) => report.targetId);
+  const proofIds = reports.filter((report) => report.targetType === "PROOF").map((report) => report.targetId);
 
-  const [problems, concepts, posts, flaggedProblems, controversialConcepts, errorReports, proposedEdits] = await Promise.all([
+  const [problems, concepts, posts, proofs, flaggedProblems, controversialConcepts, errorReports, proposedEdits] = await Promise.all([
     prisma.problem.findMany({
       where: { id: { in: problemIds } },
       select: { id: true, slug: true, title: true, status: true, qualityStatus: true }
@@ -48,6 +50,15 @@ export default async function ModerationPage() {
     prisma.discussionPost.findMany({
       where: { id: { in: postIds } },
       include: { author: true, thread: { include: { problem: true } } }
+    }),
+    prisma.problemProof.findMany({
+      where: { id: { in: proofIds } },
+      select: {
+        id: true,
+        bodyMarkdown: true,
+        author: true,
+        problem: { select: { slug: true, title: true } }
+      }
     }),
     prisma.problem.findMany({
       where: { status: "FLAGGED" },
@@ -78,6 +89,7 @@ export default async function ModerationPage() {
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const conceptById = new Map(concepts.map((concept) => [concept.id, concept]));
   const postById = new Map(posts.map((post) => [post.id, post]));
+  const proofById = new Map(proofs.map((proof) => [proof.id, proof]));
 
   return (
     <ForestPageLayout
@@ -208,6 +220,7 @@ export default async function ModerationPage() {
           const problem = problemById.get(report.targetId);
           const concept = conceptById.get(report.targetId);
           const post = postById.get(report.targetId);
+          const proof = proofById.get(report.targetId);
 
           return (
             <section key={report.id} className="panel p-4">
@@ -238,8 +251,16 @@ export default async function ModerationPage() {
                     Post on <AsyncMarkdownInline markdown={post.thread.problem.title} />
                   </Link>
                 )}
+                {report.targetType === "PROOF" && proof && (
+                  <Link href={`/problems/${proof.problem.slug}#solution-${proof.id}`} className="underline">
+                    Solution on <AsyncMarkdownInline markdown={proof.problem.title} />
+                  </Link>
+                )}
               </div>
 
+              {report.category && (
+                <p className="eyebrow mt-3">{report.category.toLowerCase().replaceAll("_", " ")}</p>
+              )}
               <p className="mt-3">{report.reason}</p>
               {post && (
                 <blockquote className="mt-3 border-l-2 border-line pl-3 text-sm">
@@ -247,6 +268,15 @@ export default async function ModerationPage() {
                     {post.deletedAt ? "Hidden post" : "Visible post"} by <UserName user={post.author} />
                   </div>
                   {post.bodyMarkdown}
+                </blockquote>
+              )}
+              {proof && (
+                <blockquote className="mt-3 border-l-2 border-line pl-3 text-sm">
+                  <div className="muted mb-1">
+                    Solution by <UserName user={proof.author} />
+                  </div>
+                  {proof.bodyMarkdown.slice(0, 700)}
+                  {proof.bodyMarkdown.length > 700 ? "..." : ""}
                 </blockquote>
               )}
 
@@ -272,6 +302,11 @@ export default async function ModerationPage() {
                   {report.targetType === "POST" && post && !post.deletedAt && (
                     <form action={hideReportedPostAction.bind(null, report.id, post.id)}>
                       <button type="submit">Hide post</button>
+                    </form>
+                  )}
+                  {report.targetType === "PROOF" && proof && (
+                    <form action={resolveReportedProofAction.bind(null, report.id, proof.id)}>
+                      <button type="submit">Mark addressed</button>
                     </form>
                   )}
                   <form action={dismissReportAction.bind(null, report.id)}>

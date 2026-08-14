@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ConceptKind, ConceptStatus, MathDomain, Prisma, QualityStatus, Role, UserMathLevel } from "@prisma/client";
+import { ConceptKind, ConceptStatus, MathDomain, Prisma, QualityStatus, ReportCategory, Role, UserMathLevel } from "@prisma/client";
 import { EditorState, StateEffect } from "@codemirror/state";
 import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
@@ -124,7 +124,7 @@ import {
   isChatReaction,
   summarizeChatReactions
 } from "../lib/chat-reactions.ts";
-import { chatUnreadDocumentTitle } from "../lib/chat-unread.ts";
+import { chatUnreadDocumentTitle, shouldAcknowledgeChat } from "../lib/chat-unread.ts";
 import { formatCompactNumber } from "../lib/compact-number.ts";
 import {
   addDaysToDateKey,
@@ -137,6 +137,11 @@ import {
   upcomingDailyProblemDateKeys
 } from "../lib/daily-problem-schedule.ts";
 import { selectDailyTipForDate } from "../lib/daily-tip-schedule.ts";
+import {
+  parseSolutionReportCategory,
+  solutionConcernIsPublic,
+  solutionReportCategoryLabel
+} from "../lib/solution-reports.ts";
 import {
   DAILY_CONCEPT_REVIEW_STALE_POOL_SIZE,
   dailyConceptReviewStatusRank,
@@ -716,6 +721,10 @@ assert.equal(chatUnreadDocumentTitle("Math Woods", 1), "(1) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(1) Math Woods", 3), "(3) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(99+) Math Woods", 0), "Math Woods");
 assert.equal(chatUnreadDocumentTitle("A problem - Math Woods", 120), "(99+) A problem - Math Woods");
+assert.equal(shouldAcknowledgeChat({ conversationOpen: true, documentVisible: true, isAtBottom: true }), true);
+assert.equal(shouldAcknowledgeChat({ conversationOpen: false, documentVisible: true, isAtBottom: true }), false);
+assert.equal(shouldAcknowledgeChat({ conversationOpen: true, documentVisible: false, isAtBottom: true }), false);
+assert.equal(shouldAcknowledgeChat({ conversationOpen: true, documentVisible: true, isAtBottom: false }), false);
 assert.equal(
   canViewProblem(null, { authorId: 7, qualityStatus: QualityStatus.UNREVIEWED }),
   true
@@ -2653,6 +2662,16 @@ assert.equal(
   selectDailyTipForDate([{ id: 1, showInMainMenu: false }], "2026-08-03"),
   null
 );
+
+assert.equal(
+  parseSolutionReportCategory(ReportCategory.MATHEMATICAL_ERROR),
+  ReportCategory.MATHEMATICAL_ERROR
+);
+assert.throws(() => parseSolutionReportCategory("DOWNVOTE"), /valid solution report reason/);
+assert.equal(solutionReportCategoryLabel(ReportCategory.INCOMPLETE_ARGUMENT), "incomplete argument");
+assert.equal(solutionConcernIsPublic([Role.USER]), false);
+assert.equal(solutionConcernIsPublic([Role.USER, Role.USER]), true);
+assert.equal(solutionConcernIsPublic([Role.MODERATOR]), true);
 
 assert.equal(dailyConceptReviewStatusRank(ConceptStatus.MISSING), 0);
 assert.equal(dailyConceptReviewStatusRank(ConceptStatus.STUB), 1);

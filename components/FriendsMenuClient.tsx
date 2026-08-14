@@ -23,7 +23,7 @@ import {
   type ChatReactionSummary,
   type ChatReactionUpdate
 } from "@/lib/chat-reactions";
-import { CHAT_READ_EVENT, chatUnreadDocumentTitle } from "@/lib/chat-unread";
+import { CHAT_READ_EVENT, chatUnreadDocumentTitle, shouldAcknowledgeChat } from "@/lib/chat-unread";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { ChatReplyPreview } from "@/lib/chat-replies";
@@ -55,6 +55,8 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   const highlightTimerRef = useRef<number | null>(null);
   const latestMessageIdRef = useRef(0);
   const reactionCursorRef = useRef(0);
+  const friendsMenuOpenRef = useRef(false);
+  const isAtBottomRef = useRef(true);
   const threadRef = useRef<HTMLDivElement | null>(null);
   const {
     isAtBottom,
@@ -64,6 +66,10 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     scrollToBottom
   } = useChatScroll(threadRef, selectedFriend?.username);
   const visibleFriends = friendsForMenu(data.friends, preferences, data.locale);
+
+  useEffect(() => {
+    isAtBottomRef.current = isAtBottom;
+  }, [isAtBottom]);
 
   useEffect(() => {
     setPreferences(parseFriendsMenuPreferences(
@@ -180,9 +186,14 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
 
       try {
         const afterId = initial ? 0 : latestMessageIdRef.current;
+        const markRead = shouldAcknowledgeChat({
+          conversationOpen: friendsMenuOpenRef.current,
+          documentVisible: document.visibilityState === "visible",
+          isAtBottom: isAtBottomRef.current
+        }) ? "&markRead=1" : "";
         const response = await fetch(
           `/api/chat/${encodeURIComponent(selectedFriend!.username)}/messages?afterId=${afterId}`
-            + `&reactionsAfter=${reactionCursorRef.current}`,
+            + `&reactionsAfter=${reactionCursorRef.current}${markRead}`,
           { cache: "no-store", signal: controller.signal }
         );
         const result = await response.json() as {
@@ -342,7 +353,15 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
   }
 
   return (
-    <AutoClosingDetails className="friends-menu">
+    <AutoClosingDetails
+      className="friends-menu"
+      onOpenChange={(open) => {
+        friendsMenuOpenRef.current = open;
+        if (open) return;
+        setSelectedFriend(null);
+        setSettingsOpen(false);
+      }}
+    >
       <summary aria-label={data.labels.friends} title={data.labels.friends}>
         <span className="friend-online-dot" aria-hidden="true" />
         <span>{data.labels.onlineShort}</span>
