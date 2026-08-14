@@ -7,6 +7,7 @@ import { boundedText } from "@/lib/content-limits";
 import { createAndSendEmailVerification } from "@/lib/email-verification";
 import { safeReturnTo } from "@/lib/oauth-utils";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { currentClientAddress } from "@/lib/request-context";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "";
@@ -20,9 +21,15 @@ export async function loginAction(formData: FormData) {
   const identifier = boundedText(formData.get("identifier"), 320, "Identifier");
   const password = boundedText(formData.get("password"), 512, "Password", { trim: false });
   const returnTo = safeReturnTo(String(formData.get("returnTo") ?? ""));
+  const clientAddress = await currentClientAddress();
+  const normalizedIdentifier = identifier.toLowerCase();
 
   try {
-    await assertRateLimit(`login:${identifier.toLowerCase()}`, 8, 60_000);
+    await Promise.all([
+      assertRateLimit(`login:pair:${clientAddress}:${normalizedIdentifier}`, 8, 60_000),
+      assertRateLimit(`login:account:${normalizedIdentifier}`, 30, 15 * 60_000),
+      assertRateLimit(`login:ip:${clientAddress}`, 60, 15 * 60_000)
+    ]);
     await signInWithPassword(identifier, password);
   } catch (error) {
     const reason = errorMessage(error).startsWith("Too many requests") ? "rate-limited" : "invalid";
@@ -39,10 +46,14 @@ export async function registerAction(formData: FormData) {
   const mathLevel = formData.get("mathLevel");
   const returnTo = safeReturnTo(String(formData.get("returnTo") ?? ""));
   const hasCustomReturnTo = returnTo !== "/";
+  const clientAddress = await currentClientAddress();
 
   let user;
   try {
-    await assertRateLimit(`register:${email.toLowerCase()}`, 3, 60_000);
+    await Promise.all([
+      assertRateLimit(`register:email:${email.toLowerCase()}`, 3, 60 * 60_000),
+      assertRateLimit(`register:ip:${clientAddress}`, 10, 60 * 60_000)
+    ]);
     user = await registerUser(
       displayName,
       email,

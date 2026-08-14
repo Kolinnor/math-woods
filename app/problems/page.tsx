@@ -31,6 +31,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { selectProblemBrowserTranslation } from "@/lib/problem-browser-translations";
 import { PROBLEM_STYLE_OPTIONS, parseProblemStyle, problemStyleLabel } from "@/lib/problem-styles";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import {
@@ -143,12 +144,6 @@ function problemsHref(params: Record<string, number | string | string[] | undefi
 
 function valuesOf(value: SearchValue) {
   return Array.isArray(value) ? value : value ? [value] : [];
-}
-
-function languagePreferenceRank(language: string, preferredLanguage: string, selectedLanguages: string[]) {
-  if (language === preferredLanguage) return 0;
-  const selectedIndex = selectedLanguages.indexOf(language);
-  return selectedIndex >= 0 ? selectedIndex + 1 : selectedLanguages.length + 1;
 }
 
 function parseAdvancedFilters(fields: SearchValue, ops: SearchValue, values: SearchValue): ProblemFilterRow[] {
@@ -386,7 +381,7 @@ export default async function ProblemsPage({
   const ownershipValue = user ? parseOwnershipFilter(ownership) : "all";
   const languageValues = parseLanguageFilters(language);
   const includesEveryLanguage = languageValues.length === SUPPORTED_LANGUAGE_CODES.length;
-  const languageWhere: Prisma.ProblemWhereInput | null = includesEveryLanguage ? null : { language: { in: languageValues } };
+  const languageWhere: Prisma.ProblemWhereInput = { language: { in: languageValues } };
   const defaultSolutionValue: SolutionFilter = "all";
   const solutionValue = parseSolutionFilter(solutions, defaultSolutionValue);
   const solutionWhere: Prisma.ProblemWhereInput | null =
@@ -481,7 +476,7 @@ export default async function ProblemsPage({
     ...(progressFilterWhere ? [progressFilterWhere] : []),
     ...(ownershipWhere ? [ownershipWhere] : []),
     ...(solutionWhere ? [solutionWhere] : []),
-    ...(languageWhere ? [languageWhere] : []),
+    languageWhere,
     ...(authorWhere ? [authorWhere] : []),
     ...(advancedClauses.length
       ? [{ [advancedLogic]: advancedClauses } satisfies Prisma.ProblemWhereInput]
@@ -492,7 +487,7 @@ export default async function ProblemsPage({
     status: "PUBLISHED",
     listed: true,
     ...(contentTypeWhere ?? {}),
-    ...(languageWhere ?? {}),
+    ...languageWhere,
     ...(ownershipWhere ?? {}),
     ...(authorWhere ?? {}),
     ...(domainValue ? domainWhere(domainValue, showSpoilerTags) : {})
@@ -501,7 +496,7 @@ export default async function ProblemsPage({
     status: "PUBLISHED",
     listed: true,
     ...(contentTypeWhere ?? {}),
-    ...(languageWhere ?? {}),
+    ...languageWhere,
     ...(ownershipWhere ?? {})
   };
 
@@ -558,29 +553,54 @@ export default async function ProblemsPage({
   const domainProblemCounts = Object.fromEntries(
     Object.entries(domainProgress).map(([domain, entry]) => [domain, entry.total])
   );
-  const candidatesByTranslationGroup = new Map<string, typeof problemCandidateKeys>();
-  for (const candidate of problemCandidateKeys) {
+  const candidateTranslationGroupIds = [...new Set(problemCandidateKeys.map((problem) => problem.translationGroupId))];
+  const displayCandidateKeys = candidateTranslationGroupIds.length
+    ? await prisma.problem.findMany({
+        where: {
+          translationGroupId: { in: candidateTranslationGroupIds },
+          status: "PUBLISHED",
+          listed: true,
+          language: { in: languageValues }
+        },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          bodyMarkdown: true,
+          origin: true,
+          styles: true,
+          tags: { select: { tag: { select: { name: true } } } },
+          spoilerTags: { select: { tag: { select: { name: true } } } },
+          translationGroupId: true,
+          language: true,
+          translatedFromProblemId: true
+        }
+      })
+    : [];
+  const candidatesByTranslationGroup = new Map<string, typeof displayCandidateKeys>();
+  for (const candidate of displayCandidateKeys) {
     candidatesByTranslationGroup.set(candidate.translationGroupId, [
       ...(candidatesByTranslationGroup.get(candidate.translationGroupId) ?? []),
       candidate
     ]);
   }
-  const sortedDedupedProblems = [...candidatesByTranslationGroup.values()].map((candidates) => {
-    const sortedCandidates = [...candidates].sort((left, right) => {
-      const languageRank =
-        languagePreferenceRank(left.language, preferredLanguage, languageValues) -
-        languagePreferenceRank(right.language, preferredLanguage, languageValues);
-      if (languageRank !== 0) return languageRank;
-      if (left.translatedFromProblemId === null && right.translatedFromProblemId !== null) return -1;
-      if (left.translatedFromProblemId !== null && right.translatedFromProblemId === null) return 1;
-      return candidates.indexOf(left) - candidates.indexOf(right);
-    });
-    return sortedCandidates[0];
-  });
-  const problemOrder = new Map(sortedDedupedProblems.map((problem, index) => [problem.id, index]));
-  const dedupedProblems = query
-    ? rankSearchMatches(
-        sortedDedupedProblems.map((problem) => ({
+  const selectedCandidateByGroup = new Map(
+    [...candidatesByTranslationGroup].flatMap(([translationGroupId, candidates]) => {
+      const selected = selectProblemBrowserTranslation(candidates, preferredLanguage, languageValues);
+      return selected ? [[translationGroupId, selected] as const] : [];
+    })
+  );
+  const matchedCandidatesByTranslationGroup = new Map<string, typeof problemCandidateKeys>();
+  for (const candidate of problemCandidateKeys) {
+    matchedCandidatesByTranslationGroup.set(candidate.translationGroupId, [
+      ...(matchedCandidatesByTranslationGroup.get(candidate.translationGroupId) ?? []),
+      candidate
+    ]);
+  }
+  const matchedProblemOrder = new Map(problemCandidateKeys.map((problem, index) => [problem.id, index]));
+  const orderedTranslationGroupIds = query
+    ? [...new Set(rankSearchMatches(
+        problemCandidateKeys.map((problem) => ({
           item: problem,
           title: problem.title,
           slug: problem.slug,
@@ -596,9 +616,13 @@ export default async function ProblemsPage({
         query,
         preferredLanguage,
         morphologyVariants,
-        (left, right) => (problemOrder.get(left.item.id) ?? 0) - (problemOrder.get(right.item.id) ?? 0)
-      ).map(({ item }) => item)
-    : sortedDedupedProblems;
+        (left, right) => (matchedProblemOrder.get(left.item.id) ?? 0) - (matchedProblemOrder.get(right.item.id) ?? 0)
+      ).map(({ item }) => item.translationGroupId))]
+    : [...matchedCandidatesByTranslationGroup.keys()];
+  const dedupedProblems = orderedTranslationGroupIds.flatMap((translationGroupId) => {
+    const selected = selectedCandidateByGroup.get(translationGroupId);
+    return selected ? [selected] : [];
+  });
   const totalProblems = dedupedProblems.length;
   const totalPages = showAllProblems ? 1 : Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
   const currentPage = showAllProblems ? 1 : Math.min(requestedPage, totalPages);

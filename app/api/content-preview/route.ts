@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { CONTENT_LIMITS } from "@/lib/content-limits";
 import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
+import { assertRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in to preview this content." }, { status: 401 });
+
+  try {
+    await assertRateLimit(`content-preview:${user.id}`, 30, 60_000);
+  } catch {
+    return NextResponse.json({ error: "Too many previews. Please wait a moment." }, { status: 429 });
+  }
 
   let payload: unknown;
   try {

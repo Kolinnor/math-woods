@@ -26,6 +26,7 @@
 - `.env.production` exists and is not committed.
 - `APP_URL` is set to the public HTTPS origin.
 - `AUTH_SECRET` is unique and at least 32 characters.
+- `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` and `CRON_SECRET` are unique random secrets and are not reused as passwords.
 - `POSTGRES_PASSWORD` is long and random.
 - SMTP is configured for outgoing verification emails, including `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, and `SMTP_AUTH_REQUIRED=1`.
 - New account creation has been tested with a real received verification email.
@@ -38,6 +39,7 @@
 - `docker compose --env-file .env.production -f docker-compose.infomaniak.yml run --rm migrate`
 - `docker compose --env-file .env.production -f docker-compose.infomaniak.yml up -d app uptime-kuma caddy`
 - `https://APP_DOMAIN/api/health` returns `{ "ok": true }`.
+- `RATE_LIMIT_REDIS_URL` resolves to the private `valkey` service inside the app container.
 
 ## Monitoring
 

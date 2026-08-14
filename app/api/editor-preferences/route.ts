@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { DEFAULT_LATEX_PREFERENCES, mergeLatexPreferences, type LatexPreferenceValues } from "@/lib/latex-preferences";
+import { assertRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,12 @@ export async function GET() {
 export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ ok: false }, { status: 401 });
+
+  try {
+    await assertRateLimit(`editor-preferences:${user.id}`, 20, 60_000);
+  } catch {
+    return NextResponse.json({ ok: false, error: "Too many requests." }, { status: 429 });
+  }
 
   await prisma.latexPreference.upsert({
     where: { userId: user.id },

@@ -35,6 +35,7 @@ import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
 import { problemCreationNotificationCopy } from "../lib/problem-creation-notifications.ts";
+import { selectProblemBrowserTranslation } from "../lib/problem-browser-translations.ts";
 import {
   isUnknownProblemOrigin,
   localizedProblemOrigin,
@@ -344,6 +345,7 @@ import {
 import { buildRevisionDiff } from "../lib/revision-diff.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
+import { clientAddressFromHeaders, secretsMatch } from "../lib/request-security.ts";
 import { rankSearchMatches, searchMatchScore, searchMorphologyVariants } from "../lib/search-ranking.ts";
 import { parseTagInput } from "../lib/tags.ts";
 import {
@@ -1789,6 +1791,17 @@ assert.match(editorCssSource, /\.prose-math \.katex-display \{\s*margin:\s*0\.4e
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");
+const requestHeaders = (values: Record<string, string>) => ({
+  get(name: string) {
+    return values[name.toLowerCase()] ?? null;
+  }
+});
+assert.equal(clientAddressFromHeaders(requestHeaders({ "x-forwarded-for": "203.0.113.8, 10.0.0.2" })), "203.0.113.8");
+assert.equal(clientAddressFromHeaders(requestHeaders({ "x-forwarded-for": "invalid", "x-real-ip": "2001:db8::2" })), "2001:db8::2");
+assert.equal(clientAddressFromHeaders(requestHeaders({ "x-forwarded-for": "invalid" })), "unknown");
+assert.equal(secretsMatch("same-secret", "same-secret"), true);
+assert.equal(secretsMatch("wrong-secret", "same-secret"), false);
+assert.equal(secretsMatch(null, "same-secret"), false);
 
 const legacyExplorationPages = explorationSnapshotPages({
   pages: [
@@ -2728,6 +2741,14 @@ assert.equal(pickRandomDifferent([], undefined, () => 0), undefined);
 assert.equal(pickRandomDifferent(["only"], "only", () => 0), "only");
 assert.equal(pickRandomDifferent(["first", "second", "third"], "first", () => 0), "second");
 assert.equal(pickRandomDifferent(["first", "second", "third"], "second", () => 0.99), "third");
+
+const browserProblemTranslations = [
+  { id: 1, language: "fr", translatedFromProblemId: null },
+  { id: 2, language: "en", translatedFromProblemId: 1 }
+];
+assert.equal(selectProblemBrowserTranslation(browserProblemTranslations, "en", ["fr", "en"])?.id, 2);
+assert.equal(selectProblemBrowserTranslation(browserProblemTranslations, "fr", ["en", "fr"])?.id, 1);
+assert.equal(selectProblemBrowserTranslation(browserProblemTranslations.slice(0, 1), "en", ["fr"])?.id, 1);
 
 assert.equal(hasExamplesSection("## Examples\n\n- A square."), true);
 assert.equal(hasExamplesSection("### Exemple\n\nUn carré."), true);

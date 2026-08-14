@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { assertRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,12 @@ export async function POST(
 ) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ ok: true });
+
+  try {
+    await assertRateLimit(`recommendation-exposure:${user.id}`, 30, 60_000);
+  } catch {
+    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+  }
 
   const { problemId: problemIdParam } = await params;
   const problemId = Number(problemIdParam);
