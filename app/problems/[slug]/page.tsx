@@ -136,7 +136,8 @@ const redesignCopy = {
       writeSolution: "Help readers learn from your problem by writing a solution.",
       writeSolutionAction: "Write a solution",
       addRelated: "Give readers another way into this problem by creating a related problem.",
-      addRelatedAction: "Add related problems"
+      addRelatedAction: "Add related problems",
+      exerciseProgression: "Make sure readers have enough easier exercises to build up to this one."
     },
     solvedToo: "solved this too",
     next: "Next, if you liked this one",
@@ -165,7 +166,8 @@ const redesignCopy = {
       writeSolution: "Aidez les lecteurs à apprendre grâce à votre problème en rédigeant une solution.",
       writeSolutionAction: "Rédiger une solution",
       addRelated: "Donnez aux lecteurs une autre façon d'aborder ce problème en ajoutant un problème lié.",
-      addRelatedAction: "Ajouter des problèmes liés"
+      addRelatedAction: "Ajouter des problèmes liés",
+      exerciseProgression: "Vérifiez que les lecteurs disposent d'assez d'exercices plus faciles pour progresser jusqu'à celui-ci."
     },
     solvedToo: "ont aussi résolu ce problème",
     next: "Ensuite, si celui-ci vous a plu",
@@ -690,14 +692,16 @@ export default async function ProblemPage({
             />
           </div>
         </header>
-        {attempt?.status === "SOLVED" && (!isOwnProblem || !ownProofForHint || !hasRelatedProblems) && (
+        {attempt?.status === "SOLVED" && (!isOwnProblem || !ownProofForHint || problem.isExercise || !hasRelatedProblems) && (
           <section className={`problem-solved-banner${isOwnProblem ? " problem-solved-banner-owner" : ""}`} role="status">
             <span className="problem-solved-check"><Check size={20} /></span>
             <div className="problem-solved-copy">
               <strong>
                 {isOwnProblem
                   ? ownProofForHint
-                    ? copy.ownerSolved.addRelated
+                    ? problem.isExercise
+                      ? copy.ownerSolved.exerciseProgression
+                      : copy.ownerSolved.addRelated
                     : copy.ownerSolved.writeSolution
                   : copy.solvedProgress(
                       domainSolvedCount,
@@ -707,13 +711,21 @@ export default async function ProblemPage({
               </strong>
               {isOwnProblem ? (
                 ownProofForHint ? (
-                  <Link className="problem-solved-next-action" href={`/problems/${problem.slug}/edit#related-problems-editor`}>
-                    {copy.ownerSolved.addRelatedAction}
-                  </Link>
+                  problem.isExercise ? null : (
+                    <>
+                      {" "}
+                      <Link className="problem-solved-next-action" href={`/problems/${problem.slug}/edit#related-problems-editor`}>
+                        {copy.ownerSolved.addRelatedAction}
+                      </Link>
+                    </>
+                  )
                 ) : (
-                  <a className="problem-solved-next-action" href="#write-solution">
-                    {copy.ownerSolved.writeSolutionAction}
-                  </a>
+                  <>
+                    {" "}
+                    <a className="problem-solved-next-action" href="#write-solution">
+                      {copy.ownerSolved.writeSolutionAction}
+                    </a>
+                  </>
                 )
               ) : friendSolvers.length > 0 && (
                 <p>

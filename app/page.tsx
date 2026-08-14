@@ -3,8 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { DailyProblemCard } from "@/components/DailyProblemCard";
+import { DailyTipCard } from "@/components/DailyTipCard";
 import { Difficulty } from "@/components/Difficulty";
-import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { ProgressTicks } from "@/components/ProgressTicks";
 import { RevealSolvedDailyProblem } from "@/components/RevealSolvedDailyProblem";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -29,7 +30,7 @@ import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslation, selectContentTranslationsByGroup } from "@/lib/translation-routing";
 import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
 import { displayNameForUser } from "@/lib/user-display";
-import { dailyTipImage, tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
+import { dailyTipImage, tipImageObjectPosition } from "@/lib/tip-images";
 
 export const dynamic = "force-dynamic";
 
@@ -538,39 +539,38 @@ export default async function HomePage() {
     .sort((left, right) => right.date.getTime() - left.date.getTime())
     .slice(0, 3);
   const dailyProblemCard = dailyProblem ? (
-    <Link
-      href={`/problems/${dailyProblem.slug}`}
-      className="home-daily-problem"
-    >
-      <div>
-        <p className="mw-kicker">{copy.problemOfDay}</p>
-        <h2><AsyncMarkdownInline markdown={dailyProblem.title} /></h2>
-        <p className="home-dashboard-author">
-          <UserAvatar user={dailyProblem.author} size="xs" />
-          {copy.by} {displayNameForUser(dailyProblem.author)}
-        </p>
-        <div className="home-daily-meta">
-          <span>{translatedDomainLabel(dailyProblem.domain, t.home.domainLabels)}</span>
-          <Difficulty value={dailyProblem.difficulty} compact />
-        </div>
-        <div className="home-daily-action">
-          <span className="mw-primary-button">{copy.solveToday}</span>
-          {dailySolvers.length > 0 && (
-            <>
-              <span className="home-solver-stack">
-                {dailySolvers.slice(0, 4).map(({ user: solver }) => (
-                  <UserAvatar key={solver.id} user={solver} size="sm" />
-                ))}
-              </span>
-              <small>{copy.solvedToday(dailySolvers.length)}</small>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="home-daily-art" aria-hidden="true">
-        <img src={dailyProblemImageUrl} alt="" style={{ objectPosition: dailyProblemImagePosition }} />
-      </div>
-    </Link>
+    <DailyProblemCard
+      problem={dailyProblem}
+      domainLabel={translatedDomainLabel(dailyProblem.domain, t.home.domainLabels)}
+      imageUrl={dailyProblemImageUrl}
+      imagePosition={dailyProblemImagePosition}
+      labels={{
+        heading: copy.problemOfDay,
+        by: copy.by,
+        action: copy.solveToday,
+        solvedToday: copy.solvedToday
+      }}
+      solvers={dailySolvers}
+    />
+  ) : null;
+  const dailyTipCard = tip ? (
+    <DailyTipCard
+      tip={{
+        kind: tip.kind,
+        title: tip.title,
+        bodyHtml: tipBodyHtml,
+        imageUrl: selectedTipImage?.imageUrl ?? tip.imageUrl,
+        imagePositionX: selectedTipImage?.imagePositionX ?? tip.imagePositionX,
+        imagePositionY: selectedTipImage?.imagePositionY ?? tip.imagePositionY
+      }}
+      labels={{ tip: copy.tip, method: copy.method, practice: copy.practice }}
+      practiceProblem={tipPracticeProblem ? {
+        slug: tipPracticeProblem.slug,
+        title: tipPracticeProblem.title,
+        domainLabel: translatedDomainLabel(tipPracticeProblem.domain, t.home.domainLabels),
+        difficulty: tipPracticeProblem.difficulty
+      } : null}
+    />
   ) : null;
 
   if (!user) {
@@ -631,39 +631,7 @@ export default async function HomePage() {
               </section>
             )}
 
-            {tip && (
-              <section className="home-tip-card">
-                <div className="home-tip-image">
-                  <img
-                    src={tipImageUrl(selectedTipImage?.imageUrl ?? tip.imageUrl)}
-                    alt=""
-                    style={{
-                      objectPosition: tipImageObjectPosition(
-                        selectedTipImage?.imagePositionX ?? tip.imagePositionX,
-                        selectedTipImage?.imagePositionY ?? tip.imagePositionY
-                      )
-                    }}
-                  />
-                </div>
-                <div className="home-tip-copy">
-                  <p className="mw-kicker">{tip.kind === "METHOD" ? copy.method : copy.tip}</p>
-                  <h2><AsyncMarkdownInline markdown={tip.title} /></h2>
-                  <MarkdownBlock html={tipBodyHtml} />
-                  {tipPracticeProblem && (
-                    <Link
-                      href={`/problems/${tipPracticeProblem.slug}`}
-                      className="home-tip-practice"
-                    >
-                      <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeProblem.title} /></strong>
-                      <span className="home-tip-practice-meta">
-                        {translatedDomainLabel(tipPracticeProblem.domain, t.home.domainLabels)}
-                        <Difficulty value={tipPracticeProblem.difficulty} compact />
-                      </span>
-                    </Link>
-                  )}
-                </div>
-              </section>
-            )}
+            {dailyTipCard}
 
           </div>
         </main>
@@ -723,36 +691,7 @@ export default async function HomePage() {
             </section>
           )}
 
-          {tip && (
-            <section className="home-tip-card">
-              <div className="home-tip-image">
-                <img
-                  src={tipImageUrl(selectedTipImage?.imageUrl ?? tip.imageUrl)}
-                  alt=""
-                  style={{
-                    objectPosition: tipImageObjectPosition(
-                      selectedTipImage?.imagePositionX ?? tip.imagePositionX,
-                      selectedTipImage?.imagePositionY ?? tip.imagePositionY
-                    )
-                  }}
-                />
-              </div>
-              <div className="home-tip-copy">
-                <p className="mw-kicker">{tip.kind === "METHOD" ? copy.method : copy.tip}</p>
-                <h2><AsyncMarkdownInline markdown={tip.title} /></h2>
-                <MarkdownBlock html={tipBodyHtml} />
-                {tipPracticeProblem && (
-                  <Link href={`/problems/${tipPracticeProblem.slug}`} className="home-tip-practice">
-                    <strong>{copy.practice}: <AsyncMarkdownInline markdown={tipPracticeProblem.title} /></strong>
-                    <span className="home-tip-practice-meta">
-                      {translatedDomainLabel(tipPracticeProblem.domain, t.home.domainLabels)}
-                      <Difficulty value={tipPracticeProblem.difficulty} compact />
-                    </span>
-                  </Link>
-                )}
-              </div>
-            </section>
-          )}
+          {dailyTipCard}
 
           <section>
             <div className="mw-section-heading">

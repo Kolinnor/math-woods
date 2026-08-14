@@ -1,4 +1,6 @@
-import { CalendarDays, Save } from "lucide-react";
+import { CalendarDays, Eye, Save } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { OrderedProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
@@ -102,7 +104,18 @@ export default async function ProblemOfTheDaySchedulePage({
                     <p className="eyebrow">{index === 0 ? "Today" : `Day ${index + 1}`}</p>
                     <h2>{dayLabel(dateKey)}</h2>
                   </div>
-                  <time dateTime={dateKey}>{dateKey}</time>
+                  <div className="daily-problem-schedule-day-actions">
+                    <time dateTime={dateKey}>{dateKey}</time>
+                    <Link
+                      href={`/tips/problem-of-the-day/preview?date=${dateKey}` as Route}
+                      className="button secondary"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Eye size={15} aria-hidden="true" />
+                      Preview
+                    </Link>
+                  </div>
                 </header>
 
                 <fieldset className="daily-problem-schedule-picker">

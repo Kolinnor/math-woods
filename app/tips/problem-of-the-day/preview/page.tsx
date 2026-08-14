@@ -1,0 +1,72 @@
+import { DailyProblemCard } from "@/components/DailyProblemCard";
+import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { getCurrentUser } from "@/lib/auth";
+import {
+  dateFromDailyProblemKey,
+  dailyProblemDateKey,
+  isDailyProblemDateKey
+} from "@/lib/daily-problem-schedule";
+import { loadDailyProblemPreview } from "@/lib/daily-problem-preview";
+import { translatedDomainLabel } from "@/lib/domains";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
+import { canUseAdminTools } from "@/lib/permissions";
+import { getPreferredContentLanguage } from "@/lib/server-language";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+
+export default async function DailyProblemPreviewPage({
+  searchParams
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const user = await getCurrentUser();
+  if (!user || !canUseAdminTools(user)) notFound();
+
+  const [{ date }, preferredLanguage, locale, t] = await Promise.all([
+    searchParams,
+    getPreferredContentLanguage(),
+    getInterfaceLocale(),
+    getTranslations()
+  ]);
+  const dateKey = date && isDailyProblemDateKey(date) ? date : dailyProblemDateKey();
+  const preview = await loadDailyProblemPreview(dateKey, preferredLanguage);
+  if (!preview) notFound();
+  const dateLabel = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  }).format(dateFromDailyProblemKey(dateKey));
+
+  return (
+    <ForestPageLayout
+      title="Problem of the day preview"
+      eyebrow="Preview"
+      heroImage="/art/oak-grove.jpg"
+      heroAlt="Ivan Shishkin, Oak Grove"
+      description={`${dateLabel}${preview.automatic ? " · automatic selection" : ""}`}
+      workspaceClassName="forest-page-workspace-narrow"
+      actions={<Link href="/tips/problem-of-the-day" className="button secondary">Back to schedule</Link>}
+    >
+      <div className="daily-content-preview">
+        <DailyProblemCard
+          problem={preview.problem}
+          domainLabel={translatedDomainLabel(preview.problem.domain, t.home.domainLabels)}
+          imageUrl={preview.imageUrl}
+          imagePosition={preview.imagePosition}
+          labels={{
+            heading: locale === "fr" ? "Problème du jour" : "Problem of the day",
+            by: locale === "fr" ? "par" : "by",
+            action: locale === "fr" ? "Résoudre le problème du jour" : "Solve today's problem",
+            solvedToday: (count) => locale === "fr"
+              ? `${count} l'ont résolu aujourd'hui`
+              : `${count} solved it today`
+          }}
+        />
+      </div>
+    </ForestPageLayout>
+  );
+}

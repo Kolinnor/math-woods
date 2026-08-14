@@ -10944,6 +10944,18 @@ button.domain-picker-tile > span:last-child {
   padding: 0.35rem 0.7rem;
 }
 
+.tip-card-action-buttons,
+.daily-problem-schedule-day-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.daily-problem-schedule-day-actions .button {
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+}
+
 .tip-card h2 {
   font-family: var(--font-serif);
   font-size: 1.55rem;
@@ -11045,6 +11057,12 @@ button.domain-picker-tile > span:last-child {
   font-weight: 700;
 }
 
+.daily-content-preview {
+  margin: 0 auto;
+  max-width: 62rem;
+  width: 100%;
+}
+
 .daily-problem-schedule-picker {
   border: 0;
   margin: 0;
@@ -11082,6 +11100,11 @@ button.domain-picker-tile > span:last-child {
     align-items: start;
     flex-direction: column;
     gap: 0.3rem;
+  }
+
+  .daily-problem-schedule-day-actions {
+    justify-content: space-between;
+    width: 100%;
   }
 
   .daily-problem-schedule-image .tip-image-editor {

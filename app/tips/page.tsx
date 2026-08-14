@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import type { Route } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import { TipsAdminTabs } from "@/components/TipsAdminTabs";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
@@ -206,9 +206,20 @@ export default async function TipsPage({
                   <p className="eyebrow">
                     {tip.kind === "METHOD" ? "Method" : "Tip"} {tip.position + 1}
                   </p>
-                  <Link href={`/tips/${tip.id}/edit` as Route} className="button secondary">
-                    Edit
-                  </Link>
+                  <div className="tip-card-action-buttons">
+                    <Link
+                      href={`/tips/${tip.id}/preview` as Route}
+                      className="button secondary"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Eye size={15} aria-hidden="true" />
+                      Preview
+                    </Link>
+                    <Link href={`/tips/${tip.id}/edit` as Route} className="button secondary">
+                      Edit
+                    </Link>
+                  </div>
                 </div>
                 {tip.showInMainMenu && <span className="tip-main-menu-badge">Main menu</span>}
                 {tip.images.length > 1 && (
