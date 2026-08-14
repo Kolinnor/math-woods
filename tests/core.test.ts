@@ -44,6 +44,10 @@ import {
   revisionSnapshotTitle
 } from "../lib/translation-text-revisions.ts";
 import {
+  TRANSLATION_LINK_OVERRIDE_FIELD,
+  translationLinkOverrideRequested
+} from "../lib/translation-link-warning.ts";
+import {
   parseSelectedTranslationIds,
   TRANSLATED_PROOF_BODY_PREFIX,
   translationBodyFieldName
@@ -2767,5 +2771,16 @@ const selectedTipProblems = selectTipProblemTranslations(
   "fr"
 );
 assert.deepEqual(selectedTipProblems.map((problem) => problem.id), [2, 3]);
+
+assert.equal(
+  translationLinkOverrideRequested({
+    get: (name) => name === TRANSLATION_LINK_OVERRIDE_FIELD ? "confirm" : null
+  }),
+  true
+);
+assert.equal(
+  translationLinkOverrideRequested({ get: () => "on" }),
+  false
+);
 
 console.log("core tests ok");

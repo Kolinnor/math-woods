@@ -6,6 +6,7 @@ import {
   createProblemFormAction,
   type ProblemCreateActionState
 } from "@/lib/actions/problem-actions";
+import { TRANSLATION_LINK_OVERRIDE_FIELD } from "@/lib/translation-link-warning";
 
 const initialState: ProblemCreateActionState = { error: null };
 
@@ -25,9 +26,17 @@ export function ProblemCreateForm({ children }: { children: ReactNode }) {
   return (
     <form action={formAction} className="problem-compose-form">
       {state.error && (
-        <div ref={errorRef} className="quality-banner quality-needs-work" role="alert" tabIndex={-1}>
+        <div ref={errorRef} className="quality-banner translation-link-warning" role="alert" tabIndex={-1}>
           <strong>Translation links need attention.</strong>
           <p>{state.error}</p>
+          <button
+            type="submit"
+            name={TRANSLATION_LINK_OVERRIDE_FIELD}
+            value="confirm"
+            className="secondary"
+          >
+            Publish anyway
+          </button>
         </div>
       )}
       {children}

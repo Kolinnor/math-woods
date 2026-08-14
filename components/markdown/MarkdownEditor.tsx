@@ -282,6 +282,11 @@ type MarkdownEditorProps = {
   resetSignal?: string | number | null;
   imageUploadEnabled?: boolean;
   sourceUpdatedAt?: number | null;
+  characterGuide?: {
+    target: number;
+    label: string;
+    overflowMessage: string;
+  };
 };
 
 type MarkdownDraftSubmit = {
@@ -1463,7 +1468,8 @@ export function MarkdownEditor({
   localDrafts = true,
   resetSignal = null,
   imageUploadEnabled = true,
-  sourceUpdatedAt = null
+  sourceUpdatedAt = null,
+  characterGuide
 }: MarkdownEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -2153,6 +2159,15 @@ export function MarkdownEditor({
         )}
       </div>
       <div ref={hostRef} className="markdown-editor-host" />
+      {characterGuide && (
+        <div
+          className={`markdown-editor-character-guide${value.length > characterGuide.target ? " is-over" : ""}`}
+        >
+          <span>{characterGuide.label}</span>
+          <strong>{value.length.toLocaleString()} / ~{characterGuide.target.toLocaleString()}</strong>
+          {value.length > characterGuide.target && <span>{characterGuide.overflowMessage}</span>}
+        </div>
+      )}
       {linkMenu && (
         <div
           ref={linkMenuRef}

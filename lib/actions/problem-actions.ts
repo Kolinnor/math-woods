@@ -87,6 +87,7 @@ import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { ensureSlug } from "@/lib/slug";
 import { parseTagInput, syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
+import { translationLinkOverrideRequested } from "@/lib/translation-link-warning";
 import { problemTranslationSharedChanges } from "@/lib/translation-properties";
 import { latestProblemTextRevisionIdFromRevisions } from "@/lib/translation-text-revisions";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -352,6 +353,7 @@ export async function createProblemAction(formData: FormData) {
   const language = requireActiveContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
+  const allowMissingTranslationLinks = translationLinkOverrideRequested(formData);
   const bodyMarkdown =
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || "Statement to be written.";
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
@@ -456,7 +458,7 @@ export async function createProblemAction(formData: FormData) {
     if (translationGroupId && !translationSource) {
       throw new Error("The selected problem translation source does not belong to this translation group.");
     }
-    if (translationSource) {
+    if (translationSource && !allowMissingTranslationLinks) {
       await assertTranslationWikiLinksPreserved(
         translationSource.bodyMarkdown,
         bodyMarkdown,
@@ -686,13 +688,15 @@ export async function createProblemAction(formData: FormData) {
       for (const sourceProof of sourceProofs) {
         const translatedBody = translatedProofBodies.get(sourceProof.id);
         if (!translatedBody) throw new Error("Translated solution content is missing.");
-        await assertTranslationWikiLinksPreserved(
-          sourceProof.bodyMarkdown,
-          translatedBody.markdown,
-          translationSource.language,
-          language,
-          tx
-        );
+        if (!allowMissingTranslationLinks) {
+          await assertTranslationWikiLinksPreserved(
+            sourceProof.bodyMarkdown,
+            translatedBody.markdown,
+            translationSource.language,
+            language,
+            tx
+          );
+        }
         const translatedProof = await tx.problemProof.create({
           data: {
             translationGroupId: sourceProof.translationGroupId,
@@ -710,13 +714,15 @@ export async function createProblemAction(formData: FormData) {
         if (sourceProof.hint && translatedProofHintIds.includes(sourceProof.hint.id)) {
           const translatedHintBody = translatedProofHintBodies.get(sourceProof.hint.id);
           if (!translatedHintBody) throw new Error("Translated solution hint content is missing.");
-          await assertTranslationWikiLinksPreserved(
-            sourceProof.hint.bodyMarkdown,
-            translatedHintBody.markdown,
-            translationSource.language,
-            language,
-            tx
-          );
+          if (!allowMissingTranslationLinks) {
+            await assertTranslationWikiLinksPreserved(
+              sourceProof.hint.bodyMarkdown,
+              translatedHintBody.markdown,
+              translationSource.language,
+              language,
+              tx
+            );
+          }
           await tx.problemHint.create({
             data: {
               translationGroupId: sourceProof.hint.translationGroupId,
@@ -744,13 +750,15 @@ export async function createProblemAction(formData: FormData) {
       for (const sourceHint of sourceHints) {
         const translatedBody = translatedHintBodies.get(sourceHint.id);
         if (!translatedBody) throw new Error("Translated hint content is missing.");
-        await assertTranslationWikiLinksPreserved(
-          sourceHint.bodyMarkdown,
-          translatedBody.markdown,
-          translationSource.language,
-          language,
-          tx
-        );
+        if (!allowMissingTranslationLinks) {
+          await assertTranslationWikiLinksPreserved(
+            sourceHint.bodyMarkdown,
+            translatedBody.markdown,
+            translationSource.language,
+            language,
+            tx
+          );
+        }
         await tx.problemHint.create({
           data: {
             translationGroupId: sourceHint.translationGroupId,

@@ -48,6 +48,7 @@ import {
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
+import { translationLinkOverrideRequested } from "@/lib/translation-link-warning";
 import { conceptTranslationSharedChanges } from "@/lib/translation-properties";
 import { latestConceptTextRevisionIdFromRevisions } from "@/lib/translation-text-revisions";
 import { uniqueSlug } from "@/lib/unique-slug";
@@ -107,6 +108,7 @@ export async function createConceptAction(formData: FormData) {
   const language = requireActiveContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
+  const allowMissingTranslationLinks = translationLinkOverrideRequested(formData);
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
   const kind = parseConceptKind(formData.get("kind"));
   const domainCode = parseDomainCode(formData.get("domain"));
@@ -147,7 +149,7 @@ export async function createConceptAction(formData: FormData) {
     if (translationGroupId && !translationSource) {
       throw new Error("The selected concept translation source does not belong to this translation group.");
     }
-    if (translationSource) {
+    if (translationSource && !allowMissingTranslationLinks) {
       await assertTranslationWikiLinksPreserved(
         translationSource.bodyMarkdown,
         bodyMarkdown,

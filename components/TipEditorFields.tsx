@@ -50,6 +50,11 @@ export function TipEditorFields({ draftKey, initialProblems, submitLabel, source
             minHeight="10rem"
             draftKey={`${draftKey}:en`}
             sourceUpdatedAt={sourceUpdatedAt}
+            characterGuide={{
+              target: 200,
+              label: "Homepage card (about 3 lines)",
+              overflowMessage: "Longer text is saved, but may be clipped on the homepage."
+            }}
           />
         </div>
       </fieldset>
@@ -67,6 +72,11 @@ export function TipEditorFields({ draftKey, initialProblems, submitLabel, source
             minHeight="10rem"
             draftKey={`${draftKey}:fr`}
             sourceUpdatedAt={sourceUpdatedAt}
+            characterGuide={{
+              target: 200,
+              label: "Homepage card (about 3 lines)",
+              overflowMessage: "Longer text is saved, but may be clipped on the homepage."
+            }}
           />
         </div>
         <span className="muted text-sm">If left empty, readers using French will see the English version.</span>

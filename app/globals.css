@@ -8341,6 +8341,30 @@ button.markdown-editor-tool-button:disabled svg {
   text-underline-offset: 0.16em;
 }
 
+.markdown-editor-character-guide {
+  align-items: baseline;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  gap: 0.25rem 0.65rem;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+}
+
+.markdown-editor-character-guide strong {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-editor-character-guide.is-over {
+  color: var(--notice-orange-stripe);
+}
+
+.markdown-editor-character-guide.is-over span:last-child {
+  flex-basis: 100%;
+}
+
 .site-error-page {
   align-items: flex-end;
   background: #132018;
@@ -10126,6 +10150,15 @@ button.danger:hover,
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.65rem;
+}
+
+.translation-link-warning p {
+  margin: 0.35rem 0 0.7rem;
+}
+
+.translation-link-warning button {
+  min-height: 2.1rem;
+  padding: 0.4rem 0.75rem;
 }
 
 .translation-stale-banner form {
