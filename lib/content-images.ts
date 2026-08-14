@@ -32,7 +32,7 @@ export async function processContentImage(image: File): Promise<ProcessedContent
   const metadata = await input.metadata();
   const format = FORMAT_BY_CONTENT_TYPE[image.type];
   const detectedFormatMatches = format === "avif"
-    ? metadata.format === "avif" || metadata.format === "heif"
+    ? metadata.format === "heif"
     : metadata.format === format;
 
   if (!format || !detectedFormatMatches) {
