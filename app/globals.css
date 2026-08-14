@@ -4823,6 +4823,37 @@ textarea {
   padding-bottom: 0.65rem;
 }
 
+.problem-style-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.problem-style-option {
+  align-items: center;
+  background: var(--panel, #fff);
+  border: 1px solid var(--line, #bac8be);
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.45rem;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.problem-style-option:has(input:checked) {
+  background: var(--green-soft, #e5f1e8);
+  border-color: var(--green, #247248);
+}
+
+.problem-style-option input {
+  margin: 0;
+}
+
+.problem-conjecture-field {
+  margin-top: 0.25rem;
+}
+
 @media (min-width: 900px) {
   .problem-compose-details-body {
     align-items: start;

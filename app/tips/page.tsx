@@ -14,6 +14,7 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { problemLinkClass } from "@/lib/problem-link";
+import { problemStyleLabel } from "@/lib/problem-styles";
 import { tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { normalizeSearchText, rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
@@ -23,7 +24,6 @@ export const dynamic = "force-dynamic";
 
 type TipProblem = Prisma.ProblemGetPayload<{
   include: {
-    tags: { include: { tag: true } };
     _count: { select: { attempts: true } };
   };
 }>;
@@ -49,7 +49,7 @@ function tipMatchesQuery(
       problem.title,
       problem.origin,
       translatedDomainLabel(problem.domain, domainLabels),
-      ...problem.tags.map(({ tag }) => tag.name)
+      ...problem.styles.map((style) => problemStyleLabel(style, problem.language))
     ].join(" "))
   ].join(" ");
 
@@ -89,7 +89,6 @@ export default async function TipsPage({
           translationGroupId: { in: linkedTranslationGroupIds }
         },
         include: {
-          tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
           _count: { select: { attempts: true } }
         }
       })
@@ -137,7 +136,7 @@ export default async function TipsPage({
               problem.title,
               problem.origin,
               translatedDomainLabel(problem.domain, t.home.domainLabels),
-              ...problem.tags.map(({ tag }) => tag.name)
+              ...problem.styles.map((style) => problemStyleLabel(style, preferredLanguage))
             ])
           ]
         })),
@@ -255,11 +254,11 @@ export default async function TipsPage({
                         {problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set"} /{" "}
                         {problem._count.attempts} attempts
                       </span>
-                      {problem.tags.length > 0 && (
+                      {problem.styles.length > 0 && (
                         <span className="tip-keywords">
-                          {problem.tags.slice(0, 4).map(({ tag }) => (
-                            <span key={tag.id} className="tag">
-                              {tag.name}
+                          {problem.styles.slice(0, 4).map((style) => (
+                            <span key={style} className="tag">
+                              {problemStyleLabel(style, preferredLanguage)}
                             </span>
                           ))}
                         </span>

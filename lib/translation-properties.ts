@@ -9,6 +9,8 @@ export const PROBLEM_TRANSLATION_SHARED_FIELDS = [
   "originPage",
   "listed",
   "isExercise",
+  "isConjecture",
+  "styles",
   "showRelatedProblems",
   "canAppearOnFrontPage",
   "tags",

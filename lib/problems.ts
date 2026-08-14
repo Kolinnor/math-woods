@@ -9,13 +9,3 @@ export function parseProblemDifficulty(value: FormDataEntryValue | null) {
   }
   return difficulty;
 }
-
-export function tagsWithConjecture(tags: string, conjecture: FormDataEntryValue | null) {
-  const values = tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-  const withoutConjecture = values.filter((tag) => tag.toLowerCase() !== "conjecture");
-  if (conjecture === "on") withoutConjecture.push("conjecture");
-  return withoutConjecture.join(", ");
-}

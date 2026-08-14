@@ -63,7 +63,8 @@ import {
   parseProblemVerificationMode,
   verificationMatches
 } from "@/lib/problem-verification";
-import { parseProblemDifficulty, tagsWithConjecture } from "@/lib/problems";
+import { parseProblemDifficulty } from "@/lib/problems";
+import { parseProblemStyles } from "@/lib/problem-styles";
 import {
   hasProblemReviewSensitiveChanges,
   needsReviewAfterProblemEdit
@@ -85,7 +86,7 @@ import {
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { ensureSlug } from "@/lib/slug";
-import { parseTagInput, syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
+import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { translationLinkOverrideRequested } from "@/lib/translation-link-warning";
 import { problemTranslationSharedChanges } from "@/lib/translation-properties";
@@ -383,8 +384,8 @@ export async function createProblemAction(formData: FormData) {
   );
   const parentProblemSlug = ensureSlug(String(formData.get("parentProblemSlug") ?? ""), "");
   const qualityStatus = QualityStatus.UNREVIEWED;
-  const tags = tagsWithConjecture(boundedText(formData.get("tags"), CONTENT_LIMITS.tagList, "Tags"), formData.get("conjecture"));
-  const spoilerTags = boundedText(formData.get("spoilerTags"), CONTENT_LIMITS.tagList, "Spoiler tags");
+  const styles = parseProblemStyles(formData.getAll("styles"));
+  const isConjecture = formData.get("isConjecture") === "on";
   const relatedProblemGroups = boundedText(
     formData.get("relatedProblemGroups"),
     CONTENT_LIMITS.relationGroups,
@@ -510,6 +511,8 @@ export async function createProblemAction(formData: FormData) {
         license: sharedProblem?.license,
         listed: sharedSnapshot?.listed ?? listed,
         isExercise: sharedSnapshot?.isExercise ?? isExercise,
+        isConjecture: sharedSnapshot?.isConjecture ?? isConjecture,
+        styles: sharedSnapshot?.styles ?? styles,
         showRelatedProblems: sharedSnapshot?.showRelatedProblems ?? showRelatedProblems,
         ...(translationGroupId ? { createdAt: sharedProblem?.createdAt } : {}),
         canAppearOnFrontPage: sharedSnapshot?.canAppearOnFrontPage ?? false,
@@ -652,12 +655,12 @@ export async function createProblemAction(formData: FormData) {
     );
     await syncProblemTags(
       created.id,
-      sharedSnapshot ? problemSnapshotTagInput(sharedSnapshot.tags) : tags,
+      sharedSnapshot ? problemSnapshotTagInput(sharedSnapshot.tags) : "",
       tx
     );
     await syncProblemSpoilerTags(
       created.id,
-      sharedSnapshot ? problemSnapshotTagInput(sharedSnapshot.spoilerTags) : spoilerTags,
+      sharedSnapshot ? problemSnapshotTagInput(sharedSnapshot.spoilerTags) : "",
       tx
     );
     if (translationSource) {
@@ -894,8 +897,8 @@ export async function updateProblemAction(
     previous.qualityStatus !== QualityStatus.REVIEWED
       ? previous.qualityStatus
       : requestedQualityStatus;
-  const tags = tagsWithConjecture(boundedText(formData.get("tags"), CONTENT_LIMITS.tagList, "Tags"), formData.get("conjecture"));
-  const spoilerTags = boundedText(formData.get("spoilerTags"), CONTENT_LIMITS.tagList, "Spoiler tags");
+  const styles = parseProblemStyles(formData.getAll("styles"));
+  const isConjecture = formData.get("isConjecture") === "on";
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Problem edited";
   const markTranslationFresh = formData.get("markTranslationFresh") === "on";
   const relatedProblemGroups = boundedText(
@@ -921,6 +924,8 @@ export async function updateProblemAction(
     originNote,
     listed,
     isExercise,
+    isConjecture,
+    styles,
     showRelatedProblems,
     canAppearOnFrontPage,
     status: previous.status,
@@ -929,11 +934,11 @@ export async function updateProblemAction(
     verificationPrompt: verificationMode === ProblemVerificationMode.NONE ? null : verificationPrompt,
     verificationAnswer: verificationMode === ProblemVerificationMode.SELF_CHECK ? verificationAnswer : null,
     translatedFromRevisionId: previous.translatedFromRevisionId,
-    tags: parseTagInput(tags)
-      .map((tag) => ({ name: tag.name, slug: tag.slug }))
+    tags: previous.tags
+      .map(({ tag }) => ({ name: tag.name, slug: tag.slug }))
       .sort((left, right) => left.slug.localeCompare(right.slug)),
-    spoilerTags: parseTagInput(spoilerTags)
-      .map((tag) => ({ name: tag.name, slug: tag.slug }))
+    spoilerTags: previous.spoilerTags
+      .map(({ tag }) => ({ name: tag.name, slug: tag.slug }))
       .sort((left, right) => left.slug.localeCompare(right.slug)),
     relatedProblemGroups: parseProblemRelationGroups(relatedProblemGroups)
   };
@@ -1109,6 +1114,8 @@ export async function updateProblemAction(
           originNote: resolvedSnapshot.originNote,
           listed: resolvedSnapshot.listed,
           isExercise: resolvedSnapshot.isExercise,
+          isConjecture: resolvedSnapshot.isConjecture,
+          styles: resolvedSnapshot.styles,
           showRelatedProblems: resolvedSnapshot.showRelatedProblems,
           canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage,
           qualityStatus: resolvedSnapshot.qualityStatus,
@@ -1151,6 +1158,8 @@ export async function updateProblemAction(
             ...(sharedChangedFieldSet.has("originPage") ? { originPage: resolvedSnapshot.originPage } : {}),
             ...(sharedChangedFieldSet.has("listed") ? { listed: resolvedSnapshot.listed } : {}),
             ...(sharedChangedFieldSet.has("isExercise") ? { isExercise: resolvedSnapshot.isExercise } : {}),
+            ...(sharedChangedFieldSet.has("isConjecture") ? { isConjecture: resolvedSnapshot.isConjecture } : {}),
+            ...(sharedChangedFieldSet.has("styles") ? { styles: resolvedSnapshot.styles } : {}),
             ...(sharedChangedFieldSet.has("showRelatedProblems")
               ? { showRelatedProblems: resolvedSnapshot.showRelatedProblems }
               : {}),
@@ -1323,15 +1332,14 @@ export async function approveProblemEditProposalAction(proposalId: number) {
   if (snapshot.originNote) formData.set("originNote", snapshot.originNote);
   if (snapshot.listed) formData.set("listed", "on");
   if (snapshot.isExercise) formData.set("isExercise", "on");
+  if (snapshot.isConjecture) formData.set("isConjecture", "on");
+  for (const style of snapshot.styles) formData.append("styles", style);
   if (snapshot.showRelatedProblems) formData.set("showRelatedProblems", "on");
   if (snapshot.canAppearOnFrontPage) formData.set("canAppearOnFrontPage", "on");
   formData.set("qualityStatus", snapshot.qualityStatus);
   formData.set("verificationMode", snapshot.verificationMode);
   if (snapshot.verificationPrompt) formData.set("verificationPrompt", snapshot.verificationPrompt);
   if (snapshot.verificationAnswer) formData.set("verificationAnswer", snapshot.verificationAnswer);
-  formData.set("tags", problemSnapshotTagInput(snapshot.tags.filter((tag) => tag.slug !== "conjecture")));
-  if (snapshot.tags.some((tag) => tag.slug === "conjecture")) formData.set("conjecture", "on");
-  formData.set("spoilerTags", problemSnapshotTagInput(snapshot.spoilerTags));
   formData.set("relatedProblemGroups", problemSnapshotRelationInput(snapshot));
   formData.set("editSummary", proposal.editSummary || "Community edit approved");
 
@@ -1568,6 +1576,8 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               originNote: snapshot.originNote,
               listed: snapshot.listed,
               isExercise: snapshot.isExercise,
+              isConjecture: snapshot.isConjecture,
+              styles: snapshot.styles,
               showRelatedProblems: snapshot.showRelatedProblems,
               canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
               status: snapshot.status,
@@ -1609,6 +1619,8 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
                 : { OR: [{ difficulty: null }, { difficulty: { not: snapshot.difficulty } }] },
               { canAppearOnFrontPage: { not: snapshot.canAppearOnFrontPage } },
               { isExercise: { not: snapshot.isExercise } },
+              { isConjecture: { not: snapshot.isConjecture } },
+              { NOT: { styles: { equals: snapshot.styles } } },
               { showRelatedProblems: { not: snapshot.showRelatedProblems } }
             ]
           },
@@ -1624,6 +1636,8 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
         data: {
           difficulty: snapshot.difficulty,
           isExercise: snapshot.isExercise,
+          isConjecture: snapshot.isConjecture,
+          styles: snapshot.styles,
           showRelatedProblems: snapshot.showRelatedProblems,
           canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
           version: { increment: 1 }

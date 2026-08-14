@@ -9,6 +9,7 @@ import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
 import { ProblemContentOptions } from "@/components/ProblemContentOptions";
+import { ProblemClassificationFields } from "@/components/ProblemClassificationFields";
 import { ProblemDetailsDisclosure } from "@/components/ProblemDetailsDisclosure";
 import { ProblemConcurrentEditForm } from "@/components/ProblemConcurrentEditForm";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -46,8 +47,6 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const problem = await prisma.problem.findUnique({
     where: { slug },
     include: {
-      tags: { include: { tag: true } },
-      spoilerTags: { include: { tag: true } },
       domains: { orderBy: { position: "asc" } },
       hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
       translatedFromProblem: {
@@ -70,7 +69,6 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   });
 
   if (!problem) notFound();
-  const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
   const canEditArchivedProblem = canEditProblem(user, problem);
   const canDeleteCurrentProblem = canDeleteProblem(user, problem);
   const canManageFrontPageEligibility = canUseAdminTools(user);
@@ -217,39 +215,11 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                     </label>
                   </section>
 
-                  <section className="problem-compose-subsection">
-                    <h2>Tags</h2>
-                    <label className="grid gap-2">
-                      <span className="field-label-with-help text-sm font-medium">
-                        Tags
-                        <FieldHelp text="Comma-separated visible tags for search and browsing." />
-                      </span>
-                      <input
-                        name="tags"
-                        defaultValue={problem.tags
-                          .filter(({ tag }) => tag.slug !== "conjecture")
-                          .map(({ tag }) => tag.name)
-                          .join(", ")}
-                      />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label-with-help text-sm font-medium">
-                        Spoiler tags
-                        <FieldHelp text="Tags hidden until the problem is solved." />
-                      </span>
-                      <input
-                        name="spoilerTags"
-                        defaultValue={problem.spoilerTags.map(({ tag }) => tag.name).join(", ")}
-                        placeholder="Vieta, induction, Cauchy-Schwarz"
-                      />
-                    </label>
-                    <label className="checkbox-field">
-                      <input name="conjecture" type="checkbox" defaultChecked={isConjecture} />
-                      <span>
-                        <strong>Conjecture</strong>
-                      </span>
-                    </label>
-                  </section>
+                  <ProblemClassificationFields
+                    initialStyles={problem.styles}
+                    initialIsConjecture={problem.isConjecture}
+                    locale={interfaceLocale}
+                  />
 
                   <section className="problem-compose-subsection">
                     <h2>Publishing options</h2>

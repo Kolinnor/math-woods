@@ -729,7 +729,7 @@ export const en = {
         text: "Text",
         title: "Title",
         body: "Statement",
-        tag: "Tag",
+        tag: "Style",
         domain: "Domain",
         status: "Status",
         difficulty: "Difficulty",

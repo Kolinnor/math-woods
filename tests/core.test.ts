@@ -265,7 +265,8 @@ import {
   hasTrustedPrivileges,
   isVerifiedContributor
 } from "../lib/permissions.ts";
-import { parseProblemDifficulty, tagsWithConjecture } from "../lib/problems.ts";
+import { parseProblemDifficulty } from "../lib/problems.ts";
+import { parseProblemStyle, parseProblemStyles, problemStylesFromLegacyTagSlugs } from "../lib/problem-styles.ts";
 import { parseProblemDomains } from "../lib/problem-domains.ts";
 import { heroArtForProblemDomain, PROBLEM_DOMAIN_HERO_ART } from "../lib/problem-hero-art.ts";
 import {
@@ -544,6 +545,8 @@ const baseProblemSnapshot: ProblemRevisionSnapshot = {
   originNote: null,
   listed: true,
   isExercise: false,
+  isConjecture: false,
+  styles: [],
   showRelatedProblems: true,
   canAppearOnFrontPage: false,
   status: "PUBLISHED",
@@ -1024,8 +1027,13 @@ assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
   { domain: "ARITHMETIC", mscCode: "number-theory", spoiler: false },
   { domain: "ANALYSIS", mscCode: "real-analysis", spoiler: true }
 ]);
-assert.equal(tagsWithConjecture("algebra, conjecture", null), "algebra");
-assert.equal(tagsWithConjecture("algebra", "on"), "algebra, conjecture");
+assert.equal(parseProblemStyle("trick question"), "TRICK_QUESTION");
+assert.equal(parseProblemStyle("Contre-exemple"), "COUNTEREXAMPLE");
+assert.deepEqual(parseProblemStyles(["PROOF", "proof", "VISUAL"]), ["PROOF", "VISUAL"]);
+assert.deepEqual(problemStylesFromLegacyTagSlugs(["calculation", "geometry", "trick-question"]), [
+  "CALCULATION",
+  "TRICK_QUESTION"
+]);
 assert.deepEqual(parseTagInput("easy, facile, linear algebra, vectors").map((tag) => tag.slug), [
   "linear-algebra",
   "vectors"

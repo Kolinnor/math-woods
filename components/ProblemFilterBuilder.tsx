@@ -20,7 +20,7 @@ type ProblemFilterBuilderProps = {
   initialLogic: "AND" | "OR";
   labels?: AdvancedFilterLabels;
   statuses: Option[];
-  tags: Option[];
+  styles: Option[];
 };
 
 type AdvancedFilterLabels = {
@@ -61,7 +61,7 @@ const defaultLabels: AdvancedFilterLabels = {
     text: "Text",
     title: "Title",
     body: "Statement",
-    tag: "Tag",
+    tag: "Style",
     domain: "Domain",
     status: "Status",
     difficulty: "Difficulty",
@@ -81,7 +81,7 @@ function fieldsFor(labels: AdvancedFilterLabels) {
     { value: "text", label: labels.fields.text },
     { value: "title", label: labels.fields.title },
     { value: "body", label: labels.fields.body },
-    { value: "tag", label: labels.fields.tag },
+    { value: "style", label: labels.fields.tag },
     { value: "domain", label: labels.fields.domain },
     { value: "status", label: labels.fields.status },
     { value: "difficulty", label: labels.fields.difficulty },
@@ -102,7 +102,7 @@ function operatorsFor(field: string, labels: AdvancedFilterLabels) {
   ];
 
   if (field === "difficulty") return difficultyOps;
-  if (field === "domain" || field === "status" || field === "tag") return exactOps;
+  if (field === "domain" || field === "status" || field === "style") return exactOps;
   return textOps;
 }
 
@@ -110,10 +110,10 @@ function defaultOperator(field: string, labels: AdvancedFilterLabels) {
   return operatorsFor(field, labels)[0].value;
 }
 
-function valueOptionsFor(field: string, domains: Option[], statuses: Option[], tags: Option[]) {
+function valueOptionsFor(field: string, domains: Option[], statuses: Option[], styles: Option[]) {
   if (field === "domain") return domains;
   if (field === "status") return statuses;
-  if (field === "tag") return tags;
+  if (field === "style") return styles;
   return [];
 }
 
@@ -127,7 +127,7 @@ export function ProblemFilterBuilder({
   initialLogic,
   labels = defaultLabels,
   statuses,
-  tags
+  styles
 }: ProblemFilterBuilderProps) {
   const rootRef = useRef<HTMLDetailsElement>(null);
   const [panelOpen, setPanelOpen] = useState(initialFilters.length > 0);
@@ -201,7 +201,7 @@ export function ProblemFilterBuilder({
           <div className="advanced-filter-rows">
             {rows.map((row, index) => {
               const operators = operatorsFor(row.field, labels);
-              const valueOptions = valueOptionsFor(row.field, domains, statuses, tags);
+              const valueOptions = valueOptionsFor(row.field, domains, statuses, styles);
               const op = operators.some((item) => item.value === row.op) ? row.op : defaultOperator(row.field, labels);
 
               return (

@@ -6,6 +6,7 @@ import { LanguageField } from "@/components/LanguageField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
 import { ProblemContentOptions } from "@/components/ProblemContentOptions";
+import { ProblemClassificationFields } from "@/components/ProblemClassificationFields";
 import { ProblemDetailsDisclosure } from "@/components/ProblemDetailsDisclosure";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { ProblemRelationPicker } from "@/components/ProblemRelationPicker";
@@ -73,6 +74,8 @@ export default async function NewProblemPage({
           translationGroupId: true,
           difficulty: true,
           isExercise: true,
+          isConjecture: true,
+          styles: true,
           showRelatedProblems: true,
           origin: true,
           originChapter: true,
@@ -266,29 +269,11 @@ export default async function NewProblemPage({
                   </label>
                 </section>
 
-                <section className="problem-compose-subsection">
-                  <h2>Tags</h2>
-                  <label className="grid gap-2">
-                    <span className="field-label-with-help text-sm font-medium">
-                      Tags
-                      <FieldHelp text="Comma-separated visible tags for search and browsing." />
-                    </span>
-                    <input name="tags" placeholder="polynomials, roots, algebra" />
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="field-label-with-help text-sm font-medium">
-                      Spoiler tags
-                      <FieldHelp text="Tags hidden until the problem is solved." />
-                    </span>
-                    <input name="spoilerTags" placeholder="induction, Cauchy-Schwarz" />
-                  </label>
-                  <label className="checkbox-field">
-                    <input name="conjecture" type="checkbox" />
-                    <span>
-                      <strong>Conjecture</strong>
-                    </span>
-                  </label>
-                </section>
+                <ProblemClassificationFields
+                  initialStyles={sourceProblem?.styles}
+                  initialIsConjecture={sourceProblem?.isConjecture}
+                  locale={interfaceLocale}
+                />
 
                 <section className="problem-compose-subsection">
                   <h2>Publishing options</h2>

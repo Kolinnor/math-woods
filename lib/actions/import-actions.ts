@@ -21,6 +21,7 @@ import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
+import { parseProblemStyles } from "@/lib/problem-styles";
 import { uniqueSlug } from "@/lib/unique-slug";
 
 async function renderMarkdownContent(markdown: string) {
@@ -91,6 +92,9 @@ export async function importMarkdownAction(formData: FormData) {
   const slug = await uniqueSlug("problem", safeTitle);
   const tags = getStringArrayAttribute(parsed.attributes, "tags");
   const spoilerTags = getStringArrayAttribute(parsed.attributes, "spoilerTags");
+  const styles = parseProblemStyles(getStringArrayAttribute(parsed.attributes, "styles"));
+  const isConjecture = getBooleanAttribute(parsed.attributes, "isConjecture") ??
+    tags.some((tag) => tag.trim().toLowerCase() === "conjecture");
   const domains = parseProblemDomains(
     getStringArrayAttribute(parsed.attributes, "domains"),
     getStringAttribute(parsed.attributes, "domain") ?? null,
@@ -125,6 +129,8 @@ export async function importMarkdownAction(formData: FormData) {
         originPage: boundedText(getStringAttribute(parsed.attributes, "originPage"), CONTENT_LIMITS.shortText, "Origin page") || null,
         originNote: boundedText(getStringAttribute(parsed.attributes, "originNote"), CONTENT_LIMITS.longNote, "Origin note") || null,
         listed: getBooleanAttribute(parsed.attributes, "listed") ?? true,
+        styles,
+        isConjecture,
         qualityStatus: QualityStatus.UNREVIEWED,
         authorId: user.id,
         thread: { create: {} }

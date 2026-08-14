@@ -734,7 +734,7 @@ export const fr = {
         text: "Texte",
         title: "Titre",
         body: "Énoncé",
-        tag: "Tag",
+        tag: "Style",
         domain: "Domaine",
         status: "Statut",
         difficulty: "Difficulté",

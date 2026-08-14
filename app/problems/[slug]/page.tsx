@@ -55,6 +55,7 @@ import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
+import { problemStyleLabel } from "@/lib/problem-styles";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import {
   renderMarkdownCollectionForContentLanguage,
@@ -217,7 +218,6 @@ export default async function ProblemPage({
     include: {
       author: true,
       domains: { orderBy: { position: "asc" } },
-      tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
       thread: {
@@ -562,7 +562,7 @@ export default async function ProblemPage({
     : null;
   const acceptedProofId =
     proofs.length > 0 && (proofVotes.get(proofs[0].id) ?? 0) >= COMMUNITY_ACCEPTED_PROOF_VOTES ? proofs[0].id : null;
-  const isConjecture = problem.tags.some(({ tag }) => tag.slug === "conjecture");
+  const isConjecture = problem.isConjecture;
   const visibleRelatedGroups = problem.relatedGroups
     .map((group) => ({
       ...group,
@@ -800,11 +800,15 @@ export default async function ProblemPage({
               )}
             </div>
           )}
-          {problem.tags.length > 0 && (
+          {problem.styles.length > 0 && (
             <div className="problem-detail-tags zen-meta">
-              {problem.tags.map(({ tag }) => (
-                <Link key={tag.id} href={`/problems?tag=${tag.slug}`} className="tag">
-                  {tag.name}
+              {problem.styles.map((style) => (
+                <Link
+                  key={style}
+                  href={`/problems?filterField=style&filterOp=is&filterValue=${style}`}
+                  className="tag"
+                >
+                  {problemStyleLabel(style, interfaceLocale)}
                 </Link>
               ))}
             </div>

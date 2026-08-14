@@ -59,6 +59,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       spoilerDomains: problem.domains.filter((domain) => domain.spoiler).map((domain) => domainLabel(domain.mscCode)),
       tags: problem.tags.map(({ tag }) => tag.name),
       spoilerTags: problem.spoilerTags.map(({ tag }) => tag.name),
+      styles: problem.styles.map((style) => style.toLowerCase().replaceAll("_", "-")),
+      isConjecture: problem.isConjecture,
       difficulty: problem.difficulty,
       qualityStatus: problem.qualityStatus.toLowerCase(),
       listed: problem.listed,

@@ -7,6 +7,7 @@ import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canViewProblem } from "@/lib/problem-visibility";
+import { problemStyleLabel } from "@/lib/problem-styles";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,7 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
       contributor: true,
       relatedProblems: {
         include: {
-          problem: {
-            include: {
-              tags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } }
-            }
-          }
+          problem: true
         },
         orderBy: { problem: { title: "asc" } }
       },
@@ -84,9 +81,9 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
                     <AsyncMarkdownInline markdown={problem.title} />
                   </div>
                   <div className="muted mt-2 flex flex-wrap gap-2 text-xs">
-                    {problem.tags.map(({ tag }) => (
-                      <span key={tag.id} className="tag">
-                        {tag.name}
+                    {problem.styles.map((style) => (
+                      <span key={style} className="tag">
+                        {problemStyleLabel(style, problem.language)}
                       </span>
                     ))}
                   </div>

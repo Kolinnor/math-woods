@@ -1,6 +1,7 @@
 import {
   MathDomain,
   ProblemStatus,
+  ProblemStyle,
   ProblemVerificationMode,
   QualityStatus,
   type Prisma
@@ -19,6 +20,8 @@ export type ProblemRevisionSnapshot = {
   originNote: string | null;
   listed: boolean;
   isExercise: boolean;
+  isConjecture: boolean;
+  styles: ProblemStyle[];
   showRelatedProblems: boolean;
   canAppearOnFrontPage: boolean;
   status: ProblemStatus;
@@ -44,6 +47,8 @@ export type ProblemSnapshotSource = {
   originNote: string | null;
   listed: boolean;
   isExercise: boolean;
+  isConjecture: boolean;
+  styles: ProblemStyle[];
   showRelatedProblems: boolean;
   canAppearOnFrontPage: boolean;
   status: ProblemStatus;
@@ -72,6 +77,8 @@ export const PROBLEM_SNAPSHOT_FIELD_LABELS = {
   originNote: "origin note",
   listed: "visibility",
   isExercise: "content type",
+  isConjecture: "conjecture status",
+  styles: "problem styles",
   showRelatedProblems: "related-problems visibility",
   canAppearOnFrontPage: "front page eligibility",
   status: "publication status",
@@ -110,6 +117,8 @@ export function buildProblemRevisionSnapshot(source: ProblemSnapshotSource): Pro
     originNote: source.originNote,
     listed: source.listed,
     isExercise: source.isExercise,
+    isConjecture: source.isConjecture,
+    styles: source.styles,
     showRelatedProblems: source.showRelatedProblems,
     canAppearOnFrontPage: source.canAppearOnFrontPage,
     status: source.status,
@@ -153,6 +162,13 @@ export function parseProblemRevisionSnapshot(value: Prisma.JsonValue | null): Pr
     ...candidate,
     qualityStatus,
     isExercise: candidate.isExercise === true,
+    isConjecture:
+      typeof candidate.isConjecture === "boolean"
+        ? candidate.isConjecture
+        : (candidate.tags as Array<{ slug?: unknown }>).some((tag) => tag.slug === "conjecture"),
+    styles: Array.isArray(candidate.styles)
+      ? candidate.styles.filter((style): style is ProblemStyle => Object.values(ProblemStyle).includes(style as ProblemStyle))
+      : [],
     showRelatedProblems:
       typeof candidate.showRelatedProblems === "boolean"
         ? candidate.showRelatedProblems
@@ -182,6 +198,9 @@ export function formatProblemSnapshotFieldValue(
   }
   if ((field === "tags" || field === "spoilerTags") && Array.isArray(value)) {
     return (value as ProblemRevisionSnapshot["tags"]).map((tag) => tag.name).join(", ") || "None";
+  }
+  if (field === "styles" && Array.isArray(value)) {
+    return (value as ProblemStyle[]).map((style) => style.toLowerCase().replaceAll("_", " ")).join(", ") || "None";
   }
   if (field === "relatedProblemGroups" && Array.isArray(value)) {
     return (value as ProblemRevisionSnapshot["relatedProblemGroups"])

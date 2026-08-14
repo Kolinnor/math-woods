@@ -30,6 +30,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { PROBLEM_STYLE_OPTIONS, parseProblemStyle, problemStyleLabel } from "@/lib/problem-styles";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import {
   defaultProblemContentTypesForMathLevel,
@@ -250,6 +251,11 @@ function advancedFilterWhere(filter: ProblemFilterRow, includeSpoilerTags: boole
     return tagWhere(value, includeSpoilerTags);
   }
 
+  if (filter.field === "style") {
+    const style = parseProblemStyle(value);
+    return style ? { styles: { has: style } } : null;
+  }
+
   if (filter.field === "domain") {
     const domainFilter = parseDomainFilter(value);
     return domainFilter ? domainWhere(domainFilter, includeSpoilerTags) : null;
@@ -277,6 +283,7 @@ export default async function ProblemsPage({
   searchParams: Promise<{
     q?: string;
     tag?: string;
+    style?: string;
     difficulty?: string;
     difficultyRange?: string;
     difficultyMin?: string;
@@ -305,6 +312,7 @@ export default async function ProblemsPage({
   const {
     q = "",
     tag = "",
+    style = "",
     difficulty = "",
     difficultyRange = "",
     difficultyMin = "",
@@ -336,6 +344,7 @@ export default async function ProblemsPage({
   const showsProblems = contentTypeValues.includes("problem");
   const showsExercises = contentTypeValues.includes("exercise");
   const query = q.trim();
+  const styleValue = parseProblemStyle(style);
   const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
   const queryTagSlug = ensureSlug(query, "");
   const tagSlug = ensureSlug(tag, "");
@@ -459,6 +468,7 @@ export default async function ProblemsPage({
     ...(contentTypeWhere ? [contentTypeWhere] : []),
     ...(queryClauses.length ? [{ OR: queryClauses } satisfies Prisma.ProblemWhereInput] : []),
     ...(tagSlug ? [tagWhere(tagSlug, showSpoilerTags)].filter((item): item is Prisma.ProblemWhereInput => Boolean(item)) : []),
+    ...(styleValue ? [{ styles: { has: styleValue } }] : []),
     ...(difficultyWhere ? [difficultyWhere] : []),
     ...(domainValue ? [domainWhere(domainValue, showSpoilerTags)] : []),
     ...(qualityValue ? [{ qualityStatus: qualityValue }] : []),
@@ -489,14 +499,7 @@ export default async function ProblemsPage({
     ...(ownershipWhere ?? {})
   };
 
-  const [tags, progressProblemGroups, domainProgressProblemGroups, problemCandidateKeys] = await Promise.all([
-    prisma.tag.findMany({
-      where: showSpoilerTags
-        ? { OR: [{ problems: { some: {} } }, { spoilerProblems: { some: {} } }] }
-        : { problems: { some: {} } },
-      orderBy: { name: "asc" },
-      take: 80
-    }),
+  const [progressProblemGroups, domainProgressProblemGroups, problemCandidateKeys] = await Promise.all([
     prisma.problem.findMany({
       where: progressWhere,
       distinct: ["translationGroupId"],
@@ -524,6 +527,7 @@ export default async function ProblemsPage({
         title: true,
         bodyMarkdown: true,
         origin: true,
+        styles: true,
         tags: { select: { tag: { select: { name: true } } } },
         spoilerTags: { select: { tag: { select: { name: true } } } },
         translationGroupId: true,
@@ -578,6 +582,7 @@ export default async function ProblemsPage({
           searchText: [
             problem.bodyMarkdown,
             problem.origin,
+            ...problem.styles.map((problemStyle) => problemStyleLabel(problemStyle, interfaceLocale)),
             ...problem.tags.map(({ tag }) => tag.name),
             ...(showSpoilerTags ? problem.spoilerTags.map(({ tag }) => tag.name) : [])
           ]
@@ -651,6 +656,7 @@ export default async function ProblemsPage({
   const paginationParams = {
     q: query,
     tag: tagSlug,
+    style: styleValue ?? undefined,
     difficultyRange: difficultyRangeOption.value || undefined,
     difficultyMin: manualDifficultyMin ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : undefined),
     difficultyMax: manualDifficultyMax ?? (legacyDifficultyValue && !difficultyRangeOption.value ? legacyDifficultyValue : undefined),
@@ -770,6 +776,7 @@ export default async function ProblemsPage({
               slugs={dedupedProblems.map((problem) => problem.slug)}
             />
             {domainValue && <input type="hidden" name="domain" value={domainValue} />}
+            {styleValue && <input type="hidden" name="style" value={styleValue} />}
 
             <div className="problem-filter-section">
               <fieldset className="problem-language-filter">
@@ -864,10 +871,6 @@ export default async function ProblemsPage({
                 <input name="author" defaultValue={authorQuery} placeholder={t.problems.authorPlaceholder} />
               </label>
               {sortValue !== "newest" && <input type="hidden" name="sort" value={sortValue} />}
-              <label className="checkbox-inline">
-                <input name="includeSpoilerTags" type="checkbox" value="1" defaultChecked={showSpoilerTags} />
-                <span>{t.problems.includeSpoilers}</span>
-              </label>
             </div>
 
             <ProblemFilterBuilder
@@ -880,7 +883,10 @@ export default async function ProblemsPage({
               labels={t.problems.advancedFilters}
               statuses={Object.values(QualityStatus)
                 .map((status) => ({ value: status, label: t.quality[status] }))}
-              tags={tags.map((item) => ({ value: item.slug, label: item.name }))}
+              styles={PROBLEM_STYLE_OPTIONS.map((problemStyle) => ({
+                value: problemStyle,
+                label: problemStyleLabel(problemStyle, interfaceLocale)
+              }))}
             />
           </LiveSearchForm>
         </aside>
