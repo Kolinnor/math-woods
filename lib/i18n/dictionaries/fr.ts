@@ -1196,7 +1196,7 @@ export const fr = {
     deleteConcept: "Supprimer le concept",
     deleteConceptHelp: "Cette action supprime définitivement la page du concept. Les liens qui y renvoient deviendront des liens vers un concept manquant.",
     deleteProblem: "Supprimer le problème",
-    deleteProblemHelp: "Cette action archive le problème et le retire des listes publiques ainsi que des liens entrants des concepts.",
+    deleteProblemHelp: "Cette action archive le problème dans toutes les langues et le retire des listes publiques ainsi que des liens entrants des concepts.",
     preview: "Aperçu",
     closePreview: "Fermer l’aperçu",
     renderingPreview: "Génération de l’aperçu...",

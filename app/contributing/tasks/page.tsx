@@ -1,5 +1,4 @@
 import { ConceptStatus, ProblemStatus, QualityStatus } from "@prisma/client";
-import type { Route } from "next";
 import Link from "next/link";
 import { BookOpen, Languages, ListChecks } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -43,9 +42,9 @@ function TaskCard({ task, buttonLabel, completeLabel }: { task: Task; buttonLabe
       <footer>
         <span>{task.remaining === 0 ? completeLabel : `${progress}%`}</span>
         {task.remaining > 0 && (
-          <Link href={`/contributing/tasks/random?task=${task.key}` as Route} className="button secondary" prefetch={false}>
+          <a href={`/contributing/tasks/random?task=${task.key}`} className="button secondary">
             {buttonLabel}
-          </Link>
+          </a>
         )}
       </footer>
     </article>

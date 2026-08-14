@@ -13,7 +13,7 @@ export function DeleteProblemButton({ title }: DeleteProblemButtonProps) {
       className="danger"
       onClick={(event) => {
         const confirmed = window.confirm(
-          `Delete "${title}"?\n\nThe problem will be archived and removed from public lists.`
+          `Delete "${title}"?\n\nThe problem and all its translations will be archived and removed from public lists.`
         );
         if (!confirmed) event.preventDefault();
       }}

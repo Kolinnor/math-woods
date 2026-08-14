@@ -6,6 +6,26 @@ import { pickRandomDifferent } from "@/lib/random-content";
 
 type Candidate = { href: string; slug: string };
 
+function redirectTo(path: string, request: NextRequest, task?: ContributionTaskKey, selectedSlug?: string) {
+  const response = new NextResponse(null, {
+    status: 307,
+    headers: {
+      "Cache-Control": "private, no-store, max-age=0",
+      Location: path
+    }
+  });
+  if (task && selectedSlug) {
+    response.cookies.set(`mw_contribution_${task}`, selectedSlug, {
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:"
+    });
+  }
+  return response;
+}
+
 function conceptCandidates(where: Prisma.ConceptWhereInput) {
   return prisma.concept.findMany({ where, select: { slug: true } });
 }
@@ -40,17 +60,15 @@ async function candidatesForTask(task: ContributionTaskKey): Promise<Candidate[]
 
 export async function GET(request: NextRequest) {
   const task = parseContributionTaskKey(request.nextUrl.searchParams.get("task"));
-  if (!task) return NextResponse.redirect(new URL("/contributing/tasks", request.url));
+  if (!task) return redirectTo("/contributing/tasks", request);
 
   const candidates = await candidatesForTask(task);
-  if (!candidates.length) return NextResponse.redirect(new URL("/contributing/tasks", request.url));
+  if (!candidates.length) return redirectTo("/contributing/tasks", request);
 
   const cookieName = `mw_contribution_${task}`;
   const previousSlug = request.cookies.get(cookieName)?.value;
   const candidate = pickRandomDifferent(candidates, candidates.find((item) => item.slug === previousSlug));
-  if (!candidate) return NextResponse.redirect(new URL("/contributing/tasks", request.url));
+  if (!candidate) return redirectTo("/contributing/tasks", request);
 
-  const response = NextResponse.redirect(new URL(candidate.href, request.url));
-  response.cookies.set(cookieName, candidate.slug, { httpOnly: true, maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax", secure: request.nextUrl.protocol === "https:" });
-  return response;
+  return redirectTo(candidate.href, request, task, candidate.slug);
 }

@@ -1486,20 +1486,42 @@ export async function deleteProblemAction(problemId: number) {
   await assertRateLimit(`problem:delete:${user.id}`, 10, 60_000);
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { id: true, slug: true, authorId: true, translationGroupId: true, status: true }
+    select: { id: true, slug: true, translationGroupId: true }
   });
 
   if (!problem) throw new Error("Problem not found.");
-  if (!canArchiveProblem(user, problem)) {
+  const problemFamily = await prisma.problem.findMany({
+    where: { translationGroupId: problem.translationGroupId },
+    orderBy: { createdAt: "asc" },
+    select: { authorId: true, translatedFromProblemId: true }
+  });
+  const familyOwner = problemFamily.find((translation) => translation.translatedFromProblemId === null)
+    ?? problemFamily[0];
+  if (!familyOwner || !canArchiveProblem(user, familyOwner)) {
     throw new Error("You cannot delete this problem.");
   }
 
+  const archivedSlugs: string[] = [];
   await prisma.$transaction(async (tx) => {
     await acquireTransactionLock(tx, `problem-edit:${problem.translationGroupId}`);
-    const current = await problemSnapshotSource(tx, problem.id);
-    await ensureProblemSnapshotRevision(tx, current);
-    await tx.problem.update({
-      where: { id: problem.id },
+    const activeTranslations = await tx.problem.findMany({
+      where: {
+        translationGroupId: problem.translationGroupId,
+        status: { not: ProblemStatus.ARCHIVED }
+      },
+      orderBy: { id: "asc" },
+      include: problemRevisionSnapshotInclude
+    });
+
+    for (const translation of activeTranslations) {
+      await ensureProblemSnapshotRevision(tx, translation);
+    }
+
+    const activeIds = activeTranslations.map((translation) => translation.id);
+    if (activeIds.length === 0) return;
+
+    await tx.problem.updateMany({
+      where: { id: { in: activeIds } },
       data: {
         status: ProblemStatus.ARCHIVED,
         listed: false,
@@ -1509,26 +1531,32 @@ export async function deleteProblemAction(problemId: number) {
     await tx.internalLink.deleteMany({
       where: {
         sourceType: SourceType.PROBLEM,
-        sourceId: problem.id
+        sourceId: { in: activeIds }
       }
     });
-    const archived = await problemSnapshotSource(tx, problem.id);
-    await tx.pageRevision.create({
-      data: {
-        pageType: SourceType.PROBLEM,
-        pageId: problem.id,
-        markdown: archived.bodyMarkdown,
-        problemVersion: archived.version,
-        problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(archived)),
-        editedById: user.id,
-        editSummary: "Problem deleted"
-      }
-    });
+
+    for (const translation of activeTranslations) {
+      const archived = await problemSnapshotSource(tx, translation.id);
+      await tx.pageRevision.create({
+        data: {
+          pageType: SourceType.PROBLEM,
+          pageId: translation.id,
+          markdown: archived.bodyMarkdown,
+          problemVersion: archived.version,
+          problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(archived)),
+          editedById: user.id,
+          editSummary: "Problem deleted"
+        }
+      });
+      archivedSlugs.push(translation.slug);
+    }
   });
 
   revalidatePath("/");
   revalidatePath("/problems");
-  revalidatePath(`/problems/${problem.slug}`);
+  for (const slug of archivedSlugs) {
+    revalidatePath(`/problems/${slug}`);
+  }
   redirect("/problems");
 }
 

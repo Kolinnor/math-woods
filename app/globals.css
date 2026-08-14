@@ -18555,6 +18555,10 @@ body:has(.home-shell) > .site-footer {
   gap: 0.4rem;
 }
 
+.contest-admin-toolbar-actions {
+  justify-content: flex-end;
+}
+
 .contest-admin-toolbar > div a {
   background: var(--mw-reading-surface);
   border: 1px solid var(--mw-border);

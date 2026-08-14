@@ -1,4 +1,5 @@
-import { CalendarDays, Eye, Save, Trophy } from "lucide-react";
+import { CalendarDays, Eye, House, Save, Trophy } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContestTabs } from "@/components/ContestTabs";
@@ -75,7 +76,31 @@ export default async function EditContestPage({
             </Link>
           ))}
         </div>
-        <Link href="/contest/edit?new=1" className="button secondary">+ {locale === "fr" ? "Nouveau concours" : "New contest"}</Link>
+        <div className="contest-admin-toolbar-actions">
+          {selected && (
+            <>
+              <Link
+                href={`/contest?preview=${selected.id}` as Route}
+                className="button secondary"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Eye size={16} aria-hidden="true" />
+                {locale === "fr" ? "Aperçu de la page" : "Preview contest page"}
+              </Link>
+              <Link
+                href={`/contest/preview?contest=${selected.id}&view=home` as Route}
+                className="button secondary"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <House size={16} aria-hidden="true" />
+                {locale === "fr" ? "Aperçu sur l'accueil" : "Preview homepage card"}
+              </Link>
+            </>
+          )}
+          <Link href="/contest/edit?new=1" className="button secondary">+ {locale === "fr" ? "Nouveau concours" : "New contest"}</Link>
+        </div>
       </div>
 
       {params.saved && <p className="quality-banner">{locale === "fr" ? "Concours enregistré." : "Contest saved."}</p>}

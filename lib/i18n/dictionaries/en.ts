@@ -1191,7 +1191,7 @@ export const en = {
     deleteConcept: "Delete concept",
     deleteConceptHelp: "This permanently removes the concept page. Links pointing to it will become missing concept links.",
     deleteProblem: "Delete problem",
-    deleteProblemHelp: "This archives the problem and removes it from public problem lists and concept backlinks.",
+    deleteProblemHelp: "This archives the problem in every language and removes it from public lists and concept backlinks.",
     preview: "Preview",
     closePreview: "Close preview",
     renderingPreview: "Rendering preview...",

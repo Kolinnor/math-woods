@@ -88,9 +88,9 @@ const copy = {
 export default async function ContestPage({
   searchParams
 }: {
-  searchParams: Promise<{ submitted?: string; week?: string }>;
+  searchParams: Promise<{ submitted?: string; week?: string; preview?: string }>;
 }) {
-  const [user, locale, params, contests] = await Promise.all([
+  const [user, locale, params, publishedContests] = await Promise.all([
     getCurrentUser(),
     getInterfaceLocale(),
     searchParams,
@@ -110,14 +110,34 @@ export default async function ContestPage({
     })
   ]);
   const t = copy[locale];
+  const canEdit = Boolean(user && canUseAdminTools(user));
+  const previewId = Number(params.preview);
+  const previewContest = canEdit && Number.isSafeInteger(previewId) && previewId > 0
+    ? await prisma.problemContest.findUnique({
+        where: { id: previewId },
+        include: {
+          submissions: {
+            orderBy: { submittedAt: "asc" },
+            include: {
+              user: { select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true } },
+              problem: { select: { id: true, slug: true, title: true, language: true, difficulty: true, translationGroupId: true } }
+            }
+          }
+        }
+      })
+    : null;
+  const contests = previewContest
+    ? [previewContest, ...publishedContests.filter((contest) => contest.id !== previewContest.id)]
+    : publishedContests;
   const requestedContest = params.week ? contests.find((contest) => contest.startDateKey === params.week) : null;
-  const featured = requestedContest
+  const featured = previewContest
+    ?? requestedContest
     ?? contests.find((contest) => contestPhase(contest) === "open")
     ?? [...contests].reverse().find((contest) => contestPhase(contest) === "upcoming")
     ?? contests.find((contest) => contestPhase(contest) === "judging")
     ?? contests[0]
     ?? null;
-  const canEdit = Boolean(user && canUseAdminTools(user));
+  const isPreview = previewContest?.id === featured?.id;
 
   if (!featured) {
     return (
@@ -128,8 +148,10 @@ export default async function ContestPage({
     );
   }
 
-  await maybeSendContestLifecycleNotifications(featured.id);
-  const phase = contestPhase(featured);
+  if (!isPreview) await maybeSendContestLifecycleNotifications(featured.id);
+  const phase = contestPhase(isPreview && !featured.publishedAt
+    ? { ...featured, publishedAt: new Date() }
+    : featured);
   const localized = localizedContestText(featured, locale);
   const [bodyHtml, rulesHtml, criteriaHtml] = await Promise.all([
     renderMarkdown(localized.body),
@@ -154,7 +176,7 @@ export default async function ContestPage({
     return [groupId, selected] as const;
   }));
   const ownSubmission = user ? featured.submissions.find((submission) => submission.userId === user.id) : null;
-  const eligibleProblems = user && phase === "open"
+  const eligibleProblems = !isPreview && user && phase === "open"
     ? await prisma.problem.findMany({
         where: {
           authorId: user.id,
@@ -174,9 +196,12 @@ export default async function ContestPage({
       eyebrow={locale === "fr" ? "Chaque semaine, un nouveau thème" : "A new theme every week"}
       heroImage="/art/pine-forest.jpg"
       heroAlt="Ivan Shishkin, Pine Forest"
-      actions={canEdit ? <Link className="button secondary" href="/contest/edit">{locale === "fr" ? "Modifier" : "Edit"}</Link> : null}
+      actions={isPreview
+        ? <Link className="button secondary" href={`/contest/edit?id=${featured.id}` as Route}>{locale === "fr" ? "Retour à l'éditeur" : "Back to editor"}</Link>
+        : canEdit ? <Link className="button secondary" href="/contest/edit">{locale === "fr" ? "Modifier" : "Edit"}</Link> : null}
     >
       <ContestTabs active="contest" canEdit={canEdit} locale={locale} />
+      {isPreview && <p className="quality-banner">{locale === "fr" ? "Aperçu administrateur : ce concours n'est pas publié depuis cette page." : "Admin preview: this contest is not published from this page."}</p>}
       {params.submitted && <p className="quality-banner">{t.submitted}</p>}
 
       <article className="contest-feature">
@@ -211,7 +236,7 @@ export default async function ContestPage({
         <section><h2>{t.rules}</h2><MarkdownBlock html={rulesHtml} /></section>
       </div>
 
-      <section className="contest-participate">
+      {!isPreview && <section className="contest-participate">
         {phase === "open" ? user ? (
           <>
             <div className="mw-section-heading"><h2>{t.submission}</h2></div>
@@ -241,7 +266,7 @@ export default async function ContestPage({
             </div>
           </>
         ) : <Link href="/login" className="button">{t.signIn}</Link> : <p className="contest-phase-note">{t[phase === "upcoming" ? "upcoming" : phase === "judging" ? "judging" : "closed"]}</p>}
-      </section>
+      </section>}
 
       <section className="contest-entries">
         <div className="mw-section-heading"><h2>{t.entries}</h2><span>{featured.submissions.length}</span></div>
