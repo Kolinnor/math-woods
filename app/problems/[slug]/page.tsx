@@ -620,7 +620,7 @@ export default async function ProblemPage({
           distinct: ["problemId"],
           select: { problem: { select: { translationGroupId: true } } }
         }),
-        recommendationsForUser(user.id, 8, preferredLanguage)
+        recommendationsForUser(user.id, 8, interfaceLocale)
       ])
     : [[], [], null];
   const domainSolvedCount = new Set(domainSolvedGroups.map((item) => item.problem.translationGroupId)).size;

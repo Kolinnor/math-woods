@@ -5,13 +5,20 @@ export function RevisionDiff({
   beforeMarkdown,
   beforeRevisionId,
   defaultOpen = false,
-  revisionId
+  revisionId,
+  labels
 }: {
   afterMarkdown: string;
   beforeMarkdown: string;
   beforeRevisionId: number;
   defaultOpen?: boolean;
   revisionId: number;
+  labels?: {
+    compareWith: (id: number) => string;
+    changedLines: (count: number) => string;
+    noTextChanges: string;
+    diffAria: (id: number) => string;
+  };
 }) {
   const rows = buildRevisionDiff(beforeMarkdown, afterMarkdown);
   const changedRows = rows.filter((row) => row.kind !== "context").length;
@@ -19,10 +26,10 @@ export function RevisionDiff({
   return (
     <details className="revision-diff mt-3" open={defaultOpen}>
       <summary>
-        <span>Compare with revision {beforeRevisionId}</span>
-        <small>{changedRows ? `${changedRows} changed lines` : "No text changes"}</small>
+        <span>{labels?.compareWith(beforeRevisionId) ?? `Compare with revision ${beforeRevisionId}`}</span>
+        <small>{changedRows ? (labels?.changedLines(changedRows) ?? `${changedRows} changed lines`) : (labels?.noTextChanges ?? "No text changes")}</small>
       </summary>
-      <div className="revision-diff-table" role="table" aria-label={`Revision ${revisionId} diff`}>
+      <div className="revision-diff-table" role="table" aria-label={labels?.diffAria(revisionId) ?? `Revision ${revisionId} diff`}>
         {rows.map((row, rowIndex) => (
           <div key={`${row.kind}-${rowIndex}`} className={`revision-diff-row revision-diff-${row.kind}`} role="row">
             <span className="revision-diff-marker" aria-hidden="true">

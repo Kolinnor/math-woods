@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { parseContentLanguage } from "@/lib/languages";
-import { selectContentTranslation } from "@/lib/translation-routing";
+import { selectExactContentTranslation } from "@/lib/translation-routing";
 import {
   buildRecommendationProfile,
   scoreProblemRecommendation,
@@ -165,12 +165,9 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
     where: {
       status: "PUBLISHED",
       listed: true,
+      language: recommendationLanguage,
       authorId: { not: user.id },
       translationGroupId: { notIn: solvedGroups },
-      OR: [
-        { isExercise: false },
-        { isExercise: true, language: recommendationLanguage }
-      ]
     },
     select: {
       id: true,
@@ -207,7 +204,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
 
   const recommendations = [...candidatesByGroup.values()]
     .map((translations) => {
-      const problem = selectContentTranslation(
+      const problem = selectExactContentTranslation(
         translations.map((item) => ({
           ...item,
           isSource: item.translatedFromProblemId === null

@@ -27,7 +27,11 @@ import { buildProgressMap } from "@/lib/progress";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { selectContentTranslation, selectContentTranslationsByGroup } from "@/lib/translation-routing";
+import {
+  selectContentTranslation,
+  selectContentTranslationsByGroup,
+  selectExactContentTranslationsByGroup
+} from "@/lib/translation-routing";
 import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
 import { displayNameForUser } from "@/lib/user-display";
 import { dailyTipImage, tipImageObjectPosition } from "@/lib/tip-images";
@@ -122,9 +126,32 @@ export default async function HomePage() {
           problem: { status: "PUBLISHED", listed: true }
         },
         orderBy: { updatedAt: "desc" },
-        select: { problem: { select: { title: true, slug: true } } }
+        select: { problem: { select: { translationGroupId: true } } }
       })
     : null;
+  const resumeTranslations = resumeAttempt
+    ? await prisma.problem.findMany({
+        where: {
+          translationGroupId: resumeAttempt.problem.translationGroupId,
+          status: "PUBLISHED",
+          listed: true,
+          language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) }
+        },
+        select: {
+          title: true,
+          slug: true,
+          language: true,
+          translatedFromProblemId: true
+        }
+      })
+    : [];
+  const resumeProblem = selectContentTranslation(
+    resumeTranslations.map((problem) => ({
+      ...problem,
+      isSource: problem.translatedFromProblemId === null
+    })),
+    locale
+  );
 
   const dailyWhere = {
     status: "PUBLISHED" as const,
@@ -237,14 +264,14 @@ export default async function HomePage() {
   );
 
   const [recommendedData, guestRecommendationRows, tip, recentProblemRows, explorationRows, friendships] = await Promise.all([
-    user ? recommendationsForUser(user.id, 5, preferredLanguage) : null,
+    user ? recommendationsForUser(user.id, 5, locale) : null,
     !user
       ? prisma.problem.findMany({
           where: {
             status: "PUBLISHED",
             listed: true,
             isExercise: false,
-            language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
+            language: locale,
             OR: [
               { canAppearOnFrontPage: true },
               { qualityStatus: "REVIEWED" }
@@ -308,12 +335,12 @@ export default async function HomePage() {
         })
       : []
   ]);
-  const guestRecommendations = selectContentTranslationsByGroup(
+  const guestRecommendations = selectExactContentTranslationsByGroup(
     guestRecommendationRows.map((problem) => ({
       ...problem,
       isSource: problem.translatedFromProblemId === null
     })),
-    preferredLanguage
+    locale
   );
   const recentProblemTranslations = recentProblemRows.length
     ? await prisma.problem.findMany({
@@ -653,9 +680,9 @@ export default async function HomePage() {
         <div className="home-hero-overlay home-hero-overlay-member" />
         <div className="home-member-hero-copy">
           <h1>{user ? t.home.hero.welcomeBack(displayNameForUser(user)) : t.home.hero.guestTitle}</h1>
-          {resumeAttempt && (
-            <Link href={`/problems/${resumeAttempt.problem.slug}`} className="home-button home-button-light">
-              {t.home.hero.resume(resumeAttempt.problem.title)}
+          {resumeProblem && (
+            <Link href={`/problems/${resumeProblem.slug}`} className="home-button home-button-light">
+              {t.home.hero.resume(resumeProblem.title)}
             </Link>
           )}
         </div>

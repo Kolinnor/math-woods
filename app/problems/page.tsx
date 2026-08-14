@@ -695,7 +695,7 @@ export default async function ProblemsPage({
     : showsExercises
       ? t.problems.showingProblemsAndExercises(totalProblems)
       : t.problems.showingResults(totalProblems);
-  const recommendationData = user ? await recommendationsForUser(user.id, 5, preferredLanguage) : null;
+  const recommendationData = user ? await recommendationsForUser(user.id, 5, interfaceLocale) : null;
   const recommendationItems = await Promise.all(
     (recommendationData?.recommendations ?? []).map(async ({ problem }) => ({
       id: problem.id,

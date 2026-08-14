@@ -165,7 +165,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   {t.nav.signIn}
                 </Link>
               )}
-              <LanguageSelector initialLanguage={initialLanguage} />
+              <LanguageSelector
+                initialLanguage={initialLanguage}
+                label={t.languageSelector.label}
+                title={t.languageSelector.choose}
+              />
               <AutoClosingDetails className="nav-menu">
                 <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle}>
                   <Menu size={18} />

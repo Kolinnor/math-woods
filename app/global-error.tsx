@@ -29,6 +29,10 @@ export default function GlobalError({
             code="Math Woods"
             title="The forest is temporarily unavailable."
             message="The error has been reported. Please try again; if the server is being restarted, this should only last a minute."
+            french={{
+              title: "La forêt est temporairement indisponible.",
+              message: "L’erreur a été signalée. Veuillez réessayer ; si le serveur redémarre, cela ne devrait durer qu’une minute."
+            }}
             onRetry={reset}
           />
         </main>

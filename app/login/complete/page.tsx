@@ -12,12 +12,18 @@ import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
-function errorMessage(reason?: string) {
-  if (reason === "invalid") return "The information could not be verified. Please try again.";
-  if (reason === "account-used") return "This external account is already connected.";
-  if (reason === "email-used") return "A Math Woods account already uses this email. Connect it below instead.";
-  if (reason === "expired") return "This sign-in attempt expired. Please start again.";
-  if (reason === "rate-limited") return "Too many attempts. Please wait a moment and try again.";
+function errorMessage(reason: string | undefined, messages: {
+  invalid: string;
+  accountUsed: string;
+  emailUsed: string;
+  expired: string;
+  rateLimited: string;
+}) {
+  if (reason === "invalid") return messages.invalid;
+  if (reason === "account-used") return messages.accountUsed;
+  if (reason === "email-used") return messages.emailUsed;
+  if (reason === "expired") return messages.expired;
+  if (reason === "rate-limited") return messages.rateLimited;
   return null;
 }
 
@@ -29,14 +35,15 @@ export default async function CompleteOAuthPage({
   const attempt = await pendingOAuthAttempt();
   const t = await getTranslations();
   const params: { error?: string } = searchParams ? await searchParams : {};
-  const error = errorMessage(params.error);
+  const complete = t.auth.complete;
+  const error = errorMessage(params.error, complete);
   if (!attempt?.providerAccountId) {
     return (
-      <ForestPageLayout title="Complete sign in" heroImage="/art/morning-in-a-pine-forest.jpg" heroAlt="Ivan Shishkin, Morning in a Pine Forest">
+      <ForestPageLayout title={complete.title} heroImage="/art/morning-in-a-pine-forest.jpg" heroAlt="Ivan Shishkin, Morning in a Pine Forest">
         <section className="panel grid gap-4 p-5">
-          <h1 className="text-xl font-semibold">Sign-in attempt expired</h1>
-          <p className="muted">Return to the login page and try again.</p>
-          <Link href="/login" className="button">Back to login</Link>
+          <h1 className="text-xl font-semibold">{complete.expiredTitle}</h1>
+          <p className="muted">{complete.expiredHelp}</p>
+          <Link href="/login" className="button">{complete.backToLogin}</Link>
         </section>
       </ForestPageLayout>
     );
@@ -52,47 +59,47 @@ export default async function CompleteOAuthPage({
 
   return (
     <ForestPageLayout
-      title="Complete sign in"
+      title={complete.title}
       heroImage="/art/morning-in-a-pine-forest.jpg"
       heroAlt="Ivan Shishkin, Morning in a Pine Forest"
-      description={`Finish connecting ${providerLabel} to Math Woods.`}
+      description={complete.description(providerLabel)}
       workspaceClassName="forest-page-workspace-narrow"
     >
       {error && <p className="quality-banner quality-needs-work mb-4">{error}</p>}
       {existingUser ? (
         <section className="panel grid gap-4 p-5">
           <div>
-            <h1 className="text-xl font-semibold">Connect your existing account</h1>
+            <h1 className="text-xl font-semibold">{complete.connectExisting}</h1>
             <p className="muted mt-1 text-sm">
-              A Math Woods account already uses <strong>{attempt.providerEmail}</strong>. Confirm its password once to connect {providerLabel}.
+              {complete.existingAccountHelp(attempt.providerEmail ?? "", providerLabel)}
             </p>
           </div>
           {existingUser.passwordHash ? (
             <form action={linkOAuthToExistingAccountAction} className="grid gap-4">
               <label className="grid gap-2">
-                <span className="text-sm font-medium">Current Math Woods password</span>
+                <span className="text-sm font-medium">{complete.currentPassword}</span>
                 <input name="password" type="password" autoComplete="current-password" required />
               </label>
-              <button type="submit">Connect {providerLabel}</button>
+              <button type="submit">{complete.connectProvider(providerLabel)}</button>
             </form>
           ) : (
             <div className="grid gap-3">
               <p className="muted text-sm">
-                This account has no password. Sign in with one of its existing connected accounts, then add {providerLabel} from Settings.
+                {complete.noPasswordHelp(providerLabel)}
               </p>
-              <Link href="/login" className="button secondary">Back to login</Link>
+              <Link href="/login" className="button secondary">{complete.backToLogin}</Link>
             </div>
           )}
         </section>
       ) : (
         <section className="panel grid gap-4 p-5">
           <div>
-            <h1 className="text-xl font-semibold">Create your Math Woods profile</h1>
-            <p className="muted mt-1 text-sm">{providerLabel} confirmed your identity. Choose how you will appear on Math Woods.</p>
+            <h1 className="text-xl font-semibold">{complete.createProfile}</h1>
+            <p className="muted mt-1 text-sm">{complete.identityConfirmed(providerLabel)}</p>
           </div>
           <form action={completeOAuthSignupAction} className="grid gap-4">
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Profile name</span>
+              <span className="text-sm font-medium">{t.auth.profileName}</span>
               <input
                 name="displayName"
                 defaultValue={attempt.providerDisplayName ?? ""}
@@ -102,7 +109,7 @@ export default async function CompleteOAuthPage({
               />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Email</span>
+              <span className="text-sm font-medium">{t.auth.email}</span>
               <input
                 name="email"
                 type="email"
@@ -111,17 +118,17 @@ export default async function CompleteOAuthPage({
                 required
               />
               {!attempt.providerEmailVerified && (
-                <small className="muted">We will send a verification email before contributions are enabled.</small>
+                <small className="muted">{complete.unverifiedEmailHelp}</small>
               )}
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Mathematics level</span>
+              <span className="text-sm font-medium">{complete.mathematicsLevel}</span>
               <select name="mathLevel" required defaultValue="">
-                <option value="" disabled>Choose your level</option>
-                {MATH_LEVEL_OPTIONS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}
+                <option value="" disabled>{t.auth.chooseLevel}</option>
+                {MATH_LEVEL_OPTIONS.map((level) => <option key={level.value} value={level.value}>{t.auth.mathLevels[level.value]}</option>)}
               </select>
             </label>
-            <button type="submit">Create account with {providerLabel}</button>
+            <button type="submit">{complete.createWithProvider(providerLabel)}</button>
           </form>
         </section>
       )}

@@ -7,21 +7,20 @@ import { rollbackConceptRevisionAction } from "@/lib/actions/concept-actions";
 import { getCurrentUser } from "@/lib/auth";
 import {
   changedConceptSnapshotFields,
-  CONCEPT_SNAPSHOT_FIELD_LABELS,
   parseConceptRevisionSnapshot,
   type ConceptRevisionSnapshot,
   type ConceptSnapshotField
 } from "@/lib/concept-revisions";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
-import { contentLanguageLabel } from "@/lib/languages";
+import { contentLanguageNativeLabel } from "@/lib/languages";
 
 export const dynamic = "force-dynamic";
 
-function joinedOrNone(values: string[]) {
-  return values.length ? values.join(", ") : "None";
+function joinedOrNone(values: string[], none: string) {
+  return values.length ? values.join(", ") : none;
 }
 
 function conceptSnapshotValue(
@@ -33,7 +32,7 @@ function conceptSnapshotValue(
     case "title":
       return snapshot.title;
     case "language":
-      return contentLanguageLabel(snapshot.language);
+      return contentLanguageNativeLabel(snapshot.language);
     case "domainCode":
       return translatedDomainLabel(snapshot.domainCode, t.home.domainLabels);
     case "kind":
@@ -41,26 +40,27 @@ function conceptSnapshotValue(
     case "status":
       return t.concepts.statuses[snapshot.status] ?? snapshot.status.toLowerCase();
     case "needsReviewAfterEdit":
-      return snapshot.needsReviewAfterEdit ? "Review needed after an edit" : "Up to date";
+      return snapshot.needsReviewAfterEdit ? t.historyPage.reviewNeeded : t.historyPage.upToDate;
     case "canAppearInConceptBrowser":
-      return snapshot.canAppearInConceptBrowser ? "Listed in the concept browser" : "Hidden from the concept browser";
+      return snapshot.canAppearInConceptBrowser ? t.historyPage.listed : t.historyPage.hidden;
     case "translatedFromRevisionId":
-      return snapshot.translatedFromRevisionId ? `Source revision ${snapshot.translatedFromRevisionId}` : "Not linked to a source revision";
+      return snapshot.translatedFromRevisionId ? t.historyPage.sourceRevision(snapshot.translatedFromRevisionId) : t.historyPage.noSourceRevision;
     case "aliases":
-      return joinedOrNone(snapshot.aliases.map((alias) => alias.alias));
+      return joinedOrNone(snapshot.aliases.map((alias) => alias.alias), t.historyPage.none);
     case "references":
       return joinedOrNone(
         snapshot.references.map((reference) =>
           [reference.title, reference.url, reference.note].filter(Boolean).join(" | ")
-        )
+        ),
+        t.historyPage.none
       );
     case "practiceExercises":
-      return joinedOrNone(snapshot.practiceExercises.map((exercise) => exercise.title));
+      return joinedOrNone(snapshot.practiceExercises.map((exercise) => exercise.title), t.historyPage.none);
   }
 }
 
 export default async function ConceptHistoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const [user, t] = await Promise.all([getCurrentUser(), getTranslations()]);
+  const [user, t, interfaceLocale] = await Promise.all([getCurrentUser(), getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
   const concept = await prisma.concept.findUnique({ where: { slug } });
 
@@ -75,16 +75,16 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
 
   return (
     <ForestPageLayout
-      title="Concept history"
+      title={t.historyPage.conceptTitle}
       eyebrow={concept.title}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description="A revision trail for this concept page."
+      description={t.historyPage.conceptDescription}
       workspaceClassName="forest-page-workspace-narrow"
-      meta={<p>{revisions.length} revisions</p>}
+      meta={<p>{t.historyPage.revisions(revisions.length)}</p>}
       actions={
         <Link href={`/concepts/${concept.slug}`} className="button secondary">
-          Back
+          {t.historyPage.back}
         </Link>
       }
     >
@@ -104,9 +104,9 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
             <section key={revision.id} id={`revision-${revision.id}`} className="revision-card panel p-4 scroll-mt-24">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-semibold">Revision {revision.id}</h2>
+                <h2 className="font-semibold">{t.historyPage.revision(revision.id)}</h2>
                 <p className="muted text-sm">
-                  {revision.createdAt.toLocaleString("en-US")}
+                  {revision.createdAt.toLocaleString(interfaceLocale)}
                   {revision.editedBy && (
                     <>
                       {" · "}
@@ -118,15 +118,15 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
               {user && (
                 <form action={rollbackConceptRevisionAction.bind(null, concept.id, revision.id)}>
                   <button type="submit" className="secondary">
-                    Roll back
+                    {t.historyPage.rollback}
                   </button>
                 </form>
               )}
             </div>
-            <p className="mt-3">{revision.editSummary || "No edit summary."}</p>
+            <p className="mt-3">{revision.editSummary || t.historyPage.noSummary}</p>
             {!snapshot && revision.conceptTitle && revision.conceptTitle !== previousRevision?.conceptTitle && (
               <div className="revision-field-diff mt-3">
-                <strong>{previousRevision?.conceptTitle ? "Title changed" : "Recorded title"}</strong>
+                <strong>{previousRevision?.conceptTitle ? t.historyPage.titleChanged : t.historyPage.recordedTitle}</strong>
                 {previousRevision?.conceptTitle && <del>{previousRevision.conceptTitle}</del>}
                 {previousRevision?.conceptTitle && <span aria-hidden="true">→</span>}
                 <ins>{revision.conceptTitle}</ins>
@@ -134,7 +134,7 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
             )}
             {!snapshot && revision.conceptKind && revision.conceptKind !== previousRevision?.conceptKind && (
               <div className="revision-field-diff mt-3">
-                <strong>{previousRevision?.conceptKind ? "Type changed" : "Recorded type"}</strong>
+                <strong>{previousRevision?.conceptKind ? t.historyPage.typeChanged : t.historyPage.recordedType}</strong>
                 {previousRevision?.conceptKind && <del>{t.concepts.kinds[previousRevision.conceptKind]}</del>}
                 {previousRevision?.conceptKind && <span aria-hidden="true">→</span>}
                 <ins>{t.concepts.kinds[revision.conceptKind]}</ins>
@@ -142,9 +142,9 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
             )}
             {snapshot && previousSnapshot && metadataChanges.map((field) => (
               <div className="revision-field-diff mt-3" key={field}>
-                <strong>{CONCEPT_SNAPSHOT_FIELD_LABELS[field]}</strong>
+                <strong>{t.historyPage.fields[field]}</strong>
                 <del>{conceptSnapshotValue(previousSnapshot, field, t)}</del>
-                <span aria-hidden="true">to</span>
+                <span aria-hidden="true">{t.historyPage.changedTo}</span>
                 <ins>{conceptSnapshotValue(snapshot, field, t)}</ins>
               </div>
             ))}
@@ -156,12 +156,13 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
                   beforeRevisionId={previousRevision.id}
                   defaultOpen={index === 0}
                   revisionId={revision.id}
+                  labels={t.historyPage}
                 />
               ) : metadataChanges.length === 0 ? (
                 <p className="muted mt-3 text-sm">
                   {snapshot && previousSnapshot
-                    ? "No content or metadata changes were recorded."
-                    : "This older revision predates detailed metadata tracking."}
+                    ? t.historyPage.noRecordedChanges
+                    : t.historyPage.predatesTracking}
                 </p>
               ) : null
             ) : (

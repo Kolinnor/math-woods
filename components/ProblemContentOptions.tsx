@@ -5,11 +5,24 @@ import { FieldHelp } from "@/components/FieldHelp";
 
 export function ProblemContentOptions({
   initialIsExercise,
-  initialShowRelatedProblems
+  initialShowRelatedProblems,
+  labels
 }: {
   initialIsExercise: boolean;
   initialShowRelatedProblems: boolean;
+  labels?: {
+    exercise: string;
+    exerciseHelp: string;
+    showRelatedProblems: string;
+    showRelatedProblemsHelp: string;
+  };
 }) {
+  const copy = labels ?? {
+    exercise: "Exercise",
+    exerciseHelp: "Exercises are designed to practise a specific concept. They appear on linked concept pages and are hidden from the default problem-browser view, while remaining available through the Exercises filter.",
+    showRelatedProblems: "Show related problems",
+    showRelatedProblemsHelp: "Display the related-problems section on this page. It is off by default for exercises."
+  };
   const [isExercise, setIsExercise] = useState(initialIsExercise);
   const [showRelatedProblems, setShowRelatedProblems] = useState(initialShowRelatedProblems);
   const relatedVisibilityWasChanged = useRef(false);
@@ -28,8 +41,8 @@ export function ProblemContentOptions({
           }}
         />
         <div className="field-label-with-help">
-          <strong>Exercise</strong>
-          <FieldHelp text="Exercises are designed to practise a specific concept. They appear on linked concept pages and are hidden from the default problem-browser view, while remaining available through the Exercises filter." />
+          <strong>{copy.exercise}</strong>
+          <FieldHelp text={copy.exerciseHelp} />
         </div>
       </label>
       <label className="checkbox-field">
@@ -43,8 +56,8 @@ export function ProblemContentOptions({
           }}
         />
         <div className="field-label-with-help">
-          <strong>Show related problems</strong>
-          <FieldHelp text="Display the related-problems section on this page. It is off by default for exercises." />
+          <strong>{copy.showRelatedProblems}</strong>
+          <FieldHelp text={copy.showRelatedProblemsHelp} />
         </div>
       </label>
     </>

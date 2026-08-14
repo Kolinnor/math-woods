@@ -4,12 +4,17 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 
 export const dynamic = "force-dynamic";
 
 export default async function RecentChangesPage() {
-  const user = await getCurrentUser();
+  const [user, t, interfaceLocale] = await Promise.all([
+    getCurrentUser(),
+    getTranslations(),
+    getInterfaceLocale()
+  ]);
   const revisions = await prisma.pageRevision.findMany({
     include: { editedBy: true },
     orderBy: { createdAt: "desc" },
@@ -29,12 +34,12 @@ export default async function RecentChangesPage() {
 
   return (
     <ForestPageLayout
-      title="Recent changes"
-      eyebrow="Revision trail"
+      title={t.recentChangesPage.title}
+      eyebrow={t.recentChangesPage.eyebrow}
       heroImage="/art/rye.jpg"
       heroAlt="Ivan Shishkin, Rye"
-      description="A transparent log of recent article and problem edits."
-      meta={<p>{revisions.length} latest revisions</p>}
+      description={t.recentChangesPage.description}
+      meta={<p>{t.recentChangesPage.latestRevisions(revisions.length)}</p>}
     >
       <div className="list-surface">
         {revisions.map((revision) => {
@@ -48,16 +53,20 @@ export default async function RecentChangesPage() {
             <article key={revision.id} className="list-row">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <span className="muted mr-2 text-xs uppercase">{revision.pageType.toLowerCase()}</span>
+                  <span className="muted mr-2 text-xs uppercase">
+                    {revision.pageType === "CONCEPT" ? t.recentChangesPage.concept : t.recentChangesPage.problem}
+                  </span>
                   <Link href={href} className="font-medium underline">
                     {page.title}
                   </Link>
                 </div>
-                <span className="muted text-xs">{revision.createdAt.toLocaleString("en-US")}</span>
+                <span className="muted text-xs">{revision.createdAt.toLocaleString(interfaceLocale)}</span>
               </div>
-              <p className="mt-1 text-sm">{revision.editSummary || "No edit summary."}</p>
+              <p className="mt-1 text-sm">
+                {localizeRevisionSummary(revision.editSummary, t.recentChangesPage.summaries) ?? t.recentChangesPage.noSummary}
+              </p>
               <p className="muted mt-1 text-xs">
-                {revision.editedBy ? <UserName user={revision.editedBy} /> : "unknown"}
+                {revision.editedBy ? <UserName user={revision.editedBy} /> : t.recentChangesPage.unknownUser}
               </p>
             </article>
           );
@@ -65,4 +74,26 @@ export default async function RecentChangesPage() {
       </div>
     </ForestPageLayout>
   );
+}
+
+function localizeRevisionSummary(
+  summary: string | null,
+  labels: Awaited<ReturnType<typeof getTranslations>>["recentChangesPage"]["summaries"]
+) {
+  if (!summary) return null;
+  const normalized = summary.trim().replace(/[.]$/, "").toLowerCase();
+  const translations: Record<string, string> = {
+    "problem created": labels.problemCreated,
+    "problem edited": labels.problemEdited,
+    "problem reviewed": labels.problemReviewed,
+    "problem translation created": labels.problemTranslationCreated,
+    "concept created": labels.conceptCreated,
+    "concept edited": labels.conceptEdited,
+    "concept marked usable": labels.conceptMarkedUsable,
+    "concept marked reviewed": labels.conceptMarkedReviewed,
+    "updated title": labels.titleUpdated,
+    "updated text": labels.textUpdated,
+    "updated linked exercises": labels.linkedExercisesUpdated
+  };
+  return translations[normalized] ?? summary;
 }

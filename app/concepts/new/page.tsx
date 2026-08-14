@@ -80,15 +80,14 @@ export default async function NewConceptPage({
   );
   const defaultContent = sourceConcept
     ? await prepareMarkdownForTranslation(sourceConcept.bodyMarkdown, initialLanguage)
-    : "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to [[polynomial]].";
+    : t.contentEditor.defaultConceptContent;
 
   return (
     <ForestPageLayout
-      title={sourceConcept ? "Translation" : "New concept"}
-      eyebrow={sourceConcept ? undefined : "Concept"}
+      title={sourceConcept ? t.contentEditor.translation : t.contentEditor.newConcept}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description={sourceConcept ? undefined : "A stub can be useful: name the idea, add a link, cite one source."}
+      description={sourceConcept ? undefined : t.contentEditor.conceptStubDescription}
       workspaceClassName={sourceConcept ? undefined : "forest-page-workspace-narrow"}
     >
     <div className={sourceConcept ? "translation-compose-page" : ""}>
@@ -97,7 +96,7 @@ export default async function NewConceptPage({
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
         {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Title</span>
+          <span className="text-sm font-medium">{t.contentEditor.title}</span>
           <input name="title" required defaultValue={sourceConcept?.title ?? title} />
         </label>
         <label className="grid gap-2">
@@ -111,10 +110,11 @@ export default async function NewConceptPage({
         <LanguageField
           defaultValue={initialLanguage}
           disabledValues={unavailableTranslationLanguages}
+          label={t.languageSelector.label}
           help={
             sourceConcept
-              ? "Languages already linked to this concept are disabled."
-              : "Each translation is its own page. Missing translations are not shown as existing pages."
+              ? t.contentEditor.linkedConceptLanguagesHelp
+              : t.contentEditor.independentConceptTranslationHelp
           }
         />
         <div className="grid gap-4">
@@ -132,18 +132,17 @@ export default async function NewConceptPage({
           />
           <label className="grid gap-2">
             <span className="field-label-with-help text-sm font-medium">
-              Aliases
-              <FieldHelp text="Alternative names for this concept. Separate aliases with commas or line breaks; spaces around each alias are ignored. Example: cyclic group, monogenic group." />
+              {t.contentEditor.aliases}
+              <FieldHelp text={t.contentEditor.aliasesHelp} />
             </span>
             <input name="aliases" />
           </label>
         </div>
         <div className="grid gap-2">
-          <span className="text-sm font-medium">Content</span>
+          <span className="text-sm font-medium">{t.contentEditor.content}</span>
           {sourceConcept && (
             <p className="translation-link-note">
-              Concept links are carried over automatically. Translate the visible text after <code>|</code>, but
-              keep the target before it so every language stays connected to the same mathematical idea.
+              {t.contentEditor.translationLinksNote}
             </p>
           )}
           <MarkdownEditor
@@ -155,10 +154,9 @@ export default async function NewConceptPage({
         {sourceConcept && targetTranslationLanguage && sourceConcept.practiceExercises.length > 0 && (
           <section className="translation-exercise-options">
             <div>
-              <h2>Linked exercises</h2>
+              <h2>{t.contentEditor.linkedExercises}</h2>
               <p className="muted text-sm">
-                Exercises are full problem pages. Translate any of them in a separate tab; their translated version
-                will remain linked to this concept automatically.
+                {t.contentEditor.linkedExercisesTranslationHelp}
               </p>
             </div>
             <div className="translation-exercise-list">
@@ -171,10 +169,10 @@ export default async function NewConceptPage({
                   <div key={problem.translationGroupId} className="translation-exercise-item">
                     <div>
                       <strong>{problem.title}</strong>
-                      <span className="meta">Source: {problem.language.toUpperCase()}</span>
+                      <span className="meta">{t.contentEditor.sourceLanguage(problem.language.toUpperCase())}</span>
                     </div>
                     <Link href={href as never} target="_blank" rel="noreferrer" className="button secondary">
-                      {translatedSlug ? `Open ${initialLanguage.toUpperCase()} version` : "Also translate this exercise"}
+                      {translatedSlug ? t.contentEditor.openLanguageVersion(initialLanguage.toUpperCase()) : t.contentEditor.translateExercise}
                       <ExternalLink size={15} aria-hidden="true" />
                     </Link>
                   </div>
@@ -184,7 +182,7 @@ export default async function NewConceptPage({
           </section>
         )}
         <label className="grid gap-2">
-          <span className="text-sm font-medium">References</span>
+          <span className="text-sm font-medium">{t.contentEditor.references}</span>
           <textarea
             name="references"
             placeholder={"Reference title | https://example.org/source | Optional note\nBook title | | Chapter 3"}
@@ -192,14 +190,14 @@ export default async function NewConceptPage({
         </label>
           {sourceConcept && !targetTranslationLanguage && (
             <p className="quality-banner quality-needs-work text-sm" role="status">
-              All supported languages already exist for this concept.
+              {t.contentEditor.allConceptLanguagesExist}
             </p>
           )}
           <div className="content-editor-actions">
             <button type="submit" disabled={Boolean(sourceConcept && !targetTranslationLanguage)}>
-              {sourceConcept ? "Create translation" : "Create concept"}
+              {sourceConcept ? t.contentEditor.createTranslation : t.contentEditor.createConcept}
             </button>
-            <ContentPreviewButton contentType="concept" />
+            <ContentPreviewButton contentType="concept" locale={interfaceLocale} />
           </div>
         </ConceptCreateForm>
       </div>

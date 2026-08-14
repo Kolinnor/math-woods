@@ -12,19 +12,20 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { loadRenderedContributionPage } from "@/lib/contribution-page";
 import { prisma } from "@/lib/db";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
-function requestKindLabel(kind: "PROBLEM" | "CONCEPT") {
-  return kind === "PROBLEM" ? "Problem request" : "Concept request";
+function requestKindLabel(kind: "PROBLEM" | "CONCEPT", labels: { problemRequest: string; conceptRequest: string }) {
+  return kind === "PROBLEM" ? labels.problemRequest : labels.conceptRequest;
 }
 
-function requestStatusLabel(status: ContributionRequestStatus) {
-  if (status === ContributionRequestStatus.CLAIMED) return "In progress";
-  if (status === ContributionRequestStatus.COMPLETED) return "Completed";
-  return "Open";
+function requestStatusLabel(status: ContributionRequestStatus, labels: { open: string; inProgress: string; completed: string }) {
+  if (status === ContributionRequestStatus.CLAIMED) return labels.inProgress;
+  if (status === ContributionRequestStatus.COMPLETED) return labels.completed;
+  return labels.open;
 }
 
 export default async function ContributingPage({
@@ -32,7 +33,7 @@ export default async function ContributingPage({
 }: {
   searchParams?: Promise<{ request?: string }>;
 }) {
-  const [user, contributionPage, activeRequests, completedRequests, params] = await Promise.all([
+  const [user, contributionPage, activeRequests, completedRequests, params, t, locale] = await Promise.all([
     getCurrentUser(),
     loadRenderedContributionPage(),
     prisma.contributionRequest.findMany({
@@ -47,8 +48,11 @@ export default async function ContributingPage({
       take: 12,
       include: { requester: true, claimedBy: true }
     }),
-    searchParams ? searchParams : Promise.resolve({} as { request?: string })
+    searchParams ? searchParams : Promise.resolve({} as { request?: string }),
+    getTranslations(),
+    getInterfaceLocale()
   ]);
+  const labels = t.contributingPage;
   if (user) {
     await markNotificationsReadForHref(user.id, "/contributing#requests", [
       NotificationType.CONTRIBUTION_REQUEST_CLAIMED,
@@ -67,15 +71,15 @@ export default async function ContributingPage({
       title={contributionPage.content.title}
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      meta={<p>{allRequests.length} open or recent requests</p>}
+      meta={<p>{labels.requestCount(allRequests.length)}</p>}
       actions={
         <>
           <Link href={"/contributing/tasks" as Route} className="button">
-            What remains to be done
+            {labels.workRemaining}
           </Link>
           {canEditPage && (
             <Link href={"/contributing/edit" as Route} className="button secondary">
-              Edit page
+              {labels.editPage}
             </Link>
           )}
         </>
@@ -97,16 +101,16 @@ export default async function ContributingPage({
               <p className="section-eyebrow">{contributionPage.content.requestEyebrow}</p>
               <h2>{contributionPage.content.requestTitle}</h2>
             </div>
-            <div className="contribution-request-stats" aria-label="Contribution request summary">
-              <span>{openRequestCount} open</span>
-              <span>{claimedRequestCount} in progress</span>
-              <span>{completedRequests.length} recent completed</span>
+            <div className="contribution-request-stats" aria-label={labels.summaryLabel}>
+              <span>{labels.openCount(openRequestCount)}</span>
+              <span>{labels.inProgressCount(claimedRequestCount)}</span>
+              <span>{labels.recentCompletedCount(completedRequests.length)}</span>
             </div>
           </div>
           <p className="contribution-request-board-intro">{contributionPage.content.requestIntro}</p>
           {params.request === "created" && (
             <p className="success-banner mt-4" role="status">
-              Your request was added.
+              {labels.requestAdded}
             </p>
           )}
           <div className="contribution-requests mt-4">
@@ -121,34 +125,34 @@ export default async function ContributingPage({
                 <article key={request.id} className="contribution-request-card">
                   <div className="contribution-request-card-main">
                     <div className="flex flex-wrap gap-2">
-                      <span className="tag contribution-request-kind">{requestKindLabel(request.kind)}</span>
-                      <span className="tag contribution-request-status">{requestStatusLabel(request.status)}</span>
+                      <span className="tag contribution-request-kind">{requestKindLabel(request.kind, labels)}</span>
+                      <span className="tag contribution-request-status">{requestStatusLabel(request.status, labels)}</span>
                     </div>
                     <p>{request.body}</p>
                     <p className="meta">
-                      Requested by {request.requester ? <UserName user={request.requester} /> : "a deleted user"} /{" "}
-                      {request.createdAt.toLocaleDateString("en-US")}
-                      {request.claimedBy && <> / handled by <UserName user={request.claimedBy} /></>}
+                      {labels.requestedBy} {request.requester ? <UserName user={request.requester} /> : labels.deletedUser} /{" "}
+                      {request.createdAt.toLocaleDateString(locale)}
+                      {request.claimedBy && <> / {labels.handledBy} <UserName user={request.claimedBy} /></>}
                     </p>
                   </div>
                   {hasRequestActions && (
                     <div className="contribution-request-actions">
                       {canClaim && (
                         <form action={claimContributionRequestAction.bind(null, request.id)}>
-                          <button type="submit">I'll work on this</button>
+                          <button type="submit">{labels.claim}</button>
                         </form>
                       )}
                       {canComplete && (
                         <form action={completeContributionRequestAction.bind(null, request.id)}>
                           <button type="submit" className="secondary">
-                            Mark complete
+                            {labels.markComplete}
                           </button>
                         </form>
                       )}
                       {canRelease && (
                         <form action={releaseContributionRequestAction.bind(null, request.id)}>
                           <button type="submit" className="secondary">
-                            Release
+                            {labels.release}
                           </button>
                         </form>
                       )}
@@ -157,7 +161,7 @@ export default async function ContributingPage({
                 </article>
               );
             })}
-            {allRequests.length === 0 && <p className="muted panel p-5">No requests yet.</p>}
+            {allRequests.length === 0 && <p className="muted panel p-5">{labels.noRequests}</p>}
           </div>
         </section>
 
@@ -171,13 +175,13 @@ export default async function ContributingPage({
 
       <div className="mt-8 flex flex-wrap gap-3 border-t border-line pt-6">
         <Link href="/concepts/new" className="button secondary">
-          Add a concept
+          {labels.addConcept}
         </Link>
         <Link href="/problems?quality=NEEDS_WORK" className="button secondary">
-          Improve problems
+          {labels.improveProblems}
         </Link>
         <Link href="/recent-changes" className="button secondary">
-          Recent changes
+          {labels.recentChanges}
         </Link>
       </div>
     </ForestPageLayout>

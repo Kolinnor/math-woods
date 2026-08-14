@@ -35,6 +35,10 @@ export default function AppError({
       code="Math Woods"
       title="You got lost in the forest."
       message="We could not load this path. The error has been reported. If Math Woods is being restarted, this should only last a minute."
+      french={{
+        title: "Vous vous êtes perdu dans la forêt.",
+        message: "Cette page n’a pas pu être chargée. L’erreur a été signalée. Si Math Woods redémarre, cela ne devrait durer qu’une minute."
+      }}
       onRetry={reset}
     />
   );

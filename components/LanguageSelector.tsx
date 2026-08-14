@@ -18,6 +18,8 @@ import {
 
 type LanguageSelectorProps = {
   initialLanguage: string;
+  label: string;
+  title: string;
 };
 
 function rememberLanguage(language: string) {
@@ -26,7 +28,7 @@ function rememberLanguage(language: string) {
   )}; max-age=31536000; path=/; samesite=lax${location.protocol === "https:" ? "; secure" : ""}`;
 }
 
-export function LanguageSelector({ initialLanguage }: LanguageSelectorProps) {
+export function LanguageSelector({ initialLanguage, label, title }: LanguageSelectorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialActiveLanguage = parseActiveContentLanguage(initialLanguage);
@@ -49,12 +51,12 @@ export function LanguageSelector({ initialLanguage }: LanguageSelectorProps) {
   }, [activeRequestedLanguage, initialActiveLanguage, router]);
 
   return (
-    <label className="language-selector" title="Choose language">
+    <label className="language-selector" title={title}>
       <Languages size={16} aria-hidden="true" />
-      <span className="sr-only">Language</span>
+      <span className="sr-only">{label}</span>
       <select
         value={language}
-        aria-label="Language"
+        aria-label={label}
         onChange={(event) => {
           const nextLanguage = parseActiveContentLanguage(event.target.value);
           setLanguage(nextLanguage);

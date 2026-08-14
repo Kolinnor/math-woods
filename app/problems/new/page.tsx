@@ -19,7 +19,6 @@ import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
-import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownCollectionForTranslation } from "@/lib/translated-markdown";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
@@ -161,7 +160,7 @@ export default async function NewProblemPage({
 
   return (
     <ForestPageLayout
-      title={sourceProblem ? "Translation" : isExerciseByDefault ? "New exercise" : "New problem"}
+      title={sourceProblem ? t.contentEditor.translation : isExerciseByDefault ? t.contentEditor.newExercise : t.contentEditor.newProblem}
       heroImage="/art/rye.jpg"
       heroAlt="Ivan Shishkin, Rye"
       workspaceClassName={sourceProblem ? undefined : "forest-page-workspace-narrow"}
@@ -175,21 +174,20 @@ export default async function NewProblemPage({
           {sourceProblem && <input type="hidden" name="translationSourceSlug" value={sourceProblem.slug} />}
 
           <section className="problem-compose-card">
-            <div className="problem-compose-section-title">Essential information</div>
-            {explorationSlug && <p className="muted text-sm">Creating for an exploration.</p>}
-            {parentProblem && <p className="muted text-sm">Linked from "{parentProblem.title}".</p>}
+            <div className="problem-compose-section-title">{t.contentEditor.essentialInformation}</div>
+            {explorationSlug && <p className="muted text-sm">{t.contentEditor.creatingForExploration}</p>}
+            {parentProblem && <p className="muted text-sm">{t.contentEditor.linkedFrom(parentProblem.title)}</p>}
 
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Title</span>
+              <span className="text-sm font-medium">{t.contentEditor.title}</span>
               <input name="title" defaultValue={sourceProblem?.title ?? ""} placeholder="Roots and coefficients" />
             </label>
 
             <div className="grid gap-2">
-              <span className="text-sm font-medium">Statement</span>
+              <span className="text-sm font-medium">{t.contentEditor.statement}</span>
               {sourceProblem && (
                 <p className="translation-link-note">
-                  Concept links are carried over automatically. Translate the visible text after <code>|</code>, but
-                  keep the target before it so every language stays connected to the same mathematical idea.
+                  {t.contentEditor.translationLinksNote}
                 </p>
               )}
               <MarkdownEditor
@@ -203,13 +201,18 @@ export default async function NewProblemPage({
               <LanguageField
                 defaultValue={initialLanguage}
                 disabledValues={unavailableTranslationLanguages}
+                label={t.languageSelector.label}
                 help={
                   sourceProblem
-                    ? "Languages already linked to this problem are disabled."
-                    : "Each translation is its own page."
+                    ? t.contentEditor.linkedProblemLanguagesHelp
+                    : t.contentEditor.independentTranslationHelp
                 }
               />
-              <ProblemDifficultyField defaultValue={sourceProblem?.difficulty} />
+              <ProblemDifficultyField
+                defaultValue={sourceProblem?.difficulty}
+                help={t.contentEditor.difficultyHelp}
+                label={t.contentEditor.difficulty}
+              />
             </div>
 
             <ProblemDomainPicker
@@ -237,33 +240,33 @@ export default async function NewProblemPage({
 
           <div className="problem-compose-actions">
             <button type="submit" disabled={Boolean(sourceProblem && !targetTranslationLanguage)}>
-              Publish
+              {t.contentEditor.publish}
             </button>
-            <ContentPreviewButton contentType="problem" />
-            <ProblemDetailsDisclosure>
+            <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
+            <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
                 <section className="problem-compose-subsection">
-                  <h2>Origin</h2>
+                  <h2>{t.contentEditor.origin}</h2>
                   <label className="grid gap-2">
                     <span className="field-label-with-help text-sm font-medium">
-                      Approximate origin
-                      <FieldHelp text="Where the problem comes from, if known. Unknown is fine." />
+                      {t.contentEditor.approximateOrigin}
+                      <FieldHelp text={t.contentEditor.originHelp} />
                     </span>
-                    <input name="origin" defaultValue={sourceProblem?.origin ?? "Unknown"} placeholder="Unknown, IMO 1988, a textbook..." />
+                    <input name="origin" defaultValue={sourceProblem?.origin ?? t.contentEditor.unknown} placeholder={t.contentEditor.unknown} />
                   </label>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="grid gap-2">
-                      <span className="text-sm font-medium">Chapter or section</span>
+                      <span className="text-sm font-medium">{t.contentEditor.chapter}</span>
                       <input name="originChapter" defaultValue={sourceProblem?.originChapter ?? ""} placeholder="Chapter 4, Algebra" />
                     </label>
                     <label className="grid gap-2">
-                      <span className="text-sm font-medium">Page or problem number</span>
+                      <span className="text-sm font-medium">{t.contentEditor.pageNumber}</span>
                       <input name="originPage" defaultValue={sourceProblem?.originPage ?? ""} placeholder="p. 127, Problem 6" />
                     </label>
                   </div>
                   <label className="grid gap-2">
                     <span className="field-label-with-help text-sm font-medium">
-                      Provenance note
-                      <FieldHelp text="Add uncertainty, publication details, or context about the source." />
+                      {t.contentEditor.provenanceNote}
+                      <FieldHelp text={t.contentEditor.provenanceHelp} />
                     </span>
                     <textarea className="compact-textarea" name="originNote" defaultValue={sourceProblem?.originNote ?? ""} />
                   </label>
@@ -276,11 +279,11 @@ export default async function NewProblemPage({
                 />
 
                 <section className="problem-compose-subsection">
-                  <h2>Publishing options</h2>
+                  <h2>{t.contentEditor.publishingOptions}</h2>
                   <label className="checkbox-field">
                     <input name="listed" type="checkbox" defaultChecked={sourceProblem?.listed ?? isListedByDefault} />
                     <span>
-                      <strong>Listed in the problem browser</strong>
+                      <strong>{t.contentEditor.listed}</strong>
                     </span>
                   </label>
                   <ProblemContentOptions
@@ -288,17 +291,31 @@ export default async function NewProblemPage({
                     initialShowRelatedProblems={
                       sourceProblem?.showRelatedProblems ?? !isExerciseByDefault
                     }
+                    labels={{
+                      exercise: t.contentEditor.exercise,
+                      exerciseHelp: t.contentEditor.exerciseHelp,
+                      showRelatedProblems: t.contentEditor.showRelatedProblems,
+                      showRelatedProblemsHelp: t.contentEditor.showRelatedProblemsHelp
+                    }}
                   />
                   <ProblemVerificationFields
                     initialMode={sourceProblem?.verificationMode}
                     initialPrompt={sourceProblem?.verificationPrompt ?? ""}
                     initialAnswer={sourceProblem?.verificationAnswer ?? ""}
-                    modeOptions={Object.entries(VERIFICATION_MODE_LABELS)}
+                    modeOptions={Object.entries(t.contentEditor.verificationModes)}
+                    labels={{
+                      title: t.contentEditor.solveVerification,
+                      mode: t.contentEditor.verificationMode,
+                      question: t.contentEditor.verificationQuestion,
+                      questionPlaceholder: t.contentEditor.verificationQuestionPlaceholder,
+                      answer: t.contentEditor.expectedAnswer,
+                      answerPlaceholder: t.contentEditor.expectedAnswerPlaceholder
+                    }}
                   />
                 </section>
 
                 <section className="problem-compose-subsection">
-                  <h2>Related problems</h2>
+                  <h2>{t.contentEditor.relatedProblems}</h2>
                   <ProblemRelationPicker />
                 </section>
             </ProblemDetailsDisclosure>
@@ -306,7 +323,7 @@ export default async function NewProblemPage({
 
           {sourceProblem && !targetTranslationLanguage && (
             <p className="quality-banner quality-needs-work text-sm" role="status">
-              All supported languages already exist for this problem.
+              {t.contentEditor.allProblemLanguagesExist}
             </p>
           )}
         </ProblemCreateForm>

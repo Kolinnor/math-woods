@@ -5,6 +5,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { getCurrentUser } from "@/lib/auth";
 import { loadRenderedFaqSections } from "@/lib/faq";
+import { getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -21,37 +22,37 @@ function Faq({ question, answerHtml }: { question: string; answerHtml: string })
 }
 
 export default async function AboutPage() {
-  const [user, faqSections] = await Promise.all([getCurrentUser(), loadRenderedFaqSections()]);
+  const [user, faqSections, t] = await Promise.all([getCurrentUser(), loadRenderedFaqSections(), getTranslations()]);
   const canEditFaq = Boolean(user && canUseAdminTools(user));
 
   return (
     <ForestPageLayout
-      title="About"
+      title={t.about.title}
       heroImage="/art/morning-in-a-pine-forest.jpg"
       heroAlt="Ivan Shishkin, Morning in a Pine Forest"
       actions={
         canEditFaq && (
           <Link href={"/about/faq/edit" as Route} className="button secondary">
-            Edit FAQ
+            {t.about.editFaq}
           </Link>
         )
       }
     >
       <section className="about-promise">
-        <p className="about-eyebrow">Math Woods</p>
+        <p className="about-eyebrow">{t.about.promiseEyebrow}</p>
         <h1>
-          The{" "}
+          {t.about.promiseTitleBeforeLink}{" "}
           <a
             href="https://github.com/Kolinnor/math-woods"
             className="about-promise-link"
             target="_blank"
             rel="noopener noreferrer"
           >
-            Free
+            {t.about.promiseLink}
           </a>{" "}
-          Math Knowledge Graph.
+          {t.about.promiseTitleAfterLink}
         </h1>
-        <p>An open-source, community-curated database of mathematical problems and concepts.</p>
+        <p>{t.about.promiseDescription}</p>
       </section>
 
       {faqSections.map((section) => (
@@ -65,35 +66,35 @@ export default async function AboutPage() {
 
       <section className="about-links">
         <div>
-          <h2>Useful documents</h2>
-          <p className="muted">Short references for editing and contributing.</p>
+          <h2>{t.about.usefulDocuments}</h2>
+          <p className="muted">{t.about.usefulDocumentsDescription}</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Link href="/contributing" className="button secondary">
-            Contribution guidelines
+            {t.about.contributionGuidelines}
           </Link>
           <Link href="/suggestions" className="button secondary">
-            Suggest an improvement
+            {t.about.suggestImprovement}
           </Link>
         </div>
       </section>
 
       <section className="about-credit" id="credits">
-        <h2>Credits</h2>
+        <h2>{t.about.credits}</h2>
         <div className="about-credit-list">
           <p>
-            Forest paintings by Ivan Shishkin (1832-1898), public domain via{" "}
+            {t.about.forestCreditBeforeLink}{" "}
             <a
               href="https://commons.wikimedia.org/wiki/Category:Ivan_Shishkin"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Wikimedia Commons
+              {t.about.forestCreditLink}
             </a>
             .
           </p>
-          <p>Logo hand drawn by Nugget.</p>
-          <AvatarArtworkCredit label="Default avatar artwork" />
+          <p>{t.about.logoCredit}</p>
+          <AvatarArtworkCredit label={t.about.avatarCredit} />
         </div>
       </section>
     </ForestPageLayout>

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { translatedDomainLabel } from "@/lib/domains";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getTranslations } from "@/lib/i18n/server";
-import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
+import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
@@ -184,36 +184,36 @@ export default async function SearchPage({
 
   return (
     <ForestPageLayout
-      title="Search"
-      eyebrow="Find your way"
+      title={t.searchPage.title}
+      eyebrow={t.searchPage.eyebrow}
       heroImage="/art/brook-in-the-forest.jpg"
       heroAlt="Ivan Shishkin, Brook in the Forest"
-      description="Search across concepts, problems, and quotes."
+      description={t.searchPage.description}
       meta={
         query ? (
           <p>
-            {total} {contentLanguageLabel(preferredLanguage).toLowerCase()} results
+            {t.searchPage.resultCount(total, preferredLanguage)}
           </p>
         ) : (
-          <p>Enter a term to begin</p>
+          <p>{t.searchPage.enterTerm}</p>
         )
       }
     >
       <div className="mb-6">
         <LiveSearchForm className="mt-4 flex gap-2">
-          <input name="q" defaultValue={query} placeholder="Search Math Woods" autoFocus />
-          <button type="submit">Search</button>
+          <input name="q" defaultValue={query} placeholder={t.searchPage.placeholder} autoFocus />
+          <button type="submit">{t.common.search}</button>
         </LiveSearchForm>
         {query && (
           <p className="muted mt-3 text-sm" role="status" aria-live="polite">
-            {total} {contentLanguageLabel(preferredLanguage).toLowerCase()} results for "{query}"
+            {t.searchPage.resultsFor(total, preferredLanguage, query)}
           </p>
         )}
       </div>
 
       <div className="grid gap-7 lg:grid-cols-3">
         <section>
-          <h2 className="mb-3 font-semibold">Concepts</h2>
+          <h2 className="mb-3 font-semibold">{t.searchPage.concepts}</h2>
           <div className="grid gap-3">
             {concepts.map((concept) => (
               <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
@@ -230,7 +230,7 @@ export default async function SearchPage({
         </section>
 
         <section>
-          <h2 className="mb-3 font-semibold">Problems</h2>
+          <h2 className="mb-3 font-semibold">{t.searchPage.problems}</h2>
           <div className="grid gap-3">
             {problems.map((problem) => (
               <Link
@@ -248,7 +248,7 @@ export default async function SearchPage({
         </section>
 
         {EXPLORATIONS_ENABLED && <section>
-          <h2 className="mb-3 font-semibold">Explorations</h2>
+          <h2 className="mb-3 font-semibold">{t.searchPage.explorations}</h2>
           <div className="grid gap-3">
             {explorations.map((exploration) => (
               <Link key={exploration.id} href={`/explorations/${exploration.slug}/start` as never} className="panel block p-4">
@@ -259,7 +259,7 @@ export default async function SearchPage({
         </section>}
 
         <section>
-          <h2 className="mb-3 font-semibold">Quotes</h2>
+          <h2 className="mb-3 font-semibold">{t.searchPage.quotes}</h2>
           <div className="grid gap-3">
             {rankedQuotes.map((quote) => (
               <Link key={quote.id} href={`/quotes/${quote.slug}`} className="panel block p-4">
@@ -273,7 +273,7 @@ export default async function SearchPage({
 
       {query && total === 0 && (
         <p className="muted panel mt-6 p-5">
-          No results. Try another term, or create a missing concept from the Concepts page.
+          {t.searchPage.noResults}
         </p>
       )}
     </ForestPageLayout>

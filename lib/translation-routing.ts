@@ -42,6 +42,16 @@ export function selectContentTranslation<T extends TranslationEntry>(
     ?? null;
 }
 
+export function selectExactContentTranslation<T extends TranslationEntry>(
+  translations: readonly T[],
+  language: string
+) {
+  const requested = parseContentLanguage(language);
+  return translations.find(
+    (translation) => parseContentLanguage(translation.language) === requested
+  ) ?? null;
+}
+
 export function selectContentTranslationsByGroup<
   T extends TranslationEntry & { translationGroupId: string }
 >(translations: readonly T[], preferredLanguage: string) {
@@ -54,6 +64,22 @@ export function selectContentTranslationsByGroup<
   }
   return [...groups.values()].flatMap((group) => {
     const selected = selectContentTranslation(group, preferredLanguage);
+    return selected ? [selected] : [];
+  });
+}
+
+export function selectExactContentTranslationsByGroup<
+  T extends TranslationEntry & { translationGroupId: string }
+>(translations: readonly T[], language: string) {
+  const groups = new Map<string, T[]>();
+  for (const translation of translations) {
+    groups.set(translation.translationGroupId, [
+      ...(groups.get(translation.translationGroupId) ?? []),
+      translation
+    ]);
+  }
+  return [...groups.values()].flatMap((group) => {
+    const selected = selectExactContentTranslation(group, language);
     return selected ? [selected] : [];
   });
 }

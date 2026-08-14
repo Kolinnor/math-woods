@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
-export function ProblemDetailsDisclosure({ children }: { children: ReactNode }) {
+export function ProblemDetailsDisclosure({ children, label = "Add details" }: { children: ReactNode; label?: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -13,7 +13,7 @@ export function ProblemDetailsDisclosure({ children }: { children: ReactNode }) 
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        Add details
+        {label}
       </button>
       <div className="problem-compose-details-body problem-compose-card" hidden={!open}>
         {children}

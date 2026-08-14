@@ -81,18 +81,18 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
 
   return (
     <ForestPageLayout
-      title="Edit concept"
+      title={t.contentEditor.editConcept}
       eyebrow={concept.title}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description="Changes create a revision and refresh outgoing links automatically."
+      description={t.contentEditor.editDescription}
       workspaceClassName={concept.translatedFromConcept ? undefined : "forest-page-workspace-narrow"}
     >
       <div className={concept.translatedFromConcept ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
       <form action={updateConceptAction.bind(null, concept.id)} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Title</span>
+          <span className="text-sm font-medium">{t.contentEditor.title}</span>
           <input name="title" required defaultValue={concept.title} />
         </label>
         <label className="grid gap-2">
@@ -106,16 +106,17 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
         <LanguageField
           defaultValue={concept.language}
           disabledValues={siblingTranslations.map((translation) => translation.language)}
-          help="Changing this moves the page to another language inside the same translation group."
+          label={t.languageSelector.label}
+          help={t.contentEditor.languageMoveHelp}
         />
         {concept.translatedFromConcept && (
           <label className="checkbox-field">
             <input name="markTranslationFresh" type="checkbox" defaultChecked={false} />
             <span>
-              <strong>Mark translation up to date</strong>
+              <strong>{t.contentEditor.markTranslationFresh}</strong>
               <small>
                 Source: {concept.translatedFromConcept.title}
-                {staleTranslation ? ` / newer text revision ${sourceRevisionId} available` : " / no newer source text detected"}
+                {staleTranslation ? ` / ${t.contentEditor.newerRevision(sourceRevisionId)}` : ` / ${t.contentEditor.noNewerSource}`}
               </small>
             </span>
           </label>
@@ -135,14 +136,14 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           />
           <label className="grid gap-2">
             <span className="field-label-with-help text-sm font-medium">
-              Aliases
-              <FieldHelp text="Alternative names for this concept. Separate aliases with commas or line breaks; spaces around each alias are ignored. Example: cyclic group, monogenic group." />
+              {t.contentEditor.aliases}
+              <FieldHelp text={t.contentEditor.aliasesHelp} />
             </span>
             <input name="aliases" defaultValue={concept.aliases.map((alias) => alias.alias).join(", ")} />
           </label>
         </div>
         <div className="grid gap-2">
-          <span className="text-sm font-medium">Content</span>
+          <span className="text-sm font-medium">{t.contentEditor.content}</span>
           <MarkdownEditor
             name="bodyMarkdown"
             initialValue={concept.bodyMarkdown}
@@ -153,34 +154,34 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
         </div>
         <details className="concept-linked-exercises-editor">
           <summary>
-            <span>Linked exercises</span>
+            <span>{t.contentEditor.linkedExercises}</span>
           </summary>
           <div className="concept-linked-exercises-editor-body">
             <p className="muted text-sm">
-              Choose the exercises shown in the practice queue. Readers see them from easiest to hardest.
+              {t.contentEditor.exerciseQueueHelp}
             </p>
             <OrderedProblemPicker
               createHref="/problems/new?exercise=1"
-              createLabel="Add exercise"
+              createLabel={t.contentEditor.addExercise}
               createInNewTab
               initialProblems={initialExercises}
               inputName="exerciseIds"
               maxProblems={MAX_CONCEPT_EXERCISES}
               searchParams="exercise=1"
               labels={{
-                empty: "No exercises selected.",
-                maximumSelected: "Maximum {maximum} exercises selected",
-                noMatches: "No matching exercises.",
-                remove: "Remove exercise {title}",
-                search: "Search exercises",
-                searchPlaceholder: "Search exercises by title or slug",
-                searching: "Searching exercises..."
+                empty: t.contentEditor.noExercises,
+                maximumSelected: t.contentEditor.maximumExercises,
+                noMatches: t.contentEditor.noMatchingExercises,
+                remove: t.contentEditor.removeExercise,
+                search: t.contentEditor.searchExercises,
+                searchPlaceholder: t.contentEditor.searchExercisesPlaceholder,
+                searching: t.contentEditor.searchingExercises
               }}
             />
           </div>
         </details>
         <label className="grid gap-2">
-          <span className="text-sm font-medium">References</span>
+          <span className="text-sm font-medium">{t.contentEditor.references}</span>
           <textarea
             name="references"
             defaultValue={concept.references
@@ -196,26 +197,26 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
               defaultChecked={concept.canAppearInConceptBrowser}
             />
             <span>
-              <strong>Can be featured in the concept browser</strong>
-              <small>Show this concept in the featured concepts panel on the Concepts page.</small>
+              <strong>{t.contentEditor.featureConcept}</strong>
+              <small>{t.contentEditor.featureConceptHelp}</small>
             </span>
           </label>
         )}
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Edit summary</span>
-          <input name="editSummary" placeholder="Added example, clarified definition..." />
+          <span className="text-sm font-medium">{t.contentEditor.editSummary}</span>
+          <input name="editSummary" placeholder={t.contentEditor.editSummaryPlaceholder} />
         </label>
         <div className="content-editor-actions">
-          <button type="submit">Save changes</button>
-          <ContentPreviewButton contentType="concept" />
+          <button type="submit">{t.contentEditor.saveChanges}</button>
+          <ContentPreviewButton contentType="concept" locale={interfaceLocale} />
         </div>
       </form>
 
       {canDeleteCurrentConcept && (
         <section className="danger-zone mt-6">
           <div>
-            <h2>Delete concept</h2>
-            <p>This permanently removes the concept page. Links pointing to it will become missing concept links.</p>
+            <h2>{t.contentEditor.deleteConcept}</h2>
+            <p>{t.contentEditor.deleteConceptHelp}</p>
           </div>
           <form action={deleteConceptAction.bind(null, concept.id)}>
             <DeleteConceptButton title={concept.title} />

@@ -6,6 +6,7 @@ import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { problemStyleLabel } from "@/lib/problem-styles";
 
@@ -13,7 +14,11 @@ export const dynamic = "force-dynamic";
 
 export default async function QuotePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const user = await getCurrentUser();
+  const [user, t, interfaceLocale] = await Promise.all([
+    getCurrentUser(),
+    getTranslations(),
+    getInterfaceLocale()
+  ]);
   const quote = await prisma.quote.findUnique({
     where: { slug },
     include: {
@@ -40,20 +45,20 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
 
   return (
     <ForestPageLayout
-      title={quote.attributedTo ?? "Unattributed"}
-      eyebrow="Quote"
+      title={quote.attributedTo ?? t.quotePage.unattributed}
+      eyebrow={t.quotePage.eyebrow}
       heroImage="/art/pine-forest.jpg"
       heroAlt="Ivan Shishkin, Pine Forest"
       description={
         <span>
-          added by {quote.contributor ? <UserName user={quote.contributor} /> : "former user"} on{" "}
-          {quote.createdAt.toLocaleDateString("en-US")}
+          {t.quotePage.addedBy} {quote.contributor ? <UserName user={quote.contributor} /> : t.quotePage.formerUser} {t.quotePage.on}{" "}
+          {quote.createdAt.toLocaleDateString(interfaceLocale)}
         </span>
       }
       meta={
         <>
-          <p>{relatedProblems.length} related problems</p>
-          <p>{quote.relatedConcepts.length} related concepts</p>
+          <p>{t.quotePage.relatedProblemsCount(relatedProblems.length)}</p>
+          <p>{t.quotePage.relatedConceptsCount(quote.relatedConcepts.length)}</p>
         </>
       }
     >
@@ -66,14 +71,14 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
 
         {quote.noteHtml && (
           <section className="mt-6 reading-surface">
-            <h2 className="mb-3 text-lg font-semibold">Note</h2>
+            <h2 className="mb-3 text-lg font-semibold">{t.quotePage.note}</h2>
             <MarkdownBlock html={quote.noteHtml} />
           </section>
         )}
 
         <section className="mt-6 grid gap-4 md:grid-cols-2">
           <div>
-            <h2 className="mb-3 text-lg font-semibold">Related problems</h2>
+            <h2 className="mb-3 text-lg font-semibold">{t.quotePage.relatedProblems}</h2>
             <div className="grid gap-3">
               {relatedProblems.map(({ problem }) => (
                 <Link key={problem.id} href={`/problems/${problem.slug}`} className="panel block p-4">
@@ -89,12 +94,12 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
                   </div>
                 </Link>
               ))}
-              {relatedProblems.length === 0 && <p className="empty-state">No related problems yet.</p>}
+              {relatedProblems.length === 0 && <p className="empty-state">{t.quotePage.noRelatedProblems}</p>}
             </div>
           </div>
 
           <div>
-            <h2 className="mb-3 text-lg font-semibold">Related concepts</h2>
+            <h2 className="mb-3 text-lg font-semibold">{t.quotePage.relatedConcepts}</h2>
             <div className="grid gap-3">
               {quote.relatedConcepts.map(({ concept }) => (
                 <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
@@ -104,7 +109,7 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
                   )}
                 </Link>
               ))}
-              {quote.relatedConcepts.length === 0 && <p className="empty-state">No related concepts yet.</p>}
+              {quote.relatedConcepts.length === 0 && <p className="empty-state">{t.quotePage.noRelatedConcepts}</p>}
             </div>
           </div>
         </section>
@@ -113,15 +118,15 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
       <aside className="grid content-start gap-5">
         <section className="action-surface">
           <Link href="/quotes" className="button secondary">
-            All quotes
+            {t.quotePage.allQuotes}
           </Link>
           <details className="problem-origin text-sm" open>
             <summary>
-              <span className="muted">Provenance</span>
+              <span className="muted">{t.quotePage.provenance}</span>
               <span>{quote.provenance}</span>
             </summary>
             <p className="whitespace-pre-wrap pt-3">
-              {quote.provenanceDetails || "No further provenance details are known yet."}
+              {quote.provenanceDetails || t.quotePage.noProvenanceDetails}
             </p>
           </details>
         </section>

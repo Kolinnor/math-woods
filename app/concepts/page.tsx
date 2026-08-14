@@ -21,7 +21,7 @@ import {
   PROBLEM_DOMAINS,
   translatedDomainLabel as translatedDomainOptionLabel
 } from "@/lib/domains";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { missingConcepts } from "@/lib/internal-links";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
@@ -89,7 +89,7 @@ export default async function ConceptsPage({
   }>;
 }) {
   const user = await getCurrentUser();
-  const t = await getTranslations();
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const preferredLanguage = await getPreferredContentLanguage();
   const {
     q = "",
@@ -409,7 +409,7 @@ export default async function ConceptsPage({
                     <p className="concept-ledger-aliases">{concept.aliases.map((alias) => alias.alias).join(", ")}</p>
                   )}
                 </div>
-                <span className="concept-ledger-updated">{t.common.updated} {concept.updatedAt.toLocaleDateString("en-US")}</span>
+                <span className="concept-ledger-updated">{t.common.updated} {concept.updatedAt.toLocaleDateString(interfaceLocale)}</span>
               </Link>
             ))}
             {concepts.length === 0 && <p className="empty-state">{t.concepts.noMatches}</p>}

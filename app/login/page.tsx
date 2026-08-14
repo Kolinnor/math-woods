@@ -13,13 +13,13 @@ function loginErrorMessage(reason: string | undefined, t: Awaited<ReturnType<typ
   return null;
 }
 
-function oauthErrorMessage(reason: string | undefined) {
-  if (reason === "unavailable") return "This sign-in provider is not available right now.";
+function oauthErrorMessage(reason: string | undefined, t: Awaited<ReturnType<typeof getTranslations>>) {
+  if (reason === "unavailable") return t.auth.errors.oauthUnavailable;
   if (reason === "deactivated") {
-    return "This external account is linked to a deactivated Math Woods account. Reactivate that account before signing in again.";
+    return t.auth.errors.oauthDeactivated;
   }
-  if (reason === "failed") return "The external sign-in could not be completed. Please try again.";
-  if (reason === "provider") return "Unknown sign-in provider.";
+  if (reason === "failed") return t.auth.errors.oauthFailed;
+  if (reason === "provider") return t.auth.errors.oauthUnknownProvider;
   return null;
 }
 
@@ -39,7 +39,7 @@ export default async function LoginPage({
   const params = searchParams ? await searchParams : {};
   const loginError = loginErrorMessage(params.loginError, t);
   const registerError = registerErrorMessage(params.registerError, t);
-  const oauthError = oauthErrorMessage(params.oauthError);
+  const oauthError = oauthErrorMessage(params.oauthError, t);
   const providers = configuredOAuthProviders();
   const returnTo = safeReturnTo(params.returnTo);
 
@@ -54,7 +54,7 @@ export default async function LoginPage({
       {oauthError && <p className="quality-banner quality-needs-work">{oauthError}</p>}
       {providers.length > 0 && (
         <section className="panel oauth-login-panel">
-          <h2>Continue with an account</h2>
+          <h2>{t.auth.continueWithAccount}</h2>
           <div className="oauth-provider-buttons">
             {providers.map((provider) => (
               <Link
@@ -63,7 +63,7 @@ export default async function LoginPage({
                 className="button secondary"
               >
                 <OAuthProviderIcon provider={provider.key} />
-                <span>Continue with {provider.label}</span>
+                <span>{t.auth.continueWithProvider(provider.label)}</span>
               </Link>
             ))}
           </div>

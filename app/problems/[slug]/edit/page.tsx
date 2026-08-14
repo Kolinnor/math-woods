@@ -34,7 +34,6 @@ import {
   canUseAdminTools
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
-import { VERIFICATION_MODE_LABELS } from "@/lib/problem-verification";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { latestProblemTextRevisionId } from "@/lib/translation-freshness";
 
@@ -113,21 +112,21 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
 
   return (
     <ForestPageLayout
-      title={publishesImmediately ? "Edit problem" : "Propose an edit"}
+      title={publishesImmediately ? t.contentEditor.editProblem : t.contentEditor.proposeEdit}
       eyebrow={problem.title}
       heroImage="/art/rye.jpg"
       heroAlt="Ivan Shishkin, Rye"
       description={publishesImmediately
-        ? "Changes create a revision and refresh wikilinks automatically."
-        : "Your changes will be sent to an admin for review before anyone else can see them."}
+        ? t.contentEditor.editProblemDescription
+        : t.contentEditor.proposalDescription}
       workspaceClassName={problem.translatedFromProblem ? undefined : "forest-page-workspace-narrow"}
       actions={
         <>
           <Link href={`/problems/${problem.slug}`} className="button secondary">
-            View problem
+            {t.contentEditor.viewProblem}
           </Link>
           <Link href={`/problems/${problem.slug}/history`} className="button secondary">
-            History
+            {t.contentEditor.history}
           </Link>
         </>
       }
@@ -136,9 +135,9 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
         <div className="translation-compose-main">
           {pendingProposal && (
             <section className="quality-banner quality-unreviewed mb-4" role="status">
-              <strong>You already have a proposed edit awaiting review.</strong>{" "}
-              Submitting this form again will replace it with a proposal based on the current public version.
-              {pendingProposal.editSummary ? ` Current summary: ${pendingProposal.editSummary}.` : ""}
+              <strong>{t.contentEditor.pendingProposal}</strong>{" "}
+              {t.contentEditor.pendingProposalHelp}
+              {pendingProposal.editSummary ? ` ${t.contentEditor.currentSummary(pendingProposal.editSummary)}` : ""}
             </section>
           )}
           <ProblemConcurrentEditForm
@@ -146,17 +145,18 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             baseVersion={problem.version}
             latestHref={`/problems/${problem.slug}`}
             historyHref={`/problems/${problem.slug}/history`}
+            locale={interfaceLocale}
           >
             <section className="problem-compose-card">
               <div className="problem-compose-section-title">
-                {publishesImmediately ? "Essential information" : "Propose an edit"}
+                {publishesImmediately ? t.contentEditor.essentialInformation : t.contentEditor.proposeEdit}
               </div>
               <label className="grid gap-2">
-                <span className="text-sm font-medium">Title</span>
+                <span className="text-sm font-medium">{t.contentEditor.title}</span>
                 <input name="title" defaultValue={problem.title} />
               </label>
               <div className="grid gap-2">
-                <span className="text-sm font-medium">Statement</span>
+                <span className="text-sm font-medium">{t.contentEditor.statement}</span>
                 <MarkdownEditor
                   name="bodyMarkdown"
                   initialValue={problem.bodyMarkdown}
@@ -169,9 +169,14 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                 <LanguageField
                   defaultValue={problem.language}
                   disabledValues={siblingTranslations.map((translation) => translation.language)}
-                  help="Changing this moves the page inside the same translation group."
+                  help={t.contentEditor.languageMoveHelp}
+                  label={t.languageSelector.label}
                 />
-                <ProblemDifficultyField defaultValue={problem.difficulty} />
+                <ProblemDifficultyField
+                  defaultValue={problem.difficulty}
+                  help={t.contentEditor.difficultyHelp}
+                  label={t.contentEditor.difficulty}
+                />
               </div>
               <ProblemDomainPicker
                 domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
@@ -184,32 +189,32 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             </section>
 
             <div className="problem-compose-actions">
-              <button type="submit">{publishesImmediately ? "Save changes" : "Submit for review"}</button>
-              <ContentPreviewButton contentType="problem" />
-              <ProblemDetailsDisclosure>
+              <button type="submit">{publishesImmediately ? t.contentEditor.saveChanges : t.contentEditor.submitForReview}</button>
+              <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
+              <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
                   <section className="problem-compose-subsection">
-                    <h2>Origin</h2>
+                    <h2>{t.contentEditor.origin}</h2>
                     <label className="grid gap-2">
                       <span className="field-label-with-help text-sm font-medium">
-                        Approximate origin
-                        <FieldHelp text="Where the problem comes from, if known. Unknown is fine." />
+                        {t.contentEditor.approximateOrigin}
+                        <FieldHelp text={t.contentEditor.originHelp} />
                       </span>
                       <input name="origin" defaultValue={problem.origin} />
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className="grid gap-2">
-                        <span className="text-sm font-medium">Chapter or section</span>
+                        <span className="text-sm font-medium">{t.contentEditor.chapter}</span>
                         <input name="originChapter" defaultValue={problem.originChapter ?? ""} />
                       </label>
                       <label className="grid gap-2">
-                        <span className="text-sm font-medium">Page or problem number</span>
+                        <span className="text-sm font-medium">{t.contentEditor.pageNumber}</span>
                         <input name="originPage" defaultValue={problem.originPage ?? ""} />
                       </label>
                     </div>
                     <label className="grid gap-2">
                       <span className="field-label-with-help text-sm font-medium">
-                        Provenance note
-                        <FieldHelp text="Add uncertainty, publication details, or context about the source." />
+                        {t.contentEditor.provenanceNote}
+                        <FieldHelp text={t.contentEditor.provenanceHelp} />
                       </span>
                       <textarea className="compact-textarea" name="originNote" defaultValue={problem.originNote ?? ""} />
                     </label>
@@ -222,35 +227,41 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                   />
 
                   <section className="problem-compose-subsection">
-                    <h2>Publishing options</h2>
+                    <h2>{t.contentEditor.publishingOptions}</h2>
                     <label className="checkbox-field">
                       <input name="listed" type="checkbox" defaultChecked={problem.listed} />
                       <span>
-                        <strong>Listed in the problem browser</strong>
+                        <strong>{t.contentEditor.listed}</strong>
                       </span>
                     </label>
                     <ProblemContentOptions
                       initialIsExercise={problem.isExercise}
                       initialShowRelatedProblems={problem.showRelatedProblems}
+                      labels={{
+                        exercise: t.contentEditor.exercise,
+                        exerciseHelp: t.contentEditor.exerciseHelp,
+                        showRelatedProblems: t.contentEditor.showRelatedProblems,
+                        showRelatedProblemsHelp: t.contentEditor.showRelatedProblemsHelp
+                      }}
                     />
                     {canManageFrontPageEligibility && (
                       <label className="checkbox-field">
                         <input name="canAppearOnFrontPage" type="checkbox" defaultChecked={problem.canAppearOnFrontPage} />
                         <span>
-                          <strong>Featured on the front page</strong>
+                          <strong>{t.contentEditor.featureProblem}</strong>
                         </span>
                       </label>
                     )}
                     {canSetCurrentQualityStatus && (
                       <label className="grid gap-2">
                         <span className="field-label-with-help text-sm font-medium">
-                          Status
-                          <FieldHelp text="Moderation quality state used by trusted users and admins." />
+                          {t.contentEditor.status}
+                          <FieldHelp text={t.contentEditor.qualityStatusHelp} />
                         </span>
                         <select name="qualityStatus" defaultValue={problem.qualityStatus}>
-                          {canSetUnreviewedStatus && <option value="UNREVIEWED">Unreviewed (default)</option>}
-                          {canSetNeedsWorkStatus && <option value="NEEDS_WORK">Needs work</option>}
-                          {canKeepReviewedStatus && <option value="REVIEWED">Reviewed</option>}
+                          {canSetUnreviewedStatus && <option value="UNREVIEWED">{t.contentEditor.unreviewedDefault}</option>}
+                          {canSetNeedsWorkStatus && <option value="NEEDS_WORK">{t.contentEditor.needsWork}</option>}
+                          {canKeepReviewedStatus && <option value="REVIEWED">{t.contentEditor.reviewed}</option>}
                         </select>
                       </label>
                     )}
@@ -258,7 +269,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                       <label className="checkbox-field">
                         <input name="markTranslationFresh" type="checkbox" defaultChecked={false} />
                         <span>
-                          <strong>Mark translation up to date</strong>
+                          <strong>{t.contentEditor.markTranslationFresh}</strong>
                         </span>
                       </label>
                     )}
@@ -267,20 +278,28 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                         initialMode={problem.verificationMode}
                         initialPrompt={problem.verificationPrompt ?? ""}
                         initialAnswer={problem.verificationAnswer ?? ""}
-                        modeOptions={Object.entries(VERIFICATION_MODE_LABELS)}
+                        modeOptions={Object.entries(t.contentEditor.verificationModes)}
+                        labels={{
+                          title: t.contentEditor.solveVerification,
+                          mode: t.contentEditor.verificationMode,
+                          question: t.contentEditor.verificationQuestion,
+                          questionPlaceholder: t.contentEditor.verificationQuestionPlaceholder,
+                          answer: t.contentEditor.expectedAnswer,
+                          answerPlaceholder: t.contentEditor.expectedAnswerPlaceholder
+                        }}
                       />
                     )}
                     <label className="grid gap-2">
                       <span className="field-label-with-help text-sm font-medium">
-                        Edit summary
-                        <FieldHelp text="A short note shown in history and notifications." />
+                        {t.contentEditor.editSummary}
+                        <FieldHelp text={t.contentEditor.editSummaryHelp} />
                       </span>
-                      <input name="editSummary" placeholder="Clarified statement, fixed notation..." />
+                      <input name="editSummary" placeholder={t.contentEditor.problemEditSummaryPlaceholder} />
                     </label>
                   </section>
 
                   <section id="related-problems-editor" className="problem-compose-subsection">
-                    <h2>Related problems</h2>
+                    <h2>{t.contentEditor.relatedProblems}</h2>
                     <ProblemRelationPicker
                       excludeSlug={problem.slug}
                       initialGroups={relatedGroups}
@@ -293,7 +312,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           {canManageProblemHints && publishesImmediately && (
             <section className="problem-hint-admin panel mt-6 grid gap-5 p-5">
               <div>
-                <h2 className="text-lg font-semibold">Hints before solutions</h2>
+                <h2 className="text-lg font-semibold">{t.contentEditor.hintsBeforeSolutions}</h2>
               </div>
 
               {problem.hints.length > 0 && (
@@ -303,12 +322,12 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                       <form action={updateProblemHintAction.bind(null, hint.id, problem.slug)} className="grid gap-3">
                         <div className="flex flex-wrap items-end gap-3">
                           <label className="grid gap-2">
-                            <span className="text-sm font-medium">Hint {index + 1} order</span>
+                            <span className="text-sm font-medium">{t.contentEditor.hintOrder(index + 1)}</span>
                             <input name="position" type="number" defaultValue={hint.position} />
                           </label>
                         </div>
                         <div className="grid gap-2">
-                          <span className="text-sm font-medium">Hint Markdown</span>
+                          <span className="text-sm font-medium">{t.contentEditor.hintMarkdown}</span>
                           <MarkdownEditor
                             name="bodyMarkdown"
                             initialValue={hint.bodyMarkdown}
@@ -316,11 +335,11 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                             draftKey={`problem:${problem.id}:hint:${hint.id}`}
                           />
                         </div>
-                        <button type="submit">Save hint</button>
+                        <button type="submit">{t.contentEditor.saveHint}</button>
                       </form>
                       <form action={deleteProblemHintAction.bind(null, hint.id, problem.slug)}>
                         <button type="submit" className="danger">
-                          Delete hint
+                          {t.contentEditor.deleteHint}
                         </button>
                       </form>
                     </article>
@@ -329,9 +348,9 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
               )}
 
               <form action={createProblemHintAction.bind(null, problem.id, problem.slug)} className="problem-hint-admin-card grid gap-3">
-                <h3 className="font-semibold">Add hint</h3>
+                <h3 className="font-semibold">{t.contentEditor.addHint}</h3>
                 <div className="grid gap-2">
-                  <span className="text-sm font-medium">Hint Markdown</span>
+                  <span className="text-sm font-medium">{t.contentEditor.hintMarkdown}</span>
                   <MarkdownEditor
                     name="bodyMarkdown"
                     minHeight="8rem"
@@ -340,7 +359,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
                   />
                 </div>
                 <button type="submit" className="secondary">
-                  Add hint
+                  {t.contentEditor.addHint}
                 </button>
               </form>
             </section>
@@ -349,8 +368,8 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
           {canDeleteCurrentProblem && (
             <section className="danger-zone mt-6">
               <div>
-                <h2>Delete problem</h2>
-                <p>This archives the problem and removes it from public problem lists and concept backlinks.</p>
+                <h2>{t.contentEditor.deleteProblem}</h2>
+                <p>{t.contentEditor.deleteProblemHelp}</p>
               </div>
               <form action={deleteProblemAction.bind(null, problem.id)}>
                 <DeleteProblemButton title={problem.title} />

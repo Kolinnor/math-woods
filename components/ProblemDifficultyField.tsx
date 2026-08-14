@@ -9,16 +9,17 @@ import { PROBLEM_DIFFICULTY_HELP, problemDifficultyTone } from "@/lib/problem-di
 type ProblemDifficultyFieldProps = {
   defaultValue?: number | null;
   help?: string;
+  label?: string;
 };
 
-export function ProblemDifficultyField({ defaultValue, help = PROBLEM_DIFFICULTY_HELP }: ProblemDifficultyFieldProps) {
+export function ProblemDifficultyField({ defaultValue, help = PROBLEM_DIFFICULTY_HELP, label = "Difficulty" }: ProblemDifficultyFieldProps) {
   const [value, setValue] = useState(defaultValue ?? 50);
   const position = ((value - MIN_PROBLEM_DIFFICULTY) / (MAX_PROBLEM_DIFFICULTY - MIN_PROBLEM_DIFFICULTY)) * 100;
 
   return (
     <label className="problem-compose-difficulty">
       <span className="field-label-with-help text-sm font-medium">
-        Difficulty
+        {label}
         {help && <FieldHelp text={help} />}
       </span>
       <span className="problem-compose-difficulty-row">

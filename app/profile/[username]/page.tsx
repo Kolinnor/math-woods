@@ -17,7 +17,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { problemLinkClass } from "@/lib/problem-link";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { hasTrustedPrivileges } from "@/lib/permissions";
@@ -38,7 +38,7 @@ export default async function ProfilePage({
   searchParams: Promise<{ view?: string }>;
 }) {
   const { username } = await params;
-  const t = await getTranslations();
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const requestedView = (await searchParams).view;
   const view =
     requestedView === "solved" || requestedView === "favorites" || requestedView === "achievements"
@@ -330,7 +330,7 @@ export default async function ProfilePage({
                       <strong>{achievement.title}</strong>
                       <p>{achievement.description}</p>
                     </div>
-                    <span>{unlock ? unlock.unlockedAt.toLocaleDateString("en-US") : t.profile.locked}</span>
+                    <span>{unlock ? unlock.unlockedAt.toLocaleDateString(interfaceLocale) : t.profile.locked}</span>
                   </article>
                 );
               })}
@@ -394,7 +394,7 @@ export default async function ProfilePage({
             {revisions.map((revision) => (
               <div key={revision.id}>
                 <div className="font-medium">{revision.pageType.toLowerCase()} revision {revision.id}</div>
-                <div className="muted">{revision.createdAt.toLocaleString("en-US")}</div>
+                <div className="muted">{revision.createdAt.toLocaleString(interfaceLocale)}</div>
               </div>
             ))}
             {revisions.length === 0 && <p className="muted">{t.profile.noEdits}</p>}

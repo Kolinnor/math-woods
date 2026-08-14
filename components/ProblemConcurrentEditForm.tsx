@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { ProblemEditActionState } from "@/lib/actions/problem-actions";
+import { dictionaryForLocale } from "@/lib/i18n/dictionary";
+import type { InterfaceLocale } from "@/lib/i18n/types";
 
 type ProblemConcurrentEditFormProps = {
   action: (state: ProblemEditActionState, formData: FormData) => Promise<ProblemEditActionState>;
@@ -10,6 +12,7 @@ type ProblemConcurrentEditFormProps = {
   latestHref: string;
   historyHref: string;
   children: ReactNode;
+  locale?: InterfaceLocale;
 };
 
 const initialState: ProblemEditActionState = { status: "idle" };
@@ -19,8 +22,10 @@ export function ProblemConcurrentEditForm({
   baseVersion,
   latestHref,
   historyHref,
-  children
+  children,
+  locale = "en"
 }: ProblemConcurrentEditFormProps) {
+  const t = dictionaryForLocale(locale);
   const [state, formAction] = useActionState(action, initialState);
   const [acceptedConflictVersion, setAcceptedConflictVersion] = useState<number | null>(null);
   const conflictRef = useRef<HTMLElement | null>(null);
@@ -47,7 +52,7 @@ export function ProblemConcurrentEditForm({
   }, [state]);
 
   function reloadLatest() {
-    if (window.confirm("Reload the latest version? Your unsaved form changes will be discarded.")) {
+    if (window.confirm(t.contentEditor.conflictReloadConfirm)) {
       window.location.reload();
     }
   }
@@ -67,41 +72,41 @@ export function ProblemConcurrentEditForm({
           tabIndex={-1}
         >
           <div>
-            <strong>This problem changed while you were editing it.</strong>
+            <strong>{t.contentEditor.conflictTitle}</strong>
             <p>
-              Nothing was overwritten. Your changes are still in this form
-              {state.editorName ? `; the newer version was saved by ${state.editorName}` : ""}
-              {state.editedAt ? ` at ${new Date(state.editedAt).toLocaleString()}` : ""}.
+              {t.contentEditor.conflictIntro}
+              {state.editorName ? t.contentEditor.conflictEditor(state.editorName) : ""}
+              {state.editedAt ? t.contentEditor.conflictEditedAt(new Date(state.editedAt).toLocaleString(locale)) : ""}.
             </p>
             {state.conflictingFields.length > 0 && (
-              <p>Both versions changed: {state.conflictingFields.join(", ")}.</p>
+              <p>{t.contentEditor.conflictingFields(state.conflictingFields.join(", "))}</p>
             )}
             {acceptedConflictVersion === state.currentVersion && (
-              <p><strong>Latest version reviewed.</strong> Saving now will keep newer untouched fields and use your form for the conflicts.</p>
+              <p><strong>{t.contentEditor.latestReviewed}</strong> {t.contentEditor.latestReviewedHelp}</p>
             )}
           </div>
           <div className="problem-edit-conflict-actions">
             <a href={latestHref} target="_blank" rel="noreferrer" className="button secondary">
-              View latest
+              {t.contentEditor.viewLatest}
             </a>
             <a href={historyHref} target="_blank" rel="noreferrer" className="button secondary">
-              Compare history
+              {t.contentEditor.compareHistory}
             </a>
             {acceptedConflictVersion !== state.currentVersion && (
               <button
                 type="button"
                 className="secondary"
                 onClick={() => {
-                  if (window.confirm("Confirm that you reviewed the latest version and merged the conflicting fields into this form.")) {
+                  if (window.confirm(t.contentEditor.conflictReviewConfirm)) {
                     setAcceptedConflictVersion(state.currentVersion);
                   }
                 }}
               >
-                I reviewed the latest version
+                {t.contentEditor.reviewedLatest}
               </button>
             )}
             <button type="button" onClick={reloadLatest}>
-              Reload latest
+              {t.contentEditor.reloadLatest}
             </button>
           </div>
         </section>

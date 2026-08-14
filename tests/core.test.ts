@@ -321,6 +321,8 @@ import {
   preferredTranslationForLanguage,
   selectContentTranslation,
   selectContentTranslationsByGroup,
+  selectExactContentTranslation,
+  selectExactContentTranslationsByGroup,
   translationLanguageSet
 } from "../lib/translation-routing.ts";
 import { dictionaryForContentLanguage, interfaceLocaleForContentLanguage } from "../lib/i18n/dictionary.ts";
@@ -414,6 +416,19 @@ assert.deepEqual(
     "it"
   ).map(({ slug }) => slug),
   ["groups", "anneaux"]
+);
+assert.equal(selectExactContentTranslation(fallbackTranslations, "de")?.slug, "gruppen");
+assert.equal(selectExactContentTranslation(fallbackTranslations, "it"), null);
+assert.deepEqual(
+  selectExactContentTranslationsByGroup(
+    [
+      { translationGroupId: "a", language: "fr", slug: "groupes", isSource: true },
+      { translationGroupId: "a", language: "en", slug: "groups" },
+      { translationGroupId: "b", language: "fr", slug: "anneaux", isSource: true }
+    ],
+    "en"
+  ).map(({ slug }) => slug),
+  ["groups"]
 );
 assert.deepEqual(ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code), ["en", "fr"]);
 assert.deepEqual(FUTURE_CONTENT_LANGUAGES.map(({ code }) => code), ["es", "de", "it", "pt"]);

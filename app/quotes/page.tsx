@@ -54,6 +54,7 @@ export default async function QuotesPage({
 }) {
   const user = await getCurrentUser();
   const t = await getTranslations();
+  const labels = t.quotesPage;
   const preferredLanguage = await getPreferredContentLanguage();
   const canContribute = Boolean(user && isVerifiedContributor(user));
   const { q = "" } = await searchParams;
@@ -90,71 +91,71 @@ export default async function QuotesPage({
 
   return (
     <ForestPageLayout
-      title="Quotes"
-      eyebrow="Source notes"
+      title={labels.title}
+      eyebrow={labels.eyebrow}
       heroImage="/art/pine-forest.jpg"
       heroAlt="Ivan Shishkin, Pine Forest"
-      description="Short passages, source notes, and nearby pages."
+      description={labels.description}
       meta={
         <>
-          <p>{quotes.length} quotes shown</p>
+          <p>{labels.shown(quotes.length)}</p>
           <p>{contentLanguageLabel(preferredLanguage)}</p>
         </>
       }
       sidebar={
         <>
-        <h2 className="mb-3 font-semibold">Add a quote</h2>
+        <h2 className="mb-3 font-semibold">{labels.addQuote}</h2>
         {canContribute ? (
           <form action={createQuoteAction} className="quote-form">
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Quote</span>
-              <textarea name="text" required maxLength={1200} placeholder="A sentence or short passage." />
+              <span className="text-sm font-medium">{labels.quote}</span>
+              <textarea name="text" required maxLength={1200} placeholder={labels.quotePlaceholder} />
             </label>
-            <LanguageField defaultValue={preferredLanguage} />
+            <LanguageField defaultValue={preferredLanguage} label={t.contentEditor.language} />
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Attributed to</span>
-              <input name="attributedTo" maxLength={160} placeholder="Grothendieck, Polya, Unknown..." />
+              <span className="text-sm font-medium">{labels.attributedTo}</span>
+              <input name="attributedTo" maxLength={160} placeholder={labels.attributedToPlaceholder} />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Provenance</span>
+              <span className="text-sm font-medium">{labels.provenance}</span>
               <input name="provenance" maxLength={240} placeholder="Unknown" />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Detailed provenance</span>
+              <span className="text-sm font-medium">{labels.detailedProvenance}</span>
               <textarea
                 name="provenanceDetails"
                 className="compact-textarea"
                 maxLength={3000}
-                placeholder="Book, page, lecture, archive link, uncertainty note..."
+                placeholder={labels.detailedProvenancePlaceholder}
               />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Related problem slugs</span>
+              <span className="text-sm font-medium">{labels.relatedProblemSlugs}</span>
               <input name="problemSlugs" placeholder="roots-and-coefficients, ..." />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Related concept slugs</span>
+              <span className="text-sm font-medium">{labels.relatedConceptSlugs}</span>
               <input name="conceptSlugs" placeholder="polynomial vieta-relations" />
             </label>
             <div className="grid gap-2">
-              <span className="text-sm font-medium">Optional note</span>
+              <span className="text-sm font-medium">{labels.optionalNote}</span>
               <MarkdownEditor name="noteMarkdown" initialValue="" minHeight="8rem" lineNumbers={false} />
             </div>
-            <button type="submit">Add quote</button>
+            <button type="submit">{labels.addQuote}</button>
           </form>
         ) : user ? (
           <p className="panel p-4 text-sm">
             <Link href="/settings?verify=required" className="underline">
-              Verify your email
+              {labels.verifyEmail}
             </Link>{" "}
-            before adding quotes.
+            {labels.beforeAdding}
           </p>
         ) : (
           <p className="panel p-4 text-sm">
             <Link href="/login" className="underline">
               {t.nav.signIn}
             </Link>{" "}
-            to add a quote.
+            {labels.signInToAdd}
           </p>
         )}
         </>
@@ -162,15 +163,15 @@ export default async function QuotesPage({
     >
       <LiveSearchForm className="quote-search mb-6">
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Search quotes</span>
-          <input name="q" defaultValue={query} placeholder="Search text, attribution, or provenance" />
+          <span className="text-sm font-medium">{labels.searchQuotes}</span>
+          <input name="q" defaultValue={query} placeholder={labels.searchPlaceholder} />
         </label>
-        <button type="submit">Search</button>
+        <button type="submit">{labels.search}</button>
       </LiveSearchForm>
 
       {unavailable && (
         <p className="quality-banner quality-needs-work mb-4">
-          The quotes table is missing. Run the latest database migration.
+          {labels.missingTable}
         </p>
       )}
 
@@ -181,15 +182,15 @@ export default async function QuotesPage({
               "{quote.text}"
             </Link>
             <div className="quote-meta-row">
-              <span>{quote.attributedTo ? `Attributed to ${quote.attributedTo}` : "No attribution recorded"}</span>
-              <span>added by {quote.contributor ? <UserName user={quote.contributor} /> : "former user"}</span>
+              <span>{quote.attributedTo ? `${labels.attributedTo} ${quote.attributedTo}` : labels.noAttribution}</span>
+              <span>{labels.addedBy} {quote.contributor ? <UserName user={quote.contributor} /> : labels.formerUser}</span>
             </div>
             <details className="quote-provenance">
               <summary>
-                <span>Provenance</span>
+                <span>{labels.provenance}</span>
                 <strong>{quote.provenance}</strong>
               </summary>
-              <p>{quote.provenanceDetails || "No further provenance details are known yet."}</p>
+              <p>{quote.provenanceDetails || labels.noDetails}</p>
             </details>
             <div className="quote-related">
               {quote.relatedProblems.map(({ problem }) => (
@@ -203,12 +204,12 @@ export default async function QuotesPage({
                 </Link>
               ))}
               {quote._count.relatedProblems + quote._count.relatedConcepts === 0 && (
-                <span className="muted">No related pages yet.</span>
+                <span className="muted">{labels.noRelatedPages}</span>
               )}
             </div>
           </article>
         ))}
-        {quotes.length === 0 && <p className="empty-state">No quotes match this search.</p>}
+        {quotes.length === 0 && <p className="empty-state">{labels.noMatches}</p>}
       </div>
     </ForestPageLayout>
   );

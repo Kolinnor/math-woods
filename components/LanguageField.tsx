@@ -10,9 +10,10 @@ type LanguageFieldProps = {
   defaultValue?: string;
   help?: string;
   disabledValues?: readonly string[];
+  label?: string;
 };
 
-export function LanguageField({ defaultValue, disabledValues = [] }: LanguageFieldProps) {
+export function LanguageField({ defaultValue, disabledValues = [], label = "Language" }: LanguageFieldProps) {
   const knownDefaultLanguage = parseContentLanguage(defaultValue);
   const language = defaultValue ? knownDefaultLanguage : parseActiveContentLanguage(defaultValue);
   const disabledLanguages = new Set(disabledValues.map((value) => parseContentLanguage(value)));
@@ -25,7 +26,7 @@ export function LanguageField({ defaultValue, disabledValues = [] }: LanguageFie
 
   return (
     <label className="grid gap-2">
-      <span className="text-sm font-medium">Language</span>
+      <span className="text-sm font-medium">{label}</span>
       <select name="language" defaultValue={language}>
         {options.map((option) => (
           <option key={option.code} value={option.code} disabled={disabledLanguages.has(option.code)}>

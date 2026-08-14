@@ -18,34 +18,35 @@ export default async function VerifyEmailPage({
   const user = await getCurrentUser();
   const result = token ? await verifyEmailToken(token) : { ok: false as const, reason: "missing" as const };
   const canResend = Boolean(user && !user.emailVerifiedAt);
+  const labels = t.verifyEmailPage;
 
   return (
     <ForestPageLayout
-      title={result.ok ? "Email verified" : "Verification link expired"}
-      eyebrow="Account"
+      title={result.ok ? labels.verifiedTitle : labels.expiredTitle}
+      eyebrow={labels.eyebrow}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description="Email verification keeps contributions accountable without making the site heavy."
+      description={labels.description}
       workspaceClassName="forest-page-workspace-narrow"
     >
       <section className="panel grid gap-4 p-6">
         {result.ok ? (
           <>
             <EmailVerificationSuccessSync userId={result.userId!} />
-            <p>Your email is verified. You can now contribute to Math Woods.</p>
+            <p>{labels.success}</p>
             <Link href="/" className="button">
-              Continue
+              {labels.continue}
             </Link>
           </>
         ) : (
           <>
             <p className="muted">
-              This email verification link is missing, invalid, or expired.
+              {labels.invalid}
             </p>
             {canResend ? (
               <form action={resendEmailVerificationAction}>
                 <button type="submit" className="secondary">
-                  Resend verification email
+                  {labels.resend}
                 </button>
               </form>
             ) : (
