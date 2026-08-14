@@ -138,6 +138,14 @@ import {
 } from "../lib/daily-problem-schedule.ts";
 import { selectDailyTipForDate } from "../lib/daily-tip-schedule.ts";
 import {
+  contestCreationWindow,
+  contestEndDateKey,
+  contestIsOpen,
+  contestPhase,
+  isSaturdayDateKey,
+  nextContestStartDateKey
+} from "../lib/problem-contests.ts";
+import {
   parseSolutionReportCategory,
   solutionConcernIsPublic,
   solutionReportCategoryLabel
@@ -2642,6 +2650,26 @@ assert.equal(
   exhaustedDailyProblemChoice
 );
 assert.equal(automaticDailyProblemGroup([], "2026-08-03"), null);
+
+assert.equal(isSaturdayDateKey("2026-08-15"), true);
+assert.equal(isSaturdayDateKey("2026-08-16"), false);
+assert.equal(contestEndDateKey("2026-08-15"), "2026-08-21");
+assert.equal(nextContestStartDateKey(new Date("2026-08-14T12:00:00.000Z")), "2026-08-15");
+assert.equal(nextContestStartDateKey(new Date("2026-08-15T12:00:00.000Z")), "2026-08-15");
+const contestFixture = {
+  publishedAt: new Date("2026-08-14T12:00:00.000Z"),
+  resultsPublishedAt: null,
+  startDateKey: "2026-08-15",
+  endDateKey: "2026-08-21"
+};
+assert.equal(contestPhase(contestFixture, "2026-08-14"), "upcoming");
+assert.equal(contestPhase(contestFixture, "2026-08-15"), "open");
+assert.equal(contestPhase(contestFixture, "2026-08-21"), "open");
+assert.equal(contestPhase(contestFixture, "2026-08-22"), "judging");
+assert.equal(contestIsOpen(contestFixture, "2026-08-18"), true);
+const summerContestWindow = contestCreationWindow(contestFixture);
+assert.equal(summerContestWindow.gte.toISOString(), "2026-08-14T22:00:00.000Z");
+assert.equal(summerContestWindow.lt.toISOString(), "2026-08-21T22:00:00.000Z");
 assert.ok(DEFAULT_DAILY_PROBLEM_IMAGE_URLS.includes(dailyProblemDefaultImageUrl("2026-08-03")));
 
 const scheduledDailyTipCandidates = [

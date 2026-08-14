@@ -86,6 +86,7 @@ import {
   canUseAdminTools
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
+import { contestIsOpen } from "@/lib/problem-contests";
 import { ensureSlug } from "@/lib/slug";
 import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
@@ -390,6 +391,7 @@ export async function createProblemAction(formData: FormData) {
     ""
   );
   const parentProblemSlug = ensureSlug(String(formData.get("parentProblemSlug") ?? ""), "");
+  const contestSlug = ensureSlug(String(formData.get("contestSlug") ?? ""), "");
   const qualityStatus = QualityStatus.UNREVIEWED;
   const styles = parseProblemStyles(formData.getAll("styles"));
   const isConjecture = formData.get("isConjecture") === "on";
@@ -684,6 +686,26 @@ export async function createProblemAction(formData: FormData) {
       sharedSnapshot ? problemSnapshotTagInput(sharedSnapshot.spoilerTags) : "",
       tx
     );
+    if (contestSlug && !translationGroupId) {
+      const contest = await tx.problemContest.findUnique({ where: { slug: contestSlug } });
+      if (!contest || !contestIsOpen(contest)) {
+        throw new Error("This contest is no longer accepting submissions.");
+      }
+      await tx.problemContestSubmission.upsert({
+        where: { contestId_userId: { contestId: contest.id, userId: user.id } },
+        create: {
+          contestId: contest.id,
+          userId: user.id,
+          problemId: created.id,
+          translationGroupId: created.translationGroupId
+        },
+        update: {
+          problemId: created.id,
+          translationGroupId: created.translationGroupId,
+          placement: null
+        }
+      });
+    }
     if (translationSource) {
       const [sourceHints, sourceProofs] = await Promise.all([
         translatedHintIds.length
@@ -834,7 +856,9 @@ export async function createProblemAction(formData: FormData) {
     body: problemNotification.body,
     href: `/problems/${problem.created.slug}`
   });
-  redirect(contentLanguageViewHref("/problems", problem.created.slug, problem.created.language) as Route);
+  redirect(contestSlug
+    ? "/contest?submitted=1"
+    : contentLanguageViewHref("/problems", problem.created.slug, problem.created.language) as Route);
 }
 
 export type ProblemCreateActionState = {

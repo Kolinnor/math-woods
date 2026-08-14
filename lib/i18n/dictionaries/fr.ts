@@ -29,6 +29,7 @@ export const fr = {
     homeAriaLabel: "Accueil de Math Woods",
     problems: "Problèmes",
     concepts: "Concepts",
+    contest: "Concours",
     playlists: "Explorations",
     tips: "Conseils",
     mathematicians: "Mathématiciens",

@@ -5,6 +5,9 @@ import type { Route } from "next";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DailyProblemCard } from "@/components/DailyProblemCard";
 import { DailyTipCard } from "@/components/DailyTipCard";
+import { HomeContestCard } from "@/components/HomeContestCard";
+import { HomeEditorialSwitcher } from "@/components/HomeEditorialSwitcher";
+import { maybeSendContestLifecycleNotifications } from "@/lib/actions/contest-actions";
 import { Difficulty } from "@/components/Difficulty";
 import { ProgressTicks } from "@/components/ProgressTicks";
 import { RevealSolvedDailyProblem } from "@/components/RevealSolvedDailyProblem";
@@ -34,6 +37,12 @@ import {
 } from "@/lib/translation-routing";
 import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
 import { displayNameForUser } from "@/lib/user-display";
+import {
+  contestDateLabel,
+  contestIsOpen,
+  DEFAULT_CONTEST_IMAGE_URL,
+  localizedContestText
+} from "@/lib/problem-contests";
 import { dailyTipImage, tipImageObjectPosition } from "@/lib/tip-images";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +50,11 @@ export const dynamic = "force-dynamic";
 const dashboardCopy = {
   en: {
     problemOfDay: "Problem of the day",
+    weeklyContest: "Weekly contest",
+    contestDeadline: "Deadline",
+    contestPoints: "reputation points",
+    contestAction: "Enter the contest",
+    contestUpcoming: "See the upcoming contest",
     showSolvedProblemOfDay: "Show problem of the day (already solved)",
     solveToday: "Solve today's problem",
     solvedToday: (count: number) => `${count} solved it today`,
@@ -63,6 +77,11 @@ const dashboardCopy = {
   },
   fr: {
     problemOfDay: "Problème du jour",
+    weeklyContest: "Concours de la semaine",
+    contestDeadline: "Date limite",
+    contestPoints: "points de réputation",
+    contestAction: "Participer au concours",
+    contestUpcoming: "Voir le prochain concours",
     showSolvedProblemOfDay: "Voir le problème du jour (déjà résolu)",
     solveToday: "Résoudre le problème du jour",
     solvedToday: (count: number) => `${count} l'ont résolu aujourd'hui`,
@@ -117,6 +136,15 @@ export default async function HomePage() {
   ]);
   const copy = dashboardCopy[locale];
   const guestCopy = guestDashboardCopy[locale];
+  const todayContestDateKey = dailyProblemDateKey();
+  const featuredContest = await prisma.problemContest.findFirst({
+    where: {
+      publishedAt: { not: null },
+      endDateKey: { gte: todayContestDateKey }
+    },
+    orderBy: { startDateKey: "asc" }
+  });
+  if (featuredContest) await maybeSendContestLifecycleNotifications(featuredContest.id);
 
   const resumeAttempt = user
     ? await prisma.problemAttempt.findFirst({
@@ -599,6 +627,30 @@ export default async function HomePage() {
       } : null}
     />
   ) : null;
+  const contestCard = featuredContest ? (() => {
+    const contestText = localizedContestText(featuredContest, locale);
+    return (
+      <HomeContestCard
+        contest={{
+          title: contestText.title,
+          summary: contestText.summary,
+          imageUrl: featuredContest.imageUrl || DEFAULT_CONTEST_IMAGE_URL,
+          imagePositionX: featuredContest.imagePositionX,
+          imagePositionY: featuredContest.imagePositionY,
+          deadline: contestDateLabel(featuredContest.endDateKey, locale, { weekday: "long" }),
+          rewardPoints: featuredContest.rewardPoints,
+          isOpen: contestIsOpen(featuredContest)
+        }}
+        labels={{
+          heading: copy.weeklyContest,
+          deadline: copy.contestDeadline,
+          points: copy.contestPoints,
+          action: copy.contestAction,
+          upcoming: copy.contestUpcoming
+        }}
+      />
+    );
+  })() : null;
 
   if (!user) {
     return (
@@ -630,7 +682,12 @@ export default async function HomePage() {
 
         <main className="home-dashboard-grid home-dashboard-grid-guest">
           <div className="home-dashboard-main">
-            {dailyProblemCard}
+            <HomeEditorialSwitcher
+              problem={dailyProblemCard}
+              contest={contestCard}
+              problemLabel={copy.problemOfDay}
+              contestLabel={copy.weeklyContest}
+            />
 
             {publicRecommendations.length > 0 && (
               <section>
@@ -690,13 +747,18 @@ export default async function HomePage() {
 
       <main className="home-dashboard-grid">
         <div className="home-dashboard-main">
-          {dailyProblemCard && (
-            dailyProblemIsSolved && !dailyProblemIsOwn ? (
-              <RevealSolvedDailyProblem label={copy.showSolvedProblemOfDay}>
-                {dailyProblemCard}
-              </RevealSolvedDailyProblem>
-            ) : dailyProblemCard
-          )}
+          <HomeEditorialSwitcher
+            problem={dailyProblemCard && (
+              dailyProblemIsSolved && !dailyProblemIsOwn ? (
+                <RevealSolvedDailyProblem label={copy.showSolvedProblemOfDay}>
+                  {dailyProblemCard}
+                </RevealSolvedDailyProblem>
+              ) : dailyProblemCard
+            )}
+            contest={contestCard}
+            problemLabel={copy.problemOfDay}
+            contestLabel={copy.weeklyContest}
+          />
 
           {recommendedData && recommendedData.recommendations.length > 0 && (
             <section>

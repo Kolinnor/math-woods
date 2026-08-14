@@ -184,6 +184,11 @@ const notificationOptions = [
     type: NotificationType.DAILY_CONCEPT_REVIEW,
     title: "Daily concept review",
     description: "For trusted users and admins: one older concept to improve, with no new suggestion until it is handled."
+  },
+  {
+    type: NotificationType.CONTEST_UPDATE,
+    title: "Weekly contest updates",
+    description: "When a contest begins, approaches its deadline, or announces its results."
   }
 ] as const;
 

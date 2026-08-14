@@ -259,6 +259,12 @@ enum NotificationType {
   PROBLEM_OF_THE_DAY
   EXPLORATION_PUBLISHED
   DAILY_CONCEPT_REVIEW
+  CONTEST_UPDATE
+}
+
+enum ContestPlacement {
+  WINNER
+  HONORABLE_MENTION
 }
 
 enum ProblemEditProposalStatus {
@@ -370,6 +376,8 @@ model User {
   dailyConceptReviews             DailyConceptReview[]
   problemEditProposals            ProblemEditProposal[]           @relation("ProblemEditProposalAuthor")
   reviewedProblemEditProposals    ProblemEditProposal[]           @relation("ProblemEditProposalReviewer")
+  contestsCreated                 ProblemContest[]                 @relation("ProblemContestCreator")
+  contestSubmissions              ProblemContestSubmission[]
 }
 
 model ExternalIdentity {
@@ -597,6 +605,7 @@ model Problem {
   challenges               ProblemChallenge[]
   challengeInvites         ProblemChallengeInvite[]
   editProposals            ProblemEditProposal[]
+  contestSubmissions       ProblemContestSubmission[]
   translatedFromProblem    Problem?                        @relation("ProblemTranslationSource", fields: [translatedFromProblemId], references: [id], onDelete: SetNull)
   derivedTranslations      Problem[]                       @relation("ProblemTranslationSource")
 
@@ -606,6 +615,57 @@ model Problem {
   @@index([language, status, createdAt])
   @@index([translationGroupId])
   @@index([translatedFromProblemId])
+}
+
+model ProblemContest {
+  id                         Int                        @id @default(autoincrement())
+  slug                       String                     @unique
+  startDateKey               String                     @unique @db.VarChar(10)
+  endDateKey                 String                     @db.VarChar(10)
+  titleEn                    String
+  titleFr                    String
+  summaryEn                  String
+  summaryFr                  String
+  bodyEn                     String                     @db.Text
+  bodyFr                     String                     @db.Text
+  rulesEn                    String                     @db.Text
+  rulesFr                    String                     @db.Text
+  criteriaEn                 String                     @db.Text
+  criteriaFr                 String                     @db.Text
+  imageUrl                   String?
+  imagePositionX             Int                        @default(50)
+  imagePositionY             Int                        @default(50)
+  rewardPoints               Int                        @default(300)
+  publishedAt                DateTime?
+  resultsPublishedAt         DateTime?
+  launchNotificationSentAt   DateTime?
+  deadlineReminderSentAt     DateTime?
+  createdById                Int
+  createdAt                  DateTime                   @default(now())
+  updatedAt                  DateTime                   @updatedAt
+  createdBy                  User                       @relation("ProblemContestCreator", fields: [createdById], references: [id])
+  submissions               ProblemContestSubmission[]
+
+  @@index([publishedAt, startDateKey, endDateKey])
+}
+
+model ProblemContestSubmission {
+  id                 Int               @id @default(autoincrement())
+  contestId          Int
+  userId             Int
+  problemId          Int
+  translationGroupId String
+  placement          ContestPlacement?
+  submittedAt        DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  contest            ProblemContest    @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem            Problem           @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId])
+  @@unique([contestId, translationGroupId])
+  @@index([contestId, placement, submittedAt])
+  @@index([userId, submittedAt])
 }
 
 model ProblemEditProposal {

@@ -27,6 +27,7 @@ export const en = {
     homeAriaLabel: "Math Woods home",
     problems: "Problems",
     concepts: "Concepts",
+    contest: "Contest",
     playlists: "Explorations",
     tips: "Tips",
     mathematicians: "Mathematicians",

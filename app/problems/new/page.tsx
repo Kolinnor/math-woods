@@ -37,6 +37,7 @@ export default async function NewProblemPage({
     language?: string;
     draft?: string;
     exercise?: string;
+    contest?: string;
   }>;
 }) {
   await requireVerifiedUser();
@@ -50,7 +51,8 @@ export default async function NewProblemPage({
     parent = "",
     translateOf = "",
     language = "",
-    exercise = ""
+    exercise = "",
+    contest = ""
   } = queryParams;
   const explorationSlug = exploration || playlist;
   const preferredLanguage = await getPreferredContentLanguage();
@@ -181,11 +183,19 @@ export default async function NewProblemPage({
           {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
           {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
           {sourceProblem && <input type="hidden" name="translationSourceSlug" value={sourceProblem.slug} />}
+          {contest && <input type="hidden" name="contestSlug" value={contest} />}
 
           <section className="problem-compose-card">
             <div className="problem-compose-section-title">{t.contentEditor.essentialInformation}</div>
             {explorationSlug && <p className="muted text-sm">{t.contentEditor.creatingForExploration}</p>}
             {parentProblem && <p className="muted text-sm">{t.contentEditor.linkedFrom(parentProblem.title)}</p>}
+            {contest && (
+              <p className="quality-banner text-sm">
+                {interfaceLocale === "fr"
+                  ? "Ce problème sera proposé au concours hebdomadaire après sa publication."
+                  : "This problem will be entered in the weekly contest after publication."}
+              </p>
+            )}
 
             <label className="grid gap-2">
               <span className="text-sm font-medium">{t.contentEditor.title}</span>
