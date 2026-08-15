@@ -17,7 +17,7 @@ export function Difficulty({
     >
       <strong style={{ color: tone }}>{value ?? "--"}</strong>
       <span className="mw-difficulty-bars" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
+        {[1, 2, 3, 4, 5, 6].map((bar) => (
           <i key={bar} style={bar <= level ? { backgroundColor: tone } : undefined} />
         ))}
       </span>

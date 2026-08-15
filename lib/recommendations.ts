@@ -87,12 +87,12 @@ export type ProblemRecommendationScore = {
 };
 
 const DECLARED_DIFFICULTY: Record<RecommendationMathLevel, number> = {
-  BEGINNER_PRE_UNIVERSITY: 3,
-  EARLY_UNDERGRAD: 12,
-  UNDERGRAD: 30,
-  ADVANCED_UNDERGRAD: 52,
-  GRADUATE_CONTEST: 74,
-  RESEARCH: 92
+  BEGINNER_PRE_UNIVERSITY: 6,
+  EARLY_UNDERGRAD: 18,
+  UNDERGRAD: 38,
+  ADVANCED_UNDERGRAD: 60,
+  GRADUATE_CONTEST: 80,
+  RESEARCH: 95
 };
 
 function clamp(value: number, minimum: number, maximum: number) {
@@ -110,7 +110,7 @@ function recencyWeight(date: Date, now: Date, halfLifeDays = 180) {
 }
 
 function declaredDifficulty(mathLevel: RecommendationMathLevel | null) {
-  return mathLevel ? DECLARED_DIFFICULTY[mathLevel] : 35;
+  return mathLevel ? DECLARED_DIFFICULTY[mathLevel] : 38;
 }
 
 function domainEvidenceForAttempt(status: RecommendationAttemptStatus) {

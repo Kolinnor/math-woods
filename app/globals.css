@@ -173,6 +173,8 @@
 .mw-difficulty-bars i:nth-child(2) { height: 10px; }
 .mw-difficulty-bars i:nth-child(3) { height: 12px; }
 .mw-difficulty-bars i:nth-child(4) { height: 14px; }
+.mw-difficulty-bars i:nth-child(5) { height: 15px; }
+.mw-difficulty-bars i:nth-child(6) { height: 15px; }
 
 .mw-progress-ticks {
   display: flex;

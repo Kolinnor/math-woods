@@ -192,7 +192,7 @@ export const DEFAULT_FAQ_SECTIONS: FaqSectionContent[] = [
         position: 5,
         question: "How should I use the difficulty score?",
         answerMarkdown:
-          "The 1-100 score is a rough signal. Difficulty depends heavily on what the reader already knows, how recently they saw the topic, and whether the problem uses a familiar trick. As a loose convention: 1-10 is pre-university or warm-up material; 11-25 is early undergraduate; 26-45 is solid undergraduate; 46-65 is advanced undergraduate or beginning graduate; 66-85 is graduate or contest-level hard; 86-100 is research-flavored, very technical, or even a conjecture that is still open."
+          "The 1-100 score is a rough signal, not an objective measure. It assumes that the reader has the necessary prerequisites, and difficulty can vary with familiarity with the subject or the trick involved. As a loose convention: 1-10 is first steps or middle-school reference level; 10-25 is beginner or high-school level; 25-50 is intermediate or undergraduate level; 50-70 is advanced or graduate level; 70-90 is expert or specialized; and 90-100 is research-level."
       }
     ]
   },

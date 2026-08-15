@@ -393,7 +393,8 @@ assert.equal(problemDifficultyTone(100), "#87342d");
 assert.notEqual(problemDifficultyTone(19), problemDifficultyTone(20));
 assert.notEqual(problemDifficultyTone(20), problemDifficultyTone(21));
 assert.notEqual(problemDifficultyTone(39), problemDifficultyTone(40));
-assert.equal(problemDifficultyBars(25), 1);
+assert.equal(problemDifficultyBars(9), 1);
+assert.equal(problemDifficultyBars(10), 2);
 const revisionDiff = buildRevisionDiff(
   "Let $G$ be finite.\nThe first statement.",
   "Let $G$ be finite.\nThe revised statement.\nA new line."
@@ -407,9 +408,11 @@ assert.equal(
     .join(""),
   "revised"
 );
-assert.equal(problemDifficultyBars(45), 2);
-assert.equal(problemDifficultyBars(65), 3);
-assert.equal(problemDifficultyBars(100), 4);
+assert.equal(problemDifficultyBars(25), 3);
+assert.equal(problemDifficultyBars(50), 4);
+assert.equal(problemDifficultyBars(70), 5);
+assert.equal(problemDifficultyBars(90), 6);
+assert.equal(problemDifficultyBars(100), 6);
 
 const groupedTranslations = [
   { language: "fr", slug: "relations-de-viete" },
@@ -1049,7 +1052,7 @@ assert.deepEqual(
 );
 assert.equal(parseProblemDifficulty("72"), 72);
 assert.equal(parseProblemDifficulty("101"), null);
-for (const range of ["1-5", "6-19", "20-39", "40-64", "65-84", "85-100"]) {
+for (const range of ["1-10", "10-25", "25-50", "50-70", "70-90", "90-100"]) {
   assert.equal(PROBLEM_DIFFICULTY_HELP.includes(range), true);
 }
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
@@ -2466,8 +2469,8 @@ const recommendationProfile = buildRecommendationProfile(
   },
   recommendationNow
 );
-assert.equal(recommendationProfile.declaredDifficulty, 30);
-assert.ok(recommendationProfile.targetDifficulty > 30 && recommendationProfile.targetDifficulty < 50);
+assert.equal(recommendationProfile.declaredDifficulty, 38);
+assert.ok(recommendationProfile.targetDifficulty > 38 && recommendationProfile.targetDifficulty < 50);
 assert.ok(recommendationProfile.difficultyConfidence > 0.3);
 assert.ok(recommendationProfile.domains.ALGEBRA.affinity > recommendationProfile.domains.TOPOLOGY.affinity);
 

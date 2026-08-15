@@ -70,10 +70,10 @@ export const fr = {
     chooseLevel: "Choisir un niveau",
     mathLevelRange: (range: string) => range.replace(/^level /, "niveau "),
     mathLevels: {
-      BEGINNER_PRE_UNIVERSITY: "Introductif",
+      BEGINNER_PRE_UNIVERSITY: "Premiers pas / collège",
       EARLY_UNDERGRAD: "Débutant / lycée",
       UNDERGRAD: "Intermédiaire / licence",
-      ADVANCED_UNDERGRAD: "Avancé / master-doctorat",
+      ADVANCED_UNDERGRAD: "Avancé / master",
       GRADUATE_CONTEST: "Expert / spécialisé",
       RESEARCH: "Niveau recherche"
     },
@@ -803,12 +803,12 @@ export const fr = {
     },
     difficultyRanges: [
       { value: "", label: "Toute difficulté" },
-      { value: "1-5", label: "Tout début (1-5)", min: 1, max: 5 },
-      { value: "6-19", label: "Débutant / lycée (6-19)", min: 6, max: 19 },
-      { value: "20-39", label: "Intermédiaire / licence (20-39)", min: 20, max: 39 },
-      { value: "40-64", label: "Avancé / master-doctorat (40-64)", min: 40, max: 64 },
-      { value: "65-84", label: "Expert / proche recherche (65-84)", min: 65, max: 84 },
-      { value: "85-100", label: "Mathématicien professionnel (85-100)", min: 85, max: 100 }
+      { value: "1-10", label: "Premiers pas / collège (1-10)", min: 1, max: 10 },
+      { value: "10-25", label: "Débutant / lycée (10-25)", min: 10, max: 25 },
+      { value: "25-50", label: "Intermédiaire / licence (25-50)", min: 25, max: 50 },
+      { value: "50-70", label: "Avancé / master (50-70)", min: 50, max: 70 },
+      { value: "70-90", label: "Expert / spécialisé (70-90)", min: 70, max: 90 },
+      { value: "90-100", label: "Niveau recherche (90-100)", min: 90, max: 100 }
     ],
     sortOptions: [
       { value: "newest", label: "Plus récents" },
@@ -1198,7 +1198,7 @@ export const fr = {
     deleteHint: "Supprimer l’indication",
     addHint: "Ajouter une indication",
     difficulty: "Difficulté",
-    difficultyHelp: "Le score de 1 à 100 est un repère approximatif, pas une mesure objective. 1-5 : premiers pas. 6-19 : débutant / lycée. 20-39 : intermédiaire / licence. 40-64 : avancé / master-doctorat. 65-84 : expert / spécialisé. 85-100 : niveau recherche.",
+    difficultyHelp: "Le score de 1 à 100 est un repère approximatif, pas une mesure objective. Il suppose que le lecteur possède les prérequis nécessaires. 1-10 : premiers pas / collège. 10-25 : débutant / lycée. 25-50 : intermédiaire / licence. 50-70 : avancé / master. 70-90 : expert / spécialisé. 90-100 : niveau recherche.",
     exercise: "Exercice",
     exerciseHelp: "Les exercices servent à pratiquer un concept précis. Ils apparaissent sur les pages des concepts liés et sont masqués par défaut dans le navigateur de problèmes, tout en restant accessibles avec le filtre Exercices.",
     showRelatedProblems: "Afficher les problèmes liés",

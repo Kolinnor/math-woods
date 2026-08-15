@@ -8,38 +8,38 @@ export const MATH_LEVEL_OPTIONS: Array<{
 }> = [
   {
     value: UserMathLevel.BEGINNER_PRE_UNIVERSITY,
-    label: "Introductory",
-    range: "level 1-5",
-    description: "Very first steps, gentle definitions, and introductory examples."
+    label: "First steps / Middle school",
+    range: "level 1-10",
+    description: "Middle-school reference level, gentle definitions, and introductory examples."
   },
   {
     value: UserMathLevel.EARLY_UNDERGRAD,
     label: "Beginner / High school",
-    range: "level 6-19",
+    range: "level 10-25",
     description: "High-school mathematics, early problem-solving habits, and friendly warm-ups."
   },
   {
     value: UserMathLevel.UNDERGRAD,
     label: "Intermediate / Undergraduate",
-    range: "level 20-39",
+    range: "level 25-50",
     description: "Undergraduate-style problems and standard mathematical tools."
   },
   {
     value: UserMathLevel.ADVANCED_UNDERGRAD,
     label: "Advanced / Graduate",
-    range: "level 40-64",
-    description: "Advanced undergraduate or graduate-level material."
+    range: "level 50-70",
+    description: "Graduate-level material and demanding multi-step problems."
   },
   {
     value: UserMathLevel.GRADUATE_CONTEST,
     label: "Expert / Specialized",
-    range: "level 65-84",
-    description: "Demanding problems, technical arguments, and research-adjacent reading."
+    range: "level 70-90",
+    description: "Highly specialized problems, technical arguments, and advanced competitions."
   },
   {
     value: UserMathLevel.RESEARCH,
     label: "Research-level",
-    range: "level 85-100",
+    range: "level 90-100",
     description: "Research-level mathematics and very specialized problems."
   }
 ];

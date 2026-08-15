@@ -134,7 +134,7 @@ export function ConceptPracticeQueue({ exercises, labels }: ConceptPracticeQueue
                     {exercise.difficulty ?? "--"}
                   </span>
                   <span className="concept-practice-queue-difficulty-bars" aria-hidden="true">
-                    {[1, 2, 3, 4].map((level) => (
+                    {[1, 2, 3, 4, 5, 6].map((level) => (
                       <i
                         key={level}
                         style={{ background: level <= difficultyLevel ? exercise.difficultyTone : undefined }}

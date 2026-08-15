@@ -73,12 +73,12 @@ const SUPPORTED_LANGUAGE_CODE_SET = new Set(SUPPORTED_LANGUAGE_CODES);
 
 const DIFFICULTY_RANGES: DifficultyRange[] = [
   { value: "", label: "Any difficulty" },
-  { value: "1-5", label: "Just started (1-5)", min: 1, max: 5 },
-  { value: "6-19", label: "Beginner / High school (6-19)", min: 6, max: 19 },
-  { value: "20-39", label: "Intermediate / Undergraduate (20-39)", min: 20, max: 39 },
-  { value: "40-64", label: "Advanced / Graduate (40-64)", min: 40, max: 64 },
-  { value: "65-84", label: "Expert / Specialized (65-84)", min: 65, max: 84 },
-  { value: "85-100", label: "Research-level (85-100)", min: 85, max: 100 }
+  { value: "1-10", label: "First steps / Middle school (1-10)", min: 1, max: 10 },
+  { value: "10-25", label: "Beginner / High school (10-25)", min: 10, max: 25 },
+  { value: "25-50", label: "Intermediate / Undergraduate (25-50)", min: 25, max: 50 },
+  { value: "50-70", label: "Advanced / Graduate (50-70)", min: 50, max: 70 },
+  { value: "70-90", label: "Expert / Specialized (70-90)", min: 70, max: 90 },
+  { value: "90-100", label: "Research-level (90-100)", min: 90, max: 100 }
 ];
 
 const SORT_OPTIONS = [
@@ -1011,7 +1011,7 @@ export default async function ProblemsPage({
                     <div className="problem-ledger-difficulty" style={{ color: tone }}>
                     <span>{difficulty ? String(difficulty).padStart(2, "0") : "--"}</span>
                     <span className="problem-ledger-bars" aria-hidden="true">
-                      {[1, 2, 3, 4].map((level) => (
+                      {[1, 2, 3, 4, 5, 6].map((level) => (
                         <i key={level} style={{ background: level <= difficultyLevel ? tone : undefined }} />
                       ))}
                     </span>

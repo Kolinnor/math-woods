@@ -1,6 +1,6 @@
 const UNSET_DIFFICULTY_TONE = "#8a9184";
 export const PROBLEM_DIFFICULTY_HELP =
-  "The 1-100 score is a rough guide, not an objective measure. 1-5: Just started. 6-19: Beginner / high school. 20-39: Intermediate / undergraduate. 40-64: Advanced / graduate. 65-84: Expert / specialized. 85-100: Research-level.";
+  "The 1-100 score is a rough guide, not an objective measure. It assumes the reader has the necessary prerequisites. 1-10: First steps / middle school. 10-25: Beginner / high school. 25-50: Intermediate / undergraduate. 50-70: Advanced / graduate. 70-90: Expert / specialized. 90-100: Research-level.";
 
 const DIFFICULTY_TONE_STOPS = [
   { value: 1, rgb: [79, 121, 85] },
@@ -39,8 +39,10 @@ export function problemDifficultyTone(difficulty: number | null) {
 
 export function problemDifficultyBars(difficulty: number | null) {
   if (!difficulty) return 0;
-  if (difficulty <= 25) return 1;
-  if (difficulty <= 45) return 2;
-  if (difficulty <= 65) return 3;
-  return 4;
+  if (difficulty < 10) return 1;
+  if (difficulty < 25) return 2;
+  if (difficulty < 50) return 3;
+  if (difficulty < 70) return 4;
+  if (difficulty < 90) return 5;
+  return 6;
 }

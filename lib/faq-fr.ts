@@ -165,7 +165,7 @@ export const DEFAULT_FAQ_SECTIONS_FR = [
         position: 5,
         question: "Comment utiliser le score de difficulté ?",
         answerMarkdown:
-          "Le score de 1 à 100 n'est qu'un indicateur approximatif. La difficulté dépend fortement des connaissances du lecteur, de la date à laquelle il a rencontré le sujet et de sa familiarité avec l'astuce utilisée. À titre indicatif : 1-10 correspond au niveau préuniversitaire ou à un échauffement ; 11-25 au début de licence ; 26-45 à un bon niveau de licence ; 46-65 à une licence avancée ou un début de master ; 66-85 à un niveau master ou concours difficile ; 86-100 à un problème proche de la recherche, très technique, voire à une conjecture encore ouverte."
+          "Le score de 1 à 100 est un repère approximatif, pas une mesure objective. Il suppose que le lecteur possède les prérequis nécessaires, et la difficulté peut varier selon sa familiarité avec le domaine ou l'astuce utilisée. À titre indicatif : 1-10 correspond aux premiers pas ou à un niveau collège ; 10-25 à un niveau débutant ou lycée ; 25-50 à un niveau intermédiaire ou licence ; 50-70 à un niveau avancé ou master ; 70-90 à un niveau expert ou spécialisé ; et 90-100 à un niveau recherche."
       }
     ]
   },
