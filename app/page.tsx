@@ -633,7 +633,7 @@ export default async function HomePage() {
           <div className="home-guest-hero-copy home-guest-dashboard-hero">
             <div>
               <h1>{t.home.hero.guestTitle}</h1>
-              <Link href={"/about/tutorial" as Route} className="home-button home-button-light">
+              <Link href={"/about/tutorial" as Route} className="home-button home-button-light home-tour-button">
                 {t.nav.tour}
               </Link>
             </div>

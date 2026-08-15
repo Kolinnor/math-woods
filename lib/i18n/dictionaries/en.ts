@@ -32,7 +32,7 @@ export const en = {
     tips: "Tips",
     mathematicians: "Mathematicians",
     users: "Users",
-    tour: "What is Math Woods?",
+    tour: "Tutorial",
     searchAriaLabel: "Search Math Woods",
     searchPlaceholder: "Search",
     moreAriaLabel: "Open navigation menu",

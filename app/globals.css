@@ -20060,6 +20060,16 @@ body:has(.math-woods-tour) .floating-friends-menu {
   display: none;
 }
 
+.home-dashboard .home-tour-button {
+  min-width: 190px;
+  min-height: 52px;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 13px 24px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
 body:has(.math-woods-tour),
 body:has(.math-woods-tour) .site-main {
   background: #edf0ea;

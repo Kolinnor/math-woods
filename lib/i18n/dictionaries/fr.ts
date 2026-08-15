@@ -34,7 +34,7 @@ export const fr = {
     tips: "Conseils",
     mathematicians: "Mathématiciens",
     users: "Utilisateurs",
-    tour: "C'est quoi Math Woods ?",
+    tour: "Tutoriel",
     searchAriaLabel: "Rechercher sur Math Woods",
     searchPlaceholder: "Rechercher",
     moreAriaLabel: "Ouvrir le menu de navigation",
