@@ -10,7 +10,7 @@ import { MarkdownInline } from "@/components/MarkdownInline";
 export type TipPickerProblem = {
   id: number;
   title: string;
-  titleHtml?: string;
+  titleHtml: string;
   slug: string;
   domainLabel: string;
   difficulty: number | null;
@@ -225,7 +225,7 @@ export function OrderedProblemPicker({
               <GripVertical size={16} aria-hidden="true" />
             </button>
             <div className="tip-selected-problem-copy">
-              <strong>{problem.titleHtml ? <MarkdownInline html={problem.titleHtml} /> : problem.title}</strong>
+              <strong><MarkdownInline html={problem.titleHtml} /></strong>
               <ProblemMeta problem={problem} />
             </div>
             <button
@@ -276,7 +276,7 @@ export function OrderedProblemPicker({
           {!isSearching &&
             suggestions.map((problem) => (
               <button key={problem.id} type="button" onClick={() => addProblem(problem)}>
-                <strong>{problem.titleHtml ? <MarkdownInline html={problem.titleHtml} /> : problem.title}</strong>
+                <strong><MarkdownInline html={problem.titleHtml} /></strong>
                 <ProblemMeta problem={problem} />
               </button>
             ))}

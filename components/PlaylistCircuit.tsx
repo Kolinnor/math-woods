@@ -19,8 +19,8 @@ type CircuitNode = {
   bodyHtml: string | null;
   position: number;
   isStart: boolean;
-  problem: { slug: string; title: string; titleHtml?: string; difficulty: number | null } | null;
-  concept: { slug: string; title: string } | null;
+  problem: { slug: string; titleHtml: string; difficulty: number | null } | null;
+  concept: { slug: string; titleHtml: string } | null;
   choices: CircuitChoice[];
 };
 
@@ -74,18 +74,14 @@ export function PlaylistCircuit({ nodes }: { nodes: CircuitNode[] }) {
         {currentNode.kind === "PROBLEM" && currentNode.problem && (
           <Link href={`/problems/${currentNode.problem.slug}`} className="circuit-target">
             <strong>
-              {currentNode.problem.titleHtml ? (
-                <MarkdownInline html={currentNode.problem.titleHtml} />
-              ) : (
-                currentNode.problem.title
-              )}
+              <MarkdownInline html={currentNode.problem.titleHtml} />
             </strong>
             {currentNode.problem.difficulty && <span>difficulty {currentNode.problem.difficulty}/100</span>}
           </Link>
         )}
         {currentNode.kind === "CONCEPT" && currentNode.concept && (
           <Link href={`/concepts/${currentNode.concept.slug}`} className="circuit-target">
-            <strong>{currentNode.concept.title}</strong>
+            <strong><MarkdownInline html={currentNode.concept.titleHtml} /></strong>
             <span>open concept article</span>
           </Link>
         )}

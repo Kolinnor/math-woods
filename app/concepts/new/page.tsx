@@ -1,8 +1,10 @@
 import { ConceptCreateForm } from "@/components/ConceptCreateForm";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
+import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
@@ -12,6 +14,7 @@ import { requireDraftSession } from "@/lib/draft-session";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
+import { renderInlineMarkdown } from "@/lib/markdown";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownForTranslation } from "@/lib/translated-markdown";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
@@ -105,15 +108,13 @@ export default async function NewConceptPage({
         >
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
         {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">{t.contentEditor.title}</span>
-          <input
-            name="title"
-            required
-            defaultValue={sourceConcept ? "" : title}
-            placeholder={sourceConcept ? t.contentEditor.translationTitlePlaceholder(sourceConcept.title) : undefined}
-          />
-        </label>
+        <LiveMarkdownTitleField
+          defaultValue={sourceConcept ? "" : title}
+          initialHtml={sourceConcept || !title ? "" : await renderInlineMarkdown(title)}
+          locale={interfaceLocale}
+          required
+          placeholder={sourceConcept ? t.contentEditor.translationTitlePlaceholder(sourceConcept.title) : undefined}
+        />
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.concepts.kind}</span>
           <select name="kind" defaultValue={sourceConcept?.kind ?? "DEFINITION"}>
@@ -183,7 +184,7 @@ export default async function NewConceptPage({
                 return (
                   <div key={problem.translationGroupId} className="translation-exercise-item">
                     <div>
-                      <strong>{problem.title}</strong>
+                      <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
                       <span className="meta">{t.contentEditor.sourceLanguage(problem.language.toUpperCase())}</span>
                     </div>
                     <Link href={href as never} target="_blank" rel="noreferrer" className="button secondary">

@@ -18633,8 +18633,81 @@ body:has(.home-shell) > .site-footer {
   padding: 0.75rem 1rem;
 }
 
-.contest-existing-problem-form select {
+.contest-existing-problem-form select,
+.contest-problem-title-picker {
   min-width: min(24rem, 100%);
+}
+
+.contest-problem-title-picker {
+  position: relative;
+}
+
+.contest-problem-title-native-select {
+  bottom: 0;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 1px;
+}
+
+.contest-problem-title-picker > summary {
+  align-items: center;
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-border);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.contest-problem-title-picker > summary::-webkit-details-marker {
+  display: none;
+}
+
+.contest-problem-title-picker[open] > summary {
+  border-color: var(--mw-green);
+}
+
+.contest-problem-title-picker[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.contest-problem-title-options {
+  background: var(--mw-reading-surface);
+  border: 1px solid var(--mw-border);
+  box-shadow: var(--shadow);
+  display: grid;
+  left: 0;
+  max-height: 18rem;
+  overflow: auto;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 20;
+}
+
+.contest-problem-title-options label {
+  align-items: center;
+  border-bottom: 1px solid var(--mw-border);
+  cursor: pointer;
+  display: flex;
+  gap: 0.65rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.contest-problem-title-options label:last-child {
+  border-bottom: 0;
+}
+
+.contest-problem-title-options label:hover,
+.contest-problem-title-options label.is-selected {
+  background: var(--mw-green-tint);
 }
 
 .contest-entry-list {
@@ -18927,6 +19000,7 @@ body:has(.home-shell) > .site-footer {
   }
 
   .contest-existing-problem-form select,
+  .contest-problem-title-picker,
   .contest-existing-problem-form button {
     width: 100%;
   }
@@ -19540,6 +19614,28 @@ body:has(.home-dashboard) > .site-footer {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+.live-markdown-title-preview {
+  align-items: center;
+  border-left: 2px solid var(--accent);
+  color: var(--ink);
+  display: flex;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  min-height: 2.35rem;
+  overflow-wrap: anywhere;
+  padding: 0.35rem 0.75rem;
+  transition: opacity 120ms ease;
+}
+
+.live-markdown-title-preview.is-loading {
+  opacity: 0.62;
+}
+
+.live-markdown-title-preview .katex {
+  font-size: 1.05em;
 }
 
 .content-preview-button {

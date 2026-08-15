@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import { QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
+import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
 import { ProblemContentOptions } from "@/components/ProblemContentOptions";
@@ -114,7 +116,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   return (
     <ForestPageLayout
       title={publishesImmediately ? t.contentEditor.editProblem : t.contentEditor.proposeEdit}
-      eyebrow={problem.title}
+      eyebrow={<AsyncMarkdownInline markdown={problem.title} />}
       heroImage="/art/rye.jpg"
       heroAlt="Ivan Shishkin, Rye"
       description={publishesImmediately
@@ -152,10 +154,11 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
               <div className="problem-compose-section-title">
                 {publishesImmediately ? t.contentEditor.essentialInformation : t.contentEditor.proposeEdit}
               </div>
-              <label className="grid gap-2">
-                <span className="text-sm font-medium">{t.contentEditor.title}</span>
-                <input name="title" defaultValue={problem.title} />
-              </label>
+              <LiveMarkdownTitleField
+                defaultValue={problem.title}
+                initialHtml={await renderInlineMarkdown(problem.title)}
+                locale={interfaceLocale}
+              />
               <div className="grid gap-2">
                 <span className="text-sm font-medium">{t.contentEditor.statement}</span>
                 <MarkdownEditor

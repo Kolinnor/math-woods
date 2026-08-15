@@ -3,6 +3,7 @@
 import { Code2, CircleHelp, LogIn, Puzzle, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { MarkdownInline } from "@/components/MarkdownInline";
 
 type MathLevelOption = {
   value: string;
@@ -13,7 +14,7 @@ type MathLevelOption = {
 
 type RecommendedProblem = {
   slug: string;
-  title: string;
+  titleHtml: string;
   difficulty: number | null;
 };
 
@@ -104,7 +105,7 @@ export function HomeGuestIntro({ levels, recommendations }: HomeGuestIntroProps)
               {problems.length > 0 ? (
                 problems.map((problem) => (
                   <Link key={problem.slug} href={`/problems/${problem.slug}`} onClick={() => setOpen(false)}>
-                    <strong>{problem.title}</strong>
+                    <strong><MarkdownInline html={problem.titleHtml} /></strong>
                     <span>{problem.difficulty ? `difficulty ${problem.difficulty}/100` : "difficulty not set"}</span>
                   </Link>
                 ))

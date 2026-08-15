@@ -88,7 +88,7 @@ export default async function ProblemOfTheDaySchedulePage({
               ? [{
                   id: schedule.problem.id,
                   title: schedule.problem.title,
-                  titleHtml: titleHtmlByProblemId.get(schedule.problem.id),
+                  titleHtml: titleHtmlByProblemId.get(schedule.problem.id)!,
                   slug: schedule.problem.slug,
                   domainLabel: translatedDomainLabel(schedule.problem.domain, t.home.domainLabels),
                   difficulty: schedule.problem.difficulty

@@ -1,6 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -57,7 +58,7 @@ export default async function RecentChangesPage() {
                     {revision.pageType === "CONCEPT" ? t.recentChangesPage.concept : t.recentChangesPage.problem}
                   </span>
                   <Link href={href} className="font-medium underline">
-                    {page.title}
+                    <AsyncMarkdownInline markdown={page.title} />
                   </Link>
                 </div>
                 <span className="muted text-xs">{revision.createdAt.toLocaleString(interfaceLocale)}</span>

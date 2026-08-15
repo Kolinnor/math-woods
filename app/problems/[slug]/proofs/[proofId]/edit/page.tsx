@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserName } from "@/components/UserName";
 import { deleteProofAction, updateProofAction } from "@/lib/actions/proof-actions";
 import { requireVerifiedUser } from "@/lib/auth";
@@ -41,7 +42,7 @@ export default async function EditProofPage({
           <p className="muted">
             Solution by <UserName user={proof.author} /> for{" "}
             <Link href={`/problems/${proof.problem.slug}`} className="underline">
-              {proof.problem.title}
+              <AsyncMarkdownInline markdown={proof.problem.title} />
             </Link>
             .
           </p>

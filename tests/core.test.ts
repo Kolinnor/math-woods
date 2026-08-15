@@ -1582,6 +1582,11 @@ const renderedInlineLatexTitle = await renderInlineMarkdown("$K$-morphism");
 assert.match(renderedInlineLatexTitle, /class="katex"/);
 assert.match(renderedInlineLatexTitle, /-morphism$/);
 assert.equal(renderedInlineLatexTitle.includes("$K$"), false);
+const renderedLatexNotification = await renderInlineMarkdown(
+  'alouette created "Une résolution géométrique de l’équation $x^3+a*x=b$".'
+);
+assert.match(renderedLatexNotification, /class="katex"/);
+assert.equal(renderedLatexNotification.includes("$x^3+a*x=b$"), false);
 
 assert.equal(
   markdownFoldBlock("Selected text"),
@@ -1839,6 +1844,21 @@ const labelsWrappingMarkdownEditor = tsxFiles("app").flatMap((path) => {
 });
 assert.deepEqual(labelsWrappingMarkdownEditor, []);
 const editorCssSource = readFileSync(join("app", "globals.css"), "utf-8");
+const liveTitleEditorPaths = [
+  join("app", "problems", "new", "page.tsx"),
+  join("app", "problems", "[slug]", "edit", "page.tsx"),
+  join("app", "concepts", "new", "page.tsx"),
+  join("app", "concepts", "[slug]", "edit", "page.tsx")
+];
+for (const path of liveTitleEditorPaths) {
+  const source = readFileSync(path, "utf-8");
+  assert.match(source, /<LiveMarkdownTitleField\b/);
+  assert.doesNotMatch(source, /<input\b[^>]*name=["']title["']/);
+}
+for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "notifications", "page.tsx")]) {
+  const source = readFileSync(path, "utf-8");
+  assert.match(source, /<AsyncMarkdownInline markdown=\{notification\.body\}/);
+}
 const latexDisplayRule = editorCssSource.match(/\.markdown-editor \.cm-latex-display \{([^}]*)\}/)?.[1] ?? "";
 assert.match(latexDisplayRule, /display:\s*inline-block/);
 assert.doesNotMatch(latexDisplayRule, /display:\s*block/);

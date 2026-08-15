@@ -1,4 +1,5 @@
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { contentLanguageLabel } from "@/lib/languages";
 import { renderMarkdownForContentLanguage } from "@/lib/translated-markdown";
 
@@ -41,7 +42,7 @@ export async function TranslationReferencePanel({
           </a>
         )}
       </div>
-      <h2>{title}</h2>
+      <h2><AsyncMarkdownInline markdown={title} /></h2>
       {(stale || latestRevisionId || basedOnRevisionId) && (
         <p className={stale ? "translation-reference-status stale" : "translation-reference-status"}>
           {stale

@@ -740,7 +740,7 @@ export default async function ConceptPage({
             ))}
             {conceptBacklinks.map((item) => (
               <Link key={`c-${item.id}`} href={`/concepts/${item.slug}`} className="underline">
-                {item.title}
+                <AsyncMarkdownInline markdown={item.title} />
               </Link>
             ))}
           </div>
@@ -760,7 +760,7 @@ export default async function ConceptPage({
                   href={(link.exists ? (outgoingConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : missingConceptHref(title)) as never}
                   className={link.exists ? "wiki-link" : "wiki-link missing"}
                 >
-                  {title}
+                  <AsyncMarkdownInline markdown={title} />
                 </Link>
               );
             })}

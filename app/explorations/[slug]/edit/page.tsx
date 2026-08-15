@@ -57,6 +57,7 @@ import { orderExplorationBlocksByFolders } from "@/lib/exploration-block-folders
 import { canEditExploration, explorationBlockLabel } from "@/lib/explorations";
 import { getTranslations } from "@/lib/i18n/server";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
+import { renderInlineMarkdown } from "@/lib/markdown";
 import { canDeletePlaylist } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -144,6 +145,13 @@ export default async function EditExplorationPage({
   );
   const selectedBlockId = Number(selectedBlockRaw);
   const selectedBlock = blocks.find((block) => block.id === selectedBlockId) ?? blocks[0] ?? null;
+  const selectedProblemTitleHtml = new globalThis.Map(
+    await Promise.all(
+      (selectedBlock?.problemGroups.flatMap((group) => group.problems.map(({ problem }) => problem)) ?? [])
+        .concat(selectedBlock?.problem ? [selectedBlock.problem] : [])
+        .map(async (problem) => [problem.slug, await renderInlineMarkdown(problem.title)] as const)
+    )
+  );
   const mapMode = view !== "block" || !selectedBlockRaw;
   const canDelete = canDeletePlaylist(user, exploration);
   const settingsDialogId = "exploration-settings-dialog";
@@ -254,10 +262,19 @@ export default async function EditExplorationPage({
               const initialProblemGroups = selectedBlock.problemGroups.length > 0
                 ? selectedBlock.problemGroups.map((group) => ({
                     title: group.title,
-                    problems: group.problems.map(({ problem }) => problem)
+                    problems: group.problems.map(({ problem }) => ({
+                      ...problem,
+                      titleHtml: selectedProblemTitleHtml.get(problem.slug) ?? ""
+                    }))
                   }))
                 : selectedBlock.problem
-                  ? [{ title: "Problems", problems: [selectedBlock.problem] }]
+                  ? [{
+                      title: "Problems",
+                      problems: [{
+                        ...selectedBlock.problem,
+                        titleHtml: selectedProblemTitleHtml.get(selectedBlock.problem.slug) ?? ""
+                      }]
+                    }]
                   : [];
               return (
                 <article

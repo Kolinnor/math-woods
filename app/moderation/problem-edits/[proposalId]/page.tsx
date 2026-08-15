@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { RevisionDiff } from "@/components/RevisionDiff";
 import { UserName } from "@/components/UserName";
 import {
@@ -68,7 +69,7 @@ export default async function ProblemEditProposalPage({
   return (
     <ForestPageLayout
       title="Review proposed edit"
-      eyebrow={proposal.problem.title}
+      eyebrow={<AsyncMarkdownInline markdown={proposal.problem.title} />}
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
       description="Compare the public problem with the contributor's proposed version before publishing anything."
@@ -123,11 +124,19 @@ export default async function ProblemEditProposalPage({
                 <strong>{PROBLEM_SNAPSHOT_FIELD_LABELS[field]}</strong>
                 <div>
                   <small className="muted block">Public now</small>
-                  <span className="break-words">{formatProblemSnapshotFieldValue(field, current[field])}</span>
+                  <span className="break-words">
+                    {field === "title"
+                      ? <AsyncMarkdownInline markdown={formatProblemSnapshotFieldValue(field, current[field])} />
+                      : formatProblemSnapshotFieldValue(field, current[field])}
+                  </span>
                 </div>
                 <div>
                   <small className="muted block">Proposed</small>
-                  <span className="break-words">{formatProblemSnapshotFieldValue(field, proposed[field])}</span>
+                  <span className="break-words">
+                    {field === "title"
+                      ? <AsyncMarkdownInline markdown={formatProblemSnapshotFieldValue(field, proposed[field])} />
+                      : formatProblemSnapshotFieldValue(field, proposed[field])}
+                  </span>
                 </div>
               </div>
             ))}

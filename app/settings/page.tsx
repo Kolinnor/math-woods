@@ -1,6 +1,7 @@
 import { NotificationType, Role } from "@prisma/client";
 import Link from "next/link";
 import { EditorSettingsVisitedMarker } from "@/components/EditorSettingsVisitedMarker";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { OAuthProviderIcon } from "@/components/OAuthProviderIcon";
 import { UserName } from "@/components/UserName";
@@ -895,7 +896,7 @@ export default async function SettingsPage({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">
-                        {text(item.type)}: <Link href={item.href as never} className="underline">{item.title}</Link>
+                        {text(item.type)}: <Link href={item.href as never} className="underline"><AsyncMarkdownInline markdown={item.title} /></Link>
                       </p>
                       <p className="muted">
                         {contentLanguageLabel(item.language)} / {text("based on revision")} {item.basedOnRevisionId}, {text("source now revision")}{" "}
@@ -924,7 +925,7 @@ export default async function SettingsPage({
               translationsDashboard.gaps.map((gap) => (
                 <div key={`${gap.type}:${gap.href}`} className="rounded-md border border-line p-3 text-sm">
                   <p className="font-medium">
-                    {text(gap.type)}: <Link href={gap.href as never} className="underline">{gap.title}</Link>
+                    {text(gap.type)}: <Link href={gap.href as never} className="underline"><AsyncMarkdownInline markdown={gap.title} /></Link>
                   </p>
                   <p className="muted">{text("Existing")}: {gap.existingLanguages.map(contentLanguageLabel).join(", ")}</p>
                   <p className="muted">{text("Missing")}: {gap.missingLanguages.join(", ")}</p>

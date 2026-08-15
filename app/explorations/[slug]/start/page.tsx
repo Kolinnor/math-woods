@@ -172,7 +172,10 @@ export default async function StartExplorationPage({
         solved: solvedProblemGroups.has(problem.translationGroupId)
       })))
     }))),
-    concept: block.concept,
+    concept: block.concept ? {
+      slug: block.concept.slug,
+      titleHtml: await renderInlineMarkdown(block.concept.title)
+    } : null,
     options: block.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId })),
     outcomes: block.kind === "QUIZ"
       ? []

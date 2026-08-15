@@ -3,6 +3,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContestTabs } from "@/components/ContestTabs";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { TipImageField } from "@/components/TipImageField";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -160,7 +161,7 @@ export default async function EditContestPage({
             {selected.submissions.map((submission) => (
               <div key={submission.id}>
                 <UserAvatar user={submission.user} size="sm" />
-                <span><strong>{submission.problem.title}</strong><small>{displayNameForUser(submission.user)}</small></span>
+                <span><strong><AsyncMarkdownInline markdown={submission.problem.title} /></strong><small>{displayNameForUser(submission.user)}</small></span>
                 <label><input type="radio" name="winnerSubmissionId" value={submission.id} defaultChecked={submission.placement === "WINNER"} required /> {locale === "fr" ? "Gagnant" : "Winner"}</label>
                 <label><input type="checkbox" name="honorableSubmissionIds" value={submission.id} defaultChecked={submission.placement === "HONORABLE_MENTION"} /> {locale === "fr" ? "Mention" : "Honorable mention"}</label>
               </div>

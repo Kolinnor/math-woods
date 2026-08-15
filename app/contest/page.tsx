@@ -2,6 +2,7 @@ import { Award, CalendarDays, Medal, Plus, Trophy } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ContestProblemTitlePicker } from "@/components/ContestProblemTitlePicker";
 import { ContestTabs } from "@/components/ContestTabs";
 import { Difficulty } from "@/components/Difficulty";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -23,7 +24,7 @@ import {
   DEFAULT_CONTEST_IMAGE_URL,
   localizedContestText
 } from "@/lib/problem-contests";
-import { renderMarkdown } from "@/lib/markdown";
+import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
 import { selectContentTranslation } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 import { tipImageObjectPosition } from "@/lib/tip-images";
@@ -188,6 +189,10 @@ export default async function ContestPage({
         select: { id: true, title: true }
       })
     : [];
+  const eligibleProblemOptions = await Promise.all(eligibleProblems.map(async (problem) => ({
+    id: problem.id,
+    titleHtml: await renderInlineMarkdown(problem.title)
+  })));
   const archive = contests.filter((contest) => contest.id !== featured.id && contest.resultsPublishedAt).slice(0, 6);
 
   return (
@@ -256,10 +261,11 @@ export default async function ContestPage({
               {eligibleProblems.length > 0 && (
                 <form action={submitContestProblemAction} className="contest-existing-problem-form">
                   <input type="hidden" name="contestId" value={featured.id} />
-                  <select name="problemId" required defaultValue={ownSubmission?.problemId ?? ""}>
-                    <option value="" disabled>{locale === "fr" ? "Choisir un problème de cette semaine" : "Choose a problem from this week"}</option>
-                    {eligibleProblems.map((problem) => <option key={problem.id} value={problem.id}>{problem.title}</option>)}
-                  </select>
+                  <ContestProblemTitlePicker
+                    defaultValue={ownSubmission?.problemId}
+                    items={eligibleProblemOptions}
+                    placeholder={locale === "fr" ? "Choisir un problème de cette semaine" : "Choose a problem from this week"}
+                  />
                   <button type="submit">{ownSubmission ? t.replace : t.submit}</button>
                 </form>
               )}

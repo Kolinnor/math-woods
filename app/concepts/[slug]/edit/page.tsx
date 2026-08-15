@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
+import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { OrderedProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
@@ -82,7 +84,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
   return (
     <ForestPageLayout
       title={t.contentEditor.editConcept}
-      eyebrow={concept.title}
+      eyebrow={<AsyncMarkdownInline markdown={concept.title} />}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       description={t.contentEditor.editDescription}
@@ -91,10 +93,12 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
       <div className={concept.translatedFromConcept ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
       <form action={updateConceptAction.bind(null, concept.id)} className="panel grid gap-4 p-5">
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">{t.contentEditor.title}</span>
-          <input name="title" required defaultValue={concept.title} />
-        </label>
+        <LiveMarkdownTitleField
+          defaultValue={concept.title}
+          initialHtml={await renderInlineMarkdown(concept.title)}
+          locale={interfaceLocale}
+          required
+        />
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.concepts.kind}</span>
           <select name="kind" defaultValue={concept.kind}>
@@ -115,7 +119,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
             <span>
               <strong>{t.contentEditor.markTranslationFresh}</strong>
               <small>
-                Source: {concept.translatedFromConcept.title}
+                Source: <AsyncMarkdownInline markdown={concept.translatedFromConcept.title} />
                 {staleTranslation ? ` / ${t.contentEditor.newerRevision(sourceRevisionId)}` : ` / ${t.contentEditor.noNewerSource}`}
               </small>
             </span>

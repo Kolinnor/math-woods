@@ -440,7 +440,7 @@ export default async function ConceptsPage({
                 return (
                   <div key={item.slug} className="missing-concept-card">
                     <Link href={`/concepts/new?title=${encodeURIComponent(item.title)}`} className="missing-concept-main">
-                      <span className="wiki-link missing">{item.title}</span>
+                      <span className="wiki-link missing"><AsyncMarkdownInline markdown={item.title} /></span>
                       <span className="muted text-sm">{item.count}</span>
                     </Link>
                     {item.sources.length > 0 && (
@@ -450,7 +450,7 @@ export default async function ConceptsPage({
                           {item.sources.map((source) => (
                             <Link key={`${source.sourceType}-${source.href}`} href={source.href as Route}>
                               <span>{sourceTypeLabel(source.sourceType, t.concepts)}</span>
-                              <strong>{source.title}</strong>
+                              <strong><AsyncMarkdownInline markdown={source.title} /></strong>
                               {source.label && <small>as "{source.label}"</small>}
                             </Link>
                           ))}

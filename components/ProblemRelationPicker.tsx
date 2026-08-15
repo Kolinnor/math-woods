@@ -6,7 +6,7 @@ import { MarkdownInline } from "@/components/MarkdownInline";
 
 type RelatedProblem = {
   title: string;
-  titleHtml?: string;
+  titleHtml: string;
   slug: string;
   difficulty: number | null;
   listed: boolean;
@@ -199,7 +199,7 @@ export function ProblemRelationPicker({
               {group.problems.map((problem) => (
                 <div key={problem.slug} className="relation-selected-problem">
                   <div>
-                    <strong>{problem.titleHtml ? <MarkdownInline html={problem.titleHtml} /> : problem.title}</strong>
+                    <strong><MarkdownInline html={problem.titleHtml} /></strong>
                     <span>{problemMeta(problem)}</span>
                   </div>
                   <button
@@ -240,7 +240,7 @@ export function ProblemRelationPicker({
             {!isSearching &&
               suggestions.map((problem) => (
                 <button key={problem.slug} type="button" onClick={() => addProblem(problem)}>
-                  <strong>{problem.titleHtml ? <MarkdownInline html={problem.titleHtml} /> : problem.title}</strong>
+                  <strong><MarkdownInline html={problem.titleHtml} /></strong>
                   <span>{problemMeta(problem)}</span>
                 </button>
               ))}

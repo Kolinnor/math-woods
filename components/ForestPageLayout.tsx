@@ -5,7 +5,7 @@ type ForestPageLayoutProps = {
   children: ReactNode;
   className?: string;
   description?: ReactNode;
-  eyebrow?: string;
+  eyebrow?: ReactNode;
   heroAlt?: string;
   heroImage?: string;
   meta?: ReactNode;

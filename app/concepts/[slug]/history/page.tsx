@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { RevisionDiff } from "@/components/RevisionDiff";
 import { UserName } from "@/components/UserName";
 import { rollbackConceptRevisionAction } from "@/lib/actions/concept-actions";
@@ -76,7 +77,7 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
   return (
     <ForestPageLayout
       title={t.historyPage.conceptTitle}
-      eyebrow={concept.title}
+      eyebrow={<AsyncMarkdownInline markdown={concept.title} />}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       description={t.historyPage.conceptDescription}
@@ -127,9 +128,9 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
             {!snapshot && revision.conceptTitle && revision.conceptTitle !== previousRevision?.conceptTitle && (
               <div className="revision-field-diff mt-3">
                 <strong>{previousRevision?.conceptTitle ? t.historyPage.titleChanged : t.historyPage.recordedTitle}</strong>
-                {previousRevision?.conceptTitle && <del>{previousRevision.conceptTitle}</del>}
+                {previousRevision?.conceptTitle && <del><AsyncMarkdownInline markdown={previousRevision.conceptTitle} /></del>}
                 {previousRevision?.conceptTitle && <span aria-hidden="true">→</span>}
-                <ins>{revision.conceptTitle}</ins>
+                <ins><AsyncMarkdownInline markdown={revision.conceptTitle} /></ins>
               </div>
             )}
             {!snapshot && revision.conceptKind && revision.conceptKind !== previousRevision?.conceptKind && (
@@ -143,9 +144,17 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
             {snapshot && previousSnapshot && metadataChanges.map((field) => (
               <div className="revision-field-diff mt-3" key={field}>
                 <strong>{t.historyPage.fields[field]}</strong>
-                <del>{conceptSnapshotValue(previousSnapshot, field, t)}</del>
+                <del>
+                  {field === "title" || field === "practiceExercises"
+                    ? <AsyncMarkdownInline markdown={conceptSnapshotValue(previousSnapshot, field, t)} />
+                    : conceptSnapshotValue(previousSnapshot, field, t)}
+                </del>
                 <span aria-hidden="true">{t.historyPage.changedTo}</span>
-                <ins>{conceptSnapshotValue(snapshot, field, t)}</ins>
+                <ins>
+                  {field === "title" || field === "practiceExercises"
+                    ? <AsyncMarkdownInline markdown={conceptSnapshotValue(snapshot, field, t)} />
+                    : conceptSnapshotValue(snapshot, field, t)}
+                </ins>
               </div>
             ))}
             {previousRevision ? (

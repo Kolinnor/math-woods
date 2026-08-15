@@ -1224,6 +1224,7 @@ export const fr = {
     preview: "Aperçu",
     closePreview: "Fermer l’aperçu",
     renderingPreview: "Génération de l’aperçu...",
+    liveTitlePreview: "Aperçu du titre rendu en direct",
     previewFailed: "L’aperçu n’a pas pu être généré.",
     untitledProblem: "Problème sans titre",
     untitledConcept: "Concept sans titre",

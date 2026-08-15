@@ -5,6 +5,7 @@ import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
+import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
 import { ProblemContentOptions } from "@/components/ProblemContentOptions";
@@ -227,15 +228,11 @@ export default async function NewProblemPage({
               </p>
             )}
 
-            <label className="grid gap-2">
-              <span className="text-sm font-medium">{t.contentEditor.title}</span>
-              <input
-                name="title"
-                required
-                defaultValue=""
-                placeholder={sourceProblem ? t.contentEditor.translationTitlePlaceholder(sourceProblem.title) : undefined}
-              />
-            </label>
+            <LiveMarkdownTitleField
+              locale={interfaceLocale}
+              required
+              placeholder={sourceProblem ? t.contentEditor.translationTitlePlaceholder(sourceProblem.title) : undefined}
+            />
 
             <div className="grid gap-2">
               <span className="text-sm font-medium">{t.contentEditor.statement}</span>

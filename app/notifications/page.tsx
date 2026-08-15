@@ -2,6 +2,7 @@ import { NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserAvatar } from "@/components/UserAvatar";
 import { clearNotificationsAction } from "@/lib/actions/notification-actions";
 import { requireUser } from "@/lib/auth";
@@ -81,10 +82,10 @@ export default async function NotificationsPage() {
               {notification.actor && <UserAvatar user={notification.actor} size="sm" />}
               <div>
                 <span>
-                  <strong>{notification.title}</strong>
+                  <strong><AsyncMarkdownInline markdown={notification.title} /></strong>
                   <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
                 </span>
-                <p>{notification.body}</p>
+                <p><AsyncMarkdownInline markdown={notification.body} /></p>
               </div>
             </div>
           </Link>

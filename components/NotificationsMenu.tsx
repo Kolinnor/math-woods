@@ -2,6 +2,7 @@ import { NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { Bell, Trash2, X } from "lucide-react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserAvatar } from "@/components/UserAvatar";
 import { clearNotificationMenuAction } from "@/lib/actions/notification-actions";
 import { formatUserShortDateTime } from "@/lib/date-format";
@@ -76,10 +77,10 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
                 {notification.actor && <UserAvatar user={notification.actor} size="sm" />}
                 <div>
                   <span>
-                    <strong>{notification.title}</strong>
+                    <strong><AsyncMarkdownInline markdown={notification.title} /></strong>
                     <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
                   </span>
-                  <p>{notification.body}</p>
+                  <p><AsyncMarkdownInline markdown={notification.body} /></p>
                 </div>
               </div>
             </Link>

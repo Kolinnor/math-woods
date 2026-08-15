@@ -1219,6 +1219,7 @@ export const en = {
     preview: "Preview",
     closePreview: "Close preview",
     renderingPreview: "Rendering preview...",
+    liveTitlePreview: "Live rendered title preview",
     previewFailed: "Preview could not be generated.",
     untitledProblem: "Untitled problem",
     untitledConcept: "Untitled concept",
