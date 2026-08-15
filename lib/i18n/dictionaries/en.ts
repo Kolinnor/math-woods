@@ -1115,6 +1115,8 @@ export const en = {
     title: "Title",
     translationTitlePlaceholder: (title: string) => `Translate \"${title}\"`,
     translationTitleHelp: "Translate the title as well as the page content.",
+    duplicateConceptTitleHeading: "This concept already exists.",
+    duplicateConceptTitleWarning: "Choose another title or edit the existing concept page.",
     sameTranslationTitleHeading: "The title still matches the source.",
     sameTranslationTitleWarning: "If the title is intentionally identical in both languages, confirm it below. Otherwise, translate the title before publishing.",
     keepSameTranslationTitle: "Keep the same title intentionally",

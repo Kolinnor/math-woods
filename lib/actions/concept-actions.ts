@@ -64,8 +64,11 @@ async function renderMarkdownContent(markdown: string) {
   return renderMarkdown(markdown);
 }
 
-function duplicateConceptTitleError() {
-  return new Error("A concept card already exists with this title.");
+class DuplicateConceptTitleError extends Error {
+  constructor() {
+    super("A concept card already exists with this title.");
+    this.name = "DuplicateConceptTitleError";
+  }
 }
 
 async function pinLatestConceptRevisionMetadata(
@@ -148,7 +151,7 @@ export async function createConceptAction(formData: FormData) {
       },
       select: { id: true }
     });
-    if (existingTitle) throw duplicateConceptTitleError();
+    if (existingTitle) throw new DuplicateConceptTitleError();
 
     if (translationGroupId) {
       const existingTranslation = await tx.concept.findFirst({
@@ -270,7 +273,7 @@ export async function createConceptAction(formData: FormData) {
 
 export type ConceptCreateActionState = {
   error: string | null;
-  errorKind?: "translation-links" | "same-translation-title";
+  errorKind?: "duplicate-title" | "translation-links" | "same-translation-title";
   sameTranslationTitleConfirmed?: boolean;
 };
 
@@ -282,6 +285,9 @@ export async function createConceptFormAction(
     await createConceptAction(formData);
     return { error: null };
   } catch (error) {
+    if (error instanceof DuplicateConceptTitleError) {
+      return { error: error.message, errorKind: "duplicate-title" };
+    }
     if (error instanceof SameTranslationTitleError) {
       return { error: error.message, errorKind: "same-translation-title" };
     }
@@ -355,7 +361,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         },
         select: { id: true }
       });
-      if (existingTitle) throw duplicateConceptTitleError();
+      if (existingTitle) throw new DuplicateConceptTitleError();
     }
     if (language !== existingConcept.language) {
       const existingTranslation = await tx.concept.findFirst({

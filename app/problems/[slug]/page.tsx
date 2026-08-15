@@ -54,6 +54,7 @@ import { isUnknownProblemOrigin } from "@/lib/problem-origin";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
+import { canViewProblemSolutions } from "@/lib/problem-solution-visibility";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
 import { problemStyleLabel } from "@/lib/problem-styles";
@@ -614,7 +615,12 @@ export default async function ProblemPage({
     : false;
   const canManageProblemHints = publishesProblemEdits;
   const requiresSolutionVerification = problem.verificationMode !== ProblemVerificationMode.NONE;
-  const canViewSolutions = !requiresSolutionVerification || attempt?.status === "SOLVED" || canEditCurrentProblem;
+  const canViewSolutions = canViewProblemSolutions({
+    isAuthenticated: Boolean(user),
+    requiresVerification: requiresSolutionVerification,
+    hasSolvedAttempt: attempt?.status === "SOLVED",
+    canEditProblem: canEditCurrentProblem
+  });
   const discussionPostCount = problem.thread?.posts.length ?? 0;
   const showVerificationRail = Boolean(
     (user &&
@@ -928,10 +934,10 @@ export default async function ProblemPage({
               </a>
             )
           ) : (
-            <Link href="/login" className="problem-action-tile solve">
+            <a href="#problem-solutions" className="problem-action-tile solve">
               <Check size={25} />
-              <span><strong>{t.problemDetail.markSolved}</strong><small>{t.home.hero.startSolving}</small></span>
-            </Link>
+              <span><strong>{t.problemDetail.revealSolutions}</strong><small>{t.problemDetail.revealWarning}</small></span>
+            </a>
           )}
           {user ? (
             attempt ? (
@@ -948,10 +954,13 @@ export default async function ProblemPage({
               </form>
             )
           ) : (
-            <Link href="/login" className="problem-action-tile attempted">
+            <a
+              href={selectedHints.length > 0 ? "#problem-hints" : "#problem-solutions"}
+              className="problem-action-tile attempted"
+            >
               <Target size={25} />
               <span><strong>{t.problemDetail.startAttempting}</strong><small>{t.home.hero.startSolving}</small></span>
-            </Link>
+            </a>
           )}
           <div className={`problem-favorite-control${favoriteCount > 0 ? " has-users" : ""}`}>
             {isOwnProblem ? (
@@ -1150,7 +1159,7 @@ export default async function ProblemPage({
           </section>
         )}
 
-        <section className="zen-hide proof-section mt-8">
+        <section id="problem-solutions" className="zen-hide proof-section mt-8">
           <div className="section-heading">
             <h2>{t.problemDetail.solutions}</h2>
             <span>{proofs.length}</span>

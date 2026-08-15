@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DailyScheduleBackButton } from "@/components/DailyScheduleBackButton";
 import { DailyTipCard } from "@/components/DailyTipCard";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { getCurrentUser } from "@/lib/auth";
@@ -108,7 +108,7 @@ export default async function DailyTipPreviewPage({
       heroAlt="Ivan Shishkin, Oak Grove"
       description={`${dateLabel}${usesDraft ? " · draft" : schedule?.tipId === tip.id ? " · scheduled" : " · automatic rotation"}`}
       workspaceClassName="forest-page-workspace-narrow"
-      actions={<Link href="/tips/tip-of-the-day" className="button secondary">Back to schedule</Link>}
+      actions={<DailyScheduleBackButton href="/tips/tip-of-the-day" />}
     >
       <div className="daily-content-preview">
         <DailyTipCard

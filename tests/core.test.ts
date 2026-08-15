@@ -88,6 +88,7 @@ import { buildProgressMap } from "../lib/progress.ts";
 import { pickRandomDifferent } from "../lib/random-content.ts";
 import { combineSearchFilters, searchFilterHref } from "../lib/search-filters.ts";
 import { canViewProblem, visibleProblemWhere } from "../lib/problem-visibility.ts";
+import { canViewProblemSolutions } from "../lib/problem-solution-visibility.ts";
 import {
   extractWikiLinks,
   makeWikiLinkLabelsExplicit,
@@ -749,6 +750,24 @@ assert.equal(
   true
 );
 assert.deepEqual(visibleProblemWhere(null), {});
+assert.equal(
+  canViewProblemSolutions({
+    isAuthenticated: false,
+    requiresVerification: true,
+    hasSolvedAttempt: false,
+    canEditProblem: false
+  }),
+  true
+);
+assert.equal(
+  canViewProblemSolutions({
+    isAuthenticated: true,
+    requiresVerification: true,
+    hasSolvedAttempt: false,
+    canEditProblem: false
+  }),
+  false
+);
 assert.equal(shouldSendChatOnEnter({
   key: "Enter",
   shiftKey: false,

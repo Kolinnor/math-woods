@@ -1,4 +1,5 @@
 import { DailyProblemCard } from "@/components/DailyProblemCard";
+import { DailyScheduleBackButton } from "@/components/DailyScheduleBackButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -12,7 +13,6 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { normalizeTipImagePosition, normalizeTipImageUrl } from "@/lib/tip-images";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -78,7 +78,7 @@ export default async function DailyProblemPreviewPage({
       heroAlt="Ivan Shishkin, Oak Grove"
       description={`${dateLabel}${usesDraft ? " · draft" : preview.automatic ? " · automatic selection" : ""}`}
       workspaceClassName="forest-page-workspace-narrow"
-      actions={<Link href="/tips/problem-of-the-day" className="button secondary">Back to schedule</Link>}
+      actions={<DailyScheduleBackButton href="/tips/problem-of-the-day" />}
     >
       <div className="daily-content-preview">
         <DailyProblemCard

@@ -7,6 +7,7 @@ import { domainLabel } from "@/lib/domains";
 import { canEditProblem } from "@/lib/permissions";
 import { normalizeProblemOrigin } from "@/lib/problem-origin";
 import { canViewProblem } from "@/lib/problem-visibility";
+import { canViewProblemSolutions } from "@/lib/problem-solution-visibility";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -36,10 +37,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
           select: { status: true }
         })
       : null;
-  const canExportSolutions =
-    problem.verificationMode === ProblemVerificationMode.NONE ||
-    solvedAttempt?.status === "SOLVED" ||
-    Boolean(user && canEditProblem(user, problem));
+  const canExportSolutions = canViewProblemSolutions({
+    isAuthenticated: Boolean(user),
+    requiresVerification: problem.verificationMode !== ProblemVerificationMode.NONE,
+    hasSolvedAttempt: solvedAttempt?.status === "SOLVED",
+    canEditProblem: Boolean(user && canEditProblem(user, problem))
+  });
   const solutionsMarkdown = canExportSolutions
     ? problem.proofs
         .map((proof, index) => `\n\n## Solution ${index + 1}\n\n_By @${proof.author.username}_\n\n${proof.bodyMarkdown}`)

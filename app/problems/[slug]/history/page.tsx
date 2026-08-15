@@ -4,18 +4,20 @@ import { RevisionDiff } from "@/components/RevisionDiff";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserName } from "@/components/UserName";
 import { rollbackProblemRevisionAction } from "@/lib/actions/problem-actions";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
+import { canRollbackProblem } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProblemHistoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const [, t, interfaceLocale] = await Promise.all([requireUser(), getTranslations(), getInterfaceLocale()]);
+  const [user, t, interfaceLocale] = await Promise.all([getCurrentUser(), getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
   const problem = await prisma.problem.findUnique({ where: { slug } });
 
   if (!problem) notFound();
+  const canRollback = Boolean(user && canRollbackProblem(user, problem));
 
   const revisions = await prisma.pageRevision.findMany({
     where: { pageType: "PROBLEM", pageId: problem.id },
@@ -55,11 +57,13 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
                     )}
                   </p>
                 </div>
-                <form action={rollbackProblemRevisionAction.bind(null, problem.id, revision.id, problem.version)}>
-                  <button type="submit" className="secondary">
-                    {t.historyPage.rollback}
-                  </button>
-                </form>
+                {canRollback && (
+                  <form action={rollbackProblemRevisionAction.bind(null, problem.id, revision.id, problem.version)}>
+                    <button type="submit" className="secondary">
+                      {t.historyPage.rollback}
+                    </button>
+                  </form>
+                )}
               </div>
               <p className="mt-3">{revision.editSummary || t.historyPage.noSummary}</p>
               {previousRevision ? (

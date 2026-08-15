@@ -12,6 +12,8 @@ import { SAME_TRANSLATION_TITLE_OVERRIDE_FIELD } from "@/lib/translation-title-g
 const initialState: ConceptCreateActionState = { error: null };
 
 type ConceptCreateFormLabels = {
+  duplicateTitleHeading: string;
+  duplicateTitleWarning: string;
   keepSameTranslationTitle: string;
   publishAnyway: string;
   sameTranslationTitleHeading: string;
@@ -28,6 +30,7 @@ export function ConceptCreateForm({
 }) {
   const [state, formAction] = useActionState(createConceptFormAction, initialState);
   const errorRef = useRef<HTMLDivElement | null>(null);
+  const requiresConfirmation = state.errorKind === "same-translation-title" || state.errorKind === "translation-links";
 
   useEffect(() => {
     if (!state.error || !errorRef.current) return;
@@ -46,29 +49,35 @@ export function ConceptCreateForm({
       {state.error && (
         <div ref={errorRef} className="quality-banner translation-link-warning" role="alert" tabIndex={-1}>
           <strong>
-            {state.errorKind === "same-translation-title"
-              ? labels.sameTranslationTitleHeading
-              : labels.translationLinksHeading}
+            {state.errorKind === "duplicate-title"
+              ? labels.duplicateTitleHeading
+              : state.errorKind === "same-translation-title"
+                ? labels.sameTranslationTitleHeading
+                : labels.translationLinksHeading}
           </strong>
           <p>
-            {state.errorKind === "same-translation-title"
-              ? labels.sameTranslationTitleWarning
-              : state.error}
+            {state.errorKind === "duplicate-title"
+              ? labels.duplicateTitleWarning
+              : state.errorKind === "same-translation-title"
+                ? labels.sameTranslationTitleWarning
+                : state.error}
           </p>
-          <button
-            type="submit"
-            name={
-              state.errorKind === "same-translation-title"
-                ? SAME_TRANSLATION_TITLE_OVERRIDE_FIELD
-                : TRANSLATION_LINK_OVERRIDE_FIELD
-            }
-            value="confirm"
-            className="secondary"
-          >
-            {state.errorKind === "same-translation-title"
-              ? labels.keepSameTranslationTitle
-              : labels.publishAnyway}
-          </button>
+          {requiresConfirmation && (
+            <button
+              type="submit"
+              name={
+                state.errorKind === "same-translation-title"
+                  ? SAME_TRANSLATION_TITLE_OVERRIDE_FIELD
+                  : TRANSLATION_LINK_OVERRIDE_FIELD
+              }
+              value="confirm"
+              className="secondary"
+            >
+              {state.errorKind === "same-translation-title"
+                ? labels.keepSameTranslationTitle
+                : labels.publishAnyway}
+            </button>
+          )}
         </div>
       )}
       {children}
