@@ -85,6 +85,11 @@ export function searchMorphologyVariants(rawQuery: string, language: string) {
   return singular === query ? [query] : [query, singular];
 }
 
+export function searchDatabaseVariants(rawQuery: string, morphologyVariants: readonly string[]) {
+  const query = rawQuery.trim();
+  return [...new Set([query, ...morphologyVariants].filter(Boolean))];
+}
+
 function containsWholeWord(value: string, query: string) {
   return ` ${value} `.includes(` ${query} `);
 }

@@ -353,7 +353,12 @@ import { buildRevisionDiff } from "../lib/revision-diff.ts";
 import { parseContributorQualityStatus, qualityLabel } from "../lib/quality.ts";
 import { sanitizeReportPath } from "../lib/security.ts";
 import { clientAddressFromHeaders, secretsMatch } from "../lib/request-security.ts";
-import { rankSearchMatches, searchMatchScore, searchMorphologyVariants } from "../lib/search-ranking.ts";
+import {
+  rankSearchMatches,
+  searchDatabaseVariants,
+  searchMatchScore,
+  searchMorphologyVariants
+} from "../lib/search-ranking.ts";
 import { parseTagInput } from "../lib/tags.ts";
 import {
   nextMissingTranslationLanguage,
@@ -2202,6 +2207,8 @@ assert.deepEqual(searchMorphologyVariants("Finite rings", "en"), ["finite rings"
 assert.deepEqual(searchMorphologyVariants("Rung", "en"), ["rung"]);
 assert.deepEqual(searchMorphologyVariants("Lens", "en"), ["lens"]);
 assert.deepEqual(searchMorphologyVariants("Anneaux commutatifs", "fr"), ["anneaux commutatifs", "anneau commutatif"]);
+assert.deepEqual(searchDatabaseVariants("pièce", searchMorphologyVariants("pièce", "fr")), ["pièce", "piece"]);
+assert.deepEqual(searchDatabaseVariants("piece", searchMorphologyVariants("piece", "fr")), ["piece"]);
 const ringMorphologyVariants = searchMorphologyVariants("Rings", "en");
 const rankedRingMatches = rankSearchMatches(
   [

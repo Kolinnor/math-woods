@@ -44,7 +44,7 @@ import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-diff
 import { buildProgressMap } from "@/lib/progress";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { combineSearchFilters } from "@/lib/search-filters";
-import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
+import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
@@ -347,6 +347,7 @@ export default async function ProblemsPage({
   const query = q.trim();
   const styleValue = parseProblemStyle(style);
   const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
+  const databaseSearchVariants = searchDatabaseVariants(query, morphologyVariants);
   const queryTagSlug = ensureSlug(query, "");
   const tagSlug = ensureSlug(tag, "");
   const legacyDifficultyValue = parseDifficultyBound(difficulty);
@@ -445,7 +446,7 @@ export default async function ProblemsPage({
             : { createdAt: "desc" };
   const queryClauses: Prisma.ProblemWhereInput[] = [];
   if (query) {
-    for (const variant of morphologyVariants) {
+    for (const variant of databaseSearchVariants) {
       queryClauses.push(
         { title: { contains: variant, mode: "insensitive" } },
         { bodyMarkdown: { contains: variant, mode: "insensitive" } },
@@ -454,6 +455,7 @@ export default async function ProblemsPage({
       );
     }
     if (queryTagSlug) {
+      queryClauses.push({ slug: { contains: queryTagSlug } });
       queryClauses.push({ tags: { some: { tag: { slug: { contains: queryTagSlug } } } } });
     }
     if (showSpoilerTags) {
