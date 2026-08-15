@@ -36,6 +36,10 @@ import { isSitePresenceId, sitePresenceIsActive } from "../lib/site-presence-con
 import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
 import { parseUserDiscoverySource } from "../lib/user-discovery-source.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
+import {
+  HOME_GUEST_PROBLEM_GROUP_IDS,
+  sortHomeGuestProblemsByDifficulty
+} from "../lib/home-guest-problems.ts";
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
 import { problemCreationNotificationCopy } from "../lib/problem-creation-notifications.ts";
 import { selectProblemBrowserTranslation } from "../lib/problem-browser-translations.ts";
@@ -421,6 +425,26 @@ assert.equal(problemDifficultyBars(50), 4);
 assert.equal(problemDifficultyBars(70), 5);
 assert.equal(problemDifficultyBars(90), 6);
 assert.equal(problemDifficultyBars(100), 6);
+assert.deepEqual([...HOME_GUEST_PROBLEM_GROUP_IDS], [
+  "cmsivlyco002bqk01w80m0111",
+  "cmsk3535w002pqk01x6f9lk7r",
+  "cmsejcus20005pg014xgr58da",
+  "cmsa48fhp0003mo01eevwb6r0"
+]);
+assert.deepEqual(
+  sortHomeGuestProblemsByDifficulty([
+    { id: 147, difficulty: 54, title: "Polynomes a coefficients premiers" },
+    { id: 160, difficulty: 8, title: "La piece manquante" },
+    { id: 176, difficulty: 22, title: "Plus qu'une minute pour cette integrale" },
+    { id: 201, difficulty: 40, title: "Le probleme du parc" }
+  ]).map(({ title }) => title),
+  [
+    "La piece manquante",
+    "Plus qu'une minute pour cette integrale",
+    "Le probleme du parc",
+    "Polynomes a coefficients premiers"
+  ]
+);
 
 const groupedTranslations = [
   { language: "fr", slug: "relations-de-viete" },

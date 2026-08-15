@@ -21,6 +21,10 @@ import {
 import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
+import {
+  HOME_GUEST_PROBLEM_GROUP_IDS,
+  sortHomeGuestProblemsByDifficulty
+} from "@/lib/home-guest-problems";
 import { parentProblemDomainForCode, PROBLEM_DOMAINS, translatedDomainLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
@@ -32,8 +36,7 @@ import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import {
   selectContentTranslation,
-  selectContentTranslationsByGroup,
-  selectExactContentTranslationsByGroup
+  selectContentTranslationsByGroup
 } from "@/lib/translation-routing";
 import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
 import { displayNameForUser } from "@/lib/user-display";
@@ -299,16 +302,9 @@ export default async function HomePage() {
             status: "PUBLISHED",
             listed: true,
             isExercise: false,
-            language: locale,
-            OR: [
-              { canAppearOnFrontPage: true },
-              { qualityStatus: "REVIEWED" }
-            ],
-            ...(dailyProblem ? { translationGroupId: { not: dailyProblem.translationGroupId } } : {}),
+            translationGroupId: { in: [...HOME_GUEST_PROBLEM_GROUP_IDS] },
             ...visibleProblemWhere(null)
           },
-          orderBy: { createdAt: "desc" },
-          take: 30,
           select: {
             id: true,
             slug: true,
@@ -318,8 +314,6 @@ export default async function HomePage() {
             translatedFromProblemId: true,
             difficulty: true,
             domain: true,
-            qualityStatus: true,
-            canAppearOnFrontPage: true,
             domains: {
               orderBy: { position: "asc" },
               take: 1,
@@ -363,7 +357,7 @@ export default async function HomePage() {
         })
       : []
   ]);
-  const guestRecommendations = selectExactContentTranslationsByGroup(
+  const guestRecommendations = selectContentTranslationsByGroup(
     guestRecommendationRows.map((problem) => ({
       ...problem,
       isSource: problem.translatedFromProblemId === null
@@ -509,13 +503,7 @@ export default async function HomePage() {
     : null;
   const tipBodyHtml = tip ? await renderMarkdown(tip.body) : "";
   const selectedTipImage = tip ? dailyTipImage(tip.images, tip.id) : null;
-  const publicRecommendations = guestRecommendations
-    .sort((left, right) => {
-      const frontPageDifference = Number(right.canAppearOnFrontPage) - Number(left.canAppearOnFrontPage);
-      const reviewDifference = Number(right.qualityStatus === "REVIEWED") - Number(left.qualityStatus === "REVIEWED");
-      return frontPageDifference || reviewDifference || right.id - left.id;
-    })
-    .slice(0, 4);
+  const publicRecommendations = sortHomeGuestProblemsByDifficulty(guestRecommendations);
 
   const solvedSet = new Set(solvedGroups.map((attempt) => attempt.problem.translationGroupId));
   const dailyProblemIsSolved = Boolean(
