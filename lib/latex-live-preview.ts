@@ -1,7 +1,27 @@
+import { StateField } from "@codemirror/state";
 import type { LatexRange } from "./latex-ranges.ts";
 
 export type LatexPreviewRenderMode = "display" | "inline";
 export type LatexPreviewLayoutKind = "inline" | "inline-display" | "block-display";
+
+// Keep joined-line formulas raw until the next user transaction so old replacement widgets can be removed first.
+export const suppressLatexPreviewAfterLineJoin = StateField.define<boolean>({
+  create: () => false,
+  update(_value, transaction) {
+    if (!transaction.docChanged) return false;
+
+    let removedLineBreak = false;
+    transaction.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+      const deleted = transaction.startState.doc.sliceString(fromA, toA);
+      if (deleted.includes("\n") && !inserted.toString().includes("\n")) {
+        removedLineBreak = true;
+      }
+    });
+
+    return removedLineBreak;
+  }
+});
+
 export type LatexPreviewDiagnosticSeverity = "info" | "warning" | "error";
 export type LatexPreviewDiagnosticCode =
   | "display-math-inline-display-fallback"

@@ -213,7 +213,8 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
   latexPreviewUsesCenteredLine,
-  selectionSpansLineBreakInsideLatexRange
+  selectionSpansLineBreakInsideLatexRange,
+  suppressLatexPreviewAfterLineJoin
 } from "../lib/latex-live-preview.ts";
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
 import { explorationSnapshotPages } from "../lib/exploration-snapshot.ts";
@@ -957,6 +958,18 @@ assert.equal(latexPreviewRenderMode(mixedDollarText, mixedDollarRanges[1]), "dis
 assert.equal(latexPreviewUsesBlockDecoration(mixedDollarText, mixedDollarRanges[1]), false);
 assert.equal(latexPreviewUsesCenteredLine(mixedDollarText, mixedDollarRanges[0]), false);
 assert.equal(latexPreviewUsesCenteredLine(mixedDollarText, mixedDollarRanges[1]), false);
+const joinedLinePreviewState = EditorState.create({
+  doc: "Salut\nabc Truc $x>0$    .",
+  extensions: [suppressLatexPreviewAfterLineJoin]
+});
+const joinedLinePreviewTransaction = joinedLinePreviewState.update({
+  changes: { from: 0, to: "Salut\nabc Truc".length }
+});
+assert.equal(joinedLinePreviewTransaction.state.field(suppressLatexPreviewAfterLineJoin), true);
+const joinedLineSelectionTransaction = joinedLinePreviewTransaction.state.update({
+  selection: { anchor: 0 }
+});
+assert.equal(joinedLineSelectionTransaction.state.field(suppressLatexPreviewAfterLineJoin), false);
 assert.deepEqual(normalizeDisplayMathLineBreaks("Before $$x^2 + 1$$ after", 18), {
   text: "Before\n$$x^2 + 1$$\nafter",
   cursor: 18,

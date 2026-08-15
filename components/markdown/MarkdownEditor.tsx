@@ -12,7 +12,6 @@ import {
   gutter,
   keymap,
   lineNumbers,
-  type ViewUpdate,
   ViewPlugin,
   WidgetType
 } from "@codemirror/view";
@@ -45,6 +44,7 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
   latexPreviewUsesCenteredLine,
+  suppressLatexPreviewAfterLineJoin,
   selectionSpansLineBreakInsideLatexRange,
   type LatexPreviewDiagnostic
 } from "@/lib/latex-live-preview";
@@ -1078,7 +1078,6 @@ function clipboardImageFile(data: DataTransfer | null) {
 }
 
 const setPreviewFocus = StateEffect.define<boolean>();
-const resumeLatexPreview = StateEffect.define<void>();
 const displayMathLineBreakNormalizer = createDisplayMathLineBreakNormalizer(setPreviewFocus);
 const previewOnly = Transaction.addToHistory.of(false);
 const previewFocusField = StateField.define<boolean>({
@@ -1106,55 +1105,6 @@ function schedulePreviewFocus(view: EditorView, focused: boolean) {
     });
   });
 }
-
-const suppressLatexPreviewOnJoinedLine = StateField.define<boolean>({
-  create: () => false,
-  update(_value, transaction) {
-    if (transaction.effects.some((effect) => effect.is(resumeLatexPreview))) return false;
-    if (!transaction.docChanged) return false;
-
-    let removedLineBreak = false;
-    transaction.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
-      const deleted = transaction.startState.doc.sliceString(fromA, toA);
-      if (deleted.includes("\n") && !inserted.toString().includes("\n")) {
-        removedLineBreak = true;
-      }
-    });
-
-    return removedLineBreak;
-  }
-});
-
-const resumeLatexPreviewAfterLayout = ViewPlugin.fromClass(
-  class {
-    private firstFrame: number | null = null;
-    private secondFrame: number | null = null;
-
-    update(update: ViewUpdate) {
-      if (!update.state.field(suppressLatexPreviewOnJoinedLine) || this.firstFrame !== null || this.secondFrame !== null) {
-        return;
-      }
-
-      this.firstFrame = window.requestAnimationFrame(() => {
-        this.firstFrame = null;
-        this.secondFrame = window.requestAnimationFrame(() => {
-          this.secondFrame = null;
-          if (!update.view.state.field(suppressLatexPreviewOnJoinedLine)) return;
-
-          update.view.dispatch({
-            effects: resumeLatexPreview.of(undefined),
-            annotations: previewOnly
-          });
-        });
-      });
-    }
-
-    destroy() {
-      if (this.firstFrame !== null) window.cancelAnimationFrame(this.firstFrame);
-      if (this.secondFrame !== null) window.cancelAnimationFrame(this.secondFrame);
-    }
-  }
-);
 
 const latexDiagnosticWarningKeys = new Set<string>();
 
@@ -1279,7 +1229,7 @@ function buildLivePreviewDecorations(state: EditorState) {
   const wikiLinks = findWikiLinkRanges(text);
   const problemLinks = findProblemLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
-  const suppressJoinedLinePreview = state.field(suppressLatexPreviewOnJoinedLine);
+  const suppressJoinedLinePreview = state.field(suppressLatexPreviewAfterLineJoin);
   const decorations = latexRanges.flatMap((range) => {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
@@ -1433,8 +1383,7 @@ const liveMarkdownPreview = StateField.define<DecorationSet>({
   create: (state) => buildLivePreviewDecorations(state),
   update(decorations, transaction) {
     const focusChanged = transaction.effects.some((effect) => effect.is(setPreviewFocus));
-    const latexPreviewResumed = transaction.effects.some((effect) => effect.is(resumeLatexPreview));
-    if (transaction.docChanged || transaction.selection || focusChanged || latexPreviewResumed) {
+    if (transaction.docChanged || transaction.selection || focusChanged) {
       return buildLivePreviewDecorations(transaction.state);
     }
     return decorations;
@@ -1572,9 +1521,8 @@ export function MarkdownEditor({
             ])
           ),
           previewFocusField,
-          suppressLatexPreviewOnJoinedLine,
+          suppressLatexPreviewAfterLineJoin,
           liveMarkdownPreview,
-          resumeLatexPreviewAfterLayout,
           previewFocusEvents,
           displayMathLineBreakNormalizer,
           EditorView.domEventHandlers({
