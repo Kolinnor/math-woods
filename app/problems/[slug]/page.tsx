@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ReportStatus, TargetType } from "@prisma/client";
-import { Check, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp } from "lucide-react";
+import { Check, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
@@ -153,7 +153,7 @@ const redesignCopy = {
       favoriteSub: (count: number) => `${count} ${count === 1 ? "favorite" : "favorites"}`
     },
     favoriteUsers: {
-      summary: (count: number) => `See who added it to favorites (${count})`,
+      summary: "See who added this problem to favorites",
       title: "Favorited by"
     },
     reactions: {
@@ -187,7 +187,7 @@ const redesignCopy = {
       favoriteSub: (count: number) => `${count} favori${count > 1 ? "s" : ""}`
     },
     favoriteUsers: {
-      summary: (count: number) => `Voir qui l'a ajouté aux favoris (${count})`,
+      summary: "Voir les personnes qui ont ajouté ce problème aux favoris",
       title: "Ajouté aux favoris par"
     },
     reactions: {
@@ -953,43 +953,47 @@ export default async function ProblemPage({
               <span><strong>{t.problemDetail.startAttempting}</strong><small>{t.home.hero.startSolving}</small></span>
             </Link>
           )}
-          {isOwnProblem ? (
-            <span className="problem-action-tile favorite">
-              <Heart size={25} />
-              <span><strong>{t.problemDetail.yourProblem}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
-            </span>
-          ) : user ? (
-            <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
-              <button type="submit" className="problem-action-tile favorite" aria-pressed={Boolean(favorite)}>
-                <Heart size={25} fill={favorite ? "currentColor" : "none"} />
-                <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
-              </button>
-            </form>
-          ) : (
-            <Link href="/login" className="problem-action-tile favorite">
-              <Heart size={25} />
-              <span><strong>{t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
-            </Link>
-          )}
+          <div className={`problem-favorite-control${favoriteCount > 0 ? " has-users" : ""}`}>
+            {isOwnProblem ? (
+              <span className="problem-action-tile problem-favorite-main favorite">
+                <Heart size={25} />
+                <span><strong>{t.problemDetail.yourProblem}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
+              </span>
+            ) : user ? (
+              <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
+                <button type="submit" className="problem-action-tile problem-favorite-main favorite" aria-pressed={Boolean(favorite)}>
+                  <Heart size={25} fill={favorite ? "currentColor" : "none"} />
+                  <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
+                </button>
+              </form>
+            ) : (
+              <Link href="/login" className="problem-action-tile problem-favorite-main favorite">
+                <Heart size={25} />
+                <span><strong>{t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
+              </Link>
+            )}
+            {favoriteCount > 0 && (
+              <details className="problem-favorite-users">
+                <summary title={copy.favoriteUsers.summary} aria-label={copy.favoriteUsers.summary}>
+                  <Users size={18} aria-hidden="true" />
+                </summary>
+                <div className="problem-favorite-users-panel">
+                  <h2>{copy.favoriteUsers.title}</h2>
+                  <ul>
+                    {groupFavoriteRows.map(({ user: favoriteUser }) => (
+                      <li key={favoriteUser.username}>
+                        <Link href={`/profile/${favoriteUser.username}`}>
+                          <UserName user={favoriteUser} />
+                          <span className="problem-favorite-username">@{favoriteUser.username}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </details>
+            )}
+          </div>
         </section>
-        {favoriteCount > 0 && (
-          <details className="problem-favorite-users zen-hide">
-            <summary>{copy.favoriteUsers.summary(favoriteCount)}</summary>
-            <div className="problem-favorite-users-panel">
-              <h2>{copy.favoriteUsers.title}</h2>
-              <ul>
-                {groupFavoriteRows.map(({ user: favoriteUser }) => (
-                  <li key={favoriteUser.username}>
-                    <Link href={`/profile/${favoriteUser.username}`}>
-                      <UserName user={favoriteUser} />
-                      <span className="problem-favorite-username">@{favoriteUser.username}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </details>
-        )}
         {hasSpecifiedOrigin && (
           <div className="problem-origin-note zen-meta">
             {!isUnknownProblemOrigin(problem.origin) && <span>{t.problemDetail.origin} {problem.origin}</span>}

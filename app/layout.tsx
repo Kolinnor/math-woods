@@ -50,19 +50,19 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/favicon-light.png",
+        url: "/favicon-light.png?v=21148016",
         type: "image/png",
         sizes: "512x512",
         media: "(prefers-color-scheme: light)"
       },
       {
-        url: "/favicon-dark.png",
+        url: "/favicon-dark.png?v=bd06f8c2",
         type: "image/png",
         sizes: "512x512",
         media: "(prefers-color-scheme: dark)"
       }
     ],
-    apple: "/favicon-dark.png"
+    apple: "/favicon-dark.png?v=bd06f8c2"
   }
 };
 

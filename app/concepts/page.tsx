@@ -43,13 +43,6 @@ type SearchValue = string | string[] | undefined;
 const ACTIVE_LANGUAGE_CODES = ACTIVE_CONTENT_LANGUAGES.map((language) => language.code);
 const ACTIVE_LANGUAGE_CODE_SET = new Set(ACTIVE_LANGUAGE_CODES);
 
-function conceptTitleFromSlug(slug: string) {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .join(" ");
-}
-
 function sourceTypeLabel(sourceType: "PROBLEM" | "CONCEPT" | "PLAYLIST" | "PROOF", t: Dictionary["concepts"]) {
   return t.sourceTypes[sourceType];
 }
@@ -70,12 +63,13 @@ function parseProblemLinkFilter(value: string | undefined): ProblemLinkFilter {
   return "all";
 }
 
-function parseLanguageFilters(value: SearchValue) {
+function parseLanguageFilters(value: SearchValue, preferredLanguage: string) {
   const values = (Array.isArray(value) ? value : value ? [value] : [])
     .map((item) => item.trim().toLowerCase())
     .filter((item) => ACTIVE_LANGUAGE_CODE_SET.has(item));
   const uniqueValues = [...new Set(values)];
-  return uniqueValues.length ? uniqueValues : ACTIVE_LANGUAGE_CODES;
+  if (uniqueValues.length) return uniqueValues;
+  return ACTIVE_LANGUAGE_CODE_SET.has(preferredLanguage) ? [preferredLanguage] : ACTIVE_LANGUAGE_CODES;
 }
 
 export default async function ConceptsPage({
@@ -111,7 +105,7 @@ export default async function ConceptsPage({
   } = await searchParams;
   const query = q.trim();
   const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
-  const languageValues = parseLanguageFilters(language);
+  const languageValues = parseLanguageFilters(language, preferredLanguage);
   const sortValue = parseConceptSort(sort);
   const exerciseCountValue = parseConceptExerciseCount(exerciseCount || minExercises);
   const exerciseCountModeValue = parseConceptExerciseCountMode(exerciseCountMode);
@@ -442,12 +436,11 @@ export default async function ConceptsPage({
             <p>{t.concepts.missingConceptsDescription}</p>
             <div className="concept-discovery-links">
               {missing.map((item) => {
-                const title = conceptTitleFromSlug(item.slug);
                 const hiddenSourceCount = Math.max(0, item.count - item.sources.length);
                 return (
                   <div key={item.slug} className="missing-concept-card">
-                    <Link href={`/concepts/new?title=${encodeURIComponent(title)}`} className="missing-concept-main">
-                      <span className="wiki-link missing">{title}</span>
+                    <Link href={`/concepts/new?title=${encodeURIComponent(item.title)}`} className="missing-concept-main">
+                      <span className="wiki-link missing">{item.title}</span>
                       <span className="muted text-sm">{item.count}</span>
                     </Link>
                     {item.sources.length > 0 && (

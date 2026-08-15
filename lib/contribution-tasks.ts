@@ -14,6 +14,7 @@ export const CONTRIBUTION_TASK_KEYS = [
 ] as const;
 
 export type ContributionTaskKey = (typeof CONTRIBUTION_TASK_KEYS)[number];
+export type ProblemTranslationTaskKey = "problems-missing-fr" | "problems-missing-en";
 
 type TranslatablePage = {
   language: string;
@@ -26,6 +27,15 @@ const contributionTaskKeySet = new Set<string>(CONTRIBUTION_TASK_KEYS);
 export function parseContributionTaskKey(value: unknown): ContributionTaskKey | null {
   const normalized = String(value ?? "").trim();
   return contributionTaskKeySet.has(normalized) ? (normalized as ContributionTaskKey) : null;
+}
+
+export function parseProblemTranslationTaskKey(value: unknown): ProblemTranslationTaskKey | null {
+  const task = parseContributionTaskKey(value);
+  return task === "problems-missing-fr" || task === "problems-missing-en" ? task : null;
+}
+
+export function problemTranslationTaskTargetLanguage(task: ProblemTranslationTaskKey) {
+  return task === "problems-missing-fr" ? "fr" : "en";
 }
 
 export function hasExamplesSection(markdown: string) {

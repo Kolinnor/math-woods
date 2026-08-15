@@ -1293,24 +1293,67 @@ body:has(.problem-detail-shell) .site-main {
   color: #c2415f;
 }
 
+.problem-favorite-control {
+  min-width: 0;
+  position: relative;
+}
+
+.problem-favorite-control > form,
+.problem-favorite-control > .problem-action-tile {
+  height: 100%;
+}
+
+.problem-favorite-control.has-users .problem-favorite-main {
+  padding-right: 4.35rem;
+}
+
 .problem-favorite-users {
-  margin-top: 0.65rem;
+  bottom: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 .problem-favorite-users > summary {
+  align-items: center;
+  border-left: 1px solid #d99aaa;
+  border-radius: 0 10px 10px 0;
   color: #8f2944;
   cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 650;
-  width: fit-content;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  list-style: none;
+  transition: background-color 140ms ease, color 140ms ease;
+  width: 3.55rem;
+}
+
+.problem-favorite-users > summary::-webkit-details-marker {
+  display: none;
+}
+
+.problem-favorite-users > summary:hover,
+.problem-favorite-users[open] > summary {
+  background: #f8dce4;
+  color: #762139;
+}
+
+.problem-favorite-users > summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -4px;
 }
 
 .problem-favorite-users-panel {
   background: #fff8f9;
   border: 1px solid #e8bcc7;
   border-radius: 8px;
-  margin-top: 0.65rem;
+  box-shadow: 0 12px 30px rgb(72 30 42 / 0.16);
   padding: 0.9rem 1rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.55rem);
+  width: min(20rem, calc(100vw - 2rem));
+  z-index: 30;
 }
 
 .problem-favorite-users-panel h2 {

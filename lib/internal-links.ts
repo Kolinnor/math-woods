@@ -13,6 +13,7 @@ export type MissingConceptSource = {
 export type MissingConcept = {
   count: number;
   slug: string;
+  title: string;
   sources: MissingConceptSource[];
 };
 
@@ -366,8 +367,18 @@ export async function missingConcepts({
   );
   const sourcesBySlug = new Map<string, MissingConceptSource[]>();
   const seenSourcesBySlug = new Map<string, Set<string>>();
+  const labelsBySlug = new Map<string, Map<string, { count: number; title: string }>>();
 
   for (const link of links) {
+    const label = link.label?.trim();
+    if (label) {
+      const labels = labelsBySlug.get(link.targetSlug) ?? new Map<string, { count: number; title: string }>();
+      const key = label.toLocaleLowerCase();
+      const current = labels.get(key);
+      labels.set(key, { count: (current?.count ?? 0) + 1, title: current?.title ?? label });
+      labelsBySlug.set(link.targetSlug, labels);
+    }
+
     const source =
       link.sourceType === SourceType.PROBLEM
         ? problemById.get(link.sourceId)
@@ -401,9 +412,14 @@ export async function missingConcepts({
     sourcesBySlug.set(link.targetSlug, currentSources);
   }
 
-  return grouped.map((item) => ({
-    slug: item.targetSlug,
-    count: item._count.targetSlug,
-    sources: sourcesBySlug.get(item.targetSlug) ?? []
-  }));
+  return grouped.map((item) => {
+    const localizedTitle = [...(labelsBySlug.get(item.targetSlug)?.values() ?? [])]
+      .sort((left, right) => right.count - left.count || left.title.localeCompare(right.title))[0]?.title;
+    return {
+      slug: item.targetSlug,
+      title: localizedTitle ?? item.targetSlug.split("-").filter(Boolean).join(" "),
+      count: item._count.targetSlug,
+      sources: sourcesBySlug.get(item.targetSlug) ?? []
+    };
+  });
 }

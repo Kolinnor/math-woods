@@ -26,6 +26,8 @@ import { parseConceptKind } from "../lib/concept-kinds.ts";
 import {
   hasExamplesSection,
   parseContributionTaskKey,
+  parseProblemTranslationTaskKey,
+  problemTranslationTaskTargetLanguage,
   translationGroupCount,
   translationSourcesMissingLanguage
 } from "../lib/contribution-tasks.ts";
@@ -2769,6 +2771,10 @@ assert.equal(hasExamplesSection("An example appears in this sentence."), false);
 assert.equal(hasExamplesSection("## Counterexamples\n\nNone yet."), false);
 assert.equal(parseContributionTaskKey("stub-concepts"), "stub-concepts");
 assert.equal(parseContributionTaskKey("unknown-task"), null);
+assert.equal(parseProblemTranslationTaskKey("problems-missing-fr"), "problems-missing-fr");
+assert.equal(parseProblemTranslationTaskKey("concepts-missing-fr"), null);
+assert.equal(problemTranslationTaskTargetLanguage("problems-missing-fr"), "fr");
+assert.equal(problemTranslationTaskTargetLanguage("problems-missing-en"), "en");
 const contributionTranslationPages = [
   { language: "en", slug: "groups", translationGroupId: "group-a" },
   { language: "fr", slug: "groupes", translationGroupId: "group-a" },

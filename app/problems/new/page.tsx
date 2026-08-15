@@ -1,3 +1,5 @@
+import type { Route } from "next";
+import Link from "next/link";
 import { ProblemCreateForm } from "@/components/ProblemCreateForm";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
@@ -14,6 +16,7 @@ import { ProblemVerificationFields } from "@/components/ProblemVerificationField
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { TranslationCompanionFields } from "@/components/TranslationCompanionFields";
 import { requireVerifiedUser } from "@/lib/auth";
+import { parseProblemTranslationTaskKey } from "@/lib/contribution-tasks";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
@@ -22,7 +25,7 @@ import { parseActiveContentLanguage } from "@/lib/languages";
 import { localizedProblemOrigin } from "@/lib/problem-origin";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownCollectionForTranslation } from "@/lib/translated-markdown";
-import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
+import { contentLanguageViewHref, nextMissingTranslationLanguage } from "@/lib/translation-routing";
 import { displayNameForUser } from "@/lib/user-display";
 
 export default async function NewProblemPage({
@@ -38,6 +41,8 @@ export default async function NewProblemPage({
     draft?: string;
     exercise?: string;
     contest?: string;
+    task?: string;
+    completed?: string;
   }>;
 }) {
   await requireVerifiedUser();
@@ -52,8 +57,11 @@ export default async function NewProblemPage({
     translateOf = "",
     language = "",
     exercise = "",
-    contest = ""
+    contest = "",
+    task = "",
+    completed = ""
   } = queryParams;
+  const contributionTask = parseProblemTranslationTaskKey(task);
   const explorationSlug = exploration || playlist;
   const preferredLanguage = await getPreferredContentLanguage();
   const requestedLanguage = language ? parseActiveContentLanguage(language) : preferredLanguage;
@@ -104,6 +112,12 @@ export default async function NewProblemPage({
             }
           }
         }
+      })
+    : null;
+  const completedProblem = contributionTask && completed
+    ? await prisma.problem.findUnique({
+        where: { slug: completed },
+        select: { language: true, slug: true }
       })
     : null;
   const sourceTranslationLanguages = sourceProblem
@@ -170,6 +184,21 @@ export default async function NewProblemPage({
     >
     <div className={sourceProblem ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
+        {sourceProblem && completedProblem && (
+          <div className="quality-banner flex flex-wrap items-center justify-between gap-3 text-sm">
+            <span>
+              {interfaceLocale === "fr"
+                ? "Traduction enregistrée. Voici un autre problème à traduire."
+                : "Translation saved. Here is another problem to translate."}
+            </span>
+            <Link
+              className="button secondary"
+              href={contentLanguageViewHref("/problems", completedProblem.slug, completedProblem.language) as Route}
+            >
+              {interfaceLocale === "fr" ? "Voir la traduction précédente" : "View the previous translation"}
+            </Link>
+          </div>
+        )}
         <ProblemCreateForm
           labels={{
             keepSameTranslationTitle: t.contentEditor.keepSameTranslationTitle,
@@ -183,6 +212,7 @@ export default async function NewProblemPage({
           {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
           {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
           {sourceProblem && <input type="hidden" name="translationSourceSlug" value={sourceProblem.slug} />}
+          {sourceProblem && contributionTask && <input type="hidden" name="contributionTask" value={contributionTask} />}
           {contest && <input type="hidden" name="contestSlug" value={contest} />}
 
           <section className="problem-compose-card">

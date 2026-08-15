@@ -28,6 +28,10 @@ import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import {
+  parseProblemTranslationTaskKey,
+  problemTranslationTaskTargetLanguage
+} from "@/lib/contribution-tasks";
+import {
   assertTranslationWikiLinksPreserved,
   syncInternalLinks,
   TranslationWikiLinksPreservedError
@@ -361,6 +365,7 @@ export async function createProblemAction(formData: FormData) {
   const language = requireActiveContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
+  const contributionTask = parseProblemTranslationTaskKey(formData.get("contributionTask"));
   const allowMissingTranslationLinks = translationLinkOverrideRequested(formData);
   const allowSameTranslationTitle = sameTranslationTitleOverrideRequested(formData);
   const bodyMarkdown =
@@ -856,6 +861,15 @@ export async function createProblemAction(formData: FormData) {
     body: problemNotification.body,
     href: `/problems/${problem.created.slug}`
   });
+  if (
+    translationGroupId &&
+    contributionTask &&
+    problemTranslationTaskTargetLanguage(contributionTask) === problem.created.language
+  ) {
+    redirect(
+      `/contributing/tasks/random?task=${contributionTask}&completed=${encodeURIComponent(problem.created.slug)}` as Route
+    );
+  }
   redirect(contestSlug
     ? "/contest?submitted=1"
     : contentLanguageViewHref("/problems", problem.created.slug, problem.created.language) as Route);

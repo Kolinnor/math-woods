@@ -54,7 +54,7 @@ async function candidatesForTask(task: ContributionTaskKey): Promise<Candidate[]
     : await prisma.concept.findMany({ where: { status: { not: ConceptStatus.MISSING } }, select: { language: true, slug: true, translationGroupId: true } });
   return translationSourcesMissingLanguage(pages, targetLanguage).map(({ slug }) => ({
     slug,
-    href: `/${isProblemTask ? "problems" : "concepts"}/${slug}/translate?language=${targetLanguage}`
+    href: `/${isProblemTask ? "problems" : "concepts"}/${slug}/translate?language=${targetLanguage}&task=${task}`
   }));
 }
 
@@ -70,5 +70,9 @@ export async function GET(request: NextRequest) {
   const candidate = pickRandomDifferent(candidates, candidates.find((item) => item.slug === previousSlug));
   if (!candidate) return redirectTo("/contributing/tasks", request);
 
-  return redirectTo(candidate.href, request, task, candidate.slug);
+  const target = new URL(candidate.href, request.nextUrl.origin);
+  const completedSlug = request.nextUrl.searchParams.get("completed")?.trim();
+  if (completedSlug) target.searchParams.set("completed", completedSlug);
+
+  return redirectTo(`${target.pathname}${target.search}`, request, task, candidate.slug);
 }
