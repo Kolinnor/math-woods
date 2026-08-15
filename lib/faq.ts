@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { DEFAULT_FAQ_SECTIONS_FR } from "@/lib/faq-fr";
 import { renderMarkdown } from "@/lib/markdown";
 
 export type FaqItemContent = {
@@ -299,7 +300,12 @@ export const DEFAULT_FAQ_SECTIONS: FaqSectionContent[] = [
   }
 ];
 
-export async function loadFaqSections(): Promise<FaqSectionContent[]> {
+export async function loadFaqSections(language = "en"): Promise<FaqSectionContent[]> {
+  if (language === "fr") return DEFAULT_FAQ_SECTIONS_FR.map((section) => ({
+    ...section,
+    items: section.items.map((item) => ({ ...item }))
+  }));
+
   const sections = await prisma.faqSection.findMany({
     orderBy: [{ position: "asc" }, { id: "asc" }],
     include: {
@@ -313,8 +319,8 @@ export async function loadFaqSections(): Promise<FaqSectionContent[]> {
   return sections;
 }
 
-export async function loadRenderedFaqSections(): Promise<RenderedFaqSection[]> {
-  const sections = await loadFaqSections();
+export async function loadRenderedFaqSections(language = "en"): Promise<RenderedFaqSection[]> {
+  const sections = await loadFaqSections(language);
 
   return Promise.all(
     sections.map(async (section) => ({

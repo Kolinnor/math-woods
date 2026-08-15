@@ -263,10 +263,57 @@ async function refreshLinksForConceptRecord(
   }
 }
 
-export async function missingConcepts(limit = 20, sourcesPerConcept = 4): Promise<MissingConcept[]> {
+export async function missingConcepts({
+  languages,
+  limit = 20,
+  sourcesPerConcept = 4
+}: {
+  languages: readonly string[];
+  limit?: number;
+  sourcesPerConcept?: number;
+}): Promise<MissingConcept[]> {
+  if (languages.length === 0) return [];
+
+  const [problemSources, conceptSources, proofSources] = await Promise.all([
+    prisma.problem.findMany({
+      where: { language: { in: [...languages] }, status: { not: "ARCHIVED" } },
+      select: { id: true }
+    }),
+    prisma.concept.findMany({
+      where: { language: { in: [...languages] } },
+      select: { id: true }
+    }),
+    prisma.problemProof.findMany({
+      where: {
+        problem: { language: { in: [...languages] }, status: { not: "ARCHIVED" } }
+      },
+      select: { id: true }
+    })
+  ]);
+  const sourceFilters: Prisma.InternalLinkWhereInput[] = [];
+  if (problemSources.length) {
+    sourceFilters.push({
+      sourceType: SourceType.PROBLEM,
+      sourceId: { in: problemSources.map(({ id }) => id) }
+    });
+  }
+  if (conceptSources.length) {
+    sourceFilters.push({
+      sourceType: SourceType.CONCEPT,
+      sourceId: { in: conceptSources.map(({ id }) => id) }
+    });
+  }
+  if (proofSources.length) {
+    sourceFilters.push({
+      sourceType: SourceType.PROOF,
+      sourceId: { in: proofSources.map(({ id }) => id) }
+    });
+  }
+  if (sourceFilters.length === 0) return [];
+
   const grouped = await prisma.internalLink.groupBy({
     by: ["targetSlug"],
-    where: { exists: false },
+    where: { exists: false, OR: sourceFilters },
     _count: { targetSlug: true },
     orderBy: { _count: { targetSlug: "desc" } },
     take: limit
@@ -279,7 +326,7 @@ export async function missingConcepts(limit = 20, sourcesPerConcept = 4): Promis
     where: {
       exists: false,
       targetSlug: { in: slugs },
-      sourceType: { in: [SourceType.PROBLEM, SourceType.CONCEPT, SourceType.PROOF] }
+      OR: sourceFilters
     },
     orderBy: { createdAt: "desc" }
   });

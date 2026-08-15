@@ -217,7 +217,7 @@ export default async function ConceptsPage({
           _count: { targetSlug: true }
         })
       : Promise.resolve([]),
-    missingConcepts(30),
+    missingConcepts({ languages: languageValues, limit: 30 }),
     prisma.concept.findMany({
       where: {
         language: { in: languageValues },

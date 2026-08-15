@@ -5,7 +5,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { getCurrentUser } from "@/lib/auth";
 import { loadRenderedFaqSections } from "@/lib/faq";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,8 @@ function Faq({ question, answerHtml }: { question: string; answerHtml: string })
 }
 
 export default async function AboutPage() {
-  const [user, faqSections, t] = await Promise.all([getCurrentUser(), loadRenderedFaqSections(), getTranslations()]);
+  const [user, locale, t] = await Promise.all([getCurrentUser(), getInterfaceLocale(), getTranslations()]);
+  const faqSections = await loadRenderedFaqSections(locale);
   const canEditFaq = Boolean(user && canUseAdminTools(user));
 
   return (
