@@ -1307,9 +1307,12 @@ body:has(.problem-detail-shell) .site-main {
   position: relative;
 }
 
-.problem-favorite-control > form,
 .problem-favorite-control > .problem-action-tile {
   height: 100%;
+}
+
+.problem-favorite-control > form > .problem-action-tile {
+  min-height: 100%;
 }
 
 .problem-favorite-control.has-users .problem-favorite-main {
