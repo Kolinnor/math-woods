@@ -965,11 +965,13 @@ const joinedLinePreviewState = EditorState.create({
 const joinedLinePreviewTransaction = joinedLinePreviewState.update({
   changes: { from: 0, to: "Salut\nabc Truc".length }
 });
-assert.equal(joinedLinePreviewTransaction.state.field(suppressLatexPreviewAfterLineJoin), true);
-const joinedLineSelectionTransaction = joinedLinePreviewTransaction.state.update({
-  selection: { anchor: 0 }
+assert.equal(joinedLinePreviewTransaction.state.field(suppressLatexPreviewAfterLineJoin), 0);
+const joinedLineFocusTransaction = joinedLinePreviewTransaction.state.update({});
+assert.equal(joinedLineFocusTransaction.state.field(suppressLatexPreviewAfterLineJoin), 0);
+const joinedLineSelectionTransaction = joinedLineFocusTransaction.state.update({
+  selection: { anchor: 1 }
 });
-assert.equal(joinedLineSelectionTransaction.state.field(suppressLatexPreviewAfterLineJoin), false);
+assert.equal(joinedLineSelectionTransaction.state.field(suppressLatexPreviewAfterLineJoin), null);
 assert.deepEqual(normalizeDisplayMathLineBreaks("Before $$x^2 + 1$$ after", 18), {
   text: "Before\n$$x^2 + 1$$\nafter",
   cursor: 18,

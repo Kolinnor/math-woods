@@ -4,11 +4,14 @@ import type { LatexRange } from "./latex-ranges.ts";
 export type LatexPreviewRenderMode = "display" | "inline";
 export type LatexPreviewLayoutKind = "inline" | "inline-display" | "block-display";
 
-// Keep joined-line formulas raw until the next user transaction so old replacement widgets can be removed first.
-export const suppressLatexPreviewAfterLineJoin = StateField.define<boolean>({
-  create: () => false,
-  update(_value, transaction) {
-    if (!transaction.docChanged) return false;
+// Keep formulas on a joined line raw until the cursor actually moves away from the deletion point.
+// Focus effects can otherwise recreate a replacement widget before CodeMirror has removed the old one.
+export const suppressLatexPreviewAfterLineJoin = StateField.define<number | null>({
+  create: () => null,
+  update(anchor, transaction) {
+    if (!transaction.docChanged) {
+      return anchor !== null && transaction.state.selection.main.head === anchor ? anchor : null;
+    }
 
     let removedLineBreak = false;
     transaction.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
@@ -18,7 +21,7 @@ export const suppressLatexPreviewAfterLineJoin = StateField.define<boolean>({
       }
     });
 
-    return removedLineBreak;
+    return removedLineBreak ? transaction.state.selection.main.head : null;
   }
 });
 

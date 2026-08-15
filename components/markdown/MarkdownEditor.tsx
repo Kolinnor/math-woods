@@ -1229,7 +1229,9 @@ function buildLivePreviewDecorations(state: EditorState) {
   const wikiLinks = findWikiLinkRanges(text);
   const problemLinks = findProblemLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
-  const suppressJoinedLinePreview = state.field(suppressLatexPreviewAfterLineJoin);
+  const joinedLinePreviewAnchor = state.field(suppressLatexPreviewAfterLineJoin);
+  const joinedLinePreview =
+    joinedLinePreviewAnchor === null ? null : state.doc.lineAt(joinedLinePreviewAnchor);
   const decorations = latexRanges.flatMap((range) => {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
@@ -1247,9 +1249,12 @@ function buildLivePreviewDecorations(state: EditorState) {
       latexDiagnosticSignature(diagnostics),
       diagnostics
     );
-    const suppressPreview =
-      suppressJoinedLinePreview &&
-      !selectionOverlapsRange(state, range.from, range.to);
+    const suppressPreview = Boolean(
+      joinedLinePreview &&
+        range.from <= joinedLinePreview.to &&
+        range.to >= joinedLinePreview.from &&
+        !selectionOverlapsRange(state, range.from, range.to)
+    );
     const selectionSpansLineBreak = state.selection.ranges.some((selection) =>
       selectionSpansLineBreakInsideLatexRange(text, range, selection.from, selection.to)
     );
