@@ -1859,6 +1859,13 @@ for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "no
   const source = readFileSync(path, "utf-8");
   assert.match(source, /<AsyncMarkdownInline markdown=\{notification\.body\}/);
 }
+const tourSource = readFileSync(join("components", "MathWoodsTour.tsx"), "utf-8");
+const layoutSource = readFileSync(join("app", "layout.tsx"), "utf-8");
+const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
+assert.match(layoutSource, /\/about\/tutorial/);
+assert.match(homeSource, /\/about\/tutorial/);
+assert.doesNotMatch(tourSource, /Ancient Tree|cr[ée]ateur du site|tutoriel est bient[oô]t fini|tr[êe]ve de plaisanterie/i);
+assert.match(tourSource, /target: "nav-users"/);
 const latexDisplayRule = editorCssSource.match(/\.markdown-editor \.cm-latex-display \{([^}]*)\}/)?.[1] ?? "";
 assert.match(latexDisplayRule, /display:\s*inline-block/);
 assert.doesNotMatch(latexDisplayRule, /display:\s*block/);

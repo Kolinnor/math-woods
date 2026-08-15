@@ -200,6 +200,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span>Math Woods</span>
             </Link>
             <div className="primary-nav">
+              {!user && <Link href={"/about/tutorial" as Route}>{t.nav.tour}</Link>}
               <Link href="/problems">{t.nav.problems}</Link>
               <Link href="/concepts">{t.nav.concepts}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
@@ -224,6 +225,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </summary>
                 <div className="nav-menu-popover">
                   <div className="nav-menu-primary-mobile">
+                    {!user && <Link href={"/about/tutorial" as Route}>{t.nav.tour}</Link>}
                     <Link href="/problems">{t.nav.problems}</Link>
                     <Link href="/concepts">{t.nav.concepts}</Link>
                     {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
@@ -236,6 +238,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href={"/contributing/tasks" as Route}>{t.nav.contributionTasks}</Link>
                   {user && canUseAdminTools(user) && <Link href="/contributing">{t.nav.contributing}</Link>}
                   <Link href="/suggestions">{t.nav.suggestions}</Link>
+                  {user && <Link href={"/about/tutorial" as Route}>{t.nav.tour}</Link>}
                   <Link href="/about">{t.nav.about}</Link>
                   {user && <div className="nav-menu-divider" />}
                   {user && (
