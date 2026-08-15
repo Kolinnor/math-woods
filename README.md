@@ -1,12 +1,8 @@
-<p align="center">
-  <img src="./public/icon.svg" width="88" alt="Math Woods logo">
-</p>
-
 <h1 align="center">Math Woods</h1>
 
 <p align="center">
   <strong>The Free Math Knowledge Graph.</strong><br>
-  An open-source, community-curated collection of mathematical problems, exercises, concepts, and explorations.
+  An open-source, community-curated collection of mathematical problems, concepts, and more.
 </p>
 
 <p align="center">
@@ -27,38 +23,9 @@
 
 ## About Math Woods
 
-Math Woods is a place for reading, writing, and solving mathematics together. Problems are organized by domain and
-difficulty, concepts form a network of linked pages, and exercises give readers a direct way to practise an idea they
-have just encountered. Everything is free to read, without advertising or subscriptions.
+Math Woods is a place for solving and sharing mathematical problems. Problems are linked to an evolving wiki-style encyclopedia of concepts with practice exercises. The chat system allows users to communicate and study together.
 
-The project takes inspiration from the collaborative editing of Wikipedia, the mathematical conversations of Math
-StackExchange, the connected notes of Obsidian, and the quiet focus of lichess. It is still growing, and its shape is
-guided by the people who use it to learn, explain, review, and explore mathematics.
-
-## What you can do
-
-### Solve and discuss
-
-The problem browser supports mathematical domains and subdomains, difficulty levels, exercises, translations, and
-personal progress. A problem can collect hints, solutions, discussions, reactions, related problems, and editorial
-review. Recommendations and friendly challenges help readers find a useful next problem without turning mathematics
-into an attention contest.
-
-### Build the knowledge graph
-
-Concept pages connect mathematical definitions and ideas through wiki-style links, aliases, backlinks, translations,
-and revision history. Curated exercises can be attached to a concept so that reading can lead naturally into practice.
-
-### Write interactive explorations
-
-Explorations are visual, branching mathematical stories built from blocks. Authors arrange text, concepts, problems,
-choices, and quizzes on a canvas, then connect them into paths that respond to the reader's answers.
-
-### Contribute with other people
-
-Math Woods includes public profiles, attributed revisions, review tools, notifications, friendships, private chat, and
-moderation. Contributors can sign in with Google, GitHub, ORCID, or a Math Woods account. Mathematical writing remains
-the center of the experience; the social tools are there to make collaboration easier.
+Because it is open-source, anyone can help improve the code and the content of the website.
 
 ## Running Math Woods locally
 
