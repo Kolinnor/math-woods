@@ -8,6 +8,7 @@ import {
   parseAvatarBackground,
   parseDefaultAvatarPreset
 } from "@/lib/avatar-presets";
+import { boundedText, CONTENT_LIMITS } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { parseMathLevel } from "@/lib/math-levels";
 import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
@@ -15,6 +16,7 @@ import { canUseAdminTools, canUseModerationTools, canUseOwnerTools } from "@/lib
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
 import { usernameLookupFilter } from "@/lib/usernames";
+import { parseUserDiscoverySource } from "@/lib/user-discovery-source";
 
 const SESSION_COOKIE = "math_woods_session";
 const LEGACY_SESSION_COOKIES = ["math_hills_session", "math_garden_session"];
@@ -138,7 +140,9 @@ export async function registerUser(
   password: string,
   mathLevelInput: FormDataEntryValue | string | null | undefined,
   avatarPresetInput?: FormDataEntryValue | string | null,
-  avatarBackgroundInput?: FormDataEntryValue | string | null
+  avatarBackgroundInput?: FormDataEntryValue | string | null,
+  discoverySourceInput?: FormDataEntryValue | string | null,
+  discoverySourceDetailInput?: FormDataEntryValue | string | null
 ) {
   const displayName = normalizeDisplayName(displayNameInput);
   const username = ensureSlug(displayName, "user");
@@ -146,11 +150,18 @@ export async function registerUser(
   const mathLevel = parseMathLevel(mathLevelInput);
   const avatarPreset = parseDefaultAvatarPreset(avatarPresetInput);
   const avatarBackground = parseAvatarBackground(avatarBackgroundInput);
+  const discoverySource = parseUserDiscoverySource(discoverySourceInput);
+  const discoverySourceDetail = boundedText(
+    discoverySourceDetailInput,
+    CONTENT_LIMITS.shortText,
+    "Discovery source detail"
+  ) || null;
 
   if (username.length < 3) throw new Error("Username must be at least 3 characters.");
   if (!email.includes("@")) throw new Error("A valid email is required.");
   if (password.length < 8) throw new Error("Password must be at least 8 characters.");
   if (!mathLevel) throw new Error("Please choose your mathematics level.");
+  if (!discoverySource) throw new Error("Please tell us how you heard about Math Woods.");
 
   const usernameOwner = await prisma.user.findFirst({
     where: { username: usernameLookupFilter(username) },
@@ -164,6 +175,8 @@ export async function registerUser(
       displayName,
       email,
       mathLevel,
+      discoverySource,
+      discoverySourceDetail,
       avatarUrl: avatarPreset ? defaultAvatarPath(avatarPreset) : null,
       avatarBackground,
       passwordHash: hashPassword(password)

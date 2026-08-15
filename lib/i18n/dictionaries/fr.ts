@@ -310,7 +310,7 @@ export const fr = {
       reputation: {
         label: "Réputation",
         title: "Classement par réputation",
-        subtitle: "La réputation reflète les contributions, les traductions et une part limitée de l'activité d'apprentissage."
+        subtitle: "La réputation est calculée selon différents critères qui valorisent les contributions de qualité et la participation au site."
       },
       dailyProblems: {
         label: "Problèmes du jour",
@@ -380,6 +380,7 @@ export const fr = {
     achievements: "Succès",
     problems: "Problèmes",
     noPublicProblems: "Aucun problème public pour le moment.",
+    problemPostedOn: (date: string) => `Publié le ${date}`,
     playlists: "Explorations",
     noPlaylists: "Aucune exploration pour le moment.",
     solvedProblems: "Problèmes résolus",
@@ -389,6 +390,12 @@ export const fr = {
     locked: "Verrouillé",
     contributions: "Contributions",
     conceptsCreated: "Concepts créés",
+    conceptsWritten: "Concepts écrits",
+    noConceptsWritten: "Aucun concept public écrit pour le moment.",
+    conceptCreatedOn: (date: string) => `Créé le ${date}`,
+    solutionsWritten: "Solutions écrites",
+    noSolutionsWritten: "Aucune solution publique écrite pour le moment.",
+    solutionWrittenOn: (date: string) => `Écrite le ${date}`,
     discussionPosts: "Messages de discussion",
     recentEdits: "Modifications récentes",
     noEdits: "Aucune modification pour le moment.",
@@ -429,6 +436,21 @@ export const fr = {
     },
     saveProfile: "Enregistrer le profil",
     bioPlaceholder: "Algèbre, topologie, problèmes olympiques...",
+    discoverySourceQuestion: "Comment avez-vous entendu parler de Math Woods ?",
+    discoverySourceHelp: "Cette réponse reste privée et nous aide à comprendre comment les personnes découvrent le site.",
+    discoverySourcePlaceholder: "Choisir une réponse",
+    discoverySourceDetail: "Souhaitez-vous préciser ?",
+    discoverySourceDetailPlaceholder: "Chaîne, communauté, personne ou autre source (facultatif)",
+    discoverySourceAdmin: "A découvert Math Woods grâce à",
+    discoverySources: {
+      THREE_BLUE_ONE_BROWN: "3Blue1Brown",
+      PHIL: "Phil",
+      FRIENDS: "Un ami ou le bouche-à-oreille",
+      MATH_COMMUNITY: "Une communauté ou un forum de mathématiques",
+      SOCIAL_MEDIA: "Les réseaux sociaux",
+      SEARCH_ENGINE: "Un moteur de recherche",
+      OTHER: "Autre chose"
+    },
     profileNameUrlHelp: (username: string) =>
       `C'est le nom que les autres personnes verront. L'adresse de votre profil reste /profile/${username}.`,
     mathLevelQuestion: "Quel niveau de problèmes souhaitez-vous voir ?",
@@ -859,6 +881,7 @@ export const fr = {
     solutionReportPlaceholder: "Indiquez précisément l'étape ou l'affirmation à vérifier...",
     solutionReportGuidance: "L'auteur sera prévenu. La solution reste visible pendant l'examen du signalement.",
     submitSolutionReport: "Envoyer le signalement",
+    solutionReportSaved: "Votre signalement a bien été enregistré et sera examiné.",
     solutionIssueReported: "Problème potentiel signalé",
     yourSolutionReportPending: "Votre signalement est en attente d'examen",
     shortAnswer: "Réponse courte",

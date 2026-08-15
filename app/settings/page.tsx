@@ -19,6 +19,7 @@ import { getCurrentSession, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { mailStatusLabel } from "@/lib/email-verification";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { mergeLatexPreferences, type LatexPreferenceValues } from "@/lib/latex-preferences";
 import { contentLanguageLabel } from "@/lib/languages";
 import { configuredOAuthProviders, oauthProviderKey, oauthProviderLabel } from "@/lib/oauth";
@@ -26,13 +27,15 @@ import { assignableRolesFor, canAssignRole, canManageUserRoles, canUseOwnerTools
 import { roleLabel } from "@/lib/roles";
 import { translationDashboard } from "@/lib/translation-dashboard";
 import { displayNameForUser } from "@/lib/user-display";
+import { parseUserDiscoverySource } from "@/lib/user-discovery-source";
 import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
+import { settingsText } from "./settings-copy";
 
 export const dynamic = "force-dynamic";
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en", {
+function formatDate(date: Date, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(date);
@@ -388,6 +391,8 @@ export default async function SettingsPage({
 }) {
   const user = await requireUser();
   const currentSession = await getCurrentSession();
+  const [interfaceLocale, t] = await Promise.all([getInterfaceLocale(), getTranslations()]);
+  const text = (value: string) => settingsText(interfaceLocale, value);
   const params = searchParams ? await searchParams : {};
   const canManageRoles = canManageUserRoles(user);
   const canUseTranslationsDashboard = canUseOwnerTools(user);
@@ -438,6 +443,8 @@ export default async function SettingsPage({
           avatarBackground: true,
           avatarUrl: true,
           email: true,
+          discoverySource: true,
+          discoverySourceDetail: true,
           role: true,
           createdAt: true,
           deletedAt: true
@@ -451,109 +458,112 @@ export default async function SettingsPage({
 
   return (
     <ForestPageLayout
-      title="Settings"
-      eyebrow="Account"
+      title={text("Settings")}
+      eyebrow={text("Account")}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description={`Appearance, account security, and active sessions for ${displayNameForUser(user)}.`}
+      description={text("Appearance, account security, and active sessions for {name}.").replace(
+        "{name}",
+        displayNameForUser(user)
+      )}
       workspaceClassName="forest-page-workspace-narrow"
     >
       {params.updated === "password" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          Password updated. Other sessions were revoked.
+          {text("Password updated. Other sessions were revoked.")}
         </p>
       )}
       {params.updated === "sessions" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          Other sessions were revoked.
+          {text("Other sessions were revoked.")}
         </p>
       )}
       {params.updated === "role" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          User role updated.
+          {text("User role updated.")}
         </p>
       )}
       {params.updated === "user-status" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          User status updated.
+          {text("User status updated.")}
         </p>
       )}
       {params.updated === "notifications" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          Notification preferences updated.
+          {text("Notification preferences updated.")}
         </p>
       )}
       {params.updated === "latex" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          Editor preferences updated.
+          {text("Editor preferences updated.")}
         </p>
       )}
       {params.updated === "latex-reset" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          Editor preferences reset to default.
+          {text("Editor preferences reset to default.")}
         </p>
       )}
       {params.oauth === "connected" && (
-        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">Account connected.</p>
+        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">{text("Account connected.")}</p>
       )}
       {params.oauth === "disconnected" && (
-        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">Connected account removed.</p>
+        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">{text("Connected account removed.")}</p>
       )}
       {params.oauth === "last-method" && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          Add a password or another connected account before removing your only sign-in method.
+          {text("Add a password or another connected account before removing your only sign-in method.")}
         </p>
       )}
       {params.oauth === "failed" && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          The connected account could not be updated. Please try again.
+          {text("The connected account could not be updated. Please try again.")}
         </p>
       )}
       {params.deleteAccount === "confirm" && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          Type your account name exactly to delete your account.
+          {text("Type your account name exactly to delete your account.")}
         </p>
       )}
       {params.deleteAccount === "owner" && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          The owner account cannot be deleted here.
+          {text("The owner account cannot be deleted here.")}
         </p>
       )}
       {verifyStatus === "sent" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          Verification email sent.
+          {text("Verification email sent.")}
         </p>
       )}
       {verifyStatus === "required" && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          Verify your email to unlock contributions.
+          {text("Verify your email to unlock contributions.")}
         </p>
       )}
       {verifyStatus === "rate-limited" && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          Too many requests. Please try again later.
+          {text("Too many requests. Please try again later.")}
         </p>
       )}
       {(verifyStatus === "not-configured" || verifyStatus === "send-failed") && (
         <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
-          Verification email could not be sent yet.
+          {text("Verification email could not be sent yet.")}
         </p>
       )}
       {verifyStatus === "already-verified" && (
         <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
-          Your email is already verified.
+          {text("Your email is already verified.")}
         </p>
       )}
 
-      <nav className="tab-nav" aria-label="Settings sections">
+      <nav className="tab-nav" aria-label={text("Settings sections")}>
         <Link href="/settings" className={tab === "account" ? "active" : ""}>
-          Account
+          {text("Account")}
         </Link>
         <Link href="/settings?tab=notifications" className={tab === "notifications" ? "active" : ""}>
-          Notifications
+          {text("Notifications")}
         </Link>
         <Link href="/settings?tab=latex" className={tab === "latex" ? "active" : ""}>
-          Editor
+          {text("Editor")}
         </Link>
         {canManageRoles && (
           <Link href="/settings?tab=admin" className={tab === "admin" ? "active" : ""}>
@@ -562,7 +572,7 @@ export default async function SettingsPage({
         )}
         {canUseTranslationsDashboard && (
           <Link href="/settings?tab=translations" className={tab === "translations" ? "active" : ""}>
-            Translations
+            {text("Translations")}
           </Link>
         )}
       </nav>
@@ -570,20 +580,27 @@ export default async function SettingsPage({
       {tab === "account" && (
         <>
           <section className="panel p-5">
-            <h2 className="mb-2 text-lg font-semibold">Email verification</h2>
+            <h2 className="mb-2 text-lg font-semibold">{text("Email verification")}</h2>
             {user.emailVerifiedAt ? (
               <p className="text-sm">
-                <strong>{user.email}</strong> is verified.
+                <strong>{user.email}</strong> {text("is verified.")}
               </p>
             ) : (
               <div className="grid gap-3">
                 <p className="muted text-sm">
-                  Verify <strong>{user.email}</strong> to unlock contributions.
+                  {text("Verify {email} to unlock contributions.")
+                    .split("{email}")
+                    .map((part, index) => (
+                      <span key={part || index}>
+                        {index > 0 && <strong>{user.email}</strong>}
+                        {part}
+                      </span>
+                    ))}
                 </p>
-                <p className="muted text-xs">{mailStatusLabel()}</p>
+                <p className="muted text-xs">{text(mailStatusLabel())}</p>
                 <form action={resendEmailVerificationAction}>
                   <button type="submit" className="secondary">
-                    Resend verification email
+                    {text("Resend verification email")}
                   </button>
                 </form>
               </div>
@@ -592,8 +609,8 @@ export default async function SettingsPage({
 
           {(externalIdentities.length > 0 || oauthProviders.length > 0) && (
           <section className="panel p-5">
-            <h2 className="mb-2 text-lg font-semibold">Connected accounts</h2>
-            <p className="muted mb-4 text-sm">Use a connected account to sign in without entering your Math Woods password.</p>
+            <h2 className="mb-2 text-lg font-semibold">{text("Connected accounts")}</h2>
+            <p className="muted mb-4 text-sm">{text("Use a connected account to sign in without entering your Math Woods password.")}</p>
             <div className="grid gap-3">
               {externalIdentities.map((identity) => (
                 <div key={identity.id} className="oauth-connected-account">
@@ -606,7 +623,7 @@ export default async function SettingsPage({
                   </div>
                   <form action={disconnectExternalIdentityAction}>
                     <input type="hidden" name="provider" value={identity.provider} />
-                    <button type="submit" className="secondary">Disconnect</button>
+                    <button type="submit" className="secondary">{text("Disconnect")}</button>
                   </form>
                 </div>
               ))}
@@ -619,7 +636,7 @@ export default async function SettingsPage({
                     className="button secondary oauth-connect-button"
                   >
                     <OAuthProviderIcon provider={provider.key} />
-                    <span>Connect {provider.label}</span>
+                    <span>{text("Connect")} {provider.label}</span>
                   </Link>
                 ))}
             </div>
@@ -627,41 +644,41 @@ export default async function SettingsPage({
           )}
 
           <section className="panel p-5">
-            <h2 className="mb-4 text-lg font-semibold">{user.passwordHash ? "Change password" : "Add a password"}</h2>
+            <h2 className="mb-4 text-lg font-semibold">{text(user.passwordHash ? "Change password" : "Add a password")}</h2>
             <form action={user.passwordHash ? changePasswordAction : setInitialPasswordAction} className="grid gap-4">
               {user.passwordHash && (
                 <label className="grid gap-2">
-                  <span className="text-sm font-medium">Current password</span>
+                  <span className="text-sm font-medium">{text("Current password")}</span>
                   <input name="currentPassword" type="password" required />
                 </label>
               )}
               <label className="grid gap-2">
-                <span className="text-sm font-medium">{user.passwordHash ? "New password" : "Add a password"}</span>
+                <span className="text-sm font-medium">{text(user.passwordHash ? "New password" : "Add a password")}</span>
                 <input name="newPassword" type="password" minLength={8} required />
               </label>
-              <button type="submit">{user.passwordHash ? "Update password" : "Set password"}</button>
+              <button type="submit">{text(user.passwordHash ? "Update password" : "Set password")}</button>
             </form>
           </section>
 
           <section className="panel p-5">
-            <h2 className="mb-2 text-lg font-semibold">Data tools</h2>
+            <h2 className="mb-2 text-lg font-semibold">{text("Data tools")}</h2>
             <p className="muted mb-4 text-sm">
-              Bring Markdown notes into Math Woods. Problem and concept pages can be exported individually.
+              {text("Bring Markdown notes into Math Woods. Problem and concept pages can be exported individually.")}
             </p>
             <Link href="/import" className="button secondary">
-              Import Markdown
+              {text("Import Markdown")}
             </Link>
           </section>
 
           <section className="panel p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Active sessions</h2>
-                <p className="muted text-sm">Sessions expire after 30 days.</p>
+                <h2 className="text-lg font-semibold">{text("Active sessions")}</h2>
+                <p className="muted text-sm">{text("Sessions expire after 30 days.")}</p>
               </div>
               <form action={revokeOtherSessionsAction}>
                 <button type="submit" className="secondary">
-                  Revoke others
+                  {text("Revoke others")}
                 </button>
               </form>
             </div>
@@ -671,12 +688,12 @@ export default async function SettingsPage({
                 <div key={session.id} className="rounded-md border border-line p-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-medium">
-                      {session.id === currentSession?.id ? "Current session" : "Signed-in session"}
+                      {text(session.id === currentSession?.id ? "Current session" : "Signed-in session")}
                     </span>
-                    <span className="muted">Expires {formatDate(session.expiresAt)}</span>
+                    <span className="muted">{text("Expires")} {formatDate(session.expiresAt, interfaceLocale)}</span>
                   </div>
                   <p className="muted mt-1">
-                    Created {formatDate(session.createdAt)}. Last seen {formatDate(session.lastSeenAt)}.
+                    {text("Created")} {formatDate(session.createdAt, interfaceLocale)}. {text("Last seen")} {formatDate(session.lastSeenAt, interfaceLocale)}.
                   </p>
                 </div>
               ))}
@@ -685,13 +702,22 @@ export default async function SettingsPage({
 
           <section className="danger-zone account-danger-zone mt-6">
             <div>
-              <h2>Delete account</h2>
+              <h2>{text("Delete account")}</h2>
               <p>
-                This removes your login, email, votes, favorites, and sessions. Public content stays
-                under a deleted account.
+                {text("This removes your login, email, votes, favorites, and sessions. Public content stays under a deleted account.")}
               </p>
             </div>
-            <DeleteAccountDialog accountName={accountName} action={deleteAccountAction} />
+            <DeleteAccountDialog
+              accountName={accountName}
+              action={deleteAccountAction}
+              labels={{
+                cancel: text("Cancel"),
+                close: text("Close"),
+                confirm: text("Type {name} to confirm.").replace("{name}", accountName),
+                description: text("This removes your login, email, votes, favorites, and sessions. Public content stays under a deleted account."),
+                title: text("Delete account")
+              }}
+            />
           </section>
         </>
       )}
@@ -699,8 +725,8 @@ export default async function SettingsPage({
       {tab === "notifications" && (
         <section className="panel p-5">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold">Notifications</h2>
-            <p className="muted text-sm">Mute notification types individually.</p>
+            <h2 className="text-lg font-semibold">{text("Notifications")}</h2>
+            <p className="muted text-sm">{text("Mute notification types individually.")}</p>
           </div>
 
           <form action={updateNotificationPreferencesAction} className="grid gap-3">
@@ -711,13 +737,13 @@ export default async function SettingsPage({
                 <label key={option.type} className="checkbox-field">
                   <input name="enabledTypes" type="checkbox" value={option.type} defaultChecked={enabled} />
                   <span>
-                    <strong>{option.title}</strong>
-                    <small>{option.description}</small>
+                    <strong>{text(option.title)}</strong>
+                    <small>{text(option.description)}</small>
                   </span>
                 </label>
               );
             })}
-            <button type="submit">Save notification settings</button>
+            <button type="submit">{text("Save notification settings")}</button>
           </form>
         </section>
       )}
@@ -726,17 +752,17 @@ export default async function SettingsPage({
         <section className="panel p-5">
           <EditorSettingsVisitedMarker />
           <div className="mb-5">
-            <h2 className="text-lg font-semibold">Editor</h2>
+            <h2 className="text-lg font-semibold">{text("Editor")}</h2>
             <p className="muted text-sm">
-              Customize the Markdown and LaTeX writing helpers used by Math Woods editors.
+              {text("Customize the Markdown and LaTeX writing helpers used by Math Woods editors.")}
             </p>
           </div>
 
           <form action={updateLatexPreferencesAction} className="latex-settings-form">
             <div className="latex-settings-section">
               <div>
-                <h3>Markdown shortcuts</h3>
-                <p>Choose keyboard shortcuts for turning the current line or selection into Markdown headings.</p>
+                <h3>{text("Markdown shortcuts")}</h3>
+                <p>{text("Choose keyboard shortcuts for turning the current line or selection into Markdown headings.")}</p>
               </div>
               <label className="checkbox-field latex-setting-card">
                 <input
@@ -745,16 +771,16 @@ export default async function SettingsPage({
                   defaultChecked={Boolean(latexPreferences.markdownHeadingShortcuts)}
                 />
                 <span>
-                  <strong>Enable heading shortcuts</strong>
-                  <small>Use Ctrl+1 through Ctrl+6 to write # through ###### headings by default.</small>
+                  <strong>{text("Enable heading shortcuts")}</strong>
+                  <small>{text("Use Ctrl+1 through Ctrl+6 to write # through ###### headings by default.")}</small>
                 </span>
               </label>
               <div className="latex-text-grid">
                 {markdownHeadingShortcutOptions.map((option) => (
                   <label key={option.name} className="latex-text-field">
                     <span>
-                      <strong>{option.title}</strong>
-                      <small>Examples: Ctrl+1, Ctrl+Alt+1, Meta+1.</small>
+                      <strong>{text(option.title)}</strong>
+                      <small>{text("Examples: Ctrl+1, Ctrl+Alt+1, Meta+1.")}</small>
                     </span>
                     <input name={option.name} defaultValue={String(latexPreferences[option.name])} />
                   </label>
@@ -765,16 +791,16 @@ export default async function SettingsPage({
             {latexToggleSections.map((section) => (
               <div key={section.title} className="latex-settings-section">
                 <div>
-                  <h3>{section.title}</h3>
-                  <p>{section.description}</p>
+                  <h3>{text(section.title)}</h3>
+                  <p>{text(section.description)}</p>
                 </div>
                 <div className="latex-settings-grid">
                   {section.options.map((option) => (
                     <label key={option.name} className="checkbox-field latex-setting-card">
                       <input name={option.name} type="checkbox" defaultChecked={Boolean(latexPreferences[option.name])} />
                       <span>
-                        <strong>{option.title}</strong>
-                        <small>{option.description}</small>
+                        <strong>{text(option.title)}</strong>
+                        <small>{text(option.description)}</small>
                       </span>
                     </label>
                   ))}
@@ -784,15 +810,15 @@ export default async function SettingsPage({
 
             <div className="latex-settings-section">
               <div>
-                <h3>Block parameters</h3>
-                <p>Choose the exact LaTeX environments and alignment triggers that shortcuts should use.</p>
+                <h3>{text("Block parameters")}</h3>
+                <p>{text("Choose the exact LaTeX environments and alignment triggers that shortcuts should use.")}</p>
               </div>
               <div className="latex-text-grid">
                 {latexTextOptions.map((option) => (
                   <label key={option.name} className="latex-text-field">
                     <span>
-                      <strong>{option.title}</strong>
-                      <small>{option.description}</small>
+                      <strong>{text(option.title)}</strong>
+                      <small>{text(option.description)}</small>
                     </span>
                     <input name={option.name} defaultValue={String(latexPreferences[option.name])} />
                   </label>
@@ -802,10 +828,10 @@ export default async function SettingsPage({
 
             <div className="latex-settings-section">
               <div>
-                <h3>Custom commands</h3>
+                <h3>{text("Custom commands")}</h3>
                 <p>
-                  Add personal shorthand commands, one per line. The default format is{" "}
-                  <code>trigger =&gt; replacement</code>.
+                  {text("Add personal shorthand commands, one per line. The default format is")}{" "}
+                  <code>{text("trigger")} =&gt; {text("replacement")}</code>.
                 </p>
               </div>
               <textarea
@@ -817,17 +843,17 @@ export default async function SettingsPage({
             </div>
 
             <div className="settings-actions">
-              <button type="submit">Save editor settings</button>
+              <button type="submit">{text("Save editor settings")}</button>
             </div>
           </form>
 
           <form action={resetLatexPreferencesAction} className="danger-zone mt-5">
             <div>
-              <h2>Reset editor settings</h2>
-              <p>Restore Math Woods defaults for every Markdown shortcut, Latex helper, and custom command.</p>
+              <h2>{text("Reset editor settings")}</h2>
+              <p>{text("Restore Math Woods defaults for every Markdown shortcut, Latex helper, and custom command.")}</p>
             </div>
-            <ConfirmSubmitButton className="danger" message="Are you sure you want to reset your editor settings?">
-              Reset to default
+            <ConfirmSubmitButton className="danger" message={text("Are you sure you want to reset your editor settings?")}>
+              {text("Reset to default")}
             </ConfirmSubmitButton>
           </form>
         </section>
@@ -836,83 +862,83 @@ export default async function SettingsPage({
       {tab === "translations" && translationsDashboard && (
         <section className="panel grid gap-6 p-5">
           <div>
-            <h2 className="text-lg font-semibold">Translation health</h2>
+            <h2 className="text-lg font-semibold">{text("Translation health")}</h2>
             <p className="muted text-sm">
-              Owner-only view for missing translations and pages that may need a refresh after source edits.
+              {text("Owner-only view for missing translations and pages that may need a refresh after source edits.")}
             </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-4">
             <div className="rounded-md border border-line p-3">
-              <p className="muted text-xs">Problems</p>
+              <p className="muted text-xs">{text("Problems")}</p>
               <p className="text-2xl font-semibold">{translationsDashboard.totals.problems}</p>
             </div>
             <div className="rounded-md border border-line p-3">
-              <p className="muted text-xs">Concepts</p>
+              <p className="muted text-xs">{text("Concepts")}</p>
               <p className="text-2xl font-semibold">{translationsDashboard.totals.concepts}</p>
             </div>
             <div className="rounded-md border border-line p-3">
-              <p className="muted text-xs">Missing groups</p>
+              <p className="muted text-xs">{text("Missing groups")}</p>
               <p className="text-2xl font-semibold">{translationsDashboard.totals.withMissingTranslations}</p>
             </div>
             <div className="rounded-md border border-line p-3">
-              <p className="muted text-xs">Stale</p>
+              <p className="muted text-xs">{text("Stale")}</p>
               <p className="text-2xl font-semibold">{translationsDashboard.totals.stale}</p>
             </div>
           </div>
 
           <div className="grid gap-4">
-            <h3 className="font-semibold">Possibly outdated translations</h3>
+            <h3 className="font-semibold">{text("Possibly outdated translations")}</h3>
             {translationsDashboard.staleTranslations.length > 0 ? (
               translationsDashboard.staleTranslations.map((item) => (
                 <div key={`${item.type}:${item.href}`} className="rounded-md border border-line p-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">
-                        {item.type}: <Link href={item.href as never} className="underline">{item.title}</Link>
+                        {text(item.type)}: <Link href={item.href as never} className="underline">{item.title}</Link>
                       </p>
                       <p className="muted">
-                        {contentLanguageLabel(item.language)} / based on revision {item.basedOnRevisionId}, source now revision{" "}
+                        {contentLanguageLabel(item.language)} / {text("based on revision")} {item.basedOnRevisionId}, {text("source now revision")}{" "}
                         {item.latestRevisionId}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Link href={item.editHref as never} className="button">
-                        Update translation
+                        {text("Update translation")}
                       </Link>
                       <Link href={item.sourceHref as never} className="button secondary">
-                        Source
+                        {text("Source")}
                       </Link>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="muted rounded-md border border-line p-3 text-sm">No stale translations detected.</p>
+              <p className="muted rounded-md border border-line p-3 text-sm">{text("No stale translations detected.")}</p>
             )}
           </div>
 
           <div className="grid gap-4">
-            <h3 className="font-semibold">Missing translations</h3>
+            <h3 className="font-semibold">{text("Missing translations")}</h3>
             {translationsDashboard.gaps.length > 0 ? (
               translationsDashboard.gaps.map((gap) => (
                 <div key={`${gap.type}:${gap.href}`} className="rounded-md border border-line p-3 text-sm">
                   <p className="font-medium">
-                    {gap.type}: <Link href={gap.href as never} className="underline">{gap.title}</Link>
+                    {text(gap.type)}: <Link href={gap.href as never} className="underline">{gap.title}</Link>
                   </p>
-                  <p className="muted">Existing: {gap.existingLanguages.map(contentLanguageLabel).join(", ")}</p>
-                  <p className="muted">Missing: {gap.missingLanguages.join(", ")}</p>
+                  <p className="muted">{text("Existing")}: {gap.existingLanguages.map(contentLanguageLabel).join(", ")}</p>
+                  <p className="muted">{text("Missing")}: {gap.missingLanguages.join(", ")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {gap.missingLanguageLinks.map((link) => (
                       <Link key={link.href} href={link.href as never} className="button secondary">
-                        Translate to {link.label}
+                        {text("Translate to")} {link.label}
                       </Link>
                     ))}
                   </div>
                 </div>
               ))
             ) : (
-              <p className="muted rounded-md border border-line p-3 text-sm">No missing translations detected.</p>
+              <p className="muted rounded-md border border-line p-3 text-sm">{text("No missing translations detected.")}</p>
             )}
           </div>
         </section>
@@ -921,21 +947,21 @@ export default async function SettingsPage({
       {tab === "admin" && canManageRoles && (
         <section className="panel p-5">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold">User roles</h2>
+            <h2 className="text-lg font-semibold">{text("User roles")}</h2>
             <p className="muted text-sm">
-              Deactivation is reversible and keeps the account&apos;s email and connected sign-in identities reserved.
+              {text("Deactivation is reversible and keeps the account's email and connected sign-in identities reserved.")}
             </p>
           </div>
 
-          <nav className="tab-nav mb-4" aria-label="Admin user sections">
+          <nav className="tab-nav mb-4" aria-label={text("Admin user sections")}>
             <Link href="/settings?tab=admin" className={adminUsersTab === "active" ? "active" : ""}>
-              Active users ({activeUsers.length})
+              {text("Active users")} ({activeUsers.length})
             </Link>
             <Link
               href="/settings?tab=admin&adminUsers=deleted"
               className={adminUsersTab === "deleted" ? "active" : ""}
             >
-              Deactivated users ({deletedUsers.length})
+              {text("Deactivated users")} ({deletedUsers.length})
             </Link>
           </nav>
 
@@ -947,6 +973,7 @@ export default async function SettingsPage({
                 : assignableRolesFor(user.role).filter((role) => canAssignRole(user, managedUser, role));
               const lockedRole = assignableRoles.length === 0;
               const canMove = managedUser.id !== user.id && managedUser.role !== Role.OWNER;
+              const discoverySource = parseUserDiscoverySource(managedUser.discoverySource);
 
               return (
                 <div key={managedUser.id} className="rounded-md border border-line p-3 text-sm">
@@ -954,24 +981,30 @@ export default async function SettingsPage({
                     <div>
                       <p className="font-medium"><UserName user={managedUser} /></p>
                       <p className="muted">
-                        {roleLabel(managedUser.role)} / joined {formatDate(managedUser.createdAt)}
-                        {managedUser.deletedAt && <> / deleted {formatDate(managedUser.deletedAt)}</>}
+                        {text(roleLabel(managedUser.role))} / {text("joined")} {formatDate(managedUser.createdAt, interfaceLocale)}
+                        {managedUser.deletedAt && <> / {text("deleted")} {formatDate(managedUser.deletedAt, interfaceLocale)}</>}
                       </p>
+                      {discoverySource && (
+                        <p className="muted mt-1">
+                          {t.profile.discoverySourceAdmin}: {t.profile.discoverySources[discoverySource]}
+                          {managedUser.discoverySourceDetail ? ` (${managedUser.discoverySourceDetail})` : ""}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {lockedRole ? (
-                        <span className="tag">{deleted ? "Deactivated" : roleLabel(managedUser.role)}</span>
+                        <span className="tag">{text(deleted ? "Deactivated" : roleLabel(managedUser.role))}</span>
                       ) : (
                         <form action={updateUserRoleAction.bind(null, managedUser.id)} className="flex flex-wrap gap-2">
-                          <select name="role" defaultValue={managedUser.role} aria-label={`Role for ${managedUser.username}`}>
+                          <select name="role" defaultValue={managedUser.role} aria-label={`${text("Role for")} ${managedUser.username}`}>
                             {assignableRoles.map((role) => (
                               <option key={role} value={role}>
-                                {roleLabel(role)}
+                                {text(roleLabel(role))}
                               </option>
                             ))}
                           </select>
                           <button type="submit" className="secondary">
-                            Update
+                            {text("Update")}
                           </button>
                         </form>
                       )}
@@ -980,7 +1013,7 @@ export default async function SettingsPage({
                           action={updateUserDeletedStatusAction.bind(null, managedUser.id, deleted ? "active" : "deleted")}
                         >
                           <button type="submit" className="secondary">
-                            {deleted ? "Reactivate" : "Deactivate"}
+                            {text(deleted ? "Reactivate" : "Deactivate")}
                           </button>
                         </form>
                       )}
@@ -991,7 +1024,7 @@ export default async function SettingsPage({
             })}
             {shownAdminUsers.length === 0 && (
               <p className="muted rounded-md border border-line p-3 text-sm">
-                {adminUsersTab === "deleted" ? "No deactivated users." : "No active users."}
+                {text(adminUsersTab === "deleted" ? "No deactivated users." : "No active users.")}
               </p>
             )}
           </div>

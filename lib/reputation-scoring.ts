@@ -7,6 +7,8 @@ export const LEARNING_SOLVE_LIFETIME_LIMIT = 50;
 export const PAGE_TRANSLATION_REPUTATION_POINTS = 2;
 export const COMPANION_TRANSLATION_REPUTATION_POINTS = 1;
 export const TRANSLATION_REPUTATION_DAILY_LIMIT = 10;
+export const AUTHORED_CONCEPT_REPUTATION_POINTS = 2;
+export const AUTHORED_SOLUTION_REPUTATION_POINTS = 2;
 
 type LearningSolveEvent = {
   translationGroupId: string;
@@ -21,6 +23,11 @@ type TranslationReputationEvent = {
 
 function utcDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+export function authoredContentReputationBonus(conceptCount: number, solutionCount: number) {
+  return Math.max(0, Math.floor(conceptCount)) * AUTHORED_CONCEPT_REPUTATION_POINTS
+    + Math.max(0, Math.floor(solutionCount)) * AUTHORED_SOLUTION_REPUTATION_POINTS;
 }
 
 export function dailyProblemReputationBonus(dailyProblemCount: number, role: Role) {

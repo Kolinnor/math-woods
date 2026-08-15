@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { oauthProviderLabel, pendingOAuthAttempt } from "@/lib/oauth";
+import { USER_DISCOVERY_SOURCES } from "@/lib/user-discovery-source";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
@@ -127,6 +128,24 @@ export default async function CompleteOAuthPage({
                 <option value="" disabled>{t.auth.chooseLevel}</option>
                 {MATH_LEVEL_OPTIONS.map((level) => <option key={level.value} value={level.value}>{t.auth.mathLevels[level.value]}</option>)}
               </select>
+            </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">{t.profile.discoverySourceQuestion}</span>
+              <select name="discoverySource" required defaultValue="">
+                <option value="" disabled>{t.profile.discoverySourcePlaceholder}</option>
+                {USER_DISCOVERY_SOURCES.map((source) => (
+                  <option key={source} value={source}>{t.profile.discoverySources[source]}</option>
+                ))}
+              </select>
+              <small className="muted">{t.profile.discoverySourceHelp}</small>
+            </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">{t.profile.discoverySourceDetail}</span>
+              <input
+                name="discoverySourceDetail"
+                maxLength={240}
+                placeholder={t.profile.discoverySourceDetailPlaceholder}
+              />
             </label>
             <button type="submit">{complete.createWithProvider(providerLabel)}</button>
           </form>

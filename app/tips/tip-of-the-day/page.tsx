@@ -1,7 +1,6 @@
-import { CalendarDays, Eye, Save } from "lucide-react";
-import type { Route } from "next";
-import Link from "next/link";
+import { CalendarDays, Save } from "lucide-react";
 import { notFound } from "next/navigation";
+import { DailySchedulePreviewButton } from "@/components/DailySchedulePreviewButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { TipsAdminTabs } from "@/components/TipsAdminTabs";
 import { updateDailyTipScheduleAction } from "@/lib/actions/daily-tip-actions";
@@ -94,15 +93,11 @@ export default async function TipOfTheDaySchedulePage({
                   </div>
                   <div className="daily-problem-schedule-day-actions">
                     <time dateTime={dateKey}>{dateKey}</time>
-                    <Link
-                      href={`/tips/tip-of-the-day/preview?date=${dateKey}` as Route}
-                      className="button secondary"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <Eye size={15} aria-hidden="true" />
-                      Preview
-                    </Link>
+                    <DailySchedulePreviewButton
+                      dateKey={dateKey}
+                      href="/tips/tip-of-the-day/preview"
+                      fieldNames={[fieldName(dateKey)]}
+                    />
                   </div>
                 </header>
 

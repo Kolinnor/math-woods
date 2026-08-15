@@ -4,6 +4,11 @@ const prisma = new PrismaClient();
 
 const achievements = [
   {
+    key: "a-place-in-the-woods",
+    title: "A Place in the Woods",
+    description: "Complete your profile bio."
+  },
+  {
     key: "first-clearing",
     title: "First Clearing",
     description: "Solve your first problem."
@@ -48,7 +53,11 @@ const achievements = [
 const achievementByKey = new Map(achievements.map((achievement) => [achievement.key, achievement]));
 
 async function eligibleAchievementKeys(userId) {
-  const [solvedCount, hintCount, proofCount, conceptCount, posts, solvedProblemGroups] = await Promise.all([
+  const [profile, solvedCount, hintCount, proofCount, conceptCount, posts, solvedProblemGroups] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { bio: true }
+    }),
     prisma.problemAttempt.count({
       where: { userId, status: "SOLVED" }
     }),
@@ -76,6 +85,7 @@ async function eligibleAchievementKeys(userId) {
   ]);
 
   const keys = [];
+  if (profile?.bio?.trim()) keys.push("a-place-in-the-woods");
   if (solvedCount >= 1) keys.push("first-clearing");
   if (solvedCount >= 10) keys.push("pathfinder");
   if (solvedCount >= 100) keys.push("ascending-the-mountain");

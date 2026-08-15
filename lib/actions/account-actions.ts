@@ -90,6 +90,8 @@ export async function deleteAccountAction(formData: FormData) {
         emailVerifiedAt: null,
         passwordHash: null,
         bio: null,
+        discoverySource: null,
+        discoverySourceDetail: null,
         mathLevel: null,
         reputation: 0,
         role: Role.USER,

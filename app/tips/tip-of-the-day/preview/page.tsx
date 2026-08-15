@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { DailyTipCard } from "@/components/DailyTipCard";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { getCurrentUser } from "@/lib/auth";
-import { loadDailyTip } from "@/lib/daily-tip";
+import { loadDailyTip, loadTips } from "@/lib/daily-tip";
+import { selectDailyTipForDate } from "@/lib/daily-tip-schedule";
 import {
   dailyProblemDateKey,
   dateFromDailyProblemKey,
@@ -20,27 +21,50 @@ import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
 
 export const dynamic = "force-dynamic";
 
+type PreviewSearchParams = Record<string, string | string[] | undefined>;
+
 type TipProblemGroupLink = {
   translationGroupId: string;
 };
 
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function fieldName(dateKey: string) {
+  return `tipId:${dateKey}`;
+}
+
+function positiveIntegerParam(value: string | string[] | undefined) {
+  const numberValue = Number(firstParam(value));
+  return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : null;
+}
+
 export default async function DailyTipPreviewPage({
   searchParams
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<PreviewSearchParams>;
 }) {
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
 
-  const [{ date }, preferredLanguage, locale, t] = await Promise.all([
+  const [params, preferredLanguage, locale, t] = await Promise.all([
     searchParams,
     getPreferredContentLanguage(),
     getInterfaceLocale(),
     getTranslations()
   ]);
+  const date = firstParam(params.date);
   const dateKey = date && isDailyProblemDateKey(date) ? date : dailyProblemDateKey();
   const previewDate = dateFromDailyProblemKey(dateKey);
-  const tip = await loadDailyTip(previewDate, preferredLanguage);
+  const usesDraft = firstParam(params.draft) === "1";
+  const tip = usesDraft
+    ? selectDailyTipForDate(
+        await loadTips(preferredLanguage),
+        dateKey,
+        positiveIntegerParam(params[fieldName(dateKey)])
+      )
+    : await loadDailyTip(previewDate, preferredLanguage);
   if (!tip) notFound();
 
   const practiceLinks = await prisma.$queryRaw<TipProblemGroupLink[]>`
@@ -82,7 +106,7 @@ export default async function DailyTipPreviewPage({
       eyebrow="Preview"
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      description={`${dateLabel}${schedule?.tipId === tip.id ? " · scheduled" : " · automatic rotation"}`}
+      description={`${dateLabel}${usesDraft ? " · draft" : schedule?.tipId === tip.id ? " · scheduled" : " · automatic rotation"}`}
       workspaceClassName="forest-page-workspace-narrow"
       actions={<Link href="/tips/tip-of-the-day" className="button secondary">Back to schedule</Link>}
     >

@@ -152,6 +152,10 @@ const redesignCopy = {
       attemptedSub: "In your working list",
       favoriteSub: (count: number) => `${count} ${count === 1 ? "favorite" : "favorites"}`
     },
+    favoriteUsers: {
+      summary: (count: number) => `See who added it to favorites (${count})`,
+      title: "Favorited by"
+    },
     reactions: {
       howWasIt: "How was it?",
       tooHard: "Too hard for me",
@@ -182,6 +186,10 @@ const redesignCopy = {
       attemptedSub: "Dans votre liste de travail",
       favoriteSub: (count: number) => `${count} favori${count > 1 ? "s" : ""}`
     },
+    favoriteUsers: {
+      summary: (count: number) => `Voir qui l'a ajouté aux favoris (${count})`,
+      title: "Ajouté aux favoris par"
+    },
     reactions: {
       howWasIt: "Comment était-il ?",
       tooHard: "Trop difficile pour moi",
@@ -206,6 +214,8 @@ export default async function ProblemPage({
     translateHint?: string;
     verification?: string;
     editProposal?: string;
+    solutionReport?: string;
+    solutionReportProof?: string;
     viewLanguage?: string;
   }>;
 }) {
@@ -436,7 +446,17 @@ export default async function ProblemPage({
         problem: { translationGroupId: problem.translationGroupId }
       },
       distinct: ["userId"],
-      select: { userId: true }
+      select: {
+        userId: true,
+        user: {
+          select: {
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            avatarBackground: true
+          }
+        }
+      }
     }),
     user && relatedProblems.length
       ? prisma.problemAttempt.findMany({
@@ -952,6 +972,24 @@ export default async function ProblemPage({
             </Link>
           )}
         </section>
+        {favoriteCount > 0 && (
+          <details className="problem-favorite-users zen-hide">
+            <summary>{copy.favoriteUsers.summary(favoriteCount)}</summary>
+            <div className="problem-favorite-users-panel">
+              <h2>{copy.favoriteUsers.title}</h2>
+              <ul>
+                {groupFavoriteRows.map(({ user: favoriteUser }) => (
+                  <li key={favoriteUser.username}>
+                    <Link href={`/profile/${favoriteUser.username}`}>
+                      <UserName user={favoriteUser} />
+                      <span className="problem-favorite-username">@{favoriteUser.username}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
+        )}
         {hasSpecifiedOrigin && (
           <div className="problem-origin-note zen-meta">
             {!isUnknownProblemOrigin(problem.origin) && <span>{t.problemDetail.origin} {problem.origin}</span>}
@@ -1122,7 +1160,7 @@ export default async function ProblemPage({
             </p>
           )}
           {proofs.length > 0 && canViewSolutions && (
-            <details className="proof-reveal-gate">
+            <details className="proof-reveal-gate" open={queryParams.solutionReport === "saved"}>
               <summary>
                 <span>{t.problemDetail.revealSolutions}</span>
                 <small>{t.problemDetail.revealWarning}</small>
@@ -1144,6 +1182,8 @@ export default async function ProblemPage({
                     Boolean(ownOpenReport) ||
                     Boolean(user && canUseModerationTools(user));
                   const canReportProof = Boolean(user && isVerifiedContributor(user) && !isOwnProof);
+                  const solutionReportSaved =
+                    queryParams.solutionReport === "saved" && queryParams.solutionReportProof === String(proof.id);
                   return (
                     <article id={`solution-${proof.id}`} key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
                       <header className="proof-header">
@@ -1204,7 +1244,7 @@ export default async function ProblemPage({
                       </header>
                       <MarkdownBlock html={proofBodyHtmlById.get(proof.id) ?? proof.bodyHtml} />
                       {canReportProof && (
-                        <details className="solution-report-control">
+                        <details className="solution-report-control" open={solutionReportSaved}>
                           <summary>
                             <Flag size={14} aria-hidden="true" />
                             {ownOpenReport
@@ -1215,6 +1255,11 @@ export default async function ProblemPage({
                             action={reportProofAction.bind(null, proof.id, problem.slug)}
                             className="solution-report-form"
                           >
+                            {solutionReportSaved && (
+                              <p className="success-text" role="status" aria-live="polite">
+                                {t.problemDetail.solutionReportSaved}
+                              </p>
+                            )}
                             <label>
                               <span>{t.problemDetail.solutionReportReason}</span>
                               <select

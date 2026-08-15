@@ -312,6 +312,8 @@ model User {
   emailVerifiedAt                 DateTime?
   passwordHash                    String?
   bio                             String?
+  discoverySource                 String?
+  discoverySourceDetail           String?
   affiliation                     String?
   websiteUrl                      String?
   mathematicalDomains             MathDomain[]                    @default([])

@@ -10,6 +10,7 @@ import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
 import { usernameLookupFilter } from "@/lib/usernames";
+import { USER_DISCOVERY_SOURCES } from "@/lib/user-discovery-source";
 
 export const dynamic = "force-dynamic";
 const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
@@ -93,6 +94,25 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.profile.bio}</span>
           <textarea name="bio" defaultValue={user.bio ?? ""} placeholder={t.profile.bioPlaceholder} />
+        </label>
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">{t.profile.discoverySourceQuestion}</span>
+          <select name="discoverySource" required defaultValue={user.discoverySource ?? ""}>
+            <option value="" disabled>{t.profile.discoverySourcePlaceholder}</option>
+            {USER_DISCOVERY_SOURCES.map((source) => (
+              <option key={source} value={source}>{t.profile.discoverySources[source]}</option>
+            ))}
+          </select>
+          <small className="muted">{t.profile.discoverySourceHelp}</small>
+        </label>
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">{t.profile.discoverySourceDetail}</span>
+          <input
+            name="discoverySourceDetail"
+            defaultValue={user.discoverySourceDetail ?? ""}
+            maxLength={240}
+            placeholder={t.profile.discoverySourceDetailPlaceholder}
+          />
         </label>
         <button type="submit">{t.profile.saveProfile}</button>
       </form>

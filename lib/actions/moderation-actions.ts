@@ -2,6 +2,7 @@
 
 import { ConceptStatus, NotificationType, ProblemStatus, QualityStatus, ReportStatus, TargetType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireModerator, requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
@@ -133,6 +134,7 @@ export async function reportProofAction(proofId: number, problemSlug: string, fo
 
   revalidatePath("/moderation");
   revalidatePath(`/problems/${problemSlug}`);
+  redirect(`/problems/${problemSlug}?solutionReport=saved&solutionReportProof=${proofId}#solution-${proofId}`);
 }
 
 export async function dismissReportAction(reportId: number) {

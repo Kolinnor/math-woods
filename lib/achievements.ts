@@ -5,6 +5,11 @@ import { createNotification } from "@/lib/notifications";
 
 export const ACHIEVEMENTS = [
   {
+    key: "a-place-in-the-woods",
+    title: "A Place in the Woods",
+    description: "Complete your profile bio."
+  },
+  {
     key: "first-clearing",
     title: "First Clearing",
     description: "Solve your first problem."
@@ -95,6 +100,15 @@ export async function checkSolveAchievements(userId: number) {
   if (solvedCount >= 1) await unlockAchievement(userId, "first-clearing");
   if (solvedCount >= 10) await unlockAchievement(userId, "pathfinder");
   if (solvedCount >= 100) await unlockAchievement(userId, "ascending-the-mountain");
+}
+
+export async function checkProfileAchievements(userId: number) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { bio: true }
+  });
+
+  if (user?.bio?.trim()) await unlockAchievement(userId, "a-place-in-the-woods");
 }
 
 export async function checkHintAchievements(userId: number) {

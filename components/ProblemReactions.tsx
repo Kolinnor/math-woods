@@ -45,7 +45,6 @@ export function ProblemReactions({
             <button
               type="submit"
               className={reaction?.difficultyReaction === item.value ? "selected" : undefined}
-              title={item.label}
               aria-label={item.label}
             >
               <i>{item.icon}</i><span>{item.label}</span>
@@ -57,14 +56,13 @@ export function ProblemReactions({
             <button
               type="submit"
               className={reaction?.preferenceReaction === item.value ? "selected" : undefined}
-              title={item.label}
               aria-label={item.label}
             >
               <i>{item.icon}</i><span>{item.label}</span>
             </button>
           </form>
         ))}
-        <Link href={`/problems/${problemSlug}/discussion`} title={labels.somethingElse} aria-label={labels.somethingElse}>
+        <Link href={`/problems/${problemSlug}/discussion`} aria-label={labels.somethingElse}>
           <i><MessageCircleMore size={16} /></i><span>{labels.somethingElse}</span>
         </Link>
       </div>

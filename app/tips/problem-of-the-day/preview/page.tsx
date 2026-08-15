@@ -11,27 +11,56 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { normalizeTipImagePosition, normalizeTipImageUrl } from "@/lib/tip-images";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+type PreviewSearchParams = Record<string, string | string[] | undefined>;
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function fieldName(name: string, dateKey: string) {
+  return `${name}:${dateKey}`;
+}
+
+function positiveIntegerParam(value: string | string[] | undefined) {
+  const numberValue = Number(firstParam(value));
+  return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : null;
+}
+
 export default async function DailyProblemPreviewPage({
   searchParams
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<PreviewSearchParams>;
 }) {
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
 
-  const [{ date }, preferredLanguage, locale, t] = await Promise.all([
+  const [params, preferredLanguage, locale, t] = await Promise.all([
     searchParams,
     getPreferredContentLanguage(),
     getInterfaceLocale(),
     getTranslations()
   ]);
+  const date = firstParam(params.date);
   const dateKey = date && isDailyProblemDateKey(date) ? date : dailyProblemDateKey();
-  const preview = await loadDailyProblemPreview(dateKey, preferredLanguage);
+  const usesDraft = firstParam(params.draft) === "1";
+  const preview = await loadDailyProblemPreview(
+    dateKey,
+    preferredLanguage,
+    usesDraft
+      ? {
+          problemId: positiveIntegerParam(params[fieldName("problemId", dateKey)]),
+          imageUrl: normalizeTipImageUrl(firstParam(params[fieldName("imageUrl", dateKey)])),
+          imagePositionX: normalizeTipImagePosition(firstParam(params[fieldName("imagePositionX", dateKey)])),
+          imagePositionY: normalizeTipImagePosition(firstParam(params[fieldName("imagePositionY", dateKey)]))
+        }
+      : undefined
+  );
   if (!preview) notFound();
   const dateLabel = new Intl.DateTimeFormat(locale, {
     weekday: "long",
@@ -47,7 +76,7 @@ export default async function DailyProblemPreviewPage({
       eyebrow="Preview"
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      description={`${dateLabel}${preview.automatic ? " · automatic selection" : ""}`}
+      description={`${dateLabel}${usesDraft ? " · draft" : preview.automatic ? " · automatic selection" : ""}`}
       workspaceClassName="forest-page-workspace-narrow"
       actions={<Link href="/tips/problem-of-the-day" className="button secondary">Back to schedule</Link>}
     >

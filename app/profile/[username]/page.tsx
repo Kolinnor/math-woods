@@ -31,6 +31,15 @@ import { usernameLookupFilter } from "@/lib/usernames";
 export const dynamic = "force-dynamic";
 const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
 
+function earliestDateByTranslationGroup(rows: Array<{ translationGroupId: string; createdAt: Date }>) {
+  const dates = new Map<string, Date>();
+  for (const row of rows) {
+    const current = dates.get(row.translationGroupId);
+    if (!current || row.createdAt < current) dates.set(row.translationGroupId, row.createdAt);
+  }
+  return dates;
+}
+
 export default async function ProfilePage({
   params,
   searchParams
@@ -73,7 +82,9 @@ export default async function ProfilePage({
     achievementUnlocks,
     currentUserSolved,
     reputation,
-    friendship
+    friendship,
+    conceptRows,
+    solutionRows
   ] = await Promise.all([
     prisma.problem.findMany({
       where: { authorId: user.id, status: "PUBLISHED" },
@@ -126,16 +137,53 @@ export default async function ProfilePage({
             ]
           }
         })
-      : null
+      : null,
+    prisma.concept.findMany({
+      where: { createdById: user.id, canAppearInConceptBrowser: true },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        language: true,
+        translationGroupId: true,
+        translatedFromConceptId: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: "desc" }
+    }),
+    prisma.problemProof.findMany({
+      where: { authorId: user.id, problem: { status: "PUBLISHED" } },
+      select: {
+        id: true,
+        translationGroupId: true,
+        translatedFromProofId: true,
+        createdAt: true,
+        problem: {
+          select: {
+            slug: true,
+            title: true,
+            language: true,
+            translatedFromProblemId: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    })
   ]);
 
+  const problemDates = earliestDateByTranslationGroup(problemRows);
+  const conceptDates = earliestDateByTranslationGroup(conceptRows);
+  const solutionDates = earliestDateByTranslationGroup(solutionRows);
   const problems = selectContentTranslationsByGroup(
     problemRows.map((problem) => ({
       ...problem,
       isSource: problem.translatedFromProblemId === null
     })),
     preferredLanguage
-  );
+  ).map((problem) => ({
+    ...problem,
+    contributionDate: problemDates.get(problem.translationGroupId) ?? problem.createdAt
+  })).sort((left, right) => right.contributionDate.getTime() - left.contributionDate.getTime());
   const allSolved = selectContentTranslationsByGroup(
     solvedRows.map((attempt) => ({
       ...attempt,
@@ -156,12 +204,38 @@ export default async function ProfilePage({
     preferredLanguage
   );
   const favorites = allFavorites.slice(0, 50);
+  const concepts = selectContentTranslationsByGroup(
+    conceptRows.map((concept) => ({
+      ...concept,
+      isSource: concept.translatedFromConceptId === null
+    })),
+    preferredLanguage
+  ).map((concept) => ({
+    ...concept,
+    contributionDate: conceptDates.get(concept.translationGroupId) ?? concept.createdAt
+  })).sort((left, right) => right.contributionDate.getTime() - left.contributionDate.getTime());
+  const solutions = selectContentTranslationsByGroup(
+    solutionRows.map((solution) => ({
+      ...solution,
+      language: solution.problem.language,
+      isSource: solution.translatedFromProofId === null
+    })),
+    preferredLanguage
+  ).map((solution) => ({
+    ...solution,
+    contributionDate: solutionDates.get(solution.translationGroupId) ?? solution.createdAt
+  })).sort((left, right) => right.contributionDate.getTime() - left.contributionDate.getTime());
   const authoredProblemCount = problems.length;
   const solvedCount = allSolved.length;
   const externalFavoriteCount = allFavorites.length;
   const isSelf = currentUser?.id === user.id;
   const currentUserSolvedIds = new Set(currentUserSolved.map((attempt) => attempt.problemId));
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
+  const contributionDateLabel = (date: Date) => date.toLocaleDateString(interfaceLocale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
   const friendshipActions = friendship?.status === FriendshipStatus.ACCEPTED ? (
     <>
       <Link href={`/chat/${user.username}` as never} className="button">
@@ -264,9 +338,46 @@ export default async function ProfilePage({
                     className={problemLinkClass("panel block p-4", currentUserSolvedIds.has(problem.id))}
                   >
                     <AsyncMarkdownInline markdown={problem.title} />
+                    <time dateTime={problem.contributionDate.toISOString()} className="muted mt-1 block text-sm">
+                      {t.profile.problemPostedOn(contributionDateLabel(problem.contributionDate))}
+                    </time>
                   </Link>
                 ))}
                 {problems.length === 0 && <p className="muted panel p-5">{t.profile.noPublicProblems}</p>}
+              </div>
+            </section>
+
+            <section className="mb-6">
+              <h2 className="mb-3 font-semibold">{t.profile.solutionsWritten} {"\u00b7"} {solutions.length}</h2>
+              <div className="grid gap-3">
+                {solutions.map((solution) => (
+                  <Link
+                    key={solution.id}
+                    href={`/problems/${solution.problem.slug}#solution-${solution.id}`}
+                    className="panel block p-4"
+                  >
+                    <AsyncMarkdownInline markdown={solution.problem.title} />
+                    <time dateTime={solution.contributionDate.toISOString()} className="muted mt-1 block text-sm">
+                      {t.profile.solutionWrittenOn(contributionDateLabel(solution.contributionDate))}
+                    </time>
+                  </Link>
+                ))}
+                {solutions.length === 0 && <p className="muted panel p-5">{t.profile.noSolutionsWritten}</p>}
+              </div>
+            </section>
+
+            <section className="mb-6">
+              <h2 className="mb-3 font-semibold">{t.profile.conceptsWritten} {"\u00b7"} {concepts.length}</h2>
+              <div className="grid gap-3">
+                {concepts.map((concept) => (
+                  <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
+                    <AsyncMarkdownInline markdown={concept.title} />
+                    <time dateTime={concept.contributionDate.toISOString()} className="muted mt-1 block text-sm">
+                      {t.profile.conceptCreatedOn(contributionDateLabel(concept.contributionDate))}
+                    </time>
+                  </Link>
+                ))}
+                {concepts.length === 0 && <p className="muted panel p-5">{t.profile.noConceptsWritten}</p>}
               </div>
             </section>
 
@@ -376,8 +487,12 @@ export default async function ProfilePage({
               <span>{user._count.playlists}</span>
             </div>}
             <div className="flex justify-between gap-3">
-              <span>{t.profile.conceptsCreated}</span>
-              <span>{user._count.conceptsCreated}</span>
+              <span>{t.profile.conceptsWritten}</span>
+              <span>{concepts.length}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>{t.profile.solutionsWritten}</span>
+              <span>{solutions.length}</span>
             </div>
             <div className="flex justify-between gap-3">
               <span>{t.profile.discussionPosts}</span>

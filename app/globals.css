@@ -331,6 +331,7 @@ body:has(.problem-detail-shell) {
 }
 
 .home-daily-problem {
+  align-items: start;
   background: var(--mw-reading-surface);
   border: 1px solid var(--mw-border);
   border-radius: 12px;
@@ -419,8 +420,12 @@ body:has(.problem-detail-shell) {
 }
 
 .home-daily-art {
+  align-self: start;
+  aspect-ratio: 1 / 1;
+  background: var(--imgbg);
   overflow: hidden;
   position: relative;
+  width: 100%;
 }
 
 .home-daily-art img {
@@ -1103,18 +1108,37 @@ body:has(.problem-detail-shell) .site-main {
   border-radius: 999px;
   color: #eaf6ee;
   display: flex;
+  flex: 0 0 34px;
   height: 34px;
-  overflow: hidden;
+  justify-content: center;
   padding: 0 8px;
-  transition: width .18s ease, background .18s ease, border-color .18s ease;
+  position: relative;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
   width: 34px;
   white-space: nowrap;
 }
 
 .problem-reactions button span,
 .problem-reactions a span {
-  display: none;
-  margin-left: 6px;
+  background: #143d29;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+  color: #fff;
+  display: block;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 650;
+  left: 50%;
+  opacity: 0;
+  padding: 5px 8px;
+  pointer-events: none;
+  position: absolute;
+  top: calc(100% + 7px);
+  transform: translate(-50%, -2px);
+  transition: opacity .14s ease, transform .14s ease, visibility .14s ease;
+  visibility: hidden;
+  z-index: 5;
 }
 
 .problem-reactions button:hover,
@@ -1125,14 +1149,36 @@ body:has(.problem-detail-shell) .site-main {
   background: #fff;
   border-color: #fff;
   color: #17512f;
-  width: auto;
 }
 
 .problem-reactions button:hover span,
 .problem-reactions button:focus-visible span,
 .problem-reactions a:hover span,
 .problem-reactions a:focus-visible span {
-  display: inline;
+  opacity: 1;
+  transform: translate(-50%, 0);
+  visibility: visible;
+}
+
+.problem-reactions form:first-child button span {
+  left: 0;
+  transform: translate(0, -2px);
+}
+
+.problem-reactions form:first-child button:hover span,
+.problem-reactions form:first-child button:focus-visible span {
+  transform: translate(0, 0);
+}
+
+.problem-reactions > div > a:last-child span {
+  left: auto;
+  right: 0;
+  transform: translate(0, -2px);
+}
+
+.problem-reactions > div > a:last-child:hover span,
+.problem-reactions > div > a:last-child:focus-visible span {
+  transform: translate(0, 0);
 }
 
 .problem-reactions i {
@@ -1243,6 +1289,63 @@ body:has(.problem-detail-shell) .site-main {
   background: #fdeef2;
   border-color: #c2415f;
   color: #c2415f;
+}
+
+.problem-favorite-users {
+  margin-top: 0.65rem;
+}
+
+.problem-favorite-users > summary {
+  color: #8f2944;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 650;
+  width: fit-content;
+}
+
+.problem-favorite-users-panel {
+  background: #fff8f9;
+  border: 1px solid #e8bcc7;
+  border-radius: 8px;
+  margin-top: 0.65rem;
+  padding: 0.9rem 1rem;
+}
+
+.problem-favorite-users-panel h2 {
+  color: #713044;
+  font-size: 0.75rem;
+  font-weight: 750;
+  margin: 0 0 0.6rem;
+  text-transform: uppercase;
+}
+
+.problem-favorite-users-panel ul {
+  display: grid;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.problem-favorite-users-panel a {
+  align-items: center;
+  border-radius: 5px;
+  color: inherit;
+  display: flex;
+  gap: 0.65rem;
+  min-height: 2.25rem;
+  padding: 0.3rem 0.4rem;
+  text-decoration: none;
+}
+
+.problem-favorite-users-panel a:hover {
+  background: #f8e8ec;
+}
+
+.problem-favorite-username {
+  color: #876d74;
+  font-size: 0.78rem;
+  margin-left: auto;
 }
 
 .problem-rail {

@@ -32,6 +32,7 @@ import {
 import { slugify } from "../lib/slug.ts";
 import { isSitePresenceId, sitePresenceIsActive } from "../lib/site-presence-config.ts";
 import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
+import { parseUserDiscoverySource } from "../lib/user-discovery-source.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
 import { problemCreationNotificationCopy } from "../lib/problem-creation-notifications.ts";
@@ -239,6 +240,9 @@ import {
 } from "../lib/mathematicians.ts";
 import type { UserReputationSummary } from "../lib/user-reputation.ts";
 import {
+  AUTHORED_CONCEPT_REPUTATION_POINTS,
+  AUTHORED_SOLUTION_REPUTATION_POINTS,
+  authoredContentReputationBonus,
   DAILY_PROBLEM_REPUTATION_POINTS,
   dailyProblemReputationBonus,
   learningSolveReputationBonus,
@@ -2211,6 +2215,7 @@ const mathematicianFixtures = [
     favoriteCount: 1,
     engagementCount: 4,
     conceptCount: 2,
+    solutionCount: 1,
     explorationCount: 1,
     dailyProblemCount: 0
   },
@@ -2234,12 +2239,17 @@ const mathematicianFixtures = [
     favoriteCount: 0,
     engagementCount: 0,
     conceptCount: 0,
+    solutionCount: 0,
     explorationCount: 0,
     dailyProblemCount: 1
   }
 ] satisfies UserReputationSummary[];
 
 assert.equal(DAILY_PROBLEM_REPUTATION_POINTS, 50);
+assert.equal(AUTHORED_CONCEPT_REPUTATION_POINTS, 2);
+assert.equal(AUTHORED_SOLUTION_REPUTATION_POINTS, 2);
+assert.equal(authoredContentReputationBonus(3, 4), 14);
+assert.equal(authoredContentReputationBonus(-1, 2.9), 4);
 assert.equal(dailyProblemReputationBonus(3, Role.USER), 150);
 assert.equal(dailyProblemReputationBonus(3, Role.MODERATOR), 150);
 assert.equal(dailyProblemReputationBonus(3, Role.ADMIN), 0);
@@ -2974,5 +2984,9 @@ assert.equal(formatCompactNumber(1_250), "1.3k");
 assert.equal(formatCompactNumber(12_500), "12.5k");
 assert.equal(formatCompactNumber(999_999), "1M");
 assert.equal(formatCompactNumber(1_250_000), "1.3M");
+assert.equal(parseUserDiscoverySource("three_blue_one_brown"), "THREE_BLUE_ONE_BROWN");
+assert.equal(parseUserDiscoverySource("PHIL"), "PHIL");
+assert.equal(parseUserDiscoverySource("unknown-source"), null);
+assert.equal(parseUserDiscoverySource(null), null);
 
 console.log("core tests ok");
