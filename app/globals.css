@@ -1235,10 +1235,19 @@ body:has(.problem-detail-shell) .site-main {
   color: var(--mw-text);
   display: flex;
   gap: 12px;
-  height: 78px;
+  min-height: 78px;
   padding: 12px 16px;
   text-align: left;
   width: 100%;
+}
+
+.problem-action-tile > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.problem-action-tile > svg {
+  flex: 0 0 auto;
 }
 
 .problem-action-tile span,
@@ -1578,7 +1587,7 @@ body:has(.problem-detail-shell) .site-main {
   }
 
   .problem-action-tile {
-    height: 68px;
+    min-height: 68px;
   }
 
   .problem-solved-banner {

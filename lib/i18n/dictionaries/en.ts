@@ -915,7 +915,7 @@ export const en = {
     requestVerification: "Request verification",
     yourProblem: "Your problem",
     favorited: "Favorited",
-    addFavorite: "Add this problem to favorites",
+    addFavorite: "Add to favorites",
     edit: "Edit",
     discussions: "Discussions",
     report: "Report",
