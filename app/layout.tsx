@@ -168,14 +168,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const today = dailyProblemDateKey(new Date(), CONTEST_TIME_ZONE);
   const [user, activeContest] = await Promise.all([
     getCurrentUser(),
-    prisma.problemContest.findFirst({
-      where: {
-        publishedAt: { not: null },
-        startDateKey: { lte: today },
-        endDateKey: { gte: today }
-      },
-      select: { id: true }
-    })
+    process.env.DATABASE_URL
+      ? prisma.problemContest.findFirst({
+          where: {
+            publishedAt: { not: null },
+            startDateKey: { lte: today },
+            endDateKey: { gte: today }
+          },
+          select: { id: true }
+        })
+      : Promise.resolve(null)
   ]);
   const cookieStore = await cookies();
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";
