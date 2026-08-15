@@ -1184,6 +1184,7 @@ export default async function ProblemPage({
                   const userVotedProof = ownProofVoteIds.has(proof.id);
                   const accepted = proof.id === acceptedProofId;
                   const canEditProof = Boolean(user && canEditSolution(user, proof));
+                  const isProofAuthor = user?.id === proof.authorId;
                   const isOwnProof = user?.id === proof.authorId || user?.id === proof.translatedById;
                   const openProofReports = proofReportsByProofId.get(proof.id) ?? [];
                   const ownOpenReport = user
@@ -1240,7 +1241,9 @@ export default async function ProblemPage({
                                 aria-pressed={userVotedProof}
                                 title={
                                   isOwnProof
-                                    ? t.problemDetail.cannotVoteOwnSolution
+                                    ? isProofAuthor
+                                      ? t.problemDetail.ownSolutionVoteLocked
+                                      : t.problemDetail.cannotVoteOwnSolution
                                     : userVotedProof
                                       ? t.problemDetail.removeUsefulVote
                                       : t.problemDetail.markUseful

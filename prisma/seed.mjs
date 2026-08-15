@@ -552,21 +552,35 @@ async function main() {
   const proof = await prisma.problemProof.findFirst({
     where: { problemId: problem.id, authorId: curator.id }
   });
-  if (proof) {
-    await prisma.problemProof.update({
-      where: { id: proof.id },
-      data: { bodyMarkdown: proofMarkdown, bodyHtml: await renderedDemoHtml(proofMarkdown) }
-    });
-  } else {
-    await prisma.problemProof.create({
-      data: {
-        problemId: problem.id,
-        authorId: curator.id,
-        bodyMarkdown: proofMarkdown,
-        bodyHtml: await renderedDemoHtml(proofMarkdown)
+  const savedProof = proof
+    ? await prisma.problemProof.update({
+        where: { id: proof.id },
+        data: { bodyMarkdown: proofMarkdown, bodyHtml: await renderedDemoHtml(proofMarkdown) }
+      })
+    : await prisma.problemProof.create({
+        data: {
+          problemId: problem.id,
+          authorId: curator.id,
+          bodyMarkdown: proofMarkdown,
+          bodyHtml: await renderedDemoHtml(proofMarkdown)
+        }
+      });
+  await prisma.vote.upsert({
+    where: {
+      userId_targetType_targetId: {
+        userId: curator.id,
+        targetType: TargetType.PROOF,
+        targetId: savedProof.id
       }
-    });
-  }
+    },
+    update: { voteType: "UP" },
+    create: {
+      userId: curator.id,
+      targetType: TargetType.PROOF,
+      targetId: savedProof.id,
+      voteType: "UP"
+    }
+  });
   const now = new Date();
   await prisma.problemAttempt.upsert({
     where: {
