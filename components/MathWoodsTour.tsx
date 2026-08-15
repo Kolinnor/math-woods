@@ -46,7 +46,7 @@ const copy = {
     language: "Langue du tutoriel",
     start: "Démarrer le tutoriel",
     backToSite: "Retourner sur Math Woods",
-    finish: "Terminer",
+    finish: "Fin du tutoriel",
     previous: "Précédent",
     next: "Suivant",
     close: "Quitter le tutoriel",
@@ -94,86 +94,86 @@ const copy = {
     suggestions: "Suggestions",
     steps: [
       {
-        text: "Bienvenue sur Math Woods. Ce parcours présente les principales parties du site à partir d'une page de démonstration."
+        text: "Bienvenue sur Math Woods ! Je suis Ancient Tree, le créateur du site, et je vais vous guider pas à pas pour vous faire la main avec ce que j'espère devenir votre nouvel outil de travail. Ce tutoriel, basé sur une page de garde figée du site, a pour but de vous présenter les grandes lignes du site."
       },
       {
-        text: "Math Woods est un site open source pour apprendre les mathématiques à tous les niveaux. Chacun peut résoudre des problèmes, expliquer des concepts et partager ses idées, à son rythme."
+        text: "MathWoods est un site open source dont l'objectif est de vous permettre d'apprendre des mathématiques de tout niveau (du collège aux conjectures encore irrésolues actuellement) et de manière pédagogique. C'est un site contributif dans lequel chacun est libre de poster des problèmes, d'expliquer des concepts, de partager ce qui lui plaît mathématiquement et d'en résoudre de manière ludique, sans compétitivité. Voyons maintenant plus précisément ses fonctionnalités."
       },
       {
         target: "daily",
         placement: "right",
-        text: "Un nouveau problème illustré est proposé chaque jour. C'est un bon point de départ quand vous cherchez quoi résoudre."
+        text: "Ici, un nouveau problème illustré vous sera présenté tous les jours. Si vous ne savez pas quoi faire, vous pourrez commencer par là !"
       },
       {
         target: "progress",
         placement: "left",
-        text: "La progression indique combien de problèmes vous avez résolus dans chaque domaine."
+        text: "Ici vous pourrez voir le nombre de problèmes que vous avez résolu dans chaque catégorie."
       },
       {
         target: "recommendations",
         placement: "right",
-        text: "Les recommandations tiennent compte de votre niveau et de vos préférences. Vos retours sur la difficulté et sur les problèmes appréciés les rendent plus précises."
+        text: "Ici vous aurez diverses recommandations de problèmes en fonction de votre niveau ainsi que de vos goûts. N'hésitez donc pas à nous signifier quels problèmes vous avez trouvés trop durs ou trop simples, et ceux que vous avez aimés ou non, pour que vos recommandations soient bien cohérentes avec vos besoins !"
       },
       {
         target: "tip",
         placement: "right",
-        text: "Chaque jour, un conseil ou une méthode présente une façon de mieux aborder les mathématiques, avec des problèmes pour s'entraîner."
+        text: "Tous les jours, un nouveau conseil ou une nouvelle méthodologie vous sera présentée afin d'améliorer votre compréhension des mathématiques. Divers problèmes d'application seront directement proposés afin de vous faire la main sur ces idées."
       },
       {
         target: "friends",
         placement: "left",
-        text: "Cette partie rassemble les contributions récentes de vos amis."
+        text: "Bien sûr, faire des maths avec des amis reste plus fun ! Cet encadré servira à voir quelles sont les dernières contributions de ces derniers."
       },
       {
         target: "chat",
         placement: "left",
-        text: "Vous pouvez aussi discuter avec vos amis et voir qui est en ligne."
+        text: "Vous pourrez aussi discuter avec vos amis via ce tchat."
       },
       {
         target: "nav-problems",
         placement: "bottom",
         action: "open-problems",
-        text: "Cliquez sur Problèmes pour ouvrir la bibliothèque du site."
+        text: "Mais cessons de tourner autour du pot, cliquez ici pour accéder à la page des problèmes."
       },
       {
         target: "problem-browser",
         placement: "right",
-        text: "Cette page rassemble les problèmes publiés. Vous pouvez les filtrer et choisir une difficulté adaptée."
+        text: "Vous êtes maintenant sur la page recensant tous les problèmes du site. Vous pourrez résoudre des problèmes triés par niveau de difficulté."
       },
       {
         target: "open-problem",
         placement: "bottom",
         action: "open-problem",
-        text: "Les problèmes recommandés apparaissent aussi ici. Ouvrez celui-ci pour voir sa page."
+        text: "Vous retrouvez ici les problèmes de la première page qui seraient susceptibles de vous intéresser. Voyons enfin de quoi il s'agit."
       },
       {
         target: "statement",
         placement: "right",
-        text: "La page présente l'énoncé et les actions principales. Vous pouvez commencer un travail, indiquer que vous avez résolu le problème ou l'ajouter à vos favoris."
+        text: "Ici vous avez l'énoncé du problème. Vous pouvez ensuite travailler dessus de votre côté en cliquant sur « Travailler sur ce problème ». Une fois résolu, cliquez sur « Je l'ai résolu » : on vous demandera parfois une vérification où le concepteur du problème pourra juger de votre bonne foi et de la qualité de votre travail, mais ce n'est pas automatique. Enfin, si vous avez aimé le problème, cliquez sur « Ajouter à mes favoris ». N'oubliez pas de le faire, cela fait vivre le site !"
       },
       {
         target: "help",
         placement: "right",
-        text: "Des indications et des solutions peuvent vous aider. Les problèmes, concepts, traductions et solutions sont rédigés par la communauté et peuvent être complétés."
+        text: "Si jamais vous êtes bloqués, diverses indications sont à votre disposition sous le problème ainsi qu'une solution. Les énoncés de problèmes, les diverses modifications apportées, les traductions, les concepts, les indications ainsi que les solutions sont rédigés par des utilisateurs du site comme vous ou moi. Il peut donc y avoir des manques à combler, c'est pour cela que nous avons besoin de vous si jamais vous avez une idée que d'autres n'ont pas eue ou pas eu le temps d'écrire !"
       },
       {
         target: "nav-concepts",
         placement: "bottom",
-        text: "La page Concepts forme une encyclopédie mathématique. Chaque concept peut contenir une définition, des exemples et des exercices d'application."
+        text: "Le tutoriel est bientôt fini, ne vous en faites pas. Ici nous avons une encyclopédie regroupant tous les concepts mathématiques mis en avant sur ce site. N'hésitez pas à cliquer sur un mot qui vous semble inconnu dans un énoncé pour voir le concept associé. Il vous sera donné une définition claire, des exemples ainsi que des exercices d'application (à différencier des « problèmes »)."
       },
       {
         target: "nav-users",
         placement: "bottom",
-        text: "La page Utilisateurs permet de découvrir les membres, leurs contributions et leur activité sur le site."
+        text: "Le tutoriel est bientôt fini, ne vous en faites pas. Ici nous avons une encyclopédie regroupant tous les concepts mathématiques mis en avant sur ce site. N'hésitez pas à cliquer sur un mot qui vous semble inconnu dans un énoncé pour voir le concept associé. Il vous sera donné une définition claire, des exemples ainsi que des exercices d'application (à différencier des « problèmes »)."
       },
       {
-        text: "Vous connaissez maintenant les principales parties de Math Woods. Vous pouvez parcourir librement les problèmes, les concepts et les contributions de la communauté."
+        text: "Et voilà, je crois que nous avons fait le tour des fonctionnalités principales du site. Bien sûr il y en a d'autres et je vous laisserai les découvrir par vous-même. Je suis certes l'arbre le plus ancien du site, mais je n'ai pas toute la vie devant moi ;) !"
       },
       {
         target: "menu",
         placement: "left",
         action: "finish",
-        text: "Le menu donne accès aux suggestions. Vous pouvez y signaler un bug ou proposer une amélioration à l'équipe du site."
+        text: "Trêve de plaisanterie. Je disais donc, le site Math Woods est collaboratif. Certaines fonctionnalités sont encore en travaux et divers bugs résident toujours sur le site. N'hésitez donc pas à nous en faire part en cliquant sur les trois traits en haut à droite de votre écran puis dans « Suggestions ». L'équipe du site sera vraiment contente d'avoir n'importe quel retour ! Pour cela, n'oubliez pas de créer un compte, cela vous permettra d'accéder à tous les problèmes et concepts actuels du site. Bon amusement !"
       }
     ] satisfies TourStep[]
   },
@@ -184,7 +184,7 @@ const copy = {
     language: "Tour language",
     start: "Start the tour",
     backToSite: "Back to Math Woods",
-    finish: "Finish",
+    finish: "End the tour",
     previous: "Previous",
     next: "Next",
     close: "Leave the tour",
@@ -232,86 +232,86 @@ const copy = {
     suggestions: "Suggestions",
     steps: [
       {
-        text: "Welcome to Math Woods. This tour presents the main parts of the site using a demonstration page."
+        text: "Welcome to Math Woods! I am Ancient Tree, the creator of the site, and I will guide you step by step as you get familiar with what I hope will become your new study tool. This tour uses a fixed version of the home page to introduce the main parts of the site."
       },
       {
-        text: "Math Woods is an open-source site for learning mathematics at every level. Anyone can solve problems, explain concepts, and share ideas at their own pace."
+        text: "MathWoods is an open-source site designed to help you learn mathematics at every level, from middle school to conjectures that remain unsolved today, in an educational way. It is a collaborative site where everyone is free to post problems, explain concepts, share the mathematics they enjoy, and solve problems in a playful, non-competitive setting. Let us now look at its features in more detail."
       },
       {
         target: "daily",
         placement: "right",
-        text: "A new illustrated problem is featured every day. It is a useful place to start when you are looking for something to solve."
+        text: "A new illustrated problem will be presented here every day. If you are not sure what to do, you can start here!"
       },
       {
         target: "progress",
         placement: "left",
-        text: "Your progress shows how many problems you have solved in each area."
+        text: "Here you can see how many problems you have solved in each category."
       },
       {
         target: "recommendations",
         placement: "right",
-        text: "Recommendations reflect your level and preferences. Feedback on difficulty and the problems you enjoyed makes them more accurate."
+        text: "Here you will find problem recommendations based on your level and your tastes. Tell us which problems felt too hard or too easy, and which ones you liked or disliked, so that your recommendations match your needs."
       },
       {
         target: "tip",
         placement: "right",
-        text: "A daily tip or method offers another way to approach mathematics, with related problems for practice."
+        text: "Every day, a new tip or method will be presented to help improve your understanding of mathematics. Related practice problems will be suggested so that you can try these ideas yourself."
       },
       {
         target: "friends",
         placement: "left",
-        text: "This section gathers your friends' recent contributions."
+        text: "Of course, doing mathematics with friends is more fun! This section shows their latest contributions."
       },
       {
         target: "chat",
         placement: "left",
-        text: "You can also chat with friends and see who is online."
+        text: "You can also chat with your friends here."
       },
       {
         target: "nav-problems",
         placement: "bottom",
         action: "open-problems",
-        text: "Select Problems to open the site's problem library."
+        text: "Let us get to the point: click here to open the problems page."
       },
       {
         target: "problem-browser",
         placement: "right",
-        text: "This page gathers published problems. You can filter them and choose a suitable difficulty."
+        text: "You are now on the page that lists all the problems on the site. You can solve problems arranged by difficulty level."
       },
       {
         target: "open-problem",
         placement: "bottom",
         action: "open-problem",
-        text: "Recommended problems also appear here. Open this one to view its page."
+        text: "Here you will find the problems from the first page that may interest you. Let us finally see what one looks like."
       },
       {
         target: "statement",
         placement: "right",
-        text: "The page contains the statement and main actions. You can start working, mark the problem as solved, or add it to your favorites."
+        text: "Here is the problem statement. You can work on it by selecting “Work on this problem”. Once you have solved it, select “I solved it”. You may sometimes be asked for verification so that the problem author can assess your good faith and the quality of your work, but this is not automatic. Finally, if you enjoyed the problem, select “Add to favorites”. Remember to do so: it helps keep the site active!"
       },
       {
         target: "help",
         placement: "right",
-        text: "Hints and solutions can help you. Problems, concepts, translations, and solutions are written by the community and can be expanded."
+        text: "If you get stuck, hints and a solution are available below the problem. Problem statements, edits, translations, concepts, hints, and solutions are written by site users like you and me. Some parts may still need to be completed, so we need your help whenever you have an idea that others have not had or have not had time to write down."
       },
       {
         target: "nav-concepts",
         placement: "bottom",
-        text: "Concepts form a mathematical encyclopedia. Each page can include a definition, examples, and practice exercises."
+        text: "The tour is almost over. Here we have an encyclopedia containing all the mathematical concepts featured on the site. Select an unfamiliar word in a problem statement to view its concept page. You will find a clear definition, examples, and practice exercises, which are different from problems."
       },
       {
         target: "nav-users",
         placement: "bottom",
-        text: "The Users page lets you discover members, their contributions, and their activity on the site."
+        text: "The tour is almost over. Here we have an encyclopedia containing all the mathematical concepts featured on the site. Select an unfamiliar word in a problem statement to view its concept page. You will find a clear definition, examples, and practice exercises, which are different from problems."
       },
       {
-        text: "You now know the main parts of Math Woods. You can freely browse problems, concepts, and community contributions."
+        text: "There we are. I think we have covered the site's main features. There are others, of course, and I will let you discover them for yourself. I may be the oldest tree on the site, but I do not have all the time in the world ;) !"
       },
       {
         target: "menu",
         placement: "left",
         action: "finish",
-        text: "The menu includes Suggestions. You can use it to report a bug or share an improvement with the team."
+        text: "Joking aside, Math Woods is a collaborative site. Some features are still under construction and a few bugs remain. Please tell us about them by opening the three-line menu in the top-right corner and selecting “Suggestions”. The team will be very happy to receive any feedback. Remember to create an account so that you can access all the current problems and concepts on the site. Have fun!"
       }
     ] satisfies TourStep[]
   }

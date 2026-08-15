@@ -20978,14 +20978,27 @@ body:has(.math-woods-tour) .site-main {
   .math-tour-callout[data-placement="left"],
   .math-tour-callout[data-placement="top"],
   .math-tour-callout[data-placement="bottom"] {
+    display: flex;
     right: 12px;
     bottom: 12px;
     left: 12px;
     width: auto;
     max-height: min(46vh, 360px);
-    overflow-y: auto;
+    flex-direction: column;
+    overflow: hidden;
     padding: 16px;
     transform: none;
+  }
+
+  .math-tour-callout-header,
+  .math-tour-callout-actions {
+    flex: 0 0 auto;
+  }
+
+  .math-tour-callout > p {
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;
   }
 
   .math-tour-chat {
