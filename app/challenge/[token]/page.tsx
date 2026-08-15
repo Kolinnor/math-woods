@@ -31,7 +31,7 @@ export async function generateMetadata({
   const { token: tokenValue } = await params;
   const token = normalizeProblemChallengeInviteToken(tokenValue);
   const route = token ? `/challenge/${encodeURIComponent(token)}` : "/challenge";
-  const image = token ? `${route}/opengraph-image` : "/icon.png";
+  const image = token ? `${route}/opengraph-image` : "/math-woods-bear.png";
   const fallbackTitle = "You have been challenged on Math Woods";
   const fallbackDescription = "A mathematical problem is waiting for you.";
 

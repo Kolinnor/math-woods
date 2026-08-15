@@ -48,9 +48,21 @@ export const metadata: Metadata = {
     images: ["/math-woods-bear.png"]
   },
   icons: {
-    icon: "/icon.png",
-    shortcut: "/icon.png",
-    apple: "/icon.png"
+    icon: [
+      {
+        url: "/favicon-light.png",
+        type: "image/png",
+        sizes: "512x512",
+        media: "(prefers-color-scheme: light)"
+      },
+      {
+        url: "/favicon-dark.png",
+        type: "image/png",
+        sizes: "512x512",
+        media: "(prefers-color-scheme: dark)"
+      }
+    ],
+    apple: "/favicon-dark.png"
   }
 };
 
