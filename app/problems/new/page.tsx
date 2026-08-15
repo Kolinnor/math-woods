@@ -235,7 +235,6 @@ export default async function NewProblemPage({
                 defaultValue=""
                 placeholder={sourceProblem ? t.contentEditor.translationTitlePlaceholder(sourceProblem.title) : undefined}
               />
-              {sourceProblem && <span className="meta">{t.contentEditor.translationTitleHelp}</span>}
             </label>
 
             <div className="grid gap-2">

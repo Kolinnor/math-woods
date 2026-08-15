@@ -1114,7 +1114,6 @@ export const en = {
     linkedFrom: (title: string) => `Linked from \"${title}\".`,
     title: "Title",
     translationTitlePlaceholder: (title: string) => `Translate \"${title}\"`,
-    translationTitleHelp: "Translate the title as well as the page content.",
     duplicateConceptTitleHeading: "This concept already exists.",
     duplicateConceptTitleWarning: "Choose another title or edit the existing concept page.",
     sameTranslationTitleHeading: "The title still matches the source.",

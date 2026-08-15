@@ -1119,7 +1119,6 @@ export const fr = {
     linkedFrom: (title: string) => `Lié depuis « ${title} ».`,
     title: "Titre",
     translationTitlePlaceholder: (title: string) => `Traduire « ${title} »`,
-    translationTitleHelp: "Traduisez le titre ainsi que le contenu de la page.",
     duplicateConceptTitleHeading: "Ce concept existe déjà.",
     duplicateConceptTitleWarning: "Choisissez un autre titre ou modifiez la fiche concept existante.",
     sameTranslationTitleHeading: "Le titre est encore identique à celui de la source.",

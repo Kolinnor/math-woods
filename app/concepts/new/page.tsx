@@ -113,7 +113,6 @@ export default async function NewConceptPage({
             defaultValue={sourceConcept ? "" : title}
             placeholder={sourceConcept ? t.contentEditor.translationTitlePlaceholder(sourceConcept.title) : undefined}
           />
-          {sourceConcept && <span className="meta">{t.contentEditor.translationTitleHelp}</span>}
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.concepts.kind}</span>
