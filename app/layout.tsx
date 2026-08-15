@@ -20,9 +20,12 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
+import { prisma } from "@/lib/db";
 import { dictionaryForContentLanguage } from "@/lib/i18n/server";
 import { CONTENT_LANGUAGE_COOKIE, parseActiveContentLanguage } from "@/lib/languages";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
+import { CONTEST_TIME_ZONE } from "@/lib/problem-contests";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const metadata: Metadata = {
@@ -162,7 +165,18 @@ function validBackgroundTone(value: string | undefined) {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
+  const today = dailyProblemDateKey(new Date(), CONTEST_TIME_ZONE);
+  const [user, activeContest] = await Promise.all([
+    getCurrentUser(),
+    prisma.problemContest.findFirst({
+      where: {
+        publishedAt: { not: null },
+        startDateKey: { lte: today },
+        endDateKey: { gte: today }
+      },
+      select: { id: true }
+    })
+  ]);
   const cookieStore = await cookies();
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";
   const initialBackgroundTone = validBackgroundTone(cookieStore.get("math-woods-background-tone")?.value) ?? "sage";
@@ -205,7 +219,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/concepts">{t.nav.concepts}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
               <Link href={usersRoute}>{t.nav.users}</Link>
-              <Link href="/contest">{t.nav.contest}</Link>
+              {activeContest && <Link href="/contest">{t.nav.contest}</Link>}
               {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}
             </div>
             <div className="nav-tools">
@@ -230,7 +244,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <Link href="/concepts">{t.nav.concepts}</Link>
                     {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
                     <Link href={usersRoute}>{t.nav.users}</Link>
-                    <Link href="/contest">{t.nav.contest}</Link>
+                    {activeContest && <Link href="/contest">{t.nav.contest}</Link>}
                     {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}
                   </div>
                   <div className="nav-menu-divider nav-menu-primary-divider" />
