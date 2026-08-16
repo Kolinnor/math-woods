@@ -2,8 +2,9 @@ import { ConceptKind, ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import type { Metadata } from "next";
 import type { Route } from "next";
 import Link from "next/link";
-import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
+import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
@@ -390,13 +391,12 @@ export default async function ConceptsPage({
                 <div className="concept-ledger-main">
                   <div className="concept-ledger-title-row">
                     <h2><AsyncMarkdownInline markdown={concept.title} /></h2>
-                    <span className={`concept-status-badge concept-status-${concept.status.toLowerCase()}`}>
-                      {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
-                    </span>
+                    <ConceptStatusBadge
+                      status={concept.status}
+                      label={t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
+                    />
                     {concept.needsReviewAfterEdit && (
-                      <span className="concept-status-badge concept-status-edited">
-                        {t.conceptDetail.editedSinceReview}
-                      </span>
+                      <ConceptEditedBadge label={t.conceptDetail.editedSinceReview} />
                     )}
                   </div>
                   <p className="concept-ledger-meta">

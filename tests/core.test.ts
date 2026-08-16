@@ -1896,6 +1896,12 @@ for (const path of liveTitleEditorPaths) {
   assert.match(source, /<LiveMarkdownTitleField\b/);
   assert.doesNotMatch(source, /<input\b[^>]*name=["']title["']/);
 }
+const liveTitleFieldSource = readFileSync(join("components", "LiveMarkdownTitleField.tsx"), "utf-8");
+assert.match(liveTitleFieldSource, /mode=["']title["']/);
+assert.doesNotMatch(liveTitleFieldSource, /title-preview/);
+const markdownEditorSource = readFileSync(join("components", "markdown", "MarkdownEditor.tsx"), "utf-8");
+assert.match(markdownEditorSource, /liveMarkdownPreviewExtension\(!titleMode\)/);
+assert.match(markdownEditorSource, /transaction\.newDoc\.lines === 1/);
 for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "notifications", "page.tsx")]) {
   const source = readFileSync(path, "utf-8");
   assert.match(source, /<AsyncMarkdownInline markdown=\{notification\.body\}/);

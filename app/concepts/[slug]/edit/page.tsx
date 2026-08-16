@@ -95,7 +95,6 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
       <form action={updateConceptAction.bind(null, concept.id)} className="panel grid gap-4 p-5">
         <LiveMarkdownTitleField
           defaultValue={concept.title}
-          initialHtml={await renderInlineMarkdown(concept.title)}
           locale={interfaceLocale}
           required
         />

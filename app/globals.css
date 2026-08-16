@@ -13929,9 +13929,14 @@ button.live-search-reset:hover {
   display: inline-flex;
   font-size: 0.67rem;
   font-weight: 800;
+  gap: 0.25rem;
   line-height: 1;
   padding: 0.22rem 0.45rem;
   white-space: nowrap;
+}
+
+.concept-status-badge svg {
+  flex: 0 0 auto;
 }
 
 .concept-kind-badge {
@@ -19653,26 +19658,55 @@ body:has(.home-dashboard) > .site-footer {
   gap: 0.65rem;
 }
 
-.live-markdown-title-preview {
-  align-items: center;
-  border-left: 2px solid var(--accent);
-  color: var(--ink);
-  display: flex;
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 1.05rem;
+.live-markdown-title-field {
+  min-width: 0;
+}
+
+.markdown-editor-title {
+  max-width: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+.markdown-editor-title .markdown-editor-host,
+.markdown-editor-title .cm-editor,
+.markdown-editor-title .cm-scroller {
+  max-width: 100%;
+  min-height: 3.25rem;
+  min-width: 0;
+}
+
+.markdown-editor-title .cm-scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.markdown-editor-title .cm-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.markdown-editor-title .cm-content {
+  font-family: var(--font-sans);
+}
+
+.markdown-editor-title .cm-line {
   line-height: 1.45;
-  min-height: 2.35rem;
-  overflow-wrap: anywhere;
-  padding: 0.35rem 0.75rem;
-  transition: opacity 120ms ease;
 }
 
-.live-markdown-title-preview.is-loading {
-  opacity: 0.62;
+.markdown-editor-title .cm-latex-preview .katex {
+  font-size: 1em;
 }
 
-.live-markdown-title-preview .katex {
-  font-size: 1.05em;
+.markdown-title-native-control {
+  height: 1px;
+  inset: auto auto 0 0;
+  opacity: 0;
+  overflow: hidden;
+  padding: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 1px;
 }
 
 .content-preview-button {

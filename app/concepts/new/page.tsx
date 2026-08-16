@@ -14,7 +14,6 @@ import { requireDraftSession } from "@/lib/draft-session";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
-import { renderInlineMarkdown } from "@/lib/markdown";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownForTranslation } from "@/lib/translated-markdown";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
@@ -110,7 +109,6 @@ export default async function NewConceptPage({
         {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
         <LiveMarkdownTitleField
           defaultValue={sourceConcept ? "" : title}
-          initialHtml={sourceConcept || !title ? "" : await renderInlineMarkdown(title)}
           locale={interfaceLocale}
           required
           placeholder={sourceConcept ? t.contentEditor.translationTitlePlaceholder(sourceConcept.title) : undefined}

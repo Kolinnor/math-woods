@@ -156,7 +156,6 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
               </div>
               <LiveMarkdownTitleField
                 defaultValue={problem.title}
-                initialHtml={await renderInlineMarkdown(problem.title)}
                 locale={interfaceLocale}
               />
               <div className="grid gap-2">

@@ -5,6 +5,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
+import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -454,13 +455,9 @@ export default async function ConceptPage({
       description={
         <>
           {conceptKindLabel} / {conceptDomainLabel} /{" "}
-          <span className={`concept-status-badge concept-status-${concept.status.toLowerCase()}`}>
-            {conceptStatusLabel}
-          </span>
+          <ConceptStatusBadge status={concept.status} label={conceptStatusLabel} />
           {concept.needsReviewAfterEdit && (
-            <span className="concept-status-badge concept-status-edited">
-              {t.conceptDetail.editedSinceReview}
-            </span>
+            <ConceptEditedBadge label={t.conceptDetail.editedSinceReview} />
           )}
         </>
       }

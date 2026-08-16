@@ -12,6 +12,7 @@ import {
   gutter,
   keymap,
   lineNumbers,
+  placeholder as editorPlaceholder,
   ViewPlugin,
   WidgetType
 } from "@codemirror/view";
@@ -277,6 +278,11 @@ type MarkdownEditorProps = {
   initialValue?: string;
   minHeight?: string;
   lineNumbers?: boolean;
+  mode?: "document" | "title";
+  placeholder?: string;
+  required?: boolean;
+  maxLength?: number;
+  ariaLabel?: string;
   draftKey?: string;
   localDrafts?: boolean;
   resetSignal?: string | number | null;
@@ -1223,7 +1229,7 @@ function scheduleLatexWidgetLayoutDiagnostics(element: HTMLElement, diagnostics:
   });
 }
 
-function buildLivePreviewDecorations(state: EditorState) {
+function buildLivePreviewDecorations(state: EditorState, revealActiveLine = true) {
   const text = state.doc.toString();
   const latexRanges = findLatexRanges(text);
   const wikiLinks = findWikiLinkRanges(text);
@@ -1247,6 +1253,7 @@ function buildLivePreviewDecorations(state: EditorState) {
       diagnostics
     );
     const activeSelectionLines =
+      revealActiveLine &&
       state.field(previewFocusField) &&
       state.selection.ranges.some((selection) =>
         rangeOverlapsLinesBetween(text, selection.anchor, selection.head, range.from, range.to)
@@ -1382,17 +1389,52 @@ function buildLivePreviewDecorations(state: EditorState) {
   return Decoration.set(decorations, true);
 }
 
-const liveMarkdownPreview = StateField.define<DecorationSet>({
-  create: (state) => buildLivePreviewDecorations(state),
-  update(decorations, transaction) {
-    const focusChanged = transaction.effects.some((effect) => effect.is(setPreviewFocus));
-    if (transaction.docChanged || transaction.selection || focusChanged) {
-      return buildLivePreviewDecorations(transaction.state);
-    }
-    return decorations;
-  },
-  provide: (field) => EditorView.decorations.from(field)
-});
+function liveMarkdownPreviewExtension(revealActiveLine = true) {
+  return StateField.define<DecorationSet>({
+    create: (state) => buildLivePreviewDecorations(state, revealActiveLine),
+    update(decorations, transaction) {
+      const focusChanged = transaction.effects.some((effect) => effect.is(setPreviewFocus));
+      if (transaction.docChanged || transaction.selection || focusChanged) {
+        return buildLivePreviewDecorations(transaction.state, revealActiveLine);
+      }
+      return decorations;
+    },
+    provide: (field) => EditorView.decorations.from(field)
+  });
+}
+
+function titleInputExtensions(maxLength: number) {
+  return [
+    Prec.highest(keymap.of([
+      { key: "Enter", run: () => true },
+      { key: "Shift-Enter", run: () => true }
+    ])),
+    EditorView.domEventHandlers({
+      paste(event, view) {
+        const pastedText = event.clipboardData?.getData("text/plain");
+        if (pastedText === undefined) return false;
+
+        const selection = view.state.selection.main;
+        const available = Math.max(0, maxLength - (view.state.doc.length - (selection.to - selection.from)));
+        const titleText = pastedText.replace(/\s*[\r\n]+\s*/g, " ").slice(0, available);
+        if (titleText === pastedText && pastedText.length <= available) return false;
+
+        event.preventDefault();
+        if (titleText) {
+          view.dispatch({
+            changes: { from: selection.from, to: selection.to, insert: titleText },
+            selection: { anchor: selection.from + titleText.length },
+            scrollIntoView: true
+          });
+        }
+        return true;
+      }
+    }),
+    EditorState.changeFilter.of((transaction) => (
+      !transaction.docChanged || (transaction.newDoc.lines === 1 && transaction.newDoc.length <= maxLength)
+    ))
+  ];
+}
 
 const previewFocusEvents = EditorView.domEventHandlers({
   mousedown(_event, view) {
@@ -1416,6 +1458,11 @@ export function MarkdownEditor({
   initialValue = "",
   minHeight = "14rem",
   lineNumbers: showLineNumbers = true,
+  mode = "document",
+  placeholder,
+  required = false,
+  maxLength = Number.MAX_SAFE_INTEGER,
+  ariaLabel,
   draftKey,
   localDrafts = true,
   resetSignal = null,
@@ -1423,6 +1470,8 @@ export function MarkdownEditor({
   sourceUpdatedAt = null,
   characterGuide
 }: MarkdownEditorProps) {
+  const titleMode = mode === "title";
+  const resolvedMinHeight = titleMode ? "3.25rem" : minHeight;
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -1451,7 +1500,7 @@ export function MarkdownEditor({
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
     const resolvedDraftKey = `${DRAFT_PREFIX}:${draftKey ?? `${window.location.pathname}:${name}`}`;
-    const activeDraftKey = localDrafts ? resolvedDraftKey : null;
+    const activeDraftKey = localDrafts && !titleMode ? resolvedDraftKey : null;
     draftKeyRef.current = activeDraftKey;
     if (!activeDraftKey) {
       removeMarkdownDraft(resolvedDraftKey);
@@ -1490,8 +1539,8 @@ export function MarkdownEditor({
       state: EditorState.create({
         doc: startValue,
         extensions: [
-          showLineNumbers ? lineNumbers() : [],
-          jsxGraphFoldGutter,
+          showLineNumbers && !titleMode ? lineNumbers() : [],
+          titleMode ? [] : jsxGraphFoldGutter,
           markdown(),
           history(),
           Prec.highest(keymap.of(historyKeymap)),
@@ -1524,9 +1573,9 @@ export function MarkdownEditor({
             ])
           ),
           previewFocusField,
-          liveMarkdownPreview,
+          liveMarkdownPreviewExtension(!titleMode),
           previewFocusEvents,
-          displayMathLineBreakNormalizer,
+          titleMode ? titleInputExtensions(maxLength) : displayMathLineBreakNormalizer,
           EditorView.domEventHandlers({
             paste: (event) => {
               if (!imageUploadEnabled) return false;
@@ -1538,15 +1587,19 @@ export function MarkdownEditor({
               return true;
             }
           }),
-          markdownShortcutCompartmentRef.current.of(markdownShortcutExtension(DEFAULT_MARKDOWN_HEADING_SHORTCUTS)),
+          titleMode
+            ? []
+            : markdownShortcutCompartmentRef.current.of(markdownShortcutExtension(DEFAULT_MARKDOWN_HEADING_SHORTCUTS)),
           latexShortcutCompartmentRef.current.of(latexShortcutExtension(DEFAULT_LATEX_PREFERENCES)),
-          EditorView.lineWrapping,
+          titleMode ? [] : EditorView.lineWrapping,
+          titleMode && placeholder ? editorPlaceholder(placeholder) : [],
+          ariaLabel ? EditorView.contentAttributes.of({ "aria-label": ariaLabel }) : [],
           EditorView.theme({
             "&": {
-              minHeight,
+              minHeight: resolvedMinHeight,
               background: "var(--panel)",
               color: "var(--ink)",
-              fontSize: "14px"
+              fontSize: titleMode ? "16px" : "14px"
             },
             ".cm-content": {
               caretColor: "var(--editor-cursor)",
@@ -1559,7 +1612,7 @@ export function MarkdownEditor({
               color: "var(--muted)"
             },
             ".cm-scroller": {
-              minHeight
+              minHeight: resolvedMinHeight
             },
             ".cm-cursor": {
               borderLeftColor: "var(--editor-cursor) !important",
@@ -2035,8 +2088,8 @@ export function MarkdownEditor({
   );
 
   return (
-    <div className="markdown-editor">
-      {conflictingDraft && (
+    <div className={titleMode ? "markdown-editor markdown-editor-title" : "markdown-editor"}>
+      {!titleMode && conflictingDraft && (
         <div className="markdown-draft-notice" role="status">
           <span>The server content changed after this local draft. The latest server version is shown.</span>
           <button type="button" className="secondary" onClick={restoreConflictingDraft}>
@@ -2047,7 +2100,7 @@ export function MarkdownEditor({
           </button>
         </div>
       )}
-      {restoredDraftAt && (
+      {!titleMode && restoredDraftAt && (
         <div className="markdown-draft-notice">
           <span>Draft restored from {formatDraftTime(restoredDraftAt)}.</span>
           <button type="button" className="secondary" onClick={discardDraft}>
@@ -2055,7 +2108,7 @@ export function MarkdownEditor({
           </button>
         </div>
       )}
-      <div className="markdown-editor-toolbar" aria-label="Editor tools">
+      {!titleMode && <div className="markdown-editor-toolbar" aria-label="Editor tools">
         {imageUploadEnabled && (
           <button
             type="button"
@@ -2107,7 +2160,7 @@ export function MarkdownEditor({
             }}
           />
         )}
-      </div>
+      </div>}
       <div ref={hostRef} className="markdown-editor-host" />
       {characterGuide && (
         <div
@@ -2234,7 +2287,24 @@ export function MarkdownEditor({
           </div>
         </div>
       )}
-      <textarea name={name} value={value} readOnly hidden aria-hidden="true" />
+      {titleMode ? (
+        <textarea
+          name={name}
+          value={value}
+          onChange={() => undefined}
+          required={required}
+          maxLength={maxLength}
+          className="markdown-title-native-control"
+          tabIndex={-1}
+          aria-hidden="true"
+          onInvalid={(event) => {
+            event.preventDefault();
+            viewRef.current?.focus();
+          }}
+        />
+      ) : (
+        <textarea name={name} value={value} readOnly hidden aria-hidden="true" />
+      )}
     </div>
   );
 }
