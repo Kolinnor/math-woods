@@ -1,10 +1,11 @@
-import { NotificationType } from "@prisma/client";
+import { NotificationType, TrustedUserRecommendationStatus } from "@prisma/client";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { Check, Trash2, X } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserAvatar } from "@/components/UserAvatar";
 import { clearNotificationsAction } from "@/lib/actions/notification-actions";
+import { decideTrustedUserRecommendationAction } from "@/lib/actions/trusted-user-actions";
 import { requireUser } from "@/lib/auth";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
@@ -31,7 +32,8 @@ export default async function NotificationsPage() {
       include: {
         actor: {
           select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
-        }
+        },
+        trustedUserReview: { select: { id: true, status: true } }
       }
     }),
     prisma.notification.findMany({
@@ -41,7 +43,8 @@ export default async function NotificationsPage() {
       include: {
         actor: {
           select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
-        }
+        },
+        trustedUserReview: { select: { id: true, status: true } }
       }
     })
   ]);
@@ -72,12 +75,8 @@ export default async function NotificationsPage() {
       }
     >
       <div className="list-surface notification-page-list">
-        {notifications.map((notification) => (
-          <Link
-            key={notification.id}
-            href={notificationOpenHref(notification.id) as never}
-            className={notification.readAt ? "notification-item" : "notification-item notification-unread"}
-          >
+        {notifications.map((notification) => {
+          const content = (
             <div className="notification-item-main">
               {notification.actor && <UserAvatar user={notification.actor} size="sm" />}
               <div>
@@ -88,8 +87,57 @@ export default async function NotificationsPage() {
                 <p><AsyncMarkdownInline markdown={notification.body} /></p>
               </div>
             </div>
-          </Link>
-        ))}
+          );
+          const recommendation = notification.trustedUserReview;
+          const className = notification.readAt ? "notification-item" : "notification-item notification-unread";
+
+          if (!recommendation) {
+            return (
+              <Link
+                key={notification.id}
+                href={notificationOpenHref(notification.id) as never}
+                className={className}
+              >
+                {content}
+              </Link>
+            );
+          }
+
+          return (
+            <article
+              key={notification.id}
+              id={`trusted-user-review-${recommendation.id}`}
+              className={`${className} notification-action-item`}
+            >
+              {content}
+              {notification.actor && (
+                <Link href={`/profile/${notification.actor.username}`} className="notification-review-profile-link">
+                  {t.notifications.trustedUserReview.viewProfile}
+                </Link>
+              )}
+              {recommendation.status === TrustedUserRecommendationStatus.PENDING ? (
+                <div className="notification-decision-actions">
+                  <form action={decideTrustedUserRecommendationAction.bind(null, recommendation.id, "approve")}>
+                    <button type="submit" className="primary">
+                      <Check size={16} aria-hidden="true" />
+                      {t.notifications.trustedUserReview.approve}
+                    </button>
+                  </form>
+                  <form action={decideTrustedUserRecommendationAction.bind(null, recommendation.id, "decline")}>
+                    <button type="submit" className="secondary">
+                      <X size={16} aria-hidden="true" />
+                      {t.notifications.trustedUserReview.decline}
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <p className="notification-decision-status">
+                  {t.notifications.trustedUserReview.status[recommendation.status]}
+                </p>
+              )}
+            </article>
+          );
+        })}
         {notifications.length === 0 && <p className="empty-state">{t.notifications.noNotifications}</p>}
       </div>
     </ForestPageLayout>

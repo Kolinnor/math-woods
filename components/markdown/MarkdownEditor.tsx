@@ -2075,7 +2075,7 @@ export function MarkdownEditor({
           title="Insert interactive JSXGraph"
         >
           <Orbit size={14} aria-hidden="true" />
-          <span>Graph</span>
+          <span>JSXGraph</span>
         </button>
         <button
           type="button"

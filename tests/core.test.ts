@@ -257,6 +257,10 @@ import {
   translationReputationBonus
 } from "../lib/reputation-scoring.ts";
 import {
+  isTrustedUserCandidate,
+  TRUSTED_USER_REPUTATION_THRESHOLD
+} from "../lib/trusted-user-policy.ts";
+import {
   createDisplayMathLineBreakNormalizer,
   skipDisplayMathLineBreakNormalization
 } from "../lib/latex-display-line-transactions.ts";
@@ -1192,6 +1196,13 @@ assert.equal(parseContributorQualityStatus("REVIEWED", Role.MODERATOR), QualityS
 assert.equal(parseContributorQualityStatus("REVIEWED", Role.OWNER), QualityStatus.REVIEWED);
 assert.equal(hasTrustedPrivileges(Role.USER), false);
 assert.equal(hasTrustedPrivileges(Role.MODERATOR), true);
+assert.equal(TRUSTED_USER_REPUTATION_THRESHOLD, 100);
+assert.equal(isTrustedUserCandidate(Role.USER, 99), false);
+assert.equal(isTrustedUserCandidate(Role.USER, 100), true);
+assert.equal(isTrustedUserCandidate(Role.USER, 101), true);
+assert.equal(isTrustedUserCandidate(Role.MODERATOR, 100), false);
+assert.equal(isTrustedUserCandidate(Role.ADMIN, 500), false);
+assert.equal(isTrustedUserCandidate(Role.USER, Number.NaN), false);
 assert.equal(
   canEditSolution(
     { id: 12, role: Role.USER },

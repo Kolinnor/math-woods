@@ -3,6 +3,7 @@ import { sendContributionRequestReminders } from "@/lib/contribution-request-rem
 import { sendDailyConceptReviews } from "@/lib/daily-concept-reviews";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { clientAddressFromHeaders, secretsMatch } from "@/lib/request-security";
+import { scanTrustedUserCandidates } from "@/lib/trusted-user-recommendations";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  const [contributionRequests, dailyConceptReviews] = await Promise.all([
+  const [contributionRequests, dailyConceptReviews, trustedUserCandidates] = await Promise.all([
     sendContributionRequestReminders(),
-    sendDailyConceptReviews()
+    sendDailyConceptReviews(),
+    scanTrustedUserCandidates()
   ]);
-  return NextResponse.json({ ok: true, contributionRequests, dailyConceptReviews });
+  return NextResponse.json({ ok: true, contributionRequests, dailyConceptReviews, trustedUserCandidates });
 }
 
 export async function POST(request: Request) {

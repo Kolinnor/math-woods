@@ -1,6 +1,6 @@
 "use server";
 
-import { NotificationType } from "@prisma/client";
+import { NotificationType, TrustedUserRecommendationStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -61,7 +61,10 @@ export async function clearNotificationsAction() {
   await prisma.notification.deleteMany({
     where: {
       userId: user.id,
-      type: { not: NotificationType.CHAT_MESSAGE }
+      type: { not: NotificationType.CHAT_MESSAGE },
+      NOT: {
+        trustedUserReview: { is: { status: TrustedUserRecommendationStatus.PENDING } }
+      }
     }
   });
 

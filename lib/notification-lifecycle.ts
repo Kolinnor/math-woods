@@ -1,4 +1,4 @@
-import { NotificationType } from "@prisma/client";
+import { NotificationType, TrustedUserRecommendationStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 
@@ -78,6 +78,9 @@ export async function cleanupNotificationsForUser(userId: number) {
   await prisma.notification.deleteMany({
     where: {
       userId,
+      NOT: {
+        trustedUserReview: { is: { status: TrustedUserRecommendationStatus.PENDING } }
+      },
       OR: [
         { readAt: { lt: readBefore } },
         { createdAt: { lt: anyBefore } }

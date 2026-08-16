@@ -260,6 +260,15 @@ enum NotificationType {
   EXPLORATION_PUBLISHED
   DAILY_CONCEPT_REVIEW
   CONTEST_UPDATE
+  TRUSTED_USER_CANDIDATE
+  TRUSTED_USER_PROMOTED
+}
+
+enum TrustedUserRecommendationStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  INVALIDATED
 }
 
 enum ContestPlacement {
@@ -380,6 +389,8 @@ model User {
   reviewedProblemEditProposals    ProblemEditProposal[]           @relation("ProblemEditProposalReviewer")
   contestsCreated                 ProblemContest[]                 @relation("ProblemContestCreator")
   contestSubmissions              ProblemContestSubmission[]
+  trustedUserRecommendation       TrustedUserRecommendation?  @relation("TrustedUserRecommendationCandidate")
+  trustedRecommendationsDecided  TrustedUserRecommendation[] @relation("TrustedUserRecommendationDecider")
 }
 
 model ExternalIdentity {
@@ -1752,9 +1763,29 @@ model Notification {
   user                User                @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
   actor               User?               @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
   dailyConceptReview  DailyConceptReview?
+  trustedUserReview    TrustedUserRecommendation?
 
   @@index([userId, readAt, createdAt])
   @@index([actorId])
+}
+
+model TrustedUserRecommendation {
+  id             Int                             @id @default(autoincrement())
+  userId         Int                             @unique
+  notificationId Int?                            @unique
+  decidedById    Int?
+  reputation     Int
+  threshold      Int
+  status         TrustedUserRecommendationStatus @default(PENDING)
+  createdAt      DateTime                        @default(now())
+  updatedAt      DateTime                        @updatedAt
+  decidedAt      DateTime?
+  user           User                            @relation("TrustedUserRecommendationCandidate", fields: [userId], references: [id], onDelete: Cascade)
+  notification   Notification?                   @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+  decidedBy      User?                           @relation("TrustedUserRecommendationDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([decidedById])
 }
 
 model DailyConceptReview {

@@ -284,7 +284,18 @@ export const en = {
     noNotifications: "No notifications yet.",
     description: "Recent updates from problems, concepts, discussions, and site activity.",
     shown: (count: number) => `${count} shown`,
-    unread: (count: number) => `${count} unread`
+    unread: (count: number) => `${count} unread`,
+    trustedUserReview: {
+      viewProfile: "View profile",
+      approve: "Yes, make them a trusted user",
+      decline: "No",
+      status: {
+        APPROVED: "Approved: this person is now a trusted user.",
+        DECLINED: "Not approved for now.",
+        INVALIDATED: "This suggestion is no longer applicable.",
+        PENDING: "Awaiting your decision."
+      }
+    }
   },
   users: {
     title: "Users",

@@ -3318,6 +3318,43 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   border-left: 3px solid var(--accent);
 }
 
+.notification-action-item:hover {
+  background: transparent;
+}
+
+.notification-review-profile-link,
+.notification-decision-actions,
+.notification-decision-status {
+  margin-left: 2.55rem;
+}
+
+.notification-review-profile-link {
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+  justify-self: start;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.notification-decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.25rem;
+}
+
+.notification-decision-actions button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.notification-decision-status {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .notification-empty {
   color: var(--muted);
   margin: 0;

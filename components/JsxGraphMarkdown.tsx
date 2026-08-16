@@ -123,7 +123,7 @@ async function mountBoard(
       showCopyright: false,
       showNavigation: false,
       pan: { enabled: true, needShift: false },
-      zoom: { wheel: true, needShift: false }
+      zoom: { enabled: false }
     }) as unknown as BoardLike;
 
     for (const element of config.elements) {

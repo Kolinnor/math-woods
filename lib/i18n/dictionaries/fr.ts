@@ -286,7 +286,18 @@ export const fr = {
     noNotifications: "Aucune notification pour le moment.",
     description: "Mises à jour récentes liées aux problèmes, concepts, discussions et activités du site.",
     shown: (count: number) => `${count} affichée${count > 1 ? "s" : ""}`,
-    unread: (count: number) => `${count} non lue${count > 1 ? "s" : ""}`
+    unread: (count: number) => `${count} non lue${count > 1 ? "s" : ""}`,
+    trustedUserReview: {
+      viewProfile: "Voir le profil",
+      approve: "Oui, le passer en utilisateur de confiance",
+      decline: "Non",
+      status: {
+        APPROVED: "Approuvé : cette personne est maintenant un utilisateur de confiance.",
+        DECLINED: "Pas approuvé pour le moment.",
+        INVALIDATED: "Cette suggestion n'est plus applicable.",
+        PENDING: "En attente de votre décision."
+      }
+    }
   },
   users: {
     title: "Utilisateurs",
