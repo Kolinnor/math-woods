@@ -213,7 +213,7 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
   latexPreviewUsesCenteredLine,
-  rangeOverlapsLineAt,
+  rangeOverlapsLinesBetween,
   selectionSpansLineBreakInsideLatexRange,
 } from "../lib/latex-live-preview.ts";
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
@@ -960,8 +960,33 @@ assert.equal(latexPreviewUsesCenteredLine(mixedDollarText, mixedDollarRanges[0])
 assert.equal(latexPreviewUsesCenteredLine(mixedDollarText, mixedDollarRanges[1]), false);
 const joinedLineLatexText = " $x>0$    .";
 const joinedLineLatexRange = findLatexRanges(joinedLineLatexText)[0];
-assert.equal(rangeOverlapsLineAt(joinedLineLatexText, 0, joinedLineLatexRange.from, joinedLineLatexRange.to), true);
-assert.equal(rangeOverlapsLineAt(`before\n${joinedLineLatexText}`, 0, 8, 13), false);
+assert.equal(
+  rangeOverlapsLinesBetween(joinedLineLatexText, 0, 0, joinedLineLatexRange.from, joinedLineLatexRange.to),
+  true
+);
+const directionalSelectionText = "Salut\nabc Truc $x>0$    .";
+const directionalSelectionRange = findLatexRanges(directionalSelectionText)[0];
+assert.equal(
+  rangeOverlapsLinesBetween(
+    directionalSelectionText,
+    0,
+    "Salut\nabc Truc".length,
+    directionalSelectionRange.from,
+    directionalSelectionRange.to
+  ),
+  true
+);
+assert.equal(
+  rangeOverlapsLinesBetween(
+    directionalSelectionText,
+    "Salut\nabc Truc".length,
+    0,
+    directionalSelectionRange.from,
+    directionalSelectionRange.to
+  ),
+  true
+);
+assert.equal(rangeOverlapsLinesBetween(`before\n${joinedLineLatexText}`, 0, 0, 8, 13), false);
 assert.deepEqual(normalizeDisplayMathLineBreaks("Before $$x^2 + 1$$ after", 18), {
   text: "Before\n$$x^2 + 1$$\nafter",
   cursor: 18,

@@ -44,7 +44,7 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
   latexPreviewUsesCenteredLine,
-  rangeOverlapsLineAt,
+  rangeOverlapsLinesBetween,
   selectionSpansLineBreakInsideLatexRange,
   type LatexPreviewDiagnostic
 } from "@/lib/latex-live-preview";
@@ -1246,13 +1246,13 @@ function buildLivePreviewDecorations(state: EditorState) {
       latexDiagnosticSignature(diagnostics),
       diagnostics
     );
-    const activeCursorLine =
+    const activeSelectionLines =
       state.field(previewFocusField) &&
       state.selection.ranges.some((selection) =>
-        rangeOverlapsLineAt(text, selection.head, range.from, range.to)
+        rangeOverlapsLinesBetween(text, selection.anchor, selection.head, range.from, range.to)
       );
     const selectionOverlaps = selectionOverlapsRange(state, range.from, range.to);
-    const revealSource = activeCursorLine || selectionOverlaps;
+    const revealSource = activeSelectionLines || selectionOverlaps;
     const selectionSpansLineBreak = state.selection.ranges.some((selection) =>
       selectionSpansLineBreakInsideLatexRange(text, range, selection.from, selection.to)
     );
@@ -1262,7 +1262,7 @@ function buildLivePreviewDecorations(state: EditorState) {
         Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
       );
 
-      if (renderDisplayMode && !activeCursorLine && !selectionSpansLineBreak) {
+      if (renderDisplayMode && !activeSelectionLines && !selectionSpansLineBreak) {
         activeDecorations.push(
           Decoration.widget({
             widget,

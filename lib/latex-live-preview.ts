@@ -43,10 +43,17 @@ export function rangeIsStandaloneLine(text: string, from: number, to: number) {
   return text.slice(lineStart, from).trim() === "" && text.slice(to, lineEnd).trim() === "";
 }
 
-export function rangeOverlapsLineAt(text: string, position: number, from: number, to: number) {
-  const safePosition = Math.max(0, Math.min(position, text.length));
-  const lineStart = text.lastIndexOf("\n", Math.max(0, safePosition - 1)) + 1;
-  const nextBreak = text.indexOf("\n", safePosition);
+export function rangeOverlapsLinesBetween(
+  text: string,
+  anchor: number,
+  head: number,
+  from: number,
+  to: number
+) {
+  const selectionFrom = Math.max(0, Math.min(anchor, head, text.length));
+  const selectionTo = Math.max(0, Math.min(Math.max(anchor, head), text.length));
+  const lineStart = text.lastIndexOf("\n", Math.max(0, selectionFrom - 1)) + 1;
+  const nextBreak = text.indexOf("\n", selectionTo);
   const lineEnd = nextBreak === -1 ? text.length : nextBreak;
 
   return from <= lineEnd && to >= lineStart;
