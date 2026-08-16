@@ -1,29 +1,7 @@
-import { StateField } from "@codemirror/state";
 import type { LatexRange } from "./latex-ranges.ts";
 
 export type LatexPreviewRenderMode = "display" | "inline";
 export type LatexPreviewLayoutKind = "inline" | "inline-display" | "block-display";
-
-// Keep formulas on a joined line raw until the cursor actually moves away from the deletion point.
-// Focus effects can otherwise recreate a replacement widget before CodeMirror has removed the old one.
-export const suppressLatexPreviewAfterLineJoin = StateField.define<number | null>({
-  create: () => null,
-  update(anchor, transaction) {
-    if (!transaction.docChanged) {
-      return anchor !== null && transaction.state.selection.main.head === anchor ? anchor : null;
-    }
-
-    let removedLineBreak = false;
-    transaction.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
-      const deleted = transaction.startState.doc.sliceString(fromA, toA);
-      if (deleted.includes("\n") && !inserted.toString().includes("\n")) {
-        removedLineBreak = true;
-      }
-    });
-
-    return removedLineBreak ? transaction.state.selection.main.head : null;
-  }
-});
 
 export type LatexPreviewDiagnosticSeverity = "info" | "warning" | "error";
 export type LatexPreviewDiagnosticCode =
@@ -63,6 +41,15 @@ export function rangeIsStandaloneLine(text: string, from: number, to: number) {
   const lineEnd = nextBreak === -1 ? text.length : nextBreak;
 
   return text.slice(lineStart, from).trim() === "" && text.slice(to, lineEnd).trim() === "";
+}
+
+export function rangeOverlapsLineAt(text: string, position: number, from: number, to: number) {
+  const safePosition = Math.max(0, Math.min(position, text.length));
+  const lineStart = text.lastIndexOf("\n", Math.max(0, safePosition - 1)) + 1;
+  const nextBreak = text.indexOf("\n", safePosition);
+  const lineEnd = nextBreak === -1 ? text.length : nextBreak;
+
+  return from <= lineEnd && to >= lineStart;
 }
 
 export function latexPreviewRenderMode(_text: string, range: LatexRange): LatexPreviewRenderMode {

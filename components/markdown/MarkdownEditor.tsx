@@ -44,7 +44,7 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
   latexPreviewUsesCenteredLine,
-  suppressLatexPreviewAfterLineJoin,
+  rangeOverlapsLineAt,
   selectionSpansLineBreakInsideLatexRange,
   type LatexPreviewDiagnostic
 } from "@/lib/latex-live-preview";
@@ -1229,9 +1229,6 @@ function buildLivePreviewDecorations(state: EditorState) {
   const wikiLinks = findWikiLinkRanges(text);
   const problemLinks = findProblemLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
-  const joinedLinePreviewAnchor = state.field(suppressLatexPreviewAfterLineJoin);
-  const joinedLinePreview =
-    joinedLinePreviewAnchor === null ? null : state.doc.lineAt(joinedLinePreviewAnchor);
   const decorations = latexRanges.flatMap((range) => {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
@@ -1249,22 +1246,23 @@ function buildLivePreviewDecorations(state: EditorState) {
       latexDiagnosticSignature(diagnostics),
       diagnostics
     );
-    const suppressPreview = Boolean(
-      joinedLinePreview &&
-        range.from <= joinedLinePreview.to &&
-        range.to >= joinedLinePreview.from &&
-        !selectionOverlapsRange(state, range.from, range.to)
-    );
+    const activeCursorLine =
+      state.field(previewFocusField) &&
+      state.selection.ranges.some((selection) =>
+        rangeOverlapsLineAt(text, selection.head, range.from, range.to)
+      );
+    const selectionOverlaps = selectionOverlapsRange(state, range.from, range.to);
+    const revealSource = activeCursorLine || selectionOverlaps;
     const selectionSpansLineBreak = state.selection.ranges.some((selection) =>
       selectionSpansLineBreakInsideLatexRange(text, range, selection.from, selection.to)
     );
 
-    if (selectionOverlapsRange(state, range.from, range.to) || suppressPreview) {
+    if (revealSource) {
       const activeDecorations = findLatexSyntaxTokens(text, range).map((token) =>
         Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
       );
 
-      if (renderDisplayMode && !suppressPreview && !selectionSpansLineBreak) {
+      if (renderDisplayMode && !activeCursorLine && !selectionSpansLineBreak) {
         activeDecorations.push(
           Decoration.widget({
             widget,
@@ -1526,7 +1524,6 @@ export function MarkdownEditor({
             ])
           ),
           previewFocusField,
-          suppressLatexPreviewAfterLineJoin,
           liveMarkdownPreview,
           previewFocusEvents,
           displayMathLineBreakNormalizer,
