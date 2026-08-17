@@ -128,7 +128,14 @@ import {
   objectStorageUploadError
 } from "../lib/image-upload-errors.ts";
 import { chatImageDailyLimitForRole, chatImageUrl } from "../lib/chat-image-config.ts";
-import { chunkLoadErrorSignature, isChunkLoadError } from "../lib/chunk-load-error.ts";
+import {
+  CLIENT_BUNDLE_RELOAD_COOLDOWN_MS,
+  chunkLoadErrorSignature,
+  clientBundleErrorSignature,
+  isChunkLoadError,
+  isClientBundleError,
+  shouldReloadForClientBundleError
+} from "../lib/chunk-load-error.ts";
 import { chatDayKey } from "../lib/chat-dates.ts";
 import { chatDistanceFromBottom, chatIsNearBottom, chatScrollTopAfterPrepend } from "../lib/chat-scroll.ts";
 import { friendsForMenu, parseFriendsMenuPreferences } from "../lib/friends-menu-preferences.ts";
@@ -2039,6 +2046,21 @@ assert.equal(
   "https://mathwoods.org/_next/static/chunks/d3ac728e-652fe3530429dda0.js"
 );
 assert.equal(isChunkLoadError(new Error("Ordinary render failure")), false);
+const staleRuntimeError = new TypeError("e[o] is not a function");
+assert.equal(isClientBundleError(staleChunkError), true);
+assert.equal(isClientBundleError(staleRuntimeError), true);
+assert.equal(clientBundleErrorSignature(staleRuntimeError), "module-runtime-mismatch");
+assert.equal(shouldReloadForClientBundleError(staleRuntimeError, null, 10_000), true);
+assert.equal(shouldReloadForClientBundleError(staleRuntimeError, "10000", 10_001), false);
+assert.equal(
+  shouldReloadForClientBundleError(
+    staleRuntimeError,
+    "10000",
+    10_000 + CLIENT_BUNDLE_RELOAD_COOLDOWN_MS
+  ),
+  true
+);
+assert.equal(shouldReloadForClientBundleError(new Error("Ordinary render failure"), null), false);
 
 const imageKeyDate = new Date("2026-07-01T12:00:00.000Z");
 assert.equal(

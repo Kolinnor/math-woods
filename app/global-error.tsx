@@ -3,6 +3,10 @@
 import { useEffect } from "react";
 import { reportClientError } from "@/components/ErrorReporter";
 import { SiteErrorPage } from "@/components/SiteErrorPage";
+import {
+  clientBundleErrorSignature,
+  shouldReloadForClientBundleError
+} from "@/lib/chunk-load-error";
 import "./globals.css";
 
 export default function GlobalError({
@@ -13,6 +17,17 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    try {
+      const reloadKey = `math-woods:chunk-reload:${window.location.pathname}:${clientBundleErrorSignature(error)}`;
+      if (shouldReloadForClientBundleError(error, sessionStorage.getItem(reloadKey))) {
+        sessionStorage.setItem(reloadKey, String(Date.now()));
+        window.location.reload();
+        return;
+      }
+    } catch {
+      // Continue to error reporting when storage or navigation is unavailable.
+    }
+
     reportClientError({
       message: error.message || "Global application error",
       stack: error.stack,

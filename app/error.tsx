@@ -3,7 +3,10 @@
 import { useEffect } from "react";
 import { reportClientError } from "@/components/ErrorReporter";
 import { SiteErrorPage } from "@/components/SiteErrorPage";
-import { chunkLoadErrorSignature, isChunkLoadError } from "@/lib/chunk-load-error";
+import {
+  clientBundleErrorSignature,
+  shouldReloadForClientBundleError
+} from "@/lib/chunk-load-error";
 
 export default function AppError({
   error,
@@ -13,13 +16,15 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    if (isChunkLoadError(error)) {
-      const reloadKey = `math-woods:chunk-reload:${window.location.pathname}:${chunkLoadErrorSignature(error)}`;
-      if (sessionStorage.getItem(reloadKey) !== "1") {
-        sessionStorage.setItem(reloadKey, "1");
+    try {
+      const reloadKey = `math-woods:chunk-reload:${window.location.pathname}:${clientBundleErrorSignature(error)}`;
+      if (shouldReloadForClientBundleError(error, sessionStorage.getItem(reloadKey))) {
+        sessionStorage.setItem(reloadKey, String(Date.now()));
         window.location.reload();
         return;
       }
+    } catch {
+      // Continue to error reporting when storage or navigation is unavailable.
     }
 
     reportClientError({
