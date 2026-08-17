@@ -150,7 +150,6 @@ const redesignCopy = {
     open: "Open it",
     tiles: {
       solveSub: "Mark it done",
-      signedOutSolveSub: "Sign in to mark it",
       verifySub: "Check your answer",
       attemptSub: "Keep it in your list",
       attemptedSub: "In your working list",
@@ -185,7 +184,6 @@ const redesignCopy = {
     open: "Ouvrir",
     tiles: {
       solveSub: "Marquer comme résolu",
-      signedOutSolveSub: "Se connecter pour l'indiquer",
       verifySub: "Vérifier votre réponse",
       attemptSub: "Le garder dans votre liste",
       attemptedSub: "Dans votre liste de travail",
@@ -951,7 +949,7 @@ export default async function ProblemPage({
           ) : (
             <Link href={problemSignInHref as never} className="problem-action-tile solve">
               <Check size={25} />
-              <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.signedOutSolveSub}</small></span>
+              <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.solveSub}</small></span>
             </Link>
           )}
           {user ? (
