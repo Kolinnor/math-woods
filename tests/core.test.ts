@@ -43,6 +43,10 @@ import {
 } from "../lib/home-guest-problems.ts";
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
 import { shouldShowOwnerSolvedBanner } from "../lib/problem-owner-solved-banner.ts";
+import {
+  isProblemRecommendationEligible,
+  RECOMMENDATION_DIFFICULTY_CEILING
+} from "../lib/problem-recommendation-eligibility.ts";
 import { parseGuestContentViews, recordGuestContentView } from "../lib/guest-content-access.ts";
 import { problemCreationNotificationCopy } from "../lib/problem-creation-notifications.ts";
 import { selectProblemBrowserTranslation } from "../lib/problem-browser-translations.ts";
@@ -2678,6 +2682,7 @@ const fittingRecommendation = scoreProblemRecommendation(
     id: 1,
     translationGroupId: "candidate",
     difficulty: 42,
+    isConjecture: false,
     domains: ["ALGEBRA"],
     qualityStatus: "REVIEWED",
     isExercise: false,
@@ -2690,7 +2695,8 @@ const poorRecommendation = scoreProblemRecommendation(
   {
     id: 2,
     translationGroupId: "poor-candidate",
-    difficulty: 95,
+    difficulty: 85,
+    isConjecture: false,
     domains: ["GEOMETRY"],
     qualityStatus: "NEEDS_WORK",
     isExercise: false,
@@ -2704,6 +2710,45 @@ assert.equal(
   fittingRecommendation.score,
   fittingRecommendation.parts.reduce((total, part) => total + part.points, 0)
 );
+assert.equal(RECOMMENDATION_DIFFICULTY_CEILING, 90);
+assert.equal(isProblemRecommendationEligible({ difficulty: 89, isConjecture: false }), true);
+assert.equal(isProblemRecommendationEligible({ difficulty: 90, isConjecture: false }), false);
+assert.equal(isProblemRecommendationEligible({ difficulty: null, isConjecture: false }), false);
+assert.equal(isProblemRecommendationEligible({ difficulty: 42, isConjecture: true }), false);
+assert.equal(
+  scoreProblemRecommendation(
+    recommendationProfile,
+    {
+      id: 9,
+      translationGroupId: "research-level",
+      difficulty: 90,
+      isConjecture: false,
+      domains: ["ALGEBRA"],
+      qualityStatus: "REVIEWED",
+      isExercise: false,
+      createdAt: recommendationNow
+    },
+    { mathLevel: "UNDERGRAD", now: recommendationNow }
+  ),
+  null
+);
+assert.equal(
+  scoreProblemRecommendation(
+    recommendationProfile,
+    {
+      id: 10,
+      translationGroupId: "conjecture",
+      difficulty: 42,
+      isConjecture: true,
+      domains: ["ALGEBRA"],
+      qualityStatus: "REVIEWED",
+      isExercise: false,
+      createdAt: recommendationNow
+    },
+    { mathLevel: "UNDERGRAD", now: recommendationNow }
+  ),
+  null
+);
 assert.equal(
   scoreProblemRecommendation(
     recommendationProfile,
@@ -2711,6 +2756,7 @@ assert.equal(
       id: 3,
       translationGroupId: "already-solved",
       difficulty: 35,
+      isConjecture: false,
       domains: ["ALGEBRA"],
       qualityStatus: "REVIEWED",
       isExercise: false,
@@ -2727,6 +2773,7 @@ const recentlyBlockedRecommendation = scoreProblemRecommendation(
     id: 4,
     translationGroupId: "recently-blocked",
     difficulty: 45,
+    isConjecture: false,
     domains: ["ALGEBRA"],
     qualityStatus: "REVIEWED",
     isExercise: false,
@@ -2747,6 +2794,7 @@ const freshStartedRecommendation = scoreProblemRecommendation(
     id: 5,
     translationGroupId: "fresh-started",
     difficulty: 42,
+    isConjecture: false,
     domains: ["ALGEBRA"],
     qualityStatus: "REVIEWED",
     isExercise: false,
@@ -2762,6 +2810,7 @@ const staleStartedRecommendation = scoreProblemRecommendation(
     id: 6,
     translationGroupId: "stale-started",
     difficulty: 42,
+    isConjecture: false,
     domains: ["ALGEBRA"],
     qualityStatus: "REVIEWED",
     isExercise: false,
@@ -2781,6 +2830,7 @@ const fatiguedRecommendation = scoreProblemRecommendation(
     id: 7,
     translationGroupId: "repeatedly-opened",
     difficulty: 42,
+    isConjecture: false,
     domains: ["ALGEBRA"],
     qualityStatus: "REVIEWED",
     isExercise: false,
@@ -2796,6 +2846,7 @@ const restedRecommendation = scoreProblemRecommendation(
     id: 8,
     translationGroupId: "rested-after-openings",
     difficulty: 42,
+    isConjecture: false,
     domains: ["ALGEBRA"],
     qualityStatus: "REVIEWED",
     isExercise: false,

@@ -1,3 +1,5 @@
+import { isProblemRecommendationEligible } from "./problem-recommendation-eligibility.ts";
+
 export const RECOMMENDATION_MODEL_VERSION = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -63,6 +65,7 @@ export type RecommendationCandidate = {
   id: number;
   translationGroupId: string;
   difficulty: number | null;
+  isConjecture: boolean;
   domains: string[];
   qualityStatus: RecommendationQualityStatus;
   isExercise: boolean;
@@ -229,7 +232,7 @@ export function scoreProblemRecommendation(
   candidate: RecommendationCandidate,
   options: { mathLevel: RecommendationMathLevel | null; now?: Date }
 ): ProblemRecommendationScore | null {
-  if (candidate.attemptStatus === "SOLVED") return null;
+  if (!isProblemRecommendationEligible(candidate) || candidate.attemptStatus === "SOLVED") return null;
 
   const now = options.now ?? new Date();
   const parts: RecommendationScorePart[] = [];

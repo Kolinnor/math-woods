@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { parseContentLanguage } from "@/lib/languages";
+import { RECOMMENDABLE_PROBLEM_WHERE } from "@/lib/problem-recommendation-eligibility";
 import { selectExactContentTranslation } from "@/lib/translation-routing";
 import {
   buildRecommendationProfile,
@@ -168,6 +169,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
       language: recommendationLanguage,
       authorId: { not: user.id },
       translationGroupId: { notIn: solvedGroups },
+      ...RECOMMENDABLE_PROBLEM_WHERE
     },
     select: {
       id: true,
@@ -178,6 +180,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
       translationGroupId: true,
       translatedFromProblemId: true,
       difficulty: true,
+      isConjecture: true,
       domain: true,
       domains: { select: { domain: true } },
       qualityStatus: true,
@@ -220,6 +223,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
           id: problem.id,
           translationGroupId: problem.translationGroupId,
           difficulty: problem.difficulty,
+          isConjecture: problem.isConjecture,
           domains: problemDomains(problem),
           qualityStatus: problem.qualityStatus,
           isExercise: problem.isExercise,

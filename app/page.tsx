@@ -31,6 +31,7 @@ import type { Dictionary } from "@/lib/i18n/types";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { renderMarkdown } from "@/lib/markdown";
 import { buildProgressMap } from "@/lib/progress";
+import { RECOMMENDABLE_PROBLEM_WHERE } from "@/lib/problem-recommendation-eligibility";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -303,6 +304,7 @@ export default async function HomePage() {
             listed: true,
             isExercise: false,
             translationGroupId: { in: [...HOME_GUEST_PROBLEM_GROUP_IDS] },
+            ...RECOMMENDABLE_PROBLEM_WHERE,
             ...visibleProblemWhere(null)
           },
           select: {
