@@ -5,6 +5,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { SignInLink } from "@/components/SignInLink";
 import { UserName } from "@/components/UserName";
 import { createQuoteAction } from "@/lib/actions/quote-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -152,9 +153,9 @@ export default async function QuotesPage({
           </p>
         ) : (
           <p className="panel p-4 text-sm">
-            <Link href="/login" className="underline">
+            <SignInLink className="underline">
               {t.nav.signIn}
-            </Link>{" "}
+            </SignInLink>{" "}
             {labels.signInToAdd}
           </p>
         )}

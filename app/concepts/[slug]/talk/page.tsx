@@ -5,6 +5,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { SignInLink } from "@/components/SignInLink";
 import { UserName } from "@/components/UserName";
 import { createConceptTalkPostAction } from "@/lib/actions/concept-community-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -81,7 +82,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
     >
       {!user && (
         <p className="discussion-sign-in">
-          <Link href="/login">{t.nav.signIn}</Link> {copy.join}
+          <SignInLink>{t.nav.signIn}</SignInLink> {copy.join}
         </p>
       )}
 

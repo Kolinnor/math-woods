@@ -7,6 +7,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { HiddenHint } from "@/components/HiddenHint";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { SignInLink } from "@/components/SignInLink";
 import { UserName } from "@/components/UserName";
 import { reportPostAction } from "@/lib/actions/moderation-actions";
 import {
@@ -141,7 +142,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
     >
       {!user && (
         <p className="discussion-sign-in">
-          <Link href="/login">{t.nav.signIn}</Link> {copy.join}
+          <SignInLink>{t.nav.signIn}</SignInLink> {copy.join}
         </p>
       )}
 

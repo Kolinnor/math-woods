@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { SignInLink } from "@/components/SignInLink";
 import { UserName } from "@/components/UserName";
 import { createSuggestionAction } from "@/lib/actions/suggestion-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -56,9 +57,9 @@ export default async function SuggestionsPage({
         </p>
       ) : (
         <p className="panel p-5">
-          <Link href="/login" className="underline">
+          <SignInLink className="underline">
             {t.nav.signIn}
-          </Link>{" "}
+          </SignInLink>{" "}
           {t.suggestionsPage.signInToSend}
         </p>
       )}

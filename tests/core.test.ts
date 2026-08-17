@@ -5,6 +5,7 @@ import { ConceptKind, ConceptStatus, MathDomain, Prisma, QualityStatus, ReportCa
 import { EditorState, StateEffect } from "@codemirror/state";
 import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
+import { loginHrefForReturnTo, requestReturnToPath } from "../lib/auth-return.ts";
 import {
   getBooleanAttribute,
   getNumberAttribute,
@@ -779,6 +780,15 @@ assert.equal(chatUnreadDocumentTitle("Math Woods", 1), "(1) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(1) Math Woods", 3), "(3) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(99+) Math Woods", 0), "Math Woods");
 assert.equal(chatUnreadDocumentTitle("A problem - Math Woods", 120), "(99+) A problem - Math Woods");
+assert.equal(
+  loginHrefForReturnTo("/problems/a-problem/translate?language=fr&task=problem%3A12%3Afr"),
+  "/login?returnTo=%2Fproblems%2Fa-problem%2Ftranslate%3Flanguage%3Dfr%26task%3Dproblem%253A12%253Afr"
+);
+assert.equal(loginHrefForReturnTo("https://malicious.example"), "/login");
+assert.equal(
+  requestReturnToPath("/concepts/metric-space/translate", "?language=fr&_rsc=abc123"),
+  "/concepts/metric-space/translate?language=fr"
+);
 assert.equal(shouldAcknowledgeChat({ conversationOpen: true, documentVisible: true, isAtBottom: true }), true);
 assert.equal(shouldAcknowledgeChat({ conversationOpen: false, documentVisible: true, isAtBottom: true }), false);
 assert.equal(shouldAcknowledgeChat({ conversationOpen: true, documentVisible: false, isAtBottom: true }), false);

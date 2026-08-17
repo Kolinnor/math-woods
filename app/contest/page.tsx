@@ -7,6 +7,7 @@ import { ContestTabs } from "@/components/ContestTabs";
 import { Difficulty } from "@/components/Difficulty";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
+import { SignInLink } from "@/components/SignInLink";
 import { UserAvatar } from "@/components/UserAvatar";
 import {
   maybeSendContestLifecycleNotifications,
@@ -271,7 +272,7 @@ export default async function ContestPage({
               )}
             </div>
           </>
-        ) : <Link href="/login" className="button">{t.signIn}</Link> : <p className="contest-phase-note">{t[phase === "upcoming" ? "upcoming" : phase === "judging" ? "judging" : "closed"]}</p>}
+        ) : <SignInLink className="button">{t.signIn}</SignInLink> : <p className="contest-phase-note">{t[phase === "upcoming" ? "upcoming" : phase === "judging" ? "judging" : "closed"]}</p>}
       </section>}
 
       <section className="contest-entries">

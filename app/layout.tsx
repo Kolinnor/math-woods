@@ -14,6 +14,7 @@ import { FriendsMenu } from "@/components/FriendsMenu";
 import { GuestProgressPrompt } from "@/components/GuestProgressPrompt";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
+import { SignInLink } from "@/components/SignInLink";
 import { SitePresenceHeartbeat } from "@/components/SitePresenceHeartbeat";
 import { TimeZoneReporter } from "@/components/TimeZoneReporter";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -226,9 +227,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
             <div className="nav-tools">
               {!user && (
-                <Link href="/login" className="guest-home-sign-in">
+                <SignInLink className="guest-home-sign-in">
                   {t.nav.signIn}
-                </Link>
+                </SignInLink>
               )}
               <LanguageSelector
                 initialLanguage={initialLanguage}
@@ -273,9 +274,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       </button>
                     </form>
                   ) : (
-                    <Link href="/login" className="nav-menu-action">
+                    <SignInLink className="nav-menu-action">
                       {t.nav.signIn}
-                    </Link>
+                    </SignInLink>
                   )}
                 </div>
               </AutoClosingDetails>

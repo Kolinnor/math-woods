@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EmailVerificationSuccessSync } from "@/components/EmailVerificationBanner";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { SignInLink } from "@/components/SignInLink";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { verifyEmailToken } from "@/lib/email-verification";
@@ -50,9 +51,9 @@ export default async function VerifyEmailPage({
                 </button>
               </form>
             ) : (
-              <Link href="/login" className="button secondary">
+              <SignInLink className="button secondary">
                 {t.auth.signInToResend}
-              </Link>
+              </SignInLink>
             )}
           </>
         )}

@@ -1,5 +1,5 @@
 import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { NotificationType } from "@prisma/client";
@@ -9,6 +9,7 @@ import {
   parseDefaultAvatarPreset
 } from "@/lib/avatar-presets";
 import { boundedText, CONTENT_LIMITS } from "@/lib/content-limits";
+import { AUTH_RETURN_TO_HEADER, loginHrefForReturnTo } from "@/lib/auth-return";
 import { prisma } from "@/lib/db";
 import { parseMathLevel } from "@/lib/math-levels";
 import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
@@ -102,9 +103,14 @@ export const getCurrentSession = cache(async function getCurrentSession() {
   return null;
 });
 
-export async function requireUser() {
+async function redirectToLogin(returnTo?: string): Promise<never> {
+  const requestHeaders = returnTo === undefined ? await headers() : null;
+  return redirect(loginHrefForReturnTo(returnTo ?? requestHeaders?.get(AUTH_RETURN_TO_HEADER)) as never);
+}
+
+export async function requireUser(returnTo?: string) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) return redirectToLogin(returnTo);
   return user;
 }
 
@@ -230,7 +236,7 @@ export async function signOutUser() {
 
 export async function updatePasswordForCurrentUser(currentPassword: string, newPassword: string) {
   const session = await getCurrentSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectToLogin();
   if (!verifyPassword(currentPassword, session.user.passwordHash)) throw new Error("Current password is incorrect.");
   if (newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
 
@@ -250,7 +256,7 @@ export async function updatePasswordForCurrentUser(currentPassword: string, newP
 
 export async function setPasswordForCurrentUser(newPassword: string) {
   const session = await getCurrentSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectToLogin();
   if (session.user.passwordHash) throw new Error("This account already has a password.");
   if (newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
 
@@ -262,7 +268,7 @@ export async function setPasswordForCurrentUser(newPassword: string) {
 
 export async function revokeOtherSessionsForCurrentUser() {
   const session = await getCurrentSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectToLogin();
 
   await prisma.session.deleteMany({
     where: {
