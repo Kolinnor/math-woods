@@ -9,6 +9,7 @@ import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStat
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
 import {
@@ -464,6 +465,11 @@ export default async function ConceptPage({
       titleBelowHero
       workspaceClassName="concept-detail-workspace"
     >
+    <GuestContentViewGate
+      contentKey={`concept:${concept.translationGroupId}`}
+      redirectingLabel={t.guestContentGate.redirecting}
+      signedIn={Boolean(user)}
+    />
     <div className="concept-detail-layout">
       <article className="concept-detail-article">
         {hasReadingHeader && (

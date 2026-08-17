@@ -7,6 +7,14 @@ export const en = {
     search: "Search",
     updated: "updated"
   },
+  guestProgressPrompt: {
+    close: "Close",
+    message: "Sign in to record your progress. It is free and only takes a few seconds.",
+    signIn: "Sign in"
+  },
+  guestContentGate: {
+    redirecting: "Redirecting to sign in"
+  },
   translations: {
     addTranslation: "Add translation",
     addThatTranslation: "Add that translation",

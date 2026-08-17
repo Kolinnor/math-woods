@@ -4,7 +4,7 @@ import { RevisionDiff } from "@/components/RevisionDiff";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserName } from "@/components/UserName";
 import { rollbackProblemRevisionAction } from "@/lib/actions/problem-actions";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canRollbackProblem } from "@/lib/permissions";
@@ -12,12 +12,12 @@ import { canRollbackProblem } from "@/lib/permissions";
 export const dynamic = "force-dynamic";
 
 export default async function ProblemHistoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const [user, t, interfaceLocale] = await Promise.all([getCurrentUser(), getTranslations(), getInterfaceLocale()]);
+  const [user, t, interfaceLocale] = await Promise.all([requireUser(), getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
   const problem = await prisma.problem.findUnique({ where: { slug } });
 
   if (!problem) notFound();
-  const canRollback = Boolean(user && canRollbackProblem(user, problem));
+  const canRollback = canRollbackProblem(user, problem);
 
   const revisions = await prisma.pageRevision.findMany({
     where: { pageType: "PROBLEM", pageId: problem.id },

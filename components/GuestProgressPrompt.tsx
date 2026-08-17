@@ -5,6 +5,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { GUEST_PROGRESS_PROMPT_DELAY_MS } from "@/lib/guest-progress";
+import { dictionaryForLocale } from "@/lib/i18n/dictionary";
+import type { InterfaceLocale } from "@/lib/i18n/types";
 
 const SHOWN_SESSION_KEY = "math-woods:guest-progress:shown";
 
@@ -12,12 +14,18 @@ export function GuestProgressPrompt() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [visible, setVisible] = useState(false);
+  const [locale, setLocale] = useState<InterfaceLocale>("en");
+  const labels = dictionaryForLocale(locale).guestProgressPrompt;
   const returnTo = useMemo(
     () => `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`,
     [pathname, searchParams]
   );
   const signInHref = `/login?returnTo=${encodeURIComponent(returnTo)}`;
   const shouldSchedule = pathname !== "/" && pathname !== "/login";
+
+  useEffect(() => {
+    setLocale(document.documentElement.lang === "fr" ? "fr" : "en");
+  }, []);
 
   useEffect(() => {
     if (!shouldSchedule) return;
@@ -52,16 +60,14 @@ export function GuestProgressPrompt() {
         type="button"
         className="guest-progress-prompt-close"
         onClick={dismiss}
-        aria-label="Close"
-        title="Close"
+        aria-label={labels.close}
+        title={labels.close}
       >
         <X size={20} aria-hidden="true" />
       </button>
-      <p id="guest-progress-message">
-        Sign in to record your progress. It is free and only takes a few seconds.
-      </p>
+      <p id="guest-progress-message">{labels.message}</p>
       <Link href={signInHref as never} className="mw-primary-button guest-progress-prompt-action">
-        Sign in
+        {labels.signIn}
       </Link>
     </aside>
   );

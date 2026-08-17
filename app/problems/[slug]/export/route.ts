@@ -38,7 +38,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
         })
       : null;
   const canExportSolutions = canViewProblemSolutions({
-    isAuthenticated: Boolean(user),
     requiresVerification: problem.verificationMode !== ProblemVerificationMode.NONE,
     hasSolvedAttempt: solvedAttempt?.status === "SOLVED",
     canEditProblem: Boolean(user && canEditProblem(user, problem))

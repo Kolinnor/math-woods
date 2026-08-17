@@ -7,6 +7,7 @@ import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { Difficulty } from "@/components/Difficulty";
+import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
@@ -616,11 +617,11 @@ export default async function ProblemPage({
   const canManageProblemHints = publishesProblemEdits;
   const requiresSolutionVerification = problem.verificationMode !== ProblemVerificationMode.NONE;
   const canViewSolutions = canViewProblemSolutions({
-    isAuthenticated: Boolean(user),
     requiresVerification: requiresSolutionVerification,
     hasSolvedAttempt: attempt?.status === "SOLVED",
     canEditProblem: canEditCurrentProblem
   });
+  const problemSignInHref = `/login?returnTo=${encodeURIComponent(`/problems/${problem.slug}`)}`;
   const discussionPostCount = problem.thread?.posts.length ?? 0;
   const showVerificationRail = Boolean(
     (user &&
@@ -677,6 +678,11 @@ export default async function ProblemPage({
 
   return (
     <div className="problem-detail-shell">
+      <GuestContentViewGate
+        contentKey={`problem:${problem.translationGroupId}`}
+        redirectingLabel={t.guestContentGate.redirecting}
+        signedIn={Boolean(user)}
+      />
       {user && !isOwnProblem && attempt?.status !== "SOLVED" && (
         <ProblemRecommendationExposure problemId={problem.id} />
       )}
@@ -934,10 +940,10 @@ export default async function ProblemPage({
               </a>
             )
           ) : (
-            <a href="#problem-solutions" className="problem-action-tile solve">
+            <Link href={problemSignInHref as never} className="problem-action-tile solve">
               <Check size={25} />
-              <span><strong>{t.problemDetail.revealSolutions}</strong><small>{t.problemDetail.revealWarning}</small></span>
-            </a>
+              <span><strong>{t.problemDetail.markSolved}</strong><small>{t.home.hero.startSolving}</small></span>
+            </Link>
           )}
           {user ? (
             attempt ? (
@@ -954,13 +960,10 @@ export default async function ProblemPage({
               </form>
             )
           ) : (
-            <a
-              href={selectedHints.length > 0 ? "#problem-hints" : "#problem-solutions"}
-              className="problem-action-tile attempted"
-            >
+            <Link href={problemSignInHref as never} className="problem-action-tile attempted">
               <Target size={25} />
               <span><strong>{t.problemDetail.startAttempting}</strong><small>{t.home.hero.startSolving}</small></span>
-            </a>
+            </Link>
           )}
           <div className={`problem-favorite-control${favoriteCount > 0 ? " has-users" : ""}`}>
             {isOwnProblem ? (
@@ -976,7 +979,7 @@ export default async function ProblemPage({
                 </button>
               </form>
             ) : (
-              <Link href="/login" className="problem-action-tile problem-favorite-main favorite">
+              <Link href={problemSignInHref as never} className="problem-action-tile problem-favorite-main favorite">
                 <Heart size={25} />
                 <span><strong>{t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
               </Link>

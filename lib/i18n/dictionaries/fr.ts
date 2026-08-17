@@ -9,6 +9,14 @@ export const fr = {
     search: "Rechercher",
     updated: "mis à jour"
   },
+  guestProgressPrompt: {
+    close: "Fermer",
+    message: "Connectez-vous pour enregistrer votre progression. C’est gratuit et cela ne prend que quelques secondes.",
+    signIn: "Se connecter"
+  },
+  guestContentGate: {
+    redirecting: "Redirection vers la connexion"
+  },
   translations: {
     addTranslation: "Ajouter une traduction",
     addThatTranslation: "Ajouter cette traduction",

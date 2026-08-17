@@ -41,6 +41,7 @@ import {
   sortHomeGuestProblemsByDifficulty
 } from "../lib/home-guest-problems.ts";
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
+import { parseGuestContentViews, recordGuestContentView } from "../lib/guest-content-access.ts";
 import { problemCreationNotificationCopy } from "../lib/problem-creation-notifications.ts";
 import { selectProblemBrowserTranslation } from "../lib/problem-browser-translations.ts";
 import {
@@ -548,6 +549,9 @@ assert.deepEqual(
   }
 );
 assert.equal(dictionaryForContentLanguage("fr").nav.problems, "Problèmes");
+assert.equal(dictionaryForContentLanguage("fr").guestProgressPrompt.signIn, "Se connecter");
+assert.match(dictionaryForContentLanguage("fr").guestProgressPrompt.message, /progression/);
+assert.equal(dictionaryForContentLanguage("en").guestProgressPrompt.close, "Close");
 assert.deepEqual(parseSelectedTranslationIds(["3", "2", "3", "bad", "0"]), [3, 2]);
 assert.equal(translationBodyFieldName(TRANSLATED_PROOF_BODY_PREFIX, 17), "translatedProofBody:17");
 assert.equal(dictionaryForContentLanguage("es").nav.problems, "Problems");
@@ -786,22 +790,43 @@ assert.equal(
 assert.deepEqual(visibleProblemWhere(null), {});
 assert.equal(
   canViewProblemSolutions({
-    isAuthenticated: false,
-    requiresVerification: true,
-    hasSolvedAttempt: false,
-    canEditProblem: false
-  }),
-  true
-);
-assert.equal(
-  canViewProblemSolutions({
-    isAuthenticated: true,
     requiresVerification: true,
     hasSolvedAttempt: false,
     canEditProblem: false
   }),
   false
 );
+assert.equal(
+  canViewProblemSolutions({
+    requiresVerification: true,
+    hasSolvedAttempt: false,
+    canEditProblem: false
+  }),
+  false
+);
+assert.equal(
+  canViewProblemSolutions({
+    requiresVerification: false,
+    hasSolvedAttempt: false,
+    canEditProblem: false
+  }),
+  true
+);
+assert.deepEqual(parseGuestContentViews(null), []);
+assert.deepEqual(parseGuestContentViews("not-json"), []);
+assert.deepEqual(parseGuestContentViews('["problem:1","problem:1","concept:2",3]'), ["problem:1", "concept:2"]);
+assert.deepEqual(recordGuestContentView([], "problem:1"), {
+  viewedKeys: ["problem:1"],
+  requiresLogin: false
+});
+assert.deepEqual(recordGuestContentView(["problem:1", "concept:2"], "problem:1"), {
+  viewedKeys: ["problem:1", "concept:2"],
+  requiresLogin: false
+});
+assert.deepEqual(recordGuestContentView(["problem:1", "concept:2"], "problem:3"), {
+  viewedKeys: ["problem:1", "concept:2", "problem:3"],
+  requiresLogin: true
+});
 assert.equal(shouldSendChatOnEnter({
   key: "Enter",
   shiftKey: false,
@@ -1908,8 +1933,20 @@ for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "no
 }
 const tourSource = readFileSync(join("components", "MathWoodsTour.tsx"), "utf-8");
 const layoutSource = readFileSync(join("app", "layout.tsx"), "utf-8");
+const guestProgressPromptSource = readFileSync(join("components", "GuestProgressPrompt.tsx"), "utf-8");
+const guestContentGateSource = readFileSync(join("components", "GuestContentViewGate.tsx"), "utf-8");
+const problemDetailSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
+const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
 assert.match(layoutSource, /\/about\/tutorial/);
+assert.match(layoutSource, /<GuestProgressPrompt \/>/);
+assert.match(guestProgressPromptSource, /dictionaryForLocale/);
+assert.doesNotMatch(guestProgressPromptSource, /Sign in to record your progress/);
+assert.match(guestContentGateSource, /window\.location\.replace/);
+assert.match(problemDetailSource, /contentKey=\{`problem:\$\{problem\.translationGroupId\}`\}/);
+assert.match(problemDetailSource, /<strong>\{t\.problemDetail\.markSolved\}<\/strong>/);
+assert.match(problemDetailSource, /href=\{problemSignInHref as never\}/);
+assert.match(conceptDetailSource, /contentKey=\{`concept:\$\{concept\.translationGroupId\}`\}/);
 assert.match(homeSource, /\/about\/tutorial/);
 assert.match(tourSource, /Ancient Tree/);
 assert.match(tourSource, /cr[ée]ateur du site/);
