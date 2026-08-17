@@ -26,7 +26,7 @@ type DailyProblemCardProps = {
     heading: string;
     by: string;
     action: string;
-    solvedToday: (count: number) => string;
+    solved: (count: number) => string;
   };
   solvers?: Array<{ user: CardUser }>;
 };
@@ -61,7 +61,7 @@ export function DailyProblemCard({
                   <UserAvatar key={solver.id ?? `${solver.username}-${index}`} user={solver} size="sm" />
                 ))}
               </span>
-              <small>{labels.solvedToday(solvers.length)}</small>
+              <small>{labels.solved(solvers.length)}</small>
             </>
           )}
         </div>

@@ -1055,6 +1055,7 @@ body:has(.problem-detail-shell) .site-main {
   align-items: center;
   color: #bfe0cb;
   display: flex;
+  flex-wrap: wrap;
   font-size: 12.5px;
   gap: 8px;
   margin-top: 4px;
@@ -1077,6 +1078,12 @@ body:has(.problem-detail-shell) .site-main {
 
 .problem-solver-avatars {
   display: flex;
+  flex-wrap: wrap;
+}
+
+.problem-solver-names {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .problem-reactions {

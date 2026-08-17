@@ -327,8 +327,7 @@ export default async function ProblemPage({
     groupFavoriteRows,
     relatedSolvedAttempts,
     ownReaction,
-    groupSolvers,
-    solverFriendships
+    groupSolvers
   ] = await Promise.all([
     prisma.problem.findMany({
       where: {
@@ -482,22 +481,23 @@ export default async function ProblemPage({
     prisma.problemAttempt.findMany({
       where: {
         status: "SOLVED",
+        ...(user ? { userId: { not: user.id } } : {}),
         problem: { translationGroupId: problem.translationGroupId }
       },
       distinct: ["userId"],
       orderBy: { updatedAt: "desc" },
-      take: 6,
-      select: { user: true }
-    }),
-    user
-      ? prisma.friendship.findMany({
-          where: {
-            status: "ACCEPTED",
-            OR: [{ requesterId: user.id }, { addresseeId: user.id }]
-          },
-          select: { requesterId: true, addresseeId: true }
-        })
-      : []
+      select: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            avatarBackground: true
+          }
+        }
+      }
+    })
   ]);
   const attempt =
     attemptsInTranslationGroup.find((translationAttempt) => translationAttempt.status === "SOLVED") ??
@@ -676,13 +676,6 @@ export default async function ProblemPage({
   const nextProblem = nextRecommendationData?.recommendations.find(
     (item) => item.problem.translationGroupId !== problem.translationGroupId
   )?.problem ?? null;
-  const friendIdSet = new Set(
-    solverFriendships.map((friendship) =>
-      friendship.requesterId === user?.id ? friendship.addresseeId : friendship.requesterId
-    )
-  );
-  const friendSolvers = groupSolvers.filter(({ user: solver }) => friendIdSet.has(solver.id));
-
   return (
     <div className="problem-detail-shell">
       <GuestContentViewGate
@@ -781,14 +774,16 @@ export default async function ProblemPage({
                     </a>
                   </>
                 )
-              ) : friendSolvers.length > 0 && (
+              ) : groupSolvers.length > 0 && (
                 <p>
                   <span className="problem-solver-avatars">
-                    {friendSolvers.slice(0, 4).map(({ user: solver }) => (
+                    {groupSolvers.map(({ user: solver }) => (
                       <UserAvatar key={solver.id} user={solver} size="sm" />
                     ))}
                   </span>
-                  {friendSolvers.slice(0, 2).map(({ user: solver }) => displayNameForUser(solver)).join(", ")} {copy.solvedToo}
+                  <span className="problem-solver-names">
+                    {groupSolvers.map(({ user: solver }) => displayNameForUser(solver)).join(", ")} {copy.solvedToo}
+                  </span>
                 </p>
               )}
             </div>

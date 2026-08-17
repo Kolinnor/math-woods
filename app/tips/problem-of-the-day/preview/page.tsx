@@ -90,9 +90,9 @@ export default async function DailyProblemPreviewPage({
             heading: locale === "fr" ? "Problème du jour" : "Problem of the day",
             by: locale === "fr" ? "par" : "by",
             action: locale === "fr" ? "Résoudre le problème du jour" : "Solve today's problem",
-            solvedToday: (count) => locale === "fr"
-              ? `${count} l'ont résolu aujourd'hui`
-              : `${count} solved it today`
+            solved: (count) => locale === "fr"
+              ? `${count} l'ont résolu`
+              : `${count} solved it`
           }}
         />
       </div>

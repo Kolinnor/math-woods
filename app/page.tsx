@@ -61,7 +61,7 @@ const dashboardCopy = {
     contestUpcoming: "See the upcoming contest",
     showSolvedProblemOfDay: "Show problem of the day (already solved)",
     solveToday: "Solve today's problem",
-    solvedToday: (count: number) => `${count} solved it today`,
+    dailySolved: (count: number) => `${count} solved it`,
     recommended: "Recommended for you",
     more: "more like these",
     news: "News on Math Woods",
@@ -88,7 +88,7 @@ const dashboardCopy = {
     contestUpcoming: "Voir le prochain concours",
     showSolvedProblemOfDay: "Voir le problème du jour (déjà résolu)",
     solveToday: "Résoudre le problème du jour",
-    solvedToday: (count: number) => `${count} l'ont résolu aujourd'hui`,
+    dailySolved: (count: number) => `${count} l'ont résolu`,
     recommended: "Recommandés pour vous",
     more: "plus de recommandations",
     news: "Nouveautés sur Math Woods",
@@ -116,10 +116,6 @@ const guestDashboardCopy = {
     recommendations: "Problèmes recommandés"
   }
 } as const;
-
-function dayStart(now = new Date()) {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
 
 function relativeActivityTime(date: Date, locale: string, now = Date.now()) {
   const elapsedSeconds = Math.max(0, Math.floor((now - date.getTime()) / 1000));
@@ -388,7 +384,6 @@ export default async function HomePage() {
       ? prisma.problemAttempt.findMany({
           where: {
             status: AttemptStatus.SOLVED,
-            updatedAt: { gte: dayStart() },
             problem: { translationGroupId: dailyProblem.translationGroupId }
           },
           distinct: ["userId"],
@@ -570,7 +565,7 @@ export default async function HomePage() {
         heading: copy.problemOfDay,
         by: copy.by,
         action: copy.solveToday,
-        solvedToday: copy.solvedToday
+        solved: copy.dailySolved
       }}
       solvers={dailySolvers}
     />
