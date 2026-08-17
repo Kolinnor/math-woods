@@ -45,8 +45,9 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
   latexPreviewUsesCenteredLine,
-  rangeOverlapsLinesBetween,
+  multilineSelectionOverlapsLatexLines,
   selectionSpansLineBreakInsideLatexRange,
+  suppressLatexPreviewAfterLineJoin,
   type LatexPreviewDiagnostic
 } from "@/lib/latex-live-preview";
 import {
@@ -1235,6 +1236,9 @@ function buildLivePreviewDecorations(state: EditorState, revealActiveLine = true
   const wikiLinks = findWikiLinkRanges(text);
   const problemLinks = findProblemLinkRanges(text);
   const previewRanges = [...latexRanges, ...wikiLinks];
+  const joinedLinePreviewAnchor = state.field(suppressLatexPreviewAfterLineJoin);
+  const joinedLinePreview =
+    joinedLinePreviewAnchor === null ? null : state.doc.lineAt(joinedLinePreviewAnchor);
   const decorations = latexRanges.flatMap((range) => {
     const renderMode = latexPreviewRenderMode(text, range);
     const renderDisplayMode = renderMode === "display";
@@ -1256,10 +1260,22 @@ function buildLivePreviewDecorations(state: EditorState, revealActiveLine = true
       revealActiveLine &&
       state.field(previewFocusField) &&
       state.selection.ranges.some((selection) =>
-        rangeOverlapsLinesBetween(text, selection.anchor, selection.head, range.from, range.to)
+        multilineSelectionOverlapsLatexLines(
+          text,
+          selection.anchor,
+          selection.head,
+          range.from,
+          range.to
+        )
       );
     const selectionOverlaps = selectionOverlapsRange(state, range.from, range.to);
-    const revealSource = activeSelectionLines || selectionOverlaps;
+    const suppressJoinedLinePreview = Boolean(
+      joinedLinePreview
+      && range.from <= joinedLinePreview.to
+      && range.to >= joinedLinePreview.from
+      && !selectionOverlaps
+    );
+    const revealSource = activeSelectionLines || selectionOverlaps || suppressJoinedLinePreview;
     const selectionSpansLineBreak = state.selection.ranges.some((selection) =>
       selectionSpansLineBreakInsideLatexRange(text, range, selection.from, selection.to)
     );
@@ -1269,7 +1285,12 @@ function buildLivePreviewDecorations(state: EditorState, revealActiveLine = true
         Decoration.mark({ class: `cm-latex-token cm-latex-${token.kind}` }).range(token.from, token.to)
       );
 
-      if (renderDisplayMode && !activeSelectionLines && !selectionSpansLineBreak) {
+      if (
+        renderDisplayMode
+        && !activeSelectionLines
+        && !suppressJoinedLinePreview
+        && !selectionSpansLineBreak
+      ) {
         activeDecorations.push(
           Decoration.widget({
             widget,
@@ -1573,6 +1594,7 @@ export function MarkdownEditor({
             ])
           ),
           previewFocusField,
+          suppressLatexPreviewAfterLineJoin,
           liveMarkdownPreviewExtension(!titleMode),
           previewFocusEvents,
           titleMode ? titleInputExtensions(maxLength) : displayMathLineBreakNormalizer,

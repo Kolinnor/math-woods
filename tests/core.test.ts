@@ -227,8 +227,10 @@ import {
   latexPreviewRenderMode,
   latexPreviewUsesBlockDecoration,
   latexPreviewUsesCenteredLine,
+  multilineSelectionOverlapsLatexLines,
   rangeOverlapsLinesBetween,
   selectionSpansLineBreakInsideLatexRange,
+  suppressLatexPreviewAfterLineJoin,
 } from "../lib/latex-live-preview.ts";
 import { normalizeDisplayMathLineBreaks } from "../lib/latex-display-lines.ts";
 import { explorationSnapshotPages } from "../lib/exploration-snapshot.ts";
@@ -1015,6 +1017,20 @@ assert.equal(
   rangeOverlapsLinesBetween(joinedLineLatexText, 0, 0, joinedLineLatexRange.from, joinedLineLatexRange.to),
   true
 );
+assert.equal(
+  multilineSelectionOverlapsLatexLines(
+    "Que vaut $x$ ?",
+    "Que vaut $x$ ?".length,
+    "Que vaut $x$ ?".length,
+    9,
+    12
+  ),
+  false
+);
+assert.equal(
+  multilineSelectionOverlapsLatexLines("Que vaut $x$ ?", 0, 8, 9, 12),
+  false
+);
 const directionalSelectionText = "Salut\nabc Truc $x>0$    .";
 const directionalSelectionRange = findLatexRanges(directionalSelectionText)[0];
 assert.equal(
@@ -1028,6 +1044,16 @@ assert.equal(
   true
 );
 assert.equal(
+  multilineSelectionOverlapsLatexLines(
+    directionalSelectionText,
+    0,
+    "Salut\nabc Truc".length,
+    directionalSelectionRange.from,
+    directionalSelectionRange.to
+  ),
+  true
+);
+assert.equal(
   rangeOverlapsLinesBetween(
     directionalSelectionText,
     "Salut\nabc Truc".length,
@@ -1037,7 +1063,31 @@ assert.equal(
   ),
   true
 );
+assert.equal(
+  multilineSelectionOverlapsLatexLines(
+    directionalSelectionText,
+    "Salut\nabc Truc".length,
+    0,
+    directionalSelectionRange.from,
+    directionalSelectionRange.to
+  ),
+  true
+);
 assert.equal(rangeOverlapsLinesBetween(`before\n${joinedLineLatexText}`, 0, 0, 8, 13), false);
+const joinedLinePreviewState = EditorState.create({
+  doc: directionalSelectionText,
+  extensions: [suppressLatexPreviewAfterLineJoin]
+});
+const joinedLinePreviewTransaction = joinedLinePreviewState.update({
+  changes: { from: 0, to: "Salut\nabc Truc".length }
+});
+assert.equal(joinedLinePreviewTransaction.state.field(suppressLatexPreviewAfterLineJoin), 0);
+const joinedLineFocusTransaction = joinedLinePreviewTransaction.state.update({});
+assert.equal(joinedLineFocusTransaction.state.field(suppressLatexPreviewAfterLineJoin), 0);
+const joinedLineSelectionTransaction = joinedLineFocusTransaction.state.update({
+  selection: { anchor: joinedLinePreviewTransaction.state.doc.length }
+});
+assert.equal(joinedLineSelectionTransaction.state.field(suppressLatexPreviewAfterLineJoin), null);
 assert.deepEqual(normalizeDisplayMathLineBreaks("Before $$x^2 + 1$$ after", 18), {
   text: "Before\n$$x^2 + 1$$\nafter",
   cursor: 18,

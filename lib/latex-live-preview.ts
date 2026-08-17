@@ -1,7 +1,27 @@
+import { StateField } from "@codemirror/state";
 import type { LatexRange } from "./latex-ranges.ts";
 
 export type LatexPreviewRenderMode = "display" | "inline";
 export type LatexPreviewLayoutKind = "inline" | "inline-display" | "block-display";
+
+// Keep a joined line as source until the cursor leaves the deletion point. This lets
+// CodeMirror discard the old replacement widget before creating a new one.
+export const suppressLatexPreviewAfterLineJoin = StateField.define<number | null>({
+  create: () => null,
+  update(anchor, transaction) {
+    if (!transaction.docChanged) {
+      return anchor !== null && transaction.state.selection.main.head === anchor ? anchor : null;
+    }
+
+    let removedLineBreak = false;
+    transaction.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+      const deleted = transaction.startState.doc.sliceString(fromA, toA);
+      if (deleted.includes("\n") && !inserted.toString().includes("\n")) removedLineBreak = true;
+    });
+
+    return removedLineBreak ? transaction.state.selection.main.head : null;
+  }
+});
 
 export type LatexPreviewDiagnosticSeverity = "info" | "warning" | "error";
 export type LatexPreviewDiagnosticCode =
@@ -57,6 +77,21 @@ export function rangeOverlapsLinesBetween(
   const lineEnd = nextBreak === -1 ? text.length : nextBreak;
 
   return from <= lineEnd && to >= lineStart;
+}
+
+export function multilineSelectionOverlapsLatexLines(
+  text: string,
+  anchor: number,
+  head: number,
+  from: number,
+  to: number
+) {
+  const selectionFrom = Math.max(0, Math.min(anchor, head, text.length));
+  const selectionTo = Math.max(0, Math.min(Math.max(anchor, head), text.length));
+  return (
+    text.slice(selectionFrom, selectionTo).includes("\n")
+    && rangeOverlapsLinesBetween(text, anchor, head, from, to)
+  );
 }
 
 export function latexPreviewRenderMode(_text: string, range: LatexRange): LatexPreviewRenderMode {
