@@ -52,6 +52,7 @@ import {
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { isUnknownProblemOrigin } from "@/lib/problem-origin";
+import { shouldShowOwnerSolvedBanner } from "@/lib/problem-owner-solved-banner";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
@@ -573,6 +574,12 @@ export default async function ProblemPage({
   );
   const ownProofResetSignal = user ? problem.proofs.filter((proof) => proof.authorId === user.id).at(-1)?.id ?? 0 : 0;
   const ownProofForHint = user ? problem.proofs.filter((proof) => proof.authorId === user.id).at(-1) ?? null : null;
+  const showOwnerSolvedBanner = shouldShowOwnerSolvedBanner({
+    hasAnyProof: problem.proofs.length > 0,
+    hasOwnProof: Boolean(ownProofForHint),
+    hasRelatedProblems,
+    isExercise: problem.isExercise
+  });
   const ownSolutionHint = ownProofForHint
     ? problem.hints.find((hint) => hint.proofId === ownProofForHint.id) ?? null
     : null;
@@ -739,7 +746,7 @@ export default async function ProblemPage({
             />
           </div>
         </header>
-        {attempt?.status === "SOLVED" && (!isOwnProblem || !ownProofForHint || problem.isExercise || !hasRelatedProblems) && (
+        {attempt?.status === "SOLVED" && (!isOwnProblem || showOwnerSolvedBanner) && (
           <section className={`problem-solved-banner${isOwnProblem ? " problem-solved-banner-owner" : ""}`} role="status">
             <span className="problem-solved-check"><Check size={20} /></span>
             <div className="problem-solved-copy">

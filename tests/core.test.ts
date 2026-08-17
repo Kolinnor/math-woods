@@ -42,6 +42,7 @@ import {
   sortHomeGuestProblemsByDifficulty
 } from "../lib/home-guest-problems.ts";
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
+import { shouldShowOwnerSolvedBanner } from "../lib/problem-owner-solved-banner.ts";
 import { parseGuestContentViews, recordGuestContentView } from "../lib/guest-content-access.ts";
 import { problemCreationNotificationCopy } from "../lib/problem-creation-notifications.ts";
 import { selectProblemBrowserTranslation } from "../lib/problem-browser-translations.ts";
@@ -3015,6 +3016,42 @@ assert.equal(
   historicalSolvedAt.toISOString()
 );
 assert.equal(formatProblemSolvedDate(new Date("2026-07-14T12:00:00.000Z"), "en"), "Jul 14, 2026");
+assert.equal(
+  shouldShowOwnerSolvedBanner({
+    hasAnyProof: false,
+    hasOwnProof: false,
+    hasRelatedProblems: false,
+    isExercise: false
+  }),
+  true
+);
+assert.equal(
+  shouldShowOwnerSolvedBanner({
+    hasAnyProof: true,
+    hasOwnProof: false,
+    hasRelatedProblems: false,
+    isExercise: false
+  }),
+  false
+);
+assert.equal(
+  shouldShowOwnerSolvedBanner({
+    hasAnyProof: true,
+    hasOwnProof: true,
+    hasRelatedProblems: true,
+    isExercise: false
+  }),
+  false
+);
+assert.equal(
+  shouldShowOwnerSolvedBanner({
+    hasAnyProof: true,
+    hasOwnProof: true,
+    hasRelatedProblems: true,
+    isExercise: true
+  }),
+  true
+);
 assert.equal(isUnknownProblemOrigin(" Unknown "), true);
 assert.equal(isUnknownProblemOrigin("Inconnue"), true);
 assert.equal(isUnknownProblemOrigin("A classical textbook"), false);
