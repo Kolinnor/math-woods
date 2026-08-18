@@ -116,6 +116,8 @@ export const en = {
         `This account has no password. Sign in with one of its existing connected accounts, then add ${provider} from Settings.`,
       createProfile: "Create your Math Woods profile",
       identityConfirmed: (provider: string) => `${provider} confirmed your identity. Choose how you will appear on Math Woods.`,
+      publicPseudonym: "Public username",
+      publicPseudonymHelp: "Choose the name other people will see. Your email address stays private.",
       unverifiedEmailHelp: "We will send a verification email before contributions are enabled.",
       mathematicsLevel: "Mathematics level",
       createWithProvider: (provider: string) => `Create account with ${provider}`

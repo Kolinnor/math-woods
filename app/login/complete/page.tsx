@@ -100,14 +100,15 @@ export default async function CompleteOAuthPage({
           </div>
           <form action={completeOAuthSignupAction} className="grid gap-4">
             <label className="grid gap-2">
-              <span className="text-sm font-medium">{t.auth.profileName}</span>
+              <span className="text-sm font-medium">{complete.publicPseudonym}</span>
               <input
                 name="displayName"
-                defaultValue={attempt.providerDisplayName ?? ""}
+                autoComplete="nickname"
                 minLength={2}
                 maxLength={DISPLAY_NAME_MAX_LENGTH}
                 required
               />
+              <small className="muted">{complete.publicPseudonymHelp}</small>
             </label>
             <label className="grid gap-2">
               <span className="text-sm font-medium">{t.auth.email}</span>

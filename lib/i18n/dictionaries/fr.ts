@@ -118,6 +118,8 @@ export const fr = {
         `Ce compte n’a pas de mot de passe. Connectez-vous avec l’un de ses comptes externes existants, puis ajoutez ${provider} depuis les paramètres.`,
       createProfile: "Créer votre profil Math Woods",
       identityConfirmed: (provider: string) => `${provider} a confirmé votre identité. Choisissez comment vous apparaîtrez sur Math Woods.`,
+      publicPseudonym: "Pseudonyme public",
+      publicPseudonymHelp: "Choisissez le nom que les autres personnes verront. Votre adresse e-mail restera privée.",
       unverifiedEmailHelp: "Nous enverrons un e-mail de vérification avant d’autoriser les contributions.",
       mathematicsLevel: "Niveau en mathématiques",
       createWithProvider: (provider: string) => `Créer le compte avec ${provider}`

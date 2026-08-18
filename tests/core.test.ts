@@ -2010,6 +2010,7 @@ const guestContentGateSource = readFileSync(join("components", "GuestContentView
 const problemDetailSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
+const oauthCompleteSource = readFileSync(join("app", "login", "complete", "page.tsx"), "utf-8");
 assert.match(layoutSource, /\/about\/tutorial/);
 assert.match(layoutSource, /<GuestProgressPrompt \/>/);
 assert.match(guestProgressPromptSource, /dictionaryForLocale/);
@@ -2020,6 +2021,9 @@ assert.match(problemDetailSource, /<strong>\{t\.problemDetail\.markSolved\}<\/st
 assert.match(problemDetailSource, /href=\{problemSignInHref as never\}/);
 assert.match(conceptDetailSource, /contentKey=\{`concept:\$\{concept\.translationGroupId\}`\}/);
 assert.match(homeSource, /\/about\/tutorial/);
+assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
+assert.doesNotMatch(oauthCompleteSource, /defaultValue=\{attempt\.providerDisplayName/);
+assert.match(oauthCompleteSource, /complete\.publicPseudonymHelp/);
 assert.match(tourSource, /Ancient Tree/);
 assert.match(tourSource, /cr[ée]ateur du site/);
 assert.match(tourSource, /tutoriel est bient[oô]t fini/i);
