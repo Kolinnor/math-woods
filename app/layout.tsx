@@ -165,20 +165,29 @@ function validBackgroundTone(value: string | undefined) {
   return value === "sage" || value === "amber" || value === "blue" || value === "rose" ? value : undefined;
 }
 
+async function getActiveContest(today: string) {
+  if (!process.env.DATABASE_URL) return null;
+
+  try {
+    return await prisma.problemContest.findFirst({
+      where: {
+        publishedAt: { not: null },
+        startDateKey: { lte: today },
+        endDateKey: { gte: today }
+      },
+      select: { id: true }
+    });
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") return null;
+    throw error;
+  }
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const today = dailyProblemDateKey(new Date(), CONTEST_TIME_ZONE);
   const [user, activeContest] = await Promise.all([
     getCurrentUser(),
-    process.env.DATABASE_URL
-      ? prisma.problemContest.findFirst({
-          where: {
-            publishedAt: { not: null },
-            startDateKey: { lte: today },
-            endDateKey: { gte: today }
-          },
-          select: { id: true }
-        })
-      : Promise.resolve(null)
+    getActiveContest(today)
   ]);
   const cookieStore = await cookies();
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";

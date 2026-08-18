@@ -1,0 +1,380 @@
+.shell {
+  color: #1f2722;
+  display: grid;
+  gap: 16px;
+  margin: -10px auto 24px;
+  max-width: 1240px;
+}
+
+.header {
+  align-items: end;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+}
+
+.header h1 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: clamp(1.75rem, 3vw, 2.45rem);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.header p {
+  color: #59665d;
+  line-height: 1.55;
+  margin: 8px 0 0;
+  max-width: 760px;
+}
+
+.headerActions,
+.toolbar,
+.toolGroup,
+.actions,
+.inlineFields,
+.inspectorRow,
+.objectRow,
+.toast {
+  align-items: center;
+  display: flex;
+}
+
+.headerActions,
+.toolbar,
+.actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workspace {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 230px minmax(0, 1fr) 300px;
+}
+
+.panel,
+.canvasPanel,
+.exportPanel {
+  background: #fbfaf5;
+  border: 1px solid #cbd6ce;
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.panel {
+  align-content: start;
+  display: grid;
+  gap: 16px;
+  padding: 14px;
+}
+
+.canvasPanel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.panelTitle {
+  color: #536057;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.toolbar {
+  align-items: stretch;
+}
+
+.toolGroup {
+  background: #eef3ee;
+  border: 1px solid #d5ddd6;
+  border-radius: 7px;
+  gap: 2px;
+  padding: 3px;
+}
+
+.iconButton,
+.button,
+.dangerButton,
+.quietButton {
+  align-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  gap: 7px;
+  justify-content: center;
+  min-height: 36px;
+}
+
+.iconButton {
+  background: transparent;
+  border: 0;
+  color: #334039;
+  padding: 0;
+  width: 36px;
+}
+
+.iconButton:hover,
+.iconButton.active {
+  background: #fff;
+  color: #1d6a47;
+}
+
+.iconButton.active {
+  box-shadow: 0 0 0 1px #aabdb1 inset;
+}
+
+.button,
+.dangerButton,
+.quietButton {
+  border: 1px solid #aebbb2;
+  padding: 8px 11px;
+}
+
+.button {
+  background: #276b49;
+  border-color: #276b49;
+  color: #fff;
+}
+
+.button:hover {
+  background: #1f583b;
+}
+
+.quietButton {
+  background: #fffdf8;
+  color: #28483a;
+}
+
+.quietButton:hover {
+  border-color: #276b49;
+  color: #1f583b;
+}
+
+.dangerButton {
+  background: #fff8f6;
+  border-color: #d8b6ad;
+  color: #9a4435;
+}
+
+.dangerButton:hover {
+  border-color: #b65345;
+}
+
+.button:disabled,
+.quietButton:disabled,
+.dangerButton:disabled,
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.boardWrap {
+  min-height: 530px;
+  position: relative;
+}
+
+.board {
+  background: #fff;
+  border: 1px solid #8fa197;
+  border-radius: 6px;
+  height: 530px;
+  overflow: hidden;
+  touch-action: none;
+  width: 100%;
+}
+
+.statusBar {
+  align-items: center;
+  color: #536057;
+  display: flex;
+  font-size: 0.82rem;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.statusBar strong {
+  color: #26322b;
+}
+
+.statusHint {
+  background: #eef4ef;
+  border: 1px solid #d4dfd7;
+  border-radius: 6px;
+  color: #405248;
+  line-height: 1.45;
+  padding: 9px 10px;
+}
+
+.field,
+.checkboxField {
+  display: grid;
+  gap: 6px;
+}
+
+.field span,
+.checkboxField span {
+  color: #4d5c53;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.field input,
+.field textarea,
+.field select {
+  background: #fff;
+  border: 1px solid #b8c7bd;
+  border-radius: 6px;
+  color: #1f2722;
+  font: inherit;
+  min-height: 36px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.field textarea {
+  line-height: 1.45;
+  min-height: 160px;
+  resize: vertical;
+}
+
+.checkboxField {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.checkboxField input {
+  accent-color: #276b49;
+}
+
+.inlineFields {
+  gap: 8px;
+}
+
+.inlineFields > * {
+  flex: 1 1 0;
+}
+
+.objectList {
+  display: grid;
+  gap: 5px;
+  max-height: 305px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.objectRow {
+  background: #fffdf8;
+  border: 1px solid #e0d8c8;
+  border-radius: 6px;
+  color: #29332e;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 7px 9px;
+  text-align: left;
+}
+
+.objectRow:hover,
+.objectRow.selected {
+  border-color: #7fa08c;
+}
+
+.objectRow.selected {
+  background: #eef7f0;
+}
+
+.objectRow small {
+  color: #6d7b72;
+}
+
+.inspector {
+  display: grid;
+  gap: 12px;
+}
+
+.inspectorRow {
+  gap: 8px;
+}
+
+.emptyState {
+  background: #f3f1e8;
+  border: 1px dashed #c7cfc7;
+  border-radius: 7px;
+  color: #5f6b63;
+  line-height: 1.5;
+  margin: 0;
+  padding: 12px;
+}
+
+.exportPanel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.exportCode {
+  background: #1f2722;
+  border: 1px solid #29362f;
+  border-radius: 7px;
+  color: #eef5ef;
+  font: 0.77rem/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  min-height: 280px;
+  padding: 11px;
+  resize: vertical;
+  white-space: pre;
+  width: 100%;
+}
+
+.toast {
+  background: #f7f1df;
+  border: 1px solid #d8c695;
+  border-radius: 6px;
+  color: #5f481f;
+  font-size: 0.82rem;
+  gap: 7px;
+  padding: 8px 10px;
+}
+
+.swatch {
+  border: 1px solid #9fac9f;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 13px;
+  width: 13px;
+}
+
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+
+  .exportPanel {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .boardWrap {
+    min-height: 390px;
+  }
+
+  .board {
+    height: 390px;
+  }
+}
