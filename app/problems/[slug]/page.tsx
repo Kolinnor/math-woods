@@ -153,11 +153,11 @@ const redesignCopy = {
       verifySub: "Check your answer",
       attemptSub: "Keep it in your list",
       attemptedSub: "In your working list",
-      favoriteSub: (count: number) => `${count} ${count === 1 ? "favorite" : "favorites"}`
+      favoriteSub: (count: number) => `${count} ${count === 1 ? "like" : "likes"}`
     },
     favoriteUsers: {
-      summary: "See who added this problem to favorites",
-      title: "Favorited by"
+      summary: "See who liked this problem",
+      title: "Liked by"
     },
     reactions: {
       howWasIt: "How was it?",
@@ -187,11 +187,11 @@ const redesignCopy = {
       verifySub: "Vérifier votre réponse",
       attemptSub: "Le garder dans votre liste",
       attemptedSub: "Dans votre liste de travail",
-      favoriteSub: (count: number) => `${count} favori${count > 1 ? "s" : ""}`
+      favoriteSub: (count: number) => `${count} J’aime`
     },
     favoriteUsers: {
-      summary: "Voir les personnes qui ont ajouté ce problème aux favoris",
-      title: "Ajouté aux favoris par"
+      summary: "Voir les personnes qui ont aimé ce problème",
+      title: "Aimé par"
     },
     reactions: {
       howWasIt: "Comment était-il ?",

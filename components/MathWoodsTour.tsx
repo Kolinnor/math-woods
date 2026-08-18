@@ -3,9 +3,9 @@
 import {
   ArrowLeft,
   ArrowRight,
-  Bookmark,
   Check,
   ChevronRight,
+  Heart,
   Lightbulb,
   Menu,
   MessageCircle,
@@ -40,9 +40,9 @@ type TourStep = {
 
 const copy = {
   fr: {
-    pageTitle: "C'est quoi Math Woods ?",
+    pageTitle: "C'est quoi Math Woods\u00a0?",
     intro:
-      "Découvrez les principales pages de Math Woods avec un exemple guidé. Le parcours ne modifie ni votre compte ni votre progression.",
+      "Découvrez les principales pages de Math Woods avec un exemple guidé d’environ trois minutes. Le parcours ne modifie ni votre compte ni votre progression.",
     language: "Langue du tutoriel",
     start: "Démarrer le tutoriel",
     backToSite: "Retourner sur Math Woods",
@@ -72,8 +72,10 @@ const copy = {
     tipBody: "Commencez par préciser ce qu'il faudrait établir, puis remontez vers les données du problème.",
     practice: "Voir les problèmes d'application",
     friends: "Amis",
-    bearAction: "Ours a créé Le problème de l'éclipse.",
-    woodAction: "Bois a ajouté une solution à ce problème.",
+    friendOne: "Jules",
+    friendOneAction: "a créé Le problème de l'éclipse.",
+    friendTwo: "Louise",
+    friendTwoAction: "a ajouté une solution à ce problème.",
     justNow: "à l'instant",
     chat: "Discussion avec vos amis",
     allProblems: "Tous les problèmes",
@@ -85,7 +87,7 @@ const copy = {
       "Lors d'une éclipse, le Soleil et la Lune semblent avoir le même diamètre apparent. Que peut-on en déduire sur le rapport de leurs tailles et de leurs distances à la Terre ?",
     solvedAction: "Je l'ai résolu",
     workAction: "Travailler sur ce problème",
-    favoriteAction: "Ajouter à mes favoris",
+    favoriteAction: "J'ai aimé ce problème",
     hints: "Indications",
     hintBody: "Comparez les triangles formés par l'œil de l'observateur et les diamètres apparents des deux astres.",
     solution: "Solution",
@@ -94,93 +96,91 @@ const copy = {
     suggestions: "Suggestions",
     steps: [
       {
-        text: "Bienvenue sur Math Woods ! Je suis Ancient Tree, le créateur du site, et je vais vous guider pas à pas pour vous faire la main avec ce que j'espère devenir votre nouvel outil de travail. Ce tutoriel, basé sur une page de garde figée du site, a pour but de vous présenter les grandes lignes du site."
+        text: "Bienvenue sur Math Woods ! Le but de ce tutoriel est de vous introduire à ce qui, je l'espère, va devenir votre nouvel outil de travail. Pour cela, nous allons utiliser une fausse page du site, moins complète que le véritable site, afin de nous concentrer sur l'essentiel."
       },
       {
-        text: "MathWoods est un site open source dont l'objectif est de vous permettre d'apprendre des mathématiques de tout niveau (du collège aux conjectures encore irrésolues actuellement) et de manière pédagogique. C'est un site contributif dans lequel chacun est libre de poster des problèmes, d'expliquer des concepts, de partager ce qui lui plaît mathématiquement et d'en résoudre de manière ludique, sans compétitivité. Voyons maintenant plus précisément ses fonctionnalités."
+        text: "Math Woods est un site open source dont l'objectif est de vous permettre d'apprendre des mathématiques de tout niveau, du collège au master de mathématiques fondamentales, de manière pédagogique."
+      },
+      {
+        text: "C'est un site contributif dans lequel chacun est libre de poster des problèmes, d'expliquer des concepts, de partager ce qui lui plaît mathématiquement et de réfléchir de manière ludique, sans compétitivité. Voyons maintenant plus précisément ses fonctionnalités."
       },
       {
         target: "daily",
         placement: "right",
-        text: "Ici, un nouveau problème illustré vous sera présenté tous les jours. Si vous ne savez pas quoi faire, vous pourrez commencer par là !"
+        text: "Un nouveau problème illustré vous sera présenté tous les jours. Si vous ne savez pas par où commencer votre balade, vous pourrez commencer par là !"
       },
       {
         target: "progress",
         placement: "left",
-        text: "Ici vous pourrez voir le nombre de problèmes que vous avez résolu dans chaque catégorie."
+        text: "Ici, vous verrez le nombre de problèmes que vous avez résolus dans chaque catégorie."
       },
       {
         target: "recommendations",
         placement: "right",
-        text: "Ici vous aurez diverses recommandations de problèmes en fonction de votre niveau ainsi que de vos goûts. N'hésitez donc pas à nous signifier quels problèmes vous avez trouvés trop durs ou trop simples, et ceux que vous avez aimés ou non, pour que vos recommandations soient bien cohérentes avec vos besoins !"
+        text: "On vous recommandera divers problèmes en fonction de vos goûts. N'hésitez donc pas à nous indiquer quels problèmes vous avez trouvés trop difficiles ou trop simples, et ceux que vous avez aimés ou non, pour que vos recommandations soient bien cohérentes avec vos besoins !"
       },
       {
         target: "tip",
         placement: "right",
-        text: "Tous les jours, un nouveau conseil ou une nouvelle méthodologie vous sera présentée afin d'améliorer votre compréhension des mathématiques. Divers problèmes d'application seront directement proposés afin de vous faire la main sur ces idées."
+        text: "Tous les jours, un nouveau conseil ou une nouvelle méthodologie vous sera présenté afin d'améliorer votre compréhension des mathématiques. Divers problèmes d'application seront directement proposés afin de vous faire la main sur ces idées."
       },
       {
         target: "friends",
         placement: "left",
-        text: "Bien sûr, faire des maths avec des amis reste plus fun ! Cet encadré servira à voir quelles sont les dernières contributions de ces derniers."
+        text: "Bien sûr, il est toujours plus amusant de faire des maths avec des amis ! Dans cet encadré, vous verrez leurs dernières contributions..."
       },
       {
         target: "chat",
         placement: "left",
-        text: "Vous pourrez aussi discuter avec vos amis via ce tchat."
+        text: "...et aussi discuter avec ces amis grâce à ce tchat !"
       },
       {
         target: "nav-problems",
         placement: "bottom",
         action: "open-problems",
-        text: "Mais cessons de tourner autour du pot, cliquez ici pour accéder à la page des problèmes."
+        text: "Mais cessons de tourner autour du pot : cliquez sur l'encadré « Problèmes » pour accéder à la page des problèmes."
       },
       {
         target: "problem-browser",
         placement: "right",
-        text: "Vous êtes maintenant sur la page recensant tous les problèmes du site. Vous pourrez résoudre des problèmes triés par niveau de difficulté."
+        text: "Vous êtes maintenant sur la page recensant tous les problèmes du site. Vous trouverez des problèmes en triant par niveau de difficulté, par domaine ou même en recherchant par mot-clé."
       },
       {
         target: "open-problem",
-        placement: "bottom",
+        placement: "top",
         action: "open-problem",
-        text: "Vous retrouvez ici les problèmes de la première page qui seraient susceptibles de vous intéresser. Voyons enfin de quoi il s'agit."
+        text: "Vous retrouvez ici la liste des problèmes postés par les contributeurs. Voyons enfin de quoi il s'agit : cliquez sur « Ouvrir le problème » pour continuer."
       },
       {
         target: "statement",
-        placement: "right",
-        text: "Ici vous avez l'énoncé du problème. Vous pouvez ensuite travailler dessus de votre côté en cliquant sur « Travailler sur ce problème ». Une fois résolu, cliquez sur « Je l'ai résolu » : on vous demandera parfois une vérification où le concepteur du problème pourra juger de votre bonne foi et de la qualité de votre travail, mais ce n'est pas automatique. Enfin, si vous avez aimé le problème, cliquez sur « Ajouter à mes favoris ». N'oubliez pas de le faire, cela fait vivre le site !"
+        placement: "bottom",
+        text: "Vous voilà face à l'énoncé du problème. Vous pouvez sauvegarder ce problème pour le résoudre plus tard en cliquant sur « Travailler sur ce problème ». Une fois résolu, cliquez sur « Je l'ai résolu ». Enfin, si vous avez aimé le problème, cliquez sur « J'ai aimé ce problème ». N'oubliez pas de le faire, cela fait vivre le site !"
       },
       {
         target: "help",
         placement: "right",
-        text: "Si jamais vous êtes bloqués, diverses indications sont à votre disposition sous le problème ainsi qu'une solution. Les énoncés de problèmes, les diverses modifications apportées, les traductions, les concepts, les indications ainsi que les solutions sont rédigés par des utilisateurs du site comme vous ou moi. Il peut donc y avoir des manques à combler, c'est pour cela que nous avons besoin de vous si jamais vous avez une idée que d'autres n'ont pas eue ou pas eu le temps d'écrire !"
+        text: "Si jamais vous êtes bloqué, des indications peuvent être disponibles sous le problème, ainsi qu'une solution. Tout sur ce site est rédigé par ses utilisateurs, avec un système de modération assuré par des utilisateurs de confiance, comme sur Wikipédia. Il peut donc y avoir des manques à combler : c'est pour cela que nous avons besoin de vous !"
       },
       {
         target: "nav-concepts",
         placement: "bottom",
-        text: "Le tutoriel est bientôt fini, ne vous en faites pas. Ici nous avons une encyclopédie regroupant tous les concepts mathématiques mis en avant sur ce site. N'hésitez pas à cliquer sur un mot qui vous semble inconnu dans un énoncé pour voir le concept associé. Il vous sera donné une définition claire, des exemples ainsi que des exercices d'application (à différencier des « problèmes »)."
+        text: "Chose importante du site : nous avons une encyclopédie regroupant tous les concepts mathématiques présents dans les problèmes. N'hésitez pas à cliquer sur un mot qui vous semble inconnu dans un énoncé pour voir le concept associé. Vous y trouverez une définition claire, des exemples ainsi que des exercices d'application."
       },
       {
-        target: "nav-users",
-        placement: "bottom",
-        text: "Le tutoriel est bientôt fini, ne vous en faites pas. Ici nous avons une encyclopédie regroupant tous les concepts mathématiques mis en avant sur ce site. N'hésitez pas à cliquer sur un mot qui vous semble inconnu dans un énoncé pour voir le concept associé. Il vous sera donné une définition claire, des exemples ainsi que des exercices d'application (à différencier des « problèmes »)."
-      },
-      {
-        text: "Et voilà, je crois que nous avons fait le tour des fonctionnalités principales du site. Bien sûr il y en a d'autres et je vous laisserai les découvrir par vous-même. Je suis certes l'arbre le plus ancien du site, mais je n'ai pas toute la vie devant moi ;) !"
+        text: "Et voilà, nous avons fait le tour des principales fonctionnalités du site. Je vous laisserai découvrir les autres par vous-même. Beaucoup d'autres sont encore en préparation, alors restez à l'écoute !"
       },
       {
         target: "menu",
         placement: "left",
         action: "finish",
-        text: "Trêve de plaisanterie. Je disais donc, le site Math Woods est collaboratif. Certaines fonctionnalités sont encore en travaux et divers bugs résident toujours sur le site. N'hésitez donc pas à nous en faire part en cliquant sur les trois traits en haut à droite de votre écran puis dans « Suggestions ». L'équipe du site sera vraiment contente d'avoir n'importe quel retour ! Pour cela, n'oubliez pas de créer un compte, cela vous permettra d'accéder à tous les problèmes et concepts actuels du site. Bon amusement !"
+        text: "Pour résumer, Math Woods est collaboratif. C'est un site ambitieux qui a besoin de l'aide d'un maximum de personnes pour prospérer. N'hésitez pas à nous faire part de vos recommandations en cliquant sur les trois traits en haut à droite de votre écran, puis sur « Suggestions ». L'équipe sera vraiment contente de recevoir vos retours. Il ne vous reste plus qu'à créer un compte pour interagir sur le site et vous amuser !"
       }
     ] satisfies TourStep[]
   },
   en: {
     pageTitle: "What is Math Woods?",
     intro:
-      "Discover the main parts of Math Woods through a guided example. The tour does not change your account or progress.",
+      "Discover the main parts of Math Woods through a guided example lasting about three minutes. The tour does not change your account or progress.",
     language: "Tour language",
     start: "Start the tour",
     backToSite: "Back to Math Woods",
@@ -210,8 +210,10 @@ const copy = {
     tipBody: "Begin by stating what must be proved, then work backwards toward the information in the problem.",
     practice: "See practice problems",
     friends: "Friends",
-    bearAction: "Bear created The eclipse problem.",
-    woodAction: "Wood added a solution to this problem.",
+    friendOne: "Jules",
+    friendOneAction: "created The eclipse problem.",
+    friendTwo: "Louise",
+    friendTwoAction: "added a solution to this problem.",
     justNow: "just now",
     chat: "Chat with your friends",
     allProblems: "All problems",
@@ -223,7 +225,7 @@ const copy = {
       "During an eclipse, the Sun and Moon appear to have the same angular diameter. What does this tell us about the ratio between their sizes and their distances from Earth?",
     solvedAction: "I solved it",
     workAction: "Work on this problem",
-    favoriteAction: "Add to favorites",
+    favoriteAction: "I liked this problem",
     hints: "Hints",
     hintBody: "Compare the triangles formed by the observer's eye and the apparent diameters of the two objects.",
     solution: "Solution",
@@ -232,15 +234,18 @@ const copy = {
     suggestions: "Suggestions",
     steps: [
       {
-        text: "Welcome to Math Woods! I am Ancient Tree, the creator of the site, and I will guide you step by step as you get familiar with what I hope will become your new study tool. This tour uses a fixed version of the home page to introduce the main parts of the site."
+        text: "Welcome to Math Woods! This tour introduces what we hope will become a new tool for your mathematical work. We will use a simplified version of the site so that we can focus on the essentials."
       },
       {
-        text: "MathWoods is an open-source site designed to help you learn mathematics at every level, from middle school to conjectures that remain unsolved today, in an educational way. It is a collaborative site where everyone is free to post problems, explain concepts, share the mathematics they enjoy, and solve problems in a playful, non-competitive setting. Let us now look at its features in more detail."
+        text: "Math Woods is an open-source site designed to help you learn mathematics at every level, from middle school to graduate-level pure mathematics, through clear educational content."
+      },
+      {
+        text: "It is a collaborative site where everyone is free to post problems, explain concepts, share mathematics they enjoy, and explore ideas playfully without competition. Let us look at its features in more detail."
       },
       {
         target: "daily",
         placement: "right",
-        text: "A new illustrated problem will be presented here every day. If you are not sure what to do, you can start here!"
+        text: "A new illustrated problem is presented every day. If you are not sure where to begin your walk, you can start here!"
       },
       {
         target: "progress",
@@ -250,7 +255,7 @@ const copy = {
       {
         target: "recommendations",
         placement: "right",
-        text: "Here you will find problem recommendations based on your level and your tastes. Tell us which problems felt too hard or too easy, and which ones you liked or disliked, so that your recommendations match your needs."
+        text: "You will receive problem recommendations based on your tastes. Tell us which problems felt too hard or too easy, and which ones you liked or disliked, so that your recommendations match your needs."
       },
       {
         target: "tip",
@@ -260,58 +265,53 @@ const copy = {
       {
         target: "friends",
         placement: "left",
-        text: "Of course, doing mathematics with friends is more fun! This section shows their latest contributions."
+        text: "Of course, mathematics is always more fun with friends! This section shows their latest contributions..."
       },
       {
         target: "chat",
         placement: "left",
-        text: "You can also chat with your friends here."
+        text: "...and you can chat with those friends here too!"
       },
       {
         target: "nav-problems",
         placement: "bottom",
         action: "open-problems",
-        text: "Let us get to the point: click here to open the problems page."
+        text: "Let us get to the point: select the “Problems” area to open the problems page."
       },
       {
         target: "problem-browser",
         placement: "right",
-        text: "You are now on the page that lists all the problems on the site. You can solve problems arranged by difficulty level."
+        text: "You are now on the page listing all the problems on the site. You can sort them by difficulty or domain, or search by keyword."
       },
       {
         target: "open-problem",
-        placement: "bottom",
+        placement: "top",
         action: "open-problem",
-        text: "Here you will find the problems from the first page that may interest you. Let us finally see what one looks like."
+        text: "Here is the list of problems posted by contributors. Let us see what one looks like: select “Open problem” to continue."
       },
       {
         target: "statement",
-        placement: "right",
-        text: "Here is the problem statement. You can work on it by selecting “Work on this problem”. Once you have solved it, select “I solved it”. You may sometimes be asked for verification so that the problem author can assess your good faith and the quality of your work, but this is not automatic. Finally, if you enjoyed the problem, select “Add to favorites”. Remember to do so: it helps keep the site active!"
+        placement: "bottom",
+        text: "Here is the problem statement. You can save it for later by selecting “Work on this problem”. Once you have solved it, select “I solved it”. Finally, if you enjoyed it, select “I liked this problem”. Remember to do so: it helps keep the site active!"
       },
       {
         target: "help",
         placement: "right",
-        text: "If you get stuck, hints and a solution are available below the problem. Problem statements, edits, translations, concepts, hints, and solutions are written by site users like you and me. Some parts may still need to be completed, so we need your help whenever you have an idea that others have not had or have not had time to write down."
+        text: "If you get stuck, hints and a solution may be available below the problem. Everything on the site is written by its users, with moderation by trusted users, much like Wikipedia. Some parts may still need to be completed, which is why we need your help!"
       },
       {
         target: "nav-concepts",
         placement: "bottom",
-        text: "The tour is almost over. Here we have an encyclopedia containing all the mathematical concepts featured on the site. Select an unfamiliar word in a problem statement to view its concept page. You will find a clear definition, examples, and practice exercises, which are different from problems."
+        text: "An important part of the site is its encyclopedia of the mathematical concepts found in problems. Select an unfamiliar word in a statement to open the related concept. You will find a clear definition, examples, and practice exercises."
       },
       {
-        target: "nav-users",
-        placement: "bottom",
-        text: "The tour is almost over. Here we have an encyclopedia containing all the mathematical concepts featured on the site. Select an unfamiliar word in a problem statement to view its concept page. You will find a clear definition, examples, and practice exercises, which are different from problems."
-      },
-      {
-        text: "There we are. I think we have covered the site's main features. There are others, of course, and I will let you discover them for yourself. I may be the oldest tree on the site, but I do not have all the time in the world ;) !"
+        text: "That covers the site's main features. We will let you discover the others for yourself. Many more are still being prepared, so stay tuned!"
       },
       {
         target: "menu",
         placement: "left",
         action: "finish",
-        text: "Joking aside, Math Woods is a collaborative site. Some features are still under construction and a few bugs remain. Please tell us about them by opening the three-line menu in the top-right corner and selecting “Suggestions”. The team will be very happy to receive any feedback. Remember to create an account so that you can access all the current problems and concepts on the site. Have fun!"
+        text: "To sum up, Math Woods is collaborative. It is an ambitious site that needs help from as many people as possible to thrive. Share your suggestions by opening the three-line menu in the top-right corner and selecting “Suggestions”. The team will be very happy to receive any feedback. All that remains is to create an account, take part, and enjoy the site!"
       }
     ] satisfies TourStep[]
   }
@@ -450,8 +450,14 @@ function TourHome({ activeTarget, text }: { activeTarget?: TourTarget; text: (ty
             className={`math-tour-side-card ${targetClass(activeTarget, "friends")}`}
           >
             <h2>{text.friends}</h2>
-            <div className="math-tour-activity"><span>O</span><p>{text.bearAction}<small>{text.justNow}</small></p></div>
-            <div className="math-tour-activity"><span>B</span><p>{text.woodAction}<small>{text.justNow}</small></p></div>
+            <div className="math-tour-activity">
+              <span>J</span>
+              <p><strong>{text.friendOne}</strong> {text.friendOneAction}<small>{text.justNow}</small></p>
+            </div>
+            <div className="math-tour-activity">
+              <span>L</span>
+              <p><strong>{text.friendTwo}</strong> {text.friendTwoAction}<small>{text.justNow}</small></p>
+            </div>
           </section>
         </aside>
       </main>
@@ -519,10 +525,13 @@ function TourProblem({ activeTarget, text }: { activeTarget?: TourTarget; text: 
       <section data-tour-target="statement" className={`math-tour-paper ${targetClass(activeTarget, "statement")}`}>
         <h2>{text.statement}</h2>
         <p>{text.statementBody}</p>
+        <div className="math-tour-problem-illustration">
+          <EclipseVisual />
+        </div>
         <div className="math-tour-problem-actions">
           <button type="button"><Check size={17} aria-hidden="true" />{text.solvedAction}</button>
           <button type="button">{text.workAction}</button>
-          <button type="button"><Bookmark size={17} aria-hidden="true" />{text.favoriteAction}</button>
+          <button type="button"><Heart size={17} aria-hidden="true" />{text.favoriteAction}</button>
         </div>
       </section>
       <section data-tour-target="help" className={`math-tour-help-grid ${targetClass(activeTarget, "help")}`}>
@@ -575,8 +584,8 @@ export function MathWoodsTour({ initialLocale }: { initialLocale: TourLocale }) 
       return;
     }
     const previous = stepIndex - 1;
-    if (previous <= 8) setSurface("home");
-    else if (previous <= 10) setSurface("problem-list");
+    if (previous <= 9) setSurface("home");
+    else if (previous <= 11) setSurface("problem-list");
     else setSurface("problem");
     setStepIndex(previous);
   };
@@ -652,12 +661,7 @@ export function MathWoodsTour({ initialLocale }: { initialLocale: TourLocale }) 
               <button type="button" onClick={goPrevious} className="math-tour-back">
                 <ArrowLeft size={16} aria-hidden="true" />{text.previous}
               </button>
-              {step?.action === "open-problems" || step?.action === "open-problem" ? (
-                <span className="math-tour-action-hint">
-                  <ChevronRight size={16} aria-hidden="true" />
-                  {step.action === "open-problems" ? text.problems : text.openProblem}
-                </span>
-              ) : step?.action === "finish" ? (
+              {step?.action === "open-problems" || step?.action === "open-problem" ? null : step?.action === "finish" ? (
                 <button type="button" onClick={() => setStepIndex(-1)} className="mw-primary-button">
                   <Check size={16} aria-hidden="true" />{text.finish}
                 </button>

@@ -40,7 +40,7 @@ export const en = {
     tips: "Tips",
     mathematicians: "Mathematicians",
     users: "Users",
-    tour: "Tutorial",
+    tour: "Getting started with Math Woods",
     searchAriaLabel: "Search Math Woods",
     searchPlaceholder: "Search",
     moreAriaLabel: "Open navigation menu",
@@ -317,7 +317,7 @@ export const en = {
       reputation: "reputation",
       problems: "problems",
       dailyProblems: "problems of the day",
-      favorites: "favorites",
+      favorites: "likes received",
       solved: "solved"
     },
     roles: {
@@ -338,9 +338,9 @@ export const en = {
         subtitle: "Each day one of a member's problems was featured adds 50 reputation points."
       },
       favorites: {
-        label: "Number of favorites",
-        title: "Ranking by favorites",
-        subtitle: "Problems that other members have saved as favorites."
+        label: "Number of likes received",
+        title: "Ranking by likes received",
+        subtitle: "Problems liked by other members."
       },
       solved: {
         label: "Number of solved",
@@ -396,7 +396,7 @@ export const en = {
     openToCollaborationHelp: "Let others know they may contact you about problems, concepts, or explorations.",
     overview: "Overview",
     solved: "Solved",
-    favorites: "Favorites",
+    favorites: "Liked problems",
     achievements: "Achievements",
     problems: "Problems",
     noPublicProblems: "No public problems yet.",
@@ -405,8 +405,8 @@ export const en = {
     noPlaylists: "No explorations yet.",
     solvedProblems: "Solved problems",
     noSolvedProblems: "No solved problems yet.",
-    favoriteProblems: "Favorite problems",
-    noFavoriteProblems: "No favorite problems yet.",
+    favoriteProblems: "Liked problems",
+    noFavoriteProblems: "No liked problems yet.",
     locked: "Locked",
     contributions: "Contributions",
     conceptsCreated: "Concepts created",
@@ -511,7 +511,7 @@ export const en = {
       allProblems: "all problems",
       empty: "No problems yet.",
       attempts: (count: number) => `${count} ${count === 1 ? "attempt" : "attempts"}`,
-      favorites: (count: number) => `${count} ${count === 1 ? "favorite" : "favorites"}`,
+      favorites: (count: number) => `${count} ${count === 1 ? "like" : "likes"}`,
       difficultyLine: (difficulty: number | null, attempts: string, favorites: string) =>
         `difficulty ${difficulty ?? "unset"}/100 / ${attempts} / ${favorites}`
     },
@@ -738,8 +738,8 @@ export const en = {
     noMatches: "No problems match these filters.",
     otherLanguageFound: (count: number) => `${count} ${count === 1 ? "problem" : "problems"} found in other languages.`,
     yourProblem: "Your problem",
-    favoriteProblem: "Favorite problem",
-    favorites: "Favorites",
+    favoriteProblem: "Liked problem",
+    favorites: "Likes",
     browserUpdateFailed: "The change could not be saved. Try again.",
     domainHidden: "Domain hidden",
     spoilerDomainHidden: "spoiler domain hidden",
@@ -830,7 +830,7 @@ export const en = {
     sortOptions: [
       { value: "newest", label: "Newest" },
       { value: "solved", label: "Most solved" },
-      { value: "favorited", label: "Most favorited" },
+      { value: "favorited", label: "Most liked" },
       { value: "difficulty", label: "Hardest first" },
       { value: "easiest", label: "Easiest first" }
     ]
@@ -904,8 +904,8 @@ export const en = {
     yourSolutionReportPending: "Your report is awaiting review",
     shortAnswer: "Short answer",
     explainAnswer: "Explain your answer briefly...",
-    removeFavorite: "Remove from favorites",
-    favoriteCount: (count: number) => `${count} ${count === 1 ? "favorite" : "favorites"}`,
+    removeFavorite: "Unlike this problem",
+    favoriteCount: (count: number) => `${count} ${count === 1 ? "like" : "likes"}`,
     reviewStatus: (status: string) => `Review: ${status}`,
     messages: (count: number) => `${count} ${count === 1 ? "message" : "messages"}`,
     openDiscussion: "Open discussion",
@@ -937,8 +937,8 @@ export const en = {
     authorReviewDescription: "Send a short explanation to the problem author for validation.",
     requestVerification: "Request verification",
     yourProblem: "Your problem",
-    favorited: "Favorited",
-    addFavorite: "Add to favorites",
+    favorited: "I liked this problem",
+    addFavorite: "I like this problem",
     edit: "Edit",
     discussions: "Discussions",
     report: "Report",

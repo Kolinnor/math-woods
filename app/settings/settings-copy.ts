@@ -59,8 +59,8 @@ const frenchSettingsText: Record<string, string> = {
   "Created": "Créée le",
   "Last seen": "Dernière activité le",
   "Delete account": "Supprimer le compte",
-  "This removes your login, email, votes, favorites, and sessions. Public content stays under a deleted account.":
-    "Cette action supprime vos identifiants, votre adresse e-mail, vos votes, vos favoris et vos sessions. Le contenu public reste attribué à un compte supprimé.",
+  "This removes your login, email, votes, likes, and sessions. Public content stays under a deleted account.":
+    "Cette action supprime vos identifiants, votre adresse e-mail, vos votes, vos J’aime et vos sessions. Le contenu public reste attribué à un compte supprimé.",
   "Close": "Fermer",
   "Type {name} to confirm.": "Saisissez {name} pour confirmer.",
   "Cancel": "Annuler",

@@ -42,7 +42,7 @@ export const fr = {
     tips: "Conseils",
     mathematicians: "Mathématiciens",
     users: "Utilisateurs",
-    tour: "Tutoriel",
+    tour: "Premiers pas sur Math Woods",
     searchAriaLabel: "Rechercher sur Math Woods",
     searchPlaceholder: "Rechercher",
     moreAriaLabel: "Ouvrir le menu de navigation",
@@ -319,7 +319,7 @@ export const fr = {
       reputation: "réputation",
       problems: "problèmes",
       dailyProblems: "problèmes du jour",
-      favorites: "favoris",
+      favorites: "J’aime reçus",
       solved: "résolus"
     },
     roles: {
@@ -340,9 +340,9 @@ export const fr = {
         subtitle: "Chaque journée où un problème du membre a été mis en avant ajoute 50 points de réputation."
       },
       favorites: {
-        label: "Nombre de favoris",
-        title: "Classement par favoris",
-        subtitle: "Problèmes enregistrés comme favoris par les autres membres."
+        label: "Nombre de J’aime reçus",
+        title: "Classement par J’aime reçus",
+        subtitle: "Problèmes aimés par les autres membres."
       },
       solved: {
         label: "Nombre de résolutions",
@@ -398,7 +398,7 @@ export const fr = {
     openToCollaborationHelp: "Indiquez aux autres membres qu'ils peuvent vous contacter au sujet de problèmes, concepts ou explorations.",
     overview: "Vue d'ensemble",
     solved: "Résolus",
-    favorites: "Favoris",
+    favorites: "Problèmes aimés",
     achievements: "Succès",
     problems: "Problèmes",
     noPublicProblems: "Aucun problème public pour le moment.",
@@ -407,8 +407,8 @@ export const fr = {
     noPlaylists: "Aucune exploration pour le moment.",
     solvedProblems: "Problèmes résolus",
     noSolvedProblems: "Aucun problème résolu pour le moment.",
-    favoriteProblems: "Problèmes favoris",
-    noFavoriteProblems: "Aucun problème favori pour le moment.",
+    favoriteProblems: "Problèmes aimés",
+    noFavoriteProblems: "Aucun problème aimé pour le moment.",
     locked: "Verrouillé",
     contributions: "Contributions",
     conceptsCreated: "Concepts créés",
@@ -514,7 +514,7 @@ export const fr = {
       allProblems: "tous les problèmes",
       empty: "Aucun problème pour l'instant.",
       attempts: (count: number) => `${count} tentative${count > 1 ? "s" : ""}`,
-      favorites: (count: number) => `${count} favori${count > 1 ? "s" : ""}`,
+      favorites: (count: number) => `${count} J’aime`,
       difficultyLine: (difficulty: number | null, attempts: string, favorites: string) =>
         `difficulté ${difficulty ?? "non définie"}/100 / ${attempts} / ${favorites}`
     },
@@ -743,8 +743,8 @@ export const fr = {
     otherLanguageFound: (count: number) =>
       `${count} problème${count > 1 ? "s" : ""} trouvé${count > 1 ? "s" : ""} dans d'autres langues.`,
     yourProblem: "Votre problème",
-    favoriteProblem: "Problème favori",
-    favorites: "Favoris",
+    favoriteProblem: "Problème aimé",
+    favorites: "J’aime",
     browserUpdateFailed: "La modification n'a pas pu être enregistrée. Réessayez.",
     domainHidden: "Domaine masqué",
     spoilerDomainHidden: "domaine spoiler masqué",
@@ -835,7 +835,7 @@ export const fr = {
     sortOptions: [
       { value: "newest", label: "Plus récents" },
       { value: "solved", label: "Les plus résolus" },
-      { value: "favorited", label: "Les plus favoris" },
+      { value: "favorited", label: "Les plus aimés" },
       { value: "difficulty", label: "Plus difficiles d'abord" },
       { value: "easiest", label: "Plus faciles d'abord" }
     ]
@@ -909,8 +909,8 @@ export const fr = {
     yourSolutionReportPending: "Votre signalement est en attente d'examen",
     shortAnswer: "Réponse courte",
     explainAnswer: "Expliquez brièvement votre réponse...",
-    removeFavorite: "Retirer des favoris",
-    favoriteCount: (count: number) => `${count} favori${count > 1 ? "s" : ""}`,
+    removeFavorite: "Je n’aime plus ce problème",
+    favoriteCount: (count: number) => `${count} J’aime`,
     reviewStatus: (status: string) => `Validation : ${status}`,
     messages: (count: number) => `${count} message${count > 1 ? "s" : ""}`,
     openDiscussion: "Ouvrir la discussion",
@@ -942,8 +942,8 @@ export const fr = {
     authorReviewDescription: "Envoyez une courte explication à l'auteur du problème pour validation.",
     requestVerification: "Demander une vérification",
     yourProblem: "Votre problème",
-    favorited: "En favori",
-    addFavorite: "Ajouter ce problème aux favoris",
+    favorited: "J’ai aimé ce problème",
+    addFavorite: "J’aime ce problème",
     edit: "Modifier",
     discussions: "Discussions",
     report: "Signaler",

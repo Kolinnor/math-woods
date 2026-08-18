@@ -2316,6 +2316,14 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   margin: 0.35rem 0;
 }
 
+.nav-menu-tour-divider {
+  opacity: 0.55;
+}
+
+.nav-menu-popover .nav-menu-tour-link {
+  color: var(--muted);
+}
+
 .friends-menu {
   position: relative;
 }
@@ -20659,6 +20667,10 @@ body:has(.math-woods-tour) .site-main {
   margin: 0;
 }
 
+.math-tour-activity strong {
+  font-weight: 800;
+}
+
 .math-tour-activity small {
   display: block;
   margin-top: 4px;
@@ -20694,6 +20706,10 @@ body:has(.math-woods-tour) .site-main {
   background: #b85a3b;
   font-size: 0.68rem;
   font-weight: 800;
+}
+
+.math-tour-chat.math-tour-target.active {
+  position: fixed;
 }
 
 .math-tour-content-page {
@@ -20799,6 +20815,16 @@ body:has(.math-woods-tour) .site-main {
   font-family: var(--font-serif), Georgia, serif;
   font-size: 1.14rem;
   line-height: 1.8;
+}
+
+.math-tour-problem-illustration {
+  margin-top: 24px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.math-tour-problem-illustration .math-tour-eclipse {
+  min-height: 190px;
 }
 
 .math-tour-problem-actions {
@@ -20955,15 +20981,6 @@ body:has(.math-woods-tour) .site-main {
   background: transparent;
   color: #415248;
   font-weight: 750;
-}
-
-.math-tour-action-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #7a4a1c;
-  font-size: 0.86rem;
-  font-weight: 800;
 }
 
 @media (max-width: 820px) {

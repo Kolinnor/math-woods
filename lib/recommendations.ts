@@ -287,7 +287,7 @@ export function scoreProblemRecommendation(
     }
   }
 
-  if (candidate.favorite) parts.push(scorePart("favorite", "Previously favorited", 7));
+  if (candidate.favorite) parts.push(scorePart("favorite", "Previously liked", 7));
   if (candidate.isExercise && isPreUniversity(options.mathLevel)) {
     parts.push(scorePart("exercise_fit", "Practice exercise for the selected level", 5));
   }

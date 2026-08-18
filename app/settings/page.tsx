@@ -705,7 +705,7 @@ export default async function SettingsPage({
             <div>
               <h2>{text("Delete account")}</h2>
               <p>
-                {text("This removes your login, email, votes, favorites, and sessions. Public content stays under a deleted account.")}
+                {text("This removes your login, email, votes, likes, and sessions. Public content stays under a deleted account.")}
               </p>
             </div>
             <DeleteAccountDialog
@@ -715,7 +715,7 @@ export default async function SettingsPage({
                 cancel: text("Cancel"),
                 close: text("Close"),
                 confirm: text("Type {name} to confirm.").replace("{name}", accountName),
-                description: text("This removes your login, email, votes, favorites, and sessions. Public content stays under a deleted account."),
+                description: text("This removes your login, email, votes, likes, and sessions. Public content stays under a deleted account."),
                 title: text("Delete account")
               }}
             />
