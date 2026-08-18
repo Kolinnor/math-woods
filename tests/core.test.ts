@@ -2035,6 +2035,10 @@ assert.doesNotMatch(latexDisplayRule, /display:\s*block/);
 assert.doesNotMatch(latexDisplayRule, /overflow-x:\s*auto/);
 assert.match(editorCssSource, /\.markdown-editor \.cm-latex-display-line \{\s*text-align:\s*center;/);
 assert.match(editorCssSource, /\.prose-math \.katex-display \{\s*margin:\s*0\.4em 0;/);
+const difficultyNumberRule = editorCssSource.match(/\.mw-difficulty strong \{([^}]*)\}/)?.[1] ?? "";
+assert.match(difficultyNumberRule, /font-variant-numeric:\s*tabular-nums/);
+assert.match(difficultyNumberRule, /min-width:\s*3ch/);
+assert.match(editorCssSource, /\.home-news-list > a \{[^}]*grid-template-columns:\s*70px minmax\(0, 1fr\) auto;/s);
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");

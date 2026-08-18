@@ -148,7 +148,10 @@
 .mw-difficulty strong {
   font-family: var(--font-serif), Georgia, serif;
   font-size: 22px;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
+  min-width: 3ch;
+  text-align: right;
 }
 
 .mw-difficulty-compact strong {
@@ -559,7 +562,7 @@ body:has(.problem-detail-shell) {
   color: var(--mw-text);
   display: grid;
   gap: 13px;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
+  grid-template-columns: 70px minmax(0, 1fr) auto;
   padding: 14px 18px;
 }
 
