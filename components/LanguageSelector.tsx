@@ -12,6 +12,7 @@ import {
   parseActiveContentLanguage
 } from "@/lib/languages";
 import {
+  hrefWithTranslationViewLanguage,
   requestedTranslationLanguage,
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
@@ -44,6 +45,14 @@ export function LanguageSelector({ initialLanguage, label, title }: LanguageSele
     const nextLanguage = activeRequestedLanguage ?? initialActiveLanguage;
     setLanguage(nextLanguage);
 
+    if (!activeRequestedLanguage) {
+      const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const historyHref = hrefWithTranslationViewLanguage(currentHref, nextLanguage);
+      if (historyHref !== currentHref) {
+        window.history.replaceState(window.history.state, "", historyHref);
+      }
+    }
+
     if (activeRequestedLanguage && activeRequestedLanguage !== initialActiveLanguage) {
       rememberLanguage(activeRequestedLanguage);
       router.refresh();
@@ -61,12 +70,12 @@ export function LanguageSelector({ initialLanguage, label, title }: LanguageSele
           const nextLanguage = parseActiveContentLanguage(event.target.value);
           setLanguage(nextLanguage);
           rememberLanguage(nextLanguage);
-          const currentUrl = new URL(window.location.href);
-          const currentHref = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
-          currentUrl.searchParams.delete(TRANSLATION_VIEW_LANGUAGE_PARAM);
-          const nextHref = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
-          if (nextHref === currentHref) router.refresh();
-          else router.replace(nextHref as Route);
+          const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+          const currentEntryHref = hrefWithTranslationViewLanguage(currentHref, language);
+          if (currentEntryHref !== currentHref) {
+            window.history.replaceState(window.history.state, "", currentEntryHref);
+          }
+          router.push(hrefWithTranslationViewLanguage(currentHref, nextLanguage) as Route, { scroll: false });
         }}
       >
         {ACTIVE_CONTENT_LANGUAGES.map((option) => (

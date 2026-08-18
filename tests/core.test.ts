@@ -386,6 +386,7 @@ import {
 } from "../lib/search-ranking.ts";
 import { parseTagInput } from "../lib/tags.ts";
 import {
+  hrefWithTranslationViewLanguage,
   nextMissingTranslationLanguage,
   preferredTranslationForLanguage,
   selectContentTranslation,
@@ -476,6 +477,14 @@ assert.equal(preferredTranslationForLanguage("fr", groupedTranslations, "fr"), n
 assert.equal(nextMissingTranslationLanguage("en", groupedTranslations, "fr"), null);
 assert.equal(nextMissingTranslationLanguage("fr", [{ language: "es", slug: "relaciones-de-vieta" }], "it"), "en");
 assert.deepEqual([...translationLanguageSet("en", groupedTranslations)], ["en", "fr", "es"]);
+assert.equal(
+  hrefWithTranslationViewLanguage("/problems?sort=new#results", "fr"),
+  "/problems?sort=new&viewLanguage=fr#results"
+);
+assert.equal(
+  hrefWithTranslationViewLanguage("/concepts/groupes?viewLanguage=fr", "en"),
+  "/concepts/groupes?viewLanguage=en"
+);
 const fallbackTranslations = [
   { language: "fr", slug: "groupes", isSource: true },
   { language: "en", slug: "groups" },
@@ -2011,6 +2020,7 @@ const problemDetailSource = readFileSync(join("app", "problems", "[slug]", "page
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
 const oauthCompleteSource = readFileSync(join("app", "login", "complete", "page.tsx"), "utf-8");
+const languageSelectorSource = readFileSync(join("components", "LanguageSelector.tsx"), "utf-8");
 assert.match(layoutSource, /\/about\/tutorial/);
 assert.match(layoutSource, /<GuestProgressPrompt \/>/);
 assert.match(guestProgressPromptSource, /dictionaryForLocale/);
@@ -2024,6 +2034,9 @@ assert.match(homeSource, /\/about\/tutorial/);
 assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
 assert.doesNotMatch(oauthCompleteSource, /defaultValue=\{attempt\.providerDisplayName/);
 assert.match(oauthCompleteSource, /complete\.publicPseudonymHelp/);
+assert.match(languageSelectorSource, /window\.history\.replaceState\(window\.history\.state/);
+assert.match(languageSelectorSource, /router\.push\(hrefWithTranslationViewLanguage/);
+assert.doesNotMatch(languageSelectorSource, /router\.replace\(/);
 assert.match(tourSource, /Ancient Tree/);
 assert.match(tourSource, /cr[ée]ateur du site/);
 assert.match(tourSource, /tutoriel est bient[oô]t fini/i);

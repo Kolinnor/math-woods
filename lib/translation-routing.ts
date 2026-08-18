@@ -91,6 +91,12 @@ export function requestedTranslationLanguage(value: unknown) {
     : null;
 }
 
+export function hrefWithTranslationViewLanguage(href: string, language: string) {
+  const url = new URL(href, "https://mathwoods.local");
+  url.searchParams.set(TRANSLATION_VIEW_LANGUAGE_PARAM, parseContentLanguage(language));
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export function contentLanguageViewHref(
   hrefPrefix: TranslatableHrefPrefix,
   slug: string,
