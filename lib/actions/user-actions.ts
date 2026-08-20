@@ -10,6 +10,7 @@ import { parseMathLevel } from "@/lib/math-levels";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { normalizeDisplayName } from "@/lib/user-display";
 import { parseUserDiscoverySource } from "@/lib/user-discovery-source";
+import { profilePath } from "@/lib/usernames";
 
 export async function updateProfileAction(formData: FormData) {
   const user = await requireUser();
@@ -38,7 +39,7 @@ export async function updateProfileAction(formData: FormData) {
 
   await checkProfileAchievements(user.id);
 
-  revalidatePath(`/profile/${user.username}`);
+  revalidatePath(profilePath(user));
   revalidatePath("/users");
-  redirect(`/profile/${user.username}`);
+  redirect(profilePath(user));
 }

@@ -9,7 +9,7 @@ import { getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
-import { usernameLookupFilter } from "@/lib/usernames";
+import { normalizeUsernameLookup, profilePath, publicProfileLookupWhere } from "@/lib/usernames";
 import { USER_DISCOVERY_SOURCES } from "@/lib/user-discovery-source";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +21,13 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
   const { username } = await params;
 
   const user = await prisma.user.findFirst({
-    where: { username: usernameLookupFilter(username) }
+    where: publicProfileLookupWhere(username)
   });
   if (!user) notFound();
-  if (currentUser.id !== user.id) redirect(`/profile/${user.username}`);
+  if (currentUser.id !== user.id) redirect(profilePath(user));
+  if (normalizeUsernameLookup(username) !== normalizeUsernameLookup(user.profileSlug)) {
+    redirect(profilePath(user, "/edit"));
+  }
   const avatarPresetLabels = Object.fromEntries(
     DEFAULT_AVATAR_PRESETS.map((preset) => [preset, t.profile.profileImagePresetLabel(preset)])
   ) as Record<DefaultAvatarPreset, string>;

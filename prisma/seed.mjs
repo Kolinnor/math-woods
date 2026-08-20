@@ -266,6 +266,7 @@ async function main() {
   const curator = await prisma.user.upsert({
     where: { username: "curator" },
     update: {
+      profileSlug: "curator",
       displayName: "Curator",
       email: "curator@example.com",
       passwordHash: hashPassword("curator-demo"),
@@ -273,6 +274,7 @@ async function main() {
     },
     create: {
       username: "curator",
+      profileSlug: "curator",
       displayName: "Curator",
       email: "curator@example.com",
       passwordHash: hashPassword("curator-demo"),

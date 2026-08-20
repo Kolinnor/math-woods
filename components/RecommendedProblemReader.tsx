@@ -95,18 +95,18 @@ export function RecommendedProblemReader({
           tabIndex={0}
           onClick={(event) => {
             if ((event.target as HTMLElement).closest("a")) return;
-            router.push(`/problems/${selected.slug}`);
+            router.push(`/problems/${selected.slug}?recommended=1`);
           }}
           onKeyDown={(event) => {
             if ((event.target as HTMLElement).closest("a")) return;
-            if (event.key === "Enter") router.push(`/problems/${selected.slug}`);
+            if (event.key === "Enter") router.push(`/problems/${selected.slug}?recommended=1`);
           }}
         >
           <div className="prose-math" dangerouslySetInnerHTML={{ __html: selected.bodyHtml }} />
           {overflows && <span className="recommendation-statement-fade" aria-hidden="true" />}
         </div>
         <footer>
-          <Link href={`/problems/${selected.slug}`} className="mw-primary-button">
+          <Link href={`/problems/${selected.slug}?recommended=1`} className="mw-primary-button">
             {openLabel}
           </Link>
         </footer>

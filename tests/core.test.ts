@@ -16,6 +16,7 @@ import {
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { markdownDraftConflictsWithSource } from "../lib/markdown-drafts.ts";
 import { markdownImageSizingFromSrc, markdownImageSrcWithWidth } from "../lib/markdown-images.ts";
+import { mathWoodsTourCopy, parseMathWoodsTourStep } from "../lib/math-woods-tour.ts";
 import {
   MAX_CONCEPT_EXERCISES,
   parseConceptExerciseCount,
@@ -34,7 +35,12 @@ import {
 } from "../lib/contribution-tasks.ts";
 import { slugify } from "../lib/slug.ts";
 import { isSitePresenceId, sitePresenceIsActive } from "../lib/site-presence-config.ts";
-import { normalizeUsernameLookup, usernameLookupFilter } from "../lib/usernames.ts";
+import {
+  normalizeUsernameLookup,
+  profilePath,
+  publicProfileLookupWhere,
+  usernameLookupFilter
+} from "../lib/usernames.ts";
 import { parseUserDiscoverySource } from "../lib/user-discovery-source.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
@@ -86,6 +92,8 @@ import {
 } from "../lib/problem-review-state.ts";
 import {
   buildRecommendationProfile,
+  composeProblemRecommendations,
+  recommendationDifficultyAdjustment,
   scoreProblemRecommendation
 } from "../lib/recommendations.ts";
 import {
@@ -419,6 +427,14 @@ assert.equal(slugify("  L'espace vectoriel ! "), "lespace-vectoriel");
 assert.equal(normalizeUsernameLookup(" Paulownia "), "paulownia");
 assert.equal(normalizeUsernameLookup("ＰＡＵＬＯＷＮＩＡ"), "paulownia");
 assert.deepEqual(usernameLookupFilter("Paulownia"), { equals: "paulownia", mode: "insensitive" });
+assert.equal(profilePath({ profileSlug: "anduril" }), "/profile/anduril");
+assert.equal(profilePath({ profileSlug: "anduril" }, "?view=solved"), "/profile/anduril?view=solved");
+assert.deepEqual(publicProfileLookupWhere(" Anduril "), {
+  OR: [
+    { profileSlug: { equals: "anduril", mode: "insensitive" } },
+    { username: { equals: "anduril", mode: "insensitive" } }
+  ]
+});
 assert.equal(problemDifficultyTone(null), "#8a9184");
 assert.equal(problemDifficultyTone(1), "#4f7955");
 assert.equal(problemDifficultyTone(20), "#617a42");
@@ -2016,12 +2032,26 @@ for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "no
   assert.match(source, /<AsyncMarkdownInline markdown=\{notification\.body\}/);
 }
 const tourSource = readFileSync(join("components", "MathWoodsTour.tsx"), "utf-8");
+const tourOverlaySource = readFileSync(join("components", "MathWoodsTourOverlay.tsx"), "utf-8");
+const tourCopySource = readFileSync(join("lib", "math-woods-tour.ts"), "utf-8");
 const layoutSource = readFileSync(join("app", "layout.tsx"), "utf-8");
 const guestProgressPromptSource = readFileSync(join("components", "GuestProgressPrompt.tsx"), "utf-8");
 const guestContentGateSource = readFileSync(join("components", "GuestContentViewGate.tsx"), "utf-8");
 const problemDetailSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
+const problemBrowserSource = readFileSync(join("app", "problems", "page.tsx"), "utf-8");
+const usersPageSource = readFileSync(join("app", "users", "page.tsx"), "utf-8");
+const usersRankingSelectSource = readFileSync(join("app", "users", "UsersRankingSelect.tsx"), "utf-8");
+const userReputationSource = readFileSync(join("lib", "user-reputation.ts"), "utf-8");
+const rolesPageSource = readFileSync(join("app", "roles", "page.tsx"), "utf-8");
+const rolesEditPageSource = readFileSync(join("app", "roles", "edit", "page.tsx"), "utf-8");
+const rolesPageActionSource = readFileSync(join("lib", "actions", "roles-page-actions.ts"), "utf-8");
+const faqSource = readFileSync(join("lib", "faq.ts"), "utf-8");
+const frenchFaqSource = readFileSync(join("lib", "faq-fr.ts"), "utf-8");
+const dailyProblemCardSource = readFileSync(join("components", "DailyProblemCard.tsx"), "utf-8");
+const dailyTipCardSource = readFileSync(join("components", "DailyTipCard.tsx"), "utf-8");
+const friendsMenuSource = readFileSync(join("components", "FriendsMenuClient.tsx"), "utf-8");
 const oauthCompleteSource = readFileSync(join("app", "login", "complete", "page.tsx"), "utf-8");
 const languageSelectorSource = readFileSync(join("components", "LanguageSelector.tsx"), "utf-8");
 assert.match(layoutSource, /\/about\/tutorial/);
@@ -2041,20 +2071,60 @@ assert.match(languageSelectorSource, /window\.history\.replaceState\(window\.his
 assert.match(languageSelectorSource, /router\.push\(hrefWithTranslationViewLanguage/);
 assert.doesNotMatch(languageSelectorSource, /router\.replace\(/);
 assert.match(layoutSource, /nav-menu-tour-divider[\s\S]*?nav-menu-tour-link/);
-assert.match(tourSource, /environ trois minutes/);
-assert.match(tourSource, /friendOne: "Jules"/);
-assert.match(tourSource, /friendTwo: "Louise"/);
-assert.match(tourSource, /<Heart size=\{17\}/);
-assert.match(tourSource, /math-tour-problem-illustration/);
-assert.doesNotMatch(tourSource, /Ancient Tree/);
-assert.doesNotMatch(tourSource, /cr[ée]ateur du site/);
-assert.doesNotMatch(tourSource, /tutoriel est bient[oô]t fini/i);
-assert.doesNotMatch(tourSource, /tr[êe]ve de plaisanterie/i);
-assert.doesNotMatch(tourSource, /target: "nav-users"/);
-const frenchTourSource = tourSource.slice(tourSource.indexOf("  fr: {"), tourSource.indexOf("  en: {"));
-const englishTourSource = tourSource.slice(tourSource.indexOf("  en: {"), tourSource.indexOf("} as const;"));
-assert.equal(frenchTourSource.match(/^\s*text:/gm)?.length, 17);
-assert.equal(englishTourSource.match(/^\s*text:/gm)?.length, 17);
+assert.match(tourSource, /\[MATH_WOODS_TOUR_PARAM\]: "1"/);
+assert.match(tourSource, /router\.push\(`\/\?\$\{params\.toString\(\)\}`\)/);
+assert.doesNotMatch(tourSource, /TourHome|TourProblemList|TourProblem/);
+assert.match(tourOverlaySource, /MutationObserver/);
+assert.match(tourOverlaySource, /window\.history\.replaceState/);
+assert.match(tourOverlaySource, /event\.preventDefault\(\)/);
+assert.match(tourOverlaySource, /math-tour-live-target-interactive/);
+assert.match(tourOverlaySource, /details:not\(\[open\]\)/);
+assert.match(tourOverlaySource, /event\.key !== "Tab"/);
+assert.match(tourOverlaySource, /aria-modal="true"/);
+assert.match(tourCopySource, /véritables pages du site/);
+assert.match(tourCopySource, /site's real pages directly/);
+assert.doesNotMatch(tourCopySource, /Ancient Tree/);
+assert.doesNotMatch(tourCopySource, /cr[ée]ateur du site/);
+assert.doesNotMatch(tourCopySource, /tutoriel est bient[oô]t fini/i);
+assert.doesNotMatch(tourCopySource, /tr[êe]ve de plaisanterie/i);
+assert.equal(mathWoodsTourCopy.fr.steps.length, 17);
+assert.equal(mathWoodsTourCopy.en.steps.length, 17);
+assert.equal(parseMathWoodsTourStep("-3", 17), 0);
+assert.equal(parseMathWoodsTourStep("99", 17), 16);
+assert.match(layoutSource, /data-tour-target="nav-problems"/);
+assert.match(layoutSource, /data-tour-target="nav-concepts"/);
+assert.match(layoutSource, /data-tour-target="menu"/);
+assert.match(layoutSource, /<MathWoodsTourOverlay/);
+assert.match(dailyProblemCardSource, /data-tour-target="daily"/);
+assert.match(dailyTipCardSource, /data-tour-target="tip"/);
+assert.match(homeSource, /data-tour-target="progress"/);
+assert.match(homeSource, /data-tour-target="recommendations"/);
+assert.match(homeSource, /data-tour-target="friends"/);
+assert.match(friendsMenuSource, /data-tour-target="chat"/);
+assert.match(problemBrowserSource, /data-tour-target="problem-browser"/);
+assert.match(problemBrowserSource, /data-tour-target=\{problemIndex === 0 \? "open-problem"/);
+assert.match(problemDetailSource, /data-tour-target="statement"/);
+assert.match(problemDetailSource, /data-tour-target="help"/);
+assert.match(problemDetailSource, /user && queryParams\.recommended === "1" && !tourMode && !isOwnProblem/);
+assert.match(guestProgressPromptSource, /searchParams\.get\("tour"\) !== "1"/);
+assert.match(guestContentGateSource, /searchParams\.get\("tour"\) === "1"/);
+assert.match(usersPageSource, /const USERS_PER_PAGE = 25/);
+assert.match(usersPageSource, /users\.slice\(firstUserIndex, firstUserIndex \+ USERS_PER_PAGE\)/);
+assert.match(usersPageSource, /firstUserIndex \+ index \+ 1/);
+assert.match(usersPageSource, /name="q"/);
+assert.match(usersPageSource, /normalizeSearchText/);
+assert.match(usersPageSource, /usersHref\(mode, currentPage \+ 1, searchQuery\)/);
+assert.match(usersRankingSelectSource, /new URLSearchParams\(searchParams\.toString\(\)\)/);
+assert.match(usersRankingSelectSource, /nextParams\.delete\("page"\)/);
+assert.doesNotMatch(userReputationSource, /emailVerifiedAt:\s*\{\s*not:\s*null/);
+assert.match(faqSource, /\[Roles page\]\(\/roles\)/);
+assert.match(frenchFaqSource, /\[page Rôles\]\(\/roles\)/);
+assert.doesNotMatch(layoutSource, /href=\{?["']\/roles["']/);
+assert.match(rolesPageSource, /roles-markdown-frame/);
+assert.match(rolesPageSource, /canUseAdminTools/);
+assert.match(rolesEditPageSource, /<MarkdownEditor/);
+assert.match(rolesPageActionSource, /rolesPageContent\.upsert/);
+assert.match(rolesPageActionSource, /boundedText\([\s\S]*?trim: false/);
 const latexDisplayRule = editorCssSource.match(/\.markdown-editor \.cm-latex-display \{([^}]*)\}/)?.[1] ?? "";
 assert.match(latexDisplayRule, /display:\s*inline-block/);
 assert.doesNotMatch(latexDisplayRule, /display:\s*block/);
@@ -2064,7 +2134,16 @@ assert.match(editorCssSource, /\.prose-math \.katex-display \{\s*margin:\s*0\.4e
 const difficultyNumberRule = editorCssSource.match(/\.mw-difficulty strong \{([^}]*)\}/)?.[1] ?? "";
 assert.match(difficultyNumberRule, /font-variant-numeric:\s*tabular-nums/);
 assert.match(difficultyNumberRule, /min-width:\s*3ch/);
-assert.match(editorCssSource, /\.home-news-list > a \{[^}]*grid-template-columns:\s*70px minmax\(0, 1fr\) auto;/s);
+assert.match(editorCssSource, /--mw-difficulty-column-width:\s*70px/);
+assert.match(
+  editorCssSource,
+  /\.home-news-list > a \{[^}]*grid-template-columns:\s*var\(--mw-difficulty-column-width\) minmax\(0, 1fr\) auto;/s
+);
+assert.match(
+  editorCssSource,
+  /\.problem-ledger-content \{[^}]*grid-template-columns:\s*var\(--mw-difficulty-column-width\) minmax\(0, 1fr\)/s
+);
+assert.doesNotMatch(editorCssSource, /grid-template-columns:\s*(?:40|46|48|52|60)px minmax\(0, 1fr\)/);
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");
@@ -2488,6 +2567,7 @@ const mathematicianFixtures = [
   {
     userId: 1,
     username: "ada",
+    profileSlug: "ada",
     displayName: "Ada",
     avatarBackground: null,
     avatarUrl: null,
@@ -2512,6 +2592,7 @@ const mathematicianFixtures = [
   {
     userId: 2,
     username: "emmy",
+    profileSlug: "emmy",
     displayName: "Emmy",
     avatarBackground: null,
     avatarUrl: null,
@@ -2729,6 +2810,62 @@ assert.deepEqual(selectedFrenchHints.map((hint) => hint.isLanguageFallback), [fa
 assert.deepEqual(
   selectProblemHintsForLanguage(multilingualHints, 10).map((hint) => hint.id),
   [1, 2]
+);
+
+const reverseTranslatedHints = [
+  {
+    id: 10,
+    translationGroupId: "source-first",
+    translatedFromHintId: null,
+    problemId: 30,
+    proofId: null,
+    position: 0,
+    bodyMarkdown: "First source hint",
+    bodyHtml: "<p>First source hint</p>",
+    language: "en",
+    translatedFromProblemId: null
+  },
+  {
+    id: 11,
+    translationGroupId: "source-second",
+    translatedFromHintId: null,
+    problemId: 30,
+    proofId: null,
+    position: 0,
+    bodyMarkdown: "Second source hint",
+    bodyHtml: "<p>Second source hint</p>",
+    language: "en",
+    translatedFromProblemId: null
+  },
+  {
+    id: 12,
+    translationGroupId: "source-second",
+    translatedFromHintId: 11,
+    problemId: 40,
+    proofId: null,
+    position: 0,
+    bodyMarkdown: "Deuxieme indice traduit en premier",
+    bodyHtml: "<p>Deuxieme indice traduit en premier</p>",
+    language: "fr",
+    translatedFromProblemId: 30
+  },
+  {
+    id: 13,
+    translationGroupId: "source-first",
+    translatedFromHintId: 10,
+    problemId: 40,
+    proofId: null,
+    position: 99,
+    bodyMarkdown: "Premier indice traduit ensuite",
+    bodyHtml: "<p>Premier indice traduit ensuite</p>",
+    language: "fr",
+    translatedFromProblemId: 30
+  }
+];
+assert.deepEqual(
+  selectProblemHintsForLanguage(reverseTranslatedHints, 40).map((hint) => hint.id),
+  [13, 12],
+  "hint translation order must follow the source lineage, not local creation ids"
 );
 
 const recommendationNow = new Date("2026-08-01T12:00:00.000Z");
@@ -2965,6 +3102,98 @@ const restedRecommendation = scoreProblemRecommendation(
 assert.ok(fatiguedRecommendation && restedRecommendation);
 assert.ok(restedRecommendation.score > fatiguedRecommendation.score);
 assert.equal(fatiguedRecommendation.parts.find((part) => part.code === "exposure_fatigue")?.points, -24);
+
+assert.deepEqual(
+  recommendationDifficultyAdjustment(42, [], "2026-08-02"),
+  {
+    offset: 0,
+    adjustedTargetDifficulty: 42,
+    qualifiedDays: 0,
+    consecutiveUnsolvedDays: 0,
+    reason: "none"
+  },
+  "logging in without opening a recommendation must not lower difficulty"
+);
+assert.equal(
+  recommendationDifficultyAdjustment(
+    42,
+    [{ eventType: "OPENED", dateKey: "2026-08-01" }],
+    "2026-08-02"
+  ).offset,
+  -5
+);
+assert.equal(
+  recommendationDifficultyAdjustment(
+    42,
+    [
+      { eventType: "OPENED", dateKey: "2026-08-01" },
+      { eventType: "STARTED", dateKey: "2026-08-01" }
+    ],
+    "2026-08-02"
+  ).offset,
+  -7
+);
+assert.equal(
+  recommendationDifficultyAdjustment(
+    42,
+    [
+      { eventType: "OPENED", dateKey: "2026-08-01" },
+      { eventType: "TOO_HARD", dateKey: "2026-08-01" },
+      { eventType: "OPENED", dateKey: "2026-08-02" },
+      { eventType: "TOO_HARD", dateKey: "2026-08-02" }
+    ],
+    "2026-08-03"
+  ).offset,
+  -15,
+  "consecutive difficult days must respect the -15 cap"
+);
+assert.equal(
+  recommendationDifficultyAdjustment(
+    42,
+    [
+      { eventType: "OPENED", dateKey: "2026-08-01" },
+      { eventType: "SOLVED", dateKey: "2026-08-02" }
+    ],
+    "2026-08-03"
+  ).offset,
+  0,
+  "a solve must recover five points toward the permanent target"
+);
+assert.equal(
+  recommendationDifficultyAdjustment(
+    42,
+    [{ eventType: "EASIER_REQUESTED", dateKey: "2026-08-02" }],
+    "2026-08-02"
+  ).offset,
+  -10
+);
+assert.equal(
+  recommendationDifficultyAdjustment(
+    42,
+    [{ eventType: "OPENED", dateKey: "2026-08-01" }],
+    "2026-08-15"
+  ).offset,
+  0,
+  "temporary difficulty adaptation must decay after inactivity"
+);
+
+const selectionCandidates = [
+  { problem: { id: 1, difficulty: 44, domains: ["ALGEBRA"] }, score: 100, confidence: 0.9, attemptStatus: "STARTED" as const },
+  { problem: { id: 2, difficulty: 42, domains: ["ALGEBRA"] }, score: 95, confidence: 0.9 },
+  { problem: { id: 3, difficulty: 25, domains: ["ALGEBRA"] }, score: 70, confidence: 0.8 },
+  { problem: { id: 4, difficulty: 40, domains: ["TOPOLOGY"] }, score: 65, confidence: 0.7 },
+  { problem: { id: 5, difficulty: 43, domains: ["ALGEBRA"] }, score: 60, confidence: 0.8 }
+];
+const composedRecommendations = composeProblemRecommendations(
+  selectionCandidates,
+  4,
+  42,
+  recommendationProfile.domains
+);
+assert.equal(composedRecommendations[0]?.selectionReason, "continue");
+assert.ok(composedRecommendations.some((item) => item.selectionReason === "confidence" && item.problem.id === 3));
+assert.ok(composedRecommendations.some((item) => item.selectionReason === "explore" && item.problem.id === 4));
+assert.equal(new Set(composedRecommendations.map((item) => item.problem.id)).size, composedRecommendations.length);
 
 const progressMap = buildProgressMap(
   [

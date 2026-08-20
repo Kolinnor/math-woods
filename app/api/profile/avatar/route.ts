@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       data: { avatarUrl: presigned.publicUrl }
     });
     await deleteStoredAvatar(config, user.id, user.avatarUrl, true);
-    revalidateAvatarSurfaces(user.username);
+    revalidateAvatarSurfaces(user.profileSlug);
     return NextResponse.json({ avatarUrl: presigned.publicUrl });
   } catch {
     return NextResponse.json({ error: "This image could not be read. Try another file." }, { status: 400 });
@@ -106,7 +106,7 @@ export async function DELETE() {
   if (!deleted) return NextResponse.json({ error: "Profile image could not be removed from storage." }, { status: 502 });
 
   await prisma.user.update({ where: { id: user.id }, data: { avatarUrl: null } });
-  revalidateAvatarSurfaces(user.username);
+  revalidateAvatarSurfaces(user.profileSlug);
   return NextResponse.json({ ok: true });
 }
 
@@ -141,7 +141,7 @@ export async function PATCH(request: Request) {
     const config = getImageStorageConfig();
     if (config) await deleteStoredAvatar(config, user.id, user.avatarUrl, true);
   }
-  revalidateAvatarSurfaces(user.username);
+  revalidateAvatarSurfaces(user.profileSlug);
   return NextResponse.json({ avatarBackground, avatarUrl });
 }
 
@@ -164,9 +164,9 @@ async function deleteStoredAvatar(
   }
 }
 
-function revalidateAvatarSurfaces(username: string) {
-  revalidatePath(`/profile/${username}`);
-  revalidatePath(`/profile/${username}/edit`);
+function revalidateAvatarSurfaces(profileSlug: string) {
+  revalidatePath(`/profile/${profileSlug}`);
+  revalidatePath(`/profile/${profileSlug}/edit`);
   revalidatePath("/users");
   revalidatePath("/friends");
   revalidatePath("/notifications");

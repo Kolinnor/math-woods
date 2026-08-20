@@ -12,6 +12,7 @@ import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { RandomProblemButton } from "@/components/RandomProblemButton";
 import { RecommendedProblemReader } from "@/components/RecommendedProblemReader";
+import { RecommendationDifficultyControl } from "@/components/RecommendationDifficultyControl";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
@@ -306,6 +307,7 @@ export default async function ProblemsPage({
     filterValue?: SearchValue;
     includeSpoilerTags?: string;
     contentType?: SearchValue;
+    tour?: string;
   }>;
 }) {
   const user = await getCurrentUser();
@@ -334,8 +336,10 @@ export default async function ProblemsPage({
     filterOp,
     filterValue,
     includeSpoilerTags = "",
-    contentType
+    contentType,
+    tour = ""
   } = await searchParams;
+  const tourMode = tour === "1";
   const preferredLanguage = await getPreferredContentLanguage();
   const showSpoilerTags = includeSpoilerTags === "1" || includeSpoilerTags === "on";
   const showAllProblems = showAll === "1" || showAll === "on";
@@ -378,7 +382,7 @@ export default async function ProblemsPage({
   const qualityValue = Object.values(QualityStatus).includes(quality as QualityStatus)
     ? (quality as QualityStatus)
     : undefined;
-  const progressValue = parseProgressFilter(progress);
+  const progressValue = tourMode ? "all" : parseProgressFilter(progress);
   const ownershipValue = user ? parseOwnershipFilter(ownership) : "all";
   const languageValues = parseLanguageFilters(language);
   const includesEveryLanguage = languageValues.length === SUPPORTED_LANGUAGE_CODES.length;
@@ -773,7 +777,12 @@ export default async function ProblemsPage({
 
       {recommendationItems.length > 0 && (
         <section className="problems-recommendations">
-          <h2>{interfaceLocale === "fr" ? "Recommandés pour vous" : "Recommended for you"}</h2>
+          <div className="problems-recommendations-heading">
+            <h2>{interfaceLocale === "fr" ? "Recommandés pour vous" : "Recommended for you"}</h2>
+            <RecommendationDifficultyControl
+              label={interfaceLocale === "fr" ? "Proposer plus facile" : "Show easier problems"}
+            />
+          </div>
           <RecommendedProblemReader
             items={recommendationItems}
             openLabel={interfaceLocale === "fr" ? "Ouvrir le problème" : "Open problem"}
@@ -792,7 +801,7 @@ export default async function ProblemsPage({
         selectedDomain={domainValue}
       />
 
-      <div className="problems-workspace">
+      <div className="problems-workspace" data-tour-target="problem-browser">
         <aside className="problems-filter-panel">
           <LiveSearchForm
             className="problem-filter-form"
@@ -941,7 +950,7 @@ export default async function ProblemsPage({
           </div>
 
           <div className="problem-ledger-list">
-            {problems.map((problem) => {
+            {problems.map((problem, problemIndex) => {
               const isOwnProblem = user?.id === problem.authorId;
               const groupSolvedUsers = solvedUsersByGroup.get(problem.translationGroupId) ?? new Set<number>();
               const groupFavoriteUsers = favoriteUsersByGroup.get(problem.translationGroupId) ?? new Set<number>();
@@ -977,7 +986,7 @@ export default async function ProblemsPage({
                         {t.common.by} {authorName}
                       </Link>
                       <Link
-                        href={`/profile/${problem.author.username}`}
+                        href={`/profile/${problem.author.profileSlug}`}
                         className="problem-ledger-author-avatar"
                         title={authorName}
                         aria-label={authorName}
@@ -1009,7 +1018,11 @@ export default async function ProblemsPage({
                   requiresVerification={problem.verificationMode !== "NONE" && !isOwnProblem}
                   signedIn={Boolean(user)}
                 >
-                  <Link href={problemHref as never} className="problem-ledger-content">
+                  <Link
+                    href={problemHref as never}
+                    className="problem-ledger-content"
+                    data-tour-target={problemIndex === 0 ? "open-problem" : undefined}
+                  >
                     <div className="problem-ledger-difficulty" style={{ color: tone }}>
                     <span>{difficulty ? String(difficulty).padStart(2, "0") : "--"}</span>
                     <span className="problem-ledger-bars" aria-hidden="true">

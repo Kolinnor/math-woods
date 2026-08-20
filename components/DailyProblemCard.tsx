@@ -40,7 +40,7 @@ export function DailyProblemCard({
   solvers = []
 }: DailyProblemCardProps) {
   return (
-    <Link href={`/problems/${problem.slug}`} className="home-daily-problem">
+    <Link href={`/problems/${problem.slug}`} className="home-daily-problem" data-tour-target="daily">
       <div>
         <p className="mw-kicker">{labels.heading}</p>
         <h2><AsyncMarkdownInline markdown={problem.title} /></h2>

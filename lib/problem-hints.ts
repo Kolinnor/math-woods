@@ -1,6 +1,7 @@
 export type ProblemHintCandidate<TTranslator = unknown> = {
   id: number;
   translationGroupId: string;
+  translatedFromHintId?: number | null;
   problemId: number;
   proofId: number | null;
   position: number;
@@ -17,6 +18,54 @@ export type SelectedProblemHint<TTranslator = unknown> = ProblemHintCandidate<TT
 
 function orderedHints<T extends ProblemHintCandidate<unknown>>(hints: T[]) {
   return [...hints].sort((left, right) => left.position - right.position || left.id - right.id);
+}
+
+type ProblemHintOrderCandidate = Pick<
+  ProblemHintCandidate,
+  "id" | "position" | "translatedFromHintId" | "translationGroupId"
+>;
+
+function canonicalHintsByGroup(candidates: ProblemHintOrderCandidate[]) {
+  const canonicalByGroup = new Map<string, ProblemHintOrderCandidate>();
+  for (const candidate of candidates) {
+    const current = canonicalByGroup.get(candidate.translationGroupId);
+    const candidateIsSource = candidate.translatedFromHintId == null;
+    const currentIsSource = current?.translatedFromHintId == null;
+    if (
+      !current ||
+      (candidateIsSource && !currentIsSource) ||
+      (candidateIsSource === currentIsSource && candidate.id < current.id)
+    ) {
+      canonicalByGroup.set(candidate.translationGroupId, candidate);
+    }
+  }
+  return canonicalByGroup;
+}
+
+export function canonicalProblemHintPositions(candidates: ProblemHintOrderCandidate[]) {
+  return new Map(
+    [...canonicalHintsByGroup(candidates)].map(([translationGroupId, hint]) => [
+      translationGroupId,
+      hint.position
+    ])
+  );
+}
+
+export function orderProblemHintsByCanonicalOrder<T extends ProblemHintOrderCandidate>(
+  hints: T[],
+  familyCandidates: ProblemHintOrderCandidate[] = hints
+) {
+  const canonicalByGroup = canonicalHintsByGroup(familyCandidates);
+  return [...hints].sort((left, right) => {
+    const leftCanonical = canonicalByGroup.get(left.translationGroupId) ?? left;
+    const rightCanonical = canonicalByGroup.get(right.translationGroupId) ?? right;
+    return (
+      leftCanonical.position - rightCanonical.position ||
+      leftCanonical.id - rightCanonical.id ||
+      left.translationGroupId.localeCompare(right.translationGroupId) ||
+      left.id - right.id
+    );
+  });
 }
 
 function preferredFallbackProblemId(hints: ProblemHintCandidate<unknown>[], currentProblemId: number) {
@@ -64,5 +113,5 @@ export function selectProblemHintsForLanguage<TTranslator = unknown>(
     return fallback ? [{ ...fallback, isLanguageFallback: true }] : [];
   });
 
-  return orderedHints(selected);
+  return orderProblemHintsByCanonicalOrder(selected, candidates);
 }

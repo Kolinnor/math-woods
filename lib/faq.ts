@@ -295,6 +295,11 @@ export const DEFAULT_FAQ_SECTIONS: FaqSectionContent[] = [
         question: "What should I do when I find copied or poorly sourced content?",
         answerMarkdown:
           "Report it with the suspected original source and a short explanation. The content can be hidden during review."
+      },
+      {
+        position: 6,
+        question: "What are the different roles on Math Woods?",
+        answerMarkdown: "You can find an overview on the [Roles page](/roles)."
       }
     ]
   }

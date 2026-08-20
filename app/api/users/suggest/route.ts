@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { rankSearchMatches } from "@/lib/search-ranking";
-import { displayNameForUser } from "@/lib/user-display";
 
 export const dynamic = "force-dynamic";
 
@@ -23,26 +22,26 @@ export async function GET(request: Request) {
       id: { not: currentUser.id },
       deletedAt: null,
       OR: [
-        { username: { contains: query, mode: "insensitive" } },
+        { profileSlug: { contains: query, mode: "insensitive" } },
         { displayName: { contains: query, mode: "insensitive" } }
       ]
     },
     select: {
       id: true,
-      username: true,
+      profileSlug: true,
       displayName: true,
       avatarBackground: true,
       avatarUrl: true
     },
-    orderBy: { username: "asc" },
+    orderBy: { profileSlug: "asc" },
     take: 100
   });
 
   const users = rankSearchMatches(
     matches.map((user) => ({
       ...user,
-      title: displayNameForUser(user),
-      slug: user.username
+      title: user.displayName?.trim() || user.profileSlug,
+      slug: user.profileSlug
     })),
     query
   ).slice(0, 20);
@@ -50,7 +49,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     users: users.map((user) => ({
       name: user.title,
-      username: user.username,
+      profileSlug: user.profileSlug,
       avatarBackground: user.avatarBackground,
       avatarUrl: user.avatarUrl
     }))

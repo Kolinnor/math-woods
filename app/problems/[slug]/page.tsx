@@ -220,10 +220,13 @@ export default async function ProblemPage({
     solutionReport?: string;
     solutionReportProof?: string;
     viewLanguage?: string;
+    tour?: string;
+    recommended?: string;
   }>;
 }) {
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
+  const tourMode = queryParams.tour === "1";
   const user = await getCurrentUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const copy = redesignCopy[interfaceLocale];
@@ -346,6 +349,7 @@ export default async function ProblemPage({
       select: {
         id: true,
         translationGroupId: true,
+        translatedFromHintId: true,
         problemId: true,
         proofId: true,
         position: true,
@@ -453,6 +457,7 @@ export default async function ProblemPage({
         user: {
           select: {
             username: true,
+            profileSlug: true,
             displayName: true,
             avatarUrl: true,
             avatarBackground: true
@@ -491,6 +496,7 @@ export default async function ProblemPage({
           select: {
             id: true,
             username: true,
+            profileSlug: true,
             displayName: true,
             avatarUrl: true,
             avatarBackground: true
@@ -587,6 +593,7 @@ export default async function ProblemPage({
     familyHints.map((hint) => ({
       id: hint.id,
       translationGroupId: hint.translationGroupId,
+      translatedFromHintId: hint.translatedFromHintId,
       problemId: hint.problemId,
       proofId: hint.proofId,
       position: hint.position,
@@ -683,7 +690,7 @@ export default async function ProblemPage({
         redirectingLabel={t.guestContentGate.redirecting}
         signedIn={Boolean(user)}
       />
-      {user && !isOwnProblem && attempt?.status !== "SOLVED" && (
+      {user && queryParams.recommended === "1" && !tourMode && !isOwnProblem && attempt?.status !== "SOLVED" && (
         <ProblemRecommendationExposure problemId={problem.id} />
       )}
       <section className="problem-hero">
@@ -716,13 +723,13 @@ export default async function ProblemPage({
           </p>
           <h1 id="problem-title"><AsyncMarkdownInline markdown={problem.title} /></h1>
           <div className="problem-title-meta">
-            <Link href={`/profile/${problem.author.username}`}>
+            <Link href={`/profile/${problem.author.profileSlug}`}>
               {t.problemDetail.by} <UserName user={problem.author} />
             </Link>
             {translationCreator?.editedBy && translationCreator.editedBy.id !== problem.authorId && (
               <>
                 <span>·</span>
-                <Link href={`/profile/${translationCreator.editedBy.username}`}>
+                <Link href={`/profile/${translationCreator.editedBy.profileSlug}`}>
                   {t.translations.translatedBy} <UserName user={translationCreator.editedBy} />
                 </Link>
               </>
@@ -907,7 +914,7 @@ export default async function ProblemPage({
 
         <article className="problem-detail-article" aria-labelledby="problem-title">
 
-        <section className="problem-statement reading-surface">
+        <section className="problem-statement reading-surface" data-tour-target="statement">
           <MarkdownBlock html={problemBodyHtml} />
         </section>
         <section className="problem-primary-actions" aria-label="Problem progress">
@@ -996,9 +1003,9 @@ export default async function ProblemPage({
                   <ul>
                     {groupFavoriteRows.map(({ user: favoriteUser }) => (
                       <li key={favoriteUser.username}>
-                        <Link href={`/profile/${favoriteUser.username}`}>
+                        <Link href={`/profile/${favoriteUser.profileSlug}`}>
                           <UserName user={favoriteUser} />
-                          <span className="problem-favorite-username">@{favoriteUser.username}</span>
+                          <span className="problem-favorite-username">@{favoriteUser.profileSlug}</span>
                         </Link>
                       </li>
                     ))}
@@ -1164,7 +1171,7 @@ export default async function ProblemPage({
           </section>
         )}
 
-        <section id="problem-solutions" className="zen-hide proof-section mt-8">
+        <section id="problem-solutions" className="zen-hide proof-section mt-8" data-tour-target="help">
           <div className="section-heading">
             <h2>{t.problemDetail.solutions}</h2>
             <span>{proofs.length}</span>
@@ -1217,13 +1224,13 @@ export default async function ProblemPage({
                           )}
                           <p className="meta">
                             {t.problemDetail.solutionBy}{" "}
-                            <Link href={`/profile/${proof.author.username}`}>
+                            <Link href={`/profile/${proof.author.profileSlug}`}>
                               <UserName user={proof.author} />
                             </Link>
                             {proof.translatedBy && (
                               <>
                                 {" · "}{t.translations.translatedBy}{" "}
-                                <Link href={`/profile/${proof.translatedBy.username}`}>
+                                <Link href={`/profile/${proof.translatedBy.profileSlug}`}>
                                   <UserName user={proof.translatedBy} />
                                 </Link>
                               </>
@@ -1477,7 +1484,7 @@ export default async function ProblemPage({
                 <Difficulty value={nextProblem.difficulty} compact />
                 <small>{translatedDomainLabel(nextProblem.domains[0] ?? "OTHER", t.home.domainLabels)}</small>
               </div>
-              <Link href={`/problems/${nextProblem.slug}`}>{copy.open}</Link>
+              <Link href={`/problems/${nextProblem.slug}?recommended=1`}>{copy.open}</Link>
             </section>
           )}
 

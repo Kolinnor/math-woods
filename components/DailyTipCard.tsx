@@ -28,7 +28,7 @@ type DailyTipCardProps = {
 
 export function DailyTipCard({ tip, labels, practiceProblem }: DailyTipCardProps) {
   return (
-    <section className="home-tip-card">
+    <section className="home-tip-card" data-tour-target="tip">
       <div className="home-tip-image">
         <img
           src={tipImageUrl(tip.imageUrl)}

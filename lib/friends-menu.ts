@@ -26,6 +26,7 @@ export type FriendsMenuData = {
     unreadCount: number;
     unreadLabel: string | null;
     username: string;
+    profileSlug: string;
   }>;
   timeZone: string | null;
   totalOnlineCount: number | null;
@@ -91,10 +92,10 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
       },
       include: {
         requester: {
-          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         },
         addressee: {
-          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         }
       },
       orderBy: { updatedAt: "desc" },
@@ -160,7 +161,8 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
         online: onlineIds.has(friend.id),
         unreadCount,
         unreadLabel: unreadCount > 0 ? t.social.unreadMessages(unreadCount) : null,
-        username: friend.username
+        username: friend.username,
+        profileSlug: friend.profileSlug
       };
     })
     .sort(

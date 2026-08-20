@@ -362,7 +362,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         setSettingsOpen(false);
       }}
     >
-      <summary aria-label={data.labels.friends} title={data.labels.friends}>
+      <summary aria-label={data.labels.friends} title={data.labels.friends} data-tour-target="chat">
         <span className="friend-online-dot" aria-hidden="true" />
         <span>{data.labels.onlineShort}</span>
         {data.actionCount > 0 && <strong>{Math.min(data.actionCount, 99)}</strong>}
@@ -382,7 +382,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
               </button>
               <div>
                 <Link
-                  href={`/profile/${selectedFriend.username}` as never}
+                  href={`/profile/${selectedFriend.profileSlug}` as never}
                   className="friends-mini-chat-person"
                   onClick={(event) => {
                     setSelectedFriend(null);
@@ -403,7 +403,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 iconOnly
                 labels={data.labels.challenge}
                 recipientName={selectedFriend.name}
-                recipientUsername={selectedFriend.username}
+                recipientProfileSlug={selectedFriend.profileSlug}
               />
               <Link
                 href={`/chat/${selectedFriend.username}` as never}

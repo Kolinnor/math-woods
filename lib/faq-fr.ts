@@ -270,6 +270,11 @@ export const DEFAULT_FAQ_SECTIONS_FR = [
         question: "Que faire si je trouve du contenu copié ou mal sourcé ?",
         answerMarkdown:
           "Signalez-le en indiquant la source originale présumée et une courte explication. Le contenu pourra être masqué pendant l'examen."
+      },
+      {
+        position: 6,
+        question: "Quels sont les différents rôles sur Math Woods ?",
+        answerMarkdown: "Vous trouverez une présentation sur la [page Rôles](/roles)."
       }
     ]
   }

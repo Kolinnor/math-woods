@@ -6,6 +6,7 @@ import {
   NotificationType,
   PostType,
   ProblemStatus,
+  RecommendationEventType,
   ProblemVerificationMode,
   Prisma,
   QualityStatus,
@@ -69,6 +70,7 @@ import {
   verificationMatches
 } from "@/lib/problem-verification";
 import { parseProblemDifficulty } from "@/lib/problems";
+import { canonicalProblemHintPositions } from "@/lib/problem-hints";
 import { parseProblemStyles } from "@/lib/problem-styles";
 import {
   hasProblemReviewSensitiveChanges,
@@ -76,6 +78,7 @@ import {
 } from "@/lib/problem-review-state";
 import { parseContributorQualityStatus } from "@/lib/quality";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { recordRecommendationOutcomeIfRelevant } from "@/lib/recommendation-events";
 import {
   canArchiveProblem,
   canEditDiscussionHint,
@@ -280,7 +283,13 @@ async function createProblemHint(
         id: sourceHintId,
         problem: { translationGroupId: problem.translationGroupId }
       },
-      select: { id: true, position: true, translationGroupId: true, authorId: true }
+      select: {
+        id: true,
+        position: true,
+        translationGroupId: true,
+        translatedFromHintId: true,
+        authorId: true
+      }
     });
     if (!sourceHint) throw new Error("Source hint not found.");
     const existingTranslation = await prisma.problemHint.findFirst({
@@ -288,7 +297,16 @@ async function createProblemHint(
       select: { id: true }
     });
     if (existingTranslation) throw new Error("This hint already has a translation on this problem.");
-    position = sourceHint.position;
+    const familyHints = await prisma.problemHint.findMany({
+      where: { translationGroupId: sourceHint.translationGroupId },
+      select: {
+        id: true,
+        position: true,
+        translationGroupId: true,
+        translatedFromHintId: true
+      }
+    });
+    position = canonicalProblemHintPositions(familyHints).get(sourceHint.translationGroupId) ?? sourceHint.position;
     translationGroupId = sourceHint.translationGroupId;
     translatedSourceHint = sourceHint;
   }
@@ -326,19 +344,23 @@ export async function createProblemHintFromProblemAction(problemId: number, form
 export async function updateProblemHintAction(hintId: number, problemSlug: string, formData: FormData) {
   const hint = await prisma.problemHint.findUnique({
     where: { id: hintId },
-    select: { problemId: true }
+    select: { problemId: true, translationGroupId: true }
   });
   if (!hint) throw new Error("Hint not found.");
   const { problem } = await requireProblemHintEditor(hint.problemId);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
 
-  await prisma.problemHint.update({
-    where: { id: hintId },
-    data: {
-      bodyMarkdown,
-      bodyHtml: await renderMarkdownContent(bodyMarkdown),
-      position: intField(formData.get("position"), 0)
-    }
+  const bodyHtml = await renderMarkdownContent(bodyMarkdown);
+  const position = intField(formData.get("position"), 0);
+  await prisma.$transaction(async (tx) => {
+    await tx.problemHint.update({
+      where: { id: hintId },
+      data: { bodyMarkdown, bodyHtml }
+    });
+    await tx.problemHint.updateMany({
+      where: { translationGroupId: hint.translationGroupId },
+      data: { position }
+    });
   });
 
   await revalidateProblemHintFamily(problem.translationGroupId);
@@ -736,6 +758,24 @@ export async function createProblemAction(formData: FormData) {
         throw new Error("One of the selected solutions does not belong to the translation source.");
       }
 
+      const sourceCompanionHints = [
+        ...sourceHints,
+        ...sourceProofs.flatMap((proof) => (proof.hint ? [proof.hint] : []))
+      ];
+      const companionHintGroups = [...new Set(sourceCompanionHints.map((hint) => hint.translationGroupId))];
+      const companionHintFamily = companionHintGroups.length
+        ? await tx.problemHint.findMany({
+            where: { translationGroupId: { in: companionHintGroups } },
+            select: {
+              id: true,
+              position: true,
+              translationGroupId: true,
+              translatedFromHintId: true
+            }
+          })
+        : [];
+      const canonicalHintPositions = canonicalProblemHintPositions(companionHintFamily);
+
       for (const sourceProof of sourceProofs) {
         const translatedBody = translatedProofBodies.get(sourceProof.id);
         if (!translatedBody) throw new Error("Translated solution content is missing.");
@@ -798,7 +838,8 @@ export async function createProblemAction(formData: FormData) {
               authorId: sourceProof.hint.authorId,
               translatedFromHintId: sourceProof.hint.id,
               translatedById: sourceProof.hint.authorId === user.id ? null : user.id,
-              position: sourceProof.hint.position,
+              position:
+                canonicalHintPositions.get(sourceProof.hint.translationGroupId) ?? sourceProof.hint.position,
               bodyMarkdown: translatedHintBody.markdown,
               bodyHtml: translatedHintBody.html,
               createdAt: sourceProof.hint.createdAt
@@ -833,7 +874,7 @@ export async function createProblemAction(formData: FormData) {
             authorId: sourceHint.authorId,
             translatedFromHintId: sourceHint.id,
             translatedById: sourceHint.authorId === user.id ? null : user.id,
-            position: sourceHint.position,
+            position: canonicalHintPositions.get(sourceHint.translationGroupId) ?? sourceHint.position,
             bodyMarkdown: translatedBody.markdown,
             bodyHtml: translatedBody.html,
             createdAt: sourceHint.createdAt
@@ -1834,6 +1875,13 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
     skipDuplicates: true
   });
 
+  await recordRecommendationOutcomeIfRelevant({
+    userId: user.id,
+    eventType: RecommendationEventType.STARTED,
+    problem: { id: problemId, translationGroupId: problem.translationGroupId },
+    now
+  });
+
   if (!existingAttempt && createdAttempts.count > 0 && problem.authorId !== user.id) {
     const previousNotification = await prisma.notification.findFirst({
       where: {
@@ -1888,7 +1936,11 @@ export async function unmarkProblemAttemptAction(problemId: number, problemSlug:
   revalidatePath("/me");
 }
 
-async function markSolvedNow(problemId: number, problemSlug: string, user: { id: number; username: string; displayName?: string | null }) {
+async function markSolvedNow(
+  problemId: number,
+  problemSlug: string,
+  user: { id: number; username: string; profileSlug: string; displayName?: string | null }
+) {
   const now = new Date();
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
@@ -1936,6 +1988,12 @@ async function markSolvedNow(problemId: number, problemSlug: string, user: { id:
       },
       data: { solvedAt: now }
     });
+    await recordRecommendationOutcomeIfRelevant({
+      userId: user.id,
+      eventType: RecommendationEventType.SOLVED,
+      problem: { id: problemId, translationGroupId: problem.translationGroupId },
+      now
+    }, tx);
     await tx.problemRecommendationExposure.deleteMany({
       where: { userId: user.id, translationGroupId: problem.translationGroupId }
     });
@@ -1943,7 +2001,7 @@ async function markSolvedNow(problemId: number, problemSlug: string, user: { id:
 
   for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);
   revalidatePath("/problems");
-  revalidatePath(`/profile/${user.username}`);
+  revalidatePath(`/profile/${user.profileSlug}`);
   revalidatePath("/me");
   if (problem.authorId !== user.id && !wasAlreadySolved) {
     await createNotification({
@@ -2046,7 +2104,7 @@ export async function unmarkProblemSolvedAction(problemId: number, problemSlug: 
 
   revalidatePath("/problems");
   for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);
-  revalidatePath(`/profile/${user.username}`);
+  revalidatePath(`/profile/${user.profileSlug}`);
   revalidatePath("/me");
 }
 
@@ -2056,7 +2114,7 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
   const request = await prisma.problemVerificationRequest.findUnique({
     where: { id: requestId },
     include: {
-      user: { select: { id: true, username: true } },
+      user: { select: { id: true, username: true, profileSlug: true } },
       problem: { select: { id: true, slug: true, title: true, authorId: true, translationGroupId: true } }
     }
   });
@@ -2140,7 +2198,7 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
   revalidatePath(`/problems/${request.problem.slug}`);
   for (const translatedProblem of translatedProblems) revalidatePath(`/problems/${translatedProblem.slug}`);
   revalidatePath(`/problems/${request.problem.slug}/verification/${request.id}`);
-  revalidatePath(`/profile/${request.user.username}`);
+  revalidatePath(`/profile/${request.user.profileSlug}`);
   revalidatePath("/me");
 }
 
@@ -2315,8 +2373,8 @@ export async function toggleProblemFavoriteAction(problemId: number, problemSlug
   revalidatePath("/");
   revalidatePath("/tips");
   revalidatePath("/users");
-  revalidatePath(`/profile/${user.username}`);
-  revalidatePath(`/profile/${user.username}?view=favorites`);
+  revalidatePath(`/profile/${user.profileSlug}`);
+  revalidatePath(`/profile/${user.profileSlug}?view=favorites`);
   revalidatePath("/me");
 }
 

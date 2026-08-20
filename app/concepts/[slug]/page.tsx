@@ -711,7 +711,7 @@ export default async function ConceptPage({
               {contributors.map((contributor) => (
                 <Link
                   key={contributor.id}
-                  href={`/profile/${contributor.username}`}
+                  href={`/profile/${contributor.profileSlug}`}
                   className="concept-contributor-link"
                 >
                   <UserName user={contributor} />

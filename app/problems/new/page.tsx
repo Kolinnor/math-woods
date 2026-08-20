@@ -24,6 +24,7 @@ import { requireDraftSession } from "@/lib/draft-session";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
 import { localizedProblemOrigin } from "@/lib/problem-origin";
+import { orderProblemHintsByCanonicalOrder } from "@/lib/problem-hints";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownCollectionForTranslation } from "@/lib/translated-markdown";
 import { contentLanguageViewHref, nextMissingTranslationLanguage } from "@/lib/translation-routing";
@@ -101,7 +102,13 @@ export default async function NewProblemPage({
           hints: {
             where: { proofId: null },
             orderBy: [{ position: "asc" }, { id: "asc" }],
-            select: { id: true, bodyMarkdown: true }
+            select: {
+              id: true,
+              translationGroupId: true,
+              translatedFromHintId: true,
+              position: true,
+              bodyMarkdown: true
+            }
           },
           proofs: {
             orderBy: { createdAt: "asc" },
@@ -115,6 +122,22 @@ export default async function NewProblemPage({
         }
       })
     : null;
+  const sourceHintOrderCandidates = sourceProblem?.hints.length
+    ? await prisma.problemHint.findMany({
+        where: {
+          translationGroupId: { in: sourceProblem.hints.map((hint) => hint.translationGroupId) }
+        },
+        select: {
+          id: true,
+          translationGroupId: true,
+          translatedFromHintId: true,
+          position: true
+        }
+      })
+    : [];
+  const sourceProblemHints = sourceProblem
+    ? orderProblemHintsByCanonicalOrder(sourceProblem.hints, sourceHintOrderCandidates)
+    : [];
   const completedProblem = contributionTask && completed
     ? await prisma.problem.findUnique({
         where: { slug: completed },
@@ -135,7 +158,7 @@ export default async function NewProblemPage({
   const sourceTranslationMarkdowns = sourceProblem
     ? [
         sourceProblem.bodyMarkdown,
-        ...sourceProblem.hints.map((hint) => hint.bodyMarkdown),
+        ...sourceProblemHints.map((hint) => hint.bodyMarkdown),
         ...sourceProblem.proofs.flatMap((proof) => [
           proof.bodyMarkdown,
           ...(proof.hint ? [proof.hint.bodyMarkdown] : [])
@@ -150,7 +173,7 @@ export default async function NewProblemPage({
     ? preparedTranslationMarkdowns[preparedTranslationIndex++] ?? sourceProblem.bodyMarkdown
     : "";
   const preparedHints = sourceProblem
-    ? sourceProblem.hints.map((hint) => ({
+    ? sourceProblemHints.map((hint) => ({
         ...hint,
         bodyMarkdown: preparedTranslationMarkdowns[preparedTranslationIndex++] ?? hint.bodyMarkdown
       }))

@@ -82,7 +82,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     slug: exploration.slug,
     language: exploration.language,
     translationGroupId: exploration.translationGroupId,
-    author: exploration.author.username,
+    author: exploration.author.profileSlug,
     visibility: exploration.visibility.toLowerCase(),
     status: exploration.status.toLowerCase(),
     license: exploration.license,

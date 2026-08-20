@@ -21,6 +21,7 @@ export type DirectChatMessage = {
   id: number;
   authorId: number;
   authorUsername: string;
+  authorProfileSlug: string;
   authorName: string;
   authorAvatarBackground: string | null;
   authorAvatarUrl: string | null;
@@ -79,6 +80,7 @@ export async function sendDirectChatMessage(
   user: {
     id: number;
     username: string;
+    profileSlug: string;
     displayName?: string | null;
     avatarBackground?: string | null;
     avatarUrl?: string | null;
@@ -183,6 +185,7 @@ export async function sendDirectChatMessage(
     id: message.id,
     authorId: user.id,
     authorUsername: user.username,
+    authorProfileSlug: user.profileSlug,
     authorName: displayNameForUser(user),
     authorAvatarBackground: user.avatarBackground ?? null,
     authorAvatarUrl: user.avatarUrl ?? null,

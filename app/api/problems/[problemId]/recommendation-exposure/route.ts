@@ -1,8 +1,9 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, RecommendationEventType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { recordRecommendationEvent } from "@/lib/recommendation-events";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,12 @@ export async function POST(
   }
 
   const now = new Date();
+  await recordRecommendationEvent({
+    userId: user.id,
+    eventType: RecommendationEventType.OPENED,
+    problem,
+    now
+  });
   const cutoff = new Date(now.getTime() - EXPOSURE_COOLDOWN_MS);
   const updated = await prisma.problemRecommendationExposure.updateMany({
     where: {

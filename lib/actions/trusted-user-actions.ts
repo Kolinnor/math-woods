@@ -25,13 +25,13 @@ export async function decideTrustedUserRecommendationAction(
       where: { id: recommendationId },
       include: {
         user: {
-          select: { id: true, username: true, displayName: true, role: true, deletedAt: true }
+          select: { id: true, username: true, profileSlug: true, displayName: true, role: true, deletedAt: true }
         }
       }
     });
     if (!recommendation) throw new Error("Recommendation not found.");
     if (recommendation.status !== TrustedUserRecommendationStatus.PENDING) {
-      return { status: recommendation.status, promotedUser: null, targetUsername: recommendation.user.username };
+      return { status: recommendation.status, promotedUser: null, targetProfileSlug: recommendation.user.profileSlug };
     }
 
     const now = new Date();
@@ -53,7 +53,7 @@ export async function decideTrustedUserRecommendationAction(
       return {
         status: TrustedUserRecommendationStatus.DECLINED,
         promotedUser: null,
-        targetUsername: recommendation.user.username
+        targetProfileSlug: recommendation.user.profileSlug
       };
     }
 
@@ -78,7 +78,7 @@ export async function decideTrustedUserRecommendationAction(
     return {
       status,
       promotedUser: promoted.count > 0 ? recommendation.user : null,
-      targetUsername: recommendation.user.username
+      targetProfileSlug: recommendation.user.profileSlug
     };
   });
 
@@ -89,7 +89,7 @@ export async function decideTrustedUserRecommendationAction(
       type: NotificationType.TRUSTED_USER_PROMOTED,
       title: "You are now a trusted user",
       body: "You now have access to the trusted-user contribution and moderation tools.",
-      href: `/profile/${result.promotedUser.username}`
+      href: `/profile/${result.promotedUser.profileSlug}`
     });
   }
 
@@ -98,6 +98,6 @@ export async function decideTrustedUserRecommendationAction(
   revalidatePath("/settings");
   revalidatePath("/moderation");
   revalidatePath("/users");
-  revalidatePath(`/profile/${result.targetUsername}`);
+  revalidatePath(`/profile/${result.targetProfileSlug}`);
   redirect(`/notifications?trustedReview=${result.status.toLowerCase()}#trusted-user-review-${recommendationId}`);
 }

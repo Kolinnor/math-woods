@@ -44,7 +44,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   });
   const solutionsMarkdown = canExportSolutions
     ? problem.proofs
-        .map((proof, index) => `\n\n## Solution ${index + 1}\n\n_By @${proof.author.username}_\n\n${proof.bodyMarkdown}`)
+        .map((proof, index) => `\n\n## Solution ${index + 1}\n\n_By @${proof.author.profileSlug}_\n\n${proof.bodyMarkdown}`)
         .join("")
     : problem.proofs.length
       ? "\n\n## Solutions\n\nSolutions are hidden until your answer has been verified."
@@ -57,7 +57,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       slug: problem.slug,
       language: problem.language,
       translationGroupId: problem.translationGroupId,
-      author: problem.author.username,
+      author: problem.author.profileSlug,
       domains: problem.domains.length ? problem.domains.map((domain) => domainLabel(domain.mscCode)) : [domainLabel(problem.domain)],
       spoilerDomains: problem.domains.filter((domain) => domain.spoiler).map((domain) => domainLabel(domain.mscCode)),
       tags: problem.tags.map(({ tag }) => tag.name),

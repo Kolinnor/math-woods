@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { Route } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Inter, Spectral } from "next/font/google";
 import { Github, Menu } from "lucide-react";
 import { cookies } from "next/headers";
@@ -13,6 +14,7 @@ import { ErrorReporter } from "@/components/ErrorReporter";
 import { FriendsMenu } from "@/components/FriendsMenu";
 import { GuestProgressPrompt } from "@/components/GuestProgressPrompt";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { MathWoodsTourOverlay } from "@/components/MathWoodsTourOverlay";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { SignInLink } from "@/components/SignInLink";
 import { SitePresenceHeartbeat } from "@/components/SitePresenceHeartbeat";
@@ -226,8 +228,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span>Math Woods</span>
             </Link>
             <div className="primary-nav">
-              <Link href="/problems">{t.nav.problems}</Link>
-              <Link href="/concepts">{t.nav.concepts}</Link>
+              <Link href="/problems" data-tour-target="nav-problems">{t.nav.problems}</Link>
+              <Link href="/concepts" data-tour-target="nav-concepts">{t.nav.concepts}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
               <Link href={usersRoute}>{t.nav.users}</Link>
               {activeContest && <Link href="/contest">{t.nav.contest}</Link>}
@@ -245,13 +247,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 title={t.languageSelector.choose}
               />
               <AutoClosingDetails className="nav-menu">
-                <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle}>
+                <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle} data-tour-target="menu">
                   <Menu size={18} />
                 </summary>
                 <div className="nav-menu-popover">
                   <div className="nav-menu-primary-mobile">
-                    <Link href="/problems">{t.nav.problems}</Link>
-                    <Link href="/concepts">{t.nav.concepts}</Link>
+                    <Link href="/problems" data-tour-target="nav-problems">{t.nav.problems}</Link>
+                    <Link href="/concepts" data-tour-target="nav-concepts">{t.nav.concepts}</Link>
                     {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
                     <Link href={usersRoute}>{t.nav.users}</Link>
                     {activeContest && <Link href="/contest">{t.nav.contest}</Link>}
@@ -265,7 +267,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/about">{t.nav.about}</Link>
                   {user && <div className="nav-menu-divider" />}
                   {user && (
-                    <Link href={`/profile/${user.username}`} className="nav-menu-user">
+                    <Link href={`/profile/${user.profileSlug}`} className="nav-menu-user">
                       <UserAvatar user={user} size="sm" />
                       <span>{displayNameForUser(user)}</span>
                     </Link>
@@ -303,6 +305,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         )}
         <main className="site-main site-content-width mx-auto px-4 py-8">{children}</main>
+        <Suspense fallback={null}>
+          <MathWoodsTourOverlay initialLocale={initialLanguage === "fr" ? "fr" : "en"} />
+        </Suspense>
         <footer className="site-footer">
           <div className="site-content-width mx-auto grid gap-3 px-4 py-6 text-sm md:grid-cols-[1fr_auto] md:items-center">
             <p>{t.footer.legal}</p>

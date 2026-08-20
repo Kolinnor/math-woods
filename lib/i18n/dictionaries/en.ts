@@ -312,7 +312,15 @@ export const en = {
     community: "Community",
     members: (count: number) => `${count} members`,
     rankingMode: "Ranking mode",
+    search: "Search users",
+    searchPlaceholder: "Username or name",
+    searchUpdating: "Updating users",
     noUsers: "No users yet.",
+    noMatches: "No users match this search.",
+    paginationLabel: "User pages",
+    previous: "Previous page",
+    next: "Next page",
+    pageStatus: (page: number, total: number) => `Page ${page} of ${total}`,
     stats: {
       reputation: "reputation",
       problems: "problems",
@@ -471,7 +479,7 @@ export const en = {
       SEARCH_ENGINE: "A search engine",
       OTHER: "Something else"
     },
-    profileNameUrlHelp: (username: string) => `This is the name other people will see. Your profile URL stays /profile/${username}.`,
+    profileNameUrlHelp: (profileSlug: string) => `This is the name other people will see. Your public profile URL is /profile/${profileSlug}.`,
     mathLevelQuestion: "What level of problems would you like to see?",
     notSet: "Not set",
     reputation: "reputation"

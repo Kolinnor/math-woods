@@ -31,7 +31,7 @@ export default async function NotificationsPage() {
       take: 100,
       include: {
         actor: {
-          select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          select: { username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         },
         trustedUserReview: { select: { id: true, status: true } }
       }
@@ -42,7 +42,7 @@ export default async function NotificationsPage() {
       take: 100,
       include: {
         actor: {
-          select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          select: { username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         },
         trustedUserReview: { select: { id: true, status: true } }
       }
@@ -111,7 +111,7 @@ export default async function NotificationsPage() {
             >
               {content}
               {notification.actor && (
-                <Link href={`/profile/${notification.actor.username}`} className="notification-review-profile-link">
+                <Link href={`/profile/${notification.actor.profileSlug}`} className="notification-review-profile-link">
                   {t.notifications.trustedUserReview.viewProfile}
                 </Link>
               )}

@@ -1,6 +1,6 @@
 import { isProblemRecommendationEligible } from "./problem-recommendation-eligibility.ts";
 
-export const RECOMMENDATION_MODEL_VERSION = 3;
+export const RECOMMENDATION_MODEL_VERSION = 4;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -14,6 +14,27 @@ export type RecommendationMathLevel =
 
 export type RecommendationAttemptStatus = "STARTED" | "BLOCKED" | "SOLVED" | "REVIEW_LATER";
 export type RecommendationQualityStatus = "UNREVIEWED" | "REVIEWED" | "NEEDS_WORK";
+export type RecommendationActivityEventType =
+  | "OPENED"
+  | "STARTED"
+  | "SOLVED"
+  | "BLOCKED"
+  | "TOO_HARD"
+  | "TOO_EASY"
+  | "EASIER_REQUESTED";
+
+export type RecommendationActivityEvent = {
+  eventType: RecommendationActivityEventType;
+  dateKey: string;
+};
+
+export type RecommendationDifficultyAdjustment = {
+  offset: number;
+  adjustedTargetDifficulty: number;
+  qualifiedDays: number;
+  consecutiveUnsolvedDays: number;
+  reason: "none" | "unsolved" | "explicitly_easier" | "recovery";
+};
 
 export type RecommendationAttempt = {
   translationGroupId: string;
@@ -89,6 +110,19 @@ export type ProblemRecommendationScore = {
   parts: RecommendationScorePart[];
 };
 
+export type RecommendationSelectionReason = "continue" | "fit" | "confidence" | "explore" | "ranked";
+
+export type RecommendationSelectionCandidate = {
+  problem: {
+    id: number;
+    difficulty: number | null;
+    domains: string[];
+  };
+  score: number;
+  confidence: number;
+  attemptStatus?: RecommendationAttemptStatus | null;
+};
+
 const DECLARED_DIFFICULTY: Record<RecommendationMathLevel, number> = {
   BEGINNER_PRE_UNIVERSITY: 6,
   EARLY_UNDERGRAD: 18,
@@ -100,6 +134,156 @@ const DECLARED_DIFFICULTY: Record<RecommendationMathLevel, number> = {
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
+}
+
+function dateKeyDayNumber(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / DAY_MS);
+}
+
+function moveOffsetTowardZero(offset: number, points: number) {
+  return Math.min(0, offset + points);
+}
+
+export function recommendationDifficultyAdjustment(
+  baseTargetDifficulty: number,
+  events: RecommendationActivityEvent[],
+  todayDateKey: string
+): RecommendationDifficultyAdjustment {
+  const eventsByDay = new Map<string, RecommendationActivityEventType[]>();
+  for (const event of events) {
+    eventsByDay.set(event.dateKey, [...(eventsByDay.get(event.dateKey) ?? []), event.eventType]);
+  }
+
+  const todayDayNumber = dateKeyDayNumber(todayDateKey);
+  const days = [...eventsByDay.keys()]
+    .filter((dateKey) => dateKeyDayNumber(dateKey) <= todayDayNumber)
+    .sort();
+  let offset = 0;
+  let qualifiedDays = 0;
+  let consecutiveUnsolvedDays = 0;
+  let previousQualifiedUnsolvedDay: number | null = null;
+  let previousEventDay: number | null = null;
+  let reason: RecommendationDifficultyAdjustment["reason"] = "none";
+
+  for (const dateKey of days) {
+    const dayNumber = dateKeyDayNumber(dateKey);
+    if (previousEventDay !== null) {
+      const inactiveDays = dayNumber - previousEventDay;
+      if (inactiveDays >= 7) offset = moveOffsetTowardZero(offset, Math.floor(inactiveDays / 7) * 3);
+    }
+    previousEventDay = dayNumber;
+
+    const dayEvents = eventsByDay.get(dateKey) ?? [];
+    const eventSet = new Set(dayEvents);
+    const solveCount = dayEvents.filter((eventType) => eventType === "SOLVED").length;
+    const isToday = dayNumber === todayDayNumber;
+
+    if (eventSet.has("EASIER_REQUESTED")) {
+      offset = Math.min(offset, -10);
+      reason = "explicitly_easier";
+    }
+
+    if (solveCount > 0 || eventSet.has("TOO_EASY")) {
+      const recovery = solveCount >= 2 || eventSet.has("TOO_EASY") ? 8 : 5;
+      offset = moveOffsetTowardZero(offset, recovery);
+      previousQualifiedUnsolvedDay = null;
+      consecutiveUnsolvedDays = 0;
+      reason = offset === 0 ? "none" : "recovery";
+      continue;
+    }
+
+    if (isToday) {
+      if (eventSet.has("TOO_HARD") || eventSet.has("BLOCKED")) {
+        offset = Math.min(offset, -10);
+        reason = "unsolved";
+      }
+      continue;
+    }
+
+    if (!eventSet.has("OPENED")) continue;
+    qualifiedDays += 1;
+    const penalty = eventSet.has("TOO_HARD") || eventSet.has("BLOCKED")
+      ? 10
+      : eventSet.has("STARTED")
+        ? 7
+        : 5;
+    if (previousQualifiedUnsolvedDay !== null && dayNumber - previousQualifiedUnsolvedDay === 1) {
+      offset = Math.max(-15, offset - penalty);
+      consecutiveUnsolvedDays += 1;
+    } else {
+      offset = Math.min(offset, -penalty);
+      consecutiveUnsolvedDays = 1;
+    }
+    previousQualifiedUnsolvedDay = dayNumber;
+    reason = "unsolved";
+  }
+
+  if (previousEventDay !== null) {
+    const inactiveDays = todayDayNumber - previousEventDay;
+    if (inactiveDays >= 7) offset = moveOffsetTowardZero(offset, Math.floor(inactiveDays / 7) * 3);
+  }
+  offset = Math.round(clamp(offset, -15, 0));
+  if (offset === 0) reason = "none";
+
+  return {
+    offset,
+    adjustedTargetDifficulty: Math.round(clamp(baseTargetDifficulty + offset, 1, 89)),
+    qualifiedDays,
+    consecutiveUnsolvedDays,
+    reason
+  };
+}
+
+export function composeProblemRecommendations<T extends RecommendationSelectionCandidate>(
+  candidates: T[],
+  requestedLimit: number,
+  adjustedTargetDifficulty: number,
+  domains: RecommendationProfile["domains"]
+): Array<T & { selectionReason: RecommendationSelectionReason }> {
+  const limit = Math.max(0, Math.trunc(requestedLimit));
+  const ranked = [...candidates].sort(
+    (left, right) => right.score - left.score || right.confidence - left.confidence || left.problem.id - right.problem.id
+  );
+  const selected: Array<T & { selectionReason: RecommendationSelectionReason }> = [];
+  const selectedIds = new Set<number>();
+
+  function add(candidate: T | undefined, selectionReason: RecommendationSelectionReason) {
+    if (!candidate || selectedIds.has(candidate.problem.id) || selected.length >= limit) return;
+    selectedIds.add(candidate.problem.id);
+    selected.push({ ...candidate, selectionReason });
+  }
+
+  add(ranked.find((candidate) => candidate.attemptStatus === "STARTED"), "continue");
+
+  const fitCount = selected.length ? 1 : 2;
+  ranked
+    .filter((candidate) =>
+      candidate.problem.difficulty !== null &&
+      Math.abs(candidate.problem.difficulty - adjustedTargetDifficulty) <= 8
+    )
+    .slice(0, fitCount + selected.length)
+    .forEach((candidate) => add(candidate, "fit"));
+
+  const easier = ranked.find((candidate) =>
+    candidate.problem.difficulty !== null &&
+    candidate.problem.difficulty <= adjustedTargetDifficulty - 10 &&
+    candidate.problem.difficulty >= adjustedTargetDifficulty - 25
+  ) ?? ranked.find((candidate) =>
+    candidate.problem.difficulty !== null && candidate.problem.difficulty < adjustedTargetDifficulty - 8
+  );
+  add(easier, "confidence");
+
+  const selectedDomains = new Set(selected.flatMap((candidate) => candidate.problem.domains));
+  const exploration = ranked.find((candidate) =>
+    candidate.problem.domains.some((domain) =>
+      !selectedDomains.has(domain) && (domains[domain]?.affinity ?? 0) < 0.35
+    )
+  );
+  add(exploration, "explore");
+
+  ranked.forEach((candidate) => add(candidate, "ranked"));
+  return selected;
 }
 
 function rounded(value: number, digits = 2) {

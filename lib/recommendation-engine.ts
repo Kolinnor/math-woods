@@ -4,12 +4,15 @@ import { RECOMMENDABLE_PROBLEM_WHERE } from "@/lib/problem-recommendation-eligib
 import { selectExactContentTranslation } from "@/lib/translation-routing";
 import {
   buildRecommendationProfile,
+  composeProblemRecommendations,
+  recommendationDifficultyAdjustment,
   scoreProblemRecommendation,
   type RecommendationAttempt,
   type RecommendationAttemptStatus,
   type RecommendationFavorite,
   type RecommendationMathLevel
 } from "@/lib/recommendations";
+import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
 
 const STATUS_PRIORITY: Record<RecommendationAttemptStatus, number> = {
   STARTED: 1,
@@ -77,6 +80,8 @@ function dedupeFavorites(
 export async function recommendationsForUser(userId: number, requestedLimit = 20, preferredLanguage = "en") {
   const limit = Math.min(50, Math.max(1, Math.trunc(requestedLimit) || 20));
   const recommendationLanguage = parseContentLanguage(preferredLanguage);
+  const now = new Date();
+  const eventCutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -131,12 +136,15 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
           exposureCount: true,
           lastOpenedAt: true
         }
+      },
+      recommendationEvents: {
+        where: { createdAt: { gte: eventCutoff } },
+        select: { eventType: true, dateKey: true }
       }
     }
   });
   if (!user) return null;
 
-  const now = new Date();
   const attempts = dedupeAttempts(user.attempts);
   const favorites = dedupeFavorites(user.favorites);
   const attemptByGroup = new Map(attempts.map((attempt) => [attempt.translationGroupId, attempt]));
@@ -161,6 +169,15 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
     },
     now
   );
+  const adaptation = recommendationDifficultyAdjustment(
+    profile.targetDifficulty,
+    user.recommendationEvents,
+    dailyProblemDateKey(now)
+  );
+  const adaptedProfile = {
+    ...profile,
+    targetDifficulty: adaptation.adjustedTargetDifficulty
+  };
 
   const problems = await prisma.problem.findMany({
     where: {
@@ -205,7 +222,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
     ]);
   }
 
-  const recommendations = [...candidatesByGroup.values()]
+  const scoredCandidates = [...candidatesByGroup.values()]
     .map((translations) => {
       const problem = selectExactContentTranslation(
         translations.map((item) => ({
@@ -218,7 +235,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
       const attempt = attemptByGroup.get(problem.translationGroupId);
       const exposure = exposureByGroup.get(problem.translationGroupId);
       const score = scoreProblemRecommendation(
-        profile,
+        adaptedProfile,
         {
           id: problem.id,
           translationGroupId: problem.translationGroupId,
@@ -236,12 +253,20 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
         },
         { mathLevel: user.mathLevel as RecommendationMathLevel | null, now }
       );
-      return score ? { problem, ...score } : null;
+      return score ? {
+        problem: { ...problem, domains: problemDomains(problem) },
+        attemptStatus: attempt?.status,
+        ...score
+      } : null;
     })
-    .filter((item): item is NonNullable<typeof item> => Boolean(item))
-    .sort((left, right) => right.score - left.score || right.confidence - left.confidence || left.problem.id - right.problem.id)
-    .slice(0, limit)
-    .map(({ problem, ...score }) => ({
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const recommendations = composeProblemRecommendations(
+    scoredCandidates,
+    limit,
+    adaptation.adjustedTargetDifficulty,
+    profile.domains
+  ).map(({ problem, attemptStatus: _attemptStatus, ...score }) => ({
       problem: {
         id: problem.id,
         slug: problem.slug,
@@ -250,7 +275,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
         language: problem.language,
         translationGroupId: problem.translationGroupId,
         difficulty: problem.difficulty,
-        domains: problemDomains(problem),
+        domains: problem.domains,
         qualityStatus: problem.qualityStatus,
         isExercise: problem.isExercise,
         author: problem.author
@@ -262,6 +287,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
     generatedAt: now.toISOString(),
     user: { id: user.id, username: user.username, displayName: user.displayName },
     profile,
+    adaptation,
     recommendations
   };
 }

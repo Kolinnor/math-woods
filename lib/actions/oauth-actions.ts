@@ -18,13 +18,18 @@ import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
-import { usernameLookupFilter } from "@/lib/usernames";
+import { profilePath, usernameLookupFilter } from "@/lib/usernames";
 import { parseUserDiscoverySource } from "@/lib/user-discovery-source";
 
 async function availableUsername(displayName: string) {
   const base = ensureSlug(displayName, "user");
   const existing = await prisma.user.findFirst({
-    where: { username: usernameLookupFilter(base) },
+    where: {
+      OR: [
+        { username: usernameLookupFilter(base) },
+        { profileSlug: usernameLookupFilter(base) }
+      ]
+    },
     select: { id: true }
   });
   return existing ? `${base}-${randomBytes(3).toString("hex")}` : base;
@@ -77,6 +82,7 @@ export async function completeOAuthSignupAction(formData: FormData) {
       const created = await tx.user.create({
         data: {
           username,
+          profileSlug: username,
           displayName,
           email,
           emailVerifiedAt: attempt.providerEmailVerified && attempt.providerEmail === email ? new Date() : null,
@@ -111,7 +117,7 @@ export async function completeOAuthSignupAction(formData: FormData) {
     type: NotificationType.USER_REGISTERED,
     title: "New account created",
     body: `${displayNameForUser(user)} joined Math Woods.`,
-    href: `/profile/${user.username}`
+    href: profilePath(user)
   });
   if (!user.emailVerifiedAt) await createAndSendEmailVerification(user.id);
   redirect(attempt.returnTo as never);

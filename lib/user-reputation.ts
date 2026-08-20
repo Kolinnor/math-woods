@@ -10,7 +10,7 @@ import {
   PAGE_TRANSLATION_REPUTATION_POINTS,
   translationReputationBonus
 } from "@/lib/reputation-scoring";
-import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
+import { displayNameForUser } from "@/lib/user-display";
 
 type ReputationProblem = {
   authorId: number;
@@ -49,6 +49,7 @@ function mergeTranslatedProblems(problems: ReputationProblem[]) {
 export type UserReputationSummary = {
   userId: number;
   username: string;
+  profileSlug: string;
   displayName: string | null;
   avatarBackground: string | null;
   avatarUrl: string | null;
@@ -246,6 +247,7 @@ function summarizeUser(
   user: {
     id: number;
     username: string;
+    profileSlug: string;
     displayName: string | null;
     avatarBackground: string | null;
     avatarUrl: string | null;
@@ -271,6 +273,7 @@ function summarizeUser(
   return {
     userId: user.id,
     username: user.username,
+    profileSlug: user.profileSlug,
     displayName: user.displayName,
     avatarBackground: user.avatarBackground,
     avatarUrl: user.avatarUrl,
@@ -303,16 +306,11 @@ function summarizeUser(
 
 export async function getReputationLeaderboard() {
   const users = await prisma.user.findMany({
-    where: {
-      deletedAt: null,
-      OR: [
-        { emailVerifiedAt: { not: null } },
-        { role: { in: [Role.MODERATOR, Role.ADMIN, Role.OWNER] } }
-      ]
-    },
+    where: { deletedAt: null },
     select: {
       id: true,
       username: true,
+      profileSlug: true,
       displayName: true,
       avatarBackground: true,
       avatarUrl: true,
@@ -332,8 +330,7 @@ export async function getReputationLeaderboard() {
     }
   });
 
-  const visibleUsers = users.filter((user) => displayNameForUser(user).length <= DISPLAY_NAME_MAX_LENGTH);
-  const userIds = visibleUsers.map((user) => user.id);
+  const userIds = users.map((user) => user.id);
   if (userIds.length === 0) return [];
 
   const [problems, dailyProblems, bonuses, contestWins, authoredCounts] = await Promise.all([
@@ -399,7 +396,7 @@ export async function getReputationLeaderboard() {
     contestWinsByUser.set(win.userId, (contestWinsByUser.get(win.userId) ?? 0) + 1);
   }
 
-  return visibleUsers.map((user) => summarizeUser(
+  return users.map((user) => summarizeUser(
     user,
     problemsByAuthor.get(user.id) ?? [],
     dailyProblemsByAuthor.get(user.id) ?? 0,

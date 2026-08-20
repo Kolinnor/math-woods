@@ -11,6 +11,7 @@ import { maybeSendContestLifecycleNotifications } from "@/lib/actions/contest-ac
 import { Difficulty } from "@/components/Difficulty";
 import { ProgressTicks } from "@/components/ProgressTicks";
 import { RevealSolvedDailyProblem } from "@/components/RevealSolvedDailyProblem";
+import { RecommendationDifficultyControl } from "@/components/RecommendationDifficultyControl";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -127,7 +128,13 @@ function relativeActivityTime(date: Date, locale: string, now = Date.now()) {
   return formatter.format(-Math.floor(elapsedSeconds / 86_400), "day");
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams
+}: {
+  searchParams: Promise<{ tour?: string }>;
+}) {
+  const { tour = "" } = await searchParams;
+  const tourMode = tour === "1";
   const user = await getCurrentUser();
   const [t, locale, preferredLanguage] = await Promise.all([
     getTranslations(),
@@ -645,7 +652,7 @@ export default async function HomePage() {
           </a>
         </section>
 
-        <main className="home-dashboard-grid home-dashboard-grid-guest">
+        <main className={`home-dashboard-grid${tourMode ? "" : " home-dashboard-grid-guest"}`}>
           <div className="home-dashboard-main">
             <HomeEditorialSwitcher
               problem={dailyProblemCard}
@@ -655,7 +662,7 @@ export default async function HomePage() {
             />
 
             {publicRecommendations.length > 0 && (
-              <section>
+              <section data-tour-target="recommendations">
                 <div className="mw-section-heading">
                   <h2>{guestCopy.recommendations}</h2>
                 </div>
@@ -683,7 +690,48 @@ export default async function HomePage() {
             {dailyTipCard}
 
           </div>
+          {tourMode && (
+            <aside className="home-dashboard-rail">
+              <section className="mw-card home-progress-card" data-tour-target="progress">
+                <header>
+                  <h2>{copy.progress}</h2>
+                  <span>{copy.solved(9, 38)}</span>
+                </header>
+                {["ALGEBRA", "GEOMETRY", "NUMBER_THEORY"].map((domain, index) => (
+                  <div key={domain}>
+                    <p>
+                      <strong>{translatedDomainLabel(domain, t.home.domainLabels)}</strong>
+                      <span>{3 - index} / {10 + index * 2}</span>
+                    </p>
+                    <ProgressTicks done={3 - index} total={10 + index * 2} />
+                  </div>
+                ))}
+              </section>
+              <section className="mw-card home-friend-activity" data-tour-target="friends">
+                <h2>{copy.friends}</h2>
+                {["Jules", "Louise"].map((name, index) => (
+                  <div key={name}>
+                    <UserAvatar user={{ username: name.toLowerCase(), displayName: name }} size="sm" />
+                    <div className="home-friend-activity-copy">
+                      <p><strong>{name}</strong> {locale === "fr" ? "a résolu un problème" : "solved a problem"}</p>
+                      <time>{index === 0 ? (locale === "fr" ? "il y a 8 min" : "8 min ago") : (locale === "fr" ? "il y a 1 h" : "1 hour ago")}</time>
+                    </div>
+                  </div>
+                ))}
+              </section>
+            </aside>
+          )}
         </main>
+        {tourMode && (
+          <div className="floating-friends-menu home-tour-chat-preview">
+            <details className="friends-menu">
+              <summary data-tour-target="chat" aria-label={copy.friends} title={copy.friends}>
+                <span className="friend-online-dot" aria-hidden="true" />
+                <span>{locale === "fr" ? "2 en ligne" : "2 online"}</span>
+              </summary>
+            </details>
+          </div>
+        )}
       </div>
     );
   }
@@ -726,14 +774,17 @@ export default async function HomePage() {
           />
 
           {recommendedData && recommendedData.recommendations.length > 0 && (
-            <section>
+            <section data-tour-target="recommendations">
               <div className="mw-section-heading">
                 <h2>{copy.recommended}</h2>
-                <Link href="/problems">{copy.more}</Link>
+                <div className="recommendation-heading-actions">
+                  <RecommendationDifficultyControl label={locale === "fr" ? "Proposer plus facile" : "Show easier problems"} />
+                  <Link href="/problems">{copy.more}</Link>
+                </div>
               </div>
               <div className="home-recommendation-grid">
                 {recommendedData.recommendations.slice(0, 4).map(({ problem }) => (
-                  <Link key={problem.id} href={`/problems/${problem.slug}`}>
+                  <Link key={problem.id} href={`/problems/${problem.slug}?recommended=1`}>
                     <Difficulty value={problem.difficulty} />
                     <span>
                       <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
@@ -769,7 +820,7 @@ export default async function HomePage() {
 
         <aside className="home-dashboard-rail">
           {user && (
-            <section className="mw-card home-progress-card">
+            <section className="mw-card home-progress-card" data-tour-target="progress">
               <header>
                 <h2>{copy.progress}</h2>
                 <span>{copy.solved(totalSolved, allProblemGroups.length)}</span>
@@ -786,7 +837,7 @@ export default async function HomePage() {
               <p className="home-authored-solves">{copy.authoredSolves(authoredSolves.length)}</p>
             </section>
           )}
-          <section className="mw-card home-friend-activity">
+          <section className="mw-card home-friend-activity" data-tour-target="friends">
             <h2>{copy.friends}</h2>
             {friendActivity.length ? friendActivity.map((entry) => (
               <div key={`${entry.user.id}-${entry.href}-${entry.date.toISOString()}`}>
@@ -794,7 +845,7 @@ export default async function HomePage() {
                 <div className="home-friend-activity-copy">
                   <p>
                     <Link
-                      href={`/profile/${entry.user.username}` as Route}
+                      href={`/profile/${entry.user.profileSlug}` as Route}
                       className="home-friend-profile-link"
                     >
                       {displayNameForUser(entry.user)}

@@ -104,6 +104,7 @@
   --mw-green-tint: #e7f9ed;
   --mw-green-border: #b7e4c6;
   --mw-rust: #a85f20;
+  --mw-difficulty-column-width: 70px;
 }
 
 .mw-card {
@@ -156,6 +157,10 @@
 
 .mw-difficulty-compact strong {
   font-size: 17px;
+}
+
+.mw-difficulty-compact {
+  min-width: var(--mw-difficulty-column-width);
 }
 
 .mw-difficulty-bars {
@@ -211,6 +216,36 @@
 .mw-section-heading a {
   color: #1f6792;
   font-size: 13px;
+}
+
+.recommendation-heading-actions,
+.problems-recommendations-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.recommendation-easier-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #1f6792;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 13px;
+  gap: 5px;
+  padding: 3px 0;
+}
+
+.recommendation-easier-button:hover {
+  text-decoration: underline;
+}
+
+.recommendation-easier-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 body:has(.home-dashboard),
@@ -562,7 +597,7 @@ body:has(.problem-detail-shell) {
   color: var(--mw-text);
   display: grid;
   gap: 13px;
-  grid-template-columns: 70px minmax(0, 1fr) auto;
+  grid-template-columns: var(--mw-difficulty-column-width) minmax(0, 1fr) auto;
   padding: 14px 18px;
 }
 
@@ -751,9 +786,13 @@ body:has(.problem-detail-shell) {
   padding: 22px 40px 0;
 }
 
-.problems-recommendations > h2 {
+.problems-recommendations-heading h2 {
   font-family: var(--font-serif), Georgia, serif;
   font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.problems-recommendations-heading .recommendation-easier-button {
   margin-bottom: 12px;
 }
 
@@ -1662,7 +1701,7 @@ body:has(.problem-detail-shell) .site-main {
 }
 
 .home-news-list > a {
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-columns: var(--mw-difficulty-column-width) minmax(0, 1fr) auto;
 }
 
 .problems-page-shell .problems-hero-actions {
@@ -12731,7 +12770,7 @@ body:has(.problem-detail-shell) .site-header {
 
   .problems-page-shell .problem-ledger-content {
     gap: 0.6rem;
-    grid-template-columns: 46px minmax(0, 1fr);
+    grid-template-columns: var(--mw-difficulty-column-width) minmax(0, 1fr);
     padding-left: 1.35rem;
   }
 
@@ -12759,7 +12798,7 @@ body:has(.problem-detail-shell) .site-header {
 
   .problems-page-shell .problem-ledger-side {
     justify-content: flex-end;
-    padding-left: 4.2rem;
+    padding-left: calc(1.35rem + var(--mw-difficulty-column-width) + 0.6rem);
   }
 
   .problem-detail-shell .problem-hero {
@@ -13049,11 +13088,11 @@ body:has(.problem-detail-shell) .site-header {
   }
 
   .problems-page-shell .problem-ledger-content {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: var(--mw-difficulty-column-width) minmax(0, 1fr);
   }
 
   .problems-page-shell .problem-ledger-side {
-    padding-left: 3.7rem;
+    padding-left: calc(1.35rem + var(--mw-difficulty-column-width) + 0.6rem);
   }
 
 }
@@ -13674,7 +13713,7 @@ button.live-search-reset:hover {
   color: inherit;
   display: grid;
   gap: 0.9rem;
-  grid-template-columns: 60px minmax(0, 1fr);
+  grid-template-columns: var(--mw-difficulty-column-width) minmax(0, 1fr);
   min-width: 0;
   padding-left: 1.55rem;
   text-decoration: none;
@@ -14524,6 +14563,43 @@ button.problem-favorite-count:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+}
+
+.users-controls {
+  align-items: center;
+  display: flex;
+  flex: 1 1 26rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.users-search-form {
+  flex: 1 1 15rem;
+  max-width: 24rem;
+}
+
+.users-search-field {
+  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  position: relative;
+}
+
+.users-search-field svg {
+  color: var(--muted);
+  left: 0.75rem;
+  pointer-events: none;
+  position: absolute;
+}
+
+.users-search-field input {
+  padding-left: 2.25rem;
+  width: 100%;
+}
+
+.roles-markdown-frame {
+  min-height: 18rem;
 }
 
 .users-row:last-child {
@@ -18563,7 +18639,7 @@ body:has(.home-shell) > .site-footer {
   }
 
   .problem-ledger-content {
-    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-columns: var(--mw-difficulty-column-width) minmax(0, 1fr);
   }
 
   .problem-ledger-side {
@@ -20981,6 +21057,68 @@ body:has(.math-woods-tour) .site-main {
   background: transparent;
   color: #415248;
   font-weight: 750;
+}
+
+body.math-woods-tour-running .guest-progress-prompt {
+  display: none;
+}
+
+.math-woods-tour-live .math-tour-shade {
+  z-index: 90;
+}
+
+.math-woods-tour-live .math-tour-callout {
+  z-index: 100;
+}
+
+.math-tour-live-target {
+  position: relative !important;
+  z-index: 91 !important;
+  outline: 3px solid #f2be68;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.76), 0 14px 44px rgba(0, 0, 0, 0.34) !important;
+  pointer-events: none !important;
+}
+
+.math-tour-live-target-interactive {
+  cursor: pointer;
+  pointer-events: auto !important;
+}
+
+.math-tour-live-parent-active {
+  z-index: 91 !important;
+}
+
+.math-tour-live-close {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #4d5d54;
+}
+
+.math-tour-live-close:hover,
+.math-tour-live-close:focus-visible {
+  background: #edf0ea;
+  color: #18251f;
+}
+
+.math-tour-target-missing {
+  margin-top: -10px !important;
+  padding: 9px 11px;
+  border-left: 3px solid #b87732;
+  background: #fbf3e5;
+  color: #6b4926;
+  font-size: 0.84rem;
+}
+
+.home-tour-chat-preview {
+  z-index: 70;
 }
 
 @media (max-width: 820px) {

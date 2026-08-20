@@ -29,7 +29,7 @@ type SuggestedUser = {
   avatarBackground: string | null;
   avatarUrl: string | null;
   name: string;
-  username: string;
+  profileSlug: string;
 };
 
 type ProblemChallengeDialogProps = {
@@ -41,7 +41,7 @@ type ProblemChallengeDialogProps = {
   intent?: ProblemDeliveryIntent;
   labels: ProblemChallengeLabels;
   recipientName?: string;
-  recipientUsername?: string;
+  recipientProfileSlug?: string;
 };
 
 export type ProblemChallengeDialogHandle = {
@@ -86,14 +86,14 @@ function ProblemChallengeDialog({
   intent = "challenge",
   labels,
   recipientName,
-  recipientUsername
+  recipientProfileSlug
 }, ref) {
   const fixedProblem = Boolean(initialProblem);
-  const fixedRecipient = Boolean(recipientUsername);
+  const fixedRecipient = Boolean(recipientProfileSlug);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState(
-    createProblemChallengeAction.bind(null, recipientUsername ?? null, intent),
+    createProblemChallengeAction.bind(null, recipientProfileSlug ?? null, intent),
     initialState
   );
   const [query, setQuery] = useState("");
@@ -102,8 +102,8 @@ function ProblemChallengeDialog({
   const [userQuery, setUserQuery] = useState("");
   const [userSuggestions, setUserSuggestions] = useState<SuggestedUser[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<SuggestedUser | null>(
-    recipientUsername && recipientName
-      ? { avatarBackground: null, avatarUrl: null, name: recipientName, username: recipientUsername }
+    recipientProfileSlug && recipientName
+      ? { avatarBackground: null, avatarUrl: null, name: recipientName, profileSlug: recipientProfileSlug }
       : null
   );
   const [searching, setSearching] = useState(false);
@@ -113,8 +113,8 @@ function ProblemChallengeDialog({
     ? {
         avatarBackground: null,
         avatarUrl: null,
-        name: recipientName ?? recipientUsername ?? "",
-        username: recipientUsername ?? ""
+        name: recipientName ?? recipientProfileSlug ?? "",
+        profileSlug: recipientProfileSlug ?? ""
       }
     : selectedRecipient;
   const triggerLabel = buttonLabel ?? (intent === "share" ? labels.shareMode : labels.button);
@@ -253,7 +253,7 @@ function ProblemChallengeDialog({
 
         <form ref={formRef} action={formAction} className="problem-challenge-form">
           <input type="hidden" name="problemSlug" value={selectedProblem?.slug ?? ""} />
-          <input type="hidden" name="recipientUsername" value={activeRecipient?.username ?? ""} />
+          <input type="hidden" name="recipientProfileSlug" value={activeRecipient?.profileSlug ?? ""} />
 
           {!fixedRecipient && (
             <div className="problem-challenge-recipient-field">
@@ -262,12 +262,12 @@ function ProblemChallengeDialog({
                 <div className="problem-challenge-selected">
                   <div className="problem-challenge-selected-person">
                     <UserAvatar
-                      user={{ ...selectedRecipient, displayName: selectedRecipient.name }}
+                      user={{ username: selectedRecipient.profileSlug, displayName: selectedRecipient.name }}
                       size="sm"
                     />
                     <div>
                       <strong>{selectedRecipient.name}</strong>
-                      <span>@{selectedRecipient.username}</span>
+                      <span>@{selectedRecipient.profileSlug}</span>
                     </div>
                   </div>
                   <button
@@ -301,7 +301,7 @@ function ProblemChallengeDialog({
                       {searchingUsers && <p>{labels.searching}</p>}
                       {!searchingUsers && userSuggestions.map((suggestedUser) => (
                         <button
-                          key={suggestedUser.username}
+                          key={suggestedUser.profileSlug}
                           type="button"
                           onClick={() => {
                             setVisibleError(null);
@@ -312,12 +312,12 @@ function ProblemChallengeDialog({
                           className="problem-challenge-user-suggestion"
                         >
                           <UserAvatar
-                            user={{ ...suggestedUser, displayName: suggestedUser.name }}
+                            user={{ username: suggestedUser.profileSlug, displayName: suggestedUser.name }}
                             size="sm"
                           />
                           <span>
                             <strong>{suggestedUser.name}</strong>
-                            <small>@{suggestedUser.username}</small>
+                            <small>@{suggestedUser.profileSlug}</small>
                           </span>
                         </button>
                       ))}

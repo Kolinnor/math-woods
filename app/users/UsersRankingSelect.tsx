@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type RankingOption = {
   value: string;
@@ -17,6 +17,7 @@ export function UsersRankingSelect({
   label: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   return (
     <label className="users-sort-form">
@@ -26,7 +27,12 @@ export function UsersRankingSelect({
         value={value}
         onChange={(event) => {
           const nextValue = event.target.value;
-          router.push(nextValue === "reputation" ? "/users" : `/users?sort=${encodeURIComponent(nextValue)}`);
+          const nextParams = new URLSearchParams(searchParams.toString());
+          nextParams.delete("page");
+          if (nextValue === "reputation") nextParams.delete("sort");
+          else nextParams.set("sort", nextValue);
+          const query = nextParams.toString();
+          router.push(query ? `/users?${query}` : "/users");
         }}
       >
         {options.map((option) => (

@@ -17,7 +17,7 @@ import {
 } from "@/lib/problem-challenges";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
-import { usernameLookupFilter } from "@/lib/usernames";
+import { publicProfileLookupWhere } from "@/lib/usernames";
 
 export type ProblemChallengeActionState = {
   error: ProblemChallengeError | null;
@@ -25,7 +25,7 @@ export type ProblemChallengeActionState = {
 };
 
 export async function createProblemChallengeAction(
-  fixedRecipientUsername: string | null,
+  fixedRecipientProfileSlug: string | null,
   intent: ProblemDeliveryIntent,
   _state: ProblemChallengeActionState,
   formData: FormData
@@ -38,16 +38,16 @@ export async function createProblemChallengeAction(
   }
 
   const problemSlug = String(formData.get("problemSlug") ?? "").trim();
-  const recipientUsername =
-    fixedRecipientUsername ?? String(formData.get("recipientUsername") ?? "").trim();
+  const recipientProfileSlug =
+    fixedRecipientProfileSlug ?? String(formData.get("recipientProfileSlug") ?? "").trim();
   const message = normalizeProblemChallengeMessage(formData.get("message"));
   if (!problemSlug) return { error: "chooseProblem", ok: false };
-  if (!recipientUsername) return { error: "chooseUser", ok: false };
+  if (!recipientProfileSlug) return { error: "chooseUser", ok: false };
 
   const [recipient, problem] = await Promise.all([
     prisma.user.findFirst({
-      where: { username: usernameLookupFilter(recipientUsername) },
-      select: { id: true, username: true, displayName: true, deletedAt: true }
+      where: publicProfileLookupWhere(recipientProfileSlug),
+      select: { id: true, username: true, profileSlug: true, displayName: true, deletedAt: true }
     }),
     prisma.problem.findFirst({
       where: {
@@ -158,6 +158,6 @@ export async function createProblemChallengeAction(
   revalidatePath("/friends");
   revalidatePath(`/chat/${recipient.username}`);
   revalidatePath(`/chat/${challenger.username}`);
-  revalidatePath(`/profile/${recipient.username}`);
+  revalidatePath(`/profile/${recipient.profileSlug}`);
   return { error: null, ok: true };
 }

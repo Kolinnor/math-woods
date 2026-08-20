@@ -33,6 +33,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
     select: {
       id: true,
       username: true,
+      profileSlug: true,
       displayName: true,
       avatarUrl: true,
       avatarBackground: true,
@@ -107,6 +108,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
             select: {
               id: true,
               username: true,
+              profileSlug: true,
               displayName: true,
               avatarUrl: true,
               avatarBackground: true
@@ -145,6 +147,7 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
       id: message.id,
       authorId: message.authorId,
       authorUsername: message.author.username,
+      authorProfileSlug: message.author.profileSlug,
       authorName: displayNameForUser(message.author),
       authorAvatarBackground: message.author.avatarBackground,
       authorAvatarUrl: message.author.avatarUrl,
@@ -174,13 +177,13 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           <Link href={"/friends" as never} className="button secondary">
             {t.social.friends}
           </Link>
-          <Link href={`/profile/${otherUser.username}`} className="button secondary">
+          <Link href={`/profile/${otherUser.profileSlug}`} className="button secondary">
             {t.social.profile}
           </Link>
           <ProblemChallengeDialog
             labels={t.social.challenge}
             recipientName={displayNameForUser(otherUser)}
-            recipientUsername={otherUser.username}
+            recipientProfileSlug={otherUser.profileSlug}
           />
         </>
       }

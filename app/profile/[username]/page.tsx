@@ -2,7 +2,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { FriendshipStatus } from "@prisma/client";
 import { ExternalLink, Handshake } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -26,7 +26,7 @@ import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 import { getUserReputation } from "@/lib/user-reputation";
 import { formatCompactNumber } from "@/lib/compact-number";
 import { displayNameForUser } from "@/lib/user-display";
-import { usernameLookupFilter } from "@/lib/usernames";
+import { normalizeUsernameLookup, profilePath, publicProfileLookupWhere } from "@/lib/usernames";
 
 export const dynamic = "force-dynamic";
 const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
@@ -57,7 +57,7 @@ export default async function ProfilePage({
   const currentUser = await getCurrentUser();
   const preferredLanguage = await getPreferredContentLanguage();
   const user = await prisma.user.findFirst({
-    where: { username: usernameLookupFilter(username) },
+    where: publicProfileLookupWhere(username),
     include: {
       _count: {
         select: {
@@ -72,6 +72,9 @@ export default async function ProfilePage({
   });
 
   if (!user) notFound();
+  if (normalizeUsernameLookup(username) !== normalizeUsernameLookup(user.profileSlug)) {
+    redirect(profilePath(user, view === "overview" ? "" : `?view=${view}`));
+  }
 
   const [
     problemRows,
@@ -270,7 +273,7 @@ export default async function ProfilePage({
     </form>
   ) : null;
   const profileActions = isSelf ? (
-    <Link href={`/profile/${user.username}/edit`} className="button secondary">
+    <Link href={profilePath(user, "/edit")} className="button secondary">
       {t.profile.editProfile}
     </Link>
   ) : currentUser ? (
@@ -278,7 +281,7 @@ export default async function ProfilePage({
       <ProblemChallengeDialog
         labels={t.social.challenge}
         recipientName={displayNameForUser(user)}
-        recipientUsername={user.username}
+        recipientProfileSlug={user.profileSlug}
       />
       {friendshipActions}
     </div>
@@ -307,16 +310,16 @@ export default async function ProfilePage({
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <article>
         <nav className="mb-6 flex flex-wrap gap-2 text-sm">
-          <Link href={`/profile/${user.username}`} className="rounded border border-line px-3 py-2">
+          <Link href={profilePath(user)} className="rounded border border-line px-3 py-2">
             {t.profile.overview}
           </Link>
-          <Link href={`/profile/${user.username}?view=solved`} className="rounded border border-line px-3 py-2">
+          <Link href={profilePath(user, "?view=solved")} className="rounded border border-line px-3 py-2">
             {t.profile.solved} {"\u00b7"} {solvedCount}
           </Link>
-          <Link href={`/profile/${user.username}?view=favorites`} className="rounded border border-line px-3 py-2">
+          <Link href={profilePath(user, "?view=favorites")} className="rounded border border-line px-3 py-2">
             {t.profile.favorites} {"\u00b7"} {externalFavoriteCount}
           </Link>
-          <Link href={`/profile/${user.username}?view=achievements`} className="rounded border border-line px-3 py-2">
+          <Link href={profilePath(user, "?view=achievements")} className="rounded border border-line px-3 py-2">
             {t.profile.achievements} / {achievementUnlocks.length}
           </Link>
         </nav>

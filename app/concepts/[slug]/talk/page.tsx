@@ -91,7 +91,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
           <article key={post.id} className="discussion-post">
             <header className="discussion-post-header">
               <div className="discussion-post-author">
-                <Link href={`/profile/${post.author.username}`}>
+                <Link href={`/profile/${post.author.profileSlug}`}>
                   <UserName user={post.author} />
                 </Link>
                 <time dateTime={post.createdAt.toISOString()}>{dateFormatter.format(post.createdAt)}</time>

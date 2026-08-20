@@ -94,6 +94,16 @@ enum ProblemPreferenceReaction {
   LESS_LIKE_THIS
 }
 
+enum RecommendationEventType {
+  OPENED
+  STARTED
+  SOLVED
+  BLOCKED
+  TOO_HARD
+  TOO_EASY
+  EASIER_REQUESTED
+}
+
 enum ProblemStyle {
   PROOF
   CALCULATION
@@ -314,6 +324,8 @@ model User {
   id                              Int                             @id @default(autoincrement())
   // A migration also maintains a case-insensitive unique index on this field.
   username                        String                          @unique
+  // Public profile URL, kept separate from login identifiers and OAuth data.
+  profileSlug                     String                          @unique
   displayName                     String?
   avatarUrl                       String?
   avatarBackground                String?
@@ -340,6 +352,7 @@ model User {
   conceptTalkPosts                ConceptTalkPost[]
   attempts                        ProblemAttempt[]
   recommendationExposures         ProblemRecommendationExposure[]
+  recommendationEvents            RecommendationEvent[]
   problemReactions                ProblemReaction[]
   posts                           DiscussionPost[]
   playlists                       Playlist[]
@@ -387,10 +400,10 @@ model User {
   dailyConceptReviews             DailyConceptReview[]
   problemEditProposals            ProblemEditProposal[]           @relation("ProblemEditProposalAuthor")
   reviewedProblemEditProposals    ProblemEditProposal[]           @relation("ProblemEditProposalReviewer")
-  contestsCreated                 ProblemContest[]                 @relation("ProblemContestCreator")
+  contestsCreated                 ProblemContest[]                @relation("ProblemContestCreator")
   contestSubmissions              ProblemContestSubmission[]
-  trustedUserRecommendation       TrustedUserRecommendation?  @relation("TrustedUserRecommendationCandidate")
-  trustedRecommendationsDecided  TrustedUserRecommendation[] @relation("TrustedUserRecommendationDecider")
+  trustedUserRecommendation       TrustedUserRecommendation?      @relation("TrustedUserRecommendationCandidate")
+  trustedRecommendationsDecided   TrustedUserRecommendation[]     @relation("TrustedUserRecommendationDecider")
 }
 
 model ExternalIdentity {
@@ -597,6 +610,7 @@ model Problem {
   thread                   DiscussionThread?
   attempts                 ProblemAttempt[]
   recommendationExposures  ProblemRecommendationExposure[]
+  recommendationEvents     RecommendationEvent[]
   reactions                ProblemReaction[]
   playlistItems            PlaylistItem[]
   tags                     ProblemTag[]
@@ -631,33 +645,33 @@ model Problem {
 }
 
 model ProblemContest {
-  id                         Int                        @id @default(autoincrement())
-  slug                       String                     @unique
-  startDateKey               String                     @unique @db.VarChar(10)
-  endDateKey                 String                     @db.VarChar(10)
-  titleEn                    String
-  titleFr                    String
-  summaryEn                  String
-  summaryFr                  String
-  bodyEn                     String                     @db.Text
-  bodyFr                     String                     @db.Text
-  rulesEn                    String                     @db.Text
-  rulesFr                    String                     @db.Text
-  criteriaEn                 String                     @db.Text
-  criteriaFr                 String                     @db.Text
-  imageUrl                   String?
-  imagePositionX             Int                        @default(50)
-  imagePositionY             Int                        @default(50)
-  rewardPoints               Int                        @default(300)
-  publishedAt                DateTime?
-  resultsPublishedAt         DateTime?
-  launchNotificationSentAt   DateTime?
-  deadlineReminderSentAt     DateTime?
-  createdById                Int
-  createdAt                  DateTime                   @default(now())
-  updatedAt                  DateTime                   @updatedAt
-  createdBy                  User                       @relation("ProblemContestCreator", fields: [createdById], references: [id])
-  submissions               ProblemContestSubmission[]
+  id                       Int                        @id @default(autoincrement())
+  slug                     String                     @unique
+  startDateKey             String                     @unique @db.VarChar(10)
+  endDateKey               String                     @db.VarChar(10)
+  titleEn                  String
+  titleFr                  String
+  summaryEn                String
+  summaryFr                String
+  bodyEn                   String                     @db.Text
+  bodyFr                   String                     @db.Text
+  rulesEn                  String                     @db.Text
+  rulesFr                  String                     @db.Text
+  criteriaEn               String                     @db.Text
+  criteriaFr               String                     @db.Text
+  imageUrl                 String?
+  imagePositionX           Int                        @default(50)
+  imagePositionY           Int                        @default(50)
+  rewardPoints             Int                        @default(300)
+  publishedAt              DateTime?
+  resultsPublishedAt       DateTime?
+  launchNotificationSentAt DateTime?
+  deadlineReminderSentAt   DateTime?
+  createdById              Int
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  createdBy                User                       @relation("ProblemContestCreator", fields: [createdById], references: [id])
+  submissions              ProblemContestSubmission[]
 
   @@index([publishedAt, startDateKey, endDateKey])
 }
@@ -939,6 +953,24 @@ model ProblemRecommendationExposure {
   @@unique([userId, translationGroupId])
   @@index([userId, lastOpenedAt])
   @@index([problemId])
+}
+
+model RecommendationEvent {
+  id                 Int                     @id @default(autoincrement())
+  userId             Int
+  problemId          Int?
+  translationGroupId String?
+  scopeKey           String
+  eventType          RecommendationEventType
+  dateKey            String                  @db.VarChar(10)
+  createdAt          DateTime                @default(now())
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem            Problem?                @relation(fields: [problemId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, dateKey, scopeKey, eventType])
+  @@index([userId, createdAt])
+  @@index([problemId])
+  @@index([translationGroupId])
 }
 
 model ProblemFavorite {
@@ -1654,6 +1686,13 @@ model ContributionPageSection {
   @@index([position])
 }
 
+model RolesPageContent {
+  id           Int      @id
+  bodyMarkdown String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model Tip {
   id             Int                @id @default(autoincrement())
   position       Int                @unique
@@ -1750,7 +1789,7 @@ model DailyTipSchedule {
 }
 
 model Notification {
-  id                  Int                 @id @default(autoincrement())
+  id                  Int                        @id @default(autoincrement())
   userId              Int
   actorId             Int?
   type                NotificationType
@@ -1759,11 +1798,11 @@ model Notification {
   href                String
   readAt              DateTime?
   dismissedFromMenuAt DateTime?
-  createdAt           DateTime            @default(now())
-  user                User                @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
-  actor               User?               @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt           DateTime                   @default(now())
+  user                User                       @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor               User?                      @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
   dailyConceptReview  DailyConceptReview?
-  trustedUserReview    TrustedUserRecommendation?
+  trustedUserReview   TrustedUserRecommendation?
 
   @@index([userId, readAt, createdAt])
   @@index([actorId])

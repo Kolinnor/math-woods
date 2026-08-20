@@ -17,9 +17,15 @@ type GuestContentViewGateProps = {
 export function GuestContentViewGate({ contentKey, redirectingLabel, signedIn }: GuestContentViewGateProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [checkingAccess, setCheckingAccess] = useState(!signedIn);
+  const tourActive = searchParams.get("tour") === "1";
+  const [checkingAccess, setCheckingAccess] = useState(!signedIn && !tourActive);
 
   useEffect(() => {
+    if (tourActive) {
+      setCheckingAccess(false);
+      return;
+    }
+
     if (signedIn) {
       try {
         localStorage.removeItem(GUEST_CONTENT_VIEW_STORAGE_KEY);
@@ -46,7 +52,7 @@ export function GuestContentViewGate({ contentKey, redirectingLabel, signedIn }:
     }
 
     setCheckingAccess(false);
-  }, [contentKey, pathname, searchParams, signedIn]);
+  }, [contentKey, pathname, searchParams, signedIn, tourActive]);
 
   if (!checkingAccess) return null;
 

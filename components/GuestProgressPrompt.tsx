@@ -21,7 +21,7 @@ export function GuestProgressPrompt() {
     [pathname, searchParams]
   );
   const signInHref = `/login?returnTo=${encodeURIComponent(returnTo)}`;
-  const shouldSchedule = pathname !== "/" && pathname !== "/login";
+  const shouldSchedule = pathname !== "/" && pathname !== "/login" && searchParams.get("tour") !== "1";
 
   useEffect(() => {
     setLocale(document.documentElement.lang === "fr" ? "fr" : "en");

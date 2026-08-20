@@ -155,7 +155,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
             <article key={post.id} className={`discussion-post${post.type === "HINT" ? " discussion-post-hint" : ""}`}>
               <header className="discussion-post-header">
                 <div className="discussion-post-author">
-                  <Link href={`/profile/${post.author.username}`}>
+                  <Link href={`/profile/${post.author.profileSlug}`}>
                     <UserName user={post.author} />
                   </Link>
                   <span className="discussion-post-byline">{copy.by}</span>

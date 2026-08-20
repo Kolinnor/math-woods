@@ -2,6 +2,7 @@ import { NotificationType, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
+import { profilePath } from "@/lib/usernames";
 
 export const ACHIEVEMENTS = [
   {
@@ -70,16 +71,16 @@ async function unlockAchievement(userId: number, key: AchievementKey) {
     });
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { username: true }
+      select: { profileSlug: true }
     });
     await createNotification({
       userId,
       type: NotificationType.ACHIEVEMENT_UNLOCKED,
       title: "Achievement unlocked",
       body: `${achievement.title}: ${achievement.description}`,
-      href: user ? `/profile/${user.username}?view=achievements` : "/me"
+      href: user ? profilePath(user, "?view=achievements") : "/me"
     });
-    if (user) revalidatePath(`/profile/${user.username}`);
+    if (user) revalidatePath(profilePath(user));
     revalidatePath("/me");
     return unlock;
   } catch (error) {

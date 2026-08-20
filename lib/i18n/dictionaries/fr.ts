@@ -314,7 +314,15 @@ export const fr = {
     community: "Communauté",
     members: (count: number) => `${count} membre${count > 1 ? "s" : ""}`,
     rankingMode: "Mode de classement",
+    search: "Rechercher un utilisateur",
+    searchPlaceholder: "Pseudo ou nom",
+    searchUpdating: "Mise à jour des utilisateurs",
     noUsers: "Aucun utilisateur pour le moment.",
+    noMatches: "Aucun utilisateur ne correspond à cette recherche.",
+    paginationLabel: "Pages des utilisateurs",
+    previous: "Page précédente",
+    next: "Page suivante",
+    pageStatus: (page: number, total: number) => `Page ${page} sur ${total}`,
     stats: {
       reputation: "réputation",
       problems: "problèmes",
@@ -473,8 +481,8 @@ export const fr = {
       SEARCH_ENGINE: "Un moteur de recherche",
       OTHER: "Autre chose"
     },
-    profileNameUrlHelp: (username: string) =>
-      `C'est le nom que les autres personnes verront. L'adresse de votre profil reste /profile/${username}.`,
+    profileNameUrlHelp: (profileSlug: string) =>
+      `C'est le nom que les autres personnes verront. L'adresse publique de votre profil est /profile/${profileSlug}.`,
     mathLevelQuestion: "Quel niveau de problèmes souhaitez-vous voir ?",
     notSet: "Non défini",
     reputation: "réputation"

@@ -88,6 +88,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
           select: {
             id: true,
             username: true,
+            profileSlug: true,
             displayName: true,
             avatarUrl: true,
             avatarBackground: true
@@ -149,6 +150,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
         id: message.id,
         authorId: message.authorId,
         authorUsername: message.author.username,
+        authorProfileSlug: message.author.profileSlug,
         authorName: displayNameForUser(message.author),
         authorAvatarBackground: message.author.avatarBackground,
         authorAvatarUrl: message.author.avatarUrl,

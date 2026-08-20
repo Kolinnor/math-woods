@@ -52,10 +52,10 @@ export default async function ProblemVerificationPage({
         }
       },
       user: {
-        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
       },
       reviewer: {
-        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
       },
       messages: {
         include: {
@@ -85,7 +85,7 @@ export default async function ProblemVerificationPage({
           </h1>
           <p className="muted mt-1 text-sm">
             {verificationStatusLabel(request.status)} review requested by{" "}
-            <Link href={`/profile/${request.user.username}`} className="underline">
+            <Link href={`/profile/${request.user.profileSlug}`} className="underline">
               <UserName user={request.user} />
             </Link>
           </p>
@@ -115,7 +115,7 @@ export default async function ProblemVerificationPage({
               {request.reviewer && (
                 <p className="muted text-sm">
                   Reviewed by{" "}
-                  <Link href={`/profile/${request.reviewer.username}`} className="underline">
+                  <Link href={`/profile/${request.reviewer.profileSlug}`} className="underline">
                     <UserName user={request.reviewer} />
                   </Link>
                 </p>

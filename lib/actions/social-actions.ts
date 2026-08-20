@@ -55,7 +55,7 @@ export async function sendFriendRequestAction(username: string) {
   await assertRateLimit(`friend-request:${user.id}`, 20, 60_000);
   const target = await prisma.user.findFirst({
     where: { username: usernameLookupFilter(username) },
-    select: { id: true, username: true, deletedAt: true }
+    select: { id: true, username: true, profileSlug: true, deletedAt: true }
   });
 
   if (!target || target.deletedAt) throw new Error("User not found.");
@@ -75,13 +75,13 @@ export async function sendFriendRequestAction(username: string) {
       });
       revalidatePath("/friends");
       revalidatePath("/", "layout");
-      revalidatePath(`/profile/${target.username}`);
+      revalidatePath(`/profile/${target.profileSlug}`);
       redirect(`/chat/${target.username}` as never);
     }
 
     revalidatePath("/friends");
     revalidatePath("/", "layout");
-    revalidatePath(`/profile/${target.username}`);
+    revalidatePath(`/profile/${target.profileSlug}`);
     return;
   }
 
@@ -103,7 +103,7 @@ export async function sendFriendRequestAction(username: string) {
 
   revalidatePath("/friends");
   revalidatePath("/", "layout");
-  revalidatePath(`/profile/${target.username}`);
+  revalidatePath(`/profile/${target.profileSlug}`);
 }
 
 export async function acceptFriendRequestAction(friendshipId: number) {
@@ -115,7 +115,7 @@ export async function acceptFriendRequestAction(friendshipId: number) {
       addresseeId: user.id,
       status: FriendshipStatus.PENDING
     },
-    include: { requester: { select: { id: true, username: true } } }
+    include: { requester: { select: { id: true, username: true, profileSlug: true } } }
   });
 
   if (!friendship) throw new Error("Friend request not found.");
@@ -133,7 +133,7 @@ export async function acceptFriendRequestAction(friendshipId: number) {
 
   revalidatePath("/friends");
   revalidatePath("/", "layout");
-  revalidatePath(`/profile/${friendship.requester.username}`);
+  revalidatePath(`/profile/${friendship.requester.profileSlug}`);
   redirect(`/chat/${friendship.requester.username}` as never);
 }
 
@@ -169,7 +169,7 @@ export async function cancelFriendRequestAction(friendshipId: number) {
       requesterId: user.id,
       status: FriendshipStatus.PENDING
     },
-    include: { addressee: { select: { id: true, username: true } } }
+    include: { addressee: { select: { id: true, username: true, profileSlug: true } } }
   });
 
   if (!friendship) throw new Error("Friend request not found.");
@@ -181,7 +181,7 @@ export async function cancelFriendRequestAction(friendshipId: number) {
 
   revalidatePath("/friends");
   revalidatePath("/", "layout");
-  revalidatePath(`/profile/${friendship.addressee.username}`);
+  revalidatePath(`/profile/${friendship.addressee.profileSlug}`);
 }
 
 export async function removeFriendAction(friendshipId: number) {

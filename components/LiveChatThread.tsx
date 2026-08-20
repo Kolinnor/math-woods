@@ -312,7 +312,7 @@ export function LiveChatThread({
               />
               <div>
                 <p className="meta">
-                  <Link href={`/profile/${message.authorUsername}`}>{message.authorName}</Link>
+                  <Link href={`/profile/${message.authorProfileSlug}`}>{message.authorName}</Link>
                   {" \u00b7 "}
                   <time dateTime={message.createdAt}>{formatChatTime(message.createdAt, locale, timeZone)}</time>
                   {message.editedAt && <>{" \u00b7 "}<span>{labels.edited}</span></>}

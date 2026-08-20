@@ -29,10 +29,10 @@ async function acceptedFriendshipsForUser(userId: number) {
     },
     include: {
       requester: {
-        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
       },
       addressee: {
-        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
       }
     },
     orderBy: { updatedAt: "desc" }
@@ -57,7 +57,7 @@ export default async function FriendsPage() {
       where: { addresseeId: user.id, status: FriendshipStatus.PENDING },
       include: {
         requester: {
-          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         }
       },
       orderBy: { createdAt: "desc" }
@@ -66,7 +66,7 @@ export default async function FriendsPage() {
       where: { requesterId: user.id, status: FriendshipStatus.PENDING },
       include: {
         addressee: {
-          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         }
       },
       orderBy: { createdAt: "desc" }
@@ -77,10 +77,10 @@ export default async function FriendsPage() {
       },
       include: {
         userA: {
-          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         },
         userB: {
-          select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+          select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         },
         messages: {
           include: { author: { select: { id: true, username: true, displayName: true } } },
@@ -142,7 +142,7 @@ export default async function FriendsPage() {
                     <UserAvatar user={friend} size="md" />
                     <i className="friend-online-dot" aria-hidden="true" />
                   </span>
-                  <Link href={`/profile/${friend.username}`}>{displayNameForUser(friend)}</Link>
+                  <Link href={`/profile/${friend.profileSlug}`}>{displayNameForUser(friend)}</Link>
                   <Link href={`/chat/${friend.username}` as never} className="button secondary">
                     {t.social.chat}
                   </Link>
@@ -159,7 +159,7 @@ export default async function FriendsPage() {
             {incomingRequests.map((request) => (
               <div key={request.id} className="friend-row">
                 <UserAvatar user={request.requester} size="md" />
-                <Link href={`/profile/${request.requester.username}`}>{displayNameForUser(request.requester)}</Link>
+                <Link href={`/profile/${request.requester.profileSlug}`}>{displayNameForUser(request.requester)}</Link>
                 <form action={acceptFriendRequestAction.bind(null, request.id)}>
                   <button type="submit">{t.social.accept}</button>
                 </form>
@@ -179,7 +179,7 @@ export default async function FriendsPage() {
                 {outgoingRequests.map((request) => (
                   <div key={request.id} className="friend-row">
                     <UserAvatar user={request.addressee} size="md" />
-                    <Link href={`/profile/${request.addressee.username}`}>{displayNameForUser(request.addressee)}</Link>
+                    <Link href={`/profile/${request.addressee.profileSlug}`}>{displayNameForUser(request.addressee)}</Link>
                     <span className="muted text-sm">{t.social.pending}</span>
                     <form action={cancelFriendRequestAction.bind(null, request.id)}>
                       <button type="submit" className="secondary">
@@ -205,7 +205,7 @@ export default async function FriendsPage() {
                     <UserAvatar user={friend} size="md" />
                     <i className={online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
                   </span>
-                  <Link href={`/profile/${friend.username}`}>{displayNameForUser(friend)}</Link>
+                  <Link href={`/profile/${friend.profileSlug}`}>{displayNameForUser(friend)}</Link>
                   <Link href={`/chat/${friend.username}` as never} className="button secondary">
                     {t.social.chat}
                   </Link>

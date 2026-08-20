@@ -16,7 +16,7 @@ import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
 import { canUseAdminTools, canUseModerationTools, canUseOwnerTools } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
-import { usernameLookupFilter } from "@/lib/usernames";
+import { profilePath, usernameLookupFilter } from "@/lib/usernames";
 import { parseUserDiscoverySource } from "@/lib/user-discovery-source";
 
 const SESSION_COOKIE = "math_woods_session";
@@ -170,7 +170,12 @@ export async function registerUser(
   if (!discoverySource) throw new Error("Please tell us how you heard about Math Woods.");
 
   const usernameOwner = await prisma.user.findFirst({
-    where: { username: usernameLookupFilter(username) },
+    where: {
+      OR: [
+        { username: usernameLookupFilter(username) },
+        { profileSlug: usernameLookupFilter(username) }
+      ]
+    },
     select: { id: true }
   });
   if (usernameOwner) throw new Error("This username is already in use.");
@@ -178,6 +183,7 @@ export async function registerUser(
   const user = await prisma.user.create({
     data: {
       username,
+      profileSlug: username,
       displayName,
       email,
       mathLevel,
@@ -195,7 +201,7 @@ export async function registerUser(
     type: NotificationType.USER_REGISTERED,
     title: "New account created",
     body: `${displayNameForUser(user)} joined Math Woods.`,
-    href: `/profile/${user.username}`
+    href: profilePath(user)
   });
   return user;
 }
