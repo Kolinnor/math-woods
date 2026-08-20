@@ -60,6 +60,18 @@ enum ConceptKind {
   INTUITIVE_NOTION
 }
 
+enum ConceptMergeKind {
+  TRANSLATION_LINK
+  DUPLICATE
+}
+
+enum ConceptMergeStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+  INVALIDATED
+}
+
 enum SourceType {
   PROBLEM
   CONCEPT
@@ -396,6 +408,12 @@ model User {
   notifications                   Notification[]                  @relation("NotificationRecipient")
   notificationsSent               Notification[]                  @relation("NotificationActor")
   notificationPreferences         NotificationPreference[]
+  siteAnnouncementsCreated        SiteAnnouncement[]              @relation("SiteAnnouncementCreator")
+  siteAnnouncementRecipients      SiteAnnouncementRecipient[]
+  conceptMergeProposalsCreated    ConceptMergeProposal[]          @relation("ConceptMergeProposer")
+  conceptMergeProposalsReviewed   ConceptMergeProposal[]          @relation("ConceptMergeReviewer")
+  conceptMergeCredits             ConceptMergeContributor[]
+  conceptRedirectsCreated         ConceptRedirect[]               @relation("ConceptRedirectCreator")
   achievementUnlocks              AchievementUnlock[]
   latexPreference                 LatexPreference?
   errorReports                    ErrorReport[]
@@ -793,27 +811,27 @@ model ProblemDomain {
 }
 
 model Concept {
-  id                        Int                  @id @default(autoincrement())
-  slug                      String               @unique
-  language                  String               @default("en")
-  translationGroupId        String               @default(cuid())
+  id                        Int                       @id @default(autoincrement())
+  slug                      String                    @unique
+  language                  String                    @default("en")
+  translationGroupId        String                    @default(cuid())
   translatedFromConceptId   Int?
   translatedFromRevisionId  Int?
   title                     String
   bodyMarkdown              String
   bodyHtml                  String
-  domain                    MathDomain           @default(OTHER)
-  domainCode                String               @default("other")
-  kind                      ConceptKind          @default(DEFINITION)
-  status                    ConceptStatus        @default(STUB)
-  needsReviewAfterEdit      Boolean              @default(false)
-  canAppearInConceptBrowser Boolean              @default(false)
-  createdAt                 DateTime             @default(now())
-  updatedAt                 DateTime             @updatedAt
+  domain                    MathDomain                @default(OTHER)
+  domainCode                String                    @default("other")
+  kind                      ConceptKind               @default(DEFINITION)
+  status                    ConceptStatus             @default(STUB)
+  needsReviewAfterEdit      Boolean                   @default(false)
+  canAppearInConceptBrowser Boolean                   @default(false)
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
   createdById               Int?
   lastEditedById            Int?
-  createdBy                 User?                @relation("ConceptCreatedBy", fields: [createdById], references: [id])
-  lastEditedBy              User?                @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
+  createdBy                 User?                     @relation("ConceptCreatedBy", fields: [createdById], references: [id])
+  lastEditedBy              User?                     @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
   aliases                   ConceptAlias[]
   references                ConceptReference[]
   practiceExercises         ConceptExercise[]
@@ -821,9 +839,11 @@ model Concept {
   circuitNodes              PlaylistNode[]
   explorationBlocks         ExplorationBlock[]
   quoteLinks                QuoteConcept[]
-  translatedFromConcept     Concept?             @relation("ConceptTranslationSource", fields: [translatedFromConceptId], references: [id], onDelete: SetNull)
-  derivedTranslations       Concept[]            @relation("ConceptTranslationSource")
+  translatedFromConcept     Concept?                  @relation("ConceptTranslationSource", fields: [translatedFromConceptId], references: [id], onDelete: SetNull)
+  derivedTranslations       Concept[]                 @relation("ConceptTranslationSource")
   dailyReviewAssignments    DailyConceptReview[]
+  mergeContributors         ConceptMergeContributor[]
+  mergeRedirects            ConceptRedirect[]         @relation("ConceptRedirectTarget")
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
@@ -853,6 +873,66 @@ model PageRevision {
   @@index([pageType, pageId, createdAt])
   @@index([pageType, pageId, problemVersion])
   @@index([editedById, isCreation, createdAt])
+}
+
+model ConceptMergeProposal {
+  id                       Int                @id @default(autoincrement())
+  kind                     ConceptMergeKind
+  status                   ConceptMergeStatus @default(PENDING)
+  sourceConceptId          Int
+  targetConceptId          Int
+  sourceSlug               String
+  targetSlug               String
+  sourceTitle              String
+  targetTitle              String
+  sourceLanguage           String
+  targetLanguage           String
+  sourceTranslationGroupId String
+  targetTranslationGroupId String
+  reason                   String?
+  proposedById             Int
+  reviewedById             Int?
+  resultConceptId          Int?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  reviewedAt               DateTime?
+  proposedBy               User               @relation("ConceptMergeProposer", fields: [proposedById], references: [id], onDelete: Cascade)
+  reviewedBy               User?              @relation("ConceptMergeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([sourceConceptId, targetConceptId, status])
+  @@index([proposedById, createdAt])
+}
+
+model ConceptRedirect {
+  id                       Int      @id @default(autoincrement())
+  sourceSlug               String   @unique
+  sourceConceptId          Int
+  sourceTitle              String
+  sourceLanguage           String
+  sourceTranslationGroupId String
+  targetConceptId          Int
+  createdById              Int?
+  createdAt                DateTime @default(now())
+  targetConcept            Concept  @relation("ConceptRedirectTarget", fields: [targetConceptId], references: [id], onDelete: Cascade)
+  createdBy                User?    @relation("ConceptRedirectCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([targetConceptId, createdAt])
+  @@index([sourceConceptId])
+}
+
+model ConceptMergeContributor {
+  conceptId       Int
+  userId          Int
+  sourceConceptId Int
+  creditedAt      DateTime
+  createdAt       DateTime @default(now())
+  concept         Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conceptId, userId])
+  @@index([userId, creditedAt])
+  @@index([sourceConceptId])
 }
 
 model Tag {
@@ -1883,6 +1963,34 @@ model Notification {
 
   @@index([userId, readAt, createdAt])
   @@index([actorId])
+}
+
+model SiteAnnouncement {
+  id            Int                         @id @default(autoincrement())
+  title         String
+  bodyMarkdown  String
+  bodyHtml      String
+  audienceRoles Role[]
+  createdById   Int?
+  createdAt     DateTime                    @default(now())
+  cancelledAt   DateTime?
+  createdBy     User?                       @relation("SiteAnnouncementCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  recipients    SiteAnnouncementRecipient[]
+
+  @@index([createdAt])
+  @@index([cancelledAt, createdAt])
+}
+
+model SiteAnnouncementRecipient {
+  announcementId Int
+  userId         Int
+  acknowledgedAt DateTime?
+  createdAt      DateTime         @default(now())
+  announcement   SiteAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@index([userId, acknowledgedAt, createdAt])
 }
 
 model TrustedUserRecommendation {

@@ -52,6 +52,16 @@ export async function syncConceptAliases(
   if (canonicalConflict) {
     throw new Error(`An alias conflicts with the existing concept "${canonicalConflict.title}".`);
   }
+  const redirectConflict = await tx.conceptRedirect.findFirst({
+    where: {
+      targetConceptId: { not: conceptId },
+      sourceSlug: { in: filteredAliases.map((alias) => alias.aliasSlug) }
+    },
+    select: { sourceTitle: true }
+  });
+  if (redirectConflict) {
+    throw new Error(`An alias conflicts with the merged concept "${redirectConflict.sourceTitle}".`);
+  }
 
   await tx.conceptAlias.deleteMany({ where: { conceptId } });
   if (filteredAliases.length) {

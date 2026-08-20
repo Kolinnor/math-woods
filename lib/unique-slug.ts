@@ -28,7 +28,12 @@ async function findBySlug(model: SlugModel, slug: string) {
     return prisma.problem.findUnique({ where: { slug }, select: { id: true } });
   }
   if (model === "concept") {
-    return prisma.concept.findUnique({ where: { slug }, select: { id: true } });
+    const [concept, alias, redirect] = await Promise.all([
+      prisma.concept.findUnique({ where: { slug }, select: { id: true } }),
+      prisma.conceptAlias.findUnique({ where: { aliasSlug: slug }, select: { id: true } }),
+      prisma.conceptRedirect.findUnique({ where: { sourceSlug: slug }, select: { id: true } })
+    ]);
+    return concept ?? alias ?? redirect;
   }
   if (model === "quote") {
     return prisma.quote.findUnique({ where: { slug }, select: { id: true } });

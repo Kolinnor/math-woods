@@ -3,7 +3,7 @@ import { frontmatter, markdownResponse } from "@/lib/export-markdown";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const concept = await prisma.concept.findUnique({
     where: { slug },
@@ -14,7 +14,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     }
   });
 
-  if (!concept) notFound();
+  if (!concept) {
+    const merged = await prisma.conceptRedirect.findUnique({
+      where: { sourceSlug: slug },
+      include: { targetConcept: true }
+    });
+    if (merged) return Response.redirect(new URL(`/concepts/${merged.targetConcept.slug}/export`, request.url), 308);
+    notFound();
+  }
 
   const markdown =
     frontmatter({

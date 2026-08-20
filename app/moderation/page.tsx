@@ -1,3 +1,4 @@
+import { ConceptMergeStatus, Role } from "@prisma/client";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -13,19 +14,59 @@ import {
   publishProblemAction,
   resolveReportedProofAction
 } from "@/lib/actions/moderation-actions";
+import {
+  cancelSiteAnnouncementAction,
+  sendSiteAnnouncementAction
+} from "@/lib/actions/site-announcement-actions";
 import { requireModerator } from "@/lib/auth";
 import { formatUserDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { qualityLabel } from "@/lib/quality";
-import { canUseAdminTools } from "@/lib/permissions";
+import { canUseAdminTools, canUseOwnerTools } from "@/lib/permissions";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export const dynamic = "force-dynamic";
 
-export default async function ModerationPage() {
+type ModerationPageProps = {
+  searchParams?: Promise<{
+    announcementSent?: string;
+    announcementError?: string;
+  }>;
+};
+
+export default async function ModerationPage({ searchParams }: ModerationPageProps) {
   const user = await requireModerator();
   const canReviewProposedEdits = canUseAdminTools(user);
-  const timeZone = await getRequestTimeZone();
+  const canSendSiteAnnouncements = canUseOwnerTools(user);
+  const [timeZone, rawQueryParams] = await Promise.all([
+    getRequestTimeZone(),
+    searchParams ?? Promise.resolve({})
+  ]);
+  const queryParams = rawQueryParams as { announcementSent?: string; announcementError?: string };
+
+  const recentAnnouncements = canSendSiteAnnouncements
+    ? await prisma.siteAnnouncement.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: { _count: { select: { recipients: true } } }
+      })
+    : [];
+  const acknowledgedByAnnouncement = recentAnnouncements.length > 0
+    ? new Map((await prisma.siteAnnouncementRecipient.groupBy({
+        by: ["announcementId"],
+        where: {
+          announcementId: { in: recentAnnouncements.map(({ id }) => id) },
+          acknowledgedAt: { not: null }
+        },
+        _count: { _all: true }
+      })).map((row) => [row.announcementId, row._count._all]))
+    : new Map<number, number>();
+  const conceptMergeProposals = await prisma.conceptMergeProposal.findMany({
+    where: { status: ConceptMergeStatus.PENDING },
+    orderBy: { createdAt: "asc" },
+    include: { proposedBy: true },
+    take: 100
+  });
 
   const reports = await prisma.report.findMany({
     orderBy: { createdAt: "desc" },
@@ -102,9 +143,111 @@ export default async function ModerationPage() {
         <>
           <p>{reports.length} reports</p>
           <p>{errorReports.length} site errors</p>
+          <p>{conceptMergeProposals.length} concept merge proposals</p>
         </>
       }
     >
+      {canSendSiteAnnouncements && (
+        <section className="mb-8" id="site-announcements">
+          <h2 className="mb-3 font-semibold">Site announcements</h2>
+          {queryParams.announcementSent && (
+            <p className="panel mb-3 border-accent p-3" role="status">
+              Announcement sent to {queryParams.announcementSent} recipient{queryParams.announcementSent === "1" ? "" : "s"}.
+            </p>
+          )}
+          {queryParams.announcementError && (
+            <p className="form-error panel mb-3 p-3" role="alert">
+              {queryParams.announcementError === "audience"
+                ? "Select at least one recipient role."
+                : "No active account matches the selected roles."}
+            </p>
+          )}
+          <form action={sendSiteAnnouncementAction} className="panel grid gap-4 p-4">
+            <label className="grid gap-1.5 font-medium">
+              Title
+              <input name="title" required maxLength={160} />
+            </label>
+            <label className="grid gap-1.5 font-medium">
+              Message
+              <textarea name="bodyMarkdown" required maxLength={4000} rows={6} />
+            </label>
+            <fieldset className="grid gap-2">
+              <legend className="mb-1 font-medium">Recipients</legend>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                <label className="inline-flex items-center gap-2">
+                  <input name="audienceRoles" type="checkbox" value={Role.USER} defaultChecked />
+                  Members
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input name="audienceRoles" type="checkbox" value={Role.MODERATOR} defaultChecked />
+                  Trusted users
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input name="audienceRoles" type="checkbox" value={Role.ADMIN} defaultChecked />
+                  Admins
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input name="audienceRoles" type="checkbox" value={Role.OWNER} defaultChecked />
+                  Owner
+                </label>
+              </div>
+            </fieldset>
+            <button type="submit" className="justify-self-start">Send announcement</button>
+          </form>
+
+          <div className="mt-4 grid gap-2">
+            {recentAnnouncements.map((announcement) => {
+              const acknowledged = acknowledgedByAnnouncement.get(announcement.id) ?? 0;
+              return (
+                <article key={announcement.id} className="panel flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div>
+                    <p className="font-medium">{announcement.title}</p>
+                    <p className="muted text-sm">
+                      {announcement.audienceRoles.map((role) => role === Role.MODERATOR ? "trusted" : role.toLowerCase()).join(", ")}
+                      {" · "}{acknowledged}/{announcement._count.recipients} acknowledged
+                      {" · "}{formatUserDateTime(announcement.createdAt, timeZone)}
+                      {announcement.cancelledAt ? " · cancelled" : ""}
+                    </p>
+                  </div>
+                  {!announcement.cancelledAt && acknowledged < announcement._count.recipients && (
+                    <form action={cancelSiteAnnouncementAction.bind(null, announcement.id)}>
+                      <button type="submit" className="secondary">Cancel</button>
+                    </form>
+                  )}
+                </article>
+              );
+            })}
+            {recentAnnouncements.length === 0 && <p className="muted text-sm">No announcements sent yet.</p>}
+          </div>
+        </section>
+      )}
+
+      <section className="mb-8">
+        <h2 className="mb-3 font-semibold">Concept merges and translation links</h2>
+        <div className="grid gap-3">
+          {conceptMergeProposals.map((proposal) => (
+            <article key={proposal.id} className="panel flex flex-wrap items-center justify-between gap-4 p-4">
+              <div>
+                <p className="font-medium">
+                  <AsyncMarkdownInline markdown={proposal.sourceTitle} />
+                  {" → "}
+                  <AsyncMarkdownInline markdown={proposal.targetTitle} />
+                </p>
+                <p className="muted text-sm">
+                  {proposal.kind === "DUPLICATE" ? "same-language duplicate" : "translation link"}
+                  {" · proposed by "}<UserName user={proposal.proposedBy} />
+                  {" · "}{formatUserDateTime(proposal.createdAt, timeZone)}
+                </p>
+              </div>
+              <Link href={`/moderation/concept-merges/${proposal.id}` as never} className="button secondary">
+                Review
+              </Link>
+            </article>
+          ))}
+          {conceptMergeProposals.length === 0 && <p className="muted panel p-5">No pending concept merges.</p>}
+        </div>
+      </section>
+
       {canReviewProposedEdits && (
         <section className="mb-8">
           <h2 className="mb-3 font-semibold">Proposed problem edits</h2>

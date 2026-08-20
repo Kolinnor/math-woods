@@ -12,7 +12,6 @@ import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { RandomProblemButton } from "@/components/RandomProblemButton";
 import { RecommendedProblemReader } from "@/components/RecommendedProblemReader";
-import { RecommendationDifficultyControl } from "@/components/RecommendationDifficultyControl";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
@@ -779,9 +778,6 @@ export default async function ProblemsPage({
         <section className="problems-recommendations">
           <div className="problems-recommendations-heading">
             <h2>{interfaceLocale === "fr" ? "Recommandés pour vous" : "Recommended for you"}</h2>
-            <RecommendationDifficultyControl
-              label={interfaceLocale === "fr" ? "Proposer plus facile" : "Show easier problems"}
-            />
           </div>
           <RecommendedProblemReader
             items={recommendationItems}

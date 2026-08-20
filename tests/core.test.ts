@@ -24,6 +24,7 @@ import {
   parseConceptExerciseIds,
   parseMinimumConceptExercises
 } from "../lib/concept-exercises.ts";
+import { orderedUniqueIds, overlappingConceptLanguages } from "../lib/concept-merge.ts";
 import { parseConceptKind } from "../lib/concept-kinds.ts";
 import {
   hasExamplesSection,
@@ -212,6 +213,11 @@ import {
 } from "../lib/avatar-presets.ts";
 import { en } from "../lib/i18n/dictionaries/en.ts";
 import { fr } from "../lib/i18n/dictionaries/fr.ts";
+import {
+  ACHIEVEMENTS,
+  achievementsForLocale,
+  localizeAchievementNotification
+} from "../lib/achievement-copy.ts";
 import {
   normalizeProblemChallengeMessage,
   problemDeliveryChatMarkdown,
@@ -435,6 +441,42 @@ assert.deepEqual(publicProfileLookupWhere(" Anduril "), {
     { username: { equals: "anduril", mode: "insensitive" } }
   ]
 });
+const frenchAchievements = achievementsForLocale("fr");
+assert.equal(ACHIEVEMENTS.length, 9);
+assert.equal(frenchAchievements.length, ACHIEVEMENTS.length);
+assert.deepEqual(
+  frenchAchievements.map(({ key, title, description }) => ({ key, title, description })),
+  [
+    { key: "a-place-in-the-woods", title: "Une place dans les bois", description: "Complétez votre description de profil." },
+    { key: "first-clearing", title: "Première clairière", description: "Résolvez votre premier problème." },
+    { key: "pathfinder", title: "Éclaireur", description: "Résolvez 10 problèmes." },
+    { key: "ascending-the-mountain", title: "Gravir la montagne", description: "Résolvez 100 problèmes." },
+    { key: "lantern-bearer", title: "Porte-lanterne", description: "Ajoutez votre premier indice à un problème." },
+    {
+      key: "the-helpful-stranger",
+      title: "Main secourable",
+      description: "Recevez 10 votes utiles sur vos indices ou messages de discussion."
+    },
+    { key: "proofsmith", title: "Forgeron de solutions", description: "Publiez votre première solution." },
+    { key: "cartographer", title: "Cartographe", description: "Créez 10 pages de concept." },
+    {
+      key: "trail-maker",
+      title: "Ouvreur de sentiers",
+      description: "Faites résoudre par d’autres utilisateurs 5 problèmes auxquels vous avez contribué."
+    }
+  ]
+);
+assert.deepEqual(
+  localizeAchievementNotification(
+    {
+      type: "ACHIEVEMENT_UNLOCKED",
+      title: "Achievement unlocked",
+      body: "First Clearing: Solve your first problem."
+    },
+    "fr"
+  ),
+  { title: "Succès débloqué", body: "Première clairière : Résolvez votre premier problème." }
+);
 assert.equal(problemDifficultyTone(null), "#8a9184");
 assert.equal(problemDifficultyTone(1), "#4f7955");
 assert.equal(problemDifficultyTone(20), "#617a42");
@@ -802,6 +844,14 @@ assert.equal(isDefaultProblemContentType(["problem"]), true);
 assert.equal(isDefaultProblemContentType(["problem", "exercise"], ["problem", "exercise"]), true);
 assert.equal(isDefaultProblemContentType(["problem"], ["problem", "exercise"]), false);
 assert.deepEqual(parseConceptExerciseIds(["4", "2", "4", "invalid", "-1", "7"]), [4, 2, 7]);
+assert.deepEqual(orderedUniqueIds([4, 2, 4], [2, 7, 8]), [4, 2, 7, 8]);
+assert.deepEqual(
+  overlappingConceptLanguages(
+    [{ id: 1, language: "fr" }, { id: 2, language: "en" }],
+    [{ id: 3, language: "de" }, { id: 4, language: "fr" }]
+  ),
+  ["fr"]
+);
 assert.equal(
   parseConceptExerciseIds(Array.from({ length: MAX_CONCEPT_EXERCISES + 3 }, (_, index) => String(index + 1))).length,
   MAX_CONCEPT_EXERCISES
@@ -2029,7 +2079,8 @@ assert.match(markdownEditorSource, /liveMarkdownPreviewExtension\(!titleMode\)/)
 assert.match(markdownEditorSource, /transaction\.newDoc\.lines === 1/);
 for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "notifications", "page.tsx")]) {
   const source = readFileSync(path, "utf-8");
-  assert.match(source, /<AsyncMarkdownInline markdown=\{notification\.body\}/);
+  assert.match(source, /localizeAchievementNotification\(notification, interfaceLocale\)/);
+  assert.match(source, /<AsyncMarkdownInline markdown=\{localizedNotification\.body\}/);
 }
 const tourSource = readFileSync(join("components", "MathWoodsTour.tsx"), "utf-8");
 const tourOverlaySource = readFileSync(join("components", "MathWoodsTourOverlay.tsx"), "utf-8");
@@ -2064,6 +2115,51 @@ const contributionTasksSource = readFileSync(join("app", "contributing", "tasks"
 const siteImprovementsBoardSource = readFileSync(join("app", "contributing", "tasks", "site-improvements", "page.tsx"), "utf-8");
 const siteImprovementDetailSource = readFileSync(join("app", "contributing", "tasks", "site-improvements", "[id]", "page.tsx"), "utf-8");
 const siteImprovementActionsSource = readFileSync(join("lib", "actions", "site-improvement-actions.ts"), "utf-8");
+const siteAnnouncementActionsSource = readFileSync(join("lib", "actions", "site-announcement-actions.ts"), "utf-8");
+const siteAnnouncementToastSource = readFileSync(join("components", "SiteAnnouncementToast.tsx"), "utf-8");
+const moderationPageSource = readFileSync(join("app", "moderation", "page.tsx"), "utf-8");
+const prismaSchemaSource = readFileSync(join("prisma", "schema.prisma"), "utf-8");
+const conceptMergeActionsSource = readFileSync(join("lib", "actions", "concept-merge-actions.ts"), "utf-8");
+const conceptActionsSource = readFileSync(join("lib", "actions", "concept-actions.ts"), "utf-8");
+const conceptMergePageSource = readFileSync(join("app", "concepts", "[slug]", "merge", "page.tsx"), "utf-8");
+const conceptMergeReviewSource = readFileSync(join("app", "moderation", "concept-merges", "[proposalId]", "page.tsx"), "utf-8");
+const conceptHistorySource = readFileSync(join("app", "concepts", "[slug]", "history", "page.tsx"), "utf-8");
+const conceptNewSource = readFileSync(join("app", "concepts", "new", "page.tsx"), "utf-8");
+const conceptDuplicateSuggestionsSource = readFileSync(join("components", "ConceptDuplicateSuggestions.tsx"), "utf-8");
+const internalLinksSource = readFileSync(join("lib", "internal-links.ts"), "utf-8");
+const uniqueSlugSource = readFileSync(join("lib", "unique-slug.ts"), "utf-8");
+assert.match(prismaSchemaSource, /model SiteAnnouncementRecipient[\s\S]*?@@id\(\[announcementId, userId\]\)/);
+assert.match(prismaSchemaSource, /model ConceptRedirect[\s\S]*?sourceSlug\s+String\s+@unique/);
+assert.match(prismaSchemaSource, /model ConceptMergeContributor[\s\S]*?@@id\(\[conceptId, userId\]\)/);
+assert.match(conceptMergeActionsSource, /acquireTransactionLock\(tx, `concept-family:\$\{groupId\}`\)/);
+assert.match(conceptActionsSource, /lockConceptFamilyForMutation/);
+assert.match(conceptActionsSource, /acquireTransactionLock\(tx, `concept-family:\$\{concept\.translationGroupId\}`\)/);
+assert.match(conceptMergeActionsSource, /tx\.conceptRedirect\.create/);
+assert.match(conceptMergeActionsSource, /tx\.conceptTalkPost\.updateMany/);
+assert.match(conceptMergeActionsSource, /tx\.playlistNode\.updateMany/);
+assert.match(conceptMergeActionsSource, /tx\.explorationBlock\.updateMany/);
+assert.match(conceptMergeActionsSource, /tx\.conceptMergeContributor\.createMany/);
+assert.match(conceptMergeActionsSource, /remainingOverlap\.length === 0[\s\S]*?linkConceptGroups/);
+assert.match(conceptMergePageSource, /proposeConceptMergeAction/);
+assert.match(conceptMergeReviewSource, /mergeDuplicateConceptsAction/);
+assert.match(conceptMergeReviewSource, /linkConceptTranslationGroupsAction/);
+assert.match(conceptDetailSource, /prisma\.conceptRedirect\.findUnique/);
+assert.match(conceptHistorySource, /mergedSource/);
+assert.match(conceptHistorySource, /aria-label="Merged concept histories"/);
+assert.match(conceptHistorySource, /user && !selectedMergedSource/);
+assert.match(internalLinksSource, /tx\.conceptRedirect\.findUnique/);
+assert.match(uniqueSlugSource, /prisma\.conceptRedirect\.findUnique/);
+assert.match(conceptNewSource, /<ConceptDuplicateSuggestions/);
+assert.match(conceptDuplicateSuggestionsSource, /all=1/);
+assert.match(userReputationSource, /conceptMergeContributor\.findMany/);
+assert.match(siteAnnouncementActionsSource, /const owner = await requireOwner\(\)/);
+assert.match(siteAnnouncementActionsSource, /deletedAt: null,[\s\S]*?role: \{ in: audienceRoles \}/);
+assert.match(siteAnnouncementActionsSource, /announcementId,[\s\S]*?userId: user\.id,[\s\S]*?acknowledgedAt: null/);
+assert.match(siteAnnouncementToastSource, /acknowledgedAt: null/);
+assert.match(siteAnnouncementToastSource, /announcement: \{ cancelledAt: null \}/);
+assert.match(layoutSource, /<SiteAnnouncementToast userId=\{user\.id\} \/>/);
+assert.match(moderationPageSource, /canUseOwnerTools\(user\)/);
+assert.match(moderationPageSource, /action=\{sendSiteAnnouncementAction\}/);
 assert.match(layoutSource, /\/about\/tutorial/);
 assert.match(layoutSource, /<GuestProgressPrompt \/>/);
 assert.match(guestProgressPromptSource, /dictionaryForLocale/);

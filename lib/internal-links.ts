@@ -49,6 +49,11 @@ export async function syncInternalLinks(
       select: { id: true, slug: true, language: true, translationGroupId: true },
       orderBy: { id: "asc" }
     });
+    const redirectedConcept = (await tx.conceptRedirect.findUnique({
+      where: { sourceSlug: link.targetSlug },
+      include: { targetConcept: { select: { id: true, slug: true, language: true, translationGroupId: true } } }
+    }))?.targetConcept;
+    if (redirectedConcept) concepts.splice(0, concepts.length, redirectedConcept);
     const matchedConcept =
       (sourceLanguage ? concepts.find((candidate) => candidate.language === sourceLanguage) : null) ??
       concepts[0];
@@ -93,6 +98,11 @@ async function translationLinkIdentity(
     select: { language: true, translationGroupId: true },
     orderBy: { id: "asc" }
   });
+  const redirectedConcept = (await tx.conceptRedirect.findUnique({
+    where: { sourceSlug: link.targetSlug },
+    include: { targetConcept: { select: { language: true, translationGroupId: true } } }
+  }))?.targetConcept;
+  if (redirectedConcept) concepts.splice(0, concepts.length, redirectedConcept);
   const concept = concepts.find((candidate) => candidate.language === preferredLanguage) ?? concepts[0];
   return concept ? `concept:${concept.translationGroupId}` : `missing:${link.targetSlug}`;
 }

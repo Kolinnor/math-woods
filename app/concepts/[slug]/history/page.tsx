@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { RevisionDiff } from "@/components/RevisionDiff";
@@ -60,15 +60,39 @@ function conceptSnapshotValue(
   }
 }
 
-export default async function ConceptHistoryPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ConceptHistoryPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ mergedSource?: string }>;
+}) {
   const [user, t, interfaceLocale] = await Promise.all([getCurrentUser(), getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
   const concept = await prisma.concept.findUnique({ where: { slug } });
 
-  if (!concept) notFound();
+  if (!concept) {
+    const [alias, merged] = await Promise.all([
+      prisma.conceptAlias.findUnique({ where: { aliasSlug: slug }, include: { concept: true } }),
+      prisma.conceptRedirect.findUnique({ where: { sourceSlug: slug }, include: { targetConcept: true } })
+    ]);
+    if (merged) redirect(`/concepts/${merged.targetConcept.slug}/history?mergedSource=${merged.sourceConceptId}`);
+    if (alias) redirect(`/concepts/${alias.concept.slug}/history`);
+    notFound();
+  }
+
+  const mergedSources = await prisma.conceptRedirect.findMany({
+    where: { targetConceptId: concept.id },
+    orderBy: { createdAt: "desc" }
+  });
+  const requestedMergedSource = Number((await searchParams)?.mergedSource);
+  const selectedMergedSource = Number.isInteger(requestedMergedSource)
+    ? mergedSources.find(({ sourceConceptId }) => sourceConceptId === requestedMergedSource)
+    : null;
+  const revisionPageId = selectedMergedSource?.sourceConceptId ?? concept.id;
 
   const revisions = await prisma.pageRevision.findMany({
-    where: { pageType: "CONCEPT", pageId: concept.id },
+    where: { pageType: "CONCEPT", pageId: revisionPageId },
     include: { editedBy: true },
     orderBy: { createdAt: "desc" },
     take: 50
@@ -77,7 +101,7 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
   return (
     <ForestPageLayout
       title={t.historyPage.conceptTitle}
-      eyebrow={<AsyncMarkdownInline markdown={concept.title} />}
+      eyebrow={<AsyncMarkdownInline markdown={selectedMergedSource?.sourceTitle ?? concept.title} />}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
       description={t.historyPage.conceptDescription}
@@ -89,6 +113,22 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
         </Link>
       }
     >
+      {mergedSources.length > 0 && (
+        <nav className="panel mb-5 flex flex-wrap gap-2 p-3 text-sm" aria-label="Merged concept histories">
+          <Link href={`/concepts/${concept.slug}/history`} className="button secondary">
+            <AsyncMarkdownInline markdown={concept.title} />
+          </Link>
+          {mergedSources.map((source) => (
+            <Link
+              key={source.id}
+              href={`/concepts/${concept.slug}/history?mergedSource=${source.sourceConceptId}` as never}
+              className="button secondary"
+            >
+              <AsyncMarkdownInline markdown={source.sourceTitle} />
+            </Link>
+          ))}
+        </nav>
+      )}
       <div className="grid gap-3">
         {revisions.map((revision, index) => {
           const previousRevision = revisions[index + 1];
@@ -116,7 +156,7 @@ export default async function ConceptHistoryPage({ params }: { params: Promise<{
                   )}
                 </p>
               </div>
-              {user && (
+              {user && !selectedMergedSource && (
                 <form action={rollbackConceptRevisionAction.bind(null, concept.id, revision.id)}>
                   <button type="submit" className="secondary">
                     {t.historyPage.rollback}

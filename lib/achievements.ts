@@ -1,58 +1,11 @@
 import { NotificationType, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { ACHIEVEMENTS, type AchievementKey } from "@/lib/achievement-copy";
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
 import { profilePath } from "@/lib/usernames";
 
-export const ACHIEVEMENTS = [
-  {
-    key: "a-place-in-the-woods",
-    title: "A Place in the Woods",
-    description: "Complete your profile bio."
-  },
-  {
-    key: "first-clearing",
-    title: "First Clearing",
-    description: "Solve your first problem."
-  },
-  {
-    key: "pathfinder",
-    title: "Pathfinder",
-    description: "Solve 10 problems."
-  },
-  {
-    key: "ascending-the-mountain",
-    title: "Ascending the Mountain",
-    description: "Solve 100 problems."
-  },
-  {
-    key: "lantern-bearer",
-    title: "Lantern Bearer",
-    description: "Add your first hint to a problem."
-  },
-  {
-    key: "the-helpful-stranger",
-    title: "The Helpful Stranger",
-    description: "Receive 10 useful votes on hints or discussion posts."
-  },
-  {
-    key: "proofsmith",
-    title: "Solution Smith",
-    description: "Publish your first solution."
-  },
-  {
-    key: "cartographer",
-    title: "Cartographer",
-    description: "Create 10 concept pages."
-  },
-  {
-    key: "trail-maker",
-    title: "Trail Maker",
-    description: "Have 5 of your contributed problems solved by other users."
-  }
-] as const;
-
-export type AchievementKey = (typeof ACHIEVEMENTS)[number]["key"];
+export { ACHIEVEMENTS, type AchievementKey } from "@/lib/achievement-copy";
 
 const achievementByKey = new Map(ACHIEVEMENTS.map((achievement) => [achievement.key, achievement]));
 
@@ -150,9 +103,16 @@ export async function checkProofAchievements(userId: number) {
 }
 
 export async function checkConceptAchievements(userId: number) {
-  const conceptCount = await prisma.concept.count({
-    where: { createdById: userId }
+  const concepts = await prisma.concept.findMany({
+    where: {
+      OR: [
+        { createdById: userId },
+        { mergeContributors: { some: { userId } } }
+      ]
+    },
+    select: { translationGroupId: true }
   });
+  const conceptCount = new Set(concepts.map(({ translationGroupId }) => translationGroupId)).size;
 
   if (conceptCount >= 10) await unlockAchievement(userId, "cartographer");
 }

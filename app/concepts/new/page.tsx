@@ -1,4 +1,5 @@
 import { ConceptCreateForm } from "@/components/ConceptCreateForm";
+import { ConceptDuplicateSuggestions } from "@/components/ConceptDuplicateSuggestions";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
@@ -113,6 +114,7 @@ export default async function NewConceptPage({
           required
           placeholder={sourceConcept ? t.contentEditor.translationTitlePlaceholder(sourceConcept.title) : undefined}
         />
+        {!sourceConcept && <ConceptDuplicateSuggestions initialTitle={title} locale={interfaceLocale} />}
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.concepts.kind}</span>
           <select name="kind" defaultValue={sourceConcept?.kind ?? "DEFINITION"}>

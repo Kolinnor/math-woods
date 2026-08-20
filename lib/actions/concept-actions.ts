@@ -48,6 +48,7 @@ import {
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
+import { acquireTransactionLock } from "@/lib/transaction-lock";
 import { translationLinkOverrideRequested } from "@/lib/translation-link-warning";
 import { conceptTranslationSharedChanges } from "@/lib/translation-properties";
 import {
@@ -109,6 +110,20 @@ async function conceptSnapshotSource(tx: Prisma.TransactionClient, conceptId: nu
   return concept;
 }
 
+async function lockConceptFamilyForMutation(tx: Prisma.TransactionClient, conceptId: number) {
+  const lockedGroups = new Set<string>();
+  while (true) {
+    const concept = await tx.concept.findUnique({
+      where: { id: conceptId },
+      select: { translationGroupId: true }
+    });
+    if (!concept) throw new Error("Concept not found.");
+    if (lockedGroups.has(concept.translationGroupId)) return concept.translationGroupId;
+    await acquireTransactionLock(tx, `concept-family:${concept.translationGroupId}`);
+    lockedGroups.add(concept.translationGroupId);
+  }
+}
+
 export async function createConceptAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`concept:create:${user.id}`, 5, 60_000);
@@ -144,6 +159,9 @@ export async function createConceptAction(formData: FormData) {
 
   const concept = await prisma.$transaction(async (tx) => {
     await assertDailyContentCreationQuota(tx, user);
+    if (translationGroupId) {
+      await acquireTransactionLock(tx, `concept-family:${translationGroupId}`);
+    }
     const existingTitle = await tx.concept.findFirst({
       where: {
         language,
@@ -347,6 +365,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     ((existingConcept.status === ConceptStatus.REVIEWED || existingConcept.status === ConceptStatus.EXCELLENT) &&
       hasReviewSensitiveChanges);
   const concept = await prisma.$transaction(async (tx) => {
+    await lockConceptFamilyForMutation(tx, conceptId);
     const currentSnapshotSource = await conceptSnapshotSource(tx, conceptId);
     await pinLatestConceptRevisionMetadata(tx, currentSnapshotSource);
     const currentSnapshot = buildConceptRevisionSnapshot(currentSnapshotSource);
@@ -527,6 +546,7 @@ export async function markConceptReviewedAction(conceptId: number) {
   await assertRateLimit(`concept:review:${user.id}`, 30, 60_000);
 
   const concept = await prisma.$transaction(async (tx) => {
+    await lockConceptFamilyForMutation(tx, conceptId);
     const current = await tx.concept.findUnique({
       where: { id: conceptId },
       select: {
@@ -597,6 +617,7 @@ export async function markConceptUsableAction(conceptId: number) {
   await assertRateLimit(`concept:usable:${user.id}`, 30, 60_000);
 
   const concept = await prisma.$transaction(async (tx) => {
+    await lockConceptFamilyForMutation(tx, conceptId);
     const current = await tx.concept.findUnique({
       where: { id: conceptId },
       select: {
@@ -660,6 +681,7 @@ export async function downgradeConceptStatusAction(conceptId: number, formData: 
   const reason = requiredBoundedText(formData.get("reason"), CONTENT_LIMITS.shortText, "Reason");
 
   const result = await prisma.$transaction(async (tx) => {
+    await lockConceptFamilyForMutation(tx, conceptId);
     const current = await tx.concept.findUnique({
       where: { id: conceptId },
       select: {
@@ -758,6 +780,7 @@ export async function dismissConceptTranslationStaleNoticeAction(conceptId: numb
   }
 
   await prisma.$transaction(async (tx) => {
+    await lockConceptFamilyForMutation(tx, conceptId);
     const current = await conceptSnapshotSource(tx, conceptId);
     if (current.translatedFromRevisionId === latestSourceRevisionId) return;
     await pinLatestConceptRevisionMetadata(tx, current);
@@ -796,6 +819,7 @@ export async function deleteConceptAction(conceptId: number) {
       title: true,
       bodyMarkdown: true,
       kind: true,
+      translationGroupId: true,
       createdById: true,
       aliases: { select: { aliasSlug: true } }
     }
@@ -808,6 +832,7 @@ export async function deleteConceptAction(conceptId: number) {
 
   const targetSlugs = [concept.slug, ...concept.aliases.map((alias) => alias.aliasSlug)];
   await prisma.$transaction(async (tx) => {
+    await lockConceptFamilyForMutation(tx, concept.id);
     const current = await conceptSnapshotSource(tx, concept.id);
     const conceptSnapshot = buildConceptRevisionSnapshot(current);
     await pinLatestConceptRevisionMetadata(tx, current);
@@ -880,6 +905,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
   }
 
   const concept = await prisma.$transaction(async (tx) => {
+    await lockConceptFamilyForMutation(tx, conceptId);
     await pinLatestConceptRevisionMetadata(tx, await conceptSnapshotSource(tx, conceptId));
     const updated = await tx.concept.update({
       where: { id: conceptId },

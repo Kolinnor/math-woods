@@ -6,7 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
-import { ACHIEVEMENTS } from "@/lib/achievements";
+import { achievementsForLocale } from "@/lib/achievement-copy";
 import {
   acceptFriendRequestAction,
   cancelFriendRequestAction,
@@ -142,7 +142,13 @@ export default async function ProfilePage({
         })
       : null,
     prisma.concept.findMany({
-      where: { createdById: user.id, canAppearInConceptBrowser: true },
+      where: {
+        canAppearInConceptBrowser: true,
+        OR: [
+          { createdById: user.id },
+          { mergeContributors: { some: { userId: user.id } } }
+        ]
+      },
       select: {
         id: true,
         slug: true,
@@ -150,7 +156,12 @@ export default async function ProfilePage({
         language: true,
         translationGroupId: true,
         translatedFromConceptId: true,
-        createdAt: true
+        createdAt: true,
+        createdById: true,
+        mergeContributors: {
+          where: { userId: user.id },
+          select: { creditedAt: true }
+        }
       },
       orderBy: { createdAt: "desc" }
     }),
@@ -175,7 +186,12 @@ export default async function ProfilePage({
   ]);
 
   const problemDates = earliestDateByTranslationGroup(problemRows);
-  const conceptDates = earliestDateByTranslationGroup(conceptRows);
+  const conceptDates = earliestDateByTranslationGroup(conceptRows.map((concept) => ({
+    translationGroupId: concept.translationGroupId,
+    createdAt: concept.createdById === user.id
+      ? concept.createdAt
+      : concept.mergeContributors[0]?.creditedAt ?? concept.createdAt
+  })));
   const solutionDates = earliestDateByTranslationGroup(solutionRows);
   const problems = selectContentTranslationsByGroup(
     problemRows.map((problem) => ({
@@ -234,6 +250,7 @@ export default async function ProfilePage({
   const isSelf = currentUser?.id === user.id;
   const currentUserSolvedIds = new Set(currentUserSolved.map((attempt) => attempt.problemId));
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
+  const achievements = achievementsForLocale(interfaceLocale);
   const contributionDateLabel = (date: Date) => date.toLocaleDateString(interfaceLocale, {
     day: "numeric",
     month: "long",
@@ -438,7 +455,7 @@ export default async function ProfilePage({
           <section>
             <h2 className="mb-3 font-semibold">{t.profile.achievements}</h2>
             <div className="achievement-grid">
-              {ACHIEVEMENTS.map((achievement) => {
+              {achievements.map((achievement) => {
                 const unlock = achievementUnlockMap.get(achievement.key);
 
                 return (

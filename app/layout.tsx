@@ -17,6 +17,7 @@ import { LanguageSelector } from "@/components/LanguageSelector";
 import { MathWoodsTourOverlay } from "@/components/MathWoodsTourOverlay";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { SignInLink } from "@/components/SignInLink";
+import { SiteAnnouncementToast } from "@/components/SiteAnnouncementToast";
 import { SitePresenceHeartbeat } from "@/components/SitePresenceHeartbeat";
 import { TimeZoneReporter } from "@/components/TimeZoneReporter";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -297,7 +298,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           )}
         </header>
         {!user && <GuestProgressPrompt />}
-        {user && <AchievementToast userId={user.id} />}
+        {user && (
+          <div className="site-toast-stack">
+            <SiteAnnouncementToast userId={user.id} />
+            <AchievementToast userId={user.id} />
+          </div>
+        )}
         {user && (
           <div className="floating-friends-menu">
             <NotificationsMenu userId={user.id} />

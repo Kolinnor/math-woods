@@ -8,12 +8,16 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 export function AchievementToastClient({
   notificationId,
   href,
+  label,
   body,
+  dismissLabel,
   dismissAction
 }: {
   notificationId: number;
   href: string;
+  label: string;
   body: string;
+  dismissLabel: string;
   dismissAction: (notificationId: number) => Promise<void>;
 }) {
   const [visible, setVisible] = useState(true);
@@ -39,10 +43,10 @@ export function AchievementToastClient({
   return (
     <aside className="achievement-toast" aria-live="polite">
       <Link href={href as Route} className="achievement-toast-link">
-        <span>Achievement unlocked</span>
+        <span>{label}</span>
         <strong>{body}</strong>
       </Link>
-      <button type="button" className="achievement-toast-close" onClick={dismiss} aria-label="Dismiss achievement">
+      <button type="button" className="achievement-toast-close" onClick={dismiss} aria-label={dismissLabel}>
         <X size={16} aria-hidden="true" />
       </button>
     </aside>

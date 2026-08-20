@@ -4,17 +4,21 @@ import { Bell, Trash2, X } from "lucide-react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserAvatar } from "@/components/UserAvatar";
+import { localizeAchievementNotification } from "@/lib/achievement-copy";
 import { clearNotificationMenuAction } from "@/lib/actions/notification-actions";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { cleanupNotificationsForUser, notificationOpenHref } from "@/lib/notification-lifecycle";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export async function NotificationsMenu({ userId }: { userId: number }) {
-  const t = await getTranslations();
-  const timeZone = await getRequestTimeZone();
+  const [t, interfaceLocale, timeZone] = await Promise.all([
+    getTranslations(),
+    getInterfaceLocale(),
+    getRequestTimeZone()
+  ]);
   await cleanupNotificationsForUser(userId);
   const hiddenNotificationTypes = EXPLORATIONS_ENABLED
     ? [NotificationType.CHAT_MESSAGE]
@@ -67,24 +71,27 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
           </div>
         </div>
         <div className="notification-list">
-          {unreadNotifications.map((notification) => (
-            <Link
-              key={notification.id}
-              href={notificationOpenHref(notification.id) as never}
-              className="notification-item notification-unread"
-            >
-              <div className="notification-item-main">
-                {notification.actor && <UserAvatar user={notification.actor} size="sm" />}
-                <div>
-                  <span>
-                    <strong><AsyncMarkdownInline markdown={notification.title} /></strong>
-                    <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
-                  </span>
-                  <p><AsyncMarkdownInline markdown={notification.body} /></p>
+          {unreadNotifications.map((notification) => {
+            const localizedNotification = localizeAchievementNotification(notification, interfaceLocale);
+            return (
+              <Link
+                key={notification.id}
+                href={notificationOpenHref(notification.id) as never}
+                className="notification-item notification-unread"
+              >
+                <div className="notification-item-main">
+                  {notification.actor && <UserAvatar user={notification.actor} size="sm" />}
+                  <div>
+                    <span>
+                      <strong><AsyncMarkdownInline markdown={localizedNotification.title} /></strong>
+                      <small>{formatUserShortDateTime(notification.createdAt, timeZone)}</small>
+                    </span>
+                    <p><AsyncMarkdownInline markdown={localizedNotification.body} /></p>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
           {unreadNotifications.length === 0 && <p className="notification-empty">{t.notifications.noUnread}</p>}
         </div>
       </div>

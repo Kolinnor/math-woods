@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { FieldHelp } from "@/components/FieldHelp";
@@ -51,7 +51,14 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
     }
   });
 
-  if (!concept) notFound();
+  if (!concept) {
+    const merged = await prisma.conceptRedirect.findUnique({
+      where: { sourceSlug: slug },
+      include: { targetConcept: true }
+    });
+    if (merged) redirect(`/concepts/${merged.targetConcept.slug}/edit`);
+    notFound();
+  }
   if (!canEditConcept(user, concept)) notFound();
   const canFeatureConcept = canUseAdminTools(user);
   const canDeleteCurrentConcept = canDeleteConcept(user, concept);

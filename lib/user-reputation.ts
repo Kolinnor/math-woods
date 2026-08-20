@@ -114,7 +114,7 @@ async function authoredContentCounts(userIds: number[]) {
     return { conceptsByUser: new Map<number, number>(), solutionsByUser: new Map<number, number>() };
   }
 
-  const [concepts, solutions] = await Promise.all([
+  const [concepts, solutions, mergedConceptCredits] = await Promise.all([
     prisma.concept.findMany({
       where: { createdById: { in: userIds }, canAppearInConceptBrowser: true },
       select: { createdById: true, translationGroupId: true }
@@ -122,6 +122,16 @@ async function authoredContentCounts(userIds: number[]) {
     prisma.problemProof.findMany({
       where: { authorId: { in: userIds }, problem: { status: ProblemStatus.PUBLISHED } },
       select: { authorId: true, translationGroupId: true }
+    }),
+    prisma.conceptMergeContributor.findMany({
+      where: {
+        userId: { in: userIds },
+        concept: { canAppearInConceptBrowser: true }
+      },
+      select: {
+        userId: true,
+        concept: { select: { translationGroupId: true } }
+      }
     })
   ]);
 
@@ -136,9 +146,15 @@ async function authoredContentCounts(userIds: number[]) {
   }
 
   return {
-    conceptsByUser: countUniqueGroups(concepts.flatMap((concept) =>
-      concept.createdById === null ? [] : [{ userId: concept.createdById, translationGroupId: concept.translationGroupId }]
-    )),
+    conceptsByUser: countUniqueGroups([
+      ...concepts.flatMap((concept) =>
+        concept.createdById === null ? [] : [{ userId: concept.createdById, translationGroupId: concept.translationGroupId }]
+      ),
+      ...mergedConceptCredits.map((credit) => ({
+        userId: credit.userId,
+        translationGroupId: credit.concept.translationGroupId
+      }))
+    ]),
     solutionsByUser: countUniqueGroups(solutions.map((solution) => ({
       userId: solution.authorId,
       translationGroupId: solution.translationGroupId

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ConceptStatus, MathDomain } from "@prisma/client";
-import { Flag, History, MessageCircle, Pencil, Users } from "lucide-react";
+import { Flag, GitMerge, History, MessageCircle, Pencil, Users } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -22,7 +22,7 @@ import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/domains";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageLabel } from "@/lib/languages";
 import { renderInlineMarkdown } from "@/lib/markdown";
@@ -75,7 +75,7 @@ function uniqueLinksByTargetSlug<T extends { targetSlug: string }>(links: T[]) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const concept = await prisma.concept.findUnique({
+  let concept = await prisma.concept.findUnique({
     where: { slug },
     select: {
       slug: true,
@@ -84,6 +84,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       translationGroupId: true
     }
   });
+  if (!concept) {
+    concept = (await prisma.conceptRedirect.findUnique({
+      where: { sourceSlug: slug },
+      select: {
+        targetConcept: {
+          select: { slug: true, title: true, bodyMarkdown: true, translationGroupId: true }
+        }
+      }
+    }))?.targetConcept ?? null;
+  }
   if (!concept) return {};
 
   const translations = await prisma.concept.findMany({
@@ -127,6 +137,7 @@ export default async function ConceptPage({
   const queryParams = searchParams ? await searchParams : {};
   const user = await getCurrentUser();
   const t = await getTranslations();
+  const interfaceLocale = await getInterfaceLocale();
   const preferredLanguage = await getPreferredContentLanguage();
   const concept = await prisma.concept.findUnique({
     where: { slug },
@@ -164,6 +175,7 @@ export default async function ConceptPage({
       translatedFromConcept: {
         select: { id: true, slug: true, title: true, language: true, createdById: true }
       },
+      mergeContributors: { include: { user: true } },
       _count: { select: { talkPosts: true } }
     }
   });
@@ -174,6 +186,11 @@ export default async function ConceptPage({
       include: { concept: true }
     });
     if (alias) redirect(`/concepts/${alias.concept.slug}`);
+    const merged = await prisma.conceptRedirect.findUnique({
+      where: { sourceSlug: slug },
+      include: { targetConcept: true }
+    });
+    if (merged) redirect(`/concepts/${merged.targetConcept.slug}`);
 
     const missingTitle =
       cleanWikiLinkTarget(queryParams.missingTitle ?? "") || titleFromConceptSlug(slug);
@@ -225,6 +242,7 @@ export default async function ConceptPage({
   for (const contributor of [
     concept.createdBy,
     ...contributorRevisions.map((revision) => revision.editedBy),
+    ...concept.mergeContributors.map((credit) => credit.user),
     concept.lastEditedBy
   ]) {
     if (contributor) contributorsById.set(contributor.id, contributor);
@@ -703,6 +721,11 @@ export default async function ConceptPage({
           <Link href={`/concepts/${concept.slug}/history`}>
             <span className="problem-rail-action-label"><History size={16} aria-hidden="true" /><span>{t.conceptDetail.history}</span></span>
           </Link>
+          {user && (
+            <Link href={`/concepts/${concept.slug}/merge` as never}>
+              <span className="problem-rail-action-label"><GitMerge size={16} aria-hidden="true" /><span>{interfaceLocale === "fr" ? "Rapprocher" : "Merge or link"}</span></span>
+            </Link>
+          )}
         </nav>
         {contributors.length > 0 && (
           <section className="concept-rail-section concept-contributors">

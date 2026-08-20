@@ -11,7 +11,6 @@ import { maybeSendContestLifecycleNotifications } from "@/lib/actions/contest-ac
 import { Difficulty } from "@/components/Difficulty";
 import { ProgressTicks } from "@/components/ProgressTicks";
 import { RevealSolvedDailyProblem } from "@/components/RevealSolvedDailyProblem";
-import { RecommendationDifficultyControl } from "@/components/RecommendationDifficultyControl";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -778,7 +777,6 @@ export default async function HomePage({
               <div className="mw-section-heading">
                 <h2>{copy.recommended}</h2>
                 <div className="recommendation-heading-actions">
-                  <RecommendationDifficultyControl label={locale === "fr" ? "Proposer plus facile" : "Show easier problems"} />
                   <Link href="/problems">{copy.more}</Link>
                 </div>
               </div>

@@ -17,13 +17,20 @@ export default async function TranslateConceptPage({
     searchParams,
     getPreferredContentLanguage()
   ]);
+  const language = parseActiveContentLanguage(queryParams.language ?? queryParams.to ?? preferredLanguage);
   const concept = await prisma.concept.findUnique({
     where: { slug },
     select: { slug: true }
   });
 
-  if (!concept) notFound();
+  if (!concept) {
+    const merged = await prisma.conceptRedirect.findUnique({
+      where: { sourceSlug: slug },
+      include: { targetConcept: true }
+    });
+    if (merged) redirect(`/concepts/${merged.targetConcept.slug}/translate?language=${encodeURIComponent(language)}`);
+    notFound();
+  }
 
-  const language = parseActiveContentLanguage(queryParams.language ?? queryParams.to ?? preferredLanguage);
   redirect(`/concepts/new?translateOf=${concept.slug}&language=${language}`);
 }

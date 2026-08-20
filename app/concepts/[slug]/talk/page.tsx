@@ -1,6 +1,6 @@
 import { ArrowLeft, MessageCircle, MessageSquarePlus, Send } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
@@ -55,7 +55,14 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
     }
   });
 
-  if (!concept) notFound();
+  if (!concept) {
+    const merged = await prisma.conceptRedirect.findUnique({
+      where: { sourceSlug: slug },
+      include: { targetConcept: true }
+    });
+    if (merged) redirect(`/concepts/${merged.targetConcept.slug}/talk`);
+    notFound();
+  }
   const ownTalkPostResetSignal = user ? concept.talkPosts.filter((post) => post.authorId === user.id).at(-1)?.id ?? 0 : 0;
   const dateFormatter = new Intl.DateTimeFormat(interfaceLocale === "fr" ? "fr-FR" : "en-US", {
     dateStyle: "medium",

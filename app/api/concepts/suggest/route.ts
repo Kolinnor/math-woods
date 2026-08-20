@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim().slice(0, 80) ?? "";
+  const includeAllLanguages = url.searchParams.get("all") === "1";
 
   if (query.length < 2) {
     return NextResponse.json({ concepts: [] });
@@ -55,16 +56,14 @@ export async function GET(request: Request) {
     take: 100
     })
   ]);
+  const rankedCandidates = [...new Map([...exactConcepts, ...matchingConcepts].map((concept) => [concept.slug, concept])).values()]
+    .map((concept) => ({
+      ...concept,
+      aliases: concept.aliases.map((alias) => alias.alias),
+      isSource: concept.translatedFromConceptId === null
+    }));
   const concepts = rankSearchMatches(
-    selectContentTranslationsByGroup(
-      [...new Map([...exactConcepts, ...matchingConcepts].map((concept) => [concept.slug, concept])).values()]
-        .map((concept) => ({
-          ...concept,
-          aliases: concept.aliases.map((alias) => alias.alias),
-          isSource: concept.translatedFromConceptId === null
-        })),
-      language
-    ),
+    includeAllLanguages ? rankedCandidates : selectContentTranslationsByGroup(rankedCandidates, language),
     query,
     undefined,
     morphologyVariants
@@ -75,6 +74,7 @@ export async function GET(request: Request) {
       title: concept.title,
       titleHtml: await renderInlineMarkdown(concept.title),
       slug: concept.slug,
+      language: concept.language,
       aliases: concept.aliases
     })))
   });
