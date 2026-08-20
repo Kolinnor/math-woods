@@ -4774,14 +4774,12 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   margin: 0;
 }
 
-.site-improvement-create label,
-.site-improvement-sidebar label {
+.site-improvement-create label {
   display: grid;
   gap: 0.35rem;
 }
 
-.site-improvement-create label > span,
-.site-improvement-sidebar label > span {
+.site-improvement-create label > span {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 750;
@@ -4846,23 +4844,21 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   border: 1px solid var(--line);
   border-radius: 6px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.05);
-  display: grid;
-  gap: 0.65rem;
   min-width: 0;
-  padding: 0.8rem;
+  overflow: hidden;
 }
 
-.site-improvement-card-meta,
-.site-improvement-card footer {
-  align-items: center;
-  display: flex;
-  gap: 0.45rem;
-  justify-content: space-between;
+.site-improvement-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 7px rgb(0 0 0 / 0.07);
 }
 
-.site-improvement-card-meta > span:last-child {
-  color: var(--muted);
-  font-size: 0.7rem;
+.site-improvement-card-link {
+  color: inherit;
+  display: grid;
+  gap: 0.55rem 0.7rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.75rem;
 }
 
 .site-improvement-priority {
@@ -4876,6 +4872,12 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   text-transform: uppercase;
 }
 
+.site-improvement-card-link > .site-improvement-priority {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+
 .site-improvement-priority.priority-high {
   border-color: #b85b4f;
   color: #9a3f35;
@@ -4886,49 +4888,28 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 }
 
 .site-improvement-card h3 {
+  grid-column: 1 / -1;
+  grid-row: 2;
   font-size: 0.92rem;
   line-height: 1.35;
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.site-improvement-card h3 a:hover {
+.site-improvement-card-link:hover h3 {
   color: var(--accent);
 }
 
-.site-improvement-card > p {
+.site-improvement-comment-count {
   align-items: center;
   color: var(--muted);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 0.72rem;
-  gap: 0.3rem;
-  margin: 0;
-}
-
-.site-improvement-card .user-name-with-avatar {
-  color: var(--ink);
-  font-size: 0.72rem;
-}
-
-.site-improvement-card footer {
-  border-top: 1px solid var(--line);
-  justify-content: flex-start;
-  padding-top: 0.55rem;
-}
-
-.site-improvement-discussion-link {
-  align-items: center;
-  color: var(--accent);
   display: inline-flex;
   font-size: 0.72rem;
   font-weight: 750;
-  gap: 0.3rem;
-  margin-right: auto;
-}
-
-.site-improvement-discussion-link > span {
-  color: var(--muted);
+  gap: 0.28rem;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
 }
 
 .site-improvement-empty {
@@ -4938,10 +4919,33 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   padding: 0.7rem 0;
 }
 
-.site-improvement-description {
+.site-improvement-detail-page .forest-page-hero {
+  min-height: 230px;
+}
+
+.site-improvement-detail-page .forest-page-hero > img {
+  object-position: center 47%;
+}
+
+.site-improvement-detail-page .forest-page-hero h1 {
+  font-size: 2.5rem;
+  line-height: 1.08;
+  max-width: 30ch;
+}
+
+.site-improvement-detail-workspace {
+  max-width: 980px;
+  padding-top: 1.25rem;
+}
+
+.site-improvement-overview {
   border-bottom: 1px solid var(--line);
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
+  padding-bottom: 1.25rem;
+}
+
+.site-improvement-description {
+  font-size: 1rem;
+  line-height: 1.65;
 }
 
 .site-improvement-description-meta {
@@ -4951,41 +4955,80 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   flex-wrap: wrap;
   font-size: 0.75rem;
   gap: 0.3rem;
-  margin: 1rem 0 0;
+  margin: 0.8rem 0 0;
 }
 
-.site-improvement-edit-details {
+.site-improvement-controls {
   border-top: 1px solid var(--line);
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-}
-
-.site-improvement-edit-details > summary {
-  color: var(--accent);
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 750;
-}
-
-.site-improvement-edit-details > form {
   display: grid;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
 }
 
+.site-improvement-metadata-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.site-improvement-metadata-form label,
 .site-improvement-edit-details label {
   display: grid;
   gap: 0.3rem;
 }
 
+.site-improvement-metadata-form label > span,
 .site-improvement-edit-details label > span {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 750;
 }
 
+.site-improvement-metadata-form select {
+  min-width: 11.5rem;
+}
+
+.site-improvement-metadata-form button {
+  min-height: 2.75rem;
+}
+
+.site-improvement-edit-details,
+.site-improvement-comment-composer,
+.site-improvement-history-panel {
+  margin: 0;
+}
+
+.site-improvement-edit-details > summary,
+.site-improvement-comment-composer > summary,
+.site-improvement-history-panel > summary {
+  align-items: center;
+  color: var(--accent);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 750;
+  gap: 0.4rem;
+  list-style: none;
+}
+
+.site-improvement-edit-details > summary::-webkit-details-marker,
+.site-improvement-comment-composer > summary::-webkit-details-marker,
+.site-improvement-history-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.site-improvement-edit-details > form {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.85rem;
+}
+
 .site-improvement-edit-details textarea {
-  min-height: 9rem;
+  min-height: 8rem;
   resize: vertical;
 }
 
@@ -4993,61 +5036,69 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   justify-self: start;
 }
 
+.site-improvement-discussion {
+  margin-top: 1.4rem;
+}
+
 .site-improvement-discussion > header {
   align-items: center;
   border-bottom: 1px solid var(--line);
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.9rem;
-  padding-bottom: 0.6rem;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.55rem;
 }
 
 .site-improvement-discussion > header h2 {
   font-family: var(--font-serif);
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   margin: 0;
 }
 
 .site-improvement-discussion > header > span {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
 }
 
-.site-improvement-sidebar {
-  display: grid;
-  gap: 1.4rem;
+.site-improvement-no-messages {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0.75rem 0;
 }
 
-.site-improvement-sidebar > section {
-  border-top: 2px solid var(--line-strong);
-  display: grid;
-  gap: 0.75rem;
+.site-improvement-comment-composer {
+  border-top: 1px solid var(--line);
+  margin-top: 0.85rem;
   padding-top: 0.75rem;
 }
 
-.site-improvement-sidebar h2 {
-  font-family: var(--font-serif);
-  font-size: 1.15rem;
-  margin: 0;
-}
-
-.site-improvement-sidebar form {
+.site-improvement-comment-composer > form {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
   display: grid;
-  gap: 0.45rem;
+  gap: 0.8rem;
+  margin-top: 0.75rem;
+  padding: 0.85rem;
 }
 
-.site-improvement-sidebar form button {
-  justify-self: start;
-  min-height: 2.15rem;
-  padding: 0.4rem 0.65rem;
+.site-improvement-history-panel {
+  border-top: 1px solid var(--line);
+  margin-top: 1.5rem;
+  padding-top: 0.8rem;
+}
+
+.site-improvement-history-panel > summary {
+  color: var(--muted);
 }
 
 .site-improvement-history {
   display: grid;
   gap: 0.7rem;
   list-style: none;
-  margin: 0;
+  margin: 0.9rem 0 0;
+  max-width: 48rem;
   padding: 0;
 }
 
@@ -5069,6 +5120,12 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   margin-top: 0.2rem;
 }
 
+@media (max-width: 900px) {
+  .site-improvement-detail-page .forest-page-hero {
+    min-height: 280px;
+  }
+}
+
 @media (max-width: 1080px) {
   .site-improvement-board {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5087,6 +5144,35 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 
   .site-improvement-board {
     grid-template-columns: 1fr;
+  }
+
+  .site-improvement-detail-page .forest-page-hero {
+    min-height: 300px;
+  }
+
+  .site-improvement-detail-page .forest-page-hero h1 {
+    font-size: 2rem;
+  }
+
+  .site-improvement-detail-workspace {
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
+
+  .site-improvement-metadata-form {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .site-improvement-metadata-form select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .site-improvement-metadata-form button {
+    grid-column: 1 / -1;
+    justify-content: center;
   }
 
   .site-improvement-create > form {

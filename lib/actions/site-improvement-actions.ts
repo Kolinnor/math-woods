@@ -103,65 +103,54 @@ export async function updateSiteImprovementDetailsAction(improvementId: number, 
   revalidateImprovement(improvementId);
 }
 
-export async function updateSiteImprovementStatusAction(improvementId: number, formData: FormData) {
+export async function updateSiteImprovementMetadataAction(improvementId: number, formData: FormData) {
   const user = await requireModerator();
-  await assertRateLimit(`site-improvement:status:${user.id}`, 60, 60_000);
+  await assertRateLimit(`site-improvement:metadata:${user.id}`, 60, 60_000);
   const status = parseSiteImprovementStatus(formData.get("status"));
-
-  await prisma.$transaction(async (tx) => {
-    const current = await tx.siteImprovement.findUnique({
-      where: { id: improvementId },
-      select: { id: true, status: true }
-    });
-    if (!current) throw new Error("Site improvement not found.");
-    if (current.status === status) return;
-    const updated = await tx.siteImprovement.updateMany({
-      where: { id: current.id, status: current.status },
-      data: {
-        status,
-        completedAt: status === SiteImprovementStatus.COMPLETED ? new Date() : null
-      }
-    });
-    if (updated.count !== 1) throw new Error("This improvement changed while you were moving it.");
-    await tx.siteImprovementActivity.create({
-      data: {
-        improvementId: current.id,
-        actorId: user.id,
-        type: SiteImprovementActivityType.STATUS_CHANGED,
-        fromValue: current.status,
-        toValue: status
-      }
-    });
-  });
-
-  revalidateImprovement(improvementId);
-}
-
-export async function updateSiteImprovementPriorityAction(improvementId: number, formData: FormData) {
-  const user = await requireModerator();
-  await assertRateLimit(`site-improvement:priority:${user.id}`, 60, 60_000);
   const priority = parseSiteImprovementPriority(formData.get("priority"));
 
   await prisma.$transaction(async (tx) => {
     const current = await tx.siteImprovement.findUnique({
       where: { id: improvementId },
-      select: { id: true, priority: true }
+      select: { id: true, status: true, priority: true }
     });
     if (!current) throw new Error("Site improvement not found.");
-    if (current.priority === priority) return;
+    const statusChanged = current.status !== status;
+    const priorityChanged = current.priority !== priority;
+    if (!statusChanged && !priorityChanged) return;
+
     const updated = await tx.siteImprovement.updateMany({
-      where: { id: current.id, priority: current.priority },
-      data: { priority }
-    });
-    if (updated.count !== 1) throw new Error("This improvement changed while you were updating its priority.");
-    await tx.siteImprovementActivity.create({
+      where: { id: current.id, status: current.status, priority: current.priority },
       data: {
-        improvementId: current.id,
-        actorId: user.id,
-        type: SiteImprovementActivityType.PRIORITY_CHANGED,
-        fromValue: current.priority,
-        toValue: priority
+        ...(statusChanged
+          ? { status, completedAt: status === SiteImprovementStatus.COMPLETED ? new Date() : null }
+          : {}),
+        ...(priorityChanged ? { priority } : {})
       }
+    });
+    if (updated.count !== 1) throw new Error("This improvement changed while you were updating it.");
+
+    await tx.siteImprovementActivity.createMany({
+      data: [
+        ...(statusChanged
+          ? [{
+              improvementId: current.id,
+              actorId: user.id,
+              type: SiteImprovementActivityType.STATUS_CHANGED,
+              fromValue: current.status,
+              toValue: status
+            }]
+          : []),
+        ...(priorityChanged
+          ? [{
+              improvementId: current.id,
+              actorId: user.id,
+              type: SiteImprovementActivityType.PRIORITY_CHANGED,
+              fromValue: current.priority,
+              toValue: priority
+            }]
+          : [])
+      ]
     });
   });
 

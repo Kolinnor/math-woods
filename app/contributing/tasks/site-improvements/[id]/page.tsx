@@ -3,7 +3,7 @@ import {
   SiteImprovementPriority,
   SiteImprovementStatus
 } from "@prisma/client";
-import { ArrowLeft, Check, MessageCircle, Send } from "lucide-react";
+import { ArrowLeft, Check, History, MessageCircle, PencilLine, Send } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -13,8 +13,7 @@ import { UserName } from "@/components/UserName";
 import {
   createSiteImprovementCommentAction,
   updateSiteImprovementDetailsAction,
-  updateSiteImprovementPriorityAction,
-  updateSiteImprovementStatusAction
+  updateSiteImprovementMetadataAction
 } from "@/lib/actions/site-improvement-actions";
 import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -72,66 +71,15 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
   });
   const canEditDetails = improvement.creatorId === user.id || canUseAdminTools(user);
 
-  const sidebar = (
-    <div className="site-improvement-sidebar">
-      <section>
-        <h2>{copy.details}</h2>
-        <form action={updateSiteImprovementStatusAction.bind(null, improvement.id)}>
-          <label>
-            <span>{copy.changeStatus}</span>
-            <select name="status" defaultValue={improvement.status}>
-              {SITE_IMPROVEMENT_STATUS_ORDER.map((status) => (
-                <option key={status} value={status}>{copy.statuses[status]}</option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className="secondary"><Check size={15} />{copy.apply}</button>
-        </form>
-        <form action={updateSiteImprovementPriorityAction.bind(null, improvement.id)}>
-          <label>
-            <span>{copy.changePriority}</span>
-            <select name="priority" defaultValue={improvement.priority}>
-              {SITE_IMPROVEMENT_PRIORITY_ORDER.map((priority) => (
-                <option key={priority} value={priority}>{copy.priorities[priority]}</option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className="secondary"><Check size={15} />{copy.apply}</button>
-        </form>
-      </section>
-
-      <section>
-        <h2>{copy.history}</h2>
-        <ol className="site-improvement-history">
-          {improvement.activities.map((activity) => {
-            const from = activityValue(activity.fromValue, activity.type, copy);
-            const to = activityValue(activity.toValue, activity.type, copy);
-            return (
-              <li key={activity.id}>
-                <p>
-                  {activity.actor ? <UserName user={activity.actor} /> : copy.formerUser}{" "}
-                  {copy.activity[activity.type]}
-                  {from && to ? `: ${from} → ${to}` : to ? `: ${to}` : ""}
-                </p>
-                <time dateTime={activity.createdAt.toISOString()}>{dateFormatter.format(activity.createdAt)}</time>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
-    </div>
-  );
-
   return (
     <ForestPageLayout
       className="site-improvement-detail-page"
       title={improvement.title}
-      eyebrow={`${copy.title} · #${improvement.id}`}
+      eyebrow={`${copy.title} #${improvement.id}`}
       description={`${copy.statuses[improvement.status]} · ${copy.priorities[improvement.priority]}`}
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      titleBelowHero
-      sidebar={sidebar}
+      workspaceClassName="site-improvement-detail-workspace"
       actions={
         <Link href={"/contributing/tasks/site-improvements" as never} className="button secondary">
           <ArrowLeft size={16} aria-hidden="true" />
@@ -139,16 +87,42 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
         </Link>
       }
     >
-      <section className="site-improvement-description">
-        <MarkdownBlock html={improvement.descriptionHtml} />
+      <section className="site-improvement-overview">
+        <div className="site-improvement-description">
+          <MarkdownBlock html={improvement.descriptionHtml} />
+        </div>
         <p className="site-improvement-description-meta">
           {copy.createdBy}{" "}
           {improvement.creator ? <UserName user={improvement.creator} /> : copy.formerUser}
           {" · "}{dateFormatter.format(improvement.createdAt)}
         </p>
-        {canEditDetails && (
-          <details className="site-improvement-edit-details">
-            <summary>{copy.edit}</summary>
+
+        <div className="site-improvement-controls">
+          <form
+            action={updateSiteImprovementMetadataAction.bind(null, improvement.id)}
+            className="site-improvement-metadata-form"
+          >
+            <label>
+              <span>{copy.changeStatus}</span>
+              <select name="status" defaultValue={improvement.status}>
+                {SITE_IMPROVEMENT_STATUS_ORDER.map((status) => (
+                  <option key={status} value={status}>{copy.statuses[status]}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{copy.changePriority}</span>
+              <select name="priority" defaultValue={improvement.priority}>
+                {SITE_IMPROVEMENT_PRIORITY_ORDER.map((priority) => (
+                  <option key={priority} value={priority}>{copy.priorities[priority]}</option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="secondary"><Check size={15} />{copy.save}</button>
+          </form>
+
+          {canEditDetails && <details className="site-improvement-edit-details">
+            <summary><PencilLine size={15} aria-hidden="true" />{copy.edit}</summary>
             <form action={updateSiteImprovementDetailsAction.bind(null, improvement.id)}>
               <label>
                 <span>{copy.titleLabel}</span>
@@ -165,8 +139,8 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
               </label>
               <button type="submit" className="secondary">{copy.save}</button>
             </form>
-          </details>
-        )}
+          </details>}
+        </div>
       </section>
 
       <section className="site-improvement-discussion">
@@ -175,42 +149,60 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
           <h2>{copy.discussion}</h2>
           <span>{improvement.comments.length}</span>
         </header>
-        <div className="discussion-thread">
-          {improvement.comments.map((comment) => (
-            <article key={comment.id} id={`comment-${comment.id}`} className="discussion-post">
-              <header className="discussion-post-header">
-                <div className="discussion-post-author">
-                  {comment.author ? (
-                    <Link href={`/profile/${comment.author.profileSlug}`}><UserName user={comment.author} /></Link>
-                  ) : copy.formerUser}
-                  <time dateTime={comment.createdAt.toISOString()}>{dateFormatter.format(comment.createdAt)}</time>
-                </div>
-              </header>
-              <div className="discussion-post-body"><MarkdownBlock html={comment.bodyHtml} /></div>
-            </article>
-          ))}
-          {improvement.comments.length === 0 && (
-            <div className="discussion-empty-state">
-              <MessageCircle size={24} aria-hidden="true" />
-              <p>{copy.noMessages}</p>
+        {improvement.comments.length > 0 ? (
+          <div className="discussion-thread">
+            {improvement.comments.map((comment) => (
+              <article key={comment.id} id={`comment-${comment.id}`} className="discussion-post">
+                <header className="discussion-post-header">
+                  <div className="discussion-post-author">
+                    {comment.author ? (
+                      <Link href={`/profile/${comment.author.profileSlug}`}><UserName user={comment.author} /></Link>
+                    ) : copy.formerUser}
+                    <time dateTime={comment.createdAt.toISOString()}>{dateFormatter.format(comment.createdAt)}</time>
+                  </div>
+                </header>
+                <div className="discussion-post-body"><MarkdownBlock html={comment.bodyHtml} /></div>
+              </article>
+            ))}
+          </div>
+        ) : <p className="site-improvement-no-messages">{copy.noMessages}</p>}
+
+        <details className="site-improvement-comment-composer">
+          <summary><MessageCircle size={15} aria-hidden="true" />{copy.addMessage}</summary>
+          <form action={createSiteImprovementCommentAction.bind(null, improvement.id)}>
+            <LazyMarkdownEditor
+              name="bodyMarkdown"
+              minHeight="8rem"
+              lineNumbers={false}
+              draftKey={`site-improvement:${improvement.id}:comment`}
+              resetSignal={improvement.comments.filter((comment) => comment.authorId === user.id).at(-1)?.id ?? 0}
+            />
+            <div className="discussion-composer-actions">
+              <button type="submit"><Send size={16} aria-hidden="true" />{copy.publish}</button>
             </div>
-          )}
-        </div>
+          </form>
+        </details>
       </section>
 
-      <form action={createSiteImprovementCommentAction.bind(null, improvement.id)} className="discussion-composer">
-        <h2>{copy.addMessage}</h2>
-        <LazyMarkdownEditor
-          name="bodyMarkdown"
-          minHeight="9rem"
-          lineNumbers={false}
-          draftKey={`site-improvement:${improvement.id}:comment`}
-          resetSignal={improvement.comments.filter((comment) => comment.authorId === user.id).at(-1)?.id ?? 0}
-        />
-        <div className="discussion-composer-actions">
-          <button type="submit"><Send size={16} aria-hidden="true" />{copy.publish}</button>
-        </div>
-      </form>
+      <details className="site-improvement-history-panel">
+        <summary><History size={16} aria-hidden="true" />{copy.history}</summary>
+        <ol className="site-improvement-history">
+          {improvement.activities.map((activity) => {
+            const from = activityValue(activity.fromValue, activity.type, copy);
+            const to = activityValue(activity.toValue, activity.type, copy);
+            return (
+              <li key={activity.id}>
+                <p>
+                  {activity.actor ? <UserName user={activity.actor} /> : copy.formerUser}{" "}
+                  {copy.activity[activity.type]}
+                  {from && to ? `: ${from} → ${to}` : to ? `: ${to}` : ""}
+                </p>
+                <time dateTime={activity.createdAt.toISOString()}>{dateFormatter.format(activity.createdAt)}</time>
+              </li>
+            );
+          })}
+        </ol>
+      </details>
     </ForestPageLayout>
   );
 }

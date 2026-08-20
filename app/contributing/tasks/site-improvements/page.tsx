@@ -3,7 +3,6 @@ import { MessageCircle, Plus } from "lucide-react";
 import Link from "next/link";
 import { ContributionTasksTabs } from "@/components/ContributionTasksTabs";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { UserName } from "@/components/UserName";
 import { createSiteImprovementAction } from "@/lib/actions/site-improvement-actions";
 import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -25,7 +24,6 @@ export default async function SiteImprovementsPage() {
     prisma.siteImprovement.findMany({
       where: { status: { not: SiteImprovementStatus.COMPLETED } },
       include: {
-        creator: true,
         _count: { select: { comments: true } }
       },
       orderBy: { updatedAt: "desc" }
@@ -33,7 +31,6 @@ export default async function SiteImprovementsPage() {
     prisma.siteImprovement.findMany({
       where: { status: SiteImprovementStatus.COMPLETED },
       include: {
-        creator: true,
         _count: { select: { comments: true } }
       },
       orderBy: { completedAt: "desc" }
@@ -113,24 +110,20 @@ export default async function SiteImprovementsPage() {
               <div className="site-improvement-list">
                 {statusItems.map((item) => (
                   <article key={item.id} className="site-improvement-card">
-                    <div className="site-improvement-card-meta">
+                    <Link href={`/contributing/tasks/site-improvements/${item.id}` as never} className="site-improvement-card-link">
                       <span className={`site-improvement-priority priority-${item.priority.toLowerCase()}`}>
                         {copy.priorities[item.priority]}
                       </span>
-                      <span>#{item.id}</span>
-                    </div>
-                    <h3><Link href={`/contributing/tasks/site-improvements/${item.id}` as never}>{item.title}</Link></h3>
-                    <p>
-                      {item.creator ? (
-                        <><span>{copy.createdBy}</span> <UserName user={item.creator} /></>
-                      ) : copy.formerUser}
-                    </p>
-                    <footer>
-                      <Link href={`/contributing/tasks/site-improvements/${item.id}` as never} className="site-improvement-discussion-link">
+                      <h3>{item.title}</h3>
+                      <span
+                        className="site-improvement-comment-count"
+                        title={copy.comments(item._count.comments)}
+                        aria-label={copy.comments(item._count.comments)}
+                      >
                         <MessageCircle size={15} aria-hidden="true" />
-                        {copy.discussion} <span>{item._count.comments}</span>
-                      </Link>
-                    </footer>
+                        {item._count.comments}
+                      </span>
+                    </Link>
                   </article>
                 ))}
                 {statusItems.length === 0 && <p className="site-improvement-empty">{copy.noItems}</p>}

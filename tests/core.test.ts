@@ -2238,9 +2238,15 @@ assert.match(siteImprovementsBoardSource, /requireModerator\(\)/);
 assert.match(siteImprovementDetailSource, /requireModerator\(\)/);
 assert.equal(
   (siteImprovementActionsSource.match(/await requireModerator\(\)/g) ?? []).length,
-  5,
+  4,
   "every site-improvement mutation must enforce trusted access server-side"
 );
+assert.match(siteImprovementActionsSource, /updateSiteImprovementMetadataAction[\s\S]*?parseSiteImprovementStatus[\s\S]*?parseSiteImprovementPriority/);
+assert.match(siteImprovementDetailSource, /action=\{updateSiteImprovementMetadataAction\.bind/);
+assert.doesNotMatch(siteImprovementDetailSource, /site-improvement-sidebar|titleBelowHero/);
+assert.match(siteImprovementDetailSource, /<details className="site-improvement-comment-composer">/);
+assert.match(siteImprovementDetailSource, /<details className="site-improvement-history-panel">/);
+assert.doesNotMatch(siteImprovementsBoardSource, /<UserName|copy\.createdBy/);
 assert.doesNotMatch(siteImprovementActionsSource, /claimSiteImprovementAction|releaseSiteImprovementAction|assigneeId/);
 assert.doesNotMatch(siteImprovementsBoardSource, /claimSiteImprovementAction|releaseSiteImprovementAction|assignee/);
 assert.doesNotMatch(siteImprovementDetailSource, /claimSiteImprovementAction|releaseSiteImprovementAction|assignee/);
