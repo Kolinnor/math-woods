@@ -16,7 +16,7 @@ import { ProblemReactions } from "@/components/ProblemReactions";
 import { ProblemRecommendationExposure } from "@/components/ProblemRecommendationExposure";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
-import { reportProblemAction, reportProofAction } from "@/lib/actions/moderation-actions";
+import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
   createProblemHintFromProblemAction,
   dismissProblemTranslationStaleNoticeAction,
@@ -47,7 +47,6 @@ import {
   canReviewProblem,
   canUseAdminTools,
   canUseModerationTools,
-  isVerifiedContributor,
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
@@ -217,8 +216,6 @@ export default async function ProblemPage({
     translateHint?: string;
     verification?: string;
     editProposal?: string;
-    solutionReport?: string;
-    solutionReportProof?: string;
     viewLanguage?: string;
     tour?: string;
     recommended?: string;
@@ -250,7 +247,8 @@ export default async function ProblemPage({
       proofs: {
         include: {
           author: true,
-          translatedBy: true
+          translatedBy: true,
+          _count: { select: { comments: true } }
         },
         orderBy: { createdAt: "asc" }
       },
@@ -1185,7 +1183,7 @@ export default async function ProblemPage({
             </p>
           )}
           {proofs.length > 0 && canViewSolutions && (
-            <details className="proof-reveal-gate" open={queryParams.solutionReport === "saved"}>
+            <details className="proof-reveal-gate">
               <summary>
                 <span>{t.problemDetail.revealSolutions}</span>
                 <small>{t.problemDetail.revealWarning}</small>
@@ -1207,9 +1205,6 @@ export default async function ProblemPage({
                     Boolean(isOwnProof) ||
                     Boolean(ownOpenReport) ||
                     Boolean(user && canUseModerationTools(user));
-                  const canReportProof = Boolean(user && isVerifiedContributor(user) && !isOwnProof);
-                  const solutionReportSaved =
-                    queryParams.solutionReport === "saved" && queryParams.solutionReportProof === String(proof.id);
                   return (
                     <article id={`solution-${proof.id}`} key={proof.id} className={accepted ? "proof-card proof-accepted" : "proof-card"}>
                       <header className="proof-header">
@@ -1238,6 +1233,17 @@ export default async function ProblemPage({
                           </p>
                         </div>
                         <div className="proof-actions">
+                          <Link
+                            href={`/problems/${problem.slug}/proofs/${proof.id}/discussion` as never}
+                            className="proof-discussion-link"
+                            title={t.problemDetail.openDiscussion}
+                          >
+                            <MessageCircle size={14} aria-hidden="true" />
+                            <span>{t.problemDetail.discussions}</span>
+                            {proof._count.comments > 0 && (
+                              <span className="proof-discussion-count">{proof._count.comments}</span>
+                            )}
+                          </Link>
                           {canEditProof && (
                             <Link href={`/problems/${problem.slug}/proofs/${proof.id}/edit` as never} className="button secondary">
                               <Pencil size={16} />
@@ -1271,67 +1277,6 @@ export default async function ProblemPage({
                         </div>
                       </header>
                       <MarkdownBlock html={proofBodyHtmlById.get(proof.id) ?? proof.bodyHtml} />
-                      {canReportProof && (
-                        <details className="solution-report-control" open={solutionReportSaved}>
-                          <summary>
-                            <Flag size={14} aria-hidden="true" />
-                            {ownOpenReport
-                              ? t.problemDetail.updateSolutionReport
-                              : t.problemDetail.reportSolution}
-                          </summary>
-                          <form
-                            action={reportProofAction.bind(null, proof.id, problem.slug)}
-                            className="solution-report-form"
-                          >
-                            {solutionReportSaved && (
-                              <p className="success-text" role="status" aria-live="polite">
-                                {t.problemDetail.solutionReportSaved}
-                              </p>
-                            )}
-                            <label>
-                              <span>{t.problemDetail.solutionReportReason}</span>
-                              <select
-                                name="category"
-                                defaultValue={ownOpenReport?.category ?? "MATHEMATICAL_ERROR"}
-                              >
-                                <option value="MATHEMATICAL_ERROR">
-                                  {t.problemDetail.solutionReportReasons.mathematicalError}
-                                </option>
-                                <option value="INCOMPLETE_ARGUMENT">
-                                  {t.problemDetail.solutionReportReasons.incompleteArgument}
-                                </option>
-                                <option value="UNCLEAR_EXPLANATION">
-                                  {t.problemDetail.solutionReportReasons.unclearExplanation}
-                                </option>
-                                <option value="IRRELEVANT_OR_ABUSIVE">
-                                  {t.problemDetail.solutionReportReasons.irrelevantOrAbusive}
-                                </option>
-                                <option value="OTHER">
-                                  {t.problemDetail.solutionReportReasons.other}
-                                </option>
-                              </select>
-                            </label>
-                            <label>
-                              <span>{t.problemDetail.solutionReportExplanation}</span>
-                              <textarea
-                                name="reason"
-                                defaultValue={ownOpenReport?.reason ?? ""}
-                                placeholder={t.problemDetail.solutionReportPlaceholder}
-                                minLength={10}
-                                maxLength={4000}
-                                required
-                              />
-                            </label>
-                            <div className="solution-report-submit">
-                              <small>{t.problemDetail.solutionReportGuidance}</small>
-                              <button type="submit" className="secondary">
-                                <Flag size={15} aria-hidden="true" />
-                                {t.problemDetail.submitSolutionReport}
-                              </button>
-                            </div>
-                          </form>
-                        </details>
-                      )}
                     </article>
                   );
                 })}

@@ -2038,6 +2038,12 @@ const layoutSource = readFileSync(join("app", "layout.tsx"), "utf-8");
 const guestProgressPromptSource = readFileSync(join("components", "GuestProgressPrompt.tsx"), "utf-8");
 const guestContentGateSource = readFileSync(join("components", "GuestContentViewGate.tsx"), "utf-8");
 const problemDetailSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
+const solutionDiscussionSource = readFileSync(
+  join("app", "problems", "[slug]", "proofs", "[proofId]", "discussion", "page.tsx"),
+  "utf-8"
+);
+const proofActionsSource = readFileSync(join("lib", "actions", "proof-actions.ts"), "utf-8");
+const moderationActionsSource = readFileSync(join("lib", "actions", "moderation-actions.ts"), "utf-8");
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
 const problemBrowserSource = readFileSync(join("app", "problems", "page.tsx"), "utf-8");
@@ -2054,6 +2060,10 @@ const dailyTipCardSource = readFileSync(join("components", "DailyTipCard.tsx"), 
 const friendsMenuSource = readFileSync(join("components", "FriendsMenuClient.tsx"), "utf-8");
 const oauthCompleteSource = readFileSync(join("app", "login", "complete", "page.tsx"), "utf-8");
 const languageSelectorSource = readFileSync(join("components", "LanguageSelector.tsx"), "utf-8");
+const contributionTasksSource = readFileSync(join("app", "contributing", "tasks", "page.tsx"), "utf-8");
+const siteImprovementsBoardSource = readFileSync(join("app", "contributing", "tasks", "site-improvements", "page.tsx"), "utf-8");
+const siteImprovementDetailSource = readFileSync(join("app", "contributing", "tasks", "site-improvements", "[id]", "page.tsx"), "utf-8");
+const siteImprovementActionsSource = readFileSync(join("lib", "actions", "site-improvement-actions.ts"), "utf-8");
 assert.match(layoutSource, /\/about\/tutorial/);
 assert.match(layoutSource, /<GuestProgressPrompt \/>/);
 assert.match(guestProgressPromptSource, /dictionaryForLocale/);
@@ -2062,6 +2072,17 @@ assert.match(guestContentGateSource, /window\.location\.replace/);
 assert.match(problemDetailSource, /contentKey=\{`problem:\$\{problem\.translationGroupId\}`\}/);
 assert.match(problemDetailSource, /<strong>\{t\.problemDetail\.markSolved\}<\/strong>/);
 assert.match(problemDetailSource, /href=\{problemSignInHref as never\}/);
+assert.match(problemDetailSource, /proofs\/\$\{proof\.id\}\/discussion/);
+assert.match(problemDetailSource, /_count: \{ select: \{ comments: true \} \}/);
+assert.doesNotMatch(problemDetailSource, /reportProofAction/);
+assert.doesNotMatch(problemDetailSource, /className="solution-report-control"/);
+assert.match(solutionDiscussionSource, /createProofCommentAction/);
+assert.match(solutionDiscussionSource, /reportProofAction/);
+assert.match(solutionDiscussionSource, /canViewProblemSolutions/);
+assert.match(solutionDiscussionSource, /canViewArchivedProblem/);
+assert.match(proofActionsSource, /proof\.problem\.slug !== problemSlug/);
+assert.match(proofActionsSource, /proofs\/\$\{proofId\}\/discussion/);
+assert.match(moderationActionsSource, /proofs\/\$\{proofId\}\/discussion\?report=saved/);
 assert.match(conceptDetailSource, /contentKey=\{`concept:\$\{concept\.translationGroupId\}`\}/);
 assert.match(homeSource, /\/about\/tutorial/);
 assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
@@ -2116,6 +2137,15 @@ assert.match(usersPageSource, /normalizeSearchText/);
 assert.match(usersPageSource, /usersHref\(mode, currentPage \+ 1, searchQuery\)/);
 assert.match(usersRankingSelectSource, /new URLSearchParams\(searchParams\.toString\(\)\)/);
 assert.match(usersRankingSelectSource, /nextParams\.delete\("page"\)/);
+assert.match(contributionTasksSource, /canUseModerationTools\(user\)/);
+assert.match(siteImprovementsBoardSource, /requireModerator\(\)/);
+assert.match(siteImprovementDetailSource, /requireModerator\(\)/);
+assert.equal(
+  (siteImprovementActionsSource.match(/await requireModerator\(\)/g) ?? []).length,
+  7,
+  "every site-improvement mutation must enforce trusted access server-side"
+);
+assert.match(siteImprovementActionsSource, /assigneeId: null, status: \{ not: SiteImprovementStatus\.COMPLETED \}/);
 assert.doesNotMatch(userReputationSource, /emailVerifiedAt:\s*\{\s*not:\s*null/);
 assert.match(faqSource, /\[Roles page\]\(\/roles\)/);
 assert.match(frenchFaqSource, /\[page Rôles\]\(\/roles\)/);

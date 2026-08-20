@@ -2,6 +2,8 @@ import { ConceptStatus, ProblemStatus, QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { BookOpen, Languages, ListChecks } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { ContributionTasksTabs } from "@/components/ContributionTasksTabs";
+import { getCurrentUser } from "@/lib/auth";
 import {
   hasExamplesSection,
   translationGroupCount,
@@ -9,7 +11,9 @@ import {
   type ContributionTaskKey
 } from "@/lib/contribution-tasks";
 import { prisma } from "@/lib/db";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
+import { canUseModerationTools } from "@/lib/permissions";
+import { siteImprovementCopy } from "@/lib/site-improvements";
 
 export const dynamic = "force-dynamic";
 
@@ -52,8 +56,13 @@ function TaskCard({ task, buttonLabel, completeLabel }: { task: Task; buttonLabe
 }
 
 export default async function ContributionTasksPage() {
-  const t = await getTranslations();
+  const [t, interfaceLocale, user] = await Promise.all([
+    getTranslations(),
+    getInterfaceLocale(),
+    getCurrentUser()
+  ]);
   const copy = t.contributionTasks;
+  const improvementCopy = siteImprovementCopy(interfaceLocale);
   const [concepts, problems] = await Promise.all([
     prisma.concept.findMany({
       where: { status: { not: ConceptStatus.MISSING } },
@@ -122,6 +131,11 @@ export default async function ContributionTasksPage() {
       meta={<p>{copy.remaining(remaining)}</p>}
       actions={<Link href="/contributing" className="button secondary">{copy.back}</Link>}
     >
+      <ContributionTasksTabs
+        current="content"
+        labels={{ content: improvementCopy.tabTasks, site: improvementCopy.tabImprovements }}
+        showSiteImprovements={Boolean(user && canUseModerationTools(user))}
+      />
       <div className="contribution-task-sections">
         {sections.map((section) => {
           const Icon = section.icon;

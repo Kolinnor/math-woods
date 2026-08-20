@@ -253,8 +253,19 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof-comment:${user.id}`, 12, 60_000);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Comment");
+  const proof = await prisma.problemProof.findUnique({
+    where: { id: proofId },
+    select: {
+      authorId: true,
+      translatedById: true,
+      problem: { select: { slug: true, title: true } }
+    }
+  });
+  if (!proof || proof.problem.slug !== problemSlug) {
+    throw new Error("Solution not found.");
+  }
 
-  await prisma.proofComment.create({
+  const comment = await prisma.proofComment.create({
     data: {
       proofId,
       authorId: user.id,
@@ -263,5 +274,24 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
     }
   });
 
+  const discussionHref = `/problems/${problemSlug}/proofs/${proofId}/discussion`;
+  const recipientIds = [...new Set([proof.authorId, proof.translatedById])].filter(
+    (recipientId): recipientId is number => recipientId !== null && recipientId !== user.id
+  );
+  await Promise.all(
+    recipientIds.map((userId) =>
+      createNotification({
+        userId,
+        actorId: user.id,
+        type: NotificationType.DISCUSSION_POSTED,
+        title: "New message about your solution",
+        body: `${displayNameForUser(user)} commented on your solution to "${proof.problem.title}".`,
+        href: `${discussionHref}#comment-${comment.id}`
+      })
+    )
+  );
+
   revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(discussionHref);
+  redirect(`${discussionHref}#comment-${comment.id}` as Route);
 }

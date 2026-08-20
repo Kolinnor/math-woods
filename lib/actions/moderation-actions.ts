@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import { ConceptStatus, NotificationType, ProblemStatus, QualityStatus, ReportStatus, TargetType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -126,7 +127,7 @@ export async function reportProofAction(proofId: number, problemSlug: string, fo
           type: NotificationType.SOLUTION_REPORTED,
           title: "Potential issue reported on your solution",
           body: `${displayNameForUser(user)} reported a ${solutionReportCategoryLabel(category)} on your solution to \"${proof.problem.title}\".`,
-          href: `/problems/${problemSlug}#solution-${proofId}`
+          href: `/problems/${problemSlug}/proofs/${proofId}/discussion#report-solution`
         })
       )
     );
@@ -134,7 +135,8 @@ export async function reportProofAction(proofId: number, problemSlug: string, fo
 
   revalidatePath("/moderation");
   revalidatePath(`/problems/${problemSlug}`);
-  redirect(`/problems/${problemSlug}?solutionReport=saved&solutionReportProof=${proofId}#solution-${proofId}`);
+  revalidatePath(`/problems/${problemSlug}/proofs/${proofId}/discussion`);
+  redirect(`/problems/${problemSlug}/proofs/${proofId}/discussion?report=saved#report-solution` as Route);
 }
 
 export async function dismissReportAction(reportId: number) {
@@ -166,7 +168,7 @@ export async function dismissReportAction(reportId: number) {
         type: NotificationType.SOLUTION_REPORTED,
         title: "Your solution report was reviewed",
         body: `${displayNameForUser(moderator)} reviewed and dismissed your report on \"${proof.problem.title}\".`,
-        href: `/problems/${proof.problem.slug}#solution-${report.targetId}`
+        href: `/problems/${proof.problem.slug}/proofs/${report.targetId}/discussion#report-solution`
       });
     }
   }
@@ -207,11 +209,12 @@ export async function resolveReportedProofAction(reportId: number, proofId: numb
     type: NotificationType.SOLUTION_REPORTED,
     title: "Your solution report was addressed",
     body: `${displayNameForUser(moderator)} marked your report on \"${proof.problem.title}\" as addressed.`,
-    href: `/problems/${proof.problem.slug}#solution-${proofId}`
+    href: `/problems/${proof.problem.slug}/proofs/${proofId}/discussion#report-solution`
   });
 
   revalidatePath("/moderation");
   revalidatePath(`/problems/${proof.problem.slug}`);
+  revalidatePath(`/problems/${proof.problem.slug}/proofs/${proofId}/discussion`);
 }
 
 export async function hideReportedProblemAction(reportId: number, problemId: number) {
