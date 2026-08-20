@@ -4781,8 +4781,7 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 }
 
 .site-improvement-create label > span,
-.site-improvement-sidebar label > span,
-.site-improvement-assignee > span {
+.site-improvement-sidebar label > span {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 750;
@@ -4932,23 +4931,6 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   color: var(--muted);
 }
 
-.site-improvement-icon-action {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  color: var(--muted);
-  display: inline-flex;
-  height: 1.75rem;
-  justify-content: center;
-  min-height: 0;
-  padding: 0;
-  width: 1.75rem;
-}
-
-.site-improvement-icon-action:hover {
-  color: var(--accent);
-}
-
 .site-improvement-empty {
   color: var(--muted);
   font-size: 0.75rem;
@@ -5059,11 +5041,6 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   justify-self: start;
   min-height: 2.15rem;
   padding: 0.4rem 0.65rem;
-}
-
-.site-improvement-assignee {
-  display: grid;
-  gap: 0.35rem;
 }
 
 .site-improvement-history {
@@ -5435,7 +5412,7 @@ textarea {
   transform: translateY(-0.2rem);
   transition: opacity 120ms ease, transform 120ms ease;
   visibility: hidden;
-  white-space: normal;
+  white-space: pre-line;
   width: 22rem;
   overflow-wrap: anywhere;
   z-index: 120;

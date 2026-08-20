@@ -1,6 +1,6 @@
 import { isProblemRecommendationEligible } from "./problem-recommendation-eligibility.ts";
 
-export const RECOMMENDATION_MODEL_VERSION = 4;
+export const RECOMMENDATION_MODEL_VERSION = 5;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -20,8 +20,7 @@ export type RecommendationActivityEventType =
   | "SOLVED"
   | "BLOCKED"
   | "TOO_HARD"
-  | "TOO_EASY"
-  | "EASIER_REQUESTED";
+  | "TOO_EASY";
 
 export type RecommendationActivityEvent = {
   eventType: RecommendationActivityEventType;
@@ -33,7 +32,7 @@ export type RecommendationDifficultyAdjustment = {
   adjustedTargetDifficulty: number;
   qualifiedDays: number;
   consecutiveUnsolvedDays: number;
-  reason: "none" | "unsolved" | "explicitly_easier" | "recovery";
+  reason: "none" | "unsolved" | "recovery";
 };
 
 export type RecommendationAttempt = {
@@ -178,11 +177,6 @@ export function recommendationDifficultyAdjustment(
     const eventSet = new Set(dayEvents);
     const solveCount = dayEvents.filter((eventType) => eventType === "SOLVED").length;
     const isToday = dayNumber === todayDayNumber;
-
-    if (eventSet.has("EASIER_REQUESTED")) {
-      offset = Math.min(offset, -10);
-      reason = "explicitly_easier";
-    }
 
     if (solveCount > 0 || eventSet.has("TOO_EASY")) {
       const recovery = solveCount >= 2 || eventSet.has("TOO_EASY") ? 8 : 5;

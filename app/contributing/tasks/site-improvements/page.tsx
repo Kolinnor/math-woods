@@ -1,14 +1,10 @@
 import { SiteImprovementPriority, SiteImprovementStatus } from "@prisma/client";
-import { MessageCircle, Plus, UserMinus, UserPlus } from "lucide-react";
+import { MessageCircle, Plus } from "lucide-react";
 import Link from "next/link";
 import { ContributionTasksTabs } from "@/components/ContributionTasksTabs";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { UserName } from "@/components/UserName";
-import {
-  claimSiteImprovementAction,
-  createSiteImprovementAction,
-  releaseSiteImprovementAction
-} from "@/lib/actions/site-improvement-actions";
+import { createSiteImprovementAction } from "@/lib/actions/site-improvement-actions";
 import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
@@ -23,14 +19,13 @@ export const dynamic = "force-dynamic";
 const priorityRank = new Map(SITE_IMPROVEMENT_PRIORITY_ORDER.map((priority, index) => [priority, index]));
 
 export default async function SiteImprovementsPage() {
-  const [user, interfaceLocale] = await Promise.all([requireModerator(), getInterfaceLocale()]);
+  const [, interfaceLocale] = await Promise.all([requireModerator(), getInterfaceLocale()]);
   const copy = siteImprovementCopy(interfaceLocale);
   const [activeItems, completedItems] = await Promise.all([
     prisma.siteImprovement.findMany({
       where: { status: { not: SiteImprovementStatus.COMPLETED } },
       include: {
         creator: true,
-        assignee: true,
         _count: { select: { comments: true } }
       },
       orderBy: { updatedAt: "desc" }
@@ -39,7 +34,6 @@ export default async function SiteImprovementsPage() {
       where: { status: SiteImprovementStatus.COMPLETED },
       include: {
         creator: true,
-        assignee: true,
         _count: { select: { comments: true } }
       },
       orderBy: { completedAt: "desc" }
@@ -127,9 +121,7 @@ export default async function SiteImprovementsPage() {
                     </div>
                     <h3><Link href={`/contributing/tasks/site-improvements/${item.id}` as never}>{item.title}</Link></h3>
                     <p>
-                      {item.assignee ? (
-                        <><span>{copy.assignedTo}</span> <UserName user={item.assignee} /></>
-                      ) : item.creator ? (
+                      {item.creator ? (
                         <><span>{copy.createdBy}</span> <UserName user={item.creator} /></>
                       ) : copy.formerUser}
                     </p>
@@ -138,20 +130,6 @@ export default async function SiteImprovementsPage() {
                         <MessageCircle size={15} aria-hidden="true" />
                         {copy.discussion} <span>{item._count.comments}</span>
                       </Link>
-                      {!item.assignee && status !== SiteImprovementStatus.COMPLETED && (
-                        <form action={claimSiteImprovementAction.bind(null, item.id)}>
-                          <button type="submit" className="site-improvement-icon-action" title={copy.claim} aria-label={copy.claim}>
-                            <UserPlus size={16} aria-hidden="true" />
-                          </button>
-                        </form>
-                      )}
-                      {item.assignee && status !== SiteImprovementStatus.COMPLETED && (item.assigneeId === user.id || user.role === "ADMIN" || user.role === "OWNER") && (
-                        <form action={releaseSiteImprovementAction.bind(null, item.id)}>
-                          <button type="submit" className="site-improvement-icon-action" title={copy.release} aria-label={copy.release}>
-                            <UserMinus size={16} aria-hidden="true" />
-                          </button>
-                        </form>
-                      )}
                     </footer>
                   </article>
                 ))}

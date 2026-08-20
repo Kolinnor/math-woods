@@ -1230,7 +1230,7 @@ export const fr = {
     deleteHint: "Supprimer l’indication",
     addHint: "Ajouter une indication",
     difficulty: "Difficulté",
-    difficultyHelp: "Le score de 1 à 100 est un repère approximatif, pas une mesure objective. Il suppose que le lecteur possède les prérequis nécessaires. 1-10 : premiers pas / collège. 10-25 : débutant / lycée. 25-50 : intermédiaire / licence. 50-70 : avancé / master. 70-90 : expert / spécialisé. 90-100 : niveau recherche.",
+    difficultyHelp: "Le score de 1 à 100 est un repère approximatif, pas une mesure objective. Il suppose que le lecteur possède les prérequis nécessaires.\n1-10 : premiers pas / collège\n10-25 : débutant / lycée\n25-50 : intermédiaire / licence\n50-70 : avancé / master\n70-90 : expert / spécialisé\n90-100 : niveau recherche",
     exercise: "Exercice",
     exerciseHelp: "Les exercices servent à pratiquer un concept précis. Ils apparaissent sur les pages des concepts liés et sont masqués par défaut dans le navigateur de problèmes, tout en restant accessibles avec le filtre Exercices.",
     showRelatedProblems: "Afficher les problèmes liés",

@@ -3,7 +3,7 @@ import {
   SiteImprovementPriority,
   SiteImprovementStatus
 } from "@prisma/client";
-import { ArrowLeft, Check, MessageCircle, Send, UserMinus, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, MessageCircle, Send } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -11,9 +11,7 @@ import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
 import {
-  claimSiteImprovementAction,
   createSiteImprovementCommentAction,
-  releaseSiteImprovementAction,
   updateSiteImprovementDetailsAction,
   updateSiteImprovementPriorityAction,
   updateSiteImprovementStatusAction
@@ -61,7 +59,6 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
     where: { id: improvementId },
     include: {
       creator: true,
-      assignee: true,
       comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
       activities: { include: { actor: true }, orderBy: { createdAt: "desc" }, take: 60 }
     }
@@ -73,11 +70,6 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
     timeStyle: "short",
     timeZone: timeZone ?? undefined
   });
-  const canRelease = Boolean(
-    improvement.status !== SiteImprovementStatus.COMPLETED &&
-    improvement.assigneeId &&
-    (improvement.assigneeId === user.id || canUseAdminTools(user))
-  );
   const canEditDetails = improvement.creatorId === user.id || canUseAdminTools(user);
 
   const sidebar = (
@@ -106,20 +98,6 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
           </label>
           <button type="submit" className="secondary"><Check size={15} />{copy.apply}</button>
         </form>
-        <div className="site-improvement-assignee">
-          <span>{copy.assignedTo}</span>
-          {improvement.assignee ? <UserName user={improvement.assignee} /> : <strong>{copy.unassigned}</strong>}
-        </div>
-        {!improvement.assignee && improvement.status !== SiteImprovementStatus.COMPLETED && (
-          <form action={claimSiteImprovementAction.bind(null, improvement.id)}>
-            <button type="submit"><UserPlus size={16} />{copy.claim}</button>
-          </form>
-        )}
-        {canRelease && (
-          <form action={releaseSiteImprovementAction.bind(null, improvement.id)}>
-            <button type="submit" className="secondary"><UserMinus size={16} />{copy.release}</button>
-          </form>
-        )}
       </section>
 
       <section>

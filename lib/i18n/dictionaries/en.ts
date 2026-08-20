@@ -1225,7 +1225,7 @@ export const en = {
     deleteHint: "Delete hint",
     addHint: "Add hint",
     difficulty: "Difficulty",
-    difficultyHelp: "The 1-100 score is a rough guide, not an objective measure. It assumes the reader has the necessary prerequisites. 1-10: First steps / middle school. 10-25: Beginner / high school. 25-50: Intermediate / undergraduate. 50-70: Advanced / graduate. 70-90: Expert / specialized. 90-100: Research-level.",
+    difficultyHelp: "The 1-100 score is a rough guide, not an objective measure. It assumes the reader has the necessary prerequisites.\n1-10: First steps / middle school\n10-25: Beginner / high school\n25-50: Intermediate / undergraduate\n50-70: Advanced / graduate\n70-90: Expert / specialized\n90-100: Research-level",
     exercise: "Exercise",
     exerciseHelp: "Exercises are designed to practise a specific concept. They appear on linked concept pages and are hidden from the default problem-browser view, while remaining available through the Exercises filter.",
     showRelatedProblems: "Show related problems",

@@ -113,7 +113,6 @@ enum RecommendationEventType {
   BLOCKED
   TOO_HARD
   TOO_EASY
-  EASIER_REQUESTED
 }
 
 enum ProblemStyle {
@@ -269,7 +268,6 @@ enum SiteImprovementActivityType {
   DETAILS_CHANGED
   STATUS_CHANGED
   PRIORITY_CHANGED
-  ASSIGNEE_CHANGED
 }
 
 enum NotificationType {
@@ -433,7 +431,6 @@ model User {
   contributionRequestsCreated     ContributionRequest[]           @relation("ContributionRequestRequester")
   contributionRequestsClaimed     ContributionRequest[]           @relation("ContributionRequestClaimedBy")
   siteImprovementsCreated         SiteImprovement[]               @relation("SiteImprovementCreator")
-  siteImprovementsAssigned        SiteImprovement[]               @relation("SiteImprovementAssignee")
   siteImprovementComments         SiteImprovementComment[]
   siteImprovementActivities       SiteImprovementActivity[]
   explorationCollaborations       ExplorationCollaborator[]
@@ -1753,18 +1750,15 @@ model SiteImprovement {
   status              SiteImprovementStatus     @default(BACKLOG)
   priority            SiteImprovementPriority   @default(NORMAL)
   creatorId           Int?
-  assigneeId          Int?
   completedAt         DateTime?
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
   creator             User?                     @relation("SiteImprovementCreator", fields: [creatorId], references: [id], onDelete: SetNull)
-  assignee            User?                     @relation("SiteImprovementAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   comments            SiteImprovementComment[]
   activities          SiteImprovementActivity[]
 
   @@index([status, priority, updatedAt])
   @@index([creatorId])
-  @@index([assigneeId])
 }
 
 model SiteImprovementComment {

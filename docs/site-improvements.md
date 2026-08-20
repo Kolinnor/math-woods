@@ -19,10 +19,8 @@ An improvement moves through four lists:
 Priorities are deliberately small in number: low, normal, and high. They order cards within each list but do not grant
 permissions or automatically change status.
 
-Any trusted user may create an improvement, change its status or priority, and participate in its discussion. An
-unassigned improvement can be claimed atomically, preventing two users from taking it at the same time. Claiming moves
-it to `IN_PROGRESS`. The assignee, an admin, or the owner may release it; releasing active work moves it to `PLANNED`.
-Completed items retain their assignee as useful historical context.
+Any trusted user may create an improvement, change its status or priority, and participate in its discussion. The board
+does not assign improvements to individual users: statuses describe the state of the work itself.
 
 The creator may correct the title or description after creation; admins and the owner may do the same. These edits are
 recorded in the activity history. Other trusted users can propose wording or scope changes in the discussion.
@@ -30,9 +28,9 @@ recorded in the activity history. Other trusted users can propose wording or sco
 ## Data and history
 
 Descriptions and discussion messages are stored as sanitized rendered Markdown together with their Markdown source.
-Creators, assignees, and comment authors use nullable relations so the board remains intelligible after account deletion.
+Creators and comment authors use nullable relations so the board remains intelligible after account deletion.
 Deleting an improvement cascades to its comments and activity, although no deletion control is exposed in the interface.
 
-`SiteImprovementActivity` records creation and every status, priority, or assignee transition. The detail page shows the
+`SiteImprovementActivity` records creation and every status or priority transition. The detail page shows the
 latest 60 activity entries, while all entries remain in the database. Discussions are chronological and immutable in the
 initial version, which keeps decisions auditable and avoids silent rewriting.

@@ -54,7 +54,6 @@ recommendation. A login without a recommendation open has no effect.
 | Consecutive qualified days without a solve | penalties accumulate, capped at `-15` |
 | Solved a recommended problem | `+5` toward zero |
 | Multiple solves that day, or marked too easy | `+8` toward zero |
-| Chose "Show easier problems" | at least `-10` immediately |
 
 An unsolved day is evaluated only after that calendar day has ended in the site timezone (`Europe/Paris`). This avoids
 classifying an attempt as unsuccessful while the user is still working. Outcomes remain linked to a recommendation for
@@ -76,10 +75,9 @@ diversified prefix. Every returned item includes an internal `selectionReason` (
 
 ## Event storage
 
-`RecommendationEvent` is append-only at daily granularity and unique by user, date, scope, and event type. Problem events
-store the translation group so opening one language and solving another remains one learning sequence. Global actions,
-currently only the easier-problems request, use a separate global scope. Events older than 90 days are not loaded by the
-online ranker.
+`RecommendationEvent` is append-only at daily granularity and unique by user, date, problem scope, and event type. Events
+store the translation group so opening one language and solving another remains one learning sequence. Events older than
+90 days are not loaded by the online ranker.
 
 The legacy `ProblemRecommendationExposure` aggregate remains responsible for candidate fatigue. It is now updated only
 for genuine recommendation opens and is removed when the translation group is solved.
@@ -89,6 +87,7 @@ for genuine recommendation opens and is removed when the translation group is so
 - The score is internal and must not be displayed as a user rating.
 - A score orders candidates; it is not a probability of success.
 - Recommendations must remain language-aware when connected to a user-facing surface.
+- Users cannot directly lower their recommendation target; temporary adjustments come only from recommendation outcomes.
 - Conjectures, unrated problems, and problems with difficulty `>= 90` are never candidates.
 - User-facing surfaces show problems, never the internal score or confidence.
 - Recommendation changes should be checked against real profiles through the shadow endpoint and covered by focused tests.

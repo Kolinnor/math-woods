@@ -3,7 +3,6 @@ import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
 import { prisma } from "@/lib/db";
 
 const RECOMMENDATION_OUTCOME_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
-const GLOBAL_SCOPE_KEY = "global";
 
 type RecommendationEventClient = Pick<Prisma.TransactionClient, "recommendationEvent">;
 
@@ -12,21 +11,21 @@ export type RecommendationProblemReference = {
   translationGroupId: string;
 };
 
-function eventScopeKey(translationGroupId?: string | null) {
-  return translationGroupId ? `problem:${translationGroupId}` : GLOBAL_SCOPE_KEY;
+function eventScopeKey(translationGroupId: string) {
+  return `problem:${translationGroupId}`;
 }
 
 export async function recordRecommendationEvent(
   input: {
     userId: number;
     eventType: RecommendationEventType;
-    problem?: RecommendationProblemReference | null;
+    problem: RecommendationProblemReference;
     now?: Date;
   },
   client: RecommendationEventClient = prisma
 ) {
   const now = input.now ?? new Date();
-  const translationGroupId = input.problem?.translationGroupId ?? null;
+  const translationGroupId = input.problem.translationGroupId;
   const dateKey = dailyProblemDateKey(now);
   const scopeKey = eventScopeKey(translationGroupId);
 
@@ -41,21 +40,21 @@ export async function recordRecommendationEvent(
     },
     create: {
       userId: input.userId,
-      problemId: input.problem?.id,
+      problemId: input.problem.id,
       translationGroupId,
       scopeKey,
       eventType: input.eventType,
       dateKey,
       createdAt: now
     },
-    update: input.problem ? { problemId: input.problem.id } : {}
+    update: { problemId: input.problem.id }
   });
 }
 
 export async function recordRecommendationOutcomeIfRelevant(
   input: {
     userId: number;
-    eventType: Exclude<RecommendationEventType, "OPENED" | "EASIER_REQUESTED">;
+    eventType: Exclude<RecommendationEventType, "OPENED">;
     problem: RecommendationProblemReference;
     now?: Date;
   },
@@ -75,11 +74,4 @@ export async function recordRecommendationOutcomeIfRelevant(
 
   await recordRecommendationEvent({ ...input, now }, client);
   return true;
-}
-
-export async function requestEasierRecommendations(userId: number, now = new Date()) {
-  await recordRecommendationEvent(
-    { userId, eventType: RecommendationEventType.EASIER_REQUESTED, now },
-    prisma
-  );
 }

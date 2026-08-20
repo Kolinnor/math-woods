@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ConceptKind, ConceptStatus, MathDomain, Prisma, QualityStatus, ReportCategory, Role, UserMathLevel } from "@prisma/client";
 import { EditorState, StateEffect } from "@codemirror/state";
@@ -2238,10 +2238,17 @@ assert.match(siteImprovementsBoardSource, /requireModerator\(\)/);
 assert.match(siteImprovementDetailSource, /requireModerator\(\)/);
 assert.equal(
   (siteImprovementActionsSource.match(/await requireModerator\(\)/g) ?? []).length,
-  7,
+  5,
   "every site-improvement mutation must enforce trusted access server-side"
 );
-assert.match(siteImprovementActionsSource, /assigneeId: null, status: \{ not: SiteImprovementStatus\.COMPLETED \}/);
+assert.doesNotMatch(siteImprovementActionsSource, /claimSiteImprovementAction|releaseSiteImprovementAction|assigneeId/);
+assert.doesNotMatch(siteImprovementsBoardSource, /claimSiteImprovementAction|releaseSiteImprovementAction|assignee/);
+assert.doesNotMatch(siteImprovementDetailSource, /claimSiteImprovementAction|releaseSiteImprovementAction|assignee/);
+assert.doesNotMatch(prismaSchemaSource, /siteImprovementsAssigned|SiteImprovementAssignee|ASSIGNEE_CHANGED/);
+assert.doesNotMatch(homeSource, /RecommendationDifficultyControl|recommendations\/easier/);
+assert.doesNotMatch(problemBrowserSource, /RecommendationDifficultyControl|recommendations\/easier/);
+assert.doesNotMatch(prismaSchemaSource, /EASIER_REQUESTED/);
+assert.equal(existsSync(join("app", "api", "recommendations", "easier", "route.ts")), false);
 assert.doesNotMatch(userReputationSource, /emailVerifiedAt:\s*\{\s*not:\s*null/);
 assert.match(faqSource, /\[Roles page\]\(\/roles\)/);
 assert.match(frenchFaqSource, /\[page Rôles\]\(\/roles\)/);
@@ -2270,6 +2277,9 @@ assert.match(
   /\.problem-ledger-content \{[^}]*grid-template-columns:\s*var\(--mw-difficulty-column-width\) minmax\(0, 1fr\)/s
 );
 assert.doesNotMatch(editorCssSource, /grid-template-columns:\s*(?:40|46|48|52|60)px minmax\(0, 1fr\)/);
+assert.match(editorCssSource, /\.field-help::after \{[^}]*white-space:\s*pre-line;/s);
+assert.equal(fr.contentEditor.difficultyHelp.split("\n").length, 7);
+assert.equal(en.contentEditor.difficultyHelp.split("\n").length, 7);
 
 assert.equal(sanitizeReportPath("/edit?token=secret#draft"), "/edit");
 assert.equal(sanitizeReportPath("https://mathwoods.org/problem/one?email=a@example.com"), "https://mathwoods.org/problem/one");
@@ -3284,14 +3294,6 @@ assert.equal(
   ).offset,
   0,
   "a solve must recover five points toward the permanent target"
-);
-assert.equal(
-  recommendationDifficultyAdjustment(
-    42,
-    [{ eventType: "EASIER_REQUESTED", dateKey: "2026-08-02" }],
-    "2026-08-02"
-  ).offset,
-  -10
 );
 assert.equal(
   recommendationDifficultyAdjustment(

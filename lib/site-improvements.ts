@@ -45,10 +45,6 @@ const copy = {
     discussion: "Discussion",
     comments: (count: number) => `${count} ${count === 1 ? "message" : "messages"}`,
     createdBy: "Created by",
-    assignedTo: "Assigned to",
-    unassigned: "Unassigned",
-    claim: "I'll take this",
-    release: "Release",
     back: "Back to the board",
     changeStatus: "Move to",
     changePriority: "Priority",
@@ -73,8 +69,7 @@ const copy = {
       CREATED: "created this improvement",
       DETAILS_CHANGED: "updated the title or description",
       STATUS_CHANGED: "changed the status",
-      PRIORITY_CHANGED: "changed the priority",
-      ASSIGNEE_CHANGED: "changed the assignee"
+      PRIORITY_CHANGED: "changed the priority"
     }
   },
   fr: {
@@ -92,10 +87,6 @@ const copy = {
     discussion: "Discussion",
     comments: (count: number) => `${count} message${count === 1 ? "" : "s"}`,
     createdBy: "Créée par",
-    assignedTo: "Prise en charge par",
-    unassigned: "Non attribuée",
-    claim: "Je m'en occupe",
-    release: "Libérer",
     back: "Retour au tableau",
     changeStatus: "Déplacer vers",
     changePriority: "Priorité",
@@ -120,8 +111,7 @@ const copy = {
       CREATED: "a créé cette amélioration",
       DETAILS_CHANGED: "a modifié le titre ou la description",
       STATUS_CHANGED: "a changé le statut",
-      PRIORITY_CHANGED: "a changé la priorité",
-      ASSIGNEE_CHANGED: "a changé la personne responsable"
+      PRIORITY_CHANGED: "a changé la priorité"
     }
   }
 } as const;
