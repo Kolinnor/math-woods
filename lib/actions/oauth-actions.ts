@@ -19,7 +19,6 @@ import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
 import { profilePath, usernameLookupFilter } from "@/lib/usernames";
-import { parseUserDiscoverySource } from "@/lib/user-discovery-source";
 
 async function availableUsername(displayName: string) {
   const base = ensureSlug(displayName, "user");
@@ -60,15 +59,9 @@ export async function completeOAuthSignupAction(formData: FormData) {
     ? attempt.providerEmail
     : suppliedEmail;
   const mathLevel = parseMathLevel(formData.get("mathLevel"));
-  const discoverySource = parseUserDiscoverySource(formData.get("discoverySource"));
-  const discoverySourceDetail = boundedText(
-    formData.get("discoverySourceDetail"),
-    240,
-    "Discovery source detail"
-  ) || null;
   const avatarPreset = parseDefaultAvatarPreset(formData.get("avatarPreset"));
   const avatarBackground = parseAvatarBackground(formData.get("avatarBackground"));
-  if (!email.includes("@") || !mathLevel || !discoverySource) oauthFailure("invalid");
+  if (!email.includes("@") || !mathLevel) oauthFailure("invalid");
 
   const [emailOwner, username] = await Promise.all([
     prisma.user.findFirst({ where: { email, deletedAt: null }, select: { id: true } }),
@@ -87,8 +80,6 @@ export async function completeOAuthSignupAction(formData: FormData) {
           email,
           emailVerifiedAt: attempt.providerEmailVerified && attempt.providerEmail === email ? new Date() : null,
           mathLevel,
-          discoverySource,
-          discoverySourceDetail,
           avatarUrl: avatarPreset ? defaultAvatarPath(avatarPreset) : null,
           avatarBackground,
           passwordHash: null

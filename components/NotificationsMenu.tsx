@@ -4,12 +4,12 @@ import { Bell, Trash2, X } from "lucide-react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserAvatar } from "@/components/UserAvatar";
-import { localizeAchievementNotification } from "@/lib/achievement-copy";
 import { clearNotificationMenuAction } from "@/lib/actions/notification-actions";
 import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
+import { localizeNotification } from "@/lib/notification-copy";
 import { cleanupNotificationsForUser, notificationOpenHref } from "@/lib/notification-lifecycle";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
@@ -31,6 +31,9 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       include: {
         actor: {
           select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        },
+        siteImprovementReview: {
+          select: { improvement: { select: { title: true } } }
         }
       }
     }),
@@ -72,7 +75,7 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
         </div>
         <div className="notification-list">
           {unreadNotifications.map((notification) => {
-            const localizedNotification = localizeAchievementNotification(notification, interfaceLocale);
+            const localizedNotification = localizeNotification(notification, interfaceLocale);
             return (
               <Link
                 key={notification.id}

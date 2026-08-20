@@ -307,6 +307,17 @@ export const fr = {
         INVALIDATED: "Cette suggestion n'est plus applicable.",
         PENDING: "En attente de votre décision."
       }
+    },
+    siteImprovementReview: {
+      viewSuggestion: "Voir la suggestion",
+      confirm: "Oui, tout fonctionne",
+      followUp: "Nouvelle suggestion",
+      status: {
+        CONFIRMED: "Vous avez confirmé que l’implémentation fonctionne.",
+        FOLLOW_UP: "Vous avez choisi de proposer une nouvelle amélioration.",
+        INVALIDATED: "Cette demande de confirmation n’est plus d’actualité.",
+        PENDING: "En attente de votre confirmation."
+      }
     }
   },
   users: {
@@ -1191,7 +1202,7 @@ export const fr = {
     openLanguageVersion: (language: string) => `Ouvrir la version ${language}`,
     translateExercise: "Traduire aussi cet exercice",
     conceptStubDescription: "Une ébauche peut déjà être utile : nommez l’idée, ajoutez un lien et citez une source.",
-    defaultConceptContent: "## Définition intuitive\n\nÀ compléter.\n\n## Définition formelle\n\nÀ compléter avec LaTeX.\n\n## Exemples\n\n- Exemple lié à [[polynomial|polynôme]].",
+    defaultConceptContent: "##### Définition intuitive\n\nÀ compléter.\n\n##### Définition formelle\n\nÀ compléter avec LaTeX.\n\n##### Exemples\n\n- Exemple lié à [[polynomial|polynôme]].",
     editDescription: "Les modifications créent une révision et actualisent automatiquement les liens sortants.",
     editProblemDescription: "Les modifications créent une révision et actualisent automatiquement les liens wiki.",
     proposalDescription: "Vos modifications seront envoyées à un administrateur pour relecture avant d’être visibles par les autres utilisateurs.",

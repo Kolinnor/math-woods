@@ -305,6 +305,17 @@ export const en = {
         INVALIDATED: "This suggestion is no longer applicable.",
         PENDING: "Awaiting your decision."
       }
+    },
+    siteImprovementReview: {
+      viewSuggestion: "View suggestion",
+      confirm: "Yes, it works",
+      followUp: "New suggestion",
+      status: {
+        CONFIRMED: "You confirmed that the implementation works.",
+        FOLLOW_UP: "You chose to submit a follow-up suggestion.",
+        INVALIDATED: "This confirmation request is no longer current.",
+        PENDING: "Waiting for your confirmation."
+      }
     }
   },
   users: {

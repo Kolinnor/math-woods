@@ -17,7 +17,12 @@ export const dynamic = "force-dynamic";
 
 const priorityRank = new Map(SITE_IMPROVEMENT_PRIORITY_ORDER.map((priority, index) => [priority, index]));
 
-export default async function SiteImprovementsPage() {
+export default async function SiteImprovementsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ new?: string }>;
+}) {
+  const query = await searchParams;
   const [, interfaceLocale] = await Promise.all([requireModerator(), getInterfaceLocale()]);
   const copy = siteImprovementCopy(interfaceLocale);
   const [activeItems, completedItems] = await Promise.all([
@@ -53,17 +58,8 @@ export default async function SiteImprovementsPage() {
     <ForestPageLayout
       className="site-improvements-page"
       title={copy.title}
-      eyebrow={copy.eyebrow}
-      description={copy.description}
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
-      meta={
-        <p>
-          {interfaceLocale === "fr"
-            ? `${activeItems.length} amélioration${activeItems.length === 1 ? "" : "s"} active${activeItems.length === 1 ? "" : "s"}`
-            : `${activeItems.length} active improvement${activeItems.length === 1 ? "" : "s"}`}
-        </p>
-      }
     >
       <ContributionTasksTabs
         current="site"
@@ -71,7 +67,7 @@ export default async function SiteImprovementsPage() {
         showSiteImprovements
       />
 
-      <details className="site-improvement-create">
+      <details id="new-site-improvement" className="site-improvement-create" open={query.new === "1"}>
         <summary>
           <Plus size={17} aria-hidden="true" />
           {copy.create}

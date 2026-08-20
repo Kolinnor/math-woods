@@ -4801,7 +4801,7 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 .site-improvement-board {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .site-improvement-column {
@@ -4811,6 +4811,7 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 }
 
 .site-improvement-column.status-backlog { border-top-color: #8a8176; }
+.site-improvement-column.status-long-term { border-top-color: #657767; }
 .site-improvement-column.status-planned { border-top-color: #9b7a2f; }
 .site-improvement-column.status-in-progress { border-top-color: #2d7395; }
 .site-improvement-column.status-completed { border-top-color: #397451; }
@@ -5036,6 +5037,17 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   justify-self: start;
 }
 
+.site-improvement-delete-form {
+  justify-self: start;
+}
+
+.site-improvement-delete-form button {
+  align-items: center;
+  display: inline-flex;
+  font-size: 0.78rem;
+  gap: 0.4rem;
+}
+
 .site-improvement-discussion {
   margin-top: 1.4rem;
 }
@@ -5123,6 +5135,12 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 @media (max-width: 900px) {
   .site-improvement-detail-page .forest-page-hero {
     min-height: 280px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .site-improvement-board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

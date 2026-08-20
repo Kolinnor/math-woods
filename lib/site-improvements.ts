@@ -2,6 +2,7 @@ import { SiteImprovementPriority, SiteImprovementStatus } from "@prisma/client";
 
 export const SITE_IMPROVEMENT_STATUS_ORDER = [
   SiteImprovementStatus.BACKLOG,
+  SiteImprovementStatus.LONG_TERM,
   SiteImprovementStatus.PLANNED,
   SiteImprovementStatus.IN_PROGRESS,
   SiteImprovementStatus.COMPLETED
@@ -34,8 +35,6 @@ const copy = {
     tabTasks: "Content tasks",
     tabImprovements: "Site improvements",
     title: "Site improvements",
-    eyebrow: "Work to do",
-    description: "Coordinate improvements to the site and discuss implementation decisions.",
     create: "Add an improvement",
     createTitle: "New improvement",
     titleLabel: "Short title",
@@ -52,12 +51,15 @@ const copy = {
     publish: "Post",
     edit: "Edit title and description",
     save: "Save",
+    delete: "Delete suggestion",
+    confirmDelete: "Delete this suggestion and its discussion? This cannot be undone.",
     noMessages: "No discussion yet.",
     noItems: "Nothing here yet.",
     formerUser: "former user",
     history: "History",
     statuses: {
       BACKLOG: "To consider",
+      LONG_TERM: "Long term",
       PLANNED: "Planned",
       IN_PROGRESS: "In progress",
       COMPLETED: "Completed"
@@ -74,8 +76,6 @@ const copy = {
     tabTasks: "Tâches de contenu",
     tabImprovements: "Améliorations du site",
     title: "Améliorations du site",
-    eyebrow: "Travail à faire",
-    description: "Coordonnez les améliorations du site et discutez des choix d'implémentation.",
     create: "Ajouter une amélioration",
     createTitle: "Nouvelle amélioration",
     titleLabel: "Titre court",
@@ -92,12 +92,15 @@ const copy = {
     publish: "Publier",
     edit: "Modifier le titre et la description",
     save: "Enregistrer",
+    delete: "Supprimer la suggestion",
+    confirmDelete: "Supprimer cette suggestion et sa discussion ? Cette action est définitive.",
     noMessages: "Aucune discussion pour le moment.",
     noItems: "Rien ici pour le moment.",
     formerUser: "ancien utilisateur",
     history: "Historique",
     statuses: {
       BACKLOG: "À étudier",
+      LONG_TERM: "Long terme",
       PLANNED: "Planifié",
       IN_PROGRESS: "En cours",
       COMPLETED: "Terminé"

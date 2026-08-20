@@ -60,9 +60,7 @@ export async function registerAction(formData: FormData) {
       password,
       mathLevel,
       formData.get("avatarPreset"),
-      formData.get("avatarBackground"),
-      formData.get("discoverySource"),
-      formData.get("discoverySourceDetail")
+      formData.get("avatarBackground")
     );
   } catch (error) {
     const reason = errorMessage(error).startsWith("Too many requests")

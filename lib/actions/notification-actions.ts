@@ -1,6 +1,10 @@
 "use server";
 
-import { NotificationType, TrustedUserRecommendationStatus } from "@prisma/client";
+import {
+  NotificationType,
+  SiteImprovementCompletionReviewStatus,
+  TrustedUserRecommendationStatus
+} from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -62,9 +66,10 @@ export async function clearNotificationsAction() {
     where: {
       userId: user.id,
       type: { not: NotificationType.CHAT_MESSAGE },
-      NOT: {
-        trustedUserReview: { is: { status: TrustedUserRecommendationStatus.PENDING } }
-      }
+      NOT: [
+        { trustedUserReview: { is: { status: TrustedUserRecommendationStatus.PENDING } } },
+        { siteImprovementReview: { is: { status: SiteImprovementCompletionReviewStatus.PENDING } } }
+      ]
     }
   });
 

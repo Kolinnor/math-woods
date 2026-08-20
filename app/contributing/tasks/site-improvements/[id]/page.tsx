@@ -3,15 +3,17 @@ import {
   SiteImprovementPriority,
   SiteImprovementStatus
 } from "@prisma/client";
-import { ArrowLeft, Check, History, MessageCircle, PencilLine, Send } from "lucide-react";
+import { ArrowLeft, Check, History, MessageCircle, PencilLine, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
 import {
   createSiteImprovementCommentAction,
+  deleteSiteImprovementAction,
   updateSiteImprovementDetailsAction,
   updateSiteImprovementMetadataAction
 } from "@/lib/actions/site-improvement-actions";
@@ -140,6 +142,15 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
               <button type="submit" className="secondary">{copy.save}</button>
             </form>
           </details>}
+
+          {canEditDetails && (
+            <form action={deleteSiteImprovementAction.bind(null, improvement.id)} className="site-improvement-delete-form">
+              <ConfirmSubmitButton className="danger" message={copy.confirmDelete}>
+                <Trash2 size={15} aria-hidden="true" />
+                {copy.delete}
+              </ConfirmSubmitButton>
+            </form>
+          )}
         </div>
       </section>
 

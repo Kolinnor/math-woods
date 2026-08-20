@@ -2079,7 +2079,7 @@ assert.match(markdownEditorSource, /liveMarkdownPreviewExtension\(!titleMode\)/)
 assert.match(markdownEditorSource, /transaction\.newDoc\.lines === 1/);
 for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "notifications", "page.tsx")]) {
   const source = readFileSync(path, "utf-8");
-  assert.match(source, /localizeAchievementNotification\(notification, interfaceLocale\)/);
+  assert.match(source, /localizeNotification\(notification, interfaceLocale\)/);
   assert.match(source, /<AsyncMarkdownInline markdown=\{localizedNotification\.body\}/);
 }
 const tourSource = readFileSync(join("components", "MathWoodsTour.tsx"), "utf-8");
@@ -2109,12 +2109,18 @@ const frenchFaqSource = readFileSync(join("lib", "faq-fr.ts"), "utf-8");
 const dailyProblemCardSource = readFileSync(join("components", "DailyProblemCard.tsx"), "utf-8");
 const dailyTipCardSource = readFileSync(join("components", "DailyTipCard.tsx"), "utf-8");
 const friendsMenuSource = readFileSync(join("components", "FriendsMenuClient.tsx"), "utf-8");
+const loginSource = readFileSync(join("app", "login", "page.tsx"), "utf-8");
 const oauthCompleteSource = readFileSync(join("app", "login", "complete", "page.tsx"), "utf-8");
+const authActionsSource = readFileSync(join("lib", "actions", "auth-actions.ts"), "utf-8");
+const oauthActionsSource = readFileSync(join("lib", "actions", "oauth-actions.ts"), "utf-8");
 const languageSelectorSource = readFileSync(join("components", "LanguageSelector.tsx"), "utf-8");
 const contributionTasksSource = readFileSync(join("app", "contributing", "tasks", "page.tsx"), "utf-8");
 const siteImprovementsBoardSource = readFileSync(join("app", "contributing", "tasks", "site-improvements", "page.tsx"), "utf-8");
 const siteImprovementDetailSource = readFileSync(join("app", "contributing", "tasks", "site-improvements", "[id]", "page.tsx"), "utf-8");
 const siteImprovementActionsSource = readFileSync(join("lib", "actions", "site-improvement-actions.ts"), "utf-8");
+const notificationsPageSource = readFileSync(join("app", "notifications", "page.tsx"), "utf-8");
+const notificationLifecycleSource = readFileSync(join("lib", "notification-lifecycle.ts"), "utf-8");
+const notificationCopySource = readFileSync(join("lib", "notification-copy.ts"), "utf-8");
 const siteAnnouncementActionsSource = readFileSync(join("lib", "actions", "site-announcement-actions.ts"), "utf-8");
 const siteAnnouncementToastSource = readFileSync(join("components", "SiteAnnouncementToast.tsx"), "utf-8");
 const moderationPageSource = readFileSync(join("app", "moderation", "page.tsx"), "utf-8");
@@ -2184,6 +2190,10 @@ assert.match(homeSource, /\/about\/tutorial/);
 assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
 assert.doesNotMatch(oauthCompleteSource, /defaultValue=\{attempt\.providerDisplayName/);
 assert.match(oauthCompleteSource, /complete\.publicPseudonymHelp/);
+assert.doesNotMatch(loginSource, /name="discoverySource(?:Detail)?"/);
+assert.doesNotMatch(oauthCompleteSource, /name="discoverySource(?:Detail)?"/);
+assert.doesNotMatch(authActionsSource, /formData\.get\("discoverySource(?:Detail)?"\)/);
+assert.doesNotMatch(oauthActionsSource, /formData\.get\("discoverySource(?:Detail)?"\)/);
 assert.match(languageSelectorSource, /window\.history\.replaceState\(window\.history\.state/);
 assert.match(languageSelectorSource, /router\.push\(hrefWithTranslationViewLanguage/);
 assert.doesNotMatch(languageSelectorSource, /router\.replace\(/);
@@ -2238,11 +2248,26 @@ assert.match(siteImprovementsBoardSource, /requireModerator\(\)/);
 assert.match(siteImprovementDetailSource, /requireModerator\(\)/);
 assert.equal(
   (siteImprovementActionsSource.match(/await requireModerator\(\)/g) ?? []).length,
-  4,
+  5,
   "every site-improvement mutation must enforce trusted access server-side"
 );
 assert.match(siteImprovementActionsSource, /updateSiteImprovementMetadataAction[\s\S]*?parseSiteImprovementStatus[\s\S]*?parseSiteImprovementPriority/);
+assert.match(prismaSchemaSource, /enum SiteImprovementStatus \{[\s\S]*?BACKLOG[\s\S]*?LONG_TERM[\s\S]*?PLANNED/);
+assert.match(siteImprovementDetailSource, /SITE_IMPROVEMENT_STATUS_ORDER\.map/);
 assert.match(siteImprovementDetailSource, /action=\{updateSiteImprovementMetadataAction\.bind/);
+assert.doesNotMatch(siteImprovementsBoardSource, /eyebrow=\{copy\.eyebrow\}|description=\{copy\.description\}|activeItems\.length/);
+assert.match(siteImprovementsBoardSource, /id="new-site-improvement"[\s\S]*?open=\{query\.new === "1"\}/);
+assert.match(siteImprovementDetailSource, /deleteSiteImprovementAction\.bind/);
+assert.match(siteImprovementDetailSource, /<ConfirmSubmitButton[\s\S]*?copy\.confirmDelete/);
+assert.match(siteImprovementActionsSource, /deleteSiteImprovementAction[\s\S]*?Only the creator or an admin/);
+assert.match(siteImprovementActionsSource, /NotificationType\.SITE_IMPROVEMENT_COMPLETED/);
+assert.match(siteImprovementActionsSource, /respondToSiteImprovementCompletionAction/);
+assert.match(siteImprovementActionsSource, /respondToSiteImprovementCompletionAction[\s\S]*?await requireUser\(\)/);
+assert.match(notificationsPageSource, /respondToSiteImprovementCompletionAction\.bind\(null, improvementReview\.id, "confirm"\)/);
+assert.match(notificationsPageSource, /respondToSiteImprovementCompletionAction\.bind\(null, improvementReview\.id, "follow-up"\)/);
+assert.match(notificationLifecycleSource, /siteImprovementReview:[\s\S]*?SiteImprovementCompletionReviewStatus\.PENDING/);
+assert.match(notificationCopySource, /Votre suggestion a bien été prise en compte/);
+assert.match(prismaSchemaSource, /model SiteImprovementCompletionReview[\s\S]*?notificationId\s+Int\?\s+@unique/);
 assert.doesNotMatch(siteImprovementDetailSource, /site-improvement-sidebar|titleBelowHero/);
 assert.match(siteImprovementDetailSource, /<details className="site-improvement-comment-composer">/);
 assert.match(siteImprovementDetailSource, /<details className="site-improvement-history-panel">/);

@@ -5,7 +5,6 @@ import { loginAction, registerAction } from "@/lib/actions/auth-actions";
 import { getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
 import { configuredOAuthProviders, safeReturnTo } from "@/lib/oauth";
-import { USER_DISCOVERY_SOURCES } from "@/lib/user-discovery-source";
 import { DISPLAY_NAME_MAX_LENGTH } from "@/lib/user-display";
 
 function loginErrorMessage(reason: string | undefined, t: Awaited<ReturnType<typeof getTranslations>>) {
@@ -124,24 +123,6 @@ export default async function LoginPage({
               ))}
             </select>
             <small className="muted">{t.auth.mathLevelHelp}</small>
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">{t.profile.discoverySourceQuestion}</span>
-            <select name="discoverySource" required defaultValue="">
-              <option value="" disabled>{t.profile.discoverySourcePlaceholder}</option>
-              {USER_DISCOVERY_SOURCES.map((source) => (
-                <option key={source} value={source}>{t.profile.discoverySources[source]}</option>
-              ))}
-            </select>
-            <small className="muted">{t.profile.discoverySourceHelp}</small>
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">{t.profile.discoverySourceDetail}</span>
-            <input
-              name="discoverySourceDetail"
-              maxLength={240}
-              placeholder={t.profile.discoverySourceDetailPlaceholder}
-            />
           </label>
           <button type="submit">{t.auth.createAccount}</button>
         </form>

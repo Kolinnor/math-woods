@@ -2,12 +2,14 @@
 
 import type { Route } from "next";
 import {
+  NotificationType,
   SiteImprovementActivityType,
+  SiteImprovementCompletionReviewStatus,
   SiteImprovementStatus
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireModerator } from "@/lib/auth";
+import { requireModerator, requireUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { renderMarkdown } from "@/lib/markdown";
@@ -112,23 +114,74 @@ export async function updateSiteImprovementMetadataAction(improvementId: number,
   await prisma.$transaction(async (tx) => {
     const current = await tx.siteImprovement.findUnique({
       where: { id: improvementId },
-      select: { id: true, status: true, priority: true }
+      select: {
+        id: true,
+        title: true,
+        creatorId: true,
+        status: true,
+        priority: true,
+        completionReviews: {
+          where: { status: SiteImprovementCompletionReviewStatus.PENDING },
+          select: { id: true, notificationId: true }
+        }
+      }
     });
     if (!current) throw new Error("Site improvement not found.");
     const statusChanged = current.status !== status;
     const priorityChanged = current.priority !== priority;
     if (!statusChanged && !priorityChanged) return;
 
+    const now = new Date();
     const updated = await tx.siteImprovement.updateMany({
       where: { id: current.id, status: current.status, priority: current.priority },
       data: {
         ...(statusChanged
-          ? { status, completedAt: status === SiteImprovementStatus.COMPLETED ? new Date() : null }
+          ? { status, completedAt: status === SiteImprovementStatus.COMPLETED ? now : null }
           : {}),
         ...(priorityChanged ? { priority } : {})
       }
     });
     if (updated.count !== 1) throw new Error("This improvement changed while you were updating it.");
+
+    if (statusChanged && current.completionReviews.length > 0) {
+      const pendingReviewIds = current.completionReviews.map((review) => review.id);
+      const pendingNotificationIds = current.completionReviews
+        .map((review) => review.notificationId)
+        .filter((notificationId): notificationId is number => notificationId !== null);
+      await tx.siteImprovementCompletionReview.updateMany({
+        where: { id: { in: pendingReviewIds }, status: SiteImprovementCompletionReviewStatus.PENDING },
+        data: { status: SiteImprovementCompletionReviewStatus.INVALIDATED, respondedAt: now }
+      });
+      if (pendingNotificationIds.length > 0) {
+        await tx.notification.updateMany({
+          where: { id: { in: pendingNotificationIds }, readAt: null },
+          data: { readAt: now }
+        });
+      }
+    }
+
+    if (
+      statusChanged &&
+      status === SiteImprovementStatus.COMPLETED &&
+      current.creatorId
+    ) {
+      const notification = await tx.notification.create({
+        data: {
+          userId: current.creatorId,
+          actorId: user.id,
+          type: NotificationType.SITE_IMPROVEMENT_COMPLETED,
+          title: "Your suggestion has been implemented",
+          body: `"${current.title}" is ready to test. Please check that it works as expected, then confirm when you are satisfied.`,
+          href: improvementPath(current.id)
+        }
+      });
+      await tx.siteImprovementCompletionReview.create({
+        data: {
+          improvementId: current.id,
+          notificationId: notification.id
+        }
+      });
+    }
 
     await tx.siteImprovementActivity.createMany({
       data: [
@@ -155,6 +208,91 @@ export async function updateSiteImprovementMetadataAction(improvementId: number,
   });
 
   revalidateImprovement(improvementId);
+  revalidatePath("/", "layout");
+}
+
+export async function deleteSiteImprovementAction(improvementId: number) {
+  const user = await requireModerator();
+  await assertRateLimit(`site-improvement:delete:${user.id}`, 20, 60_000);
+
+  await prisma.$transaction(async (tx) => {
+    const improvement = await tx.siteImprovement.findUnique({
+      where: { id: improvementId },
+      select: {
+        id: true,
+        creatorId: true,
+        completionReviews: { select: { notificationId: true } }
+      }
+    });
+    if (!improvement) throw new Error("Site improvement not found.");
+    if (improvement.creatorId !== user.id && !canUseAdminTools(user)) {
+      throw new Error("Only the creator or an admin can delete this improvement.");
+    }
+
+    const notificationIds = improvement.completionReviews
+      .map((review) => review.notificationId)
+      .filter((notificationId): notificationId is number => notificationId !== null);
+    if (notificationIds.length > 0) {
+      await tx.notification.deleteMany({ where: { id: { in: notificationIds } } });
+    }
+    await tx.siteImprovement.delete({ where: { id: improvement.id } });
+  });
+
+  revalidatePath(BOARD_PATH);
+  revalidatePath("/", "layout");
+  revalidatePath("/notifications");
+  redirect(BOARD_PATH);
+}
+
+type SiteImprovementCompletionResponse = "confirm" | "follow-up";
+
+export async function respondToSiteImprovementCompletionAction(
+  reviewId: number,
+  response: SiteImprovementCompletionResponse,
+  _formData: FormData
+) {
+  const user = await requireUser();
+  await assertRateLimit(`site-improvement:completion-response:${user.id}`, 20, 60_000);
+  if (!Number.isInteger(reviewId) || reviewId <= 0) throw new Error("Invalid completion review.");
+  if (response !== "confirm" && response !== "follow-up") throw new Error("Invalid completion response.");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const review = await tx.siteImprovementCompletionReview.findUnique({
+      where: { id: reviewId },
+      include: { improvement: { select: { id: true, creatorId: true } } }
+    });
+    if (!review) throw new Error("Completion review not found.");
+    if (review.improvement.creatorId !== user.id) {
+      throw new Error("Only the suggestion author can answer this review.");
+    }
+    if (review.status !== SiteImprovementCompletionReviewStatus.PENDING) {
+      return { status: review.status, improvementId: review.improvement.id };
+    }
+
+    const now = new Date();
+    const status = response === "confirm"
+      ? SiteImprovementCompletionReviewStatus.CONFIRMED
+      : SiteImprovementCompletionReviewStatus.FOLLOW_UP;
+    await tx.siteImprovementCompletionReview.update({
+      where: { id: review.id },
+      data: { status, respondedAt: now }
+    });
+    if (review.notificationId) {
+      await tx.notification.updateMany({
+        where: { id: review.notificationId, userId: user.id, readAt: null },
+        data: { readAt: now }
+      });
+    }
+    return { status, improvementId: review.improvement.id };
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/notifications");
+  revalidateImprovement(result.improvementId);
+  if (result.status === SiteImprovementCompletionReviewStatus.FOLLOW_UP) {
+    redirect(`${BOARD_PATH}?new=1#new-site-improvement` as Route);
+  }
+  redirect(`/notifications?siteImprovementReview=${result.status.toLowerCase()}#site-improvement-review-${reviewId}`);
 }
 
 export async function createSiteImprovementCommentAction(improvementId: number, formData: FormData) {

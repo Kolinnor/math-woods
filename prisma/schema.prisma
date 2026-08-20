@@ -252,6 +252,7 @@ enum ContributionRequestStatus {
 
 enum SiteImprovementStatus {
   BACKLOG
+  LONG_TERM
   PLANNED
   IN_PROGRESS
   COMPLETED
@@ -268,6 +269,13 @@ enum SiteImprovementActivityType {
   DETAILS_CHANGED
   STATUS_CHANGED
   PRIORITY_CHANGED
+}
+
+enum SiteImprovementCompletionReviewStatus {
+  PENDING
+  CONFIRMED
+  FOLLOW_UP
+  INVALIDATED
 }
 
 enum NotificationType {
@@ -303,6 +311,7 @@ enum NotificationType {
   CONTEST_UPDATE
   TRUSTED_USER_CANDIDATE
   TRUSTED_USER_PROMOTED
+  SITE_IMPROVEMENT_COMPLETED
 }
 
 enum TrustedUserRecommendationStatus {
@@ -1743,19 +1752,20 @@ model ContributionRequest {
 }
 
 model SiteImprovement {
-  id                  Int                       @id @default(autoincrement())
+  id                  Int                               @id @default(autoincrement())
   title               String
-  descriptionMarkdown String                    @db.Text
-  descriptionHtml     String                    @db.Text
-  status              SiteImprovementStatus     @default(BACKLOG)
-  priority            SiteImprovementPriority   @default(NORMAL)
+  descriptionMarkdown String                            @db.Text
+  descriptionHtml     String                            @db.Text
+  status              SiteImprovementStatus             @default(BACKLOG)
+  priority            SiteImprovementPriority           @default(NORMAL)
   creatorId           Int?
   completedAt         DateTime?
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
-  creator             User?                     @relation("SiteImprovementCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  createdAt           DateTime                          @default(now())
+  updatedAt           DateTime                          @updatedAt
+  creator             User?                             @relation("SiteImprovementCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   comments            SiteImprovementComment[]
   activities          SiteImprovementActivity[]
+  completionReviews   SiteImprovementCompletionReview[]
 
   @@index([status, priority, updatedAt])
   @@index([creatorId])
@@ -1789,6 +1799,20 @@ model SiteImprovementActivity {
 
   @@index([improvementId, createdAt])
   @@index([actorId])
+}
+
+model SiteImprovementCompletionReview {
+  id             Int                                   @id @default(autoincrement())
+  improvementId  Int
+  notificationId Int?                                  @unique
+  status         SiteImprovementCompletionReviewStatus @default(PENDING)
+  createdAt      DateTime                              @default(now())
+  updatedAt      DateTime                              @updatedAt
+  respondedAt    DateTime?
+  improvement    SiteImprovement                       @relation(fields: [improvementId], references: [id], onDelete: Cascade)
+  notification   Notification?                         @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+
+  @@index([improvementId, status, createdAt])
 }
 
 model FaqSection {
@@ -1940,20 +1964,21 @@ model DailyTipSchedule {
 }
 
 model Notification {
-  id                  Int                        @id @default(autoincrement())
-  userId              Int
-  actorId             Int?
-  type                NotificationType
-  title               String
-  body                String
-  href                String
-  readAt              DateTime?
-  dismissedFromMenuAt DateTime?
-  createdAt           DateTime                   @default(now())
-  user                User                       @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
-  actor               User?                      @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
-  dailyConceptReview  DailyConceptReview?
-  trustedUserReview   TrustedUserRecommendation?
+  id                    Int                              @id @default(autoincrement())
+  userId                Int
+  actorId               Int?
+  type                  NotificationType
+  title                 String
+  body                  String
+  href                  String
+  readAt                DateTime?
+  dismissedFromMenuAt   DateTime?
+  createdAt             DateTime                         @default(now())
+  user                  User                             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor                 User?                            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  dailyConceptReview    DailyConceptReview?
+  trustedUserReview     TrustedUserRecommendation?
+  siteImprovementReview SiteImprovementCompletionReview?
 
   @@index([userId, readAt, createdAt])
   @@index([actorId])
