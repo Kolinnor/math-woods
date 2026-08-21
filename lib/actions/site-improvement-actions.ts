@@ -13,7 +13,7 @@ import { requireModerator, requireUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { renderMarkdown } from "@/lib/markdown";
-import { canUseAdminTools } from "@/lib/permissions";
+import { canUseAdminTools, canUseOwnerTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import {
   parseSiteImprovementPriority,
@@ -129,6 +129,9 @@ export async function updateSiteImprovementMetadataAction(improvementId: number,
     if (!current) throw new Error("Site improvement not found.");
     const statusChanged = current.status !== status;
     const priorityChanged = current.priority !== priority;
+    if (statusChanged && !canUseOwnerTools(user)) {
+      throw new Error("Only the owner can change a site improvement status.");
+    }
     if (!statusChanged && !priorityChanged) return;
 
     const now = new Date();

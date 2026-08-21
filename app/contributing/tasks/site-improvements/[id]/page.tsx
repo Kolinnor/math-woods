@@ -20,7 +20,7 @@ import {
 import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
-import { canUseAdminTools } from "@/lib/permissions";
+import { canUseAdminTools, canUseOwnerTools } from "@/lib/permissions";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 import {
   SITE_IMPROVEMENT_PRIORITY_ORDER,
@@ -72,6 +72,7 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
     timeZone: timeZone ?? undefined
   });
   const canEditDetails = improvement.creatorId === user.id || canUseAdminTools(user);
+  const canChangeStatus = canUseOwnerTools(user);
 
   return (
     <ForestPageLayout
@@ -104,14 +105,18 @@ export default async function SiteImprovementDetailPage({ params }: { params: Pr
             action={updateSiteImprovementMetadataAction.bind(null, improvement.id)}
             className="site-improvement-metadata-form"
           >
-            <label>
-              <span>{copy.changeStatus}</span>
-              <select name="status" defaultValue={improvement.status}>
-                {SITE_IMPROVEMENT_STATUS_ORDER.map((status) => (
-                  <option key={status} value={status}>{copy.statuses[status]}</option>
-                ))}
-              </select>
-            </label>
+            {canChangeStatus ? (
+              <label>
+                <span>{copy.changeStatus}</span>
+                <select name="status" defaultValue={improvement.status}>
+                  {SITE_IMPROVEMENT_STATUS_ORDER.map((status) => (
+                    <option key={status} value={status}>{copy.statuses[status]}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <input type="hidden" name="status" value={improvement.status} />
+            )}
             <label>
               <span>{copy.changePriority}</span>
               <select name="priority" defaultValue={improvement.priority}>

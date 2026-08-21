@@ -2329,6 +2329,13 @@ assert.match(siteImprovementDetailSource, /deleteSiteImprovementAction\.bind/);
 assert.match(siteImprovementDetailSource, /<ConfirmSubmitButton[\s\S]*?copy\.confirmDelete/);
 assert.match(siteImprovementActionsSource, /deleteSiteImprovementAction[\s\S]*?Only the creator or an admin/);
 assert.match(siteImprovementActionsSource, /NotificationType\.SITE_IMPROVEMENT_COMPLETED/);
+assert.match(
+  siteImprovementActionsSource,
+  /statusChanged && !canUseOwnerTools\(user\)[\s\S]*?Only the owner can change a site improvement status/
+);
+assert.match(siteImprovementDetailSource, /const canChangeStatus = canUseOwnerTools\(user\)/);
+assert.match(siteImprovementDetailSource, /canChangeStatus \? \([\s\S]*?<select name="status"/);
+assert.match(siteImprovementDetailSource, /<input type="hidden" name="status" value=\{improvement\.status\}/);
 assert.match(siteImprovementActionsSource, /respondToSiteImprovementCompletionAction/);
 assert.match(siteImprovementActionsSource, /respondToSiteImprovementCompletionAction[\s\S]*?await requireUser\(\)/);
 assert.match(notificationsPageSource, /respondToSiteImprovementCompletionAction\.bind\(null, improvementReview\.id, "confirm"\)/);
