@@ -182,6 +182,8 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           </Link>
           <ProblemChallengeDialog
             labels={t.social.challenge}
+            recipientAvatarBackground={otherUser.avatarBackground}
+            recipientAvatarUrl={otherUser.avatarUrl}
             recipientName={displayNameForUser(otherUser)}
             recipientProfileSlug={otherUser.profileSlug}
           />

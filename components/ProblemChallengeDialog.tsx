@@ -40,6 +40,8 @@ type ProblemChallengeDialogProps = {
   initialProblem?: ProblemChallengeProblem;
   intent?: ProblemDeliveryIntent;
   labels: ProblemChallengeLabels;
+  recipientAvatarBackground?: string | null;
+  recipientAvatarUrl?: string | null;
   recipientName?: string;
   recipientProfileSlug?: string;
 };
@@ -85,6 +87,8 @@ function ProblemChallengeDialog({
   initialProblem,
   intent = "challenge",
   labels,
+  recipientAvatarBackground,
+  recipientAvatarUrl,
   recipientName,
   recipientProfileSlug
 }, ref) {
@@ -103,7 +107,12 @@ function ProblemChallengeDialog({
   const [userSuggestions, setUserSuggestions] = useState<SuggestedUser[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<SuggestedUser | null>(
     recipientProfileSlug && recipientName
-      ? { avatarBackground: null, avatarUrl: null, name: recipientName, profileSlug: recipientProfileSlug }
+      ? {
+          avatarBackground: recipientAvatarBackground ?? null,
+          avatarUrl: recipientAvatarUrl ?? null,
+          name: recipientName,
+          profileSlug: recipientProfileSlug
+        }
       : null
   );
   const [searching, setSearching] = useState(false);
@@ -111,8 +120,8 @@ function ProblemChallengeDialog({
   const [visibleError, setVisibleError] = useState<ProblemChallengeActionState["error"]>(null);
   const activeRecipient = fixedRecipient
     ? {
-        avatarBackground: null,
-        avatarUrl: null,
+        avatarBackground: recipientAvatarBackground ?? null,
+        avatarUrl: recipientAvatarUrl ?? null,
         name: recipientName ?? recipientProfileSlug ?? "",
         profileSlug: recipientProfileSlug ?? ""
       }
@@ -262,7 +271,12 @@ function ProblemChallengeDialog({
                 <div className="problem-challenge-selected">
                   <div className="problem-challenge-selected-person">
                     <UserAvatar
-                      user={{ username: selectedRecipient.profileSlug, displayName: selectedRecipient.name }}
+                      user={{
+                        avatarBackground: selectedRecipient.avatarBackground,
+                        avatarUrl: selectedRecipient.avatarUrl,
+                        username: selectedRecipient.profileSlug,
+                        displayName: selectedRecipient.name
+                      }}
                       size="sm"
                     />
                     <div>
@@ -312,7 +326,12 @@ function ProblemChallengeDialog({
                           className="problem-challenge-user-suggestion"
                         >
                           <UserAvatar
-                            user={{ username: suggestedUser.profileSlug, displayName: suggestedUser.name }}
+                            user={{
+                              avatarBackground: suggestedUser.avatarBackground,
+                              avatarUrl: suggestedUser.avatarUrl,
+                              username: suggestedUser.profileSlug,
+                              displayName: suggestedUser.name
+                            }}
                             size="sm"
                           />
                           <span>

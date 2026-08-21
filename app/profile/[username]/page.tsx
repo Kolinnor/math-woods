@@ -297,6 +297,8 @@ export default async function ProfilePage({
     <div className="flex flex-wrap gap-2">
       <ProblemChallengeDialog
         labels={t.social.challenge}
+        recipientAvatarBackground={user.avatarBackground}
+        recipientAvatarUrl={user.avatarUrl}
         recipientName={displayNameForUser(user)}
         recipientProfileSlug={user.profileSlug}
       />

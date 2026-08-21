@@ -2129,6 +2129,7 @@ const siteAnnouncementToastSource = readFileSync(join("components", "SiteAnnounc
 const moderationPageSource = readFileSync(join("app", "moderation", "page.tsx"), "utf-8");
 const performancePageSource = readFileSync(join("app", "moderation", "performance", "page.tsx"), "utf-8");
 const webVitalsReporterSource = readFileSync(join("components", "WebVitalsReporter.tsx"), "utf-8");
+const problemChallengeDialogSource = readFileSync(join("components", "ProblemChallengeDialog.tsx"), "utf-8");
 const webVitalsRouteSource = readFileSync(join("app", "api", "web-vitals", "route.ts"), "utf-8");
 const internalMetricsRouteSource = readFileSync(join("app", "api", "internal", "metrics", "route.ts"), "utf-8");
 const productionComposeSource = readFileSync("docker-compose.infomaniak.yml", "utf-8");
@@ -2184,6 +2185,14 @@ assert.match(layoutSource, /<WebVitalsReporter \/>/);
 assert.match(webVitalsReporterSource, /useReportWebVitals\(reportMetric\)/);
 assert.match(webVitalsReporterSource, /normalizedObservabilityRoute\(window\.location\.pathname\)/);
 assert.doesNotMatch(webVitalsReporterSource, /userId|username|userAgent/);
+assert.match(
+  problemChallengeDialogSource,
+  /avatarBackground: suggestedUser\.avatarBackground,[\s\S]*?avatarUrl: suggestedUser\.avatarUrl/
+);
+assert.match(
+  problemChallengeDialogSource,
+  /avatarBackground: selectedRecipient\.avatarBackground,[\s\S]*?avatarUrl: selectedRecipient\.avatarUrl/
+);
 assert.match(webVitalsRouteSource, /assertRateLimit/);
 assert.match(webVitalsRouteSource, /normalizedObservabilityRoute/);
 assert.match(internalMetricsRouteSource, /registry\.metrics\(\)/);

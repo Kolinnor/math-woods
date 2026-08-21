@@ -402,6 +402,8 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 buttonClassName="secondary"
                 iconOnly
                 labels={data.labels.challenge}
+                recipientAvatarBackground={selectedFriend.avatarBackground}
+                recipientAvatarUrl={selectedFriend.avatarUrl}
                 recipientName={selectedFriend.name}
                 recipientProfileSlug={selectedFriend.profileSlug}
               />
