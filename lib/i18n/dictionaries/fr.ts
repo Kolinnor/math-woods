@@ -509,7 +509,7 @@ export const fr = {
   home: {
     hero: {
       welcomeBack: (name: string) => `Bon retour, ${name}`,
-      resume: (title: string) => `Reprendre : ${title}`,
+      resume: "Reprendre :",
       findLevel: "Trouver un problème à mon niveau",
       guestTitle: "Math Woods est un lieu calme pour résoudre des problèmes et étudier les mathématiques",
       startSolving: "Commencer à résoudre",
@@ -1490,7 +1490,7 @@ export const fr = {
     termsBody3: "Le site officiel a vocation à rester gratuit, sans abonnement ni publicité. Cet engagement du projet ne modifie pas les droits et obligations propres aux licences du logiciel et du contenu.",
     privacyTitle: "Utiliser les données nécessaires au service, sans vendre l’attention",
     privacyBody1: "Math Woods traite les informations de compte, les données d’authentification et de sécurité, la progression, les préférences, les contributions et l’activité sociale nécessaires au fonctionnement du site. Les profils et contributions publics sont visibles ; les mots de passe, messages privés et données privées du compte ne sont pas publiés.",
-    privacyBody2: "Les cookies essentiels et le stockage local assurent le fonctionnement des sessions et des préférences. Math Woods ne vend pas de données personnelles et n’utilise pas de traceurs publicitaires. Les fournisseurs de connexion externe ne reçoivent une requête OAuth que lorsque vous choisissez leur service ; les prestataires d’infrastructure traitent les données nécessaires à l’hébergement et à la sécurité du site.",
+    privacyBody2: "Les cookies essentiels et le stockage local assurent le fonctionnement des sessions et des préférences. Math Woods ne vend pas de données personnelles et n’utilise pas de traceurs publicitaires. Des mesures de performance anonymes enregistrent les Web Vitals, une catégorie générale d’appareil et des types de pages normalisés, sans identifiant de compte, nom de page complet ni adresse IP persistante. Les fournisseurs de connexion externe ne reçoivent une requête OAuth que lorsque vous choisissez leur service ; les prestataires d’infrastructure traitent les données nécessaires à l’hébergement et à la sécurité du site.",
     privacyBody3: "La suppression du compte est disponible dans les Paramètres. Certains historiques de contributions publiques peuvent être conservés ou anonymisés lorsque cela est nécessaire pour préserver l’historique des révisions, prévenir les abus ou respecter des obligations légales.",
     questions: "Questions",
     unclear: "Quelque chose n’est pas clair ?",

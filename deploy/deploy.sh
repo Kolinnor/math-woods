@@ -24,12 +24,13 @@ docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d postgres valkey
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run internal-links:reconcile
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run achievements:backfill
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d app uptime-kuma
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d app uptime-kuma node-exporter cadvisor prometheus
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate caddy
 
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T app \
     node -e "fetch('http://127.0.0.1:3000/api/health').then(async r => { console.log(r.status, await r.text()); if (!r.ok) process.exit(1); })"; then
+    docker builder prune -af --filter "until=168h"
     echo "Deploy complete."
     exit 0
   fi

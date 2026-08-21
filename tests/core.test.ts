@@ -17,6 +17,8 @@ import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { markdownDraftConflictsWithSource } from "../lib/markdown-drafts.ts";
 import { markdownImageSizingFromSrc, markdownImageSrcWithWidth } from "../lib/markdown-images.ts";
 import { mathWoodsTourCopy, parseMathWoodsTourStep } from "../lib/math-woods-tour.ts";
+import { parseObservabilityRange } from "../lib/observability-dashboard.ts";
+import { normalizedObservabilityRoute } from "../lib/observability-routes.ts";
 import {
   MAX_CONCEPT_EXERCISES,
   parseConceptExerciseCount,
@@ -2125,6 +2127,14 @@ const notificationCopySource = readFileSync(join("lib", "notification-copy.ts"),
 const siteAnnouncementActionsSource = readFileSync(join("lib", "actions", "site-announcement-actions.ts"), "utf-8");
 const siteAnnouncementToastSource = readFileSync(join("components", "SiteAnnouncementToast.tsx"), "utf-8");
 const moderationPageSource = readFileSync(join("app", "moderation", "page.tsx"), "utf-8");
+const performancePageSource = readFileSync(join("app", "moderation", "performance", "page.tsx"), "utf-8");
+const webVitalsReporterSource = readFileSync(join("components", "WebVitalsReporter.tsx"), "utf-8");
+const webVitalsRouteSource = readFileSync(join("app", "api", "web-vitals", "route.ts"), "utf-8");
+const internalMetricsRouteSource = readFileSync(join("app", "api", "internal", "metrics", "route.ts"), "utf-8");
+const productionComposeSource = readFileSync("docker-compose.infomaniak.yml", "utf-8");
+const caddySource = readFileSync(join("deploy", "Caddyfile"), "utf-8");
+const prometheusConfigSource = readFileSync(join("deploy", "prometheus", "prometheus.yml"), "utf-8");
+const prometheusAlertsSource = readFileSync(join("deploy", "prometheus", "alerts.yml"), "utf-8");
 const prismaSchemaSource = readFileSync(join("prisma", "schema.prisma"), "utf-8");
 const conceptMergeActionsSource = readFileSync(join("lib", "actions", "concept-merge-actions.ts"), "utf-8");
 const conceptActionsSource = readFileSync(join("lib", "actions", "concept-actions.ts"), "utf-8");
@@ -2167,6 +2177,27 @@ assert.match(siteAnnouncementToastSource, /announcement: \{ cancelledAt: null \}
 assert.match(layoutSource, /<SiteAnnouncementToast userId=\{user\.id\} \/>/);
 assert.match(moderationPageSource, /canUseOwnerTools\(user\)/);
 assert.match(moderationPageSource, /action=\{sendSiteAnnouncementAction\}/);
+assert.match(moderationPageSource, /\/moderation\/performance/);
+assert.match(performancePageSource, /await requireOwner\(\)/);
+assert.match(performancePageSource, /loadObservabilityDashboard\(range\)/);
+assert.match(layoutSource, /<WebVitalsReporter \/>/);
+assert.match(webVitalsReporterSource, /useReportWebVitals\(reportMetric\)/);
+assert.match(webVitalsReporterSource, /normalizedObservabilityRoute\(window\.location\.pathname\)/);
+assert.doesNotMatch(webVitalsReporterSource, /userId|username|userAgent/);
+assert.match(webVitalsRouteSource, /assertRateLimit/);
+assert.match(webVitalsRouteSource, /normalizedObservabilityRoute/);
+assert.match(internalMetricsRouteSource, /registry\.metrics\(\)/);
+assert.match(productionComposeSource, /prom\/prometheus:v3\.12\.0/);
+assert.match(productionComposeSource, /prom\/node-exporter:v1\.12\.1/);
+assert.match(productionComposeSource, /ghcr\.io\/google\/cadvisor:v0\.60\.5/);
+assert.match(productionComposeSource, /--storage\.tsdb\.retention\.time=30d/);
+assert.match(productionComposeSource, /--storage\.tsdb\.retention\.size=2GB/);
+assert.doesNotMatch(productionComposeSource, /"(?:9090|9100|8080):(?:9090|9100|8080)"/);
+assert.match(caddySource, /@internalMetrics path \/api\/internal\/metrics[\s\S]*?respond @internalMetrics 404/);
+assert.match(prometheusConfigSource, /job_name: math-woods-app/);
+assert.match(prometheusConfigSource, /job_name: node/);
+assert.match(prometheusConfigSource, /job_name: containers/);
+assert.match(prometheusAlertsSource, /alert: HostDiskHigh/);
 assert.equal(
   (moderationPageSource.match(/name="audienceRoles"[^>]*defaultChecked/g) ?? []).length,
   1,
@@ -2206,6 +2237,11 @@ assert.match(proofActionsSource, /proofs\/\$\{proofId\}\/discussion/);
 assert.match(moderationActionsSource, /proofs\/\$\{proofId\}\/discussion\?report=saved/);
 assert.match(conceptDetailSource, /contentKey=\{`concept:\$\{concept\.translationGroupId\}`\}/);
 assert.match(homeSource, /\/about\/tutorial/);
+assert.match(
+  homeSource,
+  /t\.home\.hero\.resume\} <AsyncMarkdownInline markdown=\{resumeProblem\.title\}/,
+);
+assert.doesNotMatch(homeSource, /t\.home\.hero\.resume\(resumeProblem\.title\)/);
 assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
 assert.doesNotMatch(oauthCompleteSource, /defaultValue=\{attempt\.providerDisplayName/);
 assert.match(oauthCompleteSource, /complete\.publicPseudonymHelp/);
@@ -3529,6 +3565,19 @@ assert.deepEqual(
   translationSourcesMissingLanguage(contributionTranslationPages, "en").map((page) => page.slug),
   ["corps"]
 );
+assert.equal(parseObservabilityRange("24h"), "24h");
+assert.equal(parseObservabilityRange("7d"), "7d");
+assert.equal(parseObservabilityRange("forever"), "24h");
+assert.equal(normalizedObservabilityRoute("/problems/la-piece-manquante"), "/problems/[slug]");
+assert.equal(
+  normalizedObservabilityRoute("/problems/example/proofs/42/discussion?from=menu"),
+  "/problems/[slug]/proofs/[proofId]/discussion"
+);
+assert.equal(normalizedObservabilityRoute("/profile/real-person-name"), "/profile/[username]");
+assert.equal(normalizedObservabilityRoute("/concepts/norm/edit"), "/concepts/[slug]/edit");
+assert.equal(normalizedObservabilityRoute("/problems"), "/problems");
+assert.equal(normalizedObservabilityRoute("/problems/new"), "/problems/new");
+assert.equal(normalizedObservabilityRoute("/untrusted-arbitrary-value"), "/other");
 
 assert.equal(
   needsReviewAfterProblemEdit({

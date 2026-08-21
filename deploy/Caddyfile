@@ -1,5 +1,8 @@
 {
   email {$LETSENCRYPT_EMAIL}
+  metrics {
+    per_host
+  }
 }
 
 {$APP_DOMAIN} {
@@ -22,6 +25,9 @@
     max_size 6MB
   }
 
+  @internalMetrics path /api/internal/metrics
+  respond @internalMetrics 404
+
   reverse_proxy app:3000
 
   handle_errors 502 503 504 {
@@ -35,6 +41,10 @@
       status 503
     }
   }
+}
+
+:9180 {
+  metrics
 }
 
 {$STATUS_DOMAIN} {

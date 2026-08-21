@@ -751,7 +751,7 @@ export default async function HomePage({
           <h1>{user ? t.home.hero.welcomeBack(displayNameForUser(user)) : t.home.hero.guestTitle}</h1>
           {resumeProblem && (
             <Link href={`/problems/${resumeProblem.slug}`} className="home-button home-button-light">
-              {t.home.hero.resume(resumeProblem.title)}
+              <span>{t.home.hero.resume} <AsyncMarkdownInline markdown={resumeProblem.title} /></span>
             </Link>
           )}
         </div>

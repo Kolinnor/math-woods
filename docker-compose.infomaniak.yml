@@ -82,6 +82,7 @@ services:
       IMAGE_STORAGE_PUBLIC_BASE_URL: ${IMAGE_STORAGE_PUBLIC_BASE_URL:-}
       IMAGE_STORAGE_PATH_STYLE: ${IMAGE_STORAGE_PATH_STYLE:-1}
       IMAGE_UPLOAD_MAX_BYTES: ${IMAGE_UPLOAD_MAX_BYTES:-5242880}
+      OBSERVABILITY_PROMETHEUS_URL: http://prometheus:9090
     expose:
       - "3000"
     depends_on:
@@ -89,6 +90,56 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=2GB
+      - --web.enable-lifecycle
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    expose:
+      - "9090"
+    depends_on:
+      - app
+      - node-exporter
+      - cadvisor
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    expose:
+      - "9100"
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.5
+    restart: unless-stopped
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    expose:
+      - "8080"
 
   uptime-kuma:
     image: louislam/uptime-kuma:1
@@ -116,10 +167,12 @@ services:
     depends_on:
       - app
       - uptime-kuma
+      - prometheus
 
 volumes:
   postgres-data:
   valkey-data:
   uptime-kuma-data:
+  prometheus-data:
   caddy-data:
   caddy-config:

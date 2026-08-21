@@ -21,6 +21,7 @@ import { SiteAnnouncementToast } from "@/components/SiteAnnouncementToast";
 import { SitePresenceHeartbeat } from "@/components/SitePresenceHeartbeat";
 import { TimeZoneReporter } from "@/components/TimeZoneReporter";
 import { UserAvatar } from "@/components/UserAvatar";
+import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -220,6 +221,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={`${inter.variable} ${spectral.variable}`}>
         <ErrorReporter />
+        <WebVitalsReporter />
         <SitePresenceHeartbeat />
         <TimeZoneReporter />
         <header className="site-header">

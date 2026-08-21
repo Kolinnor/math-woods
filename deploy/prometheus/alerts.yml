@@ -1,0 +1,50 @@
+groups:
+  - name: math-woods-health
+    rules:
+      - alert: MetricsTargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Metrics target {{ $labels.job }} is unavailable"
+
+      - alert: HostCpuHigh
+        expr: 100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host CPU usage has exceeded 90% for 10 minutes"
+
+      - alert: HostMemoryLow
+        expr: 100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 10% of host memory remains available"
+
+      - alert: HostDiskHigh
+        expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) > 85
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root filesystem usage has exceeded 85%"
+
+      - alert: HttpErrorRateHigh
+        expr: sum(rate(caddy_http_requests_total{handler="reverse_proxy",code=~"5.."}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Math Woods is returning sustained 5xx responses"
+
+      - alert: HttpLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket{handler="reverse_proxy"}[5m])) by (le)) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP p95 latency has exceeded one second for 10 minutes"

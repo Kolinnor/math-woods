@@ -506,7 +506,7 @@ export const en = {
   home: {
     hero: {
       welcomeBack: (name: string) => `Welcome back, ${name}`,
-      resume: (title: string) => `Resume: ${title}`,
+      resume: "Resume:",
       findLevel: "Find a problem at my level",
       guestTitle: "Math Woods is a quiet place for problem solving and studying mathematics",
       startSolving: "Start solving problems",
@@ -1485,7 +1485,7 @@ export const en = {
     termsBody3: "The official site is intended to remain free to use, without subscriptions or advertising. This project commitment does not change the separate permissions and obligations of the software and content licenses.",
     privacyTitle: "Use the data needed to operate the service, not to sell attention",
     privacyBody1: "Math Woods processes account details, authentication and security data, progress, preferences, contributions, and social activity to operate the site. Public profiles and contributions are public; passwords, private messages, and private account data are not published.",
-    privacyBody2: "Essential cookies and local storage keep sessions and preferences working. Math Woods does not sell personal data or use advertising trackers. External sign-in providers receive an OAuth request only when you choose to use them, and infrastructure providers process data as needed to host and secure the service.",
+    privacyBody2: "Essential cookies and local storage keep sessions and preferences working. Math Woods does not sell personal data or use advertising trackers. Anonymous performance measurements record Web Vitals, a broad device category, and normalized page types without account identifiers, full page names, or persistent IP addresses. External sign-in providers receive an OAuth request only when you choose to use them, and infrastructure providers process data as needed to host and secure the service.",
     privacyBody3: "Account deletion is available in Settings. Some public contribution records may be retained or anonymized where necessary to preserve revision history, prevent abuse, or meet legal obligations.",
     questions: "Questions",
     unclear: "Something unclear?",

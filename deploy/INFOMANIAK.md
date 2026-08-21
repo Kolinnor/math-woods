@@ -108,6 +108,8 @@ docker compose --env-file .env.production -f docker-compose.infomaniak.yml up -d
 
 In Uptime Kuma, monitor `https://APP_DOMAIN/api/health`.
 
+The production Compose stack also starts an internal Prometheus, node-exporter, and cAdvisor. The owner-only dashboard at `/moderation/performance` shows 30 days of host, container, HTTP, and anonymous browser-performance history. None of the metrics services publishes a host port. See [`docs/observability.md`](../docs/observability.md) for privacy rules, alerts, validation, and the incident runbook.
+
 Before opening registration to the public, configure SMTP with the mailbox for `contact@APP_DOMAIN`.
 New users must verify their email address before they can create or edit public content.
 

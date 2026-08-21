@@ -149,7 +149,10 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
     >
       {canSendSiteAnnouncements && (
         <section className="mb-8" id="site-announcements">
-          <h2 className="mb-3 font-semibold">Site announcements</h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-semibold">Site announcements</h2>
+            <Link href={"/moderation/performance" as never} className="button secondary">Performance history</Link>
+          </div>
           {queryParams.announcementSent && (
             <p className="panel mb-3 border-accent p-3" role="status">
               Announcement sent to {queryParams.announcementSent} recipient{queryParams.announcementSent === "1" ? "" : "s"}.
