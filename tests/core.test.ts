@@ -2207,6 +2207,8 @@ assert.match(prometheusConfigSource, /job_name: math-woods-app/);
 assert.match(prometheusConfigSource, /job_name: node/);
 assert.match(prometheusConfigSource, /job_name: containers/);
 assert.match(prometheusAlertsSource, /alert: HostDiskHigh/);
+assert.match(prometheusAlertsSource, /handler="subroute"/);
+assert.doesNotMatch(prometheusAlertsSource, /handler="reverse_proxy"/);
 assert.equal(
   (moderationPageSource.match(/name="audienceRoles"[^>]*defaultChecked/g) ?? []).length,
   1,

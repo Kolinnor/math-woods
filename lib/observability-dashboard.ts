@@ -113,7 +113,7 @@ const CHART_QUERIES: Array<Omit<ObservabilityChart, "points"> & { query: string 
     key: "requests",
     title: "Traffic",
     unit: "req/s",
-    query: "sum(rate(caddy_http_requests_total{handler=\"reverse_proxy\"}[5m]))"
+    query: "sum(rate(caddy_http_requests_total{handler=\"subroute\"}[5m]))"
   },
   {
     key: "latency",
@@ -121,7 +121,7 @@ const CHART_QUERIES: Array<Omit<ObservabilityChart, "points"> & { query: string 
     unit: "ms",
     warningAt: 700,
     dangerAt: 1000,
-    query: "1000 * histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket{handler=\"reverse_proxy\"}[5m])) by (le))"
+    query: "1000 * histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket{handler=\"subroute\"}[5m])) by (le))"
   },
   {
     key: "errors",
@@ -129,7 +129,7 @@ const CHART_QUERIES: Array<Omit<ObservabilityChart, "points"> & { query: string 
     unit: "req/s",
     warningAt: 0.02,
     dangerAt: 0.1,
-    query: "sum(rate(caddy_http_requests_total{handler=\"reverse_proxy\",code=~\"5..\"}[5m]))"
+    query: "sum(rate(caddy_http_requests_total{handler=\"subroute\",code=~\"5..\"}[5m]))"
   }
 ];
 

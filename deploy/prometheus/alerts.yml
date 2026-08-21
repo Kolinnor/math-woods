@@ -34,7 +34,7 @@ groups:
           summary: "Root filesystem usage has exceeded 85%"
 
       - alert: HttpErrorRateHigh
-        expr: sum(rate(caddy_http_requests_total{handler="reverse_proxy",code=~"5.."}[5m])) > 0.1
+        expr: sum(rate(caddy_http_requests_total{handler="subroute",code=~"5.."}[5m])) > 0.1
         for: 5m
         labels:
           severity: critical
@@ -42,7 +42,7 @@ groups:
           summary: "Math Woods is returning sustained 5xx responses"
 
       - alert: HttpLatencyHigh
-        expr: histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket{handler="reverse_proxy"}[5m])) by (le)) > 1
+        expr: histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket{handler="subroute"}[5m])) by (le)) > 1
         for: 10m
         labels:
           severity: warning
