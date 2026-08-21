@@ -175,15 +175,15 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
               <legend className="mb-1 font-medium">Recipients</legend>
               <div className="flex flex-wrap gap-x-5 gap-y-2">
                 <label className="inline-flex items-center gap-2">
-                  <input name="audienceRoles" type="checkbox" value={Role.USER} defaultChecked />
+                  <input name="audienceRoles" type="checkbox" value={Role.USER} />
                   Members
                 </label>
                 <label className="inline-flex items-center gap-2">
-                  <input name="audienceRoles" type="checkbox" value={Role.MODERATOR} defaultChecked />
+                  <input name="audienceRoles" type="checkbox" value={Role.MODERATOR} />
                   Trusted users
                 </label>
                 <label className="inline-flex items-center gap-2">
-                  <input name="audienceRoles" type="checkbox" value={Role.ADMIN} defaultChecked />
+                  <input name="audienceRoles" type="checkbox" value={Role.ADMIN} />
                   Admins
                 </label>
                 <label className="inline-flex items-center gap-2">

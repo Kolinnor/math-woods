@@ -2098,6 +2098,7 @@ const moderationActionsSource = readFileSync(join("lib", "actions", "moderation-
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
 const problemBrowserSource = readFileSync(join("app", "problems", "page.tsx"), "utf-8");
+const conceptBrowserSource = readFileSync(join("app", "concepts", "page.tsx"), "utf-8");
 const usersPageSource = readFileSync(join("app", "users", "page.tsx"), "utf-8");
 const usersRankingSelectSource = readFileSync(join("app", "users", "UsersRankingSelect.tsx"), "utf-8");
 const userReputationSource = readFileSync(join("lib", "user-reputation.ts"), "utf-8");
@@ -2166,12 +2167,30 @@ assert.match(siteAnnouncementToastSource, /announcement: \{ cancelledAt: null \}
 assert.match(layoutSource, /<SiteAnnouncementToast userId=\{user\.id\} \/>/);
 assert.match(moderationPageSource, /canUseOwnerTools\(user\)/);
 assert.match(moderationPageSource, /action=\{sendSiteAnnouncementAction\}/);
+assert.equal(
+  (moderationPageSource.match(/name="audienceRoles"[^>]*defaultChecked/g) ?? []).length,
+  1,
+);
+assert.match(
+  moderationPageSource,
+  /name="audienceRoles"[^>]*value=\{Role\.OWNER\}[^>]*defaultChecked/,
+);
+assert.doesNotMatch(
+  moderationPageSource,
+  /name="audienceRoles"[^>]*value=\{Role\.(?:USER|MODERATOR|ADMIN)\}[^>]*defaultChecked/,
+);
 assert.match(layoutSource, /\/about\/tutorial/);
 assert.match(layoutSource, /<GuestProgressPrompt \/>/);
 assert.match(guestProgressPromptSource, /dictionaryForLocale/);
 assert.doesNotMatch(guestProgressPromptSource, /Sign in to record your progress/);
 assert.match(guestContentGateSource, /window\.location\.replace/);
 assert.match(problemDetailSource, /contentKey=\{`problem:\$\{problem\.translationGroupId\}`\}/);
+assert.match(conceptBrowserSource, /name="missingTranslation"/);
+assert.match(conceptBrowserSource, /translationGroupId: \{ notIn: translatedGroupIds \}/);
+assert.match(
+  conceptBrowserSource,
+  /contentLanguageViewHref\("\/concepts", concept\.slug, concept\.language\)/,
+);
 assert.match(problemDetailSource, /<strong>\{t\.problemDetail\.markSolved\}<\/strong>/);
 assert.match(problemDetailSource, /href=\{problemSignInHref as never\}/);
 assert.match(problemDetailSource, /proofs\/\$\{proof\.id\}\/discussion/);

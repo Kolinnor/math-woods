@@ -31,7 +31,7 @@ import { canUseAdminTools } from "@/lib/permissions";
 import { combineSearchFilters } from "@/lib/search-filters";
 import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
+import { contentLanguageViewHref, selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +54,7 @@ function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
 
 type ConceptSort = "updated" | "linked";
 type ProblemLinkFilter = "all" | "with" | "without";
+type MissingTranslationFilter = "fr" | "en" | "";
 
 function parseConceptSort(value: string | undefined): ConceptSort {
   return value === "linked" ? "linked" : "updated";
@@ -62,6 +63,10 @@ function parseConceptSort(value: string | undefined): ConceptSort {
 function parseProblemLinkFilter(value: string | undefined): ProblemLinkFilter {
   if (value === "with" || value === "without") return value;
   return "all";
+}
+
+function parseMissingTranslationFilter(value: string | undefined): MissingTranslationFilter {
+  return value === "fr" || value === "en" ? value : "";
 }
 
 function parseLanguageFilters(value: SearchValue, preferredLanguage: string) {
@@ -84,6 +89,7 @@ export default async function ConceptsPage({
     kind?: string;
     language?: SearchValue;
     minExercises?: string;
+    missingTranslation?: string;
     problemLinks?: string;
     sort?: string;
     status?: string;
@@ -100,13 +106,21 @@ export default async function ConceptsPage({
     kind = "",
     language,
     minExercises = "",
+    missingTranslation = "",
     status = "",
     sort = "",
     problemLinks = ""
   } = await searchParams;
   const query = q.trim();
   const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
-  const languageValues = parseLanguageFilters(language, preferredLanguage);
+  const requestedLanguageValues = parseLanguageFilters(language, preferredLanguage);
+  const missingTranslationValue = parseMissingTranslationFilter(missingTranslation);
+  const sourceLanguageValues = missingTranslationValue
+    ? requestedLanguageValues.filter((languageCode) => languageCode !== missingTranslationValue)
+    : requestedLanguageValues;
+  const languageValues = sourceLanguageValues.length
+    ? sourceLanguageValues
+    : ACTIVE_LANGUAGE_CODES.filter((languageCode) => languageCode !== missingTranslationValue);
   const sortValue = parseConceptSort(sort);
   const exerciseCountValue = parseConceptExerciseCount(exerciseCount || minExercises);
   const exerciseCountModeValue = parseConceptExerciseCountMode(exerciseCountMode);
@@ -129,6 +143,18 @@ export default async function ConceptsPage({
   const kindValue = Object.values(ConceptKind).includes(kind as ConceptKind)
     ? (kind as ConceptKind)
     : undefined;
+  const translatedGroupIds = missingTranslationValue
+    ? (
+        await prisma.concept.findMany({
+          where: {
+            language: missingTranslationValue,
+            status: { not: ConceptStatus.MISSING }
+          },
+          distinct: ["translationGroupId"],
+          select: { translationGroupId: true }
+        })
+      ).map((concept) => concept.translationGroupId)
+    : [];
   const linkedConceptSlugs =
     problemLinkFilter === "all"
       ? []
@@ -174,6 +200,12 @@ export default async function ConceptsPage({
     domainValue ? domainWhere : null,
     kindValue ? { kind: kindValue } : null,
     statusValue ? { status: statusValue } : null,
+    missingTranslationValue
+      ? {
+          status: { not: ConceptStatus.MISSING },
+          translationGroupId: { notIn: translatedGroupIds }
+        }
+      : null,
     !exerciseCountFilterActive
       ? null
       : exerciseCountModeValue === "at-most"
@@ -340,6 +372,15 @@ export default async function ConceptsPage({
               )}
             </div>
             <div className="concept-filter-section">
+              <select
+                name="missingTranslation"
+                defaultValue={missingTranslationValue}
+                aria-label={t.concepts.missingTranslationFilter}
+              >
+                <option value="">{t.concepts.anyTranslationCoverage}</option>
+                <option value="fr">{t.concepts.missingFrenchTranslation}</option>
+                <option value="en">{t.concepts.missingEnglishTranslation}</option>
+              </select>
               <fieldset className="problem-language-filter concept-language-filter">
                 <legend>{t.concepts.languages}</legend>
                 {ACTIVE_CONTENT_LANGUAGES.map((languageOption) => (
@@ -385,7 +426,7 @@ export default async function ConceptsPage({
             {concepts.map((concept) => (
               <Link
                 key={concept.id}
-                href={`/concepts/${concept.slug}`}
+                href={contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route}
                 className={`concept-ledger-row concept-ledger-status-${concept.status.toLowerCase()}`}
               >
                 <div className="concept-ledger-main">
@@ -423,7 +464,11 @@ export default async function ConceptsPage({
               <p>{t.concepts.featuredConceptsDescription}</p>
               <div className="concept-discovery-links">
                 {featuredConcepts.map((concept) => (
-                  <Link key={concept.id} href={`/concepts/${concept.slug}`} className="featured-concept-link">
+                  <Link
+                    key={concept.id}
+                    href={contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route}
+                    className="featured-concept-link"
+                  >
                     <strong><AsyncMarkdownInline markdown={concept.title} /></strong>
                     <span>{translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}</span>
                   </Link>
