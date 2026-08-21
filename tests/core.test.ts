@@ -2136,6 +2136,7 @@ const productionComposeSource = readFileSync("docker-compose.infomaniak.yml", "u
 const caddySource = readFileSync(join("deploy", "Caddyfile"), "utf-8");
 const prometheusConfigSource = readFileSync(join("deploy", "prometheus", "prometheus.yml"), "utf-8");
 const prometheusAlertsSource = readFileSync(join("deploy", "prometheus", "alerts.yml"), "utf-8");
+const productionDeploySource = readFileSync(join("deploy", "deploy.sh"), "utf-8");
 const prismaSchemaSource = readFileSync(join("prisma", "schema.prisma"), "utf-8");
 const conceptMergeActionsSource = readFileSync(join("lib", "actions", "concept-merge-actions.ts"), "utf-8");
 const conceptActionsSource = readFileSync(join("lib", "actions", "concept-actions.ts"), "utf-8");
@@ -2209,6 +2210,7 @@ assert.match(prometheusConfigSource, /job_name: containers/);
 assert.match(prometheusAlertsSource, /alert: HostDiskHigh/);
 assert.match(prometheusAlertsSource, /handler="subroute"/);
 assert.doesNotMatch(prometheusAlertsSource, /handler="reverse_proxy"/);
+assert.match(productionDeploySource, /kill -s SIGHUP prometheus/);
 assert.equal(
   (moderationPageSource.match(/name="audienceRoles"[^>]*defaultChecked/g) ?? []).length,
   1,
