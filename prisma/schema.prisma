@@ -821,6 +821,7 @@ model ProblemDomain {
 model Concept {
   id                        Int                       @id @default(autoincrement())
   slug                      String                    @unique
+  creationSubmissionKey     String?                   @unique
   language                  String                    @default("en")
   translationGroupId        String                    @default(cuid())
   translatedFromConceptId   Int?

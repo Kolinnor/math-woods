@@ -5,6 +5,7 @@ import { ConceptKind, ConceptStatus, MathDomain, NotificationType, Prisma, Quali
 import { EditorState, StateEffect } from "@codemirror/state";
 import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
+import { creationSubmissionKey } from "../lib/creation-submission.ts";
 import { loginHrefForReturnTo, requestReturnToPath } from "../lib/auth-return.ts";
 import {
   getBooleanAttribute,
@@ -16,6 +17,7 @@ import {
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { markdownDraftConflictsWithSource } from "../lib/markdown-drafts.ts";
 import { markdownImageSizingFromSrc, markdownImageSrcWithWidth } from "../lib/markdown-images.ts";
+import { assertRateLimitOnce, RateLimitError } from "../lib/rate-limit.ts";
 import { mathWoodsTourCopy, parseMathWoodsTourStep } from "../lib/math-woods-tour.ts";
 import { parseObservabilityRange } from "../lib/observability-dashboard.ts";
 import { normalizedObservabilityRoute } from "../lib/observability-routes.ts";
@@ -4044,5 +4046,19 @@ assert.equal(parseUserDiscoverySource("three_blue_one_brown"), "THREE_BLUE_ONE_B
 assert.equal(parseUserDiscoverySource("PHIL"), "PHIL");
 assert.equal(parseUserDiscoverySource("unknown-source"), null);
 assert.equal(parseUserDiscoverySource(null), null);
+
+const creationKey = creationSubmissionKey("concept", 7, "12345678-draft");
+assert.equal(creationKey?.length, 64);
+assert.equal(creationSubmissionKey("concept", 7, "12345678-draft"), creationKey);
+assert.notEqual(creationSubmissionKey("concept", 8, "12345678-draft"), creationKey);
+assert.equal(creationSubmissionKey("concept", 7, "short"), null);
+
+const onceRateLimitKey = `core-test-once-${Date.now()}`;
+await assertRateLimitOnce(onceRateLimitKey, "same-submission", 1, 5_000);
+await assertRateLimitOnce(onceRateLimitKey, "same-submission", 1, 5_000);
+await assert.rejects(
+  assertRateLimitOnce(onceRateLimitKey, "another-submission", 1, 5_000),
+  RateLimitError
+);
 
 console.log("core tests ok");

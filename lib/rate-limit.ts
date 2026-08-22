@@ -4,6 +4,7 @@ import net from "node:net";
 type RedisValue = string | number | null | RedisValue[];
 
 const buckets = new Map<string, number[]>();
+const occurrenceBuckets = new Map<string, { count: number; expiresAt: number }>();
 const REDIS_RATE_LIMIT_SCRIPT = `
 local current = redis.call("INCR", KEYS[1])
 if current == 1 then
@@ -11,8 +12,37 @@ if current == 1 then
 end
 return current
 `.trim();
+const REDIS_RATE_LIMIT_ONCE_SCRIPT = `
+local existing = redis.call("GET", KEYS[2])
+if existing then
+  return tonumber(existing)
+end
+local current = redis.call("INCR", KEYS[1])
+if current == 1 then
+  redis.call("PEXPIRE", KEYS[1], ARGV[1])
+end
+local ttl = redis.call("PTTL", KEYS[1])
+if ttl < 1 then
+  ttl = tonumber(ARGV[1])
+end
+redis.call("SET", KEYS[2], tostring(current), "PX", ttl)
+return current
+`.trim();
 
 let redisWarningShown = false;
+
+export class RateLimitError extends Error {
+  constructor() {
+    super("Too many requests. Please wait a moment and try again.");
+    this.name = "RateLimitError";
+  }
+}
+
+export function isRateLimitError(error: unknown): error is RateLimitError {
+  return error instanceof RateLimitError || (
+    error instanceof Error && error.message.startsWith("Too many requests")
+  );
+}
 
 export async function assertRateLimit(key: string, limit: number, windowMs: number) {
   const storageKey = rateLimitStorageKey(key);
@@ -22,11 +52,11 @@ export async function assertRateLimit(key: string, limit: number, windowMs: numb
     try {
       const count = await incrementRedisBucket(redisUrl, storageKey, windowMs);
       if (count > limit) {
-        throw new Error("Too many requests. Please wait a moment and try again.");
+        throw new RateLimitError();
       }
       return;
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith("Too many requests")) throw error;
+      if (isRateLimitError(error)) throw error;
       if (!redisWarningShown) {
         redisWarningShown = true;
         console.warn("RATE_LIMIT_REDIS_URL is set, but Redis/Valkey rate limiting failed. Falling back to memory.");
@@ -37,17 +67,74 @@ export async function assertRateLimit(key: string, limit: number, windowMs: numb
   assertMemoryRateLimit(storageKey, limit, windowMs);
 }
 
+export async function assertRateLimitOnce(
+  key: string,
+  occurrenceKey: string,
+  limit: number,
+  windowMs: number
+) {
+  const storageKey = rateLimitStorageKey(key);
+  const occurrenceStorageKey = rateLimitStorageKey(`${key}:occurrence:${occurrenceKey}`);
+  const redisUrl = process.env.RATE_LIMIT_REDIS_URL?.trim();
+
+  if (redisUrl) {
+    try {
+      const count = await incrementRedisBucketOnce(
+        redisUrl,
+        storageKey,
+        occurrenceStorageKey,
+        windowMs
+      );
+      if (count > limit) throw new RateLimitError();
+      return;
+    } catch (error) {
+      if (isRateLimitError(error)) throw error;
+      if (!redisWarningShown) {
+        redisWarningShown = true;
+        console.warn("RATE_LIMIT_REDIS_URL is set, but Redis/Valkey rate limiting failed. Falling back to memory.");
+      }
+    }
+  }
+
+  assertMemoryRateLimitOnce(storageKey, occurrenceStorageKey, limit, windowMs);
+}
+
 function assertMemoryRateLimit(key: string, limit: number, windowMs: number) {
   const now = Date.now();
   const cutoff = now - windowMs;
   const existing = buckets.get(key)?.filter((timestamp) => timestamp > cutoff) ?? [];
 
   if (existing.length >= limit) {
-    throw new Error("Too many requests. Please wait a moment and try again.");
+    throw new RateLimitError();
   }
 
   existing.push(now);
   buckets.set(key, existing);
+}
+
+function assertMemoryRateLimitOnce(
+  key: string,
+  occurrenceKey: string,
+  limit: number,
+  windowMs: number
+) {
+  const now = Date.now();
+  const previousOccurrence = occurrenceBuckets.get(occurrenceKey);
+  if (previousOccurrence && previousOccurrence.expiresAt > now) {
+    if (previousOccurrence.count > limit) throw new RateLimitError();
+    return;
+  }
+
+  const cutoff = now - windowMs;
+  const existing = buckets.get(key)?.filter((timestamp) => timestamp > cutoff) ?? [];
+  existing.push(now);
+  buckets.set(key, existing);
+  occurrenceBuckets.set(occurrenceKey, {
+    count: existing.length,
+    expiresAt: (existing[0] ?? now) + windowMs
+  });
+
+  if (existing.length > limit) throw new RateLimitError();
 }
 
 function rateLimitStorageKey(key: string) {
@@ -57,6 +144,24 @@ function rateLimitStorageKey(key: string) {
 
 async function incrementRedisBucket(redisUrl: string, key: string, windowMs: number): Promise<number> {
   const result = await executeRedisCommand(redisUrl, ["EVAL", REDIS_RATE_LIMIT_SCRIPT, "1", key, String(windowMs)]);
+  if (typeof result !== "number") throw new Error("Unexpected Redis rate-limit response.");
+  return result;
+}
+
+async function incrementRedisBucketOnce(
+  redisUrl: string,
+  key: string,
+  occurrenceKey: string,
+  windowMs: number
+): Promise<number> {
+  const result = await executeRedisCommand(redisUrl, [
+    "EVAL",
+    REDIS_RATE_LIMIT_ONCE_SCRIPT,
+    "2",
+    key,
+    occurrenceKey,
+    String(windowMs)
+  ]);
   if (typeof result !== "number") throw new Error("Unexpected Redis rate-limit response.");
   return result;
 }

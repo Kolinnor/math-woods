@@ -1,4 +1,4 @@
-import { ConceptCreateForm } from "@/components/ConceptCreateForm";
+import { ConceptCreateForm, ConceptSubmitButton } from "@/components/ConceptCreateForm";
 import { ConceptDuplicateSuggestions } from "@/components/ConceptDuplicateSuggestions";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
@@ -12,6 +12,7 @@ import { TranslationReferencePanel } from "@/components/TranslationReferencePane
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
+import { CREATION_SUBMISSION_FIELD } from "@/lib/creation-submission";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
@@ -100,12 +101,16 @@ export default async function NewConceptPage({
             duplicateTitleHeading: t.contentEditor.duplicateConceptTitleHeading,
             duplicateTitleWarning: t.contentEditor.duplicateConceptTitleWarning,
             keepSameTranslationTitle: t.contentEditor.keepSameTranslationTitle,
+            publishing: t.contentEditor.publishing,
             publishAnyway: t.contentEditor.publishAnyway,
+            rateLimitHeading: t.contentEditor.creationRateLimitHeading,
+            rateLimitMessage: t.contentEditor.creationRateLimitMessage,
             sameTranslationTitleHeading: t.contentEditor.sameTranslationTitleHeading,
             sameTranslationTitleWarning: t.contentEditor.sameTranslationTitleWarning,
             translationLinksHeading: t.contentEditor.translationLinksHeading
           }}
         >
+        <input type="hidden" name={CREATION_SUBMISSION_FIELD} value={draftSession} />
         {sourceConcept && <input type="hidden" name="translationGroupId" value={sourceConcept.translationGroupId} />}
         {sourceConcept && <input type="hidden" name="translationSourceSlug" value={sourceConcept.slug} />}
         <LiveMarkdownTitleField
@@ -210,9 +215,12 @@ export default async function NewConceptPage({
             </p>
           )}
           <div className="content-editor-actions">
-            <button type="submit" disabled={Boolean(sourceConcept && !targetTranslationLanguage)}>
+            <ConceptSubmitButton
+              disabled={Boolean(sourceConcept && !targetTranslationLanguage)}
+              pendingLabel={t.contentEditor.publishing}
+            >
               {sourceConcept ? t.contentEditor.createTranslation : t.contentEditor.createConcept}
-            </button>
+            </ConceptSubmitButton>
             <ContentPreviewButton contentType="concept" locale={interfaceLocale} />
           </div>
         </ConceptCreateForm>

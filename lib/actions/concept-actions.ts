@@ -19,6 +19,7 @@ import {
 } from "@/lib/concept-revisions";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
+import { CREATION_SUBMISSION_FIELD, creationSubmissionKey } from "@/lib/creation-submission";
 import { prisma } from "@/lib/db";
 import { completeDailyConceptReviewForUser } from "@/lib/daily-concept-reviews";
 import { notifyConceptAuthor, notifyOwnerOfSiteActivity } from "@/lib/notifications";
@@ -45,7 +46,7 @@ import {
   canRollbackConcept,
   canUseAdminTools
 } from "@/lib/permissions";
-import { assertRateLimit } from "@/lib/rate-limit";
+import { assertRateLimit, assertRateLimitOnce, isRateLimitError } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
@@ -126,7 +127,16 @@ async function lockConceptFamilyForMutation(tx: Prisma.TransactionClient, concep
 
 export async function createConceptAction(formData: FormData) {
   const user = await requireVerifiedUser();
-  await assertRateLimit(`concept:create:${user.id}`, 5, 60_000);
+  const submissionKey = creationSubmissionKey(
+    "concept",
+    user.id,
+    formData.get(CREATION_SUBMISSION_FIELD)
+  );
+  if (submissionKey) {
+    await assertRateLimitOnce(`concept:create:${user.id}`, submissionKey, 5, 60_000);
+  } else {
+    await assertRateLimit(`concept:create:${user.id}`, 5, 60_000);
+  }
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const language = requireActiveContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
@@ -157,7 +167,16 @@ export async function createConceptAction(formData: FormData) {
   const slug = await uniqueSlug("concept", title, translationGroupId ? language : undefined);
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
-  const concept = await prisma.$transaction(async (tx) => {
+  const creationResult = await prisma.$transaction(async (tx) => {
+    if (submissionKey) {
+      await acquireTransactionLock(tx, `concept-creation:${submissionKey}`);
+      const existingSubmission = await tx.concept.findUnique({
+        where: { creationSubmissionKey: submissionKey }
+      });
+      if (existingSubmission) {
+        return { concept: existingSubmission, created: false } as const;
+      }
+    }
     await assertDailyContentCreationQuota(tx, user);
     if (translationGroupId) {
       await acquireTransactionLock(tx, `concept-family:${translationGroupId}`);
@@ -218,6 +237,7 @@ export async function createConceptAction(formData: FormData) {
     const created = await tx.concept.create({
       data: {
         slug,
+        creationSubmissionKey: submissionKey,
         language,
         ...(translationGroupId ? { translationGroupId } : {}),
         ...(translationSource
@@ -273,8 +293,13 @@ export async function createConceptAction(formData: FormData) {
         editSummary: "Concept created"
       }
     });
-    return created;
+    return { concept: created, created: true } as const;
   });
+
+  const concept = creationResult.concept;
+  if (!creationResult.created) {
+    redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
+  }
 
   await refreshLinksForConcept(concept.slug);
   revalidatePath("/");
@@ -291,7 +316,7 @@ export async function createConceptAction(formData: FormData) {
 
 export type ConceptCreateActionState = {
   error: string | null;
-  errorKind?: "duplicate-title" | "translation-links" | "same-translation-title";
+  errorKind?: "duplicate-title" | "rate-limit" | "translation-links" | "same-translation-title";
   sameTranslationTitleConfirmed?: boolean;
 };
 
@@ -315,6 +340,9 @@ export async function createConceptFormAction(
         errorKind: "translation-links",
         sameTranslationTitleConfirmed: sameTranslationTitleOverrideRequested(formData)
       };
+    }
+    if (isRateLimitError(error)) {
+      return { error: error.message, errorKind: "rate-limit" };
     }
     throw error;
   }

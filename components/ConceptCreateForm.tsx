@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useActionState, useEffect, useRef } from "react";
+import { useFormStatus } from "react-dom";
 import {
   createConceptFormAction,
   type ConceptCreateActionState
@@ -15,7 +16,10 @@ type ConceptCreateFormLabels = {
   duplicateTitleHeading: string;
   duplicateTitleWarning: string;
   keepSameTranslationTitle: string;
+  publishing: string;
   publishAnyway: string;
+  rateLimitHeading: string;
+  rateLimitMessage: string;
   sameTranslationTitleHeading: string;
   sameTranslationTitleWarning: string;
   translationLinksHeading: string;
@@ -31,6 +35,20 @@ export function ConceptCreateForm({
   const [state, formAction] = useActionState(createConceptFormAction, initialState);
   const errorRef = useRef<HTMLDivElement | null>(null);
   const requiresConfirmation = state.errorKind === "same-translation-title" || state.errorKind === "translation-links";
+  const errorHeading = state.errorKind === "duplicate-title"
+    ? labels.duplicateTitleHeading
+    : state.errorKind === "same-translation-title"
+      ? labels.sameTranslationTitleHeading
+      : state.errorKind === "rate-limit"
+        ? labels.rateLimitHeading
+        : labels.translationLinksHeading;
+  const errorMessage = state.errorKind === "duplicate-title"
+    ? labels.duplicateTitleWarning
+    : state.errorKind === "same-translation-title"
+      ? labels.sameTranslationTitleWarning
+      : state.errorKind === "rate-limit"
+        ? labels.rateLimitMessage
+        : state.error;
 
   useEffect(() => {
     if (!state.error || !errorRef.current) return;
@@ -49,22 +67,11 @@ export function ConceptCreateForm({
       {state.error && (
         <div ref={errorRef} className="quality-banner translation-link-warning" role="alert" tabIndex={-1}>
           <strong>
-            {state.errorKind === "duplicate-title"
-              ? labels.duplicateTitleHeading
-              : state.errorKind === "same-translation-title"
-                ? labels.sameTranslationTitleHeading
-                : labels.translationLinksHeading}
+            {errorHeading}
           </strong>
-          <p>
-            {state.errorKind === "duplicate-title"
-              ? labels.duplicateTitleWarning
-              : state.errorKind === "same-translation-title"
-                ? labels.sameTranslationTitleWarning
-                : state.error}
-          </p>
+          <p>{errorMessage}</p>
           {requiresConfirmation && (
-            <button
-              type="submit"
+            <ConceptSubmitButton
               name={
                 state.errorKind === "same-translation-title"
                   ? SAME_TRANSLATION_TITLE_OVERRIDE_FIELD
@@ -72,15 +79,33 @@ export function ConceptCreateForm({
               }
               value="confirm"
               className="secondary"
+              pendingLabel={labels.publishing}
             >
               {state.errorKind === "same-translation-title"
                 ? labels.keepSameTranslationTitle
                 : labels.publishAnyway}
-            </button>
+            </ConceptSubmitButton>
           )}
         </div>
       )}
       {children}
     </form>
+  );
+}
+
+export function ConceptSubmitButton({
+  children,
+  disabled = false,
+  pendingLabel,
+  ...props
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
+  pendingLabel: string;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button type="submit" disabled={disabled || pending} {...props}>
+      {pending ? pendingLabel : children}
+    </button>
   );
 }
