@@ -2046,6 +2046,62 @@ a {
   color: inherit;
 }
 
+a[href]:active,
+button:not(:disabled):active,
+summary:active,
+[role="button"]:active {
+  opacity: 0.72;
+}
+
+.navigation-progress {
+  background: var(--accent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 42%, transparent);
+  display: none;
+  height: 3px;
+  inset: 0 auto auto 0;
+  pointer-events: none;
+  position: fixed;
+  transform-origin: left center;
+  width: 100%;
+  z-index: 10000;
+}
+
+html[data-navigation-pending="true"] .navigation-progress {
+  animation: navigation-progress-pulse 1.1s ease-in-out infinite;
+  display: block;
+}
+
+html[data-navigation-pending="true"] [data-navigation-feedback-active="true"] {
+  filter: brightness(0.88);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+@keyframes navigation-progress-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scaleX(0.18);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scaleX(0.72);
+  }
+
+  100% {
+    opacity: 0.7;
+    transform: scaleX(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-navigation-pending="true"] .navigation-progress {
+    animation: none;
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
 .markdown-inline p {
   display: inline;
   margin: 0;

@@ -15,6 +15,7 @@ import { FriendsMenu } from "@/components/FriendsMenu";
 import { GuestProgressPrompt } from "@/components/GuestProgressPrompt";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { MathWoodsTourOverlay } from "@/components/MathWoodsTourOverlay";
+import { NavigationFeedback } from "@/components/NavigationFeedback";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { SignInLink } from "@/components/SignInLink";
 import { SiteAnnouncementToast } from "@/components/SiteAnnouncementToast";
@@ -220,6 +221,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className={`${inter.variable} ${spectral.variable}`}>
+        <Suspense fallback={null}>
+          <NavigationFeedback />
+        </Suspense>
         <ErrorReporter />
         <WebVitalsReporter />
         <SitePresenceHeartbeat />
