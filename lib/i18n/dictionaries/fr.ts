@@ -49,7 +49,7 @@ export const fr = {
     moreTitle: "Plus",
     recentChanges: "Modifications récentes",
     contributing: "Requêtes",
-    contributionTasks: "Travail à faire",
+    contributionTasks: "Contribuer",
     suggestions: "Suggestions",
     about: "À propos",
     friends: "Amis",

@@ -10561,7 +10561,8 @@ button.secondary:hover,
   box-shadow: 0 1px 1px rgb(0 0 0 / 0.06), 0 5px 12px rgb(0 0 0 / 0.06);
 }
 
-.problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger {
+.problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger,
+.concept-detail-rail .problem-rail-actions > .problem-rail-challenge-trigger {
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -10572,7 +10573,9 @@ button.secondary:hover,
 }
 
 .problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger:hover,
-.problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger:focus-visible {
+.problem-detail-shell .problem-rail-actions > .problem-rail-challenge-trigger:focus-visible,
+.concept-detail-rail .problem-rail-actions > .problem-rail-challenge-trigger:hover,
+.concept-detail-rail .problem-rail-actions > .problem-rail-challenge-trigger:focus-visible {
   background: #efe8d8;
   box-shadow: none;
 }

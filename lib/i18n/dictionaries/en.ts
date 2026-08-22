@@ -47,7 +47,7 @@ export const en = {
     moreTitle: "More",
     recentChanges: "Recent changes",
     contributing: "Requests",
-    contributionTasks: "Work to do",
+    contributionTasks: "Contribute",
     suggestions: "Suggestions",
     about: "About",
     friends: "Friends",
