@@ -52,6 +52,7 @@ import {
   HOME_GUEST_PROBLEM_GROUP_IDS,
   sortHomeGuestProblemsByDifficulty
 } from "../lib/home-guest-problems.ts";
+import { DEFAULT_HOME_PRIORITIES, homePriorityForLocale } from "../lib/home-priorities.ts";
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
 import { shouldShowOwnerSolvedBanner } from "../lib/problem-owner-solved-banner.ts";
 import {
@@ -2154,6 +2155,9 @@ const problemActionsSource = readFileSync(join("lib", "actions", "problem-action
 const moderationActionsSource = readFileSync(join("lib", "actions", "moderation-actions.ts"), "utf-8");
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
+const homePrioritiesPageSource = readFileSync(join("app", "tips", "priorities", "page.tsx"), "utf-8");
+const homePriorityActionsSource = readFileSync(join("lib", "actions", "home-priority-actions.ts"), "utf-8");
+const tipsAdminTabsSource = readFileSync(join("components", "TipsAdminTabs.tsx"), "utf-8");
 const problemBrowserSource = readFileSync(join("app", "problems", "page.tsx"), "utf-8");
 const conceptBrowserSource = readFileSync(join("app", "concepts", "page.tsx"), "utf-8");
 const usersPageSource = readFileSync(join("app", "users", "page.tsx"), "utf-8");
@@ -2333,6 +2337,23 @@ assert.match(proofActionsSource, /proofs\/\$\{proofId\}\/discussion/);
 assert.match(moderationActionsSource, /proofs\/\$\{proofId\}\/discussion\?report=saved/);
 assert.match(conceptDetailSource, /contentKey=\{`concept:\$\{concept\.translationGroupId\}`\}/);
 assert.match(homeSource, /\/about\/tutorial/);
+assert.equal((homeSource.match(/\{prioritiesCard\}/g) ?? []).length, 2);
+assert.match(homeSource, /href="\/contributing" className="mw-primary-button"/);
+assert.match(editorCssSource, /@media \(max-width: 700px\)[\s\S]*?\.home-priorities-body > div[\s\S]*?flex-basis: 100%/);
+assert.match(homePrioritiesPageSource, /canUseAdminTools\(user\)/);
+assert.match(homePrioritiesPageSource, /TipsAdminTabs active="priorities"/);
+assert.match(homePriorityActionsSource, /prisma\.homePriorityContent\.upsert/);
+assert.match(homePriorityActionsSource, /revalidatePath\("\/"\)/);
+assert.match(tipsAdminTabsSource, /\/tips\/priorities/);
+assert.equal(homePriorityForLocale(null, "fr"), DEFAULT_HOME_PRIORITIES.fr);
+assert.deepEqual(
+  homePriorityForLocale({ language: "fr", title: "À relire", body: "Trois pages cette semaine." }, "fr"),
+  { language: "fr", title: "À relire", body: "Trois pages cette semaine." }
+);
+assert.equal(
+  homePriorityForLocale({ language: "en", title: "English", body: "Text" }, "fr"),
+  DEFAULT_HOME_PRIORITIES.fr
+);
 assert.match(
   homeSource,
   /t\.home\.hero\.resume\} <AsyncMarkdownInline markdown=\{resumeProblem\.title\}/,

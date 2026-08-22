@@ -48,6 +48,7 @@ import {
   localizedContestText
 } from "@/lib/problem-contests";
 import { dailyTipImage, tipImageObjectPosition } from "@/lib/tip-images";
+import { homePriorityForLocale } from "@/lib/home-priorities";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,11 @@ const dashboardCopy = {
     method: "Method of the day",
     practice: "Practice",
     by: "by",
-    noActivity: "Your friends' recent activity will appear here."
+    noActivity: "Your friends' recent activity will appear here.",
+    prioritiesTitle: "What we're working on",
+    prioritiesBody:
+      "We are currently reviewing linear algebra problem statements, making the solution editor easier to use, and preparing a monthly team contest for September. The site moves forward one small improvement at a time, and your feedback helps shape what comes next.",
+    prioritiesAction: "How to contribute"
   },
   fr: {
     problemOfDay: "Problème du jour",
@@ -104,7 +109,11 @@ const dashboardCopy = {
     method: "Méthode du jour",
     practice: "S'entraîner",
     by: "par",
-    noActivity: "L'activité récente de vos amis apparaîtra ici."
+    noActivity: "L'activité récente de vos amis apparaîtra ici.",
+    prioritiesTitle: "Priorités du moment",
+    prioritiesBody:
+      "On relit en ce moment les énoncés d'algèbre linéaire, on rend l'éditeur de solutions plus supportable, et le concours mensuel en équipes arrive en septembre. Le site avance par petits coups de pioche — vos remarques orientent la suite.",
+    prioritiesAction: "Comment contribuer"
   }
 } as const;
 
@@ -142,6 +151,12 @@ export default async function HomePage({
   ]);
   const copy = dashboardCopy[locale];
   const guestCopy = guestDashboardCopy[locale];
+  const storedHomePriority = await prisma.homePriorityContent.findUnique({ where: { language: locale } });
+  const homePriority = homePriorityForLocale(storedHomePriority ?? {
+    language: locale,
+    title: copy.prioritiesTitle,
+    body: copy.prioritiesBody
+  }, locale);
   const todayContestDateKey = dailyProblemDateKey();
   const featuredContest = await prisma.problemContest.findFirst({
     where: {
@@ -619,6 +634,20 @@ export default async function HomePage({
       />
     );
   })() : null;
+  const prioritiesCard = (
+    <section className="home-priorities">
+      <div className="home-priorities-tape" aria-hidden="true" />
+      <div className="home-priorities-body">
+        <div>
+          <h2>{homePriority.title}</h2>
+          <p>{homePriority.body}</p>
+        </div>
+        <Link href="/contributing" className="mw-primary-button">
+          {copy.prioritiesAction}
+        </Link>
+      </div>
+    </section>
+  );
 
   if (!user) {
     return (
@@ -687,6 +716,8 @@ export default async function HomePage({
             )}
 
             {dailyTipCard}
+
+            {prioritiesCard}
 
           </div>
           {tourMode && (
@@ -814,6 +845,8 @@ export default async function HomePage({
               ))}
             </div>
           </section>
+
+          {prioritiesCard}
         </div>
 
         <aside className="home-dashboard-rail">

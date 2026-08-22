@@ -330,6 +330,63 @@ body:has(.problem-detail-shell) {
   min-width: 0;
 }
 
+.home-priorities {
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-border);
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.home-priorities-tape {
+  background: repeating-linear-gradient(135deg, var(--mw-green) 0 12px, var(--accent-soft) 12px 24px);
+  height: 8px;
+}
+
+.home-priorities-body {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  justify-content: space-between;
+  padding: 18px 24px 20px;
+}
+
+.home-priorities-body > div {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.home-priorities h2 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+
+.home-priorities p {
+  color: var(--mw-secondary);
+  font-size: 14.5px;
+  line-height: 1.55;
+  max-width: 68ch;
+  text-wrap: pretty;
+}
+
+.home-priorities .mw-primary-button {
+  flex: 0 0 auto;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.home-priorities-admin-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (max-width: 700px) {
+  .home-priorities-body > div {
+    flex-basis: 100%;
+  }
+}
+
 .home-dashboard-grid-guest {
   display: block;
   margin-left: auto;

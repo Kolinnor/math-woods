@@ -1870,6 +1870,14 @@ model RolesPageContent {
   updatedAt    DateTime @updatedAt
 }
 
+model HomePriorityContent {
+  language  String   @id
+  title     String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Tip {
   id             Int                @id @default(autoincrement())
   position       Int                @unique
