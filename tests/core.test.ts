@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ConceptKind, ConceptStatus, MathDomain, Prisma, QualityStatus, ReportCategory, Role, UserMathLevel } from "@prisma/client";
+import { ConceptKind, ConceptStatus, MathDomain, NotificationType, Prisma, QualityStatus, ReportCategory, Role, UserMathLevel } from "@prisma/client";
 import { EditorState, StateEffect } from "@codemirror/state";
 import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
@@ -19,6 +19,7 @@ import { markdownImageSizingFromSrc, markdownImageSrcWithWidth } from "../lib/ma
 import { mathWoodsTourCopy, parseMathWoodsTourStep } from "../lib/math-woods-tour.ts";
 import { parseObservabilityRange } from "../lib/observability-dashboard.ts";
 import { normalizedObservabilityRoute } from "../lib/observability-routes.ts";
+import { localizeNotification } from "../lib/notification-copy.ts";
 import {
   MAX_CONCEPT_EXERCISES,
   parseConceptExerciseCount,
@@ -2363,6 +2364,55 @@ assert.match(notificationsPageSource, /respondToSiteImprovementCompletionAction\
 assert.match(notificationsPageSource, /respondToSiteImprovementCompletionAction\.bind\(null, improvementReview\.id, "follow-up"\)/);
 assert.match(notificationLifecycleSource, /siteImprovementReview:[\s\S]*?SiteImprovementCompletionReviewStatus\.PENDING/);
 assert.match(notificationCopySource, /Votre suggestion a bien été prise en compte/);
+const notificationActor = { username: "alouette", displayName: "Alouette" };
+const usefulVoteNotification = localizeNotification({
+  type: NotificationType.SOLUTION_VOTED,
+  title: "Your solution received a useful vote",
+  body: 'Alouette marked your solution to "Une intégrale $I$" as useful.',
+  actor: notificationActor
+}, "fr");
+assert.equal(usefulVoteNotification.title, "Votre solution a été jugée utile");
+assert.equal(
+  usefulVoteNotification.body,
+  "Alouette a marqué votre solution à « Une intégrale $I$ » comme utile."
+);
+const problemEditedNotification = localizeNotification({
+  type: NotificationType.PROBLEM_EDITED,
+  title: "Problem edited",
+  body: 'Alouette edited "Une intégrale $I$". Changed: statement, difficulty. Summary: Clarified the bound.',
+  actor: notificationActor
+}, "fr");
+assert.equal(problemEditedNotification.title, "Problème modifié");
+assert.match(problemEditedNotification.body, /Champs modifiés : énoncé, difficulté\./);
+assert.match(problemEditedNotification.body, /Résumé : Clarified the bound\./);
+const challengeNotification = localizeNotification({
+  type: NotificationType.PROBLEM_CHALLENGE,
+  title: "New challenge",
+  body: 'Alouette challenged you to solve "Une intégrale $I$". Bonne chance !',
+  actor: notificationActor
+}, "fr");
+assert.equal(challengeNotification.title, "Nouveau défi");
+assert.match(challengeNotification.body, /Bonne chance !$/);
+assert.deepEqual(
+  localizeNotification({
+    type: NotificationType.SOLUTION_VOTED,
+    title: "Your solution received a useful vote",
+    body: "Stored English body",
+    actor: notificationActor
+  }, "en"),
+  { title: "Your solution received a useful vote", body: "Stored English body" }
+);
+for (const type of Object.values(NotificationType)) {
+  const localized = localizeNotification({
+    type,
+    title: "Untranslated notification title",
+    body: 'Alouette edited "Example content".',
+    actor: notificationActor
+  }, "fr");
+  assert.ok(localized.title, `${type} must have a French title`);
+  assert.notEqual(localized.title, "Untranslated notification title", `${type} must not retain its English title`);
+  assert.ok(localized.body, `${type} must have a body`);
+}
 assert.match(prismaSchemaSource, /model SiteImprovementCompletionReview[\s\S]*?notificationId\s+Int\?\s+@unique/);
 assert.doesNotMatch(siteImprovementDetailSource, /site-improvement-sidebar|titleBelowHero/);
 assert.match(siteImprovementDetailSource, /<details className="site-improvement-comment-composer">/);
