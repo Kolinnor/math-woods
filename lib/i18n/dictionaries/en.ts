@@ -37,7 +37,7 @@ export const en = {
     concepts: "Concepts",
     contest: "Contest",
     playlists: "Explorations",
-    tips: "Tips",
+    tips: "Homepage",
     mathematicians: "Mathematicians",
     users: "Users",
     tour: "Getting started with Math Woods",

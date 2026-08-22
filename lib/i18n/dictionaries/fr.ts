@@ -39,7 +39,7 @@ export const fr = {
     concepts: "Concepts",
     contest: "Concours",
     playlists: "Explorations",
-    tips: "Conseils",
+    tips: "Homepage",
     mathematicians: "Mathématiciens",
     users: "Utilisateurs",
     tour: "Premiers pas sur Math Woods",
