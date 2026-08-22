@@ -265,6 +265,8 @@ const frenchSettingsText: Record<string, string> = {
   "When another user challenges you to solve a problem.": "Lorsqu'un autre utilisateur vous met au défi de résoudre un problème.",
   "Problems shared with you": "Problèmes partagés avec vous",
   "When another user shares a problem directly with you.": "Lorsqu'un autre utilisateur partage directement un problème avec vous.",
+  "Concepts shared with you": "Concepts partagés avec vous",
+  "When another user shares a concept directly with you.": "Lorsqu'un autre utilisateur partage directement un concept avec vous.",
   "Problem of the day selections": "Sélections du problème du jour",
   "When one of your problems is selected as the problem of the day.":
     "Lorsque l'un de vos problèmes est sélectionné comme problème du jour.",

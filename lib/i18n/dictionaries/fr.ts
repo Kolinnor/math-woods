@@ -284,6 +284,41 @@ export const fr = {
         problemUnavailable: "Ce problème n'est pas disponible pour un lien de défi.",
         rateLimited: "Trop de liens de défi ont été créés. Veuillez réessayer plus tard."
       }
+    },
+    conceptShare: {
+      button: "Partager",
+      chooserTitle: "Partager ce concept",
+      close: "Fermer",
+      shareWithUser: "Partager avec un utilisateur Math Woods",
+      shareByLink: "Partager par lien",
+      shareSomeone: "Partager un concept",
+      shareUser: "Partager avec {name}",
+      recipient: "Envoyer à",
+      searchUserPlaceholder: "Rechercher un utilisateur",
+      searching: "Recherche...",
+      noUsersFound: "Aucun utilisateur trouvé.",
+      concept: "Concept à partager",
+      messagePlaceholder: "Message (facultatif)",
+      cancel: "Annuler",
+      send: "Partager le concept",
+      sending: "Partage...",
+      linkTitle: "Partager ce concept",
+      linkDescription: "Partagez la page normale du concept.",
+      linkReady: "Le lien du concept est prêt.",
+      linkLabel: "Lien du concept",
+      copy: "Copier le lien",
+      copied: "Copié",
+      nativeShare: "Partager",
+      done: "Terminer",
+      shareText: "Voici un concept Math Woods qui pourrait vous intéresser : {title}",
+      errors: {
+        chooseUser: "Choisissez d'abord un utilisateur.",
+        conceptUnavailable: "Ce concept n'est pas disponible.",
+        duplicate: "Vous avez déjà envoyé ce concept à cet utilisateur récemment.",
+        rateLimited: "Trop de demandes ont été envoyées. Veuillez patienter un instant.",
+        selfShare: "Vous ne pouvez pas vous envoyer un concept à vous-même.",
+        userUnavailable: "Cet utilisateur n'est plus disponible."
+      }
     }
   },
   notifications: {

@@ -173,6 +173,11 @@ const notificationOptions = [
     description: "When another user shares a problem directly with you."
   },
   {
+    type: NotificationType.CONCEPT_SHARED,
+    title: "Concepts shared with you",
+    description: "When another user shares a concept directly with you."
+  },
+  {
     type: NotificationType.PROBLEM_OF_THE_DAY,
     title: "Problem of the day selections",
     description: "When one of your problems is selected as the problem of the day."

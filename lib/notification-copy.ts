@@ -87,6 +87,12 @@ function trailingTextAfterQuotedSentence(value: string) {
   return boundary >= 0 ? value.slice(boundary + 2).trim() : "";
 }
 
+function trailingTextAfterDelivery(value: string) {
+  const marker = '" with you.';
+  const boundary = value.indexOf(marker);
+  return boundary >= 0 ? value.slice(boundary + marker.length).trim() : "";
+}
+
 function translatedProblemFields(value: string) {
   return value
     .split(",")
@@ -209,7 +215,9 @@ function localizedProblemDelivery(
   const marker = intent === "challenge" ? " challenged you to solve " : " shared the problem ";
   const actor = notificationActor(notification, marker);
   const problemTitle = firstQuoted(notification.body);
-  const personalMessage = trailingTextAfterQuotedSentence(notification.body);
+  const personalMessage = intent === "challenge"
+    ? trailingTextAfterQuotedSentence(notification.body)
+    : trailingTextAfterDelivery(notification.body);
   const translated = intent === "challenge"
     ? `${actor} vous a mis au défi de résoudre « ${problemTitle ?? "ce problème"} ».`
     : `${actor} a partagé avec vous le problème « ${problemTitle ?? "problème partagé"} ».`;
@@ -217,6 +225,17 @@ function localizedProblemDelivery(
   return {
     title: intent === "challenge" ? "Nouveau défi" : "Un problème a été partagé avec vous",
     body: `${translated}${personalMessage ? ` ${personalMessage}` : ""}`
+  };
+}
+
+function localizedConceptShare(notification: LocalizableNotification): LocalizedNotification {
+  const actor = notificationActor(notification, " shared the concept ");
+  const conceptTitle = firstQuoted(notification.body);
+  const personalMessage = trailingTextAfterDelivery(notification.body);
+
+  return {
+    title: "Un concept a été partagé avec vous",
+    body: `${actor} a partagé avec vous le concept « ${conceptTitle ?? "concept partagé"} ».${personalMessage ? ` ${personalMessage}` : ""}`
   };
 }
 
@@ -403,6 +422,8 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
       return localizedProblemDelivery(notification, "challenge");
     case NotificationType.PROBLEM_SHARED:
       return localizedProblemDelivery(notification, "share");
+    case NotificationType.CONCEPT_SHARED:
+      return localizedConceptShare(notification);
     case NotificationType.PROBLEM_OF_THE_DAY: {
       const date = notification.body.match(/ will be featured on (.+)\.$/)?.[1];
       return {

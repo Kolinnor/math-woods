@@ -36,6 +36,7 @@ const configurableNotificationTypes = [
   NotificationType.CHAT_MESSAGE,
   NotificationType.PROBLEM_CHALLENGE,
   NotificationType.PROBLEM_SHARED,
+  NotificationType.CONCEPT_SHARED,
   NotificationType.PROBLEM_OF_THE_DAY,
   ...(EXPLORATIONS_ENABLED ? [NotificationType.EXPLORATION_PUBLISHED] : []),
   NotificationType.DAILY_CONCEPT_REVIEW,

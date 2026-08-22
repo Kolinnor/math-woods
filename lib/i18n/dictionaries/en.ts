@@ -282,6 +282,41 @@ export const en = {
         problemUnavailable: "This problem is not available for a challenge link.",
         rateLimited: "Too many challenge links were created. Please try again later."
       }
+    },
+    conceptShare: {
+      button: "Share",
+      chooserTitle: "Share this concept",
+      close: "Close",
+      shareWithUser: "Share with a Math Woods user",
+      shareByLink: "Share by link",
+      shareSomeone: "Share a concept",
+      shareUser: "Share with {name}",
+      recipient: "Send to",
+      searchUserPlaceholder: "Search for a user",
+      searching: "Searching...",
+      noUsersFound: "No users found.",
+      concept: "Concept to share",
+      messagePlaceholder: "Message (optional)",
+      cancel: "Cancel",
+      send: "Share concept",
+      sending: "Sharing...",
+      linkTitle: "Share this concept",
+      linkDescription: "Share the normal concept page.",
+      linkReady: "Your concept link is ready.",
+      linkLabel: "Concept link",
+      copy: "Copy link",
+      copied: "Copied",
+      nativeShare: "Share",
+      done: "Done",
+      shareText: "Have a look at this Math Woods concept: {title}",
+      errors: {
+        chooseUser: "Choose a user first.",
+        conceptUnavailable: "This concept is not available.",
+        duplicate: "You already sent this concept to this user recently.",
+        rateLimited: "Too many requests were sent. Please wait a moment.",
+        selfShare: "You cannot send a concept to yourself.",
+        userUnavailable: "This user is no longer available."
+      }
     }
   },
   notifications: {

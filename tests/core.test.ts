@@ -229,6 +229,12 @@ import {
   PROBLEM_CHALLENGE_MESSAGE_MAX_LENGTH
 } from "../lib/problem-challenges.ts";
 import {
+  CONCEPT_SHARE_MESSAGE_MAX_LENGTH,
+  conceptShareChatMarkdown,
+  conceptShareNotificationBody,
+  normalizeConceptShareMessage
+} from "../lib/concept-shares.ts";
+import {
   normalizeProblemChallengeInviteToken,
   problemChallengeInvitePath,
   problemChallengeInviteTokenHash
@@ -2136,6 +2142,8 @@ const moderationPageSource = readFileSync(join("app", "moderation", "page.tsx"),
 const performancePageSource = readFileSync(join("app", "moderation", "performance", "page.tsx"), "utf-8");
 const webVitalsReporterSource = readFileSync(join("components", "WebVitalsReporter.tsx"), "utf-8");
 const problemChallengeDialogSource = readFileSync(join("components", "ProblemChallengeDialog.tsx"), "utf-8");
+const conceptShareDialogSource = readFileSync(join("components", "ConceptShareDialog.tsx"), "utf-8");
+const conceptShareActionsSource = readFileSync(join("lib", "actions", "concept-share-actions.ts"), "utf-8");
 const webVitalsRouteSource = readFileSync(join("app", "api", "web-vitals", "route.ts"), "utf-8");
 const internalMetricsRouteSource = readFileSync(join("app", "api", "internal", "metrics", "route.ts"), "utf-8");
 const productionComposeSource = readFileSync("docker-compose.infomaniak.yml", "utf-8");
@@ -2206,6 +2214,13 @@ assert.match(
 assert.match(
   problemChallengeDialogSource,
   /avatarBackground: selectedRecipient\.avatarBackground,[\s\S]*?avatarUrl: selectedRecipient\.avatarUrl/
+);
+assert.match(conceptDetailSource, /<ConceptShareLauncher/);
+assert.match(conceptShareActionsSource, /NotificationType\.CONCEPT_SHARED/);
+assert.match(conceptShareActionsSource, /createdAt: \{ gte: new Date\(Date\.now\(\) - 5 \* 60_000\) \}/);
+assert.match(
+  conceptShareDialogSource,
+  /avatarBackground: suggestedUser\.avatarBackground,[\s\S]*?avatarUrl: suggestedUser\.avatarUrl/
 );
 assert.match(webVitalsRouteSource, /assertRateLimit/);
 assert.match(webVitalsRouteSource, /normalizedObservabilityRoute/);
@@ -2393,6 +2408,24 @@ const challengeNotification = localizeNotification({
 }, "fr");
 assert.equal(challengeNotification.title, "Nouveau défi");
 assert.match(challengeNotification.body, /Bonne chance !$/);
+const problemShareLocalizedNotification = localizeNotification({
+  type: NotificationType.PROBLEM_SHARED,
+  title: "A problem was shared with you",
+  body: 'Alouette shared the problem "Une intégrale" with you. À voir !',
+  actor: notificationActor
+}, "fr");
+assert.match(problemShareLocalizedNotification.body, /À voir !$/);
+const conceptShareNotification = localizeNotification({
+  type: NotificationType.CONCEPT_SHARED,
+  title: "A concept was shared with you",
+  body: 'Alouette shared the concept "Espace compact" with you. Cela peut vous aider.',
+  actor: notificationActor
+}, "fr");
+assert.equal(conceptShareNotification.title, "Un concept a été partagé avec vous");
+assert.equal(
+  conceptShareNotification.body,
+  "Alouette a partagé avec vous le concept « Espace compact ». Cela peut vous aider."
+);
 assert.deepEqual(
   localizeNotification({
     type: NotificationType.SOLUTION_VOTED,
@@ -3059,6 +3092,27 @@ assert.equal(
     problemSlug: "sequences-and-series"
   }),
   "**Shared problem**\n\n[Sequences \\[and series\\]](/problems/sequences-and-series)"
+);
+assert.equal(normalizeConceptShareMessage("  Read this!  "), "Read this!");
+assert.equal(
+  normalizeConceptShareMessage("x".repeat(CONCEPT_SHARE_MESSAGE_MAX_LENGTH + 20)).length,
+  CONCEPT_SHARE_MESSAGE_MAX_LENGTH
+);
+assert.equal(
+  conceptShareNotificationBody({
+    senderName: "Emmy",
+    conceptTitle: "Compact [space]",
+    message: "This may help."
+  }),
+  'Emmy shared the concept "Compact [space]" with you. This may help.'
+);
+assert.equal(
+  conceptShareChatMarkdown({
+    conceptTitle: "Compact [space]",
+    conceptSlug: "compact-space",
+    message: "This may help."
+  }),
+  "**Shared concept**\n\n[Compact \\[space\\]](/concepts/compact-space)\n\nThis may help."
 );
 const challengeInviteToken = "a".repeat(43);
 assert.equal(normalizeProblemChallengeInviteToken(challengeInviteToken), challengeInviteToken);

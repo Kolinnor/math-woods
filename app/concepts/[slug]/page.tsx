@@ -4,6 +4,7 @@ import { Flag, GitMerge, History, MessageCircle, Pencil, Users } from "lucide-re
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ConceptShareLauncher } from "@/components/ConceptShareLauncher";
 import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
 import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
@@ -352,12 +353,14 @@ export default async function ConceptPage({
   const existingOutgoingSlugs = uniqueOutgoingLinks.filter((link) => link.exists).map((link) => link.targetSlug);
   const [
     conceptBodyHtml,
+    conceptTitleHtml,
     translationFreshness,
     outgoingConceptHrefBySlug,
     outgoingConceptTitleBySlug,
     practiceExercises
   ] = await Promise.all([
     renderMarkdownForContentLanguage(concept.bodyMarkdown, concept.language),
+    renderInlineMarkdown(concept.title),
     conceptTranslationFreshness(concept.translatedFromConcept, concept.translatedFromRevisionId),
     resolveConceptHrefsForLanguage(
       existingOutgoingSlugs,
@@ -721,6 +724,18 @@ export default async function ConceptPage({
           <Link href={`/concepts/${concept.slug}/history`}>
             <span className="problem-rail-action-label"><History size={16} aria-hidden="true" /><span>{t.conceptDetail.history}</span></span>
           </Link>
+          {user && (
+            <ConceptShareLauncher
+              className="problem-rail-challenge-trigger"
+              concept={{
+                domainLabel: conceptDomainLabel,
+                slug: concept.slug,
+                title: concept.title,
+                titleHtml: conceptTitleHtml
+              }}
+              labels={t.social.conceptShare}
+            />
+          )}
           {user && (
             <Link href={`/concepts/${concept.slug}/merge` as never}>
               <span className="problem-rail-action-label"><GitMerge size={16} aria-hidden="true" /><span>{interfaceLocale === "fr" ? "Rapprocher" : "Merge or link"}</span></span>
