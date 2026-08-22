@@ -32,9 +32,10 @@ export default async function ContributingPage({
 }: {
   searchParams?: Promise<{ request?: string }>;
 }) {
-  const [user, contributionPage, activeRequests, completedRequests, params, t, locale] = await Promise.all([
+  const locale = await getInterfaceLocale();
+  const [user, contributionPage, activeRequests, completedRequests, params, t] = await Promise.all([
     getCurrentUser(),
-    loadRenderedContributionPage(),
+    loadRenderedContributionPage(locale),
     prisma.contributionRequest.findMany({
       where: { status: { not: ContributionRequestStatus.COMPLETED } },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
@@ -48,8 +49,7 @@ export default async function ContributingPage({
       include: { requester: true, claimedBy: true }
     }),
     searchParams ? searchParams : Promise.resolve({} as { request?: string }),
-    getTranslations(),
-    getInterfaceLocale()
+    getTranslations()
   ]);
   const labels = t.contributingPage;
   const canManageRequests = Boolean(user && canUseModerationTools(user));
@@ -79,15 +79,6 @@ export default async function ContributingPage({
       }
     >
       <div className="mt-8 grid gap-7">
-        {contributionPage.sections.map((section, index) =>
-          index === 0 ? (
-            <section key={section.id ?? section.position} className="growth-note">
-              <strong>{section.title}</strong>
-              <MarkdownBlock html={section.bodyHtml} />
-            </section>
-          ) : null
-        )}
-
         <section id="requests" className="contribution-request-board">
           <div className="contribution-request-board-header">
             <div>
@@ -158,7 +149,7 @@ export default async function ContributingPage({
           </div>
         </section>
 
-        {contributionPage.sections.slice(1).map((section) => (
+        {contributionPage.sections.map((section) => (
           <section key={section.id ?? section.position} className="contribution-page-section">
             <h2 className="text-xl font-semibold">{section.title}</h2>
             <MarkdownBlock html={section.bodyHtml} />

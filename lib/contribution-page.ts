@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { localizeContributionPage } from "@/lib/contribution-page-copy";
+import type { InterfaceLocale } from "@/lib/i18n/types";
 import { renderMarkdown } from "@/lib/markdown";
 
 export type ContributionPageContent = {
@@ -21,7 +23,7 @@ export type RenderedContributionPageSection = ContributionPageSectionContent & {
 };
 
 export const DEFAULT_CONTRIBUTION_PAGE_CONTENT: ContributionPageContent = {
-  title: "Contribution",
+  title: "Requests",
   requestEyebrow: "Requests",
   requestTitle: "Requested problems and concepts",
   requestIntro:
@@ -29,12 +31,6 @@ export const DEFAULT_CONTRIBUTION_PAGE_CONTENT: ContributionPageContent = {
 };
 
 export const DEFAULT_CONTRIBUTION_PAGE_SECTIONS: ContributionPageSectionContent[] = [
-  {
-    position: 0,
-    title: "Do not wait for perfection.",
-    bodyMarkdown:
-      "A clean problem, a stub concept, a source note, a partial solution, or a correction request can already help."
-  },
   {
     position: 1,
     title: "Make rough work visible",
@@ -117,8 +113,8 @@ export async function loadContributionPage() {
   };
 }
 
-export async function loadRenderedContributionPage() {
-  const page = await loadContributionPage();
+export async function loadRenderedContributionPage(locale: InterfaceLocale) {
+  const page = localizeContributionPage(await loadContributionPage(), locale);
 
   return {
     content: page.content,

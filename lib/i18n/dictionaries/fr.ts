@@ -48,7 +48,7 @@ export const fr = {
     moreAriaLabel: "Ouvrir le menu de navigation",
     moreTitle: "Plus",
     recentChanges: "Modifications récentes",
-    contributing: "Contribuer",
+    contributing: "Requêtes",
     contributionTasks: "Travail à faire",
     suggestions: "Suggestions",
     about: "À propos",
@@ -538,7 +538,7 @@ export const fr = {
       "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire.",
     about: "À propos",
     suggestions: "Suggestions",
-    contribute: "Contribuer",
+    contribute: "Requêtes",
     legalAndBrand: "Mentions légales et marque"
   },
   home: {

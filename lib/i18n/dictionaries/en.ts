@@ -46,7 +46,7 @@ export const en = {
     moreAriaLabel: "Open navigation menu",
     moreTitle: "More",
     recentChanges: "Recent changes",
-    contributing: "Contributing",
+    contributing: "Requests",
     contributionTasks: "Work to do",
     suggestions: "Suggestions",
     about: "About",
@@ -535,7 +535,7 @@ export const en = {
       "© 2026 Math Woods. Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated.",
     about: "About",
     suggestions: "Suggestions",
-    contribute: "Contribute",
+    contribute: "Requests",
     legalAndBrand: "Legal & brand"
   },
   home: {

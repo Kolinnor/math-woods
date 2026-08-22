@@ -37,6 +37,7 @@ import {
   translationGroupCount,
   translationSourcesMissingLanguage
 } from "../lib/contribution-tasks.ts";
+import { localizeContributionPage } from "../lib/contribution-page-copy.ts";
 import { slugify } from "../lib/slug.ts";
 import { isSitePresenceId, sitePresenceIsActive } from "../lib/site-presence-config.ts";
 import {
@@ -494,6 +495,47 @@ assert.equal(problemDifficultyTone(100), "#87342d");
 assert.notEqual(problemDifficultyTone(19), problemDifficultyTone(20));
 assert.notEqual(problemDifficultyTone(20), problemDifficultyTone(21));
 assert.notEqual(problemDifficultyTone(39), problemDifficultyTone(40));
+
+const contributionSectionFixtures = [
+  {
+    position: 1,
+    title: "Make rough work visible",
+    bodyMarkdown:
+      "Mark unfinished material honestly. Use **Needs work**, stub statuses, talk pages, edit summaries, and reports. A rough page with clear uncertainty is useful."
+  },
+  {
+    position: 6,
+    title: "Use reports without making them scary",
+    bodyMarkdown:
+      "Reports are not only for emergencies. They can flag copied wording, questionable origins, wrong statements, spoilers, or pages that need attention."
+  }
+];
+const localizedFrenchRequestsPage = localizeContributionPage({
+  content: {
+    title: "Contribution",
+    requestEyebrow: "Requests",
+    requestTitle: "Requested problems and concepts",
+    requestIntro:
+      "Ask for the pages you would like to see from the problem and concept browsers. Trusted contributors can claim a request, work on it, release it if they stop, and mark it complete when the page or problem exists."
+  },
+  sections: [
+    {
+      position: 0,
+      title: "Do not wait for perfection.",
+      bodyMarkdown:
+        "A clean problem, a stub concept, a source note, a partial solution, or a correction request can already help."
+    },
+    ...contributionSectionFixtures
+  ]
+}, "fr");
+assert.equal(localizedFrenchRequestsPage.content.title, "Requêtes");
+assert.equal(localizedFrenchRequestsPage.content.requestTitle, "Demandes de problèmes et de concepts");
+assert.equal(localizedFrenchRequestsPage.sections.length, contributionSectionFixtures.length);
+assert.ok(localizedFrenchRequestsPage.sections.every((section) => !section.title.includes("perfection")));
+assert.ok(localizedFrenchRequestsPage.sections.every((section, index) =>
+  section.title !== contributionSectionFixtures[index]?.title &&
+  section.bodyMarkdown !== contributionSectionFixtures[index]?.bodyMarkdown
+));
 assert.equal(problemDifficultyBars(9), 1);
 assert.equal(problemDifficultyBars(10), 2);
 const revisionDiff = buildRevisionDiff(
