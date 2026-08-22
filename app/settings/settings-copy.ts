@@ -246,6 +246,8 @@ const frenchSettingsText: Record<string, string> = {
   "For the owner: when a user joins Math Woods.": "Pour le propriétaire : lorsqu'un utilisateur rejoint Math Woods.",
   "A problem was created": "Un problème a été créé",
   "For the owner: when a user creates a problem.": "Pour le propriétaire : lorsqu'un utilisateur crée un problème.",
+  "A problem was deleted": "Un problème a été supprimé",
+  "For admins: when a user deletes a problem.": "Pour les administrateurs : lorsqu'un utilisateur supprime un problème.",
   "A concept was created": "Un concept a été créé",
   "For the owner: when a user creates a concept.": "Pour le propriétaire : lorsqu'un utilisateur crée un concept.",
   "A concept was edited": "Un concept a été modifié",

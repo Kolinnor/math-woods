@@ -28,6 +28,7 @@ const configurableNotificationTypes = [
   NotificationType.SITE_ERROR_REPORTED,
   NotificationType.USER_REGISTERED,
   NotificationType.PROBLEM_CREATED,
+  NotificationType.PROBLEM_DELETED,
   NotificationType.CONCEPT_CREATED,
   NotificationType.CONCEPT_EDITED,
   NotificationType.CONTRIBUTION_REQUEST_CLAIMED,

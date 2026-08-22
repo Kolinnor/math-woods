@@ -40,6 +40,7 @@ import {
 import { canEditExploration } from "@/lib/explorations";
 import {
   createNotification,
+  notifyAdminsOfProblemDeletion,
   notifyAdminsOfProblemEditProposal,
   notifyOwnerOfSiteActivity,
   notifyProblemAuthor,
@@ -1564,7 +1565,7 @@ export async function deleteProblemAction(problemId: number) {
   const problemFamily = await prisma.problem.findMany({
     where: { translationGroupId: problem.translationGroupId },
     orderBy: { createdAt: "asc" },
-    select: { authorId: true, translatedFromProblemId: true }
+    select: { authorId: true, slug: true, title: true, translatedFromProblemId: true }
   });
   const familyOwner = problemFamily.find((translation) => translation.translatedFromProblemId === null)
     ?? problemFamily[0];
@@ -1627,6 +1628,14 @@ export async function deleteProblemAction(problemId: number) {
   revalidatePath("/problems");
   for (const slug of archivedSlugs) {
     revalidatePath(`/problems/${slug}`);
+  }
+  if (archivedSlugs.length > 0) {
+    await notifyAdminsOfProblemDeletion({
+      actorId: user.id,
+      actorName: displayNameForUser(user),
+      problemTitle: familyOwner.title,
+      problemSlug: familyOwner.slug
+    });
   }
   redirect("/problems");
 }

@@ -133,6 +133,11 @@ const notificationOptions = [
     description: "For the owner: when a user creates a problem."
   },
   {
+    type: NotificationType.PROBLEM_DELETED,
+    title: "A problem was deleted",
+    description: "For admins: when a user deletes a problem."
+  },
+  {
     type: NotificationType.CONCEPT_CREATED,
     title: "A concept was created",
     description: "For the owner: when a user creates a concept."

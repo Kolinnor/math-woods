@@ -376,6 +376,13 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
         body: problemTitle ? `${actor} a créé « ${problemTitle} ».` : `${actor} a créé un problème.`
       };
     }
+    case NotificationType.PROBLEM_DELETED: {
+      const actor = notificationActor(notification, " deleted ");
+      return {
+        title: "Problème supprimé",
+        body: problemTitle ? `${actor} a supprimé « ${problemTitle} ».` : `${actor} a supprimé un problème.`
+      };
+    }
     case NotificationType.CONCEPT_CREATED: {
       const actor = notificationActor(notification, " created ");
       return {

@@ -2150,6 +2150,7 @@ const solutionDiscussionSource = readFileSync(
   "utf-8"
 );
 const proofActionsSource = readFileSync(join("lib", "actions", "proof-actions.ts"), "utf-8");
+const problemActionsSource = readFileSync(join("lib", "actions", "problem-actions.ts"), "utf-8");
 const moderationActionsSource = readFileSync(join("lib", "actions", "moderation-actions.ts"), "utf-8");
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
@@ -2178,6 +2179,7 @@ const siteImprovementActionsSource = readFileSync(join("lib", "actions", "site-i
 const notificationsPageSource = readFileSync(join("app", "notifications", "page.tsx"), "utf-8");
 const notificationLifecycleSource = readFileSync(join("lib", "notification-lifecycle.ts"), "utf-8");
 const notificationCopySource = readFileSync(join("lib", "notification-copy.ts"), "utf-8");
+const notificationsSource = readFileSync(join("lib", "notifications.ts"), "utf-8");
 const siteAnnouncementActionsSource = readFileSync(join("lib", "actions", "site-announcement-actions.ts"), "utf-8");
 const siteAnnouncementToastSource = readFileSync(join("components", "SiteAnnouncementToast.tsx"), "utf-8");
 const moderationPageSource = readFileSync(join("app", "moderation", "page.tsx"), "utf-8");
@@ -2257,6 +2259,9 @@ assert.match(
   problemChallengeDialogSource,
   /avatarBackground: selectedRecipient\.avatarBackground,[\s\S]*?avatarUrl: selectedRecipient\.avatarUrl/
 );
+assert.match(problemActionsSource, /deleteProblemAction[\s\S]*?notifyAdminsOfProblemDeletion/);
+assert.match(notificationsSource, /notifyAdminsOfProblemDeletion[\s\S]*?Role\.ADMIN, Role\.OWNER/);
+assert.match(notificationsSource, /NotificationType\.PROBLEM_DELETED[\s\S]*?\/problems\/\$\{problemSlug\}\/history/);
 assert.match(conceptDetailSource, /<ConceptShareLauncher/);
 assert.match(conceptShareActionsSource, /NotificationType\.CONCEPT_SHARED/);
 assert.match(conceptShareActionsSource, /createdAt: \{ gte: new Date\(Date\.now\(\) - 5 \* 60_000\) \}/);
@@ -2442,6 +2447,16 @@ const problemEditedNotification = localizeNotification({
 assert.equal(problemEditedNotification.title, "Problème modifié");
 assert.match(problemEditedNotification.body, /Champs modifiés : énoncé, difficulté\./);
 assert.match(problemEditedNotification.body, /Résumé : Clarified the bound\./);
+const problemDeletedNotification = localizeNotification({
+  type: NotificationType.PROBLEM_DELETED,
+  title: "Problem deleted",
+  body: 'Alouette deleted "Une intégrale $I$".',
+  actor: notificationActor
+}, "fr");
+assert.deepEqual(problemDeletedNotification, {
+  title: "Problème supprimé",
+  body: "Alouette a supprimé « Une intégrale $I$ »."
+});
 const challengeNotification = localizeNotification({
   type: NotificationType.PROBLEM_CHALLENGE,
   title: "New challenge",
