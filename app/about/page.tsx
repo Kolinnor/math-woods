@@ -74,9 +74,6 @@ export default async function AboutPage() {
           <Link href="/contributing" className="button secondary">
             {t.about.contributionGuidelines}
           </Link>
-          <Link href="/suggestions" className="button secondary">
-            {t.about.suggestImprovement}
-          </Link>
         </div>
       </section>
 

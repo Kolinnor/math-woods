@@ -119,7 +119,7 @@ export const mathWoodsTourCopy = {
         target: "menu",
         placement: "left",
         action: "finish",
-        text: "Math Woods est collaboratif et vos retours sont précieux. Le menu en haut à droite donne notamment accès aux suggestions. Vous pouvez maintenant terminer le tutoriel et commencer votre propre balade."
+        text: "Math Woods est collaboratif et vos retours sont précieux. Le menu en haut à droite donne accès aux autres espaces du site. Vous pouvez maintenant terminer le tutoriel et commencer votre propre balade."
       }
     ] satisfies MathWoodsTourStep[]
   },
@@ -215,7 +215,7 @@ export const mathWoodsTourCopy = {
         target: "menu",
         placement: "left",
         action: "finish",
-        text: "Math Woods is collaborative, and your feedback matters. The top-right menu includes a link for suggestions. You can now end the tour and begin your own walk."
+        text: "Math Woods is collaborative, and your feedback matters. The top-right menu gives access to the site's other spaces. You can now end the tour and begin your own walk."
       }
     ] satisfies MathWoodsTourStep[]
   }

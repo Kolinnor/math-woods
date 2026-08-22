@@ -113,7 +113,6 @@ export default async function LegalPage() {
             <h2>{t.legalPage.unclear}</h2>
           </div>
           <div className="legal-contact-links">
-            <Link href="/suggestions">{t.legalPage.contact}</Link>
             <a href={`${repositoryUrl}/issues`} target="_blank" rel="noopener noreferrer">
               {t.legalPage.reportCodeIssue}
             </a>

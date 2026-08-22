@@ -2088,6 +2088,10 @@ const tourSource = readFileSync(join("components", "MathWoodsTour.tsx"), "utf-8"
 const tourOverlaySource = readFileSync(join("components", "MathWoodsTourOverlay.tsx"), "utf-8");
 const tourCopySource = readFileSync(join("lib", "math-woods-tour.ts"), "utf-8");
 const layoutSource = readFileSync(join("app", "layout.tsx"), "utf-8");
+const aboutPageSource = readFileSync(join("app", "about", "page.tsx"), "utf-8");
+const legalPageSource = readFileSync(join("app", "legal", "page.tsx"), "utf-8");
+const suggestionsPageSource = readFileSync(join("app", "suggestions", "page.tsx"), "utf-8");
+const sitemapSource = readFileSync(join("app", "sitemap.ts"), "utf-8");
 const guestProgressPromptSource = readFileSync(join("components", "GuestProgressPrompt.tsx"), "utf-8");
 const guestContentGateSource = readFileSync(join("components", "GuestContentViewGate.tsx"), "utf-8");
 const problemDetailSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
@@ -2224,6 +2228,14 @@ assert.doesNotMatch(
   /name="audienceRoles"[^>]*value=\{Role\.(?:USER|MODERATOR|ADMIN)\}[^>]*defaultChecked/,
 );
 assert.match(layoutSource, /\/about\/tutorial/);
+assert.doesNotMatch(layoutSource, /href=[^\n]*\/suggestions/);
+assert.doesNotMatch(aboutPageSource, /href=[^\n]*\/suggestions/);
+assert.doesNotMatch(legalPageSource, /href=[^\n]*\/suggestions/);
+assert.doesNotMatch(sitemapSource, /absoluteUrl\("\/suggestions"\)/);
+assert.match(
+  suggestionsPageSource,
+  /permanentRedirect\("\/contributing\/tasks\/site-improvements"\)/
+);
 assert.match(layoutSource, /<GuestProgressPrompt \/>/);
 assert.match(guestProgressPromptSource, /dictionaryForLocale/);
 assert.doesNotMatch(guestProgressPromptSource, /Sign in to record your progress/);
@@ -2282,6 +2294,7 @@ assert.doesNotMatch(tourCopySource, /Ancient Tree/);
 assert.doesNotMatch(tourCopySource, /cr[ée]ateur du site/);
 assert.doesNotMatch(tourCopySource, /tutoriel est bient[oô]t fini/i);
 assert.doesNotMatch(tourCopySource, /tr[êe]ve de plaisanterie/i);
+assert.doesNotMatch(tourCopySource, /accès aux suggestions|link for suggestions/i);
 assert.equal(mathWoodsTourCopy.fr.steps.length, 17);
 assert.equal(mathWoodsTourCopy.en.steps.length, 17);
 assert.equal(parseMathWoodsTourStep("-3", 17), 0);

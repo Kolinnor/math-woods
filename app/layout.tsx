@@ -266,7 +266,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/recent-changes">{t.nav.recentChanges}</Link>
                   <Link href={"/contributing/tasks" as Route}>{t.nav.contributionTasks}</Link>
                   {user && canUseAdminTools(user) && <Link href="/contributing">{t.nav.contributing}</Link>}
-                  <Link href="/suggestions">{t.nav.suggestions}</Link>
                   <Link href="/about">{t.nav.about}</Link>
                   {user && <div className="nav-menu-divider" />}
                   {user && (
@@ -321,7 +320,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <p>{t.footer.legal}</p>
             <div className="flex flex-wrap justify-end gap-4">
               <Link href="/about">{t.footer.about}</Link>
-              <Link href="/suggestions">{t.footer.suggestions}</Link>
               <Link href="/contributing">{t.footer.contribute}</Link>
               <Link href={"/legal" as Route}>{t.footer.legalAndBrand}</Link>
               <a
