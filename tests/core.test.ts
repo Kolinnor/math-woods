@@ -699,10 +699,14 @@ assert.deepEqual(
 assert.equal(dictionaryForContentLanguage("fr").nav.problems, "Problèmes");
 assert.equal(dictionaryForContentLanguage("fr").nav.tour, "Premiers pas sur Math Woods");
 assert.equal(dictionaryForContentLanguage("fr").problemDetail.addFavorite, "J’aime ce problème");
+assert.equal(dictionaryForContentLanguage("fr").problemDetail.favorited, "J’aime ce problème");
+assert.equal(dictionaryForContentLanguage("fr").problemDetail.startAttempting, "Ajouter à ma liste");
 assert.equal(dictionaryForContentLanguage("fr").guestProgressPrompt.signIn, "Se connecter");
 assert.match(dictionaryForContentLanguage("fr").guestProgressPrompt.message, /progression/);
 assert.equal(dictionaryForContentLanguage("en").guestProgressPrompt.close, "Close");
 assert.equal(dictionaryForContentLanguage("en").problemDetail.addFavorite, "I like this problem");
+assert.equal(dictionaryForContentLanguage("en").problemDetail.favorited, "I like this problem");
+assert.equal(dictionaryForContentLanguage("en").problemDetail.startAttempting, "Add to my list");
 assert.deepEqual(parseSelectedTranslationIds(["3", "2", "3", "bad", "0"]), [3, 2]);
 assert.equal(translationBodyFieldName(TRANSLATED_PROOF_BODY_PREFIX, 17), "translatedProofBody:17");
 assert.equal(dictionaryForContentLanguage("es").nav.problems, "Problems");
