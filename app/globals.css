@@ -1303,6 +1303,10 @@ body:has(.problem-detail-shell) .site-main {
   margin-top: 16px;
 }
 
+.problem-primary-actions.conjecture {
+  grid-template-columns: 1fr 1fr;
+}
+
 .problem-primary-actions form {
   margin: 0;
 }

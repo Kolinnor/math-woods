@@ -1841,9 +1841,10 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
   const now = new Date();
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { authorId: true, title: true, translationGroupId: true }
+    select: { authorId: true, title: true, translationGroupId: true, isConjecture: true }
   });
   if (!problem) throw new Error("Problem not found.");
+  if (problem.isConjecture) throw new Error("Conjectures cannot be marked as solved.");
   const translations = await prisma.problem.findMany({
     where: { translationGroupId: problem.translationGroupId },
     select: { id: true, slug: true }
@@ -2026,11 +2027,13 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
       authorId: true,
       verificationMode: true,
       verificationAnswer: true,
-      language: true
+      language: true,
+      isConjecture: true
     }
   });
 
   if (!problem) throw new Error("Problem not found.");
+  if (problem.isConjecture) throw new Error("Conjectures cannot be marked as solved.");
 
   if (problem.authorId === user.id) {
     await markSolvedNow(problemId, problemSlug, user);
@@ -2108,7 +2111,16 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
     where: { id: requestId },
     include: {
       user: { select: { id: true, username: true, profileSlug: true } },
-      problem: { select: { id: true, slug: true, title: true, authorId: true, translationGroupId: true } }
+      problem: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          authorId: true,
+          translationGroupId: true,
+          isConjecture: true
+        }
+      }
     }
   });
 
@@ -2119,6 +2131,9 @@ export async function reviewProblemVerificationAction(requestId: number, decisio
   if (request.status !== "PENDING") {
     revalidatePath(`/problems/${request.problem.slug}`);
     return;
+  }
+  if (decision === "APPROVED" && request.problem.isConjecture) {
+    throw new Error("Conjectures cannot be marked as solved.");
   }
   const translatedProblems = await prisma.problem.findMany({
     where: { translationGroupId: request.problem.translationGroupId },

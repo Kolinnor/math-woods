@@ -917,8 +917,11 @@ export default async function ProblemPage({
         <section className="problem-statement reading-surface" data-tour-target="statement">
           <MarkdownBlock html={problemBodyHtml} />
         </section>
-        <section className="problem-primary-actions" aria-label="Problem progress">
-          {user ? (
+        <section
+          className={`problem-primary-actions${isConjecture ? " conjecture" : ""}`}
+          aria-label="Problem progress"
+        >
+          {!isConjecture && (user ? (
             attempt?.status === "SOLVED" ? (
               <form action={unmarkProblemSolvedAction.bind(null, problem.id, problem.slug)}>
                 <button type="submit" className="problem-action-tile solved" title={t.problemDetail.unmarkSolved}>
@@ -953,7 +956,7 @@ export default async function ProblemPage({
               <Check size={25} />
               <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.solveSub}</small></span>
             </Link>
-          )}
+          ))}
           {user ? (
             attempt ? (
               <span className="problem-action-tile attempted" aria-disabled="true">

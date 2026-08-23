@@ -996,6 +996,7 @@ export default async function ProblemsPage({
                   initialAttempted={isOpened}
                   initialFavorite={isUserFavorite}
                   initialSolved={isSolved}
+                  isConjecture={problem.isConjecture}
                   isOwnProblem={isOwnProblem}
                   labels={{
                     addFavorite: t.problemDetail.addFavorite,

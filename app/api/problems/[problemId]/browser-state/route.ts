@@ -40,9 +40,16 @@ export async function PATCH(
 
     const problem = await prisma.problem.findUnique({
       where: { id: problemId },
-      select: { id: true, authorId: true, slug: true, verificationMode: true }
+      select: { id: true, authorId: true, slug: true, verificationMode: true, isConjecture: true }
     });
     if (!problem) return NextResponse.json({ error: "Problem not found." }, { status: 404 });
+
+    if (operation === "solve" && problem.isConjecture) {
+      return NextResponse.json(
+        { error: "Conjectures cannot be marked as solved." },
+        { status: 409 }
+      );
+    }
 
     if (
       operation === "solve" &&

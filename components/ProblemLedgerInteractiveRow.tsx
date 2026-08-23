@@ -27,6 +27,7 @@ export function ProblemLedgerInteractiveRow({
   initialAttempted,
   initialFavorite,
   initialSolved,
+  isConjecture,
   isOwnProblem,
   labels,
   problemId,
@@ -41,6 +42,7 @@ export function ProblemLedgerInteractiveRow({
   initialAttempted: boolean;
   initialFavorite: boolean;
   initialSolved: boolean;
+  isConjecture: boolean;
   isOwnProblem: boolean;
   labels: Labels;
   problemId: number;
@@ -88,7 +90,7 @@ export function ProblemLedgerInteractiveRow({
       title={failed ? labels.updateFailed : rowTitle}
     >
       <div className="problem-ledger-progress-action">
-        {!signedIn ? (
+        {!isConjecture && (!signedIn ? (
           <Link href={signInHref as never} className="problem-ledger-check" title={labels.markSolved} aria-label={labels.markSolved}>
             <Check size={14} strokeWidth={3} />
           </Link>
@@ -127,7 +129,7 @@ export function ProblemLedgerInteractiveRow({
           >
             <Check size={14} strokeWidth={3} />
           </button>
-        )}
+        ))}
       </div>
 
       {children}

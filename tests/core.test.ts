@@ -2172,6 +2172,14 @@ const sitemapSource = readFileSync(join("app", "sitemap.ts"), "utf-8");
 const guestProgressPromptSource = readFileSync(join("components", "GuestProgressPrompt.tsx"), "utf-8");
 const guestContentGateSource = readFileSync(join("components", "GuestContentViewGate.tsx"), "utf-8");
 const problemDetailSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
+const problemLedgerInteractiveRowSource = readFileSync(
+  join("components", "ProblemLedgerInteractiveRow.tsx"),
+  "utf-8"
+);
+const problemBrowserStateRouteSource = readFileSync(
+  join("app", "api", "problems", "[problemId]", "browser-state", "route.ts"),
+  "utf-8"
+);
 const solutionDiscussionSource = readFileSync(
   join("app", "problems", "[slug]", "proofs", "[proofId]", "discussion", "page.tsx"),
   "utf-8"
@@ -2186,6 +2194,10 @@ const voteProofActionSource = proofActionsSource.match(
 const problemActionsSource = readFileSync(join("lib", "actions", "problem-actions.ts"), "utf-8");
 const removeProofSelfVotesMigrationSource = readFileSync(
   join("prisma", "migrations", "20260823104500_remove_automatic_proof_self_votes", "migration.sql"),
+  "utf-8"
+);
+const disallowSolvedConjecturesMigrationSource = readFileSync(
+  join("prisma", "migrations", "20260823111500_disallow_solved_conjectures", "migration.sql"),
   "utf-8"
 );
 const moderationActionsSource = readFileSync(join("lib", "actions", "moderation-actions.ts"), "utf-8");
@@ -2360,6 +2372,21 @@ assert.match(
 );
 assert.match(problemDetailSource, /<strong>\{t\.problemDetail\.markSolved\}<\/strong>/);
 assert.match(problemDetailSource, /href=\{problemSignInHref as never\}/);
+assert.match(problemDetailSource, /!isConjecture && \(user \?/);
+assert.match(problemDetailSource, /problem-primary-actions\$\{isConjecture \? " conjecture" : ""\}/);
+assert.match(problemDetailSource, /startAttemptAction\.bind/);
+assert.match(problemDetailSource, /toggleProblemFavoriteAction\.bind/);
+assert.match(problemBrowserSource, /isConjecture=\{problem\.isConjecture\}/);
+assert.match(problemLedgerInteractiveRowSource, /!isConjecture && \(!signedIn \?/);
+assert.match(problemBrowserStateRouteSource, /operation === "solve" && problem\.isConjecture/);
+assert.match(problemBrowserStateRouteSource, /Conjectures cannot be marked as solved/);
+assert.ok(
+  (problemActionsSource.match(/Conjectures cannot be marked as solved/g) ?? []).length >= 3,
+  "direct solving and verification approval must reject conjectures"
+);
+assert.match(disallowSolvedConjecturesMigrationSource, /problem\."isConjecture" = TRUE/);
+assert.match(disallowSolvedConjecturesMigrationSource, /"status" = 'STARTED'::"AttemptStatus"/);
+assert.match(editorCssSource, /\.problem-primary-actions\.conjecture[\s\S]*?grid-template-columns: 1fr 1fr/);
 assert.match(problemDetailSource, /proofs\/\$\{proof\.id\}\/discussion/);
 assert.match(problemDetailSource, /_count: \{ select: \{ comments: true \} \}/);
 assert.doesNotMatch(problemDetailSource, /reportProofAction/);
