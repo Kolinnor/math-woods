@@ -26,15 +26,7 @@ export type ProcessedContentImage = {
   height: number;
 };
 
-type ProcessContentImageOptions = {
-  maxDimension?: number;
-};
-
-export async function processContentImage(
-  image: File,
-  options: ProcessContentImageOptions = {}
-): Promise<ProcessedContentImage> {
-  const maxDimension = options.maxDimension ?? CONTENT_IMAGE_MAX_DIMENSION;
+export async function processContentImage(image: File): Promise<ProcessedContentImage> {
   const source = Buffer.from(await image.arrayBuffer());
   const input = sharp(source, { animated: false, limitInputPixels: CONTENT_IMAGE_MAX_PIXELS });
   const metadata = await input.metadata();
@@ -50,8 +42,8 @@ export async function processContentImage(
   const canKeepSource = Boolean(
     metadata.width
     && metadata.height
-    && metadata.width <= maxDimension
-    && metadata.height <= maxDimension
+    && metadata.width <= CONTENT_IMAGE_MAX_DIMENSION
+    && metadata.height <= CONTENT_IMAGE_MAX_DIMENSION
     && (!metadata.orientation || metadata.orientation === 1)
   );
   if (canKeepSource) {
@@ -65,11 +57,9 @@ export async function processContentImage(
 
   let pipeline = sharp(source, { animated: false, limitInputPixels: CONTENT_IMAGE_MAX_PIXELS })
     .rotate()
-    .resize(maxDimension, maxDimension, {
+    .resize(CONTENT_IMAGE_MAX_DIMENSION, CONTENT_IMAGE_MAX_DIMENSION, {
       fit: "inside",
-      withoutEnlargement: true,
-      kernel: sharp.kernel.lanczos3,
-      fastShrinkOnLoad: false
+      withoutEnlargement: true
     });
 
   if (format === "jpeg") pipeline = pipeline.jpeg({ quality: 92, mozjpeg: true });

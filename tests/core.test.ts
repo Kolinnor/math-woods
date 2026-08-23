@@ -2802,6 +2802,16 @@ assert.equal(preservedContentImage.width, 1200);
 assert.equal(preservedContentImage.height, 800);
 assert.deepEqual(preservedContentImage.body, originalContentImage);
 
+const highResolutionTipImage = await sharp({
+  create: { width: 2228, height: 2143, channels: 4, background: "#ffffff" }
+}).png().toBuffer();
+const preservedTipImage = await processContentImage(
+  new File([Uint8Array.from(highResolutionTipImage)], "tip.png", { type: "image/png" })
+);
+assert.equal(preservedTipImage.width, 2228);
+assert.equal(preservedTipImage.height, 2143);
+assert.deepEqual(preservedTipImage.body, highResolutionTipImage);
+
 const oversizedContentImage = await sharp({
   create: { width: 3000, height: 1200, channels: 3, background: "#f8f6ef" }
 }).png().toBuffer();
@@ -2811,14 +2821,6 @@ const processedContentImage = await processContentImage(
 assert.equal(processedContentImage.contentType, "image/png");
 assert.equal(processedContentImage.width, 2560);
 assert.equal(processedContentImage.height, 1024);
-
-const tipContentImage = await processContentImage(
-  new File([Uint8Array.from(oversizedContentImage)], "tip.png", { type: "image/png" }),
-  { maxDimension: 960 }
-);
-assert.equal(tipContentImage.contentType, "image/png");
-assert.equal(tipContentImage.width, 960);
-assert.equal(tipContentImage.height, 384);
 
 const testImageStorageConfig: ImageStorageConfig = {
   endpoint: new URL("https://s3.example.test"),

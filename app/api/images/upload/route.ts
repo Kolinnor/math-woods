@@ -13,7 +13,6 @@ import { objectStorageUploadError } from "@/lib/image-upload-errors";
 import { processContentImage } from "@/lib/content-images";
 
 const MAX_UPLOAD_BODY_BYTES = IMAGE_UPLOAD_MAX_BYTES + 16_000;
-const TIP_IMAGE_MAX_DIMENSION = 960;
 
 export const runtime = "nodejs";
 
@@ -75,12 +74,7 @@ export async function POST(request: Request) {
 
   let processedImage: Awaited<ReturnType<typeof processContentImage>>;
   try {
-    processedImage = await processContentImage(
-      image,
-      formData.get("purpose") === "tip"
-        ? { maxDimension: TIP_IMAGE_MAX_DIMENSION }
-        : undefined
-    );
+    processedImage = await processContentImage(image);
   } catch (error) {
     const message = error instanceof Error ? error.message : "The server could not process this image.";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });
