@@ -940,7 +940,6 @@ export const fr = {
     solutionBy: "Solution par",
     editSolution: "Modifier la solution",
     cannotVoteOwnSolution: "Vous ne pouvez pas voter pour votre propre solution",
-    ownSolutionVoteLocked: "Votre solution est aimée par défaut. Ce « J’aime » ne peut pas être retiré.",
     removeUsefulVote: "Retirer le vote utile",
     markUseful: "Marquer comme utile",
     usefulVotes: (count: number) => `${count} vote${count > 1 ? "s" : ""} utile${count > 1 ? "s" : ""}`,

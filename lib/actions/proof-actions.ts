@@ -43,14 +43,6 @@ export async function createProofAction(problemId: number, problemSlug: string, 
         bodyHtml
       }
     });
-    await tx.vote.create({
-      data: {
-        userId: user.id,
-        targetType: TargetType.PROOF,
-        targetId: proof.id,
-        voteType: VoteType.UP
-      }
-    });
     await syncInternalLinks(SourceType.PROOF, proof.id, bodyMarkdown, tx, problem.language);
   });
 
@@ -198,27 +190,7 @@ export async function voteProofAction(proofId: number, problemSlug: string) {
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
   }
-  if (proof.authorId === user.id) {
-    await prisma.vote.upsert({
-      where: {
-        userId_targetType_targetId: {
-          userId: user.id,
-          targetType: TargetType.PROOF,
-          targetId: proofId
-        }
-      },
-      update: { voteType: VoteType.UP },
-      create: {
-        userId: user.id,
-        targetType: TargetType.PROOF,
-        targetId: proofId,
-        voteType: VoteType.UP
-      }
-    });
-    revalidatePath(`/problems/${problemSlug}`);
-    return;
-  }
-  if (proof.translatedById === user.id) {
+  if (proof.authorId === user.id || proof.translatedById === user.id) {
     revalidatePath(`/problems/${problemSlug}`);
     return;
   }

@@ -2173,7 +2173,17 @@ const solutionDiscussionSource = readFileSync(
   "utf-8"
 );
 const proofActionsSource = readFileSync(join("lib", "actions", "proof-actions.ts"), "utf-8");
+const createProofActionSource = proofActionsSource.match(
+  /export async function createProofAction[\s\S]*?export async function saveSolutionHintAction/
+)?.[0] ?? "";
+const voteProofActionSource = proofActionsSource.match(
+  /export async function voteProofAction[\s\S]*?export async function createProofCommentAction/
+)?.[0] ?? "";
 const problemActionsSource = readFileSync(join("lib", "actions", "problem-actions.ts"), "utf-8");
+const removeProofSelfVotesMigrationSource = readFileSync(
+  join("prisma", "migrations", "20260823104500_remove_automatic_proof_self_votes", "migration.sql"),
+  "utf-8"
+);
 const moderationActionsSource = readFileSync(join("lib", "actions", "moderation-actions.ts"), "utf-8");
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
@@ -2356,6 +2366,13 @@ assert.match(solutionDiscussionSource, /canViewProblemSolutions/);
 assert.match(solutionDiscussionSource, /canViewArchivedProblem/);
 assert.match(proofActionsSource, /proof\.problem\.slug !== problemSlug/);
 assert.match(proofActionsSource, /proofs\/\$\{proofId\}\/discussion/);
+assert.doesNotMatch(createProofActionSource, /tx\.vote\.(?:create|upsert)/);
+assert.match(voteProofActionSource, /proof\.authorId === user\.id \|\| proof\.translatedById === user\.id/);
+assert.doesNotMatch(voteProofActionSource, /proof\.authorId === user\.id[\s\S]*?prisma\.vote\.upsert/);
+assert.doesNotMatch(problemDetailSource, /ownSolutionVoteLocked/);
+assert.doesNotMatch(problemActionsSource, /userId: sourceProof\.authorId,[\s\S]*?targetId: translatedProof\.id/);
+assert.match(removeProofSelfVotesMigrationSource, /vote\."userId" = proof\."authorId"/);
+assert.match(removeProofSelfVotesMigrationSource, /vote\."userId" = proof\."translatedById"/);
 assert.match(moderationActionsSource, /proofs\/\$\{proofId\}\/discussion\?report=saved/);
 assert.match(conceptDetailSource, /contentKey=\{`concept:\$\{concept\.translationGroupId\}`\}/);
 assert.match(homeSource, /\/about\/tutorial/);

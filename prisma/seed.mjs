@@ -567,20 +567,11 @@ async function main() {
           bodyHtml: await renderedDemoHtml(proofMarkdown)
         }
       });
-  await prisma.vote.upsert({
+  await prisma.vote.deleteMany({
     where: {
-      userId_targetType_targetId: {
-        userId: curator.id,
-        targetType: TargetType.PROOF,
-        targetId: savedProof.id
-      }
-    },
-    update: { voteType: "UP" },
-    create: {
       userId: curator.id,
       targetType: TargetType.PROOF,
-      targetId: savedProof.id,
-      voteType: "UP"
+      targetId: savedProof.id
     }
   });
   const now = new Date();

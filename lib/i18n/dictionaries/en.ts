@@ -935,7 +935,6 @@ export const en = {
     solutionBy: "Solution by",
     editSolution: "Edit solution",
     cannotVoteOwnSolution: "You cannot vote for your own solution",
-    ownSolutionVoteLocked: "Your solution is liked by default. This like cannot be removed.",
     removeUsefulVote: "Remove useful vote",
     markUseful: "Mark as useful",
     usefulVotes: (count: number) => `${count} useful ${count === 1 ? "vote" : "votes"}`,

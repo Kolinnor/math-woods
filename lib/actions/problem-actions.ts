@@ -801,22 +801,6 @@ export async function createProblemAction(formData: FormData) {
             createdAt: sourceProof.createdAt
           }
         });
-        await tx.vote.upsert({
-          where: {
-            userId_targetType_targetId: {
-              userId: sourceProof.authorId,
-              targetType: TargetType.PROOF,
-              targetId: translatedProof.id
-            }
-          },
-          update: { voteType: VoteType.UP },
-          create: {
-            userId: sourceProof.authorId,
-            targetType: TargetType.PROOF,
-            targetId: translatedProof.id,
-            voteType: VoteType.UP
-          }
-        });
         await syncInternalLinks(SourceType.PROOF, translatedProof.id, translatedBody.markdown, tx, language);
 
         if (sourceProof.hint && translatedProofHintIds.includes(sourceProof.hint.id)) {
