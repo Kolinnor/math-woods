@@ -3830,6 +3830,23 @@ assert.equal(
   "Scheduled only"
 );
 assert.equal(
+  selectDailyTipForDate(scheduledDailyTipCandidates, "2026-08-03", null, 1)?.title,
+  "First"
+);
+assert.equal(
+  selectDailyTipForDate(scheduledDailyTipCandidates, "2026-08-03", 2, 1)?.title,
+  "Scheduled only"
+);
+assert.equal(
+  selectDailyTipForDate(
+    scheduledDailyTipCandidates.map((tip) => ({ ...tip, showInMainMenu: false })),
+    "2026-08-03",
+    null,
+    3
+  )?.title,
+  "Third"
+);
+assert.equal(
   selectDailyTipForDate(scheduledDailyTipCandidates, "2026-08-03")?.showInMainMenu,
   true
 );

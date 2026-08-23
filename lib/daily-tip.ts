@@ -210,10 +210,34 @@ export function dailyTip(date = new Date()) {
 export async function loadDailyTip(date = new Date(), preferredLanguage = "en") {
   const tips = await loadTips(preferredLanguage);
   const dateKey = dailyProblemDateKey(date);
-  const schedule = await prisma.dailyTipSchedule.findUnique({
+  const [schedule, rotationSelection] = await Promise.all([
+    prisma.dailyTipSchedule.findUnique({
+      where: { dateKey },
+      select: { tipId: true }
+    }),
+    prisma.dailyTipRotationSelection.findUnique({
+      where: { dateKey },
+      select: { tipId: true }
+    })
+  ]);
+
+  const selectedTip = selectDailyTipForDate(
+    tips,
+    dateKey,
+    schedule?.tipId ?? null,
+    rotationSelection?.tipId ?? null
+  );
+  const isToday = dateKey === dailyProblemDateKey();
+  if (schedule || rotationSelection || !selectedTip || !isToday) return selectedTip;
+
+  await prisma.dailyTipRotationSelection.createMany({
+    data: [{ dateKey, tipId: selectedTip.id }],
+    skipDuplicates: true
+  });
+  const lockedSelection = await prisma.dailyTipRotationSelection.findUnique({
     where: { dateKey },
     select: { tipId: true }
   });
 
-  return selectDailyTipForDate(tips, dateKey, schedule?.tipId ?? null);
+  return selectDailyTipForDate(tips, dateKey, null, lockedSelection?.tipId ?? selectedTip.id);
 }

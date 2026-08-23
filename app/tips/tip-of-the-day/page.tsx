@@ -46,11 +46,15 @@ export default async function TipOfTheDaySchedulePage({
     getInterfaceLocale()
   ]);
   const dateKeys = upcomingDailyProblemDateKeys();
-  const [tips, schedules] = await Promise.all([
+  const [tips, schedules, rotationSelections] = await Promise.all([
     loadTips(preferredLanguage),
-    prisma.dailyTipSchedule.findMany({ where: { dateKey: { in: dateKeys } } })
+    prisma.dailyTipSchedule.findMany({ where: { dateKey: { in: dateKeys } } }),
+    prisma.dailyTipRotationSelection.findMany({ where: { dateKey: { in: dateKeys } } })
   ]);
   const scheduleByDate = new Map(schedules.map((schedule) => [schedule.dateKey, schedule]));
+  const rotationSelectionByDate = new Map(
+    rotationSelections.map((selection) => [selection.dateKey, selection])
+  );
 
   return (
     <ForestPageLayout
@@ -78,7 +82,13 @@ export default async function TipOfTheDaySchedulePage({
         <div className="daily-problem-schedule-list">
           {dateKeys.map((dateKey, index) => {
             const schedule = scheduleByDate.get(dateKey);
-            const effectiveTip = selectDailyTipForDate(tips, dateKey, schedule?.tipId ?? null);
+            const rotationSelection = rotationSelectionByDate.get(dateKey);
+            const effectiveTip = selectDailyTipForDate(
+              tips,
+              dateKey,
+              schedule?.tipId ?? null,
+              rotationSelection?.tipId ?? null
+            );
             const effectiveImage = effectiveTip
               ? dailyTipImage(effectiveTip.images, effectiveTip.id, dateFromDailyProblemKey(dateKey))
               : null;

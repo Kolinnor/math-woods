@@ -58,11 +58,18 @@ export default async function DailyTipPreviewPage({
   const dateKey = date && isDailyProblemDateKey(date) ? date : dailyProblemDateKey();
   const previewDate = dateFromDailyProblemKey(dateKey);
   const usesDraft = firstParam(params.draft) === "1";
+  const rotationSelection = usesDraft
+    ? await prisma.dailyTipRotationSelection.findUnique({
+        where: { dateKey },
+        select: { tipId: true }
+      })
+    : null;
   const tip = usesDraft
     ? selectDailyTipForDate(
         await loadTips(preferredLanguage),
         dateKey,
-        positiveIntegerParam(params[fieldName(dateKey)])
+        positiveIntegerParam(params[fieldName(dateKey)]),
+        rotationSelection?.tipId ?? null
       )
     : await loadDailyTip(previewDate, preferredLanguage);
   if (!tip) notFound();

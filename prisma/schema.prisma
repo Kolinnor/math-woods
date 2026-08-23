@@ -1880,23 +1880,24 @@ model HomePriorityContent {
 }
 
 model Tip {
-  id             Int                @id @default(autoincrement())
-  position       Int                @unique
-  title          String
-  description    String
-  body           String             @db.Text
-  imageUrl       String?
-  imagePositionX Int                @default(50)
-  imagePositionY Int                @default(50)
-  showInMainMenu Boolean            @default(false)
-  kind           TipKind            @default(TIP)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  problems       TipProblem[]
-  problemGroups  TipProblemGroup[]
-  images         TipImage[]
-  translations   TipTranslation[]
-  dailySchedules DailyTipSchedule[]
+  id                      Int                         @id @default(autoincrement())
+  position                Int                         @unique
+  title                   String
+  description             String
+  body                    String                      @db.Text
+  imageUrl                String?
+  imagePositionX          Int                         @default(50)
+  imagePositionY          Int                         @default(50)
+  showInMainMenu          Boolean                     @default(false)
+  kind                    TipKind                     @default(TIP)
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  problems                TipProblem[]
+  problemGroups           TipProblemGroup[]
+  images                  TipImage[]
+  translations            TipTranslation[]
+  dailySchedules          DailyTipSchedule[]
+  dailyRotationSelections DailyTipRotationSelection[]
 }
 
 model TipTranslation {
@@ -1969,6 +1970,15 @@ model DailyTipSchedule {
   tipId     Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  tip       Tip      @relation(fields: [tipId], references: [id], onDelete: Cascade)
+
+  @@index([tipId])
+}
+
+model DailyTipRotationSelection {
+  dateKey   String   @id @db.VarChar(10)
+  tipId     Int
+  createdAt DateTime @default(now())
   tip       Tip      @relation(fields: [tipId], references: [id], onDelete: Cascade)
 
   @@index([tipId])

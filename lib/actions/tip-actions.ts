@@ -7,6 +7,8 @@ import { requireUser } from "@/lib/auth";
 import { CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { ensureDefaultTips } from "@/lib/daily-tip";
+import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
+import { selectDailyTipForDate } from "@/lib/daily-tip-schedule";
 import { canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import {
@@ -91,6 +93,27 @@ function parseTipImages(formData: FormData): TipImageValue[] {
   return images;
 }
 
+async function preserveCurrentAutomaticTip(tx: Prisma.TransactionClient) {
+  const dateKey = dailyProblemDateKey();
+  const [schedule, rotationSelection] = await Promise.all([
+    tx.dailyTipSchedule.findUnique({ where: { dateKey }, select: { tipId: true } }),
+    tx.dailyTipRotationSelection.findUnique({ where: { dateKey }, select: { tipId: true } })
+  ]);
+  if (schedule || rotationSelection) return;
+
+  const tips = await tx.tip.findMany({
+    orderBy: { position: "asc" },
+    select: { id: true, showInMainMenu: true }
+  });
+  const selectedTip = selectDailyTipForDate(tips, dateKey);
+  if (!selectedTip) return;
+
+  await tx.dailyTipRotationSelection.createMany({
+    data: [{ dateKey, tipId: selectedTip.id }],
+    skipDuplicates: true
+  });
+}
+
 export async function createTipAction(formData: FormData) {
   const user = await requireUser();
   if (!canUseAdminTools(user)) throw new Error("Only admins can create tips.");
@@ -105,6 +128,7 @@ export async function createTipAction(formData: FormData) {
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
   const tip = await prisma.$transaction(async (tx) => {
+    await preserveCurrentAutomaticTip(tx);
     await tx.$executeRaw`LOCK TABLE "Tip" IN SHARE ROW EXCLUSIVE MODE`;
     const lastTip = await tx.tip.findFirst({
       orderBy: { position: "desc" },
@@ -170,6 +194,7 @@ export async function updateTipAction(tipId: number, formData: FormData) {
   const problemIds = parseTipProblemIds(formData.getAll("problemIds"));
 
   await prisma.$transaction(async (tx) => {
+    await preserveCurrentAutomaticTip(tx);
     const orderedProblems = await orderedTipProblems(tx, problemIds);
 
     await tx.tip.update({
@@ -229,6 +254,7 @@ export async function deleteTipAction(tipId: number) {
   await ensureDefaultTips();
 
   await prisma.$transaction(async (tx) => {
+    await preserveCurrentAutomaticTip(tx);
     const tip = await tx.tip.findUnique({ where: { id: tipId }, select: { position: true } });
     if (!tip) return;
 
