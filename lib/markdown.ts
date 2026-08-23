@@ -6,7 +6,7 @@ import { jsxGraphCodeBlockHtml } from "./jsxgraph.ts";
 import { extractMarkdownFolds } from "./markdown-folds.ts";
 import { markdownImageSizingFromSrc } from "./markdown-images.ts";
 import { normalizeMarkdownQuestionMarkers } from "./markdown-question-markers.ts";
-import { replaceWikiLinks } from "./wikilinks.ts";
+import { replaceWikiLinks, type ResolvedWikiLink } from "./wikilinks.ts";
 
 function externalLinkAttributes(href: string | undefined): Record<string, string> {
   if (!href) return {};
@@ -108,7 +108,7 @@ async function renderMarkdownContent(
   markdown: string,
   missingSlugs = new Set<string>(),
   blockDisplayMath = true,
-  resolveWikiHref = (link: { targetSlug: string }) => `/concepts/${link.targetSlug}`,
+  resolveWikiHref: (link: { targetSlug: string }) => string | ResolvedWikiLink = (link) => `/concepts/${link.targetSlug}`,
   allowFolds = true
 ) {
   const extracted = allowFolds && blockDisplayMath
@@ -186,6 +186,7 @@ async function renderMarkdownContent(
       img: ["src", "alt", "title", "loading", "decoding", "style", "data-border"],
       ol: ["start"],
       span: ["class", "style"],
+      sup: ["aria-label", "class", "lang", "title"],
       math: ["xmlns", "display"],
       annotation: ["encoding"],
       svg: ["xmlns", "width", "height", "viewBox", "viewbox", "preserveAspectRatio", "preserveaspectratio"],
@@ -269,7 +270,7 @@ export async function renderMarkdown(
   markdown: string,
   missingSlugs = new Set<string>(),
   blockDisplayMath = true,
-  resolveWikiHref = (link: { targetSlug: string }) => `/concepts/${link.targetSlug}`
+  resolveWikiHref: (link: { targetSlug: string }) => string | ResolvedWikiLink = (link) => `/concepts/${link.targetSlug}`
 ) {
   return renderMarkdownContent(markdown, missingSlugs, blockDisplayMath, resolveWikiHref);
 }

@@ -39,6 +39,22 @@ export async function processContentImage(image: File): Promise<ProcessedContent
     throw new Error("Only AVIF, JPEG, PNG, and WebP images are supported.");
   }
 
+  const canKeepSource = Boolean(
+    metadata.width
+    && metadata.height
+    && metadata.width <= CONTENT_IMAGE_MAX_DIMENSION
+    && metadata.height <= CONTENT_IMAGE_MAX_DIMENSION
+    && (!metadata.orientation || metadata.orientation === 1)
+  );
+  if (canKeepSource) {
+    return {
+      body: source,
+      contentType: CONTENT_TYPES[format],
+      width: metadata.width!,
+      height: metadata.height!
+    };
+  }
+
   let pipeline = sharp(source, { animated: false, limitInputPixels: CONTENT_IMAGE_MAX_PIXELS })
     .rotate()
     .resize(CONTENT_IMAGE_MAX_DIMENSION, CONTENT_IMAGE_MAX_DIMENSION, {
@@ -46,29 +62,20 @@ export async function processContentImage(image: File): Promise<ProcessedContent
       withoutEnlargement: true
     });
 
-  if (format === "jpeg") pipeline = pipeline.jpeg({ quality: 85, mozjpeg: true });
+  if (format === "jpeg") pipeline = pipeline.jpeg({ quality: 92, mozjpeg: true });
   if (format === "png") pipeline = pipeline.png({ compressionLevel: 9, adaptiveFiltering: true });
-  if (format === "webp") pipeline = pipeline.webp({ quality: 82, effort: 4 });
-  if (format === "avif") pipeline = pipeline.avif({ quality: 60, effort: 4 });
+  if (format === "webp") pipeline = pipeline.webp({ quality: 90, effort: 4 });
+  if (format === "avif") pipeline = pipeline.avif({ quality: 75, effort: 4 });
 
   const processed = await pipeline.toBuffer({ resolveWithObject: true });
   if (!processed.info.width || !processed.info.height) {
     throw new Error("The server could not read this image's dimensions.");
   }
 
-  const canKeepSource = Boolean(
-    metadata.width
-    && metadata.height
-    && metadata.width <= CONTENT_IMAGE_MAX_DIMENSION
-    && metadata.height <= CONTENT_IMAGE_MAX_DIMENSION
-    && (!metadata.orientation || metadata.orientation === 1)
-    && source.byteLength <= processed.data.byteLength
-  );
-
   return {
-    body: canKeepSource ? source : processed.data,
+    body: processed.data,
     contentType: CONTENT_TYPES[format],
-    width: canKeepSource ? metadata.width! : processed.info.width,
-    height: canKeepSource ? metadata.height! : processed.info.height
+    width: processed.info.width,
+    height: processed.info.height
   };
 }

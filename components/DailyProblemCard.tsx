@@ -1,5 +1,6 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Difficulty } from "@/components/Difficulty";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { UserAvatar } from "@/components/UserAvatar";
 import { displayNameForUser } from "@/lib/user-display";
 import Link from "next/link";
@@ -17,11 +18,13 @@ type DailyProblemCardProps = {
     slug: string;
     title: string;
     difficulty: number | null;
+    language: string;
     author: CardUser;
   };
   domainLabel: string;
   imageUrl: string;
   imagePosition: string;
+  expectedLanguage: string;
   labels: {
     heading: string;
     by: string;
@@ -36,6 +39,7 @@ export function DailyProblemCard({
   domainLabel,
   imageUrl,
   imagePosition,
+  expectedLanguage,
   labels,
   solvers = []
 }: DailyProblemCardProps) {
@@ -43,7 +47,7 @@ export function DailyProblemCard({
     <Link href={`/problems/${problem.slug}`} className="home-daily-problem" data-tour-target="daily">
       <div>
         <p className="mw-kicker">{labels.heading}</p>
-        <h2><AsyncMarkdownInline markdown={problem.title} /></h2>
+        <h2><AsyncMarkdownInline markdown={problem.title} /><ContentLanguageFallback language={problem.language} expectedLanguage={expectedLanguage} /></h2>
         <p className="home-dashboard-author">
           <UserAvatar user={problem.author} size="xs" />
           {labels.by} {displayNameForUser(problem.author)}

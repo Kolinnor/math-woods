@@ -86,6 +86,7 @@ export default async function DailyProblemPreviewPage({
           domainLabel={translatedDomainLabel(preview.problem.domain, t.home.domainLabels)}
           imageUrl={preview.imageUrl}
           imagePosition={preview.imagePosition}
+          expectedLanguage={locale}
           labels={{
             heading: locale === "fr" ? "Problème du jour" : "Problem of the day",
             by: locale === "fr" ? "par" : "by",

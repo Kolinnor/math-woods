@@ -1,5 +1,6 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Difficulty } from "@/components/Difficulty";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { tipImageObjectPosition, tipImageUrl } from "@/lib/tip-images";
 import Link from "next/link";
@@ -23,10 +24,12 @@ type DailyTipCardProps = {
     title: string;
     domainLabel: string;
     difficulty: number | null;
+    language: string;
   } | null;
+  expectedLanguage: string;
 };
 
-export function DailyTipCard({ tip, labels, practiceProblem }: DailyTipCardProps) {
+export function DailyTipCard({ tip, labels, practiceProblem, expectedLanguage }: DailyTipCardProps) {
   return (
     <section className="home-tip-card" data-tour-target="tip">
       <div className="home-tip-image">
@@ -42,7 +45,7 @@ export function DailyTipCard({ tip, labels, practiceProblem }: DailyTipCardProps
         <MarkdownBlock html={tip.bodyHtml} />
         {practiceProblem && (
           <Link href={`/problems/${practiceProblem.slug}`} className="home-tip-practice">
-            <strong>{labels.practice}: <AsyncMarkdownInline markdown={practiceProblem.title} /></strong>
+            <strong>{labels.practice}: <AsyncMarkdownInline markdown={practiceProblem.title} /><ContentLanguageFallback language={practiceProblem.language} expectedLanguage={expectedLanguage} /></strong>
             <span className="home-tip-practice-meta">
               {practiceProblem.domainLabel}
               <Difficulty value={practiceProblem.difficulty} compact />

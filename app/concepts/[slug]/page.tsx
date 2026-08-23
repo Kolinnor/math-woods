@@ -9,6 +9,7 @@ import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
 import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ContentTranslations } from "@/components/ContentTranslations";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -39,8 +40,9 @@ import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import {
   renderMarkdownForContentLanguage,
-  resolveConceptHrefsForLanguage,
-  resolveConceptTitlesForLanguage
+  resolveConceptLinksForLanguage,
+  resolveConceptTitlesForLanguage,
+  resolveProblemLinksForLanguage
 } from "@/lib/translated-markdown";
 import { conceptTranslationFreshness } from "@/lib/translation-freshness";
 import {
@@ -355,14 +357,14 @@ export default async function ConceptPage({
     conceptBodyHtml,
     conceptTitleHtml,
     translationFreshness,
-    outgoingConceptHrefBySlug,
+    outgoingConceptLinkBySlug,
     outgoingConceptTitleBySlug,
     practiceExercises
   ] = await Promise.all([
     renderMarkdownForContentLanguage(concept.bodyMarkdown, concept.language),
     renderInlineMarkdown(concept.title),
     conceptTranslationFreshness(concept.translatedFromConcept, concept.translatedFromRevisionId),
-    resolveConceptHrefsForLanguage(
+    resolveConceptLinksForLanguage(
       existingOutgoingSlugs,
       concept.language
     ),
@@ -433,7 +435,7 @@ export default async function ConceptPage({
           in: backlinks.filter((link) => link.sourceType === "PROBLEM").map((link) => link.sourceId)
         }
       },
-      select: { id: true, slug: true, title: true, difficulty: true, isExercise: true }
+      select: { id: true, slug: true, title: true, language: true, difficulty: true, isExercise: true }
     }),
     prisma.concept.findMany({
       where: {
@@ -441,7 +443,7 @@ export default async function ConceptPage({
           in: backlinks.filter((link) => link.sourceType === "CONCEPT").map((link) => link.sourceId)
         }
       },
-      select: { id: true, slug: true, title: true }
+      select: { id: true, slug: true, title: true, language: true }
     }),
     prisma.problem.findMany({
       where: {
@@ -457,7 +459,7 @@ export default async function ConceptPage({
           }
         }
       },
-      select: { id: true, slug: true, title: true, isExercise: true },
+      select: { id: true, slug: true, title: true, language: true, isExercise: true },
       orderBy: { updatedAt: "desc" },
       take: 30
     })
@@ -467,6 +469,15 @@ export default async function ConceptPage({
   const spoilerProblemBacklinks = spoilerProblemBacklinksRaw.filter(
     (problem) => !problem.isExercise && !problemBacklinkIds.has(problem.id)
   );
+  const [problemBacklinkLinkBySlug, conceptBacklinkLinkBySlug, conceptBacklinkTitleBySlug] = await Promise.all([
+    resolveProblemLinksForLanguage(
+      [...problemBacklinks, ...spoilerProblemBacklinks].map((problem) => problem.slug),
+      concept.language,
+      { status: "PUBLISHED", listed: true, ...visibleProblemWhere(user) }
+    ),
+    resolveConceptLinksForLanguage(conceptBacklinks.map((item) => item.slug), concept.language),
+    resolveConceptTitlesForLanguage(conceptBacklinks.map((item) => item.slug), concept.language)
+  ]);
 
   return (
     <ForestPageLayout
@@ -639,10 +650,12 @@ export default async function ConceptPage({
 
         {practiceExercises.length > 0 && (
           <ConceptPracticeQueue
+            expectedLanguage={concept.language}
             exercises={practiceExercises.map((exercise) => ({
               id: exercise.id,
               slug: exercise.slug,
               titleHtml: exercise.titleHtml,
+              language: exercise.language,
               difficulty: exercise.difficulty,
               difficultyTone: exercise.difficultyTone,
               solved: exercise.solved,
@@ -668,8 +681,9 @@ export default async function ConceptPage({
             </summary>
             <div className="concept-problem-list">
               {regularProblemBacklinks.map((problem) => (
-                <Link key={problem.id} href={`/problems/${problem.slug}`} className="concept-problem-link">
-                  <AsyncMarkdownInline markdown={problem.title} />
+                <Link key={problem.id} href={(problemBacklinkLinkBySlug.get(problem.slug)?.href ?? `/problems/${problem.slug}`) as never} className="concept-problem-link">
+                  <AsyncMarkdownInline markdown={problemBacklinkLinkBySlug.get(problem.slug)?.title ?? problem.title} />
+                  <ContentLanguageFallback language={problemBacklinkLinkBySlug.get(problem.slug)?.language ?? problem.language} expectedLanguage={concept.language} />
                 </Link>
               ))}
               {regularProblemBacklinks.length === 0 && <p>{t.conceptDetail.noProblemsUsingConcept}</p>}
@@ -682,8 +696,9 @@ export default async function ConceptPage({
             </summary>
             <div className="concept-problem-list">
               {spoilerProblemBacklinks.map((problem) => (
-                <Link key={problem.id} href={`/problems/${problem.slug}`} className="concept-problem-link">
-                  <AsyncMarkdownInline markdown={problem.title} />
+                <Link key={problem.id} href={(problemBacklinkLinkBySlug.get(problem.slug)?.href ?? `/problems/${problem.slug}`) as never} className="concept-problem-link">
+                  <AsyncMarkdownInline markdown={problemBacklinkLinkBySlug.get(problem.slug)?.title ?? problem.title} />
+                  <ContentLanguageFallback language={problemBacklinkLinkBySlug.get(problem.slug)?.language ?? problem.language} expectedLanguage={concept.language} />
                 </Link>
               ))}
               {spoilerProblemBacklinks.length === 0 && <p>{t.conceptDetail.noSpoilerProblemsUsingConcept}</p>}
@@ -775,13 +790,15 @@ export default async function ConceptPage({
           <h2 className="mb-3 font-semibold">{t.conceptDetail.backlinks}</h2>
           <div className="grid gap-2 text-sm">
             {problemBacklinks.map((problem) => (
-              <Link key={`p-${problem.id}`} href={`/problems/${problem.slug}`} className="underline">
-                <AsyncMarkdownInline markdown={problem.title} />
+              <Link key={`p-${problem.id}`} href={(problemBacklinkLinkBySlug.get(problem.slug)?.href ?? `/problems/${problem.slug}`) as never} className="underline">
+                <AsyncMarkdownInline markdown={problemBacklinkLinkBySlug.get(problem.slug)?.title ?? problem.title} />
+                <ContentLanguageFallback language={problemBacklinkLinkBySlug.get(problem.slug)?.language ?? problem.language} expectedLanguage={concept.language} />
               </Link>
             ))}
             {conceptBacklinks.map((item) => (
-              <Link key={`c-${item.id}`} href={`/concepts/${item.slug}`} className="underline">
-                <AsyncMarkdownInline markdown={item.title} />
+              <Link key={`c-${item.id}`} href={(conceptBacklinkLinkBySlug.get(item.slug)?.href ?? `/concepts/${item.slug}`) as never} className="underline">
+                <AsyncMarkdownInline markdown={conceptBacklinkTitleBySlug.get(item.slug) ?? item.title} />
+                <ContentLanguageFallback language={conceptBacklinkLinkBySlug.get(item.slug)?.language ?? item.language} expectedLanguage={concept.language} />
               </Link>
             ))}
           </div>
@@ -794,14 +811,16 @@ export default async function ConceptPage({
           <div className="grid gap-2 text-sm">
             {uniqueOutgoingLinks.map((link) => {
               const title = outgoingConceptTitleBySlug.get(link.targetSlug) ?? titleFromConceptSlug(link.targetSlug);
+              const resolvedLink = outgoingConceptLinkBySlug.get(link.targetSlug);
 
               return (
                 <Link
                   key={link.id}
-                  href={(link.exists ? (outgoingConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : missingConceptHref(title)) as never}
+                  href={(link.exists ? (resolvedLink?.href ?? `/concepts/${link.targetSlug}`) : missingConceptHref(title)) as never}
                   className={link.exists ? "wiki-link" : "wiki-link missing"}
                 >
                   <AsyncMarkdownInline markdown={title} />
+                  {link.exists && resolvedLink && <ContentLanguageFallback language={resolvedLink.language} expectedLanguage={concept.language} />}
                 </Link>
               );
             })}

@@ -125,11 +125,13 @@ export default async function DailyTipPreviewPage({
             method: locale === "fr" ? "Méthode du jour" : "Method of the day",
             practice: locale === "fr" ? "S'entraîner" : "Practice"
           }}
+          expectedLanguage={locale}
           practiceProblem={practiceProblem ? {
             slug: practiceProblem.slug,
             title: practiceProblem.title,
             domainLabel: translatedDomainLabel(practiceProblem.domain, t.home.domainLabels),
-            difficulty: practiceProblem.difficulty
+            difficulty: practiceProblem.difficulty,
+            language: practiceProblem.language
           } : null}
         />
       </div>

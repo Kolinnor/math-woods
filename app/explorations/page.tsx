@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookOpen, Clock3, Search, Users } from "lucide-react";
 import { MathDomain } from "@prisma/client";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -124,7 +125,7 @@ export default async function ExplorationsPage({
               </Link>
               <div className="exploration-catalog-copy">
                 <p className="eyebrow">{translatedDomainLabel(exploration.domain, t.home.domainLabels)}</p>
-                <h2><Link href={`/explorations/${exploration.slug}/start` as never}>{exploration.title}</Link></h2>
+                <h2><Link href={`/explorations/${exploration.slug}/start` as never}>{exploration.title}<ContentLanguageFallback language={exploration.language} expectedLanguage={preferredLanguage} /></Link></h2>
                 <p>{exploration.summary || "An interactive mathematical exploration."}</p>
                 <div className="exploration-catalog-meta">
                   <span><BookOpen size={15} /> {blockCount} blocks</span>

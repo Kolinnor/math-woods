@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownInline } from "@/components/MarkdownInline";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { problemDifficultyBars } from "@/lib/problem-difficulty";
 
 type ConceptPracticeQueueProps = {
@@ -13,12 +14,14 @@ type ConceptPracticeQueueProps = {
     id: number;
     slug: string;
     titleHtml: string;
+    language: string;
     difficulty: number | null;
     difficultyTone: string;
     solved: boolean;
     solvedCountLabel: string;
     blurbHtml: string;
   }>;
+  expectedLanguage: string;
   labels: {
     title: string;
     previous: string;
@@ -30,7 +33,7 @@ type ConceptPracticeQueueProps = {
   };
 };
 
-export function ConceptPracticeQueue({ exercises, labels }: ConceptPracticeQueueProps) {
+export function ConceptPracticeQueue({ exercises, labels, expectedLanguage }: ConceptPracticeQueueProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const router = useRouter();
   const queueId = useId();
@@ -144,6 +147,7 @@ export function ConceptPracticeQueue({ exercises, labels }: ConceptPracticeQueue
                 </span>
                 <span className="concept-practice-queue-title">
                   <MarkdownInline html={exercise.titleHtml} />
+                  <ContentLanguageFallback language={exercise.language} expectedLanguage={expectedLanguage} />
                 </span>
                 {exercise.solved && (
                   <span className="concept-practice-queue-row-meta">

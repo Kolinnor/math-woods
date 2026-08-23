@@ -3,6 +3,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContestProblemTitlePicker } from "@/components/ContestProblemTitlePicker";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ContestTabs } from "@/components/ContestTabs";
 import { Difficulty } from "@/components/Difficulty";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -248,7 +249,7 @@ export default async function ContestPage({
             <div className="mw-section-heading"><h2>{t.submission}</h2></div>
             {ownSubmission && (
               <div className="contest-own-submission">
-                <strong><AsyncMarkdownInline markdown={displayProblemByGroup.get(ownSubmission.translationGroupId)?.title ?? ownSubmission.problem.title} /></strong>
+                <strong><AsyncMarkdownInline markdown={displayProblemByGroup.get(ownSubmission.translationGroupId)?.title ?? ownSubmission.problem.title} /><ContentLanguageFallback language={(displayProblemByGroup.get(ownSubmission.translationGroupId) ?? ownSubmission.problem).language} expectedLanguage={locale} /></strong>
                 <form action={withdrawContestSubmissionAction}>
                   <input type="hidden" name="contestId" value={featured.id} />
                   <button className="secondary" type="submit">{t.withdraw}</button>
@@ -284,7 +285,7 @@ export default async function ContestPage({
               return (
                 <Link key={submission.id} href={`/problems/${problem.slug}`} className="contest-entry">
                   <Difficulty value={problem.difficulty} compact />
-                  <span className="contest-entry-title"><strong><AsyncMarkdownInline markdown={problem.title} /></strong><small>{displayNameForUser(submission.user)}</small></span>
+                  <span className="contest-entry-title"><strong><AsyncMarkdownInline markdown={problem.title} /><ContentLanguageFallback language={problem.language} expectedLanguage={locale} /></strong><small>{displayNameForUser(submission.user)}</small></span>
                   <UserAvatar user={submission.user} size="sm" />
                   {submission.placement === "WINNER" && <span className="contest-placement winner"><Trophy size={15} /> {t.winner}</span>}
                   {submission.placement === "HONORABLE_MENTION" && <span className="contest-placement"><Medal size={15} /> {t.honorable}</span>}

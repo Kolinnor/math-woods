@@ -11083,6 +11083,23 @@ button.danger:hover,
   color: var(--accent);
 }
 
+.content-language-fallback {
+  color: var(--mw-tertiary);
+  display: inline-block;
+  font-family: var(--font-sans), Arial, sans-serif;
+  font-size: 0.58em;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  margin-left: 0.2em;
+  text-decoration: none;
+  vertical-align: super;
+}
+
+a:hover .content-language-fallback {
+  color: currentColor;
+}
+
 .prose-math .markdown-problem-link,
 .markdown-problem-link {
   color: var(--notice-orange-stripe);
@@ -15393,12 +15410,6 @@ button.problem-favorite-count:disabled {
   letter-spacing: 0.08em;
   line-height: 1;
   padding: 0.18rem 0.34rem;
-}
-
-.problem-language-badge-translation {
-  background: var(--problem-opened-bg);
-  border-color: var(--problem-opened-border);
-  color: #174f9e;
 }
 
 .problem-review-badge {

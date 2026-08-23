@@ -2,6 +2,7 @@ import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { FieldHelp } from "@/components/FieldHelp";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
@@ -29,7 +30,7 @@ import {
 } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
-import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
+import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import { selectProblemBrowserTranslation } from "@/lib/problem-browser-translations";
 import { PROBLEM_STYLE_OPTIONS, parseProblemStyle, problemStyleLabel } from "@/lib/problem-styles";
@@ -966,7 +967,6 @@ export default async function ProblemsPage({
               const difficultyLevel = problemDifficultyBars(difficulty);
               const tone = problemDifficultyTone(difficulty);
               const authorName = displayNameForUser(problem.author);
-              const showLanguageBadge = problem.language !== preferredLanguage;
               const problemHref = `/problems/${problem.slug}`;
 
               return (
@@ -1031,14 +1031,7 @@ export default async function ProblemsPage({
                     <div className="problem-ledger-title-row">
                       <h3>
                         <AsyncMarkdownInline markdown={problem.title} />
-                        {showLanguageBadge && (
-                          <span
-                            className="problem-language-badge problem-language-badge-translation"
-                            title={contentLanguageLabel(problem.language)}
-                          >
-                            {problem.language.toUpperCase()}
-                          </span>
-                        )}
+                        <ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} />
                         {problem.canAppearOnFrontPage && <span className="problem-language-badge">{t.problems.featured}</span>}
                         {problem.isExercise && <span className="problem-language-badge">{t.problems.exerciseType}</span>}
                       </h3>

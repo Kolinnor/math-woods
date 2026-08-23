@@ -2,13 +2,19 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { canViewProblem } from "@/lib/problem-visibility";
+import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
 import { problemStyleLabel } from "@/lib/problem-styles";
+import {
+  resolveConceptLinksForLanguage,
+  resolveConceptTitlesForLanguage,
+  resolveProblemLinksForLanguage
+} from "@/lib/translated-markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +48,17 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
 
   if (!quote) notFound();
   const relatedProblems = quote.relatedProblems.filter(({ problem }) => canViewProblem(user, problem));
+  const relatedProblemSlugs = relatedProblems.map(({ problem }) => problem.slug);
+  const relatedConceptSlugs = quote.relatedConcepts.map(({ concept }) => concept.slug);
+  const [problemLinkBySlug, conceptLinkBySlug, conceptTitleBySlug] = await Promise.all([
+    resolveProblemLinksForLanguage(relatedProblemSlugs, quote.language, {
+      status: "PUBLISHED",
+      listed: true,
+      ...visibleProblemWhere(user)
+    }),
+    resolveConceptLinksForLanguage(relatedConceptSlugs, quote.language),
+    resolveConceptTitlesForLanguage(relatedConceptSlugs, quote.language)
+  ]);
 
   return (
     <ForestPageLayout
@@ -81,9 +98,10 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
             <h2 className="mb-3 text-lg font-semibold">{t.quotePage.relatedProblems}</h2>
             <div className="grid gap-3">
               {relatedProblems.map(({ problem }) => (
-                <Link key={problem.id} href={`/problems/${problem.slug}`} className="panel block p-4">
+                <Link key={problem.id} href={(problemLinkBySlug.get(problem.slug)?.href ?? `/problems/${problem.slug}`) as never} className="panel block p-4">
                   <div className="font-medium">
-                    <AsyncMarkdownInline markdown={problem.title} />
+                    <AsyncMarkdownInline markdown={problemLinkBySlug.get(problem.slug)?.title ?? problem.title} />
+                    <ContentLanguageFallback language={problemLinkBySlug.get(problem.slug)?.language ?? problem.language} expectedLanguage={quote.language} />
                   </div>
                   <div className="muted mt-2 flex flex-wrap gap-2 text-xs">
                     {problem.styles.map((style) => (
@@ -102,8 +120,8 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
             <h2 className="mb-3 text-lg font-semibold">{t.quotePage.relatedConcepts}</h2>
             <div className="grid gap-3">
               {quote.relatedConcepts.map(({ concept }) => (
-                <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
-                  <div className="font-medium"><AsyncMarkdownInline markdown={concept.title} /></div>
+                <Link key={concept.id} href={(conceptLinkBySlug.get(concept.slug)?.href ?? `/concepts/${concept.slug}`) as never} className="panel block p-4">
+                  <div className="font-medium"><AsyncMarkdownInline markdown={conceptTitleBySlug.get(concept.slug) ?? concept.title} /><ContentLanguageFallback language={conceptLinkBySlug.get(concept.slug)?.language ?? concept.language} expectedLanguage={quote.language} /></div>
                   {concept.aliases.length > 0 && (
                     <div className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</div>
                   )}

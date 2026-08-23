@@ -1,4 +1,5 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
@@ -217,7 +218,7 @@ export default async function SearchPage({
           <div className="grid gap-3">
             {concepts.map((concept) => (
               <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
-                <div className="font-medium"><AsyncMarkdownInline markdown={concept.title} /></div>
+                <div className="font-medium"><AsyncMarkdownInline markdown={concept.title} /><ContentLanguageFallback language={concept.language} expectedLanguage={preferredLanguage} /></div>
                 <div className="muted mt-1 text-xs">
                   {translatedDomainLabel(concept.domainCode, t.home.domainLabels)} / {t.concepts.statuses[concept.status]}
                 </div>
@@ -240,6 +241,7 @@ export default async function SearchPage({
               >
                 <div className="font-medium">
                   <AsyncMarkdownInline markdown={problem.title} />
+                  <ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} />
                 </div>
                 <div className="muted mt-1 text-xs">{translatedDomainLabel(problem.domain, t.home.domainLabels)}</div>
               </Link>
@@ -252,7 +254,7 @@ export default async function SearchPage({
           <div className="grid gap-3">
             {explorations.map((exploration) => (
               <Link key={exploration.id} href={`/explorations/${exploration.slug}/start` as never} className="panel block p-4">
-                <div className="font-medium">{exploration.title}</div>
+                <div className="font-medium">{exploration.title}<ContentLanguageFallback language={exploration.language} expectedLanguage={preferredLanguage} /></div>
               </Link>
             ))}
           </div>
@@ -263,7 +265,7 @@ export default async function SearchPage({
           <div className="grid gap-3">
             {rankedQuotes.map((quote) => (
               <Link key={quote.id} href={`/quotes/${quote.slug}`} className="panel block p-4">
-                <div className="font-medium">"{quote.text}"</div>
+                <div className="font-medium">"{quote.text}"<ContentLanguageFallback language={quote.language} expectedLanguage={preferredLanguage} /></div>
                 <div className="muted mt-1 text-xs">{quote.attributedTo ?? quote.provenance}</div>
               </Link>
             ))}

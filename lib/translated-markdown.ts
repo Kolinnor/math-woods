@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { parseContentLanguage } from "@/lib/languages";
 import { renderMarkdown } from "@/lib/markdown";
 import { selectContentTranslationsByGroup, selectContentTranslation } from "@/lib/translation-routing";
@@ -11,16 +12,78 @@ type ResolvedConcept = {
   isSource?: boolean;
 };
 
-export async function resolveConceptHrefsForLanguage(slugs: readonly string[], language: string) {
+export async function resolveProblemLinksForLanguage(
+  slugs: readonly string[],
+  language: string,
+  where: Prisma.ProblemWhereInput = {}
+) {
   const uniqueSlugs = [...new Set(slugs)];
-  if (uniqueSlugs.length === 0) return new Map<string, string>();
+  if (uniqueSlugs.length === 0) {
+    return new Map<string, { href: string; slug: string; language: string; title: string; difficulty: number | null }>();
+  }
+
+  const targetLanguage = parseContentLanguage(language);
+  const problems = await prisma.problem.findMany({
+    where: { AND: [{ slug: { in: uniqueSlugs } }, where] },
+    select: { slug: true, translationGroupId: true }
+  });
+  if (problems.length === 0) {
+    return new Map<string, { href: string; slug: string; language: string; title: string; difficulty: number | null }>();
+  }
+
+  const translations = await prisma.problem.findMany({
+    where: {
+      AND: [
+        { translationGroupId: { in: [...new Set(problems.map((problem) => problem.translationGroupId))] } },
+        where
+      ]
+    },
+    select: {
+      slug: true,
+      title: true,
+      language: true,
+      difficulty: true,
+      translationGroupId: true,
+      translatedFromProblemId: true
+    }
+  });
+  const translationByGroup = new Map(
+    selectContentTranslationsByGroup(
+      translations.map((translation) => ({
+        ...translation,
+        isSource: translation.translatedFromProblemId === null
+      })),
+      targetLanguage
+    ).map((translation) => [translation.translationGroupId, translation])
+  );
+
+  return new Map(problems.flatMap((problem) => {
+    const translation = translationByGroup.get(problem.translationGroupId);
+    return translation ? [[problem.slug, {
+      href: `/problems/${translation.slug}`,
+      slug: translation.slug,
+      language: translation.language,
+      title: translation.title,
+      difficulty: translation.difficulty
+    }] as const] : [];
+  }));
+}
+
+export async function resolveConceptHrefsForLanguage(slugs: readonly string[], language: string) {
+  const links = await resolveConceptLinksForLanguage(slugs, language);
+  return new Map([...links].map(([slug, link]) => [slug, link.href]));
+}
+
+export async function resolveConceptLinksForLanguage(slugs: readonly string[], language: string) {
+  const uniqueSlugs = [...new Set(slugs)];
+  if (uniqueSlugs.length === 0) return new Map<string, { href: string; language: string }>();
 
   const targetLanguage = parseContentLanguage(language);
   const concepts = await prisma.concept.findMany({
     where: { slug: { in: uniqueSlugs } },
     select: { slug: true, translationGroupId: true }
   });
-  if (concepts.length === 0) return new Map<string, string>();
+  if (concepts.length === 0) return new Map<string, { href: string; language: string }>();
 
   const translatedConcepts = await prisma.concept.findMany({
     where: {
@@ -28,20 +91,23 @@ export async function resolveConceptHrefsForLanguage(slugs: readonly string[], l
     },
     select: { slug: true, language: true, translationGroupId: true, translatedFromConceptId: true }
   });
-  const translatedSlugByGroup = new Map(
+  const translatedConceptByGroup = new Map(
     selectContentTranslationsByGroup(
       translatedConcepts.map((concept) => ({
         ...concept,
         isSource: concept.translatedFromConceptId === null
       })),
       targetLanguage
-    ).map((concept) => [concept.translationGroupId, concept.slug])
+    ).map((concept) => [concept.translationGroupId, concept])
   );
 
   return new Map(
     concepts.map((concept) => [
       concept.slug,
-      `/concepts/${translatedSlugByGroup.get(concept.translationGroupId) ?? concept.slug}`
+      {
+        href: `/concepts/${translatedConceptByGroup.get(concept.translationGroupId)?.slug ?? concept.slug}`,
+        language: translatedConceptByGroup.get(concept.translationGroupId)?.language ?? targetLanguage
+      }
     ])
   );
 }
@@ -164,14 +230,14 @@ export async function renderMarkdownCollectionForContentLanguage(
         select: { slug: true, language: true, translationGroupId: true, translatedFromConceptId: true }
       })
     : [];
-  const translatedSlugByGroup = new Map(
+  const translatedConceptByGroup = new Map(
     selectContentTranslationsByGroup(
       translatedConcepts.map((concept) => ({
         ...concept,
         isSource: concept.translatedFromConceptId === null
       })),
       targetLanguage
-    ).map((concept) => [concept.translationGroupId, concept.slug])
+    ).map((concept) => [concept.translationGroupId, concept])
   );
   const missingSlugs = new Set(targetSlugs.filter((slug) => !conceptByLookupSlug.has(slug)));
 
@@ -181,7 +247,12 @@ export async function renderMarkdownCollectionForContentLanguage(
         const concept = conceptByLookupSlug.get(link.targetSlug);
         if (!concept) return `/concepts/${link.targetSlug}`;
 
-        return `/concepts/${translatedSlugByGroup.get(concept.translationGroupId) ?? concept.slug}`;
+        const translatedConcept = translatedConceptByGroup.get(concept.translationGroupId) ?? concept;
+        return {
+          href: `/concepts/${translatedConcept.slug}`,
+          language: translatedConcept.language,
+          expectedLanguage: targetLanguage
+        };
       })
     )
   );

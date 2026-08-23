@@ -423,6 +423,7 @@ import {
   translationLanguageSet
 } from "../lib/translation-routing.ts";
 import { dictionaryForContentLanguage, interfaceLocaleForContentLanguage } from "../lib/i18n/dictionary.ts";
+import { contentLanguageFallback } from "../lib/content-language-fallback.ts";
 import {
   ACTIVE_CONTENT_LANGUAGES,
   contentLanguageLabel,
@@ -661,6 +662,17 @@ assert.equal(editableContentLanguage("de", "de"), "de");
 assert.throws(() => editableContentLanguage("es", "de"), /English or Français only/);
 assert.equal(interfaceLocaleForContentLanguage("fr"), "fr");
 assert.equal(interfaceLocaleForContentLanguage("es"), "en");
+assert.equal(contentLanguageFallback("fr", "fr"), null);
+assert.deepEqual(contentLanguageFallback("en", "fr"), {
+  code: "EN",
+  language: "en",
+  label: "Disponible uniquement en anglais"
+});
+assert.deepEqual(contentLanguageFallback("fr", "en"), {
+  code: "FR",
+  language: "fr",
+  label: "Available only in French"
+});
 assert.deepEqual(
   problemCreationNotificationCopy({
     actorName: "Sequoia",
@@ -719,6 +731,14 @@ const html = replaceWikiLinks(
 assert.equal(
   html,
   'A lire: <a class="wiki-link missing" href="/concepts/racine-primitive?missingTitle=racine%20primitive">racines primitives</a>.'
+);
+assert.equal(
+  replaceWikiLinks("See [[norm]].", () => ({
+    href: "/concepts/norme",
+    language: "fr",
+    expectedLanguage: "en"
+  })),
+  'See <a class="wiki-link" href="/concepts/norme">norm<sup aria-label="Available only in French" class="content-language-fallback" lang="fr" title="Available only in French">FR</sup></a>.'
 );
 assert.equal(
   missingConceptHref("Primitive root"),
@@ -2689,6 +2709,16 @@ assert.deepEqual(validateImageUploadInput({ filename: "diagram.png", contentType
   sizeBytes: 42
 });
 assert.throws(() => validateImageUploadInput({ filename: "diagram.svg", contentType: "image/svg+xml", sizeBytes: 42 }));
+
+const originalContentImage = await sharp({
+  create: { width: 1200, height: 800, channels: 3, background: "#f8f6ef" }
+}).jpeg({ quality: 100 }).toBuffer();
+const preservedContentImage = await processContentImage(
+  new File([Uint8Array.from(originalContentImage)], "photo.jpg", { type: "image/jpeg" })
+);
+assert.equal(preservedContentImage.width, 1200);
+assert.equal(preservedContentImage.height, 800);
+assert.deepEqual(preservedContentImage.body, originalContentImage);
 
 const oversizedContentImage = await sharp({
   create: { width: 3000, height: 1200, channels: 3, background: "#f8f6ef" }

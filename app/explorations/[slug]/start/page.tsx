@@ -10,6 +10,12 @@ import { asExplorationState } from "@/lib/exploration-engine";
 import { canEditExploration, canViewExploration } from "@/lib/explorations";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { canViewProblem } from "@/lib/problem-visibility";
+import { visibleProblemWhere } from "@/lib/problem-visibility";
+import {
+  resolveConceptLinksForLanguage,
+  resolveConceptTitlesForLanguage,
+  resolveProblemLinksForLanguage
+} from "@/lib/translated-markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +53,7 @@ export default async function StartExplorationPage({
                   status: true
                 }
               },
-              concept: { select: { slug: true, title: true } },
+              concept: { select: { slug: true, title: true, language: true } },
               problemGroups: {
                 orderBy: { position: "asc" },
                 include: {
@@ -115,6 +121,22 @@ export default async function StartExplorationPage({
       groups.flatMap((group) => group.problems.map(({ problem }) => problem.translationGroupId))
     )
   ));
+  const visibleProblemSlugs = Array.from(new Set(
+    Array.from(visibleProblemGroupsByBlockId.values()).flatMap((groups) =>
+      groups.flatMap((group) => group.problems.map(({ problem }) => problem.slug))
+    )
+  ));
+  const visibleConceptSlugs = Array.from(new Set(
+    readableBlocks.flatMap((block) => block.concept ? [block.concept.slug] : [])
+  ));
+  const [problemLinkBySlug, conceptLinkBySlug, conceptTitleBySlug] = await Promise.all([
+    resolveProblemLinksForLanguage(visibleProblemSlugs, exploration.language, {
+      status: { not: "ARCHIVED" },
+      ...visibleProblemWhere(user)
+    }),
+    resolveConceptLinksForLanguage(visibleConceptSlugs, exploration.language),
+    resolveConceptTitlesForLanguage(visibleConceptSlugs, exploration.language)
+  ]);
   const solvedAttempts = user && visibleProblemTranslationGroups.length > 0
     ? await prisma.problemAttempt.findMany({
         where: {
@@ -155,26 +177,27 @@ export default async function StartExplorationPage({
     continueToBlockId: block.continueToBlockId,
     autoContinue: block.autoContinue,
     problem: block.problem ? {
-      slug: block.problem.slug,
-      titleHtml: await renderInlineMarkdown(block.problem.title),
-      difficulty: block.problem.difficulty
+      slug: problemLinkBySlug.get(block.problem.slug)?.slug ?? block.problem.slug,
+      titleHtml: await renderInlineMarkdown(problemLinkBySlug.get(block.problem.slug)?.title ?? block.problem.title),
+      difficulty: problemLinkBySlug.get(block.problem.slug)?.difficulty ?? block.problem.difficulty
     } : null,
     problemGroups: await Promise.all((visibleProblemGroupsByBlockId.get(block.id) ?? []).map(async (group) => ({
       id: group.id,
       title: group.title,
       problems: await Promise.all(group.problems.map(async ({ id, problem }) => ({
         id,
-        slug: problem.slug,
-        titleHtml: await renderInlineMarkdown(problem.title),
-        difficulty: problem.difficulty,
+        slug: problemLinkBySlug.get(problem.slug)?.slug ?? problem.slug,
+        titleHtml: await renderInlineMarkdown(problemLinkBySlug.get(problem.slug)?.title ?? problem.title),
+        difficulty: problemLinkBySlug.get(problem.slug)?.difficulty ?? problem.difficulty,
         listed: problem.listed,
-        language: problem.language,
+        language: problemLinkBySlug.get(problem.slug)?.language ?? problem.language,
         solved: solvedProblemGroups.has(problem.translationGroupId)
       })))
     }))),
     concept: block.concept ? {
-      slug: block.concept.slug,
-      titleHtml: await renderInlineMarkdown(block.concept.title)
+      slug: conceptLinkBySlug.get(block.concept.slug)?.href.split("/").at(-1) ?? block.concept.slug,
+      titleHtml: await renderInlineMarkdown(conceptTitleBySlug.get(block.concept.slug) ?? block.concept.title),
+      language: conceptLinkBySlug.get(block.concept.slug)?.language ?? block.concept.language
     } : null,
     options: block.options.map((option) => ({ id: option.id, label: option.label, toBlockId: option.toBlockId })),
     outcomes: block.kind === "QUIZ"
@@ -205,6 +228,7 @@ export default async function StartExplorationPage({
         initialVisitedBlockKeys={initialVisitedBlockKeys}
         initialAnswers={(session?.answers ?? []).map((answer) => ({ blockKey: answer.blockKey, response: answer.response, isCorrect: answer.isCorrect }))}
         signedIn={Boolean(user)}
+        contentLanguage={exploration.language}
         canEdit={isEditor}
       />
     </ForestPageLayout>

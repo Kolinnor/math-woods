@@ -4,6 +4,7 @@ import { ExternalLink, Handshake } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
 import { achievementsForLocale } from "@/lib/achievement-copy";
@@ -360,6 +361,7 @@ export default async function ProfilePage({
                     className={problemLinkClass("panel block p-4", currentUserSolvedIds.has(problem.id))}
                   >
                     <AsyncMarkdownInline markdown={problem.title} />
+                    <ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} />
                     <time dateTime={problem.contributionDate.toISOString()} className="muted mt-1 block text-sm">
                       {t.profile.problemPostedOn(contributionDateLabel(problem.contributionDate))}
                     </time>
@@ -379,6 +381,7 @@ export default async function ProfilePage({
                     className="panel block p-4"
                   >
                     <AsyncMarkdownInline markdown={solution.problem.title} />
+                    <ContentLanguageFallback language={solution.language} expectedLanguage={preferredLanguage} />
                     <time dateTime={solution.contributionDate.toISOString()} className="muted mt-1 block text-sm">
                       {t.profile.solutionWrittenOn(contributionDateLabel(solution.contributionDate))}
                     </time>
@@ -394,6 +397,7 @@ export default async function ProfilePage({
                 {concepts.map((concept) => (
                   <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
                     <AsyncMarkdownInline markdown={concept.title} />
+                    <ContentLanguageFallback language={concept.language} expectedLanguage={preferredLanguage} />
                     <time dateTime={concept.contributionDate.toISOString()} className="muted mt-1 block text-sm">
                       {t.profile.conceptCreatedOn(contributionDateLabel(concept.contributionDate))}
                     </time>
@@ -408,7 +412,7 @@ export default async function ProfilePage({
               <div className="grid gap-3">
                 {playlists.map((playlist) => (
                   <Link key={playlist.id} href={`/explorations/${playlist.slug}/start` as never} className="panel block p-4">
-                    {playlist.title}
+                    {playlist.title}<ContentLanguageFallback language={playlist.language} expectedLanguage={preferredLanguage} />
                   </Link>
                 ))}
                 {playlists.length === 0 && <p className="muted panel p-5">{t.profile.noPlaylists}</p>}
@@ -428,6 +432,7 @@ export default async function ProfilePage({
                   className={problemLinkClass("panel block p-4", currentUserSolvedIds.has(attempt.problemId))}
                 >
                   <AsyncMarkdownInline markdown={attempt.problem.title} />
+                  <ContentLanguageFallback language={attempt.language} expectedLanguage={preferredLanguage} />
                 </Link>
               ))}
               {solved.length === 0 && <p className="muted panel p-5">{t.profile.noSolvedProblems}</p>}
@@ -446,6 +451,7 @@ export default async function ProfilePage({
                   className={problemLinkClass("panel block p-4", currentUserSolvedIds.has(favorite.problemId))}
                 >
                   <AsyncMarkdownInline markdown={favorite.problem.title} />
+                  <ContentLanguageFallback language={favorite.language} expectedLanguage={preferredLanguage} />
               </Link>
             ))}
               {favorites.length === 0 && <p className="muted panel p-5">{t.profile.noFavoriteProblems}</p>}

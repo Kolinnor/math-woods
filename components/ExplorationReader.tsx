@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, Flag, Pencil, RotateCcw } from "lucide-react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownInline } from "@/components/MarkdownInline";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import {
   saveExplorationBlockProgressAction,
   submitExplorationResponseAction
@@ -41,7 +42,7 @@ export type ExplorationReaderBlock = {
       solved: boolean;
     }>;
   }>;
-  concept: { slug: string; titleHtml: string } | null;
+  concept: { slug: string; titleHtml: string; language: string } | null;
   options: Array<{ id: number; label: string; toBlockId: number | null }>;
   outcomes: Array<{ id: number; label: string; toBlockId: number | null }>;
 };
@@ -84,6 +85,7 @@ export function ExplorationReader({
   initialVisitedBlockKeys,
   initialAnswers,
   signedIn,
+  contentLanguage,
   canEdit = false
 }: {
   playlistId: number;
@@ -95,6 +97,7 @@ export function ExplorationReader({
   initialVisitedBlockKeys: string[];
   initialAnswers: InitialAnswer[];
   signedIn: boolean;
+  contentLanguage: string;
   canEdit?: boolean;
 }) {
   const [state, setState] = useState(() => asExplorationState(initialState));
@@ -314,7 +317,7 @@ export function ExplorationReader({
                       href={`/problems/${problem.slug}`}
                       className={problemLinkClass("related-problem-link block", problem.solved)}
                     >
-                      <strong><MarkdownInline html={problem.titleHtml} /></strong>
+                      <strong><MarkdownInline html={problem.titleHtml} /><ContentLanguageFallback language={problem.language} expectedLanguage={contentLanguage} /></strong>
                       <span>
                         {problem.difficulty !== null ? `Difficulty ${problem.difficulty}/100` : "Unrated"}
                         {!problem.listed ? " - Exploration-specific" : ""}
@@ -329,7 +332,7 @@ export function ExplorationReader({
       </section>
     );
     if (block.kind === "CONCEPT" && block.concept) return (
-      <section className="exploration-reference-block exploration-concept-block"><div><p className="eyebrow">Concept</p><h2><MarkdownInline html={block.concept.titleHtml} /></h2></div>{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<Link href={`/concepts/${block.concept.slug}`} className="button secondary">Open concept <BookOpen size={16} /></Link></section>
+      <section className="exploration-reference-block exploration-concept-block"><div><p className="eyebrow">Concept</p><h2><MarkdownInline html={block.concept.titleHtml} /><ContentLanguageFallback language={block.concept.language} expectedLanguage={contentLanguage} /></h2></div>{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<Link href={`/concepts/${block.concept.slug}`} className="button secondary">Open concept <BookOpen size={16} /></Link></section>
     );
     if (block.kind === "CHOICE") return (
       <section className="exploration-interaction-block">{block.bodyHtml && <MarkdownBlock html={block.bodyHtml} />}<div className="exploration-choice-grid">{block.options.map((option) => <button key={option.id} type="button" className={responses[key] === String(option.id) ? "secondary is-selected" : "secondary"} disabled={isPending} onClick={() => submitResponse(block, String(option.id), pathIndex)}>{option.label}<ArrowRight size={16} /></button>)}</div></section>

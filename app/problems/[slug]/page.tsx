@@ -6,6 +6,7 @@ import { Check, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, 
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { Difficulty } from "@/components/Difficulty";
 import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -63,8 +64,9 @@ import { getPreferredContentLanguage } from "@/lib/server-language";
 import { solutionConcernIsPublic } from "@/lib/solution-reports";
 import {
   renderMarkdownCollectionForContentLanguage,
-  resolveConceptHrefsForLanguage,
-  resolveConceptTitlesForLanguage
+  resolveConceptLinksForLanguage,
+  resolveConceptTitlesForLanguage,
+  resolveProblemLinksForLanguage
 } from "@/lib/translated-markdown";
 import { problemTranslationFreshness } from "@/lib/translation-freshness";
 import {
@@ -287,6 +289,11 @@ export default async function ProblemPage({
   const relatedProblems = problem.relatedGroups.flatMap((group) =>
     group.relations.map((relation) => relation.targetProblem)
   ).filter((targetProblem) => canViewProblem(user, targetProblem));
+  const relatedProblemLinkBySlug = await resolveProblemLinksForLanguage(
+    relatedProblems.map((relatedProblem) => relatedProblem.slug),
+    problem.language,
+    { status: { not: "ARCHIVED" }, ...visibleProblemWhere(user) }
+  );
   const hasRelatedProblems = problem.relatedGroups.some((group) => group.relations.length > 0);
   const proofVoteGroupsPromise = proofIds.length
     ? prisma.vote.groupBy({
@@ -534,7 +541,7 @@ export default async function ProblemPage({
   const [
     renderedProblemContent,
     translationFreshness,
-    linkedConceptHrefBySlug,
+    linkedConceptLinkBySlug,
     linkedConceptTitleBySlug
   ] = await Promise.all([
     renderMarkdownCollectionForContentLanguage(
@@ -542,7 +549,7 @@ export default async function ProblemPage({
       problem.language
     ),
     problemTranslationFreshness(problem.translatedFromProblem, problem.translatedFromRevisionId),
-    resolveConceptHrefsForLanguage(
+    resolveConceptLinksForLanguage(
       links.filter((link) => link.exists).map((link) => link.targetSlug),
       problem.language
     ),
@@ -567,11 +574,6 @@ export default async function ProblemPage({
   }
   const relatedSolvedGroupIds = new Set(
     relatedSolvedAttempts.map((attempt) => attempt.problem.translationGroupId)
-  );
-  const relatedSolvedIds = new Set(
-    relatedProblems
-      .filter((relatedProblem) => relatedSolvedGroupIds.has(relatedProblem.translationGroupId))
-      .map((relatedProblem) => relatedProblem.id)
   );
   const proofs = [...problem.proofs].sort(
     (a, b) => (proofVotes.get(b.id) ?? 0) - (proofVotes.get(a.id) ?? 0) || a.createdAt.getTime() - b.createdAt.getTime()
@@ -1042,27 +1044,29 @@ export default async function ProblemPage({
                     <div key={group.id} className="related-problem-group">
                       <h2>{group.title}</h2>
                       <div className="grid gap-2">
-                        {group.relations.map(({ id, targetProblem }) => (
-                          <Link
+                        {group.relations.map(({ id, targetProblem }) => {
+                          const resolvedProblem = relatedProblemLinkBySlug.get(targetProblem.slug);
+                          return <Link
                             key={id}
-                            href={`/problems/${targetProblem.slug}`}
+                            href={(resolvedProblem?.href ?? `/problems/${targetProblem.slug}`) as never}
                             className={problemLinkClass(
                               "related-problem-link block",
-                              relatedSolvedIds.has(targetProblem.id)
+                              relatedSolvedGroupIds.has(targetProblem.translationGroupId)
                             )}
                           >
-                            <Difficulty compact value={targetProblem.difficulty} />
+                            <Difficulty compact value={resolvedProblem?.difficulty ?? targetProblem.difficulty} />
                             <span className="related-problem-copy">
                               <strong>
-                                <AsyncMarkdownInline markdown={targetProblem.title} />
+                                <AsyncMarkdownInline markdown={resolvedProblem?.title ?? targetProblem.title} />
+                                <ContentLanguageFallback language={resolvedProblem?.language ?? targetProblem.language} expectedLanguage={problem.language} />
                               </strong>
                               <span>
                                 {t.problemDetail.by} <UserName user={targetProblem.author} />
                                 {!targetProblem.listed ? ` \u00b7 ${t.problemDetail.playlistSpecific.toLowerCase()}` : ""}
                               </span>
                             </span>
-                          </Link>
-                        ))}
+                          </Link>;
+                        })}
                       </div>
                     </div>
                   ))
@@ -1519,14 +1523,16 @@ export default async function ProblemPage({
                 const title = link.exists
                   ? (linkedConceptTitleBySlug.get(link.targetSlug) ?? titleFromConceptSlug(link.targetSlug))
                   : (link.label ?? titleFromConceptSlug(link.targetSlug));
+                const resolvedLink = linkedConceptLinkBySlug.get(link.targetSlug);
 
                 return (
                   <Link
                     key={link.id}
-                    href={(link.exists ? (linkedConceptHrefBySlug.get(link.targetSlug) ?? `/concepts/${link.targetSlug}`) : missingConceptHref(title)) as never}
+                    href={(link.exists ? (resolvedLink?.href ?? `/concepts/${link.targetSlug}`) : missingConceptHref(title)) as never}
                     className={link.exists ? "wiki-link" : "wiki-link missing"}
                   >
                     {title}
+                    {link.exists && resolvedLink && <ContentLanguageFallback language={resolvedLink.language} expectedLanguage={problem.language} />}
                   </Link>
                 );
               })}

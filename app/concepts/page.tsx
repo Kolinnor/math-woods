@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
@@ -431,7 +432,7 @@ export default async function ConceptsPage({
               >
                 <div className="concept-ledger-main">
                   <div className="concept-ledger-title-row">
-                    <h2><AsyncMarkdownInline markdown={concept.title} /></h2>
+                    <h2><AsyncMarkdownInline markdown={concept.title} /><ContentLanguageFallback language={concept.language} expectedLanguage={preferredLanguage} /></h2>
                     <ConceptStatusBadge
                       status={concept.status}
                       label={t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}
@@ -469,7 +470,7 @@ export default async function ConceptsPage({
                     href={contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route}
                     className="featured-concept-link"
                   >
-                    <strong><AsyncMarkdownInline markdown={concept.title} /></strong>
+                    <strong><AsyncMarkdownInline markdown={concept.title} /><ContentLanguageFallback language={concept.language} expectedLanguage={preferredLanguage} /></strong>
                     <span>{translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}</span>
                   </Link>
                 ))}

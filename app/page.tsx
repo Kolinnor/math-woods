@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DailyProblemCard } from "@/components/DailyProblemCard";
 import { DailyTipCard } from "@/components/DailyTipCard";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { HomeContestCard } from "@/components/HomeContestCard";
 import { HomeEditorialSwitcher } from "@/components/HomeEditorialSwitcher";
 import { maybeSendContestLifecycleNotifications } from "@/lib/actions/contest-actions";
@@ -582,6 +583,7 @@ export default async function HomePage({
       domainLabel={translatedDomainLabel(dailyProblem.domain, t.home.domainLabels)}
       imageUrl={dailyProblemImageUrl}
       imagePosition={dailyProblemImagePosition}
+      expectedLanguage={preferredLanguage}
       labels={{
         heading: copy.problemOfDay,
         by: copy.by,
@@ -602,11 +604,13 @@ export default async function HomePage({
         imagePositionY: selectedTipImage?.imagePositionY ?? tip.imagePositionY
       }}
       labels={{ tip: copy.tip, method: copy.method, practice: copy.practice }}
+      expectedLanguage={preferredLanguage}
       practiceProblem={tipPracticeProblem ? {
         slug: tipPracticeProblem.slug,
         title: tipPracticeProblem.title,
         domainLabel: translatedDomainLabel(tipPracticeProblem.domain, t.home.domainLabels),
-        difficulty: tipPracticeProblem.difficulty
+        difficulty: tipPracticeProblem.difficulty,
+        language: tipPracticeProblem.language
       } : null}
     />
   ) : null;
@@ -703,7 +707,7 @@ export default async function HomePage({
                       <Link key={problem.id} href={`/problems/${problem.slug}`}>
                         <Difficulty value={problem.difficulty} />
                         <span>
-                          <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
+                          <strong><AsyncMarkdownInline markdown={problem.title} /><ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} /></strong>
                           <small>
                             {translatedDomainLabel(domain, t.home.domainLabels)}
                           </small>
@@ -782,7 +786,7 @@ export default async function HomePage({
           <h1>{user ? t.home.hero.welcomeBack(displayNameForUser(user)) : t.home.hero.guestTitle}</h1>
           {resumeProblem && (
             <Link href={`/problems/${resumeProblem.slug}`} className="home-button home-button-light">
-              <span>{t.home.hero.resume} <AsyncMarkdownInline markdown={resumeProblem.title} /></span>
+              <span>{t.home.hero.resume} <AsyncMarkdownInline markdown={resumeProblem.title} /><ContentLanguageFallback language={resumeProblem.language} expectedLanguage={preferredLanguage} /></span>
             </Link>
           )}
         </div>
@@ -816,7 +820,7 @@ export default async function HomePage({
                   <Link key={problem.id} href={`/problems/${problem.slug}?recommended=1`}>
                     <Difficulty value={problem.difficulty} />
                     <span>
-                      <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
+                      <strong><AsyncMarkdownInline markdown={problem.title} /><ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} /></strong>
                       <small>{translatedDomainLabel(problem.domains[0] ?? "OTHER", t.home.domainLabels)}</small>
                     </span>
                   </Link>
@@ -837,7 +841,7 @@ export default async function HomePage({
                 <Link key={problem.id} href={`/problems/${problem.slug}`}>
                   <Difficulty value={problem.difficulty} compact />
                   <span>
-                    <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
+                    <strong><AsyncMarkdownInline markdown={problem.title} /><ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} /></strong>
                     <small>{translatedDomainLabel(problem.domain, t.home.domainLabels)} · {copy.by} {displayNameForUser(problem.author)}</small>
                   </span>
                   <time>{new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-Math.max(0, Math.round((Date.now() - problem.createdAt.getTime()) / 86_400_000)), "day")}</time>
@@ -894,7 +898,7 @@ export default async function HomePage({
               <h2>{copy.explorations}</h2>
               {explorations.map((exploration) => (
                 <Link key={exploration.id} href={`/explorations/${exploration.slug}/start`}>
-                  <strong>{exploration.title}</strong>
+                  <strong>{exploration.title}<ContentLanguageFallback language={exploration.language} expectedLanguage={preferredLanguage} /></strong>
                   <small>{copy.steps(exploration._count.circuitNodes)} · {translatedDomainLabel(exploration.domain, t.home.domainLabels)}</small>
                 </Link>
               ))}

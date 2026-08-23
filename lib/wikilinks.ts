@@ -1,11 +1,18 @@
 import { ensureSlug } from "./slug.ts";
 import { findMarkdownCodeRanges, overlapsRanges } from "./markdown-ranges.ts";
+import { contentLanguageFallback } from "./content-language-fallback.ts";
 
 export type WikiLink = {
   raw: string;
   target: string;
   targetSlug: string;
   label: string;
+};
+
+export type ResolvedWikiLink = {
+  href: string;
+  language?: string;
+  expectedLanguage?: string;
 };
 
 const wikiLinkPattern = /\[\[([^\]\n]+)\]\]/g;
@@ -107,7 +114,7 @@ export function makeWikiLinkLabelsExplicit(markdown: string) {
 
 export function replaceWikiLinks(
   markdown: string,
-  resolveHref: (link: WikiLink) => string,
+  resolveHref: (link: WikiLink) => string | ResolvedWikiLink,
   missingSlugs: Set<string> = new Set()
 ): string {
   const excluded = findMarkdownCodeRanges(markdown);
@@ -119,10 +126,17 @@ export function replaceWikiLinks(
     if (!link) return raw;
 
     const missing = missingSlugs.has(link.targetSlug);
-    const href = missing ? missingConceptHref(link.target) : resolveHref(link);
+    const resolved = missing ? missingConceptHref(link.target) : resolveHref(link);
+    const href = typeof resolved === "string" ? resolved : resolved.href;
+    const fallback = typeof resolved === "string" || missing || !resolved.language || !resolved.expectedLanguage
+      ? null
+      : contentLanguageFallback(resolved.language, resolved.expectedLanguage);
     const klass = missing ? "wiki-link missing" : "wiki-link";
+    const languageMarker = fallback
+      ? `<sup aria-label="${escapeHtml(fallback.label)}" class="content-language-fallback" lang="${escapeHtml(fallback.language)}" title="${escapeHtml(fallback.label)}">${escapeHtml(fallback.code)}</sup>`
+      : "";
 
-    return `<a class="${klass}" href="${href}">${escapeHtml(link.label)}</a>`;
+    return `<a class="${klass}" href="${escapeHtml(href)}">${escapeHtml(link.label)}${languageMarker}</a>`;
   });
 }
 

@@ -2,6 +2,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { LanguageField } from "@/components/LanguageField";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
@@ -14,9 +15,15 @@ import { getTranslations } from "@/lib/i18n/server";
 import { ACTIVE_CONTENT_LANGUAGES, contentLanguageLabel } from "@/lib/languages";
 import { isVerifiedContributor } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
+import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
+import {
+  resolveConceptLinksForLanguage,
+  resolveConceptTitlesForLanguage,
+  resolveProblemLinksForLanguage
+} from "@/lib/translated-markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +96,17 @@ export default async function QuotesPage({
         (left, right) => right.item.createdAt.getTime() - left.item.createdAt.getTime()
       ).map(({ item }) => item)
     : selectedQuotes;
+  const relatedProblemSlugs = quotes.flatMap((quote) => quote.relatedProblems.map(({ problem }) => problem.slug));
+  const relatedConceptSlugs = quotes.flatMap((quote) => quote.relatedConcepts.map(({ concept }) => concept.slug));
+  const [problemLinkBySlug, conceptLinkBySlug, conceptTitleBySlug] = await Promise.all([
+    resolveProblemLinksForLanguage(relatedProblemSlugs, preferredLanguage, {
+      status: "PUBLISHED",
+      listed: true,
+      ...visibleProblemWhere(user)
+    }),
+    resolveConceptLinksForLanguage(relatedConceptSlugs, preferredLanguage),
+    resolveConceptTitlesForLanguage(relatedConceptSlugs, preferredLanguage)
+  ]);
 
   return (
     <ForestPageLayout
@@ -180,7 +198,7 @@ export default async function QuotesPage({
         {quotes.map((quote) => (
           <article key={quote.id} className="quote-card">
             <Link href={`/quotes/${quote.slug}`} className="quote-text">
-              "{quote.text}"
+              "{quote.text}"<ContentLanguageFallback language={quote.language} expectedLanguage={preferredLanguage} />
             </Link>
             <div className="quote-meta-row">
               <span>{quote.attributedTo ? `${labels.attributedTo} ${quote.attributedTo}` : labels.noAttribution}</span>
@@ -195,13 +213,15 @@ export default async function QuotesPage({
             </details>
             <div className="quote-related">
               {quote.relatedProblems.map(({ problem }) => (
-                <Link key={problem.id} href={`/problems/${problem.slug}`}>
-                  <AsyncMarkdownInline markdown={problem.title} />
+                <Link key={problem.id} href={(problemLinkBySlug.get(problem.slug)?.href ?? `/problems/${problem.slug}`) as never}>
+                  <AsyncMarkdownInline markdown={problemLinkBySlug.get(problem.slug)?.title ?? problem.title} />
+                  <ContentLanguageFallback language={problemLinkBySlug.get(problem.slug)?.language ?? problem.language} expectedLanguage={preferredLanguage} />
                 </Link>
               ))}
               {quote.relatedConcepts.map(({ concept }) => (
-                <Link key={concept.id} href={`/concepts/${concept.slug}`}>
-                  <AsyncMarkdownInline markdown={concept.title} />
+                <Link key={concept.id} href={(conceptLinkBySlug.get(concept.slug)?.href ?? `/concepts/${concept.slug}`) as never}>
+                  <AsyncMarkdownInline markdown={conceptTitleBySlug.get(concept.slug) ?? concept.title} />
+                  <ContentLanguageFallback language={conceptLinkBySlug.get(concept.slug)?.language ?? concept.language} expectedLanguage={preferredLanguage} />
                 </Link>
               ))}
               {quote._count.relatedProblems + quote._count.relatedConcepts === 0 && (
