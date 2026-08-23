@@ -2730,6 +2730,14 @@ assert.equal(processedContentImage.contentType, "image/png");
 assert.equal(processedContentImage.width, 2560);
 assert.equal(processedContentImage.height, 1024);
 
+const tipContentImage = await processContentImage(
+  new File([Uint8Array.from(oversizedContentImage)], "tip.png", { type: "image/png" }),
+  { maxDimension: 960 }
+);
+assert.equal(tipContentImage.contentType, "image/png");
+assert.equal(tipContentImage.width, 960);
+assert.equal(tipContentImage.height, 384);
+
 const testImageStorageConfig: ImageStorageConfig = {
   endpoint: new URL("https://s3.example.test"),
   region: "dc-test",

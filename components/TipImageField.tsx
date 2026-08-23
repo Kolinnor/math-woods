@@ -140,6 +140,7 @@ export function TipImageField({
     try {
       const formData = new FormData();
       formData.set("image", file);
+      formData.set("purpose", "tip");
       const response = await fetch("/api/images/upload", { method: "POST", body: formData });
       const result = await response.json().catch(() => null) as UploadResponse | null;
       const publicUrl = result?.image?.publicUrl;
