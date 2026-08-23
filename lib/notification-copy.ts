@@ -384,6 +384,16 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
       };
     }
     case NotificationType.CONCEPT_CREATED: {
+      if (notification.title === "New concept translation") {
+        const actor = notificationActor(notification, " translated ");
+        const titles = quotedValues(notification.body);
+        const languageMatch = notification.body.match(/ into ([^".]+)(?: as |\.)/);
+        const language = languageMatch?.[1]?.trim().replace(/^English$/i, "anglais").replace(/^Français$/i, "français");
+        return {
+          title: "Nouvelle traduction d’un concept",
+          body: `${actor} a traduit « ${titles[0] ?? "un concept"} »${language ? ` en ${language}` : ""}${titles[1] ? ` sous le titre « ${titles[1]} »` : ""}.`
+        };
+      }
       const actor = notificationActor(notification, " created ");
       return {
         title: "Nouveau concept créé",

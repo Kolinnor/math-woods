@@ -9,6 +9,7 @@ import { checkConceptAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { parseConceptExerciseIds } from "@/lib/concept-exercises";
 import { parseConceptKind } from "@/lib/concept-kinds";
+import { conceptCreationNotificationCopy } from "@/lib/concept-creation-notifications";
 import {
   buildConceptRevisionSnapshot,
   changedConceptSnapshotFields,
@@ -290,7 +291,7 @@ export async function createConceptAction(formData: FormData) {
         conceptSnapshot: conceptRevisionSnapshotJson(createdSnapshot),
         editedById: user.id,
         isCreation: true,
-        editSummary: "Concept created"
+        editSummary: translationSource ? "Concept translation created" : "Concept created"
       }
     });
     return { concept: created, created: true } as const;
@@ -303,11 +304,17 @@ export async function createConceptAction(formData: FormData) {
 
   await refreshLinksForConcept(concept.slug);
   revalidatePath("/");
+  const conceptNotification = conceptCreationNotificationCopy({
+    actorName: displayNameForUser(user),
+    conceptTitle: concept.title,
+    sourceTitle: translationSourceIdentity?.title,
+    targetLanguage: concept.language
+  });
   await notifyOwnerOfSiteActivity({
     actor: user,
     type: NotificationType.CONCEPT_CREATED,
-    title: "New concept created",
-    body: `${displayNameForUser(user)} created "${concept.title}".`,
+    title: conceptNotification.title,
+    body: conceptNotification.body,
     href: `/concepts/${concept.slug}`
   });
   await checkConceptAchievements(user.id);

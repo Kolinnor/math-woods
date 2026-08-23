@@ -29,6 +29,7 @@ import {
   parseConceptExerciseIds,
   parseMinimumConceptExercises
 } from "../lib/concept-exercises.ts";
+import { conceptCreationNotificationCopy } from "../lib/concept-creation-notifications.ts";
 import { orderedUniqueIds, overlappingConceptLanguages } from "../lib/concept-merge.ts";
 import { parseConceptKind } from "../lib/concept-kinds.ts";
 import {
@@ -682,6 +683,29 @@ assert.deepEqual(
   {
     title: "New problem created",
     body: 'Sequoia created "Groups of order 6".'
+  }
+);
+assert.deepEqual(
+  conceptCreationNotificationCopy({
+    actorName: "Sequoia",
+    conceptTitle: "Compact space",
+    targetLanguage: "en"
+  }),
+  {
+    title: "New concept created",
+    body: 'Sequoia created "Compact space".'
+  }
+);
+assert.deepEqual(
+  conceptCreationNotificationCopy({
+    actorName: "Sequoia",
+    conceptTitle: "Espace compact",
+    sourceTitle: "Compact space",
+    targetLanguage: "fr"
+  }),
+  {
+    title: "New concept translation",
+    body: 'Sequoia translated "Compact space" into Français as "Espace compact".'
   }
 );
 assert.deepEqual(
@@ -2574,6 +2598,16 @@ assert.equal(
   conceptShareNotification.body,
   "Alouette a partagé avec vous le concept « Espace compact ». Cela peut vous aider."
 );
+const conceptTranslationNotification = localizeNotification({
+  type: NotificationType.CONCEPT_CREATED,
+  title: "New concept translation",
+  body: 'Alouette translated "Compact space" into Français as "Espace compact".',
+  actor: notificationActor
+}, "fr");
+assert.deepEqual(conceptTranslationNotification, {
+  title: "Nouvelle traduction d’un concept",
+  body: "Alouette a traduit « Compact space » en français sous le titre « Espace compact »."
+});
 assert.deepEqual(
   localizeNotification({
     type: NotificationType.SOLUTION_VOTED,
