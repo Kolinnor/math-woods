@@ -102,6 +102,7 @@ import {
 import {
   buildRecommendationProfile,
   composeProblemRecommendations,
+  excludedRecommendationGroupIds,
   recommendationDifficultyAdjustment,
   scoreProblemRecommendation
 } from "../lib/recommendations.ts";
@@ -3755,6 +3756,13 @@ assert.equal(composedRecommendations[0]?.selectionReason, "continue");
 assert.ok(composedRecommendations.some((item) => item.selectionReason === "confidence" && item.problem.id === 3));
 assert.ok(composedRecommendations.some((item) => item.selectionReason === "explore" && item.problem.id === 4));
 assert.equal(new Set(composedRecommendations.map((item) => item.problem.id)).size, composedRecommendations.length);
+assert.deepEqual(
+  excludedRecommendationGroupIds(
+    ["solved", "shared"],
+    ["authored", "shared", "authored"]
+  ),
+  ["solved", "shared", "authored"]
+);
 
 const progressMap = buildProgressMap(
   [

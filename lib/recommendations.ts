@@ -280,6 +280,13 @@ export function composeProblemRecommendations<T extends RecommendationSelectionC
   return selected;
 }
 
+export function excludedRecommendationGroupIds(
+  solvedGroupIds: Iterable<string>,
+  authoredGroupIds: Iterable<string>
+) {
+  return [...new Set([...solvedGroupIds, ...authoredGroupIds])];
+}
+
 function rounded(value: number, digits = 2) {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;

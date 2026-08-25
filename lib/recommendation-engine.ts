@@ -5,6 +5,7 @@ import { selectExactContentTranslation } from "@/lib/translation-routing";
 import {
   buildRecommendationProfile,
   composeProblemRecommendations,
+  excludedRecommendationGroupIds,
   recommendationDifficultyAdjustment,
   scoreProblemRecommendation,
   type RecommendationAttempt,
@@ -90,6 +91,9 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
       displayName: true,
       mathLevel: true,
       mathematicalDomains: true,
+      problems: {
+        select: { translationGroupId: true }
+      },
       attempts: {
         select: {
           status: true,
@@ -153,6 +157,10 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
     user.recommendationExposures.map((exposure) => [exposure.translationGroupId, exposure])
   );
   const solvedGroups = attempts.filter((attempt) => attempt.status === "SOLVED").map((attempt) => attempt.translationGroupId);
+  const excludedGroups = excludedRecommendationGroupIds(
+    solvedGroups,
+    user.problems.map((problem) => problem.translationGroupId)
+  );
   const profile = buildRecommendationProfile(
     {
       mathLevel: user.mathLevel as RecommendationMathLevel | null,
@@ -185,7 +193,7 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
       listed: true,
       language: recommendationLanguage,
       authorId: { not: user.id },
-      translationGroupId: { notIn: solvedGroups },
+      translationGroupId: { notIn: excludedGroups },
       ...RECOMMENDABLE_PROBLEM_WHERE
     },
     select: {
