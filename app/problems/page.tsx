@@ -782,7 +782,25 @@ export default async function ProblemsPage({
           </div>
           <RecommendedProblemReader
             items={recommendationItems}
-            openLabel={interfaceLocale === "fr" ? "Ouvrir le problème" : "Open problem"}
+            labels={{
+              open: t.problems.openRecommendation,
+              previous: t.problems.previousRecommendation,
+              next: t.problems.nextRecommendation,
+              menu: t.problems.recommendationMenu,
+              notInterested: t.problems.notInterested,
+              report: t.problemDetail.report,
+              hidden: t.problems.recommendationHidden,
+              undo: t.problems.undo,
+              tellUsWhy: t.problems.tellUsWhy,
+              whyTitle: t.problems.whyNotInterested,
+              tooHard: t.problems.recommendationTooHard,
+              tooEasy: t.problems.recommendationTooEasy,
+              alreadyKnown: t.problems.recommendationAlreadyKnown,
+              notInterestedInDomain: t.problems.notInterestedInDomain,
+              fewerLikeThis: t.problems.fewerLikeThis,
+              thanks: t.problems.feedbackThanks,
+              updateFailed: t.problems.recommendationUpdateFailed
+            }}
           />
         </section>
       )}

@@ -1318,6 +1318,7 @@ export default async function ProblemPage({
             <details id="write-solution" className="add-proof">
               <summary>{proofs.length === 0 ? t.problemDetail.firstSolution : t.problemDetail.addAnotherSolution}</summary>
               <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
+                <p className="content-illustration-advice">{t.contentEditor.illustrationAdvice}</p>
                 <MarkdownEditor
                   name="bodyMarkdown"
                   minHeight="12rem"

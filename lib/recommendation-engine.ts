@@ -138,7 +138,11 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
         select: {
           translationGroupId: true,
           exposureCount: true,
-          lastOpenedAt: true
+          lastOpenedAt: true,
+          dismissedAt: true,
+          dismissalReason: true,
+          updatedAt: true,
+          problem: { select: { difficulty: true, domain: true } }
         }
       },
       recommendationEvents: {
@@ -159,7 +163,10 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
   const solvedGroups = attempts.filter((attempt) => attempt.status === "SOLVED").map((attempt) => attempt.translationGroupId);
   const excludedGroups = excludedRecommendationGroupIds(
     solvedGroups,
-    user.problems.map((problem) => problem.translationGroupId)
+    user.problems.map((problem) => problem.translationGroupId),
+    user.recommendationExposures
+      .filter((exposure) => exposure.dismissedAt !== null)
+      .map((exposure) => exposure.translationGroupId)
   );
   const profile = buildRecommendationProfile(
     {
@@ -173,7 +180,15 @@ export async function recommendationsForUser(userId: number, requestedLimit = 20
         difficultyReaction: reaction.difficultyReaction,
         preferenceReaction: reaction.preferenceReaction,
         updatedAt: reaction.updatedAt
-      }))
+      })),
+      dismissals: user.recommendationExposures
+        .filter((exposure) => exposure.dismissalReason !== null)
+        .map((exposure) => ({
+          difficulty: exposure.problem.difficulty,
+          domains: [exposure.problem.domain],
+          reason: exposure.dismissalReason!,
+          updatedAt: exposure.updatedAt
+        }))
     },
     now
   );

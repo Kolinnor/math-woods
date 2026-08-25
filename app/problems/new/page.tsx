@@ -259,6 +259,7 @@ export default async function NewProblemPage({
 
             <div className="grid gap-2">
               <span className="text-sm font-medium">{t.contentEditor.statement}</span>
+              <p className="content-illustration-advice">{t.contentEditor.illustrationAdvice}</p>
               {sourceProblem && (
                 <p className="translation-link-note">
                   {t.contentEditor.translationLinksNote}

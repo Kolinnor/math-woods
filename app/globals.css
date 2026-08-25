@@ -889,6 +889,7 @@ body:has(.problem-detail-shell) {
   flex-direction: column;
   min-width: 0;
   padding: 16px 24px 18px;
+  position: relative;
 }
 
 .recommendation-reader-panel > header {
@@ -982,6 +983,152 @@ body:has(.problem-detail-shell) {
   display: flex;
   justify-content: center;
   margin-top: 14px;
+  min-height: 38px;
+  padding-left: 44px;
+  padding-right: 44px;
+}
+
+.recommendation-reader-more {
+  bottom: 18px;
+  position: absolute;
+  right: 18px;
+  z-index: 3;
+}
+
+.recommendation-reader-more-trigger {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--mw-secondary);
+  display: flex;
+  height: 34px;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0;
+  width: 34px;
+}
+
+.recommendation-reader-more-trigger:hover,
+.recommendation-reader-more-trigger:focus-visible,
+.recommendation-reader-more-trigger[aria-expanded="true"] {
+  background: var(--mw-muted-surface);
+  border-color: var(--mw-border);
+  color: var(--mw-text);
+}
+
+.recommendation-reader-more-trigger:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.recommendation-reader-menu {
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-border-strong);
+  border-radius: 8px;
+  bottom: calc(100% + 7px);
+  box-shadow: 0 8px 22px rgb(34 31 25 / 0.16);
+  min-width: 205px;
+  overflow: hidden;
+  padding: 5px;
+  position: absolute;
+  right: 0;
+}
+
+.recommendation-reader-menu button,
+.recommendation-reader-menu a {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: var(--mw-text);
+  display: flex;
+  font-size: 14px;
+  gap: 9px;
+  justify-content: flex-start;
+  min-height: 38px;
+  padding: 8px 10px;
+  text-align: left;
+  text-decoration: none;
+  width: 100%;
+}
+
+.recommendation-reader-menu button:hover,
+.recommendation-reader-menu button:focus-visible,
+.recommendation-reader-menu a:hover,
+.recommendation-reader-menu a:focus-visible {
+  background: var(--mw-muted-surface);
+}
+
+.recommendation-dismissal-feedback {
+  background: var(--mw-muted-surface);
+  border: 1px solid var(--mw-border);
+  border-radius: 7px;
+  color: var(--mw-secondary);
+  font-size: 13.5px;
+  margin-top: 10px;
+  padding: 9px 12px;
+}
+
+.recommendation-dismissal-summary,
+.recommendation-dismissal-reasons {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+}
+
+.recommendation-dismissal-summary > span {
+  margin-right: auto;
+}
+
+.recommendation-dismissal-feedback button {
+  background: transparent;
+  border: 0;
+  color: var(--mw-green);
+  font-size: 13.5px;
+  min-height: 28px;
+  padding: 2px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.recommendation-dismissal-feedback button:hover,
+.recommendation-dismissal-feedback button:focus-visible {
+  color: var(--mw-green-hover);
+}
+
+.recommendation-dismissal-reasons {
+  border-top: 1px solid var(--mw-border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.recommendation-dismissal-reasons strong {
+  color: var(--mw-text);
+  flex-basis: 100%;
+  font-size: 13px;
+}
+
+.recommendation-dismissal-reasons button {
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-border-strong);
+  border-radius: 6px;
+  color: var(--mw-text);
+  padding: 5px 8px;
+  text-decoration: none;
+}
+
+.recommendation-reader-error {
+  color: var(--mw-danger, #a33a2b);
+  font-size: 13px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.recommendation-reader-empty {
+  flex: 1 1 auto;
+  min-height: 130px;
 }
 
 .problem-domain-strip {
@@ -1652,6 +1799,11 @@ body:has(.problem-detail-shell) .site-main {
 
   .recommendation-reader-panel {
     padding: 16px;
+  }
+
+  .recommendation-reader-more {
+    bottom: 16px;
+    right: 12px;
   }
 
   .recommendation-statement {
@@ -10139,6 +10291,16 @@ button.markdown-editor-tool-button:disabled svg {
 .translation-link-note code {
   color: var(--accent);
   font-weight: 700;
+}
+
+.content-illustration-advice {
+  border-left: 3px solid var(--mw-green);
+  color: var(--mw-secondary);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 72ch;
+  padding-left: 10px;
 }
 
 .translation-companions,

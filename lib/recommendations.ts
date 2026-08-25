@@ -1,6 +1,6 @@
 import { isProblemRecommendationEligible } from "./problem-recommendation-eligibility.ts";
 
-export const RECOMMENDATION_MODEL_VERSION = 5;
+export const RECOMMENDATION_MODEL_VERSION = 6;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -57,12 +57,20 @@ export type RecommendationReaction = {
   updatedAt: Date;
 };
 
+export type RecommendationDismissal = {
+  difficulty: number | null;
+  domains: string[];
+  reason: "TOO_HARD" | "TOO_EASY" | "LESS_LIKE_THIS" | "ALREADY_KNOWN" | "NOT_INTERESTED_IN_DOMAIN";
+  updatedAt: Date;
+};
+
 export type RecommendationProfileInput = {
   mathLevel: RecommendationMathLevel | null;
   mathematicalDomains: string[];
   attempts: RecommendationAttempt[];
   favorites: RecommendationFavorite[];
   reactions?: RecommendationReaction[];
+  dismissals?: RecommendationDismissal[];
 };
 
 export type RecommendationDomainSignal = {
@@ -282,9 +290,10 @@ export function composeProblemRecommendations<T extends RecommendationSelectionC
 
 export function excludedRecommendationGroupIds(
   solvedGroupIds: Iterable<string>,
-  authoredGroupIds: Iterable<string>
+  authoredGroupIds: Iterable<string>,
+  dismissedGroupIds: Iterable<string> = []
 ) {
-  return [...new Set([...solvedGroupIds, ...authoredGroupIds])];
+  return [...new Set([...solvedGroupIds, ...authoredGroupIds, ...dismissedGroupIds])];
 }
 
 function rounded(value: number, digits = 2) {
@@ -319,6 +328,7 @@ export function buildRecommendationProfile(
   let evidenceCount = 0;
 
   const domainEvidence = new Map<string, number>();
+  const domainNegativeEvidence = new Map<string, number>();
   const selectedDomains = new Set(input.mathematicalDomains);
   for (const domain of selectedDomains) domainEvidence.set(domain, 1.75);
 
@@ -373,18 +383,47 @@ export function buildRecommendationProfile(
     }
   }
 
+  for (const dismissal of input.dismissals ?? []) {
+    const recency = recencyWeight(dismissal.updatedAt, now, 240);
+    const domainPenalty = dismissal.reason === "NOT_INTERESTED_IN_DOMAIN"
+      ? 4
+      : dismissal.reason === "LESS_LIKE_THIS"
+        ? 1.5
+        : 0;
+    if (domainPenalty > 0) {
+      const evidence = domainPenalty * recency;
+      evidenceCount += evidence;
+      for (const domain of new Set(dismissal.domains)) {
+        if (!domainEvidence.has(domain)) domainEvidence.set(domain, 0);
+        domainNegativeEvidence.set(domain, (domainNegativeEvidence.get(domain) ?? 0) + evidence);
+      }
+    }
+    if (
+      dismissal.difficulty !== null &&
+      (dismissal.reason === "TOO_HARD" || dismissal.reason === "TOO_EASY")
+    ) {
+      const weight = 2.5 * recency;
+      const adjustment = dismissal.reason === "TOO_HARD" ? -8 : 8;
+      weightedDifficulty += clamp(dismissal.difficulty + adjustment, 1, 100) * weight;
+      difficultyWeight += weight;
+      evidenceCount += weight;
+    }
+  }
+
   const domains = Object.fromEntries(
     [...domainEvidence.entries()]
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([domain, evidence]) => {
         const selectedByUser = selectedDomains.has(domain);
         const behavioralEvidence = Math.max(0, evidence - (selectedByUser ? 1.75 : 0));
+        const negativeEvidence = domainNegativeEvidence.get(domain) ?? 0;
+        const positiveAffinity = (selectedByUser ? 0.35 : 0) + (1 - Math.exp(-behavioralEvidence / 4));
         return [
           domain,
           {
-            affinity: rounded(clamp((selectedByUser ? 0.35 : 0) + (1 - Math.exp(-behavioralEvidence / 4)), 0, 1)),
-            confidence: rounded(clamp(1 - Math.exp(-evidence / 5), 0, 0.95)),
-            evidence: rounded(evidence),
+            affinity: rounded(clamp(positiveAffinity * Math.exp(-negativeEvidence / 2.5), 0, 1)),
+            confidence: rounded(clamp(1 - Math.exp(-(evidence + negativeEvidence) / 5), 0, 0.95)),
+            evidence: rounded(evidence - negativeEvidence),
             selectedByUser
           }
         ];

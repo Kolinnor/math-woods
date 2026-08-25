@@ -294,11 +294,16 @@ import {
 import type { UserReputationSummary } from "../lib/user-reputation.ts";
 import {
   AUTHORED_CONCEPT_REPUTATION_POINTS,
-  AUTHORED_SOLUTION_REPUTATION_POINTS,
-  authoredContentReputationBonus,
+  AUTHORED_PROBLEM_BASE_REPUTATION_POINTS,
+  authoredConceptReputationBonus,
+  contentHasIllustration,
+  curationActivityReputationBonus,
   DAILY_PROBLEM_REPUTATION_POINTS,
   dailyProblemReputationBonus,
   learningSolveReputationBonus,
+  problemAuthorshipReputationBonus,
+  reviewedContributionReputationBonus,
+  solutionAuthorshipReputationBonus,
   translationReputationBonus
 } from "../lib/reputation-scoring.ts";
 import {
@@ -2232,6 +2237,15 @@ const homePrioritiesPageSource = readFileSync(join("app", "tips", "priorities", 
 const homePriorityActionsSource = readFileSync(join("lib", "actions", "home-priority-actions.ts"), "utf-8");
 const tipsAdminTabsSource = readFileSync(join("components", "TipsAdminTabs.tsx"), "utf-8");
 const problemBrowserSource = readFileSync(join("app", "problems", "page.tsx"), "utf-8");
+const recommendedProblemReaderSource = readFileSync(join("components", "RecommendedProblemReader.tsx"), "utf-8");
+const problemRecommendationActionsSource = readFileSync(
+  join("lib", "actions", "problem-recommendation-actions.ts"),
+  "utf-8"
+);
+const recommendationDismissalMigrationSource = readFileSync(
+  join("prisma", "migrations", "20260825120000_add_recommendation_dismissals", "migration.sql"),
+  "utf-8"
+);
 const conceptBrowserSource = readFileSync(join("app", "concepts", "page.tsx"), "utf-8");
 const usersPageSource = readFileSync(join("app", "users", "page.tsx"), "utf-8");
 const usersRankingSelectSource = readFileSync(join("app", "users", "UsersRankingSelect.tsx"), "utf-8");
@@ -2282,6 +2296,17 @@ const conceptNewSource = readFileSync(join("app", "concepts", "new", "page.tsx")
 const conceptDuplicateSuggestionsSource = readFileSync(join("components", "ConceptDuplicateSuggestions.tsx"), "utf-8");
 const internalLinksSource = readFileSync(join("lib", "internal-links.ts"), "utf-8");
 const uniqueSlugSource = readFileSync(join("lib", "unique-slug.ts"), "utf-8");
+assert.match(prismaSchemaSource, /model ProblemRecommendationExposure[\s\S]*?dismissedAt\s+DateTime\?/);
+assert.match(recommendationDismissalMigrationSource, /ADD COLUMN "dismissedAt" TIMESTAMP\(3\)/);
+assert.match(problemRecommendationActionsSource, /dismissProblemRecommendationAction[\s\S]*?dismissedAt: now/);
+assert.match(problemRecommendationActionsSource, /undoProblemRecommendationDismissalAction[\s\S]*?dismissedAt: null/);
+assert.match(recommendedProblemReaderSource, /EllipsisVertical/);
+assert.match(recommendedProblemReaderSource, /setDismissedRecommendationReasonAction/);
+assert.match(prismaSchemaSource, /dismissalReason\s+ProblemRecommendationDismissalReason\?/);
+assert.match(recommendationDismissalMigrationSource, /NOT_INTERESTED_IN_DOMAIN/);
+assert.match(recommendedProblemReaderSource, /ALREADY_KNOWN/);
+assert.match(recommendedProblemReaderSource, /NOT_INTERESTED_IN_DOMAIN/);
+assert.match(recommendedProblemReaderSource, /\/problems\/\$\{selected\.slug\}#report/);
 assert.match(prismaSchemaSource, /model SiteAnnouncementRecipient[\s\S]*?@@id\(\[announcementId, userId\]\)/);
 assert.match(prismaSchemaSource, /model ConceptRedirect[\s\S]*?sourceSlug\s+String\s+@unique/);
 assert.match(prismaSchemaSource, /model ConceptMergeContributor[\s\S]*?@@id\(\[conceptId, userId\]\)/);
@@ -3167,9 +3192,38 @@ const mathematicianFixtures = [
 
 assert.equal(DAILY_PROBLEM_REPUTATION_POINTS, 50);
 assert.equal(AUTHORED_CONCEPT_REPUTATION_POINTS, 2);
-assert.equal(AUTHORED_SOLUTION_REPUTATION_POINTS, 2);
-assert.equal(authoredContentReputationBonus(3, 4), 14);
-assert.equal(authoredContentReputationBonus(-1, 2.9), 4);
+assert.equal(AUTHORED_PROBLEM_BASE_REPUTATION_POINTS, 4);
+assert.equal(authoredConceptReputationBonus(3), 6);
+assert.equal(authoredConceptReputationBonus(-1), 0);
+assert.equal(problemAuthorshipReputationBonus({
+  favoriteCount: 0,
+  trustedFavoriteCount: 0,
+  solveCount: 20,
+  hasIllustration: true
+}), 0);
+assert.equal(problemAuthorshipReputationBonus({
+  favoriteCount: 1,
+  trustedFavoriteCount: 0,
+  solveCount: 2,
+  hasIllustration: false
+}), 8);
+assert.equal(problemAuthorshipReputationBonus({
+  favoriteCount: 3,
+  trustedFavoriteCount: 1,
+  solveCount: 14,
+  hasIllustration: true
+}), 23);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 2, hasIllustration: true }), 0);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 3, hasIllustration: false }), 8);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 5, hasIllustration: true }), 14);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 100, hasIllustration: true }), 30);
+assert.equal(reviewedContributionReputationBonus(101), 100);
+assert.equal(curationActivityReputationBonus(4), 0);
+assert.equal(curationActivityReputationBonus(5), 1);
+assert.equal(curationActivityReputationBonus(500), 20);
+assert.equal(contentHasIllustration("A diagram: ![triangle](/uploads/triangle.png)"), true);
+assert.equal(contentHasIllustration("```jsxgraph\nconst board = JXG.JSXGraph.initBoard('box');\n```"), true);
+assert.equal(contentHasIllustration("Only text and $x^2$."), false);
 assert.equal(dailyProblemReputationBonus(3, Role.USER), 150);
 assert.equal(dailyProblemReputationBonus(3, Role.MODERATOR), 150);
 assert.equal(dailyProblemReputationBonus(3, Role.ADMIN), 0);
@@ -3489,6 +3543,40 @@ const reactionAdjustedProfile = buildRecommendationProfile(
 assert.ok(reactionAdjustedProfile.targetDifficulty > 30);
 assert.ok(reactionAdjustedProfile.domains.ALGEBRA.affinity > 0.35);
 
+const knownProblemDismissalProfile = buildRecommendationProfile(
+  {
+    mathLevel: "UNDERGRAD",
+    mathematicalDomains: ["ALGEBRA"],
+    attempts: [],
+    favorites: [],
+    dismissals: [{
+      difficulty: 35,
+      domains: ["ALGEBRA"],
+      reason: "ALREADY_KNOWN",
+      updatedAt: recommendationNow
+    }]
+  },
+  recommendationNow
+);
+const uninterestedDomainProfile = buildRecommendationProfile(
+  {
+    mathLevel: "UNDERGRAD",
+    mathematicalDomains: ["ALGEBRA"],
+    attempts: [],
+    favorites: [],
+    dismissals: [{
+      difficulty: 35,
+      domains: ["ALGEBRA"],
+      reason: "NOT_INTERESTED_IN_DOMAIN",
+      updatedAt: recommendationNow
+    }]
+  },
+  recommendationNow
+);
+assert.equal(knownProblemDismissalProfile.domains.ALGEBRA.affinity, 0.35);
+assert.ok(uninterestedDomainProfile.domains.ALGEBRA.affinity < knownProblemDismissalProfile.domains.ALGEBRA.affinity);
+assert.equal(uninterestedDomainProfile.modelVersion, 6);
+
 const fittingRecommendation = scoreProblemRecommendation(
   recommendationProfile,
   {
@@ -3759,9 +3847,10 @@ assert.equal(new Set(composedRecommendations.map((item) => item.problem.id)).siz
 assert.deepEqual(
   excludedRecommendationGroupIds(
     ["solved", "shared"],
-    ["authored", "shared", "authored"]
+    ["authored", "shared", "authored"],
+    ["dismissed", "shared"]
   ),
-  ["solved", "shared", "authored"]
+  ["solved", "shared", "authored", "dismissed"]
 );
 
 const progressMap = buildProgressMap(
