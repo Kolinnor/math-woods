@@ -323,9 +323,11 @@ export default async function ConceptsPage({
             action={createContributionRequestAction.bind(null, "CONCEPT", "/concepts")}
             buttonClassName="concept-browser-action-button"
             buttonLabel={t.concepts.requestConcept}
+            closeLabel={t.contributingPage.closeRequestDialog}
             title={t.concepts.requestConcept}
             description={t.concepts.requestConceptDescription}
             placeholder={t.concepts.requestConceptPlaceholder}
+            submitLabel={t.contributingPage.sendRequest}
           />
         </>
       }

@@ -2268,9 +2268,12 @@ summary:active,
 
 .navigation-progress {
   background: var(--accent);
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 42%, transparent);
+  border-bottom: 1px solid var(--panel);
+  box-shadow:
+    0 1px 0 var(--accent-border),
+    0 2px 8px color-mix(in srgb, var(--ink) 38%, transparent);
   display: none;
-  height: 3px;
+  height: 4px;
   inset: 0 auto auto 0;
   pointer-events: none;
   position: fixed;

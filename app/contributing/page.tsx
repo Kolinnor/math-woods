@@ -1,12 +1,14 @@
 import { ContributionRequestStatus } from "@prisma/client";
 import type { Route } from "next";
 import Link from "next/link";
+import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
 import {
   claimContributionRequestAction,
   completeContributionRequestAction,
+  createContributionRequestAction,
   releaseContributionRequestAction
 } from "@/lib/actions/contribution-request-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -92,6 +94,29 @@ export default async function ContributingPage({
             </div>
           </div>
           <p className="contribution-request-board-intro">{contributionPage.content.requestIntro}</p>
+          {user && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <ContributionRequestDialog
+                action={createContributionRequestAction.bind(null, "PROBLEM", "/contributing")}
+                buttonLabel={labels.createProblemRequest}
+                closeLabel={labels.closeRequestDialog}
+                title={t.problems.requestProblem}
+                description={t.problems.requestProblemDescription}
+                placeholder={t.problems.requestProblemPlaceholder}
+                submitLabel={labels.sendRequest}
+              />
+              <ContributionRequestDialog
+                action={createContributionRequestAction.bind(null, "CONCEPT", "/contributing")}
+                buttonClassName="secondary"
+                buttonLabel={labels.createConceptRequest}
+                closeLabel={labels.closeRequestDialog}
+                title={t.concepts.requestConcept}
+                description={t.concepts.requestConceptDescription}
+                placeholder={t.concepts.requestConceptPlaceholder}
+                submitLabel={labels.sendRequest}
+              />
+            </div>
+          )}
           {params.request === "created" && (
             <p className="success-banner mt-4" role="status">
               {labels.requestAdded}

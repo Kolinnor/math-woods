@@ -1,6 +1,7 @@
 import katex from "katex";
 import { marked, Renderer } from "marked";
 import sanitizeHtml from "sanitize-html";
+import { MATH_WOODS_KATEX_MACROS } from "./latex-macros.ts";
 import { findLatexRanges } from "./latex-ranges.ts";
 import { jsxGraphCodeBlockHtml } from "./jsxgraph.ts";
 import { extractMarkdownFolds } from "./markdown-folds.ts";
@@ -44,6 +45,7 @@ function protectLatex(input: string, blockDisplayMath = true) {
       token,
       katex.renderToString(range.formula, {
         displayMode: range.displayMode,
+        macros: MATH_WOODS_KATEX_MACROS,
         throwOnError: false
       })
     );

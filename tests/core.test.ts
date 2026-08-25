@@ -15,6 +15,7 @@ import {
   parseMarkdownDocument
 } from "../lib/frontmatter.ts";
 import { latexDeleteChange } from "../lib/latex-deletion.ts";
+import { MATH_WOODS_KATEX_MACROS } from "../lib/latex-macros.ts";
 import { markdownDraftConflictsWithSource } from "../lib/markdown-drafts.ts";
 import { markdownImageSizingFromSrc, markdownImageSrcWithWidth } from "../lib/markdown-images.ts";
 import { assertRateLimitOnce, RateLimitError } from "../lib/rate-limit.ts";
@@ -166,6 +167,11 @@ import {
   summarizeChatReactions
 } from "../lib/chat-reactions.ts";
 import { chatUnreadDocumentTitle, shouldAcknowledgeChat } from "../lib/chat-unread.ts";
+import {
+  miniChatDraftStorageKey,
+  readMiniChatDraft,
+  writeMiniChatDraft
+} from "../lib/chat-drafts.ts";
 import { formatCompactNumber } from "../lib/compact-number.ts";
 import {
   addDaysToDateKey,
@@ -980,6 +986,23 @@ assert.equal(chatUnreadDocumentTitle("Math Woods", 1), "(1) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(1) Math Woods", 3), "(3) Math Woods");
 assert.equal(chatUnreadDocumentTitle("(99+) Math Woods", 0), "Math Woods");
 assert.equal(chatUnreadDocumentTitle("A problem - Math Woods", 120), "(99+) A problem - Math Woods");
+
+const miniChatDraftValues = new Map<string, string>();
+const miniChatDraftStorage = {
+  getItem: (key: string) => miniChatDraftValues.get(key) ?? null,
+  removeItem: (key: string) => {
+    miniChatDraftValues.delete(key);
+  },
+  setItem: (key: string, value: string) => {
+    miniChatDraftValues.set(key, value);
+  }
+};
+assert.notEqual(miniChatDraftStorageKey(1, 2), miniChatDraftStorageKey(2, 1));
+writeMiniChatDraft(miniChatDraftStorage, 1, 2, "A saved message");
+assert.equal(readMiniChatDraft(miniChatDraftStorage, 1, 2), "A saved message");
+assert.equal(readMiniChatDraft(miniChatDraftStorage, 1, 3), "");
+writeMiniChatDraft(miniChatDraftStorage, 1, 2, "");
+assert.equal(readMiniChatDraft(miniChatDraftStorage, 1, 2), "");
 assert.equal(
   loginHrefForReturnTo("/problems/a-problem/translate?language=fr&task=problem%3A12%3Afr"),
   "/login?returnTo=%2Fproblems%2Fa-problem%2Ftranslate%3Flanguage%3Dfr%26task%3Dproblem%253A12%253Afr"
@@ -1879,6 +1902,10 @@ const renderedLatex = await renderMarkdown(
 );
 assert.equal(renderedLatex.includes("u_{n+1}=u_n"), true);
 assert.equal(renderedLatex.includes("<em>{n\\geq 0}</annotation>"), false);
+assert.equal(MATH_WOODS_KATEX_MACROS["\\C"], "\\mathbb{C}");
+const renderedLatexMacro = await renderMarkdown(String.raw`$\C + \R + \Z$`);
+assert.match(renderedLatexMacro, /mathbb/);
+assert.doesNotMatch(renderedLatexMacro, /katex-error/);
 
 const renderedItalicAfterLatex = await renderMarkdown(
   "*Dans le cas* $n_1$*, correspondant à la gamme chromatique usuelle.*"
@@ -2425,13 +2452,14 @@ assert.match(problemDetailSource, /href=\{problemSignInHref as never\}/);
 assert.match(problemDetailSource, /!isConjecture && \(user \?/);
 assert.match(problemDetailSource, /problem-primary-actions\$\{isConjecture \? " conjecture" : ""\}/);
 assert.match(problemDetailSource, /startAttemptAction\.bind/);
+assert.match(problemDetailSource, /unmarkProblemAttemptAction\.bind/);
 assert.match(problemDetailSource, /toggleProblemFavoriteAction\.bind/);
 assert.match(problemBrowserSource, /isConjecture=\{problem\.isConjecture\}/);
 assert.match(problemLedgerInteractiveRowSource, /!isConjecture && \(!signedIn \?/);
 assert.match(problemBrowserStateRouteSource, /operation === "solve" && problem\.isConjecture/);
 assert.match(problemBrowserStateRouteSource, /Conjectures cannot be marked as solved/);
 assert.ok(
-  (problemActionsSource.match(/Conjectures cannot be marked as solved/g) ?? []).length >= 3,
+  (problemActionsSource.match(/Conjectures cannot be marked as solved/g) ?? []).length >= 2,
   "direct solving and verification approval must reject conjectures"
 );
 assert.match(disallowSolvedConjecturesMigrationSource, /problem\."isConjecture" = TRUE/);

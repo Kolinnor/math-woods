@@ -1,5 +1,5 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
-import { FriendshipStatus } from "@prisma/client";
+import { ConceptStatus, FriendshipStatus } from "@prisma/client";
 import { ExternalLink, Handshake } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -144,7 +144,7 @@ export default async function ProfilePage({
       : null,
     prisma.concept.findMany({
       where: {
-        canAppearInConceptBrowser: true,
+        status: { not: ConceptStatus.MISSING },
         OR: [
           { createdById: user.id },
           { mergeContributors: { some: { userId: user.id } } }

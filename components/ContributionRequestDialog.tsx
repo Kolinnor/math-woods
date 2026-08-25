@@ -6,8 +6,10 @@ type ContributionRequestDialogProps = {
   action: (formData: FormData) => void;
   buttonClassName?: string;
   buttonLabel: string;
+  closeLabel: string;
   description: string;
   placeholder: string;
+  submitLabel: string;
   title: string;
 };
 
@@ -15,8 +17,10 @@ export function ContributionRequestDialog({
   action,
   buttonClassName = "",
   buttonLabel,
+  closeLabel,
   description,
   placeholder,
+  submitLabel,
   title
 }: ContributionRequestDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -37,14 +41,14 @@ export function ContributionRequestDialog({
             <p>{description}</p>
           </div>
           <form method="dialog">
-            <button type="submit" className="secondary" aria-label="Close request dialog">
-              Close
+            <button type="submit" className="secondary" aria-label={closeLabel}>
+              {closeLabel}
             </button>
           </form>
         </div>
         <form action={action} className="grid gap-3">
           <textarea name="body" required maxLength={4000} minLength={10} placeholder={placeholder} />
-          <button type="submit">Send request</button>
+          <button type="submit">{submitLabel}</button>
         </form>
       </dialog>
     </>

@@ -566,6 +566,7 @@ export default async function ProblemsPage({
           translationGroupId: { in: candidateTranslationGroupIds },
           status: "PUBLISHED",
           listed: true,
+          ...(qualityValue ? { qualityStatus: qualityValue } : {}),
           language: { in: languageValues }
         },
         select: {
@@ -767,9 +768,11 @@ export default async function ProblemsPage({
             <ContributionRequestDialog
               action={createContributionRequestAction.bind(null, "PROBLEM", "/problems")}
               buttonLabel={t.problems.requestProblem}
+              closeLabel={t.contributingPage.closeRequestDialog}
               title={t.problems.requestProblem}
               description={t.problems.requestProblemDescription}
               placeholder={t.problems.requestProblemPlaceholder}
+              submitLabel={t.contributingPage.sendRequest}
             />
           </div>
         </div>

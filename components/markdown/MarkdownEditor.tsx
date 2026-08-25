@@ -23,6 +23,7 @@ import { FieldHelp } from "@/components/FieldHelp";
 import { MarkdownInline } from "@/components/MarkdownInline";
 import { imageUploadNetworkError, imageUploadResponseError } from "@/lib/image-upload-errors";
 import { jsxGraphFoldRangeAtLine, type JsxGraphFoldRange } from "@/lib/jsxgraph-folding";
+import { MATH_WOODS_KATEX_MACROS } from "@/lib/latex-macros";
 import {
   DEFAULT_LATEX_PREFERENCES,
   type LatexPreferenceValues
@@ -492,6 +493,7 @@ class LatexWidget extends WidgetType {
     element.setAttribute("aria-label", `LaTeX: ${this.formula}`);
     katex.render(this.formula, element, {
       displayMode: this.renderDisplayMode,
+      macros: MATH_WOODS_KATEX_MACROS,
       throwOnError: false
     });
     scheduleLatexWidgetLayoutDiagnostics(element, this.diagnostics);

@@ -24,7 +24,9 @@ import {
   type ChatReactionUpdate
 } from "@/lib/chat-reactions";
 import { CHAT_READ_EVENT, chatUnreadDocumentTitle, shouldAcknowledgeChat } from "@/lib/chat-unread";
+import { readMiniChatDraft, writeMiniChatDraft } from "@/lib/chat-drafts";
 import { chatDayKey, formatChatDay, formatChatTime } from "@/lib/chat-dates";
+import { CONTENT_LIMITS } from "@/lib/content-limits";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { ChatReplyPreview } from "@/lib/chat-replies";
 import type { FriendsMenuData } from "@/lib/friends-menu";
@@ -172,7 +174,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     latestMessageIdRef.current = 0;
     reactionCursorRef.current = 0;
     setMessages([]);
-    setDraft("");
+    setDraft(readMiniChatDraft(window.localStorage, data.currentUserId, selectedFriend.id));
     setReplyingTo(null);
     setChatError(null);
     setChatLoading(true);
@@ -289,6 +291,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         ? current
         : [...current, result.message!]);
       latestMessageIdRef.current = Math.max(latestMessageIdRef.current, result.message.id);
+      writeMiniChatDraft(window.localStorage, data.currentUserId, selectedFriend.id, "");
       setDraft("");
       setReplyingTo(null);
       noteNewMessages(0, true);
@@ -523,7 +526,12 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
               <textarea
                 name="bodyMarkdown"
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                maxLength={CONTENT_LIMITS.discussionPost}
+                onChange={(event) => {
+                  const nextDraft = event.target.value;
+                  setDraft(nextDraft);
+                  writeMiniChatDraft(window.localStorage, data.currentUserId, selectedFriend.id, nextDraft);
+                }}
                 onKeyDown={submitOnShortcut}
                 placeholder={data.labels.writeMessage}
                 aria-label={data.labels.writeMessage}

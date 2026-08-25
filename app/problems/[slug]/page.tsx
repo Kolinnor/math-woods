@@ -25,6 +25,7 @@ import {
   markProblemSolvedAction,
   startAttemptAction,
   toggleProblemFavoriteAction,
+  unmarkProblemAttemptAction,
   unmarkProblemSolvedAction
 } from "@/lib/actions/problem-actions";
 import {
@@ -959,10 +960,19 @@ export default async function ProblemPage({
           ))}
           {user ? (
             attempt ? (
-              <span className="problem-action-tile attempted" aria-disabled="true">
-                <Target size={25} />
-                <span><strong>{t.problemDetail.attempted}</strong><small>{copy.tiles.attemptedSub}</small></span>
-              </span>
+              attempt.status === "STARTED" ? (
+                <form action={unmarkProblemAttemptAction.bind(null, problem.id, problem.slug)}>
+                  <button type="submit" className="problem-action-tile attempted" aria-pressed="true">
+                    <Target size={25} />
+                    <span><strong>{t.problemDetail.stopAttempting}</strong><small>{copy.tiles.attemptedSub}</small></span>
+                  </button>
+                </form>
+              ) : (
+                <span className="problem-action-tile attempted" aria-disabled="true">
+                  <Target size={25} />
+                  <span><strong>{t.problemDetail.attempted}</strong><small>{copy.tiles.attemptedSub}</small></span>
+                </span>
+              )
             ) : (
               <form action={startAttemptAction.bind(null, problem.id, problem.slug)}>
                 <button type="submit" className="problem-action-tile attempted">

@@ -132,7 +132,7 @@ async function authoredContentCounts(userIds: number[]) {
 
   const [concepts, solutions, mergedConceptCredits] = await Promise.all([
     prisma.concept.findMany({
-      where: { createdById: { in: userIds }, canAppearInConceptBrowser: true },
+      where: { createdById: { in: userIds }, status: { not: ConceptStatus.MISSING } },
       select: { createdById: true, translationGroupId: true }
     }),
     prisma.problemProof.findMany({
@@ -142,7 +142,7 @@ async function authoredContentCounts(userIds: number[]) {
     prisma.conceptMergeContributor.findMany({
       where: {
         userId: { in: userIds },
-        concept: { canAppearInConceptBrowser: true }
+        concept: { status: { not: ConceptStatus.MISSING } }
       },
       select: {
         userId: true,

@@ -1841,10 +1841,9 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
   const now = new Date();
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { authorId: true, title: true, translationGroupId: true, isConjecture: true }
+    select: { authorId: true, title: true, translationGroupId: true }
   });
   if (!problem) throw new Error("Problem not found.");
-  if (problem.isConjecture) throw new Error("Conjectures cannot be marked as solved.");
   const translations = await prisma.problem.findMany({
     where: { translationGroupId: problem.translationGroupId },
     select: { id: true, slug: true }
