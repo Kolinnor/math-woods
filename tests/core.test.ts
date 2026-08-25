@@ -2291,6 +2291,7 @@ const authActionsSource = readFileSync(join("lib", "actions", "auth-actions.ts")
 const oauthActionsSource = readFileSync(join("lib", "actions", "oauth-actions.ts"), "utf-8");
 const languageSelectorSource = readFileSync(join("components", "LanguageSelector.tsx"), "utf-8");
 const contributionTasksSource = readFileSync(join("app", "contributing", "tasks", "page.tsx"), "utf-8");
+const contributionTaskRandomSource = readFileSync(join("app", "contributing", "tasks", "random", "route.ts"), "utf-8");
 const siteImprovementsBoardSource = readFileSync(join("app", "contributing", "tasks", "site-improvements", "page.tsx"), "utf-8");
 const siteImprovementDetailSource = readFileSync(join("app", "contributing", "tasks", "site-improvements", "[id]", "page.tsx"), "utf-8");
 const siteImprovementActionsSource = readFileSync(join("lib", "actions", "site-improvement-actions.ts"), "utf-8");
@@ -2504,8 +2505,10 @@ assert.equal(
 );
 assert.match(
   homeSource,
-  /t\.home\.hero\.resume\} <AsyncMarkdownInline markdown=\{resumeProblem\.title\}/,
+  /className="home-resume-prefix"\>\{t\.home\.hero\.resume\}\<\/span\>/,
 );
+assert.match(homeSource, /AsyncMarkdownInline markdown=\{resumeProblem\.title\} className="home-resume-title"/);
+assert.match(editorCssSource, /\.home-resume-title \{[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/);
 assert.doesNotMatch(homeSource, /t\.home\.hero\.resume\(resumeProblem\.title\)/);
 assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
 assert.doesNotMatch(oauthCompleteSource, /defaultValue=\{attempt\.providerDisplayName/);
@@ -2565,6 +2568,8 @@ assert.match(usersPageSource, /usersHref\(mode, currentPage \+ 1, searchQuery\)/
 assert.match(usersRankingSelectSource, /new URLSearchParams\(searchParams\.toString\(\)\)/);
 assert.match(usersRankingSelectSource, /nextParams\.delete\("page"\)/);
 assert.match(contributionTasksSource, /canUseModerationTools\(user\)/);
+assert.match(contributionTasksSource, /problem\.isExercise && problem\._count\.conceptExerciseLinks === 0/);
+assert.match(contributionTaskRandomSource, /isExercise: true, conceptExerciseLinks: \{ none: \{\} \}/);
 assert.match(siteImprovementsBoardSource, /requireModerator\(\)/);
 assert.match(siteImprovementDetailSource, /requireModerator\(\)/);
 assert.equal(
@@ -4034,6 +4039,7 @@ assert.equal(hasExamplesSection("### Exemple\n\nUn carré."), true);
 assert.equal(hasExamplesSection("An example appears in this sentence."), false);
 assert.equal(hasExamplesSection("## Counterexamples\n\nNone yet."), false);
 assert.equal(parseContributionTaskKey("stub-concepts"), "stub-concepts");
+assert.equal(parseContributionTaskKey("exercises-without-concepts"), "exercises-without-concepts");
 assert.equal(parseContributionTaskKey("unknown-task"), null);
 assert.equal(parseProblemTranslationTaskKey("problems-missing-fr"), "problems-missing-fr");
 assert.equal(parseProblemTranslationTaskKey("concepts-missing-fr"), null);

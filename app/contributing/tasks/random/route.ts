@@ -46,6 +46,7 @@ async function candidatesForTask(task: ContributionTaskKey): Promise<Candidate[]
   }
   if (task === "unreviewed-problems") return (await problemCandidates({ qualityStatus: QualityStatus.UNREVIEWED })).map(({ slug }) => ({ slug, href: `/problems/${slug}` }));
   if (task === "needs-work-problems") return (await problemCandidates({ qualityStatus: QualityStatus.NEEDS_WORK })).map(({ slug }) => ({ slug, href: `/problems/${slug}` }));
+  if (task === "exercises-without-concepts") return (await problemCandidates({ isExercise: true, conceptExerciseLinks: { none: {} } })).map(({ slug }) => ({ slug, href: `/problems/${slug}` }));
 
   const isProblemTask = task.startsWith("problems-");
   const targetLanguage = task.endsWith("-fr") ? "fr" : "en";

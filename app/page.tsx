@@ -785,8 +785,14 @@ export default async function HomePage({
         <div className="home-member-hero-copy">
           <h1>{user ? t.home.hero.welcomeBack(displayNameForUser(user)) : t.home.hero.guestTitle}</h1>
           {resumeProblem && (
-            <Link href={`/problems/${resumeProblem.slug}`} className="home-button home-button-light">
-              <span>{t.home.hero.resume} <AsyncMarkdownInline markdown={resumeProblem.title} /><ContentLanguageFallback language={resumeProblem.language} expectedLanguage={preferredLanguage} /></span>
+            <Link
+              href={`/problems/${resumeProblem.slug}`}
+              className="home-button home-button-light home-resume-button"
+              title={resumeProblem.title}
+            >
+              <span className="home-resume-prefix">{t.home.hero.resume}</span>
+              <AsyncMarkdownInline markdown={resumeProblem.title} className="home-resume-title" />
+              <ContentLanguageFallback language={resumeProblem.language} expectedLanguage={preferredLanguage} />
             </Link>
           )}
         </div>

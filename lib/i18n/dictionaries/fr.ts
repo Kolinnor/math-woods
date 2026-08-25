@@ -1108,6 +1108,7 @@ export const fr = {
       conceptsWithoutReferences: { title: "Concepts sans références", description: "Ajoutez une source fiable pour la définition ou le résultat." },
       unreviewedProblems: { title: "Problèmes non relus", description: "Lisez attentivement l'énoncé et marquez-le comme relu lorsqu'il est prêt." },
       needsWorkProblems: { title: "Problèmes à retravailler", description: "Clarifiez ou corrigez un problème qui a été signalé." },
+      exercisesWithoutConcepts: { title: "Exercices sans concept", description: "Rattachez chaque exercice à au moins un concept afin qu'il apparaisse au bon endroit." },
       problemsMissingFr: { title: "Problèmes sans version « Français »", description: "Traduisez un problème qui n'a pas encore de version « Français »." },
       problemsMissingEn: { title: "Problèmes sans version « English »", description: "Traduisez un problème qui n'a pas encore de version « English »." },
       conceptsMissingFr: { title: "Concepts sans version « Français »", description: "Traduisez un concept qui n'a pas encore de version « Français »." },

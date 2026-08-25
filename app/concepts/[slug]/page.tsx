@@ -644,11 +644,18 @@ export default async function ConceptPage({
           </details>
         )}
 
+        {practiceExercises.length > 0 && (
+          <a href="#concept-practice" className="concept-mobile-practice-action">
+            {t.conceptDetail.practiceWithExercises}
+          </a>
+        )}
+
         <section className="reading-surface concept-reading-surface">
           <MarkdownBlock html={conceptBodyHtml} />
         </section>
 
         {practiceExercises.length > 0 && (
+          <div id="concept-practice">
           <ConceptPracticeQueue
             expectedLanguage={concept.language}
             exercises={practiceExercises.map((exercise) => ({
@@ -672,6 +679,7 @@ export default async function ConceptPage({
               difficulty: t.problems.difficulty
             }}
           />
+          </div>
         )}
 
         <div className="concept-problem-boxes">

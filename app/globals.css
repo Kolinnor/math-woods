@@ -22488,3 +22488,56 @@ body.math-woods-tour-running .guest-progress-prompt {
     right: 16px;
   }
 }
+
+/* Keep the member greeting stable when the resumed problem has a long title. */
+.home-dashboard .home-resume-button {
+  gap: 0.35em;
+  justify-content: flex-start;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.home-resume-prefix,
+.home-resume-button > .content-language-fallback {
+  flex: none;
+}
+
+.home-resume-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 901px) {
+  .home-dashboard .home-member-hero-copy {
+    display: grid;
+    gap: clamp(20px, 3vw, 42px);
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+
+  .home-dashboard .home-member-hero-copy h1 {
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .home-dashboard .home-resume-button {
+    justify-self: end;
+    width: fit-content;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .home-dashboard .home-member-hero-copy {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-dashboard .home-resume-button {
+    justify-self: start;
+    width: min(680px, 100%);
+  }
+}

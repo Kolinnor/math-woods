@@ -1103,6 +1103,7 @@ export const en = {
       conceptsWithoutReferences: { title: "Concepts without references", description: "Add a reliable source for the definition or result." },
       unreviewedProblems: { title: "Unreviewed problems", description: "Read the statement carefully and mark it as reviewed when it is ready." },
       needsWorkProblems: { title: "Problems needing work", description: "Clarify or correct a problem that has been flagged." },
+      exercisesWithoutConcepts: { title: "Exercises without a concept", description: "Link each exercise to at least one concept so that it appears in the right place." },
       problemsMissingFr: { title: "Problems without a Français version", description: "Translate a problem that has no Français version yet." },
       problemsMissingEn: { title: "Problems without an English version", description: "Translate a problem that has no English version yet." },
       conceptsMissingFr: { title: "Concepts without a Français version", description: "Translate a concept that has no Français version yet." },

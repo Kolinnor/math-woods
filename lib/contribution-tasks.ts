@@ -7,6 +7,7 @@ export const CONTRIBUTION_TASK_KEYS = [
   "concepts-without-references",
   "unreviewed-problems",
   "needs-work-problems",
+  "exercises-without-concepts",
   "problems-missing-fr",
   "problems-missing-en",
   "concepts-missing-fr",

@@ -3,10 +3,11 @@ import type { Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Inter, Spectral } from "next/font/google";
-import { Github, Menu } from "lucide-react";
+import { Github, Menu, Search } from "lucide-react";
 import { cookies } from "next/headers";
 import "../node_modules/jsxgraph/distrib/jsxgraph.css";
 import "./globals.css";
+import "./mobile.css";
 import { AchievementToast } from "@/components/AchievementToast";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
@@ -15,6 +16,7 @@ import { FriendsMenu } from "@/components/FriendsMenu";
 import { GuestProgressPrompt } from "@/components/GuestProgressPrompt";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { MathWoodsTourOverlay } from "@/components/MathWoodsTourOverlay";
+import { MobileBottomNavigation } from "@/components/MobileBottomNavigation";
 import { NavigationFeedback } from "@/components/NavigationFeedback";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { SignInLink } from "@/components/SignInLink";
@@ -243,6 +245,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}
             </div>
             <div className="nav-tools">
+              <Link href="/search" className="mobile-header-search" aria-label={t.nav.searchAriaLabel} title={t.nav.searchAriaLabel}>
+                <Search size={19} aria-hidden="true" />
+              </Link>
               {!user && (
                 <SignInLink className="guest-home-sign-in">
                   {t.nav.signIn}
@@ -253,11 +258,25 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 label={t.languageSelector.label}
                 title={t.languageSelector.choose}
               />
-              <AutoClosingDetails className="nav-menu">
+              <AutoClosingDetails className="nav-menu" id="site-navigation-menu">
                 <summary aria-label={t.nav.moreAriaLabel} title={t.nav.moreTitle} data-tour-target="menu">
                   <Menu size={18} />
                 </summary>
+                <button type="button" className="nav-menu-mobile-backdrop" data-close-details aria-label={t.nav.moreTitle} />
                 <div className="nav-menu-popover">
+                  <div className="nav-menu-mobile-account">
+                    {user && (
+                      <Link href={`/profile/${user.profileSlug}`} className="nav-menu-mobile-user">
+                        <UserAvatar user={user} size="sm" />
+                        <span>{displayNameForUser(user)}</span>
+                      </Link>
+                    )}
+                    <LanguageSelector
+                      initialLanguage={initialLanguage}
+                      label={t.languageSelector.label}
+                      title={t.languageSelector.choose}
+                    />
+                  </div>
                   <div className="nav-menu-primary-mobile">
                     <Link href="/problems" data-tour-target="nav-problems">{t.nav.problems}</Link>
                     <Link href="/concepts" data-tour-target="nav-concepts">{t.nav.concepts}</Link>
@@ -273,12 +292,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/about">{t.nav.about}</Link>
                   {user && <div className="nav-menu-divider" />}
                   {user && (
-                    <Link href={`/profile/${user.profileSlug}`} className="nav-menu-user">
+                    <Link href={`/profile/${user.profileSlug}`} className="nav-menu-user nav-menu-user-desktop">
                       <UserAvatar user={user} size="sm" />
                       <span>{displayNameForUser(user)}</span>
                     </Link>
                   )}
                   {user && <Link href={"/friends" as never}>{t.nav.friends}</Link>}
+                  {user && <Link href="/notifications">{t.notifications.title}</Link>}
                   {user && <Link href="/settings">{t.nav.settings}</Link>}
                   {user && canUseModerationTools(user) && <Link href="/moderation">{t.nav.moderation}</Link>}
                   {user ? (
@@ -316,6 +336,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         )}
         <main className="site-main site-content-width mx-auto px-4 py-8">{children}</main>
+        <MobileBottomNavigation
+          labels={{
+            home: initialLanguage === "fr" ? "Accueil" : "Home",
+            problems: t.nav.problems,
+            concepts: t.nav.concepts,
+            menu: t.nav.moreTitle
+          }}
+        />
         <Suspense fallback={null}>
           <MathWoodsTourOverlay initialLocale={initialLanguage === "fr" ? "fr" : "en"} />
         </Suspense>

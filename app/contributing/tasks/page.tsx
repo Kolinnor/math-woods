@@ -79,16 +79,19 @@ export default async function ContributionTasksPage() {
     prisma.problem.findMany({
       where: { listed: true, status: ProblemStatus.PUBLISHED },
       select: {
+        isExercise: true,
         language: true,
         qualityStatus: true,
         slug: true,
-        translationGroupId: true
+        translationGroupId: true,
+        _count: { select: { conceptExerciseLinks: true } }
       }
     })
   ]);
 
   const conceptTotal = concepts.length;
   const problemTotal = problems.length;
+  const exerciseTotal = problems.filter((problem) => problem.isExercise).length;
   const conceptGroupTotal = translationGroupCount(concepts);
   const problemGroupTotal = translationGroupCount(problems);
   const problemsMissingFr = translationSourcesMissingLanguage(problems, "fr");
@@ -106,7 +109,8 @@ export default async function ContributionTasksPage() {
   ];
   const problemTasks: Task[] = [
     { key: "unreviewed-problems", title: copy.tasks.unreviewedProblems.title, description: copy.tasks.unreviewedProblems.description, remaining: problems.filter((problem) => problem.qualityStatus === QualityStatus.UNREVIEWED).length, total: problemTotal },
-    { key: "needs-work-problems", title: copy.tasks.needsWorkProblems.title, description: copy.tasks.needsWorkProblems.description, remaining: problems.filter((problem) => problem.qualityStatus === QualityStatus.NEEDS_WORK).length, total: problemTotal }
+    { key: "needs-work-problems", title: copy.tasks.needsWorkProblems.title, description: copy.tasks.needsWorkProblems.description, remaining: problems.filter((problem) => problem.qualityStatus === QualityStatus.NEEDS_WORK).length, total: problemTotal },
+    { key: "exercises-without-concepts", title: copy.tasks.exercisesWithoutConcepts.title, description: copy.tasks.exercisesWithoutConcepts.description, remaining: problems.filter((problem) => problem.isExercise && problem._count.conceptExerciseLinks === 0).length, total: exerciseTotal }
   ];
   const translationTasks: Task[] = [
     { key: "problems-missing-fr", title: copy.tasks.problemsMissingFr.title, description: copy.tasks.problemsMissingFr.description, remaining: problemsMissingFr.length, total: problemGroupTotal },
