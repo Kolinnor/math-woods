@@ -160,10 +160,6 @@
     padding: 0 0.875rem 1.2rem;
   }
 
-  .home-member-hero-copy .home-hero-actions {
-    width: 100%;
-  }
-
   .home-member-hero-copy .home-button {
     min-height: 2.75rem;
     width: 100%;
@@ -1281,4 +1277,3 @@ button.live-search-reset:hover {
 .problem-ledger-attempt.is-active {
   cursor: pointer;
 }
-

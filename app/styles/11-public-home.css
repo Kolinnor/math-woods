@@ -60,12 +60,8 @@
 }
 
 .home-dashboard .home-member-hero-copy {
-  align-items: flex-end;
   display: flex;
-  inset: 0;
   justify-content: space-between;
-  max-width: 1240px;
-  padding: 0 40px 26px;
 }
 
 .home-dashboard .home-member-hero-copy h1 {
@@ -335,18 +331,8 @@
   margin-top: 5px;
 }
 
-.home-dashboard .home-tip-card {
-  grid-template-columns: minmax(220px, 36%) minmax(0, 1fr);
-}
-
 .home-dashboard .home-tip-image {
   background: #fff;
-  border-right: 3px solid #5a4a2c;
-  min-height: 220px;
-}
-
-.home-dashboard .home-tip-copy {
-  padding: 20px 24px;
 }
 
 .home-tip-practice {
@@ -1601,4 +1587,3 @@ body:has(.problem-detail-shell) .site-main {
     flex-wrap: wrap;
   }
 }
-

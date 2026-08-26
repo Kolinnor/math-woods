@@ -5,7 +5,6 @@ body:has(.home-dashboard) > .site-footer {
 
 .home-dashboard .home-tip-image {
   min-width: 0;
-  width: 100%;
 }
 
 .home-dashboard .home-dashboard-grid {
@@ -124,4 +123,3 @@ body:has(.home-dashboard) > .site-footer {
   }
 
 }
-

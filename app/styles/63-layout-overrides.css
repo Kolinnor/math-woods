@@ -8,12 +8,6 @@
 }
 
 @media (max-width: 760px) {
-  .site-nav {
-    grid-template-columns: minmax(0, 1fr) auto;
-    min-height: calc(var(--mw-logo-size) * 0.62 + 1.1rem);
-    padding: 0.55rem 0.75rem;
-  }
-
   .site-nav .primary-nav {
     display: none;
   }
@@ -42,31 +36,8 @@
     width: 4.5rem;
   }
 
-  .home-dashboard .home-tip-card {
-    grid-template-columns: 104px minmax(0, 1fr);
-    height: auto;
-    min-height: 168px;
-  }
-
   .home-dashboard .home-tip-image {
-    align-self: start;
-    border-bottom: 0;
-    border-right: 2px solid #5a4a2c;
-    height: 104px;
     justify-self: stretch;
-    width: 104px;
-  }
-
-  .home-dashboard .home-tip-copy {
-    padding: 0.75rem;
-  }
-
-  .home-dashboard .home-tip-copy h2 {
-    font-size: 1rem;
-  }
-
-  .home-dashboard .home-tip-copy > .prose-math {
-    font-size: 0.82rem;
   }
 }
 .tip-translation-editor {
