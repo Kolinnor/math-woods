@@ -307,6 +307,7 @@ import {
   DAILY_PROBLEM_REPUTATION_POINTS,
   dailyProblemReputationBonus,
   learningSolveReputationBonus,
+  PROBLEM_TRANSLATION_REPUTATION_POINTS,
   problemAuthorshipReputationBonus,
   reviewedContributionReputationBonus,
   solutionAuthorshipReputationBonus,
@@ -3230,6 +3231,7 @@ const mathematicianFixtures = [
 assert.equal(DAILY_PROBLEM_REPUTATION_POINTS, 50);
 assert.equal(AUTHORED_CONCEPT_REPUTATION_POINTS, 2);
 assert.equal(AUTHORED_PROBLEM_BASE_REPUTATION_POINTS, 4);
+assert.equal(PROBLEM_TRANSLATION_REPUTATION_POINTS, 4);
 assert.equal(authoredConceptReputationBonus(3), 6);
 assert.equal(authoredConceptReputationBonus(-1), 0);
 assert.equal(problemAuthorshipReputationBonus({
@@ -3284,17 +3286,17 @@ assert.equal(learningSolveReputationBonus(Array.from({ length: 60 }, (_, index) 
 }))), 50);
 
 assert.equal(translationReputationBonus([
-  { key: "problem:1", createdAt: reputationDate(1), points: 2 },
-  { key: "problem:1", createdAt: reputationDate(1, 1), points: 2 },
+  { key: "problem:1", createdAt: reputationDate(1), points: PROBLEM_TRANSLATION_REPUTATION_POINTS },
+  { key: "problem:1", createdAt: reputationDate(1, 1), points: PROBLEM_TRANSLATION_REPUTATION_POINTS },
   { key: "concept:2", createdAt: reputationDate(1, 2), points: 2 },
   { key: "hint:3", createdAt: reputationDate(1, 3), points: 1 },
   { key: "proof:4", createdAt: reputationDate(1, 4), points: 1 }
-]), 6);
+]), 8);
 assert.equal(translationReputationBonus(Array.from({ length: 7 }, (_, index) => ({
   key: `problem:${index}`,
   createdAt: reputationDate(1, index),
   points: 2
-}))), 10);
+}))), 14);
 
 assert.equal(defaultAvatarPresetForUsername("ada"), defaultAvatarPresetForUsername("Ada"));
 assert.ok(DEFAULT_AVATAR_PRESETS.includes(defaultAvatarPresetForUsername("emmy")));

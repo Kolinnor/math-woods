@@ -4,9 +4,9 @@ export const DAILY_PROBLEM_REPUTATION_POINTS = 50;
 export const LEARNING_SOLVE_REPUTATION_POINTS = 1;
 export const LEARNING_SOLVE_DAILY_LIMIT = 5;
 export const LEARNING_SOLVE_LIFETIME_LIMIT = 50;
+export const PROBLEM_TRANSLATION_REPUTATION_POINTS = 4;
 export const PAGE_TRANSLATION_REPUTATION_POINTS = 2;
 export const COMPANION_TRANSLATION_REPUTATION_POINTS = 1;
-export const TRANSLATION_REPUTATION_DAILY_LIMIT = 10;
 export const AUTHORED_CONCEPT_REPUTATION_POINTS = 2;
 export const AUTHORED_PROBLEM_BASE_REPUTATION_POINTS = 4;
 export const PROBLEM_FAVORITE_REPUTATION_POINTS = 2;
@@ -126,16 +126,8 @@ export function translationReputationBonus(events: TranslationReputationEvent[])
     if (!current || event.createdAt < current.createdAt) uniqueEvents.set(event.key, event);
   }
 
-  const dailyPoints = new Map<string, number>();
-  let total = 0;
-  for (const event of [...uniqueEvents.values()].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())) {
-    const points = Math.max(0, Math.floor(event.points));
-    const dateKey = utcDateKey(event.createdAt);
-    const pointsForDay = dailyPoints.get(dateKey) ?? 0;
-    if (pointsForDay + points > TRANSLATION_REPUTATION_DAILY_LIMIT) continue;
-    dailyPoints.set(dateKey, pointsForDay + points);
-    total += points;
-  }
-
-  return total;
+  return [...uniqueEvents.values()].reduce(
+    (total, event) => total + Math.max(0, Math.floor(event.points)),
+    0
+  );
 }

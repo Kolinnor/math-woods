@@ -14,7 +14,7 @@ Un problème ou un exercice ne rapporte rien tant qu'il n'a pas reçu au moins u
 - 1 point par résolution externe, dans la limite de 10 ;
 - 2 points si le contenu contient une image ou un bloc JSXGraph.
 
-Les traductions d'un même problème sont regroupées afin de ne pas multiplier les favoris et les résolutions. Le créateur reçoit le score du groupe une seule fois. Chaque personne ayant créé une traduction reçoit le même score que l'auteur pour ce groupe.
+Les traductions d'un même problème sont regroupées afin de ne pas multiplier les favoris et les résolutions. Le créateur reçoit le score du groupe une seule fois. La traduction d'un problème rapporte 4 points fixes à son traducteur, indépendamment des favoris et des résolutions du problème.
 
 ### Concepts
 
@@ -39,7 +39,7 @@ Modifier ou relire une page actuellement marquée comme relue rapporte 1 point p
 
 Les favoris placés sur les problèmes des autres et les votes utiles placés sur leurs solutions sont regroupés. Cinq contenus distincts ainsi valorisés rapportent 1 point, dans la limite de 20 points. Les actions sur son propre contenu sont exclues.
 
-Le bonus d'apprentissage existant reste limité à cinq nouvelles résolutions par jour et cinquante au total. Les sélections comme problème du jour et les récompenses de concours conservent leur barème propre. Les traductions de concepts, d'indices et de solutions conservent également leur bonus plafonné ; une traduction de problème utilise à la place le score complet décrit plus haut.
+Le bonus d'apprentissage existant reste limité à cinq nouvelles résolutions par jour et cinquante au total. Les sélections comme problème du jour et les récompenses de concours conservent leur barème propre. Une traduction de problème rapporte 4 points, une traduction de concept 2 points, et une traduction d'indice ou de solution 1 point. Chaque traduction n'est comptée qu'une fois.
 
 ## Illustrations
 

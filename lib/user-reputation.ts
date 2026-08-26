@@ -21,6 +21,7 @@ import {
   dailyProblemReputationBonus,
   learningSolveReputationBonus,
   PAGE_TRANSLATION_REPUTATION_POINTS,
+  PROBLEM_TRANSLATION_REPUTATION_POINTS,
   problemAuthorshipReputationBonus,
   reviewedContributionReputationBonus,
   solutionAuthorshipReputationBonus,
@@ -333,10 +334,9 @@ async function curationActivityCounts(userIds: number[]) {
   return counts;
 }
 
-async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: Map<string, number>) {
+async function earnedReputationBonuses(userIds: number[]) {
   const learningByUser = new Map<number, Array<{ translationGroupId: string; solvedAt: Date }>>();
   const translationsByUser = new Map<number, TranslationBonusEvent[]>();
-  const translatedProblemScoresByUser = new Map<number, Map<number, number>>();
   if (userIds.length === 0) {
     return {
       learningByUser: new Map<number, number>(),
@@ -362,7 +362,7 @@ async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: 
       }),
       prisma.problem.findMany({
         where: { translatedFromProblemId: { not: null }, status: { not: ProblemStatus.ARCHIVED } },
-        select: { id: true, translationGroupId: true }
+        select: { id: true }
       }),
       prisma.concept.findMany({
         where: { translatedFromConceptId: { not: null } },
@@ -392,41 +392,8 @@ async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: 
     learningByUser.set(attempt.userId, events);
   }
 
-  const translatedProblemById = new Map(translatedProblems.map((problem) => [problem.id, problem]));
+  const translatedProblemIds = new Set(translatedProblems.map(({ id }) => id));
   const translatedConceptIds = new Set(translatedConcepts.map(({ id }) => id));
-  const resolvedProblemScoresByGroup = new Map(problemScoresByGroup);
-  const missingTranslatedGroupIds = [...new Set(creationRevisions.flatMap((revision) => {
-    if (revision.pageType !== SourceType.PROBLEM) return [];
-    const groupId = translatedProblemById.get(revision.pageId)?.translationGroupId;
-    return groupId && !resolvedProblemScoresByGroup.has(groupId) ? [groupId] : [];
-  }))];
-  if (missingTranslatedGroupIds.length > 0) {
-    const translatedGroupProblems = await prisma.problem.findMany({
-      where: {
-        translationGroupId: { in: missingTranslatedGroupIds },
-        status: { not: ProblemStatus.ARCHIVED }
-      },
-      select: {
-        authorId: true,
-        translationGroupId: true,
-        bodyMarkdown: true,
-        attempts: {
-          where: { status: AttemptStatus.SOLVED },
-          select: { userId: true, user: { select: { role: true } } }
-        },
-        favorites: {
-          select: { userId: true, user: { select: { role: true } } }
-        }
-      }
-    });
-    const mergedTranslatedGroups = mergeTranslatedProblems(translatedGroupProblems.map((problem) => ({
-      ...problem,
-      hasIllustration: contentHasIllustration(problem.bodyMarkdown)
-    })));
-    for (const problem of mergedTranslatedGroups) {
-      resolvedProblemScoresByGroup.set(problem.translationGroupId, scoreProblem(problem));
-    }
-  }
   function addTranslationEvent(userId: number | null, event: TranslationBonusEvent) {
     if (!userId) return;
     const events = translationsByUser.get(userId) ?? [];
@@ -436,11 +403,12 @@ async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: 
 
   for (const revision of creationRevisions) {
     if (revision.pageType === SourceType.PROBLEM) {
-      const translatedProblem = translatedProblemById.get(revision.pageId);
-      if (!translatedProblem || !revision.editedById) continue;
-      const scores = translatedProblemScoresByUser.get(revision.editedById) ?? new Map<number, number>();
-      scores.set(revision.pageId, resolvedProblemScoresByGroup.get(translatedProblem.translationGroupId) ?? 0);
-      translatedProblemScoresByUser.set(revision.editedById, scores);
+      if (!translatedProblemIds.has(revision.pageId)) continue;
+      addTranslationEvent(revision.editedById, {
+        key: `${revision.pageType}:${revision.pageId}`,
+        createdAt: revision.createdAt,
+        points: PROBLEM_TRANSLATION_REPUTATION_POINTS
+      });
       continue;
     }
     if (revision.pageType !== SourceType.CONCEPT || !translatedConceptIds.has(revision.pageId)) continue;
@@ -466,11 +434,7 @@ async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: 
   }
 
   function translationCountForUser(userId: number) {
-    const translatedItems = new Set((translationsByUser.get(userId) ?? []).map((event) => event.key));
-    for (const problemId of translatedProblemScoresByUser.get(userId)?.keys() ?? []) {
-      translatedItems.add(`${SourceType.PROBLEM}:${problemId}`);
-    }
-    return translatedItems.size;
+    return new Set((translationsByUser.get(userId) ?? []).map((event) => event.key)).size;
   }
 
   return {
@@ -478,11 +442,7 @@ async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: 
       userIds.map((userId) => [userId, learningSolveReputationBonus(learningByUser.get(userId) ?? [])])
     ),
     translationsByUser: new Map(
-      userIds.map((userId) => [
-        userId,
-        translationReputationBonus(translationsByUser.get(userId) ?? [])
-          + [...(translatedProblemScoresByUser.get(userId)?.values() ?? [])].reduce((total, score) => total + score, 0)
-      ])
+      userIds.map((userId) => [userId, translationReputationBonus(translationsByUser.get(userId) ?? [])])
     ),
     translationCountsByUser: new Map(
       userIds.map((userId) => [userId, translationCountForUser(userId)])
@@ -637,8 +597,7 @@ export async function getReputationLeaderboard() {
     ...problem,
     hasIllustration: contentHasIllustration(problem.bodyMarkdown)
   })));
-  const problemScoresByGroup = new Map(problems.map((problem) => [problem.translationGroupId, scoreProblem(problem)]));
-  const bonuses = await earnedReputationBonuses(userIds, problemScoresByGroup);
+  const bonuses = await earnedReputationBonuses(userIds);
 
   const problemsByAuthor = new Map<number, ReputationProblem[]>();
   for (const problem of problems) {
@@ -726,8 +685,7 @@ export async function getUserReputation(userId: number) {
     ...problem,
     hasIllustration: contentHasIllustration(problem.bodyMarkdown)
   })));
-  const problemScoresByGroup = new Map(problems.map((problem) => [problem.translationGroupId, scoreProblem(problem)]));
-  const bonuses = await earnedReputationBonuses([userId], problemScoresByGroup);
+  const bonuses = await earnedReputationBonuses([userId]);
 
   return problems.reduce((total, problem) => total + scoreProblem(problem), 0)
     + (user ? dailyProblemReputationBonus(dailyProblemCount, user.role) : 0)
