@@ -6,10 +6,8 @@
   color: #fff;
 }
 
-body:has(.problems-page-shell) .site-header,
 body:has(.home-shell) .site-header,
-body:has(.forest-page-shell) .site-header,
-body:has(.problem-detail-shell) .site-header {
+body:has(.forest-page-shell) .site-header {
   background: transparent;
   position: absolute;
   width: 100%;
@@ -54,15 +52,13 @@ body:has(.problem-detail-shell) .site-header {
   color: rgb(255 255 255 / 0.72);
 }
 
-.site-main:has(.problems-page-shell),
 .site-main:has(.forest-page-shell) {
   max-width: none;
   min-height: 0;
   padding: 0;
 }
 
-.forest-page-shell,
-.problems-page-shell {
+.forest-page-shell {
   background: #e8e2d3;
   color: #1c211b;
   margin: 0;
@@ -70,8 +66,7 @@ body:has(.problem-detail-shell) .site-header {
   width: 100%;
 }
 
-.forest-page-hero,
-.problems-hero {
+.forest-page-hero {
   background: #14201a;
   display: flex;
   min-height: 320px;
@@ -83,8 +78,7 @@ body:has(.problem-detail-shell) .site-header {
   min-height: clamp(340px, 38vh, 440px);
 }
 
-.forest-page-hero > img,
-.problems-hero > img {
+.forest-page-hero > img {
   height: 100%;
   inset: 0;
   object-fit: cover;
@@ -97,15 +91,13 @@ body:has(.problem-detail-shell) .site-header {
   object-position: center 56%;
 }
 
-.forest-page-hero-overlay,
-.problems-hero-overlay {
+.forest-page-hero-overlay {
   background: linear-gradient(180deg, rgb(20 28 18 / 0.6) 0%, rgb(20 28 18 / 0.32) 42%, rgb(20 28 18 / 0.84) 100%);
   inset: 0;
   position: absolute;
 }
 
-.forest-page-hero-content,
-.problems-hero-content {
+.forest-page-hero-content {
   align-items: flex-end;
   display: flex;
   gap: 1rem;
@@ -124,8 +116,7 @@ body:has(.problem-detail-shell) .site-header {
   padding-bottom: 1.65rem;
 }
 
-.forest-page-hero-kicker,
-.problems-hero-kicker {
+.forest-page-hero-kicker {
   color: #cfe3c4;
   font-size: 0.72rem;
   font-weight: 750;
@@ -135,8 +126,7 @@ body:has(.problem-detail-shell) .site-header {
   text-transform: uppercase;
 }
 
-.forest-page-hero h1,
-.problems-hero h1 {
+.forest-page-hero h1 {
   color: #fff;
   font-family: var(--font-serif);
   font-size: clamp(2.4rem, 6vw, 4.2rem);
@@ -146,16 +136,14 @@ body:has(.problem-detail-shell) .site-header {
   text-shadow: 0 2px 22px rgb(0 0 0 / 0.55);
 }
 
-.forest-page-hero-description,
-.problems-hero-description {
+.forest-page-hero-description {
   color: rgb(255 255 255 / 0.8);
   max-width: 44rem;
   margin: 0.55rem 0 0;
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
 }
 
-.forest-page-hero-meta,
-.problems-hero-meta {
+.forest-page-hero-meta {
   align-items: flex-end;
   color: rgb(255 255 255 / 0.78);
   display: grid;
@@ -167,8 +155,7 @@ body:has(.problem-detail-shell) .site-header {
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
 }
 
-.forest-page-hero-meta p,
-.problems-hero-meta p {
+.forest-page-hero-meta p {
   margin: 0;
 }
 
@@ -184,27 +171,6 @@ body:has(.problem-detail-shell) .site-header {
 
 .forest-page-hero-actions .button,
 .forest-page-hero-actions button {
-  text-shadow: none;
-}
-
-.problems-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 0.75rem;
-}
-
-.problems-hero-actions .button {
-  font-size: 1.15rem;
-  font-weight: 800;
-  min-height: 4.8rem;
-  min-width: 13.5rem;
-  padding: 1.1rem 1.7rem;
-}
-
-.problems-hero-meta .button {
-  margin-top: 0.6rem;
   text-shadow: none;
 }
 

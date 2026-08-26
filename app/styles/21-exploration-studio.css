@@ -2729,16 +2729,6 @@ button.danger,
   }
 }
 
-.problem-difficulty-field {
-  align-content: start;
-  align-self: start;
-  justify-items: start;
-}
-
-.problem-difficulty-field input {
-  max-width: 8rem;
-}
-
 .markdown-editor-host {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -5563,52 +5553,6 @@ button.domain-picker-tile > span:last-child {
   width: 100%;
 }
 
-.problem-search-shell {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  box-shadow: var(--shadow);
-  display: grid;
-  gap: 1rem;
-  padding: 1rem;
-}
-
-.problem-search-main {
-  align-items: end;
-  display: grid;
-  gap: 0.8rem;
-  grid-template-columns: 1fr auto;
-}
-
-.problem-search-main input {
-  font-size: 1rem;
-  min-height: 2.9rem;
-}
-
-.problem-search-main button {
-  min-height: 2.9rem;
-}
-
-.problem-search-filters {
-  border-top: 1px solid var(--line);
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  padding-top: 1rem;
-}
-
-.difficulty-filter {
-  display: grid;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
-.difficulty-filter-bounds {
-  display: grid;
-  gap: 0.45rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .advanced-filter-builder {
   border-top: 1px solid var(--line);
   padding-top: 1rem;
@@ -6752,4 +6696,3 @@ body:has(.problems-page-shell),
 body:has(.forest-page-shell) {
   background: #e8e2d3;
 }
-

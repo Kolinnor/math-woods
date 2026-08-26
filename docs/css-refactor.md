@@ -12,6 +12,7 @@ It is a recovery point, not a claim that every page is free of existing bugs.
 
 - The desktop appearance must not change during structural refactor commits.
 - Desktop reference widths are 1440 and 1920 pixels.
+- Mobile reference widths are 390 and 430 pixels.
 - The existing cascade order must be preserved during the initial file split.
 - Cleanup and mobile redesign must not happen in the same commit.
 - Shared abstractions are introduced only after duplicate behavior is identified.
@@ -45,13 +46,25 @@ npm run test:visual:update
 
 ## Refactor order
 
-1. Capture the public desktop reference pages.
+1. Capture the public reference pages.
 2. Split the global stylesheet while preserving source order exactly.
 3. Consolidate the homepage and navigation rules.
 4. Consolidate problem browsing and problem detail rules.
 5. Consolidate concepts, editors, discussions, profiles, and contribution tools.
 6. Remove confirmed dead selectors and obsolete preview-only styles.
 7. Define the responsive contract used by the future mobile interface.
+
+## Current progress
+
+- `app/globals.css` contains only tokens and global foundations.
+- The former global stylesheet is split into ordered feature stylesheets.
+- Obsolete homepage styles and the unused `HomeGuestIntro` component are removed.
+- Public problem browsing, recommendations, and problem detail styles now live in
+  `app/styles/64-problems.css` instead of being distributed across eight files.
+- The visual suite compares eight public pages at two desktop and two mobile
+  widths, for 32 local-versus-production checks.
+- Remote images are decoded before capture, and binary screenshot differences
+  fail with a concise message instead of serializing entire PNG buffers.
 
 ## Current inventory
 

@@ -24,51 +24,11 @@ body:has(.home-dashboard) > .site-footer {
   width: calc(100% - 2rem);
 }
 
-.problems-page-shell .problems-recommendations,
-.problems-page-shell .problem-domain-strip,
-.problems-page-shell .problems-workspace {
-  margin-left: auto;
-  margin-right: auto;
-  max-width: 1240px;
-}
-
-.problems-page-shell .problem-domain-tile-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.problems-page-shell .problems-workspace {
-  grid-template-columns: 220px minmax(0, 1fr);
-  padding-left: 40px;
-  padding-right: 40px;
-}
-
-.problem-detail-shell .problem-hero {
-  height: var(--mw-hero-band);
-  min-height: var(--mw-hero-band);
-}
-
-.problem-detail-shell .problem-detail-body {
-  gap: 28px;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  margin: 0 auto;
-  max-width: 1240px;
-  padding: 24px 40px 60px;
-}
-
-.problem-detail-shell .problem-rail {
-  margin-top: 0;
-}
-
 @media (max-width: 960px) {
-  .home-dashboard .home-dashboard-grid,
-  .problem-detail-shell .problem-detail-body {
+  .home-dashboard .home-dashboard-grid {
     grid-template-columns: 1fr;
     padding-left: 24px;
     padding-right: 24px;
-  }
-
-  .problem-detail-shell .problem-rail {
-    margin-top: 0;
   }
 }
 
@@ -87,8 +47,7 @@ body:has(.home-dashboard) > .site-footer {
 }
 
 @media (max-width: 700px) {
-  .home-dashboard .home-dashboard-grid,
-  .problem-detail-shell .problem-detail-body {
+  .home-dashboard .home-dashboard-grid {
     padding-left: 14px;
     padding-right: 14px;
   }
@@ -96,15 +55,6 @@ body:has(.home-dashboard) > .site-footer {
   .home-dashboard .home-dashboard-grid.home-dashboard-grid-guest {
     padding: 1rem 0 3rem;
     width: calc(100% - 1.75rem);
-  }
-
-  .problems-page-shell .problem-domain-tile-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .problems-page-shell .problems-workspace {
-    padding-left: 14px;
-    padding-right: 14px;
   }
 
   .home-dashboard .home-guest-dashboard-hero {

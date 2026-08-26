@@ -33,6 +33,14 @@ export default defineConfig({
     {
       name: "desktop-1920",
       use: { viewport: { width: 1920, height: 1080 } }
+    },
+    {
+      name: "mobile-390",
+      use: { viewport: { width: 390, height: 844 } }
+    },
+    {
+      name: "mobile-430",
+      use: { viewport: { width: 430, height: 932 } }
     }
   ]
 });

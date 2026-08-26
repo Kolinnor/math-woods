@@ -129,23 +129,12 @@
   font-size: 13px;
 }
 
-.recommendation-heading-actions,
-.problems-recommendations-heading {
-  align-items: center;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-}
-
-body:has(.home-dashboard),
-body:has(.problems-page-shell),
-body:has(.problem-detail-shell) {
+body:has(.home-dashboard) {
   background: var(--mw-page);
   color: var(--mw-text);
 }
 
-.home-dashboard .home-hero-forest,
-.problems-page-shell .problems-hero {
+.home-dashboard .home-hero-forest {
   height: var(--mw-hero-band);
   min-height: var(--mw-hero-band);
 }

@@ -51,6 +51,8 @@ async function settlePage(page: Page) {
       ),
       new Promise<void>((resolve) => window.setTimeout(resolve, 5_000))
     ]);
+
+    await Promise.all(images.map((image) => image.decode().catch(() => undefined)));
   });
 }
 
@@ -88,7 +90,10 @@ for (const referencePage of pages) {
       }));
 
       const builtScreenshot = await page.screenshot(screenshotOptions);
-      expect(builtScreenshot).toEqual(stableScreenshot);
+      expect(
+        builtScreenshot.equals(stableScreenshot),
+        `${referencePage.name} changed after injecting the local production CSS.`
+      ).toBe(true);
       return;
     }
 

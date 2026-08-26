@@ -1,11 +1,5 @@
 /* These rules intentionally come last: several legacy sections above redefine
    the dashboard and problem layouts after their original mobile breakpoints. */
-@media (max-width: 960px) {
-  .problems-page-shell .problems-workspace,
-  .problem-detail-shell .problem-detail-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
 @media (max-width: 760px) {
   .site-nav .primary-nav {
@@ -14,20 +8,6 @@
 
   .site-nav .language-selector select {
     width: 5rem;
-  }
-
-  .problem-detail-shell .problem-hero {
-    height: var(--mw-hero-band);
-    min-height: var(--mw-hero-band);
-  }
-
-  .problems-page-shell .problems-workspace {
-    padding-left: 0.875rem;
-    padding-right: 0.875rem;
-  }
-
-  .problems-page-shell .problem-domain-tile-grid {
-    grid-auto-rows: minmax(92px, auto);
   }
 }
 
