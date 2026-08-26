@@ -61,6 +61,8 @@ npm run test:visual:update
 - Obsolete homepage styles and the unused `HomeGuestIntro` component are removed.
 - Public problem browsing, recommendations, and problem detail styles now live in
   `app/styles/64-problems.css` instead of being distributed across eight files.
+- Public concept browsing, reading, sharing, and practice styles now live in
+  `app/styles/65-concepts.css` instead of being mixed into layout and browser files.
 - The visual suite compares eight public pages at two desktop and two mobile
   widths, for 32 local-versus-production checks.
 - Remote images are decoded before capture, and binary screenshot differences

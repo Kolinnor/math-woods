@@ -5477,28 +5477,6 @@ button.domain-picker-tile > span:last-child {
   border-radius: 7px;
 }
 
-.concept-search-bar {
-  grid-template-columns: 1fr;
-}
-
-.concept-search-bar > * {
-  min-width: 0;
-}
-
-@media (min-width: 768px) {
-  .concept-search-bar {
-    grid-template-columns: minmax(12rem, 1.3fr) repeat(3, minmax(7rem, 1fr)) minmax(9rem, 1.1fr) minmax(7.5rem, 1fr) auto;
-  }
-
-  .concept-search-bar-admin {
-    grid-template-columns: repeat(4, minmax(7rem, 1fr)) minmax(9rem, 1.1fr) minmax(7.5rem, 1fr) auto;
-  }
-
-  .concept-search-bar-admin > :first-child {
-    grid-column: 1 / -1;
-  }
-}
-
 .concept-exercise-count-filter {
   background: #fff;
   border: 1px solid var(--line);
@@ -5512,13 +5490,6 @@ button.domain-picker-tile > span:last-child {
 .concept-exercise-count-filter:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
-}
-
-.concept-exercise-count-label {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1;
 }
 
 .concept-exercise-count-controls {

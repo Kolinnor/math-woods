@@ -190,39 +190,6 @@
     padding: 1rem 0.875rem 2.5rem;
   }
 
-  .concept-search-bar,
-  .concept-search-bar-admin {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .concept-search-bar-admin > :first-child {
-    grid-column: auto;
-  }
-
-  .concept-practice-queue {
-    padding: 0.9rem 0.75rem;
-  }
-
-  .concept-practice-queue-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .concept-practice-queue-row-header {
-    gap: 0.55rem;
-    grid-template-columns: 2rem minmax(0, 1fr);
-    padding: 0.7rem;
-  }
-
-  .concept-practice-queue-row-meta {
-    grid-column: 2;
-    justify-content: flex-start;
-  }
-
-  .concept-practice-queue-body {
-    padding: 0 0.7rem 0.8rem 3.25rem;
-  }
-
   .translation-compose-page,
   .verification-page-grid,
   .exploration-studio-shell,

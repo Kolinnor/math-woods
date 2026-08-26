@@ -1791,33 +1791,6 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   border-color: var(--accent-hover);
 }
 
-.concept-duplicate-suggestions {
-  background: var(--notice-amber-bg);
-  border: 1px solid var(--notice-amber-border);
-  border-left: 4px solid var(--notice-amber-stripe);
-  border-radius: 7px;
-  display: grid;
-  gap: 0.65rem;
-  padding: 0.8rem;
-}
-
-.concept-duplicate-suggestions > div {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.concept-duplicate-suggestions a {
-  align-items: center;
-  display: flex;
-  gap: 0.75rem;
-  justify-content: space-between;
-}
-
-.concept-duplicate-suggestions small {
-  color: var(--muted);
-  flex: none;
-}
-
 @media (max-width: 640px) {
   .site-toast-stack {
     left: 1rem;
@@ -3215,82 +3188,6 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   color: var(--ink);
 }
 
-.featured-concept-link {
-  border-bottom: 1px solid var(--line);
-  display: grid;
-  gap: 0.12rem;
-  padding: 0.1rem 0 0.65rem;
-}
-
-.featured-concept-link:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-
-.featured-concept-link:hover strong {
-  color: var(--link);
-  text-decoration: underline;
-}
-
-.featured-concept-link strong {
-  font-weight: 700;
-}
-
-.featured-concept-link span {
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.missing-concept-card {
-  border-bottom: 1px solid var(--line);
-  display: grid;
-  gap: 0.4rem;
-  padding: 0.25rem 0 0.65rem;
-}
-
-.missing-concept-card:last-child {
-  border-bottom: 0;
-}
-
-.missing-concept-main {
-  align-items: baseline;
-  display: flex;
-  gap: 0.75rem;
-  justify-content: space-between;
-}
-
-.missing-concept-sources {
-  font-size: 0.83rem;
-}
-
-.missing-concept-sources summary {
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.missing-concept-sources > div {
-  display: grid;
-  gap: 0.4rem;
-  padding-top: 0.45rem;
-}
-
-.missing-concept-sources a {
-  display: grid;
-  gap: 0.08rem;
-  line-height: 1.25;
-  text-decoration: none;
-}
-
-.missing-concept-sources a span,
-.missing-concept-sources a small {
-  color: var(--muted);
-}
-
-.missing-concept-sources a strong {
-  color: var(--ink);
-  font-weight: 650;
-}
-
 .about-links {
   align-items: center;
   display: flex;
@@ -3464,12 +3361,4 @@ textarea {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
-}
-
-.concept-browser-action-button {
-  font-size: 1.08rem;
-  font-weight: 800;
-  min-height: 4rem;
-  min-width: 11.5rem;
-  padding: 0.95rem 1.45rem;
 }
