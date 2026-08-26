@@ -27,8 +27,15 @@ npm run build
 npm run test:visual
 ```
 
-The visual suite targets `https://mathwoods.org` by default. To compare a local
-or preview deployment, set `VISUAL_BASE_URL` to that deployment's origin.
+The visual suite targets `https://mathwoods.org` by default. It keeps the
+production content but replaces its stylesheets in the browser with the CSS
+emitted by the local production build. This allows structural CSS work to be
+checked without connecting a local app to production data. To compare a local
+or preview deployment instead, set `VISUAL_BASE_URL` to that deployment's origin.
+
+The frozen screenshots remain a human-readable archive of the starting point.
+`npm run test:visual:reference` compares the live site with those files, but it
+may differ when editorial content or its ordering has legitimately changed.
 
 Create or deliberately refresh the reference images only from the stable site:
 

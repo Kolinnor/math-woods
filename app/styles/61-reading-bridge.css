@@ -1,0 +1,127 @@
+/* Final specificity bridge for the 2026 reading redesign. */
+body:has(.home-dashboard) > .site-footer {
+  display: block;
+}
+
+.home-dashboard .home-tip-image {
+  min-width: 0;
+  width: 100%;
+}
+
+.home-dashboard .home-dashboard-grid {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  margin: 0 auto;
+  max-width: 1240px;
+  padding: 20px 40px 60px;
+}
+
+.home-dashboard .home-dashboard-grid.home-dashboard-grid-guest {
+  display: block;
+  max-width: 62rem;
+  padding: 20px 0 60px;
+  width: calc(100% - 2rem);
+}
+
+.problems-page-shell .problems-recommendations,
+.problems-page-shell .problem-domain-strip,
+.problems-page-shell .problems-workspace {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1240px;
+}
+
+.problems-page-shell .problem-domain-tile-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.problems-page-shell .problems-workspace {
+  grid-template-columns: 220px minmax(0, 1fr);
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+.problem-detail-shell .problem-hero {
+  height: var(--mw-hero-band);
+  min-height: var(--mw-hero-band);
+}
+
+.problem-detail-shell .problem-detail-body {
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  margin: 0 auto;
+  max-width: 1240px;
+  padding: 24px 40px 60px;
+}
+
+.problem-detail-shell .problem-rail {
+  margin-top: 0;
+}
+
+@media (max-width: 960px) {
+  .home-dashboard .home-dashboard-grid,
+  .problem-detail-shell .problem-detail-body {
+    grid-template-columns: 1fr;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .problem-detail-shell .problem-rail {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .home-dashboard .home-tip-card {
+    grid-template-columns: 1fr;
+  }
+
+  .home-dashboard .home-tip-image {
+    border-bottom: 3px solid #5a4a2c;
+    border-right: 0;
+    justify-self: center;
+    min-height: 0;
+    width: min(240px, 100%);
+  }
+}
+
+@media (max-width: 700px) {
+  .home-dashboard .home-dashboard-grid,
+  .problem-detail-shell .problem-detail-body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .home-dashboard .home-dashboard-grid.home-dashboard-grid-guest {
+    padding: 1rem 0 3rem;
+    width: calc(100% - 1.75rem);
+  }
+
+  .problems-page-shell .problem-domain-tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .problems-page-shell .problems-workspace {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .home-dashboard .home-guest-dashboard-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .home-dashboard .home-hero-guest {
+    height: 520px;
+    min-height: 520px;
+  }
+
+  .home-dashboard .home-hero-guest .home-hero-image {
+    object-position: center;
+  }
+
+}
+

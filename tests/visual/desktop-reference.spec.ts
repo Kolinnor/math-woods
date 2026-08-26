@@ -1,4 +1,25 @@
 import { expect, test, type Page } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
+
+function loadBuiltLayoutCss() {
+  if (process.env.VISUAL_INJECT_BUILD_CSS !== "1") return null;
+
+  const manifest = JSON.parse(fs.readFileSync(".next/app-build-manifest.json", "utf8")) as {
+    pages: Record<string, string[]>;
+  };
+  const stylesheets = (manifest.pages["/layout"] ?? []).filter((entry) => entry.startsWith("static/css/"));
+
+  if (stylesheets.length === 0) {
+    throw new Error("The production build does not contain layout stylesheets.");
+  }
+
+  return stylesheets
+    .map((stylesheet) => fs.readFileSync(path.join(".next", ...stylesheet.split("/")), "utf8"))
+    .join("\n");
+}
+
+const builtLayoutCss = loadBuiltLayoutCss();
 
 const pages = [
   { name: "home-guest", path: "/" },
@@ -48,9 +69,31 @@ for (const referencePage of pages) {
     await page.goto(referencePage.path, { waitUntil: "domcontentloaded" });
     await settlePage(page);
 
-    await expect(page).toHaveScreenshot(`${referencePage.name}.png`, {
+    const screenshotOptions = {
+      animations: "disabled" as const,
+      caret: "hide" as const,
       fullPage: true,
       mask: [page.locator("time")]
+    };
+
+    if (builtLayoutCss) {
+      const stableScreenshot = await page.screenshot(screenshotOptions);
+
+      await page.addStyleTag({ content: builtLayoutCss });
+      await page.locator('link[rel="stylesheet"]').evaluateAll((stylesheets) => {
+        stylesheets.forEach((stylesheet) => stylesheet.remove());
+      });
+      await page.evaluate(() => new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+      }));
+
+      const builtScreenshot = await page.screenshot(screenshotOptions);
+      expect(builtScreenshot).toEqual(stableScreenshot);
+      return;
+    }
+
+    await expect(page).toHaveScreenshot(`${referencePage.name}.png`, {
+      ...screenshotOptions
     });
   });
 }

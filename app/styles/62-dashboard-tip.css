@@ -1,0 +1,92 @@
+/* Keep the dashboard tip compact regardless of the amount of authored text. */
+.home-dashboard .home-tip-card {
+  grid-template-columns: 232px minmax(0, 1fr);
+  height: 232px;
+  min-height: 232px;
+}
+
+.home-dashboard .home-tip-image {
+  aspect-ratio: 1;
+  align-self: stretch;
+  border-bottom: 0;
+  border-right: 3px solid #5a4a2c;
+  height: 232px;
+  justify-self: stretch;
+  min-height: 0;
+  width: 232px;
+}
+
+.home-dashboard .home-tip-copy {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 18px 22px;
+}
+
+.home-dashboard .home-tip-copy h2 {
+  display: -webkit-box;
+  font-size: 1.45rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.home-dashboard .home-tip-copy > .prose-math {
+  display: -webkit-box;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  margin-top: 0.55rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.home-dashboard .home-tip-copy > .prose-math > :first-child {
+  margin-top: 0;
+}
+
+.home-dashboard .home-tip-copy > .prose-math > :last-child {
+  margin-bottom: 0;
+}
+
+.home-dashboard .home-tip-practice {
+  flex: 0 0 auto;
+  margin-top: auto;
+}
+
+@media (max-width: 600px) {
+  .home-dashboard .home-tip-card {
+    grid-template-columns: 124px minmax(0, 1fr);
+    height: 190px;
+    min-height: 190px;
+  }
+
+  .home-dashboard .home-tip-image {
+    align-self: center;
+    border-right: 2px solid #5a4a2c;
+    height: 124px;
+    justify-self: center;
+    width: 124px;
+  }
+
+  .home-dashboard .home-tip-copy {
+    padding: 14px;
+  }
+
+  .home-dashboard .home-tip-copy h2 {
+    font-size: 1.12rem;
+  }
+
+  .home-dashboard .home-tip-copy > .prose-math {
+    -webkit-line-clamp: 2;
+  }
+
+  .home-dashboard .home-tip-practice {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 7px 9px;
+  }
+}
+

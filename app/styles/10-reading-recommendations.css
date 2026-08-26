@@ -1,0 +1,152 @@
+/* 2026 reading and recommendation redesign */
+:root {
+  --mw-page: #e8e2d3;
+  --mw-surface: #f8f4ea;
+  --mw-reading-surface: #fdfaf3;
+  --mw-muted-surface: #f1ebdc;
+  --mw-border: #d8d0bd;
+  --mw-border-strong: #cbc0a8;
+  --mw-text: #22201d;
+  --mw-secondary: #6d6555;
+  --mw-tertiary: #8a8272;
+  --mw-green: #226a46;
+  --mw-green-hover: #185638;
+  --mw-green-shadow: #174d31;
+  --mw-green-tint: #e7f9ed;
+  --mw-green-border: #b7e4c6;
+  --mw-rust: #a85f20;
+  --mw-difficulty-column-width: 70px;
+}
+
+.mw-card {
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-border);
+  border-radius: 11px;
+}
+
+.mw-kicker {
+  color: var(--mw-rust);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.mw-primary-button {
+  align-items: center;
+  background: var(--mw-green);
+  border: 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 0 var(--mw-green-shadow);
+  color: #fff;
+  display: inline-flex;
+  font-weight: 600;
+  justify-content: center;
+  padding: 10px 20px;
+}
+
+.mw-primary-button:hover {
+  background: var(--mw-green-hover);
+  color: #fff;
+}
+
+.mw-difficulty {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.mw-difficulty strong {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 3ch;
+  text-align: right;
+}
+
+.mw-difficulty-compact strong {
+  font-size: 17px;
+}
+
+.mw-difficulty-compact {
+  min-width: var(--mw-difficulty-column-width);
+}
+
+.mw-difficulty-bars {
+  align-items: end;
+  display: inline-flex;
+  gap: 2px;
+  height: 15px;
+}
+
+.mw-difficulty-bars i {
+  background: #d5cdb8;
+  border-radius: 1px;
+  display: block;
+  width: 4px;
+}
+
+.mw-difficulty-bars i:nth-child(1) { height: 8px; }
+.mw-difficulty-bars i:nth-child(2) { height: 10px; }
+.mw-difficulty-bars i:nth-child(3) { height: 12px; }
+.mw-difficulty-bars i:nth-child(4) { height: 14px; }
+.mw-difficulty-bars i:nth-child(5) { height: 15px; }
+.mw-difficulty-bars i:nth-child(6) { height: 15px; }
+
+.mw-progress-ticks {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+}
+
+.mw-progress-ticks i {
+  background: #ddd5c2;
+  border-radius: 2px;
+  flex: 1;
+  height: 7px;
+}
+
+.mw-progress-ticks i.filled {
+  background: var(--mw-green);
+}
+
+.mw-section-heading {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.mw-section-heading h2 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 24px;
+}
+
+.mw-section-heading a {
+  color: #1f6792;
+  font-size: 13px;
+}
+
+.recommendation-heading-actions,
+.problems-recommendations-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+body:has(.home-dashboard),
+body:has(.problems-page-shell),
+body:has(.problem-detail-shell) {
+  background: var(--mw-page);
+  color: var(--mw-text);
+}
+
+.home-dashboard .home-hero-forest,
+.problems-page-shell .problems-hero {
+  height: var(--mw-hero-band);
+  min-height: var(--mw-hero-band);
+}
+

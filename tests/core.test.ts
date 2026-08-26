@@ -2195,7 +2195,13 @@ const labelsWrappingMarkdownEditor = tsxFiles("app").flatMap((path) => {
     .map(() => path);
 });
 assert.deepEqual(labelsWrappingMarkdownEditor, []);
-const editorCssSource = readFileSync(join("app", "globals.css"), "utf-8");
+const editorCssSource = [
+  readFileSync(join("app", "globals.css"), "utf-8"),
+  ...readdirSync(join("app", "styles"))
+    .filter((filename) => filename.endsWith(".css"))
+    .sort()
+    .map((filename) => readFileSync(join("app", "styles", filename), "utf-8"))
+].join("\n");
 const liveTitleEditorPaths = [
   join("app", "problems", "new", "page.tsx"),
   join("app", "problems", "[slug]", "edit", "page.tsx"),

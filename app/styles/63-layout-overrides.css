@@ -1,0 +1,305 @@
+/* These rules intentionally come last: several legacy sections above redefine
+   the dashboard and problem layouts after their original mobile breakpoints. */
+@media (max-width: 960px) {
+  .problems-page-shell .problems-workspace,
+  .problem-detail-shell .problem-detail-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .site-nav {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: calc(var(--mw-logo-size) * 0.62 + 1.1rem);
+    padding: 0.55rem 0.75rem;
+  }
+
+  .site-nav .primary-nav {
+    display: none;
+  }
+
+  .site-nav .language-selector select {
+    width: 5rem;
+  }
+
+  .problem-detail-shell .problem-hero {
+    height: var(--mw-hero-band);
+    min-height: var(--mw-hero-band);
+  }
+
+  .problems-page-shell .problems-workspace {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  .problems-page-shell .problem-domain-tile-grid {
+    grid-auto-rows: minmax(92px, auto);
+  }
+}
+
+@media (max-width: 430px) {
+  .site-nav .language-selector select {
+    width: 4.5rem;
+  }
+
+  .home-dashboard .home-tip-card {
+    grid-template-columns: 104px minmax(0, 1fr);
+    height: auto;
+    min-height: 168px;
+  }
+
+  .home-dashboard .home-tip-image {
+    align-self: start;
+    border-bottom: 0;
+    border-right: 2px solid #5a4a2c;
+    height: 104px;
+    justify-self: stretch;
+    width: 104px;
+  }
+
+  .home-dashboard .home-tip-copy {
+    padding: 0.75rem;
+  }
+
+  .home-dashboard .home-tip-copy h2 {
+    font-size: 1rem;
+  }
+
+  .home-dashboard .home-tip-copy > .prose-math {
+    font-size: 0.82rem;
+  }
+}
+.tip-translation-editor {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line, #bac8be);
+  border-radius: 6px;
+  background: var(--panel, #fff);
+}
+
+.tip-translation-editor > legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+}
+
+.tip-kind-fieldset {
+  border: 0;
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+}
+
+.tip-kind-fieldset > legend {
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+  padding: 0;
+}
+
+.tip-kind-selector {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0.2rem;
+  width: min(100%, 22rem);
+}
+
+.tip-kind-selector label {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 2.6rem;
+  padding: 0.45rem 0.8rem;
+}
+
+.tip-kind-selector label:has(input:checked) {
+  background: var(--panel);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  box-shadow: 0 1px 3px rgb(29 58 39 / 10%);
+}
+
+.tip-kind-selector input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.tip-kind-selector label:has(input:focus-visible) {
+  outline: 2px solid var(--focus, #2c7650);
+  outline-offset: 2px;
+}
+
+.content-editor-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.live-markdown-title-field {
+  min-width: 0;
+}
+
+.markdown-editor-title {
+  max-width: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+.markdown-editor-title .markdown-editor-host,
+.markdown-editor-title .cm-editor,
+.markdown-editor-title .cm-scroller {
+  max-width: 100%;
+  min-height: 3.25rem;
+  min-width: 0;
+}
+
+.markdown-editor-title .cm-scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.markdown-editor-title .cm-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.markdown-editor-title .cm-content {
+  font-family: var(--font-sans);
+}
+
+.markdown-editor-title .cm-line {
+  line-height: 1.45;
+}
+
+.markdown-editor-title .cm-latex-preview .katex {
+  font-size: 1em;
+}
+
+.markdown-title-native-control {
+  height: 1px;
+  inset: auto auto 0 0;
+  opacity: 0;
+  overflow: hidden;
+  padding: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 1px;
+}
+
+.content-preview-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.content-preview-dialog {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  margin: auto;
+  max-height: min(52rem, calc(100dvh - 2rem));
+  max-width: calc(100vw - 2rem);
+  overflow: hidden;
+  padding: 0;
+  width: 58rem;
+}
+
+.content-preview-dialog::backdrop {
+  background: color-mix(in srgb, #111 45%, transparent);
+}
+
+.content-preview-dialog-header {
+  align-items: center;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  font-weight: 750;
+  justify-content: space-between;
+  min-height: 3.6rem;
+  padding: 0.65rem 0.8rem 0.65rem 1.15rem;
+}
+
+.content-preview-dialog-header .icon-button {
+  align-items: center;
+  display: inline-flex;
+  height: 2.5rem;
+  justify-content: center;
+  padding: 0;
+  width: 2.5rem;
+}
+
+.content-preview-dialog-body {
+  max-height: calc(100dvh - 5.7rem);
+  overflow: auto;
+  padding: clamp(0.75rem, 2.5vw, 1.5rem);
+}
+
+.content-preview-loading {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  min-height: 14rem;
+}
+
+.content-preview-loading svg {
+  animation: markdown-editor-spin 0.85s linear infinite;
+}
+
+.content-preview-sheet {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: clamp(1.25rem, 4vw, 2.75rem);
+}
+
+.content-preview-sheet h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.65rem, 4vw, 2.35rem);
+  line-height: 1.15;
+  margin: 0;
+}
+
+.content-preview-type {
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+}
+
+.content-preview-markdown {
+  border-top: 1px solid var(--line);
+  margin-top: 1.2rem;
+  padding-top: 1.2rem;
+}
+
+@media (max-width: 600px) {
+  .content-preview-dialog {
+    max-height: calc(100dvh - 1rem);
+    max-width: calc(100vw - 1rem);
+  }
+
+  .content-preview-dialog-body {
+    max-height: calc(100dvh - 4.7rem);
+    padding: 0.5rem;
+  }
+
+  .content-preview-sheet {
+    padding: 1rem;
+  }
+}
