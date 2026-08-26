@@ -22,7 +22,9 @@
     "prod:migrate": "docker compose --env-file .env.production -f docker-compose.infomaniak.yml run --rm migrate",
     "prod:up": "docker compose --env-file .env.production -f docker-compose.infomaniak.yml up -d app uptime-kuma caddy",
     "prod:logs": "docker compose --env-file .env.production -f docker-compose.infomaniak.yml logs -f app caddy",
-    "test:core": "node --experimental-strip-types tests/core.test.ts"
+    "test:core": "node --experimental-strip-types tests/core.test.ts",
+    "test:visual": "playwright test --config=playwright.visual.config.ts",
+    "test:visual:update": "playwright test --config=playwright.visual.config.ts --update-snapshots"
   },
   "dependencies": {
     "@codemirror/commands": "^6.8.0",
@@ -46,6 +48,7 @@
     "sharp": "^0.35.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.15.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

@@ -17,6 +17,8 @@ _release/
 *.tar.gz
 *.zip
 tsconfig.tsbuildinfo
+playwright-report/
+test-results/
 
 .DS_Store
 Thumbs.db
