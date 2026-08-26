@@ -63,8 +63,10 @@ npm run test:visual:update
   `app/styles/64-problems.css` instead of being distributed across eight files.
 - Public concept browsing, reading, sharing, and practice styles now live in
   `app/styles/65-concepts.css` instead of being mixed into layout and browser files.
-- The visual suite compares eight public pages at two desktop and two mobile
-  widths, for 32 local-versus-production checks.
+- Public user directories, profiles, avatars, and mathematician styles now live in
+  `app/styles/66-community.css` instead of being mixed into compatibility and browser files.
+- The visual suite compares eleven public pages at two desktop and two mobile
+  widths, for 44 local-versus-production checks.
 - Remote images are decoded before capture, and binary screenshot differences
   fail with a concise message instead of serializing entire PNG buffers.
 

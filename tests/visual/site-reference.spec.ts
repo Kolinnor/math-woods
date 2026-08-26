@@ -28,6 +28,9 @@ const pages = [
   { name: "concepts-browser", path: "/concepts" },
   { name: "concept-detail", path: "/concepts/norme" },
   { name: "users", path: "/users" },
+  { name: "profile-owner", path: "/profile/ancient-tree" },
+  { name: "mathematicians", path: "/mathematicians" },
+  { name: "mathematician-detail", path: "/mathematicians/emmy-noether" },
   { name: "contributing", path: "/contributing" },
   { name: "about", path: "/about" }
 ] as const;
@@ -71,11 +74,14 @@ for (const referencePage of pages) {
     await page.goto(referencePage.path, { waitUntil: "domcontentloaded" });
     await settlePage(page);
 
+    const unstableImageMasks = referencePage.name === "mathematician-detail"
+      ? [page.locator(".historical-mathematician-profile-portrait img")]
+      : [];
     const screenshotOptions = {
       animations: "disabled" as const,
       caret: "hide" as const,
       fullPage: true,
-      mask: [page.locator("time")]
+      mask: [page.locator("time"), ...unstableImageMasks]
     };
 
     if (builtLayoutCss) {

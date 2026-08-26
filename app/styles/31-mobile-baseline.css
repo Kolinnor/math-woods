@@ -252,26 +252,6 @@
     justify-self: stretch;
   }
 
-  .users-row {
-    gap: 0.65rem;
-    grid-template-columns: 2.25rem auto minmax(0, 1fr);
-    padding: 0.75rem;
-  }
-
-  .users-row .users-stat {
-    display: none;
-  }
-
-  .profile-hero-title {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .profile-hero-avatar.user-avatar-xl {
-    height: 4.75rem;
-    width: 4.75rem;
-  }
-
   .chat-message {
     gap: 0.5rem;
     grid-template-columns: auto minmax(0, 1fr);

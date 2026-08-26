@@ -1,0 +1,1125 @@
+/* Public users, profiles, avatars, and mathematicians. */
+
+/* From 12-layout-compatibility.css */
+
+.user-avatar {
+  align-items: center;
+  background: #dfe9dc;
+  border: 1px solid rgb(32 70 45 / 0.18);
+  border-radius: 6px;
+  color: #284b32;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-family: var(--font-sans);
+  font-weight: 800;
+  justify-content: center;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.user-avatar img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.user-avatar-default img {
+  object-fit: contain;
+  padding: 9%;
+}
+
+.user-avatar-xs {
+  border-radius: 4px;
+  font-size: 0.48rem;
+  height: 1.125rem;
+  width: 1.125rem;
+}
+
+.user-avatar-sm {
+  font-size: 0.62rem;
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
+.user-avatar-md {
+  font-size: 0.78rem;
+  height: 2.4rem;
+  width: 2.4rem;
+}
+
+.user-avatar-lg {
+  font-size: 1rem;
+  height: 3.25rem;
+  width: 3.25rem;
+}
+
+.user-avatar-xl {
+  border-color: rgb(255 255 255 / 0.38);
+  box-shadow: 0 5px 18px rgb(0 0 0 / 0.2);
+  font-size: 1.5rem;
+  height: 5rem;
+  width: 5rem;
+}
+
+.user-name-with-avatar {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.3rem;
+  max-width: 100%;
+  vertical-align: -0.2em;
+}
+
+.user-name-with-avatar > span:last-child {
+  overflow-wrap: anywhere;
+}
+
+.achievement-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.achievement-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 1fr auto;
+  padding: 1rem;
+}
+
+.achievement-card strong {
+  display: block;
+  font-size: 0.98rem;
+  line-height: 1.3;
+}
+
+.achievement-card p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
+}
+
+.achievement-card span {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.achievement-card-locked {
+  background: var(--panel-muted);
+  border-left-color: var(--line-strong);
+  opacity: 0.72;
+}
+
+.achievement-card-locked span {
+  color: var(--muted);
+}
+
+.avatar-artwork-credit {
+  font-size: 0.75rem;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.avatar-artwork-credit a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* From 30-site-header.css */
+
+.forest-page-shell .users-list,
+.forest-page-shell .mathematician-filters,
+.forest-page-shell .mathematician-directory {
+  background: #f8f4ea;
+  border-color: #d8d0bd;
+  box-shadow: none;
+}
+
+.forest-page-shell .users-row,
+.forest-page-shell .mathematician-row {
+  border-color: #d8d0bd;
+}
+
+.forest-page-shell .users-row:hover,
+.forest-page-shell .mathematician-row:hover {
+  background: rgb(248 244 234 / 0.72);
+}
+
+/* From 31-mobile-baseline.css */
+
+@media (max-width: 760px) {
+
+  .users-row {
+    gap: 0.65rem;
+    grid-template-columns: 2.25rem auto minmax(0, 1fr);
+    padding: 0.75rem;
+  }
+
+  .users-row .users-stat {
+    display: none;
+  }
+
+  .profile-hero-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-hero-avatar.user-avatar-xl {
+    height: 4.75rem;
+    width: 4.75rem;
+  }
+}
+
+/* From 40-content-browsers.css */
+
+.users-list {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.users-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 3.5rem auto minmax(0, 1fr) repeat(6, minmax(4.75rem, auto));
+  padding: 1rem;
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+
+.users-sort-form {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.users-controls {
+  align-items: center;
+  display: flex;
+  flex: 1 1 26rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.users-search-form {
+  flex: 1 1 15rem;
+  max-width: 24rem;
+}
+
+.users-search-field {
+  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  position: relative;
+}
+
+.users-search-field svg {
+  color: var(--muted);
+  left: 0.75rem;
+  pointer-events: none;
+  position: absolute;
+}
+
+.users-search-field input {
+  padding-left: 2.25rem;
+  width: 100%;
+}
+
+.users-row:last-child {
+  border-bottom: 0;
+}
+
+.users-row:hover {
+  background: var(--panel-muted);
+}
+
+.users-rank {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.users-main,
+.users-stat {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.users-main strong {
+  overflow-wrap: anywhere;
+}
+
+.users-main small,
+.users-stat small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.users-stat {
+  justify-items: end;
+  text-align: right;
+}
+
+.users-stat strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.mathematician-filters {
+  align-items: end;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(14rem, 1.5fr) repeat(3, minmax(9rem, 0.8fr));
+  padding: 1rem;
+}
+
+.mathematician-filters > label:not(.mathematician-collaboration-filter) {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mathematician-filters label > span {
+  color: #455349;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.mathematician-search-field > div {
+  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  position: relative;
+}
+
+.mathematician-search-field svg {
+  color: var(--muted);
+  left: 0.75rem;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.mathematician-search-field input {
+  padding-left: 2.25rem;
+}
+
+.mathematician-collaboration-filter {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  min-height: 2.65rem;
+}
+
+.mathematician-collaboration-filter input {
+  flex: 0 0 auto;
+}
+
+.mathematician-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mathematician-filter-actions > * {
+  flex: 1;
+}
+
+.mathematician-directory {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.mathematician-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: minmax(12rem, 0.8fr) minmax(16rem, 1.7fr) auto;
+  min-height: 8rem;
+  padding: 1rem 1.1rem;
+}
+
+.mathematician-row:last-child {
+  border-bottom: 0;
+}
+
+.mathematician-row:hover {
+  background: var(--panel-muted);
+}
+
+.mathematician-identity {
+  align-items: center;
+  color: inherit;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  min-width: 0;
+}
+
+.mathematician-avatar {
+  align-items: center;
+  background: #e2ebe4;
+  border: 1px solid #afc0b2;
+  border-radius: 50%;
+  color: #285d3d;
+  display: flex;
+  font-size: 0.76rem;
+  font-weight: 800;
+  height: 2.75rem;
+  justify-content: center;
+  width: 2.75rem;
+}
+
+.mathematician-identity > span:last-child {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.mathematician-identity strong {
+  overflow-wrap: anywhere;
+}
+
+.mathematician-identity small,
+.mathematician-stats small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.mathematician-summary {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.mathematician-summary > p {
+  color: #465249;
+  display: -webkit-box;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mathematician-byline,
+.mathematician-domains {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
+}
+
+.mathematician-byline {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.mathematician-trusted,
+.mathematician-collaboration,
+.mathematician-profile-collaboration {
+  align-items: center;
+  color: #28623f;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 0.25rem;
+}
+
+.mathematician-stats {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(4.5rem, auto));
+}
+
+.mathematician-stats > span {
+  display: grid;
+  gap: 0.1rem;
+  justify-items: end;
+}
+
+.mathematician-stats strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.historical-mathematician-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.historical-mathematician-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: inherit;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  text-decoration: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.historical-mathematician-card:hover {
+  border-color: #95aa99;
+  box-shadow: 0 7px 20px rgb(37 59 44 / 0.09);
+  transform: translateY(-2px);
+}
+
+.historical-mathematician-portrait {
+  align-items: center;
+  aspect-ratio: 4 / 3;
+  background: #e4e7df;
+  color: #49614e;
+  display: flex;
+  font-family: var(--font-serif);
+  font-size: 3rem;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.historical-mathematician-portrait > img {
+  filter: saturate(0.78);
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  width: 100%;
+}
+
+.historical-mathematician-body {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.historical-mathematician-body h2 {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.historical-mathematician-body > p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.historical-mathematician-body dl {
+  border-top: 1px solid #d8d0bd;
+  margin: 0.4rem 0 0;
+  padding-top: 0.65rem;
+}
+
+.historical-mathematician-body dt,
+.historical-mathematician-profile dt {
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.historical-mathematician-body dd {
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.historical-mathematician-profile {
+  align-items: stretch;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: minmax(14rem, 21rem) minmax(0, 1fr);
+  margin: 0 auto;
+  max-width: 56rem;
+  overflow: hidden;
+}
+
+.historical-mathematician-profile-no-facts {
+  grid-template-columns: minmax(14rem, 21rem);
+  max-width: 21rem;
+}
+
+.historical-mathematician-page-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.historical-mathematician-profile-portrait {
+  align-items: center;
+  aspect-ratio: 4 / 5;
+  background: #e4e7df;
+  color: #49614e;
+  display: flex;
+  font-family: var(--font-serif);
+  font-size: 4rem;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.historical-mathematician-profile-portrait img {
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  width: 100%;
+}
+
+.historical-mathematician-profile > dl {
+  align-content: center;
+  display: grid;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 2rem;
+}
+
+.historical-mathematician-profile > dl > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.historical-mathematician-profile dd {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.historical-mathematician-content {
+  margin: 0 auto;
+  max-width: 56rem;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.historical-mathematician-form {
+  display: grid;
+  gap: 1rem;
+  margin: 0 auto;
+  max-width: 50rem;
+  padding: 1.25rem;
+}
+
+.historical-mathematician-form > div {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.historical-mathematician-form > .historical-mathematician-editor-field {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: 1fr;
+}
+
+.historical-mathematician-editor-field > span {
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.historical-mathematician-form label {
+  display: grid;
+  font-size: 0.84rem;
+  font-weight: 650;
+  gap: 0.35rem;
+}
+
+.historical-mathematician-form small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.historical-mathematician-form button {
+  justify-self: start;
+}
+
+.profile-domain-picker {
+  border: 0;
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+}
+
+.profile-domain-picker legend {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.profile-domain-picker > div {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-domain-picker label {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.profile-collaboration-field span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.profile-collaboration-field small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.mathematician-profile-details {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mathematician-profile-details > p {
+  display: grid;
+  font-size: 0.82rem;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.mathematician-profile-details a {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.mathematician-profile-collaboration {
+  font-size: 0.78rem;
+}
+
+@media (max-width: 760px) {
+
+  .users-row {
+    gap: 0.65rem;
+    grid-template-columns: 2.25rem auto minmax(0, 1fr) minmax(4.5rem, auto);
+  }
+
+  .users-row .users-stat:nth-of-type(n + 5) {
+    display: none;
+  }
+
+  .mathematician-filters,
+.mathematician-row {
+    grid-template-columns: 1fr;
+  }
+
+  .mathematician-stats {
+    border-top: 1px solid var(--line);
+    padding-top: 0.75rem;
+  }
+
+  .mathematician-stats > span {
+    justify-items: start;
+  }
+
+  .historical-mathematician-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-domain-picker > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .historical-mathematician-grid,
+.historical-mathematician-form > div,
+.historical-mathematician-profile {
+    grid-template-columns: 1fr;
+  }
+
+  .historical-mathematician-profile-portrait {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1050px) {
+  .mathematician-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mathematician-row {
+    grid-template-columns: minmax(12rem, 0.8fr) minmax(15rem, 1.5fr);
+  }
+
+  .mathematician-stats {
+    grid-column: 1 / -1;
+    justify-content: end;
+  }
+}
+
+.profile-avatar-editor {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.profile-avatar-editor > div {
+  min-width: 0;
+}
+
+.profile-avatar-editor h2 {
+  font-size: 1rem;
+  font-weight: 750;
+  margin: 0;
+}
+
+.profile-avatar-editor p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  margin: 0.2rem 0 0;
+}
+
+.profile-avatar-mode {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: inline-grid;
+  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.75rem;
+  padding: 2px;
+}
+
+.profile-avatar-mode button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.82rem;
+  gap: 0.4rem;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.profile-avatar-mode button.selected {
+  background: var(--panel);
+  box-shadow: 0 1px 3px rgb(30 54 38 / 0.12);
+  color: var(--ink);
+}
+
+.profile-avatar-upload,
+.profile-avatar-default {
+  border-top: 1px solid var(--line);
+  margin-top: 0.8rem;
+  padding-top: 0.75rem;
+}
+
+.profile-avatar-default > strong {
+  font-size: 0.84rem;
+}
+
+.profile-avatar-presets {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, 3.25rem);
+  margin-top: 0.65rem;
+}
+
+.profile-avatar-preset {
+  align-items: center;
+  aspect-ratio: 1;
+  border: 1px solid rgb(32 70 45 / 0.2);
+  border-radius: 6px;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 3.25rem;
+  overflow: hidden;
+  padding: 0.25rem;
+  position: relative;
+  width: 3.25rem;
+}
+
+.profile-avatar-preset > img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.profile-avatar-preset > span {
+  align-items: center;
+  background: var(--accent-strong);
+  border-radius: 999px;
+  bottom: 0.18rem;
+  color: white;
+  display: inline-flex;
+  height: 1.1rem;
+  justify-content: center;
+  position: absolute;
+  right: 0.18rem;
+  width: 1.1rem;
+}
+
+.profile-avatar-preset:hover,
+.profile-avatar-preset.selected {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px rgb(47 111 75 / 0.18);
+}
+
+.profile-avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.profile-avatar-actions button {
+  min-height: 2.2rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.profile-avatar-background {
+  border-top: 1px solid var(--line);
+  margin-top: 0.8rem;
+  padding-top: 0.75rem;
+}
+
+.profile-avatar-background > strong {
+  font-size: 0.84rem;
+}
+
+.profile-avatar-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.profile-avatar-swatch {
+  align-items: center;
+  border: 1px solid rgb(32 70 45 / 0.24);
+  border-radius: 5px;
+  color: #294632;
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0;
+  width: 2rem;
+}
+
+.profile-avatar-swatch:hover,
+.profile-avatar-swatch.selected {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px rgb(47 111 75 / 0.18);
+}
+
+.profile-avatar-editor .profile-avatar-status {
+  color: var(--accent-strong);
+}
+
+.signup-avatar-picker {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  min-width: 0;
+  padding: 0.7rem;
+}
+
+.signup-avatar-picker legend {
+  font-size: 0.84rem;
+  font-weight: 750;
+  padding: 0 0.25rem;
+}
+
+.signup-avatar-picker > p {
+  color: var(--muted);
+  font-size: 0.76rem;
+  margin: 0 0 0.65rem;
+}
+
+.signup-avatar-picker-layout {
+  align-items: center;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+}
+
+.signup-avatar-preview {
+  align-items: center;
+  aspect-ratio: 1;
+  border: 1px solid rgb(32 70 45 / 0.2);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0.25rem;
+  width: 3.5rem;
+}
+
+.signup-avatar-preview img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.signup-avatar-picker-controls {
+  display: grid;
+  gap: 0.32rem;
+  min-width: 0;
+}
+
+.signup-avatar-picker-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.signup-avatar-presets {
+  display: flex;
+  gap: 0.3rem;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.15rem 0.12rem 0.3rem;
+  scrollbar-width: thin;
+}
+
+.signup-avatar-presets button {
+  align-items: center;
+  aspect-ratio: 1;
+  border: 1px solid rgb(32 70 45 / 0.18);
+  border-radius: 5px;
+  display: inline-flex;
+  flex: 0 0 2.4rem;
+  justify-content: center;
+  min-height: 2.4rem;
+  overflow: hidden;
+  padding: 0.15rem;
+  position: relative;
+  width: 2.4rem;
+}
+
+.signup-avatar-presets button img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.signup-avatar-presets button > svg {
+  background: var(--accent-strong);
+  border-radius: 999px;
+  bottom: 0.08rem;
+  color: #fff;
+  padding: 0.08rem;
+  position: absolute;
+  right: 0.08rem;
+}
+
+.signup-avatar-presets button.selected,
+.signup-avatar-presets button:hover {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 1px rgb(47 111 75 / 0.2);
+}
+
+.signup-avatar-backgrounds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+}
+
+.signup-avatar-backgrounds button {
+  align-items: center;
+  border: 1px solid rgb(32 70 45 / 0.22);
+  border-radius: 999px;
+  color: #294632;
+  display: inline-flex;
+  height: 1.35rem;
+  justify-content: center;
+  min-height: 1.35rem;
+  padding: 0;
+  width: 1.35rem;
+}
+
+.signup-avatar-backgrounds button.selected,
+.signup-avatar-backgrounds button:hover {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px rgb(47 111 75 / 0.18);
+}
+
+.profile-avatar-editor .form-error {
+  margin-top: 0.6rem;
+}
+
+.profile-avatar-editor .user-avatar-xl {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.profile-hero-title {
+  align-items: center;
+  display: flex;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.profile-hero-title > span:last-child {
+  overflow-wrap: anywhere;
+}
+
+.profile-hero-avatar.user-avatar-xl {
+  flex: 0 0 auto;
+  height: 7rem;
+  width: 7rem;
+}
+
+.profile-hero-role {
+  font-weight: 650;
+}
+
+@media (max-width: 640px) {
+  .profile-hero-avatar.user-avatar-xl {
+    height: 5rem;
+    width: 5rem;
+  }
+
+  .profile-hero-title {
+    gap: 0.75rem;
+  }
+
+  .profile-avatar-editor {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
+
+  .profile-avatar-mode {
+    display: grid;
+  }
+
+  .achievement-grid {
+    grid-template-columns: 1fr;
+  }
+}

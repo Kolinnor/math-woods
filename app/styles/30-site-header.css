@@ -220,24 +220,17 @@ body:has(.forest-page-shell) .site-header {
 .forest-page-shell .quote-form,
 .forest-page-shell .tip-card,
 .forest-page-shell .tip-search,
-.forest-page-shell .quote-search,
-.forest-page-shell .users-list,
-.forest-page-shell .mathematician-filters,
-.forest-page-shell .mathematician-directory {
+.forest-page-shell .quote-search {
   background: #f8f4ea;
   border-color: #d8d0bd;
   box-shadow: none;
 }
 
-.forest-page-shell .list-row,
-.forest-page-shell .users-row,
-.forest-page-shell .mathematician-row {
+.forest-page-shell .list-row {
   border-color: #d8d0bd;
 }
 
 .forest-page-shell .list-row:hover,
-.forest-page-shell .users-row:hover,
-.forest-page-shell .mathematician-row:hover,
 .forest-page-shell .quote-card:hover,
 .forest-page-shell .tip-card:hover {
   background: rgb(248 244 234 / 0.72);
