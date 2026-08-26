@@ -4120,21 +4120,6 @@ button.secondary:hover,
   box-shadow: none;
 }
 
-button.contribution-request-button,
-.button.contribution-request-button {
-  background: var(--request-action);
-  border-color: var(--request-action-border);
-  box-shadow: 0 1px 1px rgb(0 0 0 / 0.08), 0 8px 18px color-mix(in srgb, var(--request-action) 28%, transparent);
-  color: var(--request-action-text);
-}
-
-button.contribution-request-button:hover,
-.button.contribution-request-button:hover {
-  background: var(--request-action-hover);
-  border-color: var(--request-action-border);
-  box-shadow: 0 1px 1px rgb(0 0 0 / 0.1), 0 10px 22px color-mix(in srgb, var(--request-action) 34%, transparent);
-}
-
 button.attempt-action-button {
   border-color: var(--problem-opened-border);
   color: var(--problem-opened);
@@ -5019,10 +5004,6 @@ a:hover .content-language-fallback {
 
 .growth-note .prose-math p {
   margin: 0;
-}
-
-.contribution-page-section .prose-math {
-  margin-top: 0.5rem;
 }
 
 .domain-picker {

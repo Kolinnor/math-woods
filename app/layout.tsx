@@ -22,6 +22,7 @@ import "./styles/63-layout-overrides.css";
 import "./styles/64-problems.css";
 import "./styles/65-concepts.css";
 import "./styles/66-community.css";
+import "./styles/67-contributions.css";
 import "./styles/70-discussions.css";
 import "./styles/80-guided-tour.css";
 import "./styles/90-resume-banner.css";
