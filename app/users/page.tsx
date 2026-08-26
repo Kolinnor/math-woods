@@ -12,9 +12,9 @@ import { UsersRankingSelect } from "./UsersRankingSelect";
 
 export const dynamic = "force-dynamic";
 
-type RankingMode = "reputation" | "favorites" | "solved" | "problems" | "dailyProblems";
+type RankingMode = "reputation" | "favorites" | "solved" | "problems" | "dailyProblems" | "translations";
 
-const rankingModes: RankingMode[] = ["reputation", "dailyProblems", "favorites", "solved", "problems"];
+const rankingModes: RankingMode[] = ["reputation", "dailyProblems", "favorites", "solved", "problems", "translations"];
 const USERS_PER_PAGE = 25;
 
 function parseRankingMode(value: string | undefined): RankingMode {
@@ -26,6 +26,7 @@ function rankingValue(user: UserReputationSummary, mode: RankingMode) {
   if (mode === "solved") return user.solvedCount;
   if (mode === "problems") return user.problemCount;
   if (mode === "dailyProblems") return user.dailyProblemCount;
+  if (mode === "translations") return user.translationCount;
   return user.reputation;
 }
 
@@ -135,6 +136,10 @@ export default async function UsersPage({
               <span className="users-stat">
                 <strong>{user.problemCount}</strong>
                 <small>{t.users.stats.problems}</small>
+              </span>
+              <span className="users-stat">
+                <strong>{user.translationCount}</strong>
+                <small>{t.users.stats.translations}</small>
               </span>
               <span className="users-stat">
                 <strong>{user.dailyProblemCount}</strong>

@@ -370,6 +370,7 @@ export const en = {
     stats: {
       reputation: "reputation",
       problems: "problems",
+      translations: "translations",
       dailyProblems: "problems of the day",
       favorites: "likes received",
       solved: "solved"
@@ -405,6 +406,11 @@ export const en = {
         label: "Number of problems",
         title: "Ranking by problems created",
         subtitle: "All members, ranked by how many problems they have created."
+      },
+      translations: {
+        label: "Number of translations",
+        title: "Ranking by translations",
+        subtitle: "Translations of problems, concepts, hints, and solutions contributed by each member."
       }
     }
   },
@@ -1227,7 +1233,6 @@ export const en = {
     publishing: "Publishing…",
     publishAnyway: "Publish anyway",
     statement: "Statement",
-    illustrationAdvice: "A relevant illustration (figure, diagram, or JSXGraph) can make the content clearer. Add one when it genuinely helps.",
     content: "Content",
     translationLinksNote: "Concept links are carried over automatically. Translate the visible text after |, but keep the target before it so every language stays connected to the same mathematical idea.",
     linkedProblemLanguagesHelp: "Languages already linked to this problem are disabled.",

@@ -2565,6 +2565,8 @@ assert.match(usersPageSource, /firstUserIndex \+ index \+ 1/);
 assert.match(usersPageSource, /name="q"/);
 assert.match(usersPageSource, /normalizeSearchText/);
 assert.match(usersPageSource, /usersHref\(mode, currentPage \+ 1, searchQuery\)/);
+assert.match(usersPageSource, /user\.translationCount/);
+assert.match(usersPageSource, /mode === "translations"/);
 assert.match(usersRankingSelectSource, /new URLSearchParams\(searchParams\.toString\(\)\)/);
 assert.match(usersRankingSelectSource, /nextParams\.delete\("page"\)/);
 assert.match(contributionTasksSource, /canUseModerationTools\(user\)/);
@@ -3194,7 +3196,8 @@ const mathematicianFixtures = [
     conceptCount: 2,
     solutionCount: 1,
     explorationCount: 1,
-    dailyProblemCount: 0
+    dailyProblemCount: 0,
+    translationCount: 2
   },
   {
     userId: 2,
@@ -3219,7 +3222,8 @@ const mathematicianFixtures = [
     conceptCount: 0,
     solutionCount: 0,
     explorationCount: 0,
-    dailyProblemCount: 1
+    dailyProblemCount: 1,
+    translationCount: 0
   }
 ] satisfies UserReputationSummary[];
 

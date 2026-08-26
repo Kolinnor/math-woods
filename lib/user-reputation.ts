@@ -88,6 +88,7 @@ export type UserReputationSummary = {
   solutionCount: number;
   explorationCount: number;
   dailyProblemCount: number;
+  translationCount: number;
   contestWinCount?: number;
 };
 
@@ -336,7 +337,13 @@ async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: 
   const learningByUser = new Map<number, Array<{ translationGroupId: string; solvedAt: Date }>>();
   const translationsByUser = new Map<number, TranslationBonusEvent[]>();
   const translatedProblemScoresByUser = new Map<number, Map<number, number>>();
-  if (userIds.length === 0) return { learningByUser: new Map<number, number>(), translationsByUser: new Map<number, number>() };
+  if (userIds.length === 0) {
+    return {
+      learningByUser: new Map<number, number>(),
+      translationsByUser: new Map<number, number>(),
+      translationCountsByUser: new Map<number, number>()
+    };
+  }
 
   const [attempts, translatedProblems, translatedConcepts, creationRevisions, translatedHints, translatedProofs] =
     await Promise.all([
@@ -458,6 +465,14 @@ async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: 
     });
   }
 
+  function translationCountForUser(userId: number) {
+    const translatedItems = new Set((translationsByUser.get(userId) ?? []).map((event) => event.key));
+    for (const problemId of translatedProblemScoresByUser.get(userId)?.keys() ?? []) {
+      translatedItems.add(`${SourceType.PROBLEM}:${problemId}`);
+    }
+    return translatedItems.size;
+  }
+
   return {
     learningByUser: new Map(
       userIds.map((userId) => [userId, learningSolveReputationBonus(learningByUser.get(userId) ?? [])])
@@ -468,6 +483,9 @@ async function earnedReputationBonuses(userIds: number[], problemScoresByGroup: 
         translationReputationBonus(translationsByUser.get(userId) ?? [])
           + [...(translatedProblemScoresByUser.get(userId)?.values() ?? [])].reduce((total, score) => total + score, 0)
       ])
+    ),
+    translationCountsByUser: new Map(
+      userIds.map((userId) => [userId, translationCountForUser(userId)])
     )
   };
 }
@@ -494,6 +512,7 @@ function summarizeUser(
   dailyProblemCount: number,
   learningReputation: number,
   translationReputation: number,
+  translationCount: number,
   contestReputation: number,
   contestWinCount: number,
   conceptCount: number,
@@ -535,6 +554,7 @@ function summarizeUser(
     solutionCount,
     explorationCount: user._count.playlists,
     dailyProblemCount,
+    translationCount,
     contestWinCount
   };
 }
@@ -646,6 +666,7 @@ export async function getReputationLeaderboard() {
     dailyProblemsByAuthor.get(user.id) ?? 0,
     bonuses.learningByUser.get(user.id) ?? 0,
     bonuses.translationsByUser.get(user.id) ?? 0,
+    bonuses.translationCountsByUser.get(user.id) ?? 0,
     contestReputationByUser.get(user.id) ?? 0,
     contestWinsByUser.get(user.id) ?? 0,
     authoredCounts.conceptsByUser.get(user.id) ?? 0,

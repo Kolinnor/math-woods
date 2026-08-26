@@ -10296,16 +10296,6 @@ button.markdown-editor-tool-button:disabled svg {
   font-weight: 700;
 }
 
-.content-illustration-advice {
-  border-left: 3px solid var(--mw-green);
-  color: var(--mw-secondary);
-  font-size: 0.88rem;
-  line-height: 1.5;
-  margin: 0;
-  max-width: 72ch;
-  padding-left: 10px;
-}
-
 .translation-companions,
 .translation-exercise-options {
   display: grid;
@@ -15692,7 +15682,7 @@ button.problem-favorite-count:disabled {
   color: inherit;
   display: grid;
   gap: 1rem;
-  grid-template-columns: 3.5rem auto minmax(0, 1fr) repeat(5, minmax(4.75rem, auto));
+  grid-template-columns: 3.5rem auto minmax(0, 1fr) repeat(6, minmax(4.75rem, auto));
   padding: 1rem;
   text-decoration: none;
   transition: background-color 120ms ease;
