@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ReportStatus, TargetType } from "@prisma/client";
-import { ArrowLeft, Check, Ellipsis, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
+import { Check, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentTranslations } from "@/components/ContentTranslations";
@@ -11,7 +11,6 @@ import { Difficulty } from "@/components/Difficulty";
 import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
-import { MobileSolutionBar } from "@/components/MobileSolutionBar";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
 import { ProblemHints } from "@/components/ProblemHints";
 import { ProblemReactions } from "@/components/ProblemReactions";
@@ -700,19 +699,6 @@ export default async function ProblemPage({
         <div className="problem-hero-overlay" />
       </section>
 
-      <header className="mobile-problem-header">
-        <Link href="/problems" aria-label={t.problems.title}>
-          <ArrowLeft size={20} aria-hidden="true" />
-        </Link>
-        <strong><AsyncMarkdownInline markdown={problem.title} /></strong>
-        <a href="#problem-actions" aria-label={t.problemDetail.addFavorite}>
-          <Heart size={19} fill={favorite ? "currentColor" : "none"} aria-hidden="true" />
-        </a>
-        <a href="#problem-tools" aria-label={t.nav.moreTitle}>
-          <Ellipsis size={21} aria-hidden="true" />
-        </a>
-      </header>
-
       <div className="problem-detail-body">
         <div className="problem-detail-preamble">
         <header className="problem-title-block">
@@ -933,7 +919,6 @@ export default async function ProblemPage({
           <MarkdownBlock html={problemBodyHtml} />
         </section>
         <section
-          id="problem-actions"
           className={`problem-primary-actions${isConjecture ? " conjecture" : ""}`}
           aria-label="Problem progress"
         >
@@ -1375,7 +1360,7 @@ export default async function ProblemPage({
 
       </article>
 
-        <aside className="problem-rail zen-hide" id="problem-tools">
+        <aside className="problem-rail zen-hide">
         <nav className="problem-rail-actions" aria-label={t.problemDetail.problem}>
           {canProposeCurrentProblem && (
             <Link href={`/problems/${problem.slug}/edit`}>
@@ -1581,9 +1566,6 @@ export default async function ProblemPage({
 
       </aside>
       </div>
-      {user && !isConjecture && (
-        <MobileSolutionBar label={interfaceLocale === "fr" ? "Écrire ma solution" : "Write my solution"} />
-      )}
     </div>
   );
 }

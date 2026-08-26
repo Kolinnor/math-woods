@@ -6,7 +6,6 @@ import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
 import { FieldHelp } from "@/components/FieldHelp";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
-import { MobileFilterSheet } from "@/components/MobileFilterSheet";
 import { ProblemLedgerInteractiveRow } from "@/components/ProblemLedgerInteractiveRow";
 import { ProblemDomainStrip } from "@/components/ProblemDomainStrip";
 import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/ProblemFilterBuilder";
@@ -733,19 +732,6 @@ export default async function ProblemsPage({
     : showsExercises
       ? t.problems.showingProblemsAndExercises(totalProblems)
       : t.problems.showingResults(totalProblems);
-  const activeFilterChips = [
-    query ? { key: "q", label: `${t.common.search}: ${query}`, href: problemsHref({ ...paginationParams, q: undefined, page: undefined }) } : null,
-    domainValue ? { key: "domain", label: translatedDomainLabel(domainValue, t), href: problemsHref({ ...paginationParams, domain: undefined, page: undefined }) } : null,
-    difficultyRangeOption.value || hasCustomDifficultyBounds ? { key: "difficulty", label: hasCustomDifficultyBounds ? `${t.problems.difficulty}: ${difficultyMinValue ?? 1}–${difficultyMaxValue ?? 100}` : difficultyRangeOption.label, href: problemsHref({ ...paginationParams, difficultyRange: undefined, difficultyMin: undefined, difficultyMax: undefined, page: undefined }) } : null,
-    !includesEveryLanguage ? { key: "language", label: languageValues.map((value) => value.toUpperCase()).join(", "), href: problemsHref({ ...paginationParams, language: undefined, page: undefined }) } : null,
-    !isDefaultProblemContentType(contentTypeValues, defaultContentTypeValues) ? { key: "contentType", label: contentTypeValues.map((value) => value === "exercise" ? t.problems.exerciseType : t.problems.problemType).join(" + "), href: problemsHref({ ...paginationParams, contentType: undefined, page: undefined }) } : null,
-    qualityValue ? { key: "quality", label: t.quality[qualityValue], href: problemsHref({ ...paginationParams, quality: undefined, page: undefined }) } : null,
-    user && progressValue !== "all" ? { key: "progress", label: progressValue === "solved" ? t.problems.solved : t.problems.unsolved, href: problemsHref({ ...paginationParams, progress: undefined, page: undefined }) } : null,
-    user && ownershipValue !== "all" ? { key: "ownership", label: ownershipValue === "mine" ? t.problems.onlyOwnProblems : t.problems.onlyOtherProblems, href: problemsHref({ ...paginationParams, ownership: undefined, page: undefined }) } : null,
-    solutionValue !== defaultSolutionValue ? { key: "solutions", label: solutionValue === "with" ? t.problems.withSolutions : solutionValue === "without" ? t.problems.withoutSolutions : t.problems.anySolutionStatus, href: problemsHref({ ...paginationParams, solutions: undefined, page: undefined }) } : null,
-    authorQuery ? { key: "author", label: `${t.problems.author}: ${authorQuery}`, href: problemsHref({ ...paginationParams, author: undefined, page: undefined }) } : null,
-    advancedFilters.length ? { key: "advanced", label: t.problems.advancedFilters.title, href: problemsHref({ ...paginationParams, filterLogic: undefined, filterField: undefined, filterOp: undefined, filterValue: undefined, page: undefined }) } : null
-  ].filter((chip): chip is { key: string; label: string; href: string } => Boolean(chip));
   const recommendationData = user ? await recommendationsForUser(user.id, 5, interfaceLocale) : null;
   const recommendationItems = await Promise.all(
     (recommendationData?.recommendations ?? []).map(async ({ problem }) => ({
@@ -833,24 +819,8 @@ export default async function ProblemsPage({
         selectedDomain={domainValue}
       />
 
-      {activeFilterChips.length > 0 && (
-        <nav className="problem-active-filters" aria-label={interfaceLocale === "fr" ? "Filtres actifs" : "Active filters"}>
-          {activeFilterChips.map((chip) => (
-            <Link key={chip.key} href={chip.href as never}>
-              <span>{chip.label}</span>
-              <span aria-hidden="true">×</span>
-            </Link>
-          ))}
-        </nav>
-      )}
-
       <div className="problems-workspace" data-tour-target="problem-browser">
-        <MobileFilterSheet
-          activeCount={activeFilterChips.length}
-          closeLabel={interfaceLocale === "fr" ? "Fermer les filtres" : "Close filters"}
-          filterLabel={interfaceLocale === "fr" ? "Filtres" : "Filters"}
-          resultLabel={interfaceLocale === "fr" ? `Voir ${totalProblems} problèmes` : `View ${totalProblems} problems`}
-        >
+        <aside className="problems-filter-panel">
           <LiveSearchForm
             className="problem-filter-form"
             persistKey="problems"
@@ -978,7 +948,7 @@ export default async function ProblemsPage({
               }))}
             />
           </LiveSearchForm>
-        </MobileFilterSheet>
+        </aside>
 
         <section className="problems-ledger" aria-label={t.problems.ariaLabel}>
           <div className="problems-ledger-header">
@@ -996,11 +966,6 @@ export default async function ProblemsPage({
               value={sortValue}
             />
           </div>
-          {totalProblems > 0 && (
-            <p className="problem-mobile-result-summary" role="status" aria-live="polite">
-              {resultSummary}
-            </p>
-          )}
 
           <div className="problem-ledger-list">
             {problems.map((problem, problemIndex) => {

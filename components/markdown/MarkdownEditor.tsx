@@ -17,7 +17,7 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
-import { ChevronDown, Eye, ImageIcon, Loader2, Orbit, PencilLine } from "lucide-react";
+import { ChevronDown, ImageIcon, Loader2, Orbit } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import { FieldHelp } from "@/components/FieldHelp";
 import { MarkdownInline } from "@/components/MarkdownInline";
@@ -1519,40 +1519,6 @@ export function MarkdownEditor({
   const [selectedProblemSlug, setSelectedProblemSlug] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageUploadMessage, setImageUploadMessage] = useState<string | null>(null);
-  const [mobileMode, setMobileMode] = useState<"write" | "preview">("write");
-  const [mobilePreviewHtml, setMobilePreviewHtml] = useState("");
-  const [mobilePreviewLoading, setMobilePreviewLoading] = useState(false);
-  const [interfaceLanguage, setInterfaceLanguage] = useState<"en" | "fr">("en");
-
-  useEffect(() => {
-    setInterfaceLanguage(document.documentElement.lang.toLowerCase().startsWith("fr") ? "fr" : "en");
-  }, []);
-
-  useEffect(() => {
-    if (titleMode || mobileMode !== "preview") return;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(async () => {
-      setMobilePreviewLoading(true);
-      try {
-        const response = await fetch("/api/content-preview", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "Preview", bodyMarkdown: value }),
-          signal: controller.signal
-        });
-        const data = await response.json().catch(() => null) as { bodyHtml?: string } | null;
-        if (response.ok && typeof data?.bodyHtml === "string") setMobilePreviewHtml(data.bodyHtml);
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setMobilePreviewHtml("");
-      } finally {
-        if (!controller.signal.aborted) setMobilePreviewLoading(false);
-      }
-    }, 180);
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [mobileMode, titleMode, value]);
 
   useEffect(() => {
     if (!hostRef.current || viewRef.current) return;
@@ -2127,22 +2093,6 @@ export function MarkdownEditor({
     view.focus();
   }
 
-  function insertMobileLatex(snippet: string) {
-    const view = viewRef.current;
-    if (!view) return;
-    const selection = view.state.selection.main;
-    const documentText = view.state.doc.toString();
-    const insideLatex = findLatexRanges(documentText).some((range) => range.from < selection.from && selection.to < range.to);
-    const insert = insideLatex ? snippet : `$${snippet}$`;
-    view.dispatch({
-      changes: { from: selection.from, to: selection.to, insert },
-      selection: { anchor: selection.from + insert.length },
-      effects: setPreviewFocus.of(true),
-      scrollIntoView: true
-    });
-    view.focus();
-  }
-
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
   const cleanLinkText = cleanWikiLinkLabel(linkText || linkMenu?.selectedText || "");
   const exactLinkSuggestion = linkSuggestions.find((suggestion) => {
@@ -2162,10 +2112,7 @@ export function MarkdownEditor({
   );
 
   return (
-    <div
-      className={titleMode ? "markdown-editor markdown-editor-title" : "markdown-editor"}
-      data-mobile-mode={mobileMode}
-    >
+    <div className={titleMode ? "markdown-editor markdown-editor-title" : "markdown-editor"}>
       {!titleMode && conflictingDraft && (
         <div className="markdown-draft-notice" role="status">
           <span>The server content changed after this local draft. The latest server version is shown.</span>
@@ -2182,33 +2129,6 @@ export function MarkdownEditor({
           <span>Draft restored from {formatDraftTime(restoredDraftAt)}.</span>
           <button type="button" className="secondary" onClick={discardDraft}>
             Discard draft
-          </button>
-        </div>
-      )}
-      {!titleMode && (
-        <div className="markdown-editor-mobile-tabs" role="tablist" aria-label={interfaceLanguage === "fr" ? "Mode de l’éditeur" : "Editor mode"}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileMode === "write"}
-            className={mobileMode === "write" ? "is-active" : undefined}
-            onClick={() => {
-              setMobileMode("write");
-              window.setTimeout(() => viewRef.current?.focus(), 0);
-            }}
-          >
-            <PencilLine size={17} aria-hidden="true" />
-            <span>{interfaceLanguage === "fr" ? "Rédiger" : "Write"}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileMode === "preview"}
-            className={mobileMode === "preview" ? "is-active" : undefined}
-            onClick={() => setMobileMode("preview")}
-          >
-            <Eye size={17} aria-hidden="true" />
-            <span>{interfaceLanguage === "fr" ? "Aperçu" : "Preview"}</span>
           </button>
         </div>
       )}
@@ -2265,26 +2185,7 @@ export function MarkdownEditor({
           />
         )}
       </div>}
-      {!titleMode && (
-        <div className="markdown-editor-latex-tools" aria-label={interfaceLanguage === "fr" ? "Symboles mathématiques" : "Mathematical symbols"}>
-          <button type="button" onClick={() => insertMobileLatex("\\sum_{}^{}")}>Σ</button>
-          <button type="button" onClick={() => insertMobileLatex("\\int_{}^{} \\, dx")}>∫</button>
-          <button type="button" onClick={() => insertMobileLatex("\\le")}>≤</button>
-          <button type="button" onClick={() => insertMobileLatex("\\frac{}{}")}>frac</button>
-          <button type="button" onClick={() => insertMobileLatex("^{}")}>x²</button>
-          <button type="button" onClick={() => insertMobileLatex("_{}")}>x₂</button>
-        </div>
-      )}
       <div ref={hostRef} className="markdown-editor-host" />
-      {!titleMode && (
-        <div className="markdown-editor-mobile-preview" role="tabpanel" aria-busy={mobilePreviewLoading}>
-          {mobilePreviewLoading ? (
-            <span className="markdown-editor-preview-loading">{interfaceLanguage === "fr" ? "Préparation de l’aperçu…" : "Preparing preview…"}</span>
-          ) : (
-            <div className="prose-math" dangerouslySetInnerHTML={{ __html: mobilePreviewHtml }} />
-          )}
-        </div>
-      )}
       {characterGuide && (
         <div
           className={`markdown-editor-character-guide${value.length > characterGuide.target ? " is-over" : ""}`}

@@ -3,18 +3,18 @@
 import {
   useEffect,
   useRef,
-  type ComponentPropsWithoutRef,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type SyntheticEvent
 } from "react";
 
-type AutoClosingDetailsProps = Omit<ComponentPropsWithoutRef<"details">, "onToggle"> & {
+type AutoClosingDetailsProps = {
   children: ReactNode;
+  className?: string;
   onOpenChange?: (open: boolean) => void;
 };
 
-export function AutoClosingDetails({ children, className, onOpenChange, ...props }: AutoClosingDetailsProps) {
+export function AutoClosingDetails({ children, className, onOpenChange }: AutoClosingDetailsProps) {
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
 
   function closeDetails() {
@@ -30,15 +30,7 @@ export function AutoClosingDetails({ children, className, onOpenChange, ...props
   }
 
   function handleToggle(event: SyntheticEvent<HTMLDetailsElement>) {
-    const open = event.currentTarget.open;
-    if (event.currentTarget.id === "site-navigation-menu") {
-      if (open && window.matchMedia("(max-width: 640px)").matches) {
-        document.documentElement.dataset.mobileMenuOpen = "true";
-      } else {
-        delete document.documentElement.dataset.mobileMenuOpen;
-      }
-    }
-    onOpenChange?.(open);
+    onOpenChange?.(event.currentTarget.open);
   }
 
   useEffect(() => {
@@ -58,14 +50,13 @@ export function AutoClosingDetails({ children, className, onOpenChange, ...props
     document.addEventListener("pointerdown", handlePointerDown, true);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      delete document.documentElement.dataset.mobileMenuOpen;
       document.removeEventListener("pointerdown", handlePointerDown, true);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
   return (
-    <details {...props} ref={detailsRef} className={className} onClick={handleClick} onToggle={handleToggle}>
+    <details ref={detailsRef} className={className} onClick={handleClick} onToggle={handleToggle}>
       {children}
     </details>
   );
