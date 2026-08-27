@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
@@ -24,18 +25,21 @@ async function uniqueKnownSourceSlug(name: string, ignoredId?: number) {
   throw new Error("Could not create a unique source identifier.");
 }
 
-async function assertUniqueKnownSourceNames(name: string, aliases: string[], ignoredId?: number) {
+async function findKnownSourceConflict(name: string, aliases: string[], ignoredId?: number) {
   const requestedNames = new Set([name, ...aliases].map(normalizeKnownProblemSourceName));
   const existingSources = await prisma.knownProblemSource.findMany({
     where: ignoredId ? { id: { not: ignoredId } } : undefined,
-    select: { name: true, aliases: true }
+    select: { name: true, aliases: true, slug: true }
   });
-  const conflictingSource = existingSources.find((source) =>
+  return existingSources.find((source) =>
     knownProblemSourceNames(source).some((candidate) => requestedNames.has(normalizeKnownProblemSourceName(candidate)))
-  );
-  if (conflictingSource) {
-    throw new Error(`This source or one of its aliases is already registered as ${conflictingSource.name}.`);
-  }
+  ) ?? null;
+}
+
+function knownSourceConflictUrl(slug: string, iconUrl: string | null) {
+  const query = new URLSearchParams({ duplicate: slug });
+  if (iconUrl) query.set("pendingIcon", iconUrl);
+  return `/moderation/problem-sources?${query.toString()}#source-${encodeURIComponent(slug)}`;
 }
 
 async function attachExactOriginMatches(sourceId: number) {
@@ -84,7 +88,8 @@ export async function createKnownProblemSourceAction(formData: FormData) {
   const admin = await requireAdmin();
   await assertRateLimit(`known-problem-source:create:${admin.id}`, 12, 60_000);
   const values = sourceFormValues(formData);
-  await assertUniqueKnownSourceNames(values.name, values.aliases);
+  const conflictingSource = await findKnownSourceConflict(values.name, values.aliases);
+  if (conflictingSource) redirect(knownSourceConflictUrl(conflictingSource.slug, values.iconUrl) as Route);
   const source = await prisma.knownProblemSource.create({
     data: {
       ...values,
@@ -103,7 +108,8 @@ export async function updateKnownProblemSourceAction(sourceId: number, formData:
   if (!previous) throw new Error("Known problem source not found.");
 
   const values = sourceFormValues(formData);
-  await assertUniqueKnownSourceNames(values.name, values.aliases, sourceId);
+  const conflictingSource = await findKnownSourceConflict(values.name, values.aliases, sourceId);
+  if (conflictingSource) redirect(knownSourceConflictUrl(conflictingSource.slug, values.iconUrl) as Route);
   await prisma.knownProblemSource.update({
     where: { id: sourceId },
     data: {

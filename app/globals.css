@@ -86,3 +86,8 @@
   --page-background-size: auto;
   color-scheme: light;
 }
+[data-source-conflict="true"] {
+  border-color: var(--mw-green);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mw-green) 24%, transparent);
+  scroll-margin-top: 24px;
+}
