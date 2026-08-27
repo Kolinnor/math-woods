@@ -5,6 +5,7 @@ import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
+import { KnownProblemSourceSelect } from "@/components/KnownProblemSourceSelect";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
@@ -24,6 +25,7 @@ import { requireDraftSession } from "@/lib/draft-session";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
 import { localizedProblemOrigin } from "@/lib/problem-origin";
+import { canUseAdminTools } from "@/lib/permissions";
 import { orderProblemHintsByCanonicalOrder } from "@/lib/problem-hints";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownCollectionForTranslation } from "@/lib/translated-markdown";
@@ -47,7 +49,7 @@ export default async function NewProblemPage({
     completed?: string;
   }>;
 }) {
-  await requireVerifiedUser();
+  const user = await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const queryParams = await searchParams;
   const draftSession = requireDraftSession("/problems/new", queryParams);
@@ -93,6 +95,7 @@ export default async function NewProblemPage({
           originChapter: true,
           originPage: true,
           originNote: true,
+          knownSourceId: true,
           listed: true,
           verificationMode: true,
           verificationPrompt: true,
@@ -197,6 +200,14 @@ export default async function NewProblemPage({
     : ["OTHER"];
   const initialDomainSpoilers = sourceProblem
     ? sourceProblem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)
+    : [];
+  const canManageKnownSources = canUseAdminTools(user);
+  const knownSources = canManageKnownSources
+    ? await prisma.knownProblemSource.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, active: true }
+      })
     : [];
 
   return (
@@ -319,10 +330,10 @@ export default async function NewProblemPage({
             <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
             <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
                 <section className="problem-compose-subsection">
-                  <h2>{t.contentEditor.origin}</h2>
+                  <h2>{t.contentEditor.source}</h2>
                   <label className="grid gap-2">
                     <span className="field-label-with-help text-sm font-medium">
-                      {t.contentEditor.approximateOrigin}
+                      {t.contentEditor.source}
                       <FieldHelp text={t.contentEditor.originHelp} />
                     </span>
                     <input
@@ -331,19 +342,19 @@ export default async function NewProblemPage({
                       placeholder={t.contentEditor.unknown}
                     />
                   </label>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">{t.contentEditor.chapter}</span>
-                      <input name="originChapter" defaultValue={sourceProblem?.originChapter ?? ""} placeholder="Chapter 4, Algebra" />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">{t.contentEditor.pageNumber}</span>
-                      <input name="originPage" defaultValue={sourceProblem?.originPage ?? ""} placeholder="p. 127, Problem 6" />
-                    </label>
-                  </div>
+                  {canManageKnownSources && (
+                    <KnownProblemSourceSelect
+                      defaultValue={sourceProblem?.knownSourceId}
+                      label={t.contentEditor.recognizedSource}
+                      help={t.contentEditor.recognizedSourceHelp}
+                      noneLabel={t.contentEditor.noRecognizedSource}
+                      archivedLabel={t.contentEditor.archivedSource}
+                      sources={knownSources}
+                    />
+                  )}
                   <label className="grid gap-2">
                     <span className="field-label-with-help text-sm font-medium">
-                      {t.contentEditor.provenanceNote}
+                      {t.contentEditor.moreSourceDetails}
                       <FieldHelp text={t.contentEditor.provenanceHelp} />
                     </span>
                     <textarea className="compact-textarea" name="originNote" defaultValue={sourceProblem?.originNote ?? ""} />

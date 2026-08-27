@@ -7,6 +7,7 @@ export const PROBLEM_TRANSLATION_SHARED_FIELDS = [
   "origin",
   "originChapter",
   "originPage",
+  "knownSourceId",
   "listed",
   "isExercise",
   "isConjecture",

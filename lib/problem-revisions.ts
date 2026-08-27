@@ -18,6 +18,7 @@ export type ProblemRevisionSnapshot = {
   originChapter: string | null;
   originPage: string | null;
   originNote: string | null;
+  knownSourceId: number | null;
   listed: boolean;
   isExercise: boolean;
   isConjecture: boolean;
@@ -45,6 +46,7 @@ export type ProblemSnapshotSource = {
   originChapter: string | null;
   originPage: string | null;
   originNote: string | null;
+  knownSourceId: number | null;
   listed: boolean;
   isExercise: boolean;
   isConjecture: boolean;
@@ -75,6 +77,7 @@ export const PROBLEM_SNAPSHOT_FIELD_LABELS = {
   originChapter: "origin chapter",
   originPage: "origin page",
   originNote: "origin note",
+  knownSourceId: "recognized source",
   listed: "visibility",
   isExercise: "content type",
   isConjecture: "conjecture status",
@@ -115,6 +118,7 @@ export function buildProblemRevisionSnapshot(source: ProblemSnapshotSource): Pro
     originChapter: source.originChapter,
     originPage: source.originPage,
     originNote: source.originNote,
+    knownSourceId: source.knownSourceId,
     listed: source.listed,
     isExercise: source.isExercise,
     isConjecture: source.isConjecture,
@@ -174,7 +178,11 @@ export function parseProblemRevisionSnapshot(value: Prisma.JsonValue | null): Pr
         ? candidate.showRelatedProblems
         : candidate.isExercise !== true,
     canAppearOnFrontPage:
-      candidate.canAppearOnFrontPage === true || legacyQualityStatus === "EXCELLENT"
+      candidate.canAppearOnFrontPage === true || legacyQualityStatus === "EXCELLENT",
+    knownSourceId:
+      typeof candidate.knownSourceId === "number" && Number.isInteger(candidate.knownSourceId)
+        ? candidate.knownSourceId
+        : null
   } as unknown as ProblemRevisionSnapshot;
 }
 

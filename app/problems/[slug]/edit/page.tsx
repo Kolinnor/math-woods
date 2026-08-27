@@ -7,6 +7,7 @@ import { DeleteProblemButton } from "@/components/DeleteProblemButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
+import { KnownProblemSourceSelect } from "@/components/KnownProblemSourceSelect";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
@@ -90,7 +91,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
     problem.qualityStatus === QualityStatus.REVIEWED &&
     canSetProblemQualityStatus(user.role, QualityStatus.REVIEWED);
   if (problem.status === "ARCHIVED" && !canEditArchivedProblem) notFound();
-  const [siblingTranslations, sourceRevisionId] = await Promise.all([
+  const [siblingTranslations, sourceRevisionId, knownSources] = await Promise.all([
     prisma.problem.findMany({
       where: {
         translationGroupId: problem.translationGroupId,
@@ -100,7 +101,19 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
     }),
     problem.translatedFromProblemId
       ? latestProblemTextRevisionId(problem.translatedFromProblemId)
-      : null
+      : null,
+    canManageFrontPageEligibility
+      ? prisma.knownProblemSource.findMany({
+          where: {
+            OR: [
+              { active: true },
+              ...(problem.knownSourceId ? [{ id: problem.knownSourceId }] : [])
+            ]
+          },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true, active: true }
+        })
+      : Promise.resolve([])
   ]);
   const staleTranslation = Boolean(
     sourceRevisionId && problem.translatedFromRevisionId && sourceRevisionId > problem.translatedFromRevisionId
@@ -196,27 +209,27 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
               <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
               <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
                   <section className="problem-compose-subsection">
-                    <h2>{t.contentEditor.origin}</h2>
+                    <h2>{t.contentEditor.source}</h2>
                     <label className="grid gap-2">
                       <span className="field-label-with-help text-sm font-medium">
-                        {t.contentEditor.approximateOrigin}
+                        {t.contentEditor.source}
                         <FieldHelp text={t.contentEditor.originHelp} />
                       </span>
                       <input name="origin" defaultValue={localizedProblemOrigin(problem.origin, t.contentEditor.unknown)} />
                     </label>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="grid gap-2">
-                        <span className="text-sm font-medium">{t.contentEditor.chapter}</span>
-                        <input name="originChapter" defaultValue={problem.originChapter ?? ""} />
-                      </label>
-                      <label className="grid gap-2">
-                        <span className="text-sm font-medium">{t.contentEditor.pageNumber}</span>
-                        <input name="originPage" defaultValue={problem.originPage ?? ""} />
-                      </label>
-                    </div>
+                    {canManageFrontPageEligibility && (
+                      <KnownProblemSourceSelect
+                        defaultValue={problem.knownSourceId}
+                        label={t.contentEditor.recognizedSource}
+                        help={t.contentEditor.recognizedSourceHelp}
+                        noneLabel={t.contentEditor.noRecognizedSource}
+                        archivedLabel={t.contentEditor.archivedSource}
+                        sources={knownSources}
+                      />
+                    )}
                     <label className="grid gap-2">
                       <span className="field-label-with-help text-sm font-medium">
-                        {t.contentEditor.provenanceNote}
+                        {t.contentEditor.moreSourceDetails}
                         <FieldHelp text={t.contentEditor.provenanceHelp} />
                       </span>
                       <textarea className="compact-textarea" name="originNote" defaultValue={problem.originNote ?? ""} />

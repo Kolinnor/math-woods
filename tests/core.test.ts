@@ -405,6 +405,12 @@ import { markdownExcerpt } from "../lib/metadata-text.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
 import {
+  normalizeKnownProblemSourceName,
+  parseKnownProblemSourceAliases,
+  problemOriginMatchesKnownSource,
+  problemSourcePresentation
+} from "../lib/known-problem-sources.ts";
+import {
   mergeProblemRevisionSnapshots,
   parseProblemRevisionSnapshot,
   type ProblemRevisionSnapshot
@@ -844,6 +850,7 @@ const baseProblemSnapshot: ProblemRevisionSnapshot = {
   originChapter: null,
   originPage: null,
   originNote: null,
+  knownSourceId: null,
   listed: true,
   isExercise: false,
   isConjecture: false,
@@ -893,6 +900,19 @@ assert.equal(legacyExcellentSnapshot?.qualityStatus, QualityStatus.REVIEWED);
 assert.equal(legacyExcellentSnapshot?.canAppearOnFrontPage, true);
 assert.equal(legacyExcellentSnapshot?.isExercise, false);
 assert.equal(legacyExcellentSnapshot?.showRelatedProblems, true);
+const legacySourceSnapshot = JSON.parse(JSON.stringify(baseProblemSnapshot));
+delete legacySourceSnapshot.knownSourceId;
+assert.equal(parseProblemRevisionSnapshot(legacySourceSnapshot)?.knownSourceId, null);
+assert.equal(normalizeKnownProblemSourceName("  PHIL   Caldero "), "phil caldero");
+assert.deepEqual(parseKnownProblemSourceAliases("Phil\n Phil Caldero,phil"), ["Phil", "Phil Caldero"]);
+assert.equal(
+  problemOriginMatchesKnownSource(" phil  caldero ", { name: "Phil Caldero", aliases: [] }),
+  true
+);
+assert.equal(problemSourcePresentation("Phil Caldero", { name: "Phil Caldero", aliases: [] }).sourceCount, 1);
+assert.equal(problemSourcePresentation("Geometry Revisited", { name: "Phil Caldero", aliases: [] }).sourceCount, 2);
+assert.equal(problemSourcePresentation("Geometry Revisited", null).sourceCount, 1);
+assert.equal(problemSourcePresentation("Unknown", null).sourceCount, 0);
 const legacyExerciseSnapshot = JSON.parse(JSON.stringify({
   ...baseProblemSnapshot,
   isExercise: true
@@ -4199,11 +4219,12 @@ assert.deepEqual(
     "bodyMarkdown",
     "difficulty",
     "domains",
+    "knownSourceId",
     "qualityStatus",
     "verificationPrompt",
     "relatedProblemGroups"
   ]),
-  ["difficulty", "domains"]
+  ["difficulty", "domains", "knownSourceId"]
 );
 assert.deepEqual(
   conceptTranslationSharedChanges([

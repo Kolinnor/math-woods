@@ -650,6 +650,7 @@ model Problem {
   originChapter            String?
   originPage               String?
   originNote               String?
+  knownSourceId            Int?
   license                  String                          @default("CC BY-SA 4.0")
   listed                   Boolean                         @default(true)
   isExercise               Boolean                         @default(false)
@@ -666,6 +667,7 @@ model Problem {
   createdAt                DateTime                        @default(now())
   updatedAt                DateTime                        @updatedAt
   author                   User                            @relation(fields: [authorId], references: [id])
+  knownSource              KnownProblemSource?             @relation(fields: [knownSourceId], references: [id], onDelete: SetNull)
   thread                   DiscussionThread?
   attempts                 ProblemAttempt[]
   recommendationExposures  ProblemRecommendationExposure[]
@@ -701,6 +703,21 @@ model Problem {
   @@index([language, status, createdAt])
   @@index([translationGroupId])
   @@index([translatedFromProblemId])
+  @@index([knownSourceId])
+}
+
+model KnownProblemSource {
+  id        Int       @id @default(autoincrement())
+  slug      String    @unique
+  name      String
+  iconUrl   String?
+  aliases   String[]  @default([])
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  problems  Problem[]
+
+  @@index([active, name])
 }
 
 model ProblemContest {

@@ -52,7 +52,7 @@ import {
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
-import { isUnknownProblemOrigin } from "@/lib/problem-origin";
+import { problemSourcePresentation } from "@/lib/known-problem-sources";
 import { shouldShowOwnerSolvedBanner } from "@/lib/problem-owner-solved-banner";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
@@ -235,6 +235,7 @@ export default async function ProblemPage({
     where: { slug },
     include: {
       author: true,
+      knownSource: true,
       domains: { orderBy: { position: "asc" } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
@@ -282,9 +283,11 @@ export default async function ProblemPage({
   const canViewArchived = canViewArchivedProblem(user, problem);
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
   if (!canViewProblem(user, problem)) notFound();
-  const hasSpecifiedOrigin =
-    !isUnknownProblemOrigin(problem.origin) ||
-    Boolean(problem.originChapter || problem.originPage || problem.originNote);
+  const { hasFreeSource, knownSourceDuplicatesFreeSource, sourceCount } = problemSourcePresentation(
+    problem.origin,
+    problem.knownSource
+  );
+  const hasSpecifiedOrigin = sourceCount > 0 || Boolean(problem.originChapter || problem.originPage || problem.originNote);
 
   const proofIds = problem.proofs.map((proof) => proof.id);
   const relatedProblems = problem.relatedGroups.flatMap((group) =>
@@ -1029,19 +1032,32 @@ export default async function ProblemPage({
           </div>
         </section>
         {hasSpecifiedOrigin && (
-          <div className="problem-origin-note zen-meta">
-            {!isUnknownProblemOrigin(problem.origin) && <span>{t.problemDetail.origin} {problem.origin}</span>}
+          <section className="problem-origin-note zen-meta" aria-labelledby="problem-source-heading">
+            <strong id="problem-source-heading" className="problem-source-heading">
+              {sourceCount <= 1 ? t.problemDetail.source : t.problemDetail.sources}
+            </strong>
+            <div className="problem-source-identities">
+              {problem.knownSource && (
+                <span className="problem-source-identity">
+                  {problem.knownSource.iconUrl && (
+                    <img src={problem.knownSource.iconUrl} alt="" className="problem-source-icon" />
+                  )}
+                  <span>{problem.knownSource.name}</span>
+                </span>
+              )}
+              {hasFreeSource && !knownSourceDuplicatesFreeSource && <span>{problem.origin}</span>}
+            </div>
             {(problem.originChapter || problem.originPage || problem.originNote) && (
               <details>
-                <summary>{t.problemDetail.details}</summary>
+                <summary>{t.problemDetail.moreDetails}</summary>
                 <div className="grid gap-1 pt-2">
                   {problem.originChapter && <p>{t.problemDetail.chapterOrSection} {problem.originChapter}</p>}
                   {problem.originPage && <p>{t.problemDetail.pageOrProblemNumber} {problem.originPage}</p>}
-                  {problem.originNote && <p className="whitespace-pre-wrap">{problem.originNote}</p>}
+                  {problem.originNote && <p className="whitespace-pre-wrap"><AsyncMarkdownInline markdown={problem.originNote} /></p>}
                 </div>
               </details>
             )}
-          </div>
+          </section>
         )}
 
         {problem.showRelatedProblems && (

@@ -139,6 +139,9 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
       description="Recent reports, light-touch triage, and content hiding when needed."
+      actions={canReviewProposedEdits ? (
+        <Link href="/moderation/problem-sources" className="button secondary">Problem sources</Link>
+      ) : undefined}
       meta={
         <>
           <p>{reports.length} reports</p>

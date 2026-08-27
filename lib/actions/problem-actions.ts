@@ -54,6 +54,7 @@ import {
 import { problemCreationNotificationCopy } from "@/lib/problem-creation-notifications";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { normalizeProblemOrigin } from "@/lib/problem-origin";
+import { parseKnownProblemSourceId } from "@/lib/known-problem-sources";
 import { linkSpecificProblem, parseProblemRelationGroups, syncProblemRelationGroups } from "@/lib/problem-relations";
 import {
   PROBLEM_SNAPSHOT_FIELD_LABELS,
@@ -400,6 +401,9 @@ export async function createProblemAction(formData: FormData) {
   const originChapter = optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter");
   const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
+  const requestedKnownSourceId = canUseAdminTools(user)
+    ? parseKnownProblemSourceId(formData.get("knownSourceId"))
+    : null;
   const listed = formData.get("listed") === "on";
   const isExercise = formData.get("isExercise") === "on";
   const showRelatedProblems = formData.get("showRelatedProblems") === "on";
@@ -528,6 +532,17 @@ export async function createProblemAction(formData: FormData) {
       : null;
     const sharedProblem = originalProblem ?? translationSource;
     const sharedSnapshot = sharedProblem ? buildProblemRevisionSnapshot(sharedProblem) : null;
+    const knownSourceId = sharedSnapshot?.knownSourceId ?? requestedKnownSourceId;
+    if (knownSourceId) {
+      const knownSource = await tx.knownProblemSource.findFirst({
+        where: {
+          id: knownSourceId,
+          ...(sharedSnapshot?.knownSourceId === knownSourceId ? {} : { active: true })
+        },
+        select: { id: true }
+      });
+      if (!knownSource) throw new Error("The selected recognized source is unavailable.");
+    }
     const effectiveVerificationMode = sharedSnapshot?.verificationMode ?? verificationMode;
     if (effectiveVerificationMode === ProblemVerificationMode.SELF_CHECK && !verificationAnswer) {
       throw new Error("Short answer verification requires a translated expected answer.");
@@ -559,6 +574,7 @@ export async function createProblemAction(formData: FormData) {
         originChapter: sharedSnapshot?.originChapter ?? originChapter,
         originPage: sharedSnapshot?.originPage ?? originPage,
         originNote: sharedSnapshot?.originNote ?? originNote,
+        knownSourceId,
         license: sharedProblem?.license,
         listed: sharedSnapshot?.listed ?? listed,
         isExercise: sharedSnapshot?.isExercise ?? isExercise,
@@ -976,9 +992,23 @@ export async function updateProblemAction(
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
   const origin = normalizeProblemOrigin(boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin"));
-  const originChapter = optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter");
-  const originPage = optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page");
+  const originChapter = formData.has("originChapter")
+    ? optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter")
+    : previous.originChapter;
+  const originPage = formData.has("originPage")
+    ? optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page")
+    : previous.originPage;
   const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
+  const knownSourceId = canUseAdminTools(user)
+    ? parseKnownProblemSourceId(formData.get("knownSourceId"))
+    : previous.knownSourceId;
+  if (knownSourceId && knownSourceId !== previous.knownSourceId) {
+    const knownSource = await prisma.knownProblemSource.findFirst({
+      where: { id: knownSourceId, active: true },
+      select: { id: true }
+    });
+    if (!knownSource) throw new Error("The selected recognized source is unavailable.");
+  }
   const listed = formData.get("listed") === "on";
   const isExercise = formData.get("isExercise") === "on";
   const showRelatedProblems = formData.get("showRelatedProblems") === "on";
@@ -1032,6 +1062,7 @@ export async function updateProblemAction(
     originChapter,
     originPage,
     originNote,
+    knownSourceId,
     listed,
     isExercise,
     isConjecture,
@@ -1222,6 +1253,7 @@ export async function updateProblemAction(
           originChapter: resolvedSnapshot.originChapter,
           originPage: resolvedSnapshot.originPage,
           originNote: resolvedSnapshot.originNote,
+          knownSourceId: resolvedSnapshot.knownSourceId,
           listed: resolvedSnapshot.listed,
           isExercise: resolvedSnapshot.isExercise,
           isConjecture: resolvedSnapshot.isConjecture,
@@ -1266,6 +1298,7 @@ export async function updateProblemAction(
               ? { originChapter: resolvedSnapshot.originChapter }
               : {}),
             ...(sharedChangedFieldSet.has("originPage") ? { originPage: resolvedSnapshot.originPage } : {}),
+            ...(sharedChangedFieldSet.has("knownSourceId") ? { knownSourceId: resolvedSnapshot.knownSourceId } : {}),
             ...(sharedChangedFieldSet.has("listed") ? { listed: resolvedSnapshot.listed } : {}),
             ...(sharedChangedFieldSet.has("isExercise") ? { isExercise: resolvedSnapshot.isExercise } : {}),
             ...(sharedChangedFieldSet.has("isConjecture") ? { isConjecture: resolvedSnapshot.isConjecture } : {}),
@@ -1440,6 +1473,7 @@ export async function approveProblemEditProposalAction(proposalId: number) {
   if (snapshot.originChapter) formData.set("originChapter", snapshot.originChapter);
   if (snapshot.originPage) formData.set("originPage", snapshot.originPage);
   if (snapshot.originNote) formData.set("originNote", snapshot.originNote);
+  if (snapshot.knownSourceId) formData.set("knownSourceId", String(snapshot.knownSourceId));
   if (snapshot.listed) formData.set("listed", "on");
   if (snapshot.isExercise) formData.set("isExercise", "on");
   if (snapshot.isConjecture) formData.set("isConjecture", "on");
@@ -1720,6 +1754,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               originChapter: snapshot.originChapter,
               originPage: snapshot.originPage,
               originNote: snapshot.originNote,
+              knownSourceId: snapshot.knownSourceId,
               listed: snapshot.listed,
               isExercise: snapshot.isExercise,
               isConjecture: snapshot.isConjecture,
@@ -1767,7 +1802,10 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               { isExercise: { not: snapshot.isExercise } },
               { isConjecture: { not: snapshot.isConjecture } },
               { NOT: { styles: { equals: snapshot.styles } } },
-              { showRelatedProblems: { not: snapshot.showRelatedProblems } }
+              { showRelatedProblems: { not: snapshot.showRelatedProblems } },
+              snapshot.knownSourceId === null
+                ? { knownSourceId: { not: null } }
+                : { OR: [{ knownSourceId: null }, { knownSourceId: { not: snapshot.knownSourceId } }] }
             ]
           },
           select: { id: true }
@@ -1786,6 +1824,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
           styles: snapshot.styles,
           showRelatedProblems: snapshot.showRelatedProblems,
           canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
+          knownSourceId: snapshot.knownSourceId,
           version: { increment: 1 }
         }
       });
