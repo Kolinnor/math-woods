@@ -711,6 +711,7 @@ model KnownProblemSource {
   slug      String    @unique
   name      String
   iconUrl   String?
+  iconSize  Int       @default(40)
   aliases   String[]  @default([])
   active    Boolean   @default(true)
   createdAt DateTime  @default(now())

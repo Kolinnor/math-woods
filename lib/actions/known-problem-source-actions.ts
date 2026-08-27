@@ -10,7 +10,8 @@ import {
   knownProblemSourceNames,
   normalizeKnownProblemSourceIconUrl,
   normalizeKnownProblemSourceName,
-  parseKnownProblemSourceAliases
+  parseKnownProblemSourceAliases,
+  parseKnownProblemSourceIconSize
 } from "@/lib/known-problem-sources";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
@@ -36,9 +37,10 @@ async function findKnownSourceConflict(name: string, aliases: string[], ignoredI
   ) ?? null;
 }
 
-function knownSourceConflictUrl(slug: string, iconUrl: string | null) {
+function knownSourceConflictUrl(slug: string, iconUrl: string | null, iconSize: number) {
   const query = new URLSearchParams({ duplicate: slug });
   if (iconUrl) query.set("pendingIcon", iconUrl);
+  query.set("pendingIconSize", String(iconSize));
   return `/moderation/problem-sources?${query.toString()}#source-${encodeURIComponent(slug)}`;
 }
 
@@ -74,7 +76,8 @@ function sourceFormValues(formData: FormData) {
   const aliases = parseKnownProblemSourceAliases(formData.get("aliases"))
     .filter((alias) => normalizeKnownProblemSourceName(alias) !== normalizeKnownProblemSourceName(name));
   const iconUrl = normalizeKnownProblemSourceIconUrl(formData.get("iconUrl"));
-  return { name, aliases, iconUrl };
+  const iconSize = parseKnownProblemSourceIconSize(formData.get("iconSize"));
+  return { name, aliases, iconUrl, iconSize };
 }
 
 function revalidateKnownSources() {
@@ -89,7 +92,9 @@ export async function createKnownProblemSourceAction(formData: FormData) {
   await assertRateLimit(`known-problem-source:create:${admin.id}`, 12, 60_000);
   const values = sourceFormValues(formData);
   const conflictingSource = await findKnownSourceConflict(values.name, values.aliases);
-  if (conflictingSource) redirect(knownSourceConflictUrl(conflictingSource.slug, values.iconUrl) as Route);
+  if (conflictingSource) {
+    redirect(knownSourceConflictUrl(conflictingSource.slug, values.iconUrl, values.iconSize) as Route);
+  }
   const source = await prisma.knownProblemSource.create({
     data: {
       ...values,
@@ -109,7 +114,9 @@ export async function updateKnownProblemSourceAction(sourceId: number, formData:
 
   const values = sourceFormValues(formData);
   const conflictingSource = await findKnownSourceConflict(values.name, values.aliases, sourceId);
-  if (conflictingSource) redirect(knownSourceConflictUrl(conflictingSource.slug, values.iconUrl) as Route);
+  if (conflictingSource) {
+    redirect(knownSourceConflictUrl(conflictingSource.slug, values.iconUrl, values.iconSize) as Route);
+  }
   await prisma.knownProblemSource.update({
     where: { id: sourceId },
     data: {

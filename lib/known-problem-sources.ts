@@ -3,6 +3,12 @@ import { isUnknownProblemOrigin } from "./problem-origin.ts";
 
 export type KnownProblemSourceIdentity = Pick<KnownProblemSource, "name" | "aliases">;
 
+export const KNOWN_PROBLEM_SOURCE_ICON_SIZE = {
+  default: 40,
+  min: 24,
+  max: 72
+} as const;
+
 export function normalizeKnownProblemSourceName(value: unknown) {
   return String(value ?? "")
     .normalize("NFKC")
@@ -54,6 +60,17 @@ export function problemSourcePresentation(
 export function parseKnownProblemSourceId(value: unknown) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+export function parseKnownProblemSourceIconSize(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return KNOWN_PROBLEM_SOURCE_ICON_SIZE.default;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return KNOWN_PROBLEM_SOURCE_ICON_SIZE.default;
+  return Math.min(
+    KNOWN_PROBLEM_SOURCE_ICON_SIZE.max,
+    Math.max(KNOWN_PROBLEM_SOURCE_ICON_SIZE.min, Math.round(parsed))
+  );
 }
 
 export function normalizeKnownProblemSourceIconUrl(value: unknown) {

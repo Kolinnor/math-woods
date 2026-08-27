@@ -406,6 +406,7 @@ import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-n
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
 import {
   normalizeKnownProblemSourceName,
+  parseKnownProblemSourceIconSize,
   parseKnownProblemSourceAliases,
   problemOriginMatchesKnownSource,
   problemSourcePresentation
@@ -905,6 +906,12 @@ delete legacySourceSnapshot.knownSourceId;
 assert.equal(parseProblemRevisionSnapshot(legacySourceSnapshot)?.knownSourceId, null);
 assert.equal(normalizeKnownProblemSourceName("  PHIL   Caldero "), "phil caldero");
 assert.deepEqual(parseKnownProblemSourceAliases("Phil\n Phil Caldero,phil"), ["Phil", "Phil Caldero"]);
+assert.equal(parseKnownProblemSourceIconSize(undefined), 40);
+assert.equal(parseKnownProblemSourceIconSize(null), 40);
+assert.equal(parseKnownProblemSourceIconSize(""), 40);
+assert.equal(parseKnownProblemSourceIconSize("52"), 52);
+assert.equal(parseKnownProblemSourceIconSize("10"), 24);
+assert.equal(parseKnownProblemSourceIconSize("100"), 72);
 assert.equal(
   problemOriginMatchesKnownSource(" phil  caldero ", { name: "Phil Caldero", aliases: [] }),
   true

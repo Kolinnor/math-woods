@@ -1040,7 +1040,16 @@ export default async function ProblemPage({
               {problem.knownSource && (
                 <span className="problem-source-identity">
                   {problem.knownSource.iconUrl && (
-                    <img src={problem.knownSource.iconUrl} alt="" className="problem-source-icon" />
+                    <img
+                      src={problem.knownSource.iconUrl}
+                      alt=""
+                      className="problem-source-icon"
+                      style={{
+                        blockSize: problem.knownSource.iconSize,
+                        flexBasis: problem.knownSource.iconSize,
+                        inlineSize: problem.knownSource.iconSize
+                      }}
+                    />
                   )}
                   <span>{problem.knownSource.name}</span>
                 </span>

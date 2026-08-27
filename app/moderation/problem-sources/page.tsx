@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { KnownProblemSourceIconField } from "@/components/KnownProblemSourceIconField";
+import { KnownProblemSourceFields } from "@/components/KnownProblemSourceIconField";
 import {
   createKnownProblemSourceAction,
   updateKnownProblemSourceAction
@@ -20,6 +20,7 @@ export default async function KnownProblemSourcesPage({
     attached?: string;
     duplicate?: string;
     pendingIcon?: string;
+    pendingIconSize?: string;
   }>;
 }) {
   await requireAdmin();
@@ -76,16 +77,13 @@ export default async function KnownProblemSourcesPage({
                   {source._count.problems} {fr ? "problème(s)" : "problem(s)"}
                 </span>
               </div>
-              <label className="grid gap-2">
-                <span className="text-sm font-medium">{fr ? "Nom" : "Name"}</span>
-                <input name="name" required maxLength={180} defaultValue={source.name} />
-              </label>
-              <label className="grid gap-2">
-                <span className="text-sm font-medium">{fr ? "Alias" : "Aliases"}</span>
-                <textarea name="aliases" rows={3} defaultValue={source.aliases.join("\n")} />
-              </label>
-              <KnownProblemSourceIconField
+              <KnownProblemSourceFields
+                initialName={source.name}
+                initialAliases={source.aliases.join("\n")}
                 initialValue={query.duplicate === source.slug && query.pendingIcon ? query.pendingIcon : source.iconUrl}
+                initialIconSize={query.duplicate === source.slug && query.pendingIconSize
+                  ? Number(query.pendingIconSize)
+                  : source.iconSize}
                 locale={locale}
               />
               <label className="checkbox-field">
@@ -101,15 +99,7 @@ export default async function KnownProblemSourcesPage({
       <details className="panel p-4">
         <summary className="cursor-pointer font-semibold">{fr ? "Ajouter une nouvelle source" : "Add a new source"}</summary>
         <form action={createKnownProblemSourceAction} className="mt-4 grid gap-4">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">{fr ? "Nom" : "Name"}</span>
-            <input name="name" required maxLength={180} />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">{fr ? "Alias" : "Aliases"}</span>
-            <textarea name="aliases" rows={3} placeholder={fr ? "Un alias par ligne" : "One alias per line"} />
-          </label>
-          <KnownProblemSourceIconField locale={locale} />
+          <KnownProblemSourceFields locale={locale} />
           <button type="submit" className="justify-self-start">{fr ? "Ajouter" : "Add"}</button>
         </form>
       </details>
