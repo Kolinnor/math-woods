@@ -3194,6 +3194,11 @@ assert.deepEqual(searchMorphologyVariants("Rung", "en"), ["rung"]);
 assert.deepEqual(searchMorphologyVariants("Lens", "en"), ["lens"]);
 assert.deepEqual(searchMorphologyVariants("Anneaux commutatifs", "fr"), ["anneaux commutatifs", "anneau commutatif"]);
 assert.deepEqual(searchDatabaseVariants("pièce", searchMorphologyVariants("pièce", "fr")), ["pièce", "piece"]);
+assert.deepEqual(searchDatabaseVariants("parenthèses", searchMorphologyVariants("parenthèses", "fr")), [
+  "parenthèses",
+  "parentheses",
+  "parenthese"
+]);
 assert.deepEqual(searchDatabaseVariants("piece", searchMorphologyVariants("piece", "fr")), ["piece"]);
 const ringMorphologyVariants = searchMorphologyVariants("Rings", "en");
 const rankedRingMatches = rankSearchMatches(

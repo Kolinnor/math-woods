@@ -30,7 +30,7 @@ import { missingConcepts } from "@/lib/internal-links";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { canUseAdminTools } from "@/lib/permissions";
 import { combineSearchFilters } from "@/lib/search-filters";
-import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
+import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { contentLanguageViewHref, selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
@@ -114,6 +114,7 @@ export default async function ConceptsPage({
   } = await searchParams;
   const query = q.trim();
   const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
+  const databaseSearchVariants = searchDatabaseVariants(query, morphologyVariants);
   const requestedLanguageValues = parseLanguageFilters(language, preferredLanguage);
   const missingTranslationValue = parseMissingTranslationFilter(missingTranslation);
   const sourceLanguageValues = missingTranslationValue
@@ -191,7 +192,7 @@ export default async function ConceptsPage({
     { language: { in: languageValues } },
     query
       ? {
-          OR: morphologyVariants.flatMap((variant) => [
+          OR: databaseSearchVariants.flatMap((variant) => [
             { title: { contains: variant, mode: "insensitive" as const } },
             { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
             { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }

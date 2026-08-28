@@ -11,18 +11,18 @@ import { getTranslations } from "@/lib/i18n/server";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
-import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
+import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
 
-async function searchQuotes(query: string, language: string, morphologyVariants: readonly string[]) {
+async function searchQuotes(query: string, language: string, databaseSearchVariants: readonly string[]) {
   try {
     const quotes = await prisma.quote.findMany({
       where: {
         language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-        OR: morphologyVariants.flatMap((variant) => [
+        OR: databaseSearchVariants.flatMap((variant) => [
           { text: { contains: variant, mode: "insensitive" as const } },
           { attributedTo: { contains: variant, mode: "insensitive" as const } },
           { provenance: { contains: variant, mode: "insensitive" as const } }
@@ -49,12 +49,13 @@ export default async function SearchPage({
   const t = await getTranslations();
   const preferredLanguage = await getPreferredContentLanguage();
   const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
+  const databaseSearchVariants = searchDatabaseVariants(query, morphologyVariants);
   const [conceptRows, problemRows, explorationRows, quotes] = query
     ? await Promise.all([
         prisma.concept.findMany({
           where: {
             language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-            OR: morphologyVariants.flatMap((variant) => [
+            OR: databaseSearchVariants.flatMap((variant) => [
               { title: { contains: variant, mode: "insensitive" as const } },
               { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
               { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
@@ -69,7 +70,7 @@ export default async function SearchPage({
             listed: true,
             language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
             ...visibleProblemWhere(user),
-            OR: morphologyVariants.flatMap((variant) => [
+            OR: databaseSearchVariants.flatMap((variant) => [
               { title: { contains: variant, mode: "insensitive" as const } },
               { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
               { origin: { contains: variant, mode: "insensitive" as const } }
@@ -83,7 +84,7 @@ export default async function SearchPage({
                 visibility: "PUBLIC",
                 status: "PUBLISHED",
                 language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-                OR: morphologyVariants.flatMap((variant) => [
+                OR: databaseSearchVariants.flatMap((variant) => [
                   { title: { contains: variant, mode: "insensitive" as const } },
                   { descriptionMarkdown: { contains: variant, mode: "insensitive" as const } }
                 ])
@@ -91,7 +92,7 @@ export default async function SearchPage({
               take: 100
             })
           : Promise.resolve([]),
-        searchQuotes(query, preferredLanguage, morphologyVariants)
+        searchQuotes(query, preferredLanguage, databaseSearchVariants)
       ])
     : [[], [], [], []];
   const selectedConcepts = selectContentTranslationsByGroup(
