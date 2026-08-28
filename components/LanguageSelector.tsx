@@ -2,7 +2,7 @@
 
 import type { Route } from "next";
 import { useEffect, useState } from "react";
-import { Languages } from "lucide-react";
+import { ChevronDown, Languages } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CONTENT_LANGUAGE_COOKIE,
@@ -61,8 +61,11 @@ export function LanguageSelector({ initialLanguage, label, title }: LanguageSele
 
   return (
     <label className="language-selector" title={title}>
-      <Languages size={16} aria-hidden="true" />
+      <Languages className="language-selector-icon" size={16} aria-hidden="true" />
       <span className="sr-only">{label}</span>
+      <span className="language-selector-short-label" aria-hidden="true">
+        {language.toUpperCase()}
+      </span>
       <select
         value={language}
         aria-label={label}
@@ -84,6 +87,7 @@ export function LanguageSelector({ initialLanguage, label, title }: LanguageSele
           </option>
         ))}
       </select>
+      <ChevronDown className="language-selector-chevron" size={14} aria-hidden="true" />
     </label>
   );
 }
