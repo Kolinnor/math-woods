@@ -130,6 +130,12 @@
     width: auto;
   }
 
+  .home-dashboard .home-tour-button,
+  .nav-menu-tour-divider,
+  .nav-menu-popover .nav-menu-tour-link {
+    display: none;
+  }
+
   .home-dashboard .home-dashboard-grid,
   .home-dashboard .home-dashboard-grid.home-dashboard-grid-guest {
     gap: 0.85rem;
