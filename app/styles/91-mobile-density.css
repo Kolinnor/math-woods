@@ -6,6 +6,10 @@
 }
 
 @media (max-width: 760px) {
+  .home-dashboard {
+    --home-mobile-square-image: clamp(6rem, 28vw, 7rem);
+  }
+
   .site-nav {
     gap: 0.45rem;
     min-height: 4.25rem;
@@ -137,11 +141,30 @@
   }
 
   .home-dashboard .home-daily-problem {
+    align-items: start;
+    grid-template-columns: var(--home-mobile-square-image) minmax(0, 1fr);
     min-height: 0;
   }
 
   .home-dashboard .home-daily-problem > div:first-child {
-    padding: 1rem;
+    grid-column: 2;
+    min-width: 0;
+    padding: 0.9rem;
+  }
+
+  .home-dashboard .home-daily-art {
+    align-self: start;
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+    height: var(--home-mobile-square-image);
+    justify-self: start;
+    width: var(--home-mobile-square-image);
+  }
+
+  .home-dashboard .home-daily-art img {
+    height: 100%;
+    width: 100%;
   }
 
   .home-dashboard .home-daily-problem h2 {
@@ -154,7 +177,25 @@
   }
 
   .home-dashboard .home-daily-action {
+    flex-wrap: wrap;
     margin-top: 0.9rem;
+  }
+
+  .home-dashboard .home-tip-card {
+    grid-template-columns: var(--home-mobile-square-image) minmax(0, 1fr);
+    min-height: var(--home-mobile-square-image);
+  }
+
+  .home-dashboard .home-tip-image {
+    border-right: 0;
+    box-shadow: inset -2px 0 #5a4a2c;
+    height: var(--home-mobile-square-image);
+    width: var(--home-mobile-square-image);
+  }
+
+  .home-dashboard .home-tip-image img {
+    height: 100%;
+    width: 100%;
   }
 
   .forest-page-hero {
