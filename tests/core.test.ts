@@ -1798,13 +1798,11 @@ assert.deepEqual(parseLatexCustomCommands("RR => \\mathbb{R}\n% ignored\nbad lin
 ]);
 assert.deepEqual(latexTextInputShortcut("Let ", 4, 4, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 4, to: 4, insert: "$$" },
-  anchor: 5,
-  skipDisplayMathLineBreakNormalization: true
+  anchor: 5
 });
 assert.deepEqual(latexTextInputShortcut("Before after\n$$y$$", 7, 7, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 7, to: 7, insert: "$$" },
-  anchor: 8,
-  skipDisplayMathLineBreakNormalization: true
+  anchor: 8
 });
 assert.deepEqual(latexTextInputShortcut("Let x", 4, 5, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 4, to: 5, insert: "$x$" },
@@ -1812,12 +1810,19 @@ assert.deepEqual(latexTextInputShortcut("Let x", 4, 5, "$", DEFAULT_LATEX_PREFER
 });
 assert.deepEqual(latexTextInputShortcut("$", 1, 1, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 1, to: 1, insert: "$$" },
-  anchor: 2,
-  skipDisplayMathLineBreakNormalization: true
+  anchor: 2
 });
 assert.deepEqual(latexTextInputShortcut("$$", 1, 1, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 1, to: 1, insert: "$$" },
   anchor: 2
+});
+assert.deepEqual(latexTextInputShortcut("Let ", 4, 4, "$$", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 4, to: 4, insert: "$$" },
+  anchor: 5
+});
+assert.deepEqual(latexTextInputShortcut("Let $$", 5, 5, "$$", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 5, to: 5, insert: "" },
+  anchor: 6
 });
 const previewFocusEffect = StateEffect.define<boolean>();
 const displayMathNormalizer = createDisplayMathLineBreakNormalizer(previewFocusEffect);

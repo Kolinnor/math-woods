@@ -10,7 +10,6 @@ export type LatexEditorChange = {
 export type LatexEditorShortcutResult = {
   changes: LatexEditorChange | LatexEditorChange[];
   anchor?: number;
-  skipDisplayMathLineBreakNormalization?: boolean;
 };
 
 type KeyboardShortcutEvent = {
@@ -280,6 +279,20 @@ export function latexTextInputShortcut(
 ): LatexEditorShortcutResult | null {
   if (isInsideMarkdownCode(source, from)) return null;
 
+  if (input === "$$" && preferences.autocloseDollars && from === to) {
+    if (source[from] === "$") {
+      return {
+        changes: { from, to, insert: "" },
+        anchor: from + 1
+      };
+    }
+
+    return {
+      changes: { from, to, insert: "$$" },
+      anchor: from + (preferences.moveCursorBetweenDollars ? 1 : 2)
+    };
+  }
+
   if (input === "$" && preferences.autocloseDollars) {
     const selected = selectionText(source, from, to);
     if (selected && preferences.encloseSelectionDollars) {
@@ -305,8 +318,7 @@ export function latexTextInputShortcut(
 
     return {
       changes: { from, to, insert: "$$" },
-      anchor: from + (preferences.moveCursorBetweenDollars ? 1 : 2),
-      skipDisplayMathLineBreakNormalization: true
+      anchor: from + (preferences.moveCursorBetweenDollars ? 1 : 2)
     };
   }
 
