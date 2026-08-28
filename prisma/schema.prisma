@@ -58,6 +58,7 @@ enum ConceptKind {
   DEFINITION
   THEOREM
   INTUITIVE_NOTION
+  NOTATION
 }
 
 enum ConceptMergeKind {

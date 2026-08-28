@@ -3468,6 +3468,7 @@ assert.equal(parseConceptExerciseCountMode("at-most"), "at-most");
 assert.equal(parseConceptExerciseCountMode("unexpected"), "at-least");
 assert.equal(parseConceptKind("THEOREM"), ConceptKind.THEOREM);
 assert.equal(parseConceptKind("INTUITIVE_NOTION"), ConceptKind.INTUITIVE_NOTION);
+assert.equal(parseConceptKind("NOTATION"), ConceptKind.NOTATION);
 assert.equal(parseConceptKind("unexpected"), ConceptKind.DEFINITION);
 assert.equal(parseConceptKind(undefined, ConceptKind.THEOREM), ConceptKind.THEOREM);
 const multilingualHints = [

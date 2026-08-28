@@ -1,0 +1,1 @@
+ALTER TYPE "ConceptKind" ADD VALUE 'NOTATION';

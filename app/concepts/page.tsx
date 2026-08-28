@@ -357,6 +357,7 @@ export default async function ConceptsPage({
                 <option value="DEFINITION">{t.concepts.kinds.DEFINITION}</option>
                 <option value="THEOREM">{t.concepts.kinds.THEOREM}</option>
                 <option value="INTUITIVE_NOTION">{t.concepts.kinds.INTUITIVE_NOTION}</option>
+                <option value="NOTATION">{t.concepts.kinds.NOTATION}</option>
               </select>
               <select name="status" defaultValue={statusValue ?? ""}>
                 <option value="">{t.concepts.anyStatus}</option>

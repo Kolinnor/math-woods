@@ -1053,7 +1053,8 @@ export const en = {
     kinds: {
       DEFINITION: "Definition",
       THEOREM: "Theorem",
-      INTUITIVE_NOTION: "Intuitive notion"
+      INTUITIVE_NOTION: "Intuitive notion",
+      NOTATION: "Notation"
     },
     anyStatus: "Any status",
     problemLinksFilter: "Problem links",

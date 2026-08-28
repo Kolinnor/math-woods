@@ -1058,7 +1058,8 @@ export const fr = {
     kinds: {
       DEFINITION: "Définition",
       THEOREM: "Théorème",
-      INTUITIVE_NOTION: "Notion intuitive"
+      INTUITIVE_NOTION: "Notion intuitive",
+      NOTATION: "Notation"
     },
     anyStatus: "Tout statut",
     problemLinksFilter: "Liens avec des problèmes",
