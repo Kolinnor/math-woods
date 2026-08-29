@@ -66,6 +66,12 @@ export const DEFAULT_CONTRIBUTION_PAGE_SECTIONS: ContributionPageSectionContent[
     title: "Use reports without making them scary",
     bodyMarkdown:
       "Reports are not only for emergencies. They can flag copied wording, questionable origins, wrong statements, spoilers, or pages that need attention."
+  },
+  {
+    position: 7,
+    title: "Link generously",
+    bodyMarkdown:
+      "Write `[[Concept]]` to link a concept, or `[[Concept|visible text]]` when the sentence needs different wording: the target before `|` is what keeps every language connected to the same idea. Problems use ordinary Markdown links to `/problems/slug`. Linking to a page that does not exist yet is useful, not a mistake: it becomes a requested page, and every link you write appears as a backlink on the other side."
   }
 ];
 

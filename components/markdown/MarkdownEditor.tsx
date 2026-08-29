@@ -87,6 +87,7 @@ import { ensureSlug } from "@/lib/slug";
 import { JSXGRAPH_MARKDOWN_TEMPLATE } from "@/lib/jsxgraph";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, problemLinkMarkup, wikiLinkMarkup } from "@/lib/wikilinks";
 import { wikiLinkDeleteChange } from "@/lib/wiki-link-deletion";
+import { useMarkdownEditorLabels } from "@/components/markdown/MarkdownEditorLabelsContext";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
 const DRAFT_SUBMIT_PREFIX = `${DRAFT_PREFIX}:submit`;
@@ -1510,6 +1511,7 @@ export function MarkdownEditor({
   sourceUpdatedAt = null,
   characterGuide
 }: MarkdownEditorProps) {
+  const labels = useMarkdownEditorLabels();
   const titleMode = mode === "title";
   const resolvedMinHeight = titleMode ? "3.25rem" : minHeight;
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -2134,10 +2136,10 @@ export function MarkdownEditor({
         <div className="markdown-draft-notice" role="status">
           <span>The server content changed after this local draft. The latest server version is shown.</span>
           <button type="button" className="secondary" onClick={restoreConflictingDraft}>
-            Restore local draft
+            {labels.restoreLocalDraft}
           </button>
           <button type="button" className="secondary" onClick={discardDraft}>
-            Discard local draft
+            {labels.discardLocalDraft}
           </button>
         </div>
       )}
@@ -2145,18 +2147,18 @@ export function MarkdownEditor({
         <div className="markdown-draft-notice">
           <span>Draft restored from {formatDraftTime(restoredDraftAt)}.</span>
           <button type="button" className="secondary" onClick={discardDraft}>
-            Discard draft
+            {labels.discardDraft}
           </button>
         </div>
       )}
-      {!titleMode && <div className="markdown-editor-toolbar" aria-label="Editor tools">
+      {!titleMode && <div className="markdown-editor-toolbar" aria-label={labels.toolsAriaLabel}>
         {imageUploadEnabled && (
           <button
             type="button"
             className="secondary markdown-editor-tool-button"
             onClick={chooseImageFile}
             disabled={imageUploading}
-            title="Insert image"
+            title={labels.insertImage}
           >
             {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
             <span>{imageUploading ? "Uploading" : "Image"}</span>
@@ -2166,19 +2168,19 @@ export function MarkdownEditor({
           type="button"
           className="secondary markdown-editor-tool-button"
           onClick={insertJsxGraph}
-          title="Insert interactive JSXGraph"
+          title={labels.insertJsxgraph}
         >
           <Orbit size={14} aria-hidden="true" />
-          <span>JSXGraph</span>
+          <span>{labels.jsxgraph}</span>
         </button>
         <button
           type="button"
           className="secondary markdown-editor-tool-button"
           onClick={insertFold}
-          title="Insert collapsible section"
+          title={labels.insertCollapsible}
         >
           <ChevronDown size={14} aria-hidden="true" />
-          <span>Fold</span>
+          <span>{labels.fold}</span>
         </button>
         {imageUploadEnabled && imageUploadMessage && (
           <span className="markdown-editor-toolbar-status">
@@ -2223,16 +2225,16 @@ export function MarkdownEditor({
         >
           <div className="markdown-link-menu-title">
             <span className="markdown-link-menu-icon" aria-hidden="true" />
-            <strong>Add link</strong>
+            <strong>{labels.addLink}</strong>
           </div>
-          <div className="markdown-link-menu-type" role="group" aria-label="Link type">
+          <div className="markdown-link-menu-type" role="group" aria-label={labels.linkTypeAriaLabel}>
             <button
               type="button"
               className={linkTargetType === "concept" ? "active" : undefined}
               aria-pressed={linkTargetType === "concept"}
               onClick={() => changeLinkTargetType("concept")}
             >
-              Concept
+              {labels.linkTypeConcept}
             </button>
             <button
               type="button"
@@ -2240,13 +2242,13 @@ export function MarkdownEditor({
               aria-pressed={linkTargetType === "problem"}
               onClick={() => changeLinkTargetType("problem")}
             >
-              Problem
+              {labels.linkTypeProblem}
             </button>
           </div>
           <label>
             <span className="field-label-with-help">
-              Text shown
-              <FieldHelp text="Text that will appear on the page." />
+              {labels.textShown}
+              <FieldHelp text={labels.textShownHelp} />
             </span>
             <input
               value={linkText}
@@ -2261,13 +2263,13 @@ export function MarkdownEditor({
                   closeLinkMenu();
                 }
               }}
-              placeholder="Text in the article"
+              placeholder={labels.textShownPlaceholder}
             />
           </label>
           <label>
             <span className="field-label-with-help">
-              Links to
-              <FieldHelp text="Page that will open when the link is clicked." />
+              {labels.linksTo}
+              <FieldHelp text={labels.linksToHelp} />
             </span>
             <input
               ref={linkTargetInputRef}
@@ -2287,11 +2289,11 @@ export function MarkdownEditor({
                   closeLinkMenu();
                 }
               }}
-              placeholder={linkTargetType === "concept" ? "Existing or new concept" : "Existing problem"}
+              placeholder={linkTargetType === "concept" ? labels.conceptTargetPlaceholder : labels.problemTargetPlaceholder}
             />
           </label>
           <div className="markdown-link-menu-results">
-            {linkSuggestionsLoading && <p>Searching {linkTargetType === "concept" ? "concepts" : "problems"}...</p>}
+            {linkSuggestionsLoading && <p>{linkTargetType === "concept" ? labels.searchingConcepts : labels.searchingProblems}</p>}
             {!linkSuggestionsLoading &&
               linkSuggestions.map((suggestion) => (
                 <button
@@ -2306,9 +2308,9 @@ export function MarkdownEditor({
               ))}
             {linkTargetType === "concept" && cleanLinkTarget && !hasExactSuggestion && (
               <div className="markdown-link-menu-new">
-                <span>New concept link: "{cleanLinkTarget}"</span>
+                <span>{labels.newConceptLink.replace("{target}", cleanLinkTarget)}</span>
                 <a href={`/concepts/new?title=${encodeURIComponent(cleanLinkTarget)}`} target="_blank" rel="noreferrer">
-                  Create page
+                  {labels.createPage}
                 </a>
               </div>
             )}
@@ -2316,14 +2318,14 @@ export function MarkdownEditor({
               cleanLinkTarget &&
               !linkSuggestionsLoading &&
               linkSuggestions.length === 0 &&
-              !selectedProblemSlug && <p>No matching problems.</p>}
+              !selectedProblemSlug && <p>{labels.noMatchingProblems}</p>}
           </div>
           <div className="markdown-link-menu-actions">
             <button type="button" className="secondary" onClick={closeLinkMenu}>
-              Cancel
+              {labels.cancel}
             </button>
             <button type="button" onClick={applyLinkMenu} disabled={!canApplyLink}>
-              Add link
+              {labels.addLink}
             </button>
           </div>
         </div>

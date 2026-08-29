@@ -49,6 +49,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
 import { prisma } from "@/lib/db";
 import { dictionaryForContentLanguage } from "@/lib/i18n/server";
+import { MarkdownEditorLabelsProvider } from "@/components/markdown/MarkdownEditorLabelsContext";
 import { CONTENT_LANGUAGE_COOKIE, parseActiveContentLanguage } from "@/lib/languages";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { CONTEST_TIME_ZONE } from "@/lib/problem-contests";
@@ -342,7 +343,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <FriendsMenu user={user} />
           </div>
         )}
-        <main className="site-main site-content-width mx-auto px-4 py-8">{children}</main>
+        <main className="site-main site-content-width mx-auto px-4 py-8">
+          <MarkdownEditorLabelsProvider labels={t.markdownEditor}>{children}</MarkdownEditorLabelsProvider>
+        </main>
         <Suspense fallback={null}>
           <MathWoodsTourOverlay initialLocale={initialLanguage === "fr" ? "fr" : "en"} />
         </Suspense>
