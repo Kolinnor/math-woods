@@ -795,6 +795,14 @@ body:has(.math-woods-tour) .site-main {
   line-height: 1.58;
 }
 
+.math-tour-callout-details {
+  display: grid;
+  gap: 4px;
+  margin: -8px 0 20px;
+  padding-left: 20px;
+  line-height: 1.4;
+}
+
 .math-tour-callout-actions button {
   display: inline-flex;
   min-height: 40px;

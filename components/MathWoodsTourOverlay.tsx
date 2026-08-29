@@ -282,6 +282,11 @@ export function MathWoodsTourOverlay({ initialLocale }: { initialLocale: MathWoo
           </button>
         </div>
         <p>{step.text}</p>
+        {step.details && (
+          <ul className="math-tour-callout-details">
+            {step.details.map((detail) => <li key={detail}>{detail}</li>)}
+          </ul>
+        )}
         {targetMissing && <p className="math-tour-target-missing">{text.unavailable}</p>}
         <div className="math-tour-callout-actions">
           <button type="button" onClick={previous} className="math-tour-back">

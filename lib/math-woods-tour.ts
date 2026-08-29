@@ -19,6 +19,7 @@ export type MathWoodsTourStep = {
   target?: MathWoodsTourTarget;
   placement?: "bottom" | "left" | "right" | "top";
   text: string;
+  details?: readonly string[];
   action?: "open-problems" | "open-problem" | "finish";
 };
 
@@ -61,6 +62,19 @@ export const mathWoodsTourCopy = {
         target: "recommendations",
         placement: "right",
         text: "Des problèmes vous sont recommandés en fonction de vos goûts. Indiquez ceux qui vous semblent trop difficiles ou trop simples, ainsi que ceux que vous aimez, pour adapter progressivement ces recommandations."
+      },
+      {
+        target: "recommendations",
+        placement: "right",
+        text: "Chaque problème affiche un score de difficulté indicatif, de 1 à 100. Ce score tient compte à la fois du niveau des notions nécessaires et de la difficulté de la résolution. Voici les niveaux approximatifs :",
+        details: [
+          "1–10 : premiers pas / collège",
+          "10–25 : débutant / lycée",
+          "25–50 : intermédiaire / licence",
+          "50–70 : avancé / master",
+          "70–90 : expert / spécialisé",
+          "90–100 : niveau recherche"
+        ]
       },
       {
         target: "tip",
@@ -154,6 +168,19 @@ export const mathWoodsTourCopy = {
         target: "recommendations",
         placement: "right",
         text: "Problems are recommended according to your tastes. Marking what felt too hard or too easy, and what you liked, gradually improves these recommendations."
+      },
+      {
+        target: "recommendations",
+        placement: "right",
+        text: "Each problem displays an indicative difficulty score from 1 to 100. This score takes into account both the level of the concepts required and the difficulty of solving the problem. Here are the approximate levels:",
+        details: [
+          "1–10: first steps / middle school",
+          "10–25: beginner / high school",
+          "25–50: intermediate / undergraduate",
+          "50–70: advanced / graduate",
+          "70–90: expert / specialized",
+          "90–100: research level"
+        ]
       },
       {
         target: "tip",
