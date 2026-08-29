@@ -405,6 +405,7 @@ import { markdownExcerpt } from "../lib/metadata-text.ts";
 import { shouldNotifyAdminsOfContributorCreation } from "../lib/admin-creation-notifications.ts";
 import { problemEditNotificationRecipientIds } from "../lib/problem-edit-notifications.ts";
 import {
+  KNOWN_PROBLEM_SOURCE_ICON_SIZE,
   normalizeKnownProblemSourceName,
   parseKnownProblemSourceIconSize,
   parseKnownProblemSourceAliases,
@@ -2354,6 +2355,10 @@ const recommendationDismissalMigrationSource = readFileSync(
   join("prisma", "migrations", "20260825120000_add_recommendation_dismissals", "migration.sql"),
   "utf-8"
 );
+const expandKnownSourceIconSizeMigrationSource = readFileSync(
+  join("prisma", "migrations", "20260829073500_expand_known_source_icon_size", "migration.sql"),
+  "utf-8"
+);
 const conceptBrowserSource = readFileSync(join("app", "concepts", "page.tsx"), "utf-8");
 const usersPageSource = readFileSync(join("app", "users", "page.tsx"), "utf-8");
 const usersRankingSelectSource = readFileSync(join("app", "users", "UsersRankingSelect.tsx"), "utf-8");
@@ -2413,6 +2418,12 @@ assert.match(recommendedProblemReaderSource, /EllipsisVertical/);
 assert.match(recommendedProblemReaderSource, /setDismissedRecommendationReasonAction/);
 assert.match(prismaSchemaSource, /dismissalReason\s+ProblemRecommendationDismissalReason\?/);
 assert.match(recommendationDismissalMigrationSource, /NOT_INTERESTED_IN_DOMAIN/);
+assert.ok(
+  expandKnownSourceIconSizeMigrationSource.includes(
+    `CHECK ("iconSize" BETWEEN ${KNOWN_PROBLEM_SOURCE_ICON_SIZE.min} AND ${KNOWN_PROBLEM_SOURCE_ICON_SIZE.max})`
+  ),
+  "the database icon-size constraint must match the application limits"
+);
 assert.match(recommendedProblemReaderSource, /ALREADY_KNOWN/);
 assert.match(recommendedProblemReaderSource, /NOT_INTERESTED_IN_DOMAIN/);
 assert.match(recommendedProblemReaderSource, /\/problems\/\$\{selected\.slug\}#report/);
