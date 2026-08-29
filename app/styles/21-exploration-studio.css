@@ -3076,7 +3076,7 @@ button.markdown-editor-tool-button:disabled svg {
   box-sizing: border-box;
   display: inline-block;
   margin: 0;
-  padding: 0.14rem 0;
+  padding: 0.3rem 0;
   text-align: center;
   vertical-align: middle;
   max-width: 100%;
@@ -4508,7 +4508,7 @@ button.danger:hover,
   margin: 0.4em 0;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 0.15rem;
+  padding-block: 0.3rem;
   text-align: center;
 }
 
