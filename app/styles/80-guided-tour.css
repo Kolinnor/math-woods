@@ -814,6 +814,10 @@ body.math-woods-tour-running .guest-progress-prompt {
   display: none;
 }
 
+body.math-woods-tour-running .home-dashboard-rail {
+  position: static;
+}
+
 .math-woods-tour-live .math-tour-shade {
   z-index: 90;
 }
