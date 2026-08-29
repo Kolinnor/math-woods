@@ -40,7 +40,6 @@ export function MathWoodsTour({ initialLocale }: { initialLocale: MathWoodsTourL
     <div className="math-woods-tour">
       <section className="math-tour-start">
         <img src="/math-woods-bear.png" alt="" aria-hidden="true" />
-        <p className="eyebrow">Math Woods</p>
         <h1>{text.pageTitle}</h1>
         <p>{text.intro}</p>
         <fieldset>

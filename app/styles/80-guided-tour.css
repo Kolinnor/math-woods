@@ -55,15 +55,10 @@ body:has(.math-woods-tour) .site-main {
 }
 
 .math-tour-start > img {
-  width: 72px;
-  height: 72px;
+  width: 110px;
+  height: 110px;
   object-fit: contain;
   margin-bottom: 18px;
-}
-
-.math-tour-start .eyebrow {
-  margin: 0 0 10px;
-  color: #d7aa68;
 }
 
 .math-tour-start h1 {
@@ -943,8 +938,8 @@ body.math-woods-tour-running .guest-progress-prompt {
   }
 
   .math-tour-start > img {
-    width: 58px;
-    height: 58px;
+    width: 88px;
+    height: 88px;
   }
 
   .math-tour-start h1 {
@@ -1032,4 +1027,3 @@ body.math-woods-tour-running .guest-progress-prompt {
     right: 16px;
   }
 }
-
