@@ -97,7 +97,7 @@ export const mathWoodsTourCopy = {
       {
         target: "statement",
         placement: "bottom",
-        text: "Vous voici face à un véritable énoncé. Les commandes situées juste en dessous permettent de travailler sur le problème, de signaler que vous l'avez résolu et de l'aimer. Pendant ce tutoriel, aucune de ces actions n'est enregistrée."
+        text: "Vous voici face à l'énoncé d'un problème. Les commandes situées juste en dessous permettent de travailler sur le problème, de signaler que vous l'avez résolu et de l'aimer. Pendant ce tutoriel, aucune de ces actions n'est enregistrée."
       },
       {
         target: "help",
