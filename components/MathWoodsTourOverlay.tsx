@@ -185,7 +185,7 @@ export function MathWoodsTourOverlay({ initialLocale }: { initialLocale: MathWoo
       event.preventDefault();
       event.stopPropagation();
       if (step.action === "open-problems") {
-        navigate("/problems", stepIndex + 1);
+        navigate("/problems?sort=favorited", stepIndex + 1);
         return;
       }
       const anchor = target.closest<HTMLAnchorElement>("a") ?? target.querySelector<HTMLAnchorElement>("a");
@@ -232,7 +232,7 @@ export function MathWoodsTourOverlay({ initialLocale }: { initialLocale: MathWoo
 
   function performStepAction() {
     if (step.action === "open-problems") {
-      navigate("/problems", stepIndex + 1);
+      navigate("/problems?sort=favorited", stepIndex + 1);
       return;
     }
     if (step.action !== "open-problem" || !step.target) return;
