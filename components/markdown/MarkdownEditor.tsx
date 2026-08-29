@@ -24,6 +24,7 @@ import { MarkdownInline } from "@/components/MarkdownInline";
 import { imageUploadNetworkError, imageUploadResponseError } from "@/lib/image-upload-errors";
 import { jsxGraphFoldRangeAtLine, type JsxGraphFoldRange } from "@/lib/jsxgraph-folding";
 import { MATH_WOODS_KATEX_MACROS } from "@/lib/latex-macros";
+import { withLatexRenderFallback } from "@/lib/safe-latex-render";
 import {
   DEFAULT_LATEX_PREFERENCES,
   type LatexPreferenceValues
@@ -459,6 +460,7 @@ function clampLinkMenuPosition(anchorX: number, anchorY: number, menu: HTMLEleme
 class LatexWidget extends WidgetType {
   constructor(
     readonly formula: string,
+    readonly source: string,
     readonly renderDisplayMode: boolean,
     readonly useBlockLayout: boolean,
     readonly visualBlockLayout: boolean,
@@ -473,6 +475,7 @@ class LatexWidget extends WidgetType {
   eq(other: LatexWidget) {
     return (
       other.formula === this.formula &&
+      other.source === this.source &&
       other.renderDisplayMode === this.renderDisplayMode &&
       other.useBlockLayout === this.useBlockLayout &&
       other.visualBlockLayout === this.visualBlockLayout &&
@@ -491,12 +494,25 @@ class LatexWidget extends WidgetType {
     element.dataset.latexLayout = this.visualBlockLayout ? "visual-block-display" : this.renderDisplayMode ? "inline-display" : "inline";
     element.title = "Click to edit";
     element.setAttribute("aria-label", `LaTeX: ${this.formula}`);
-    katex.render(this.formula, element, {
-      displayMode: this.renderDisplayMode,
-      macros: MATH_WOODS_KATEX_MACROS,
-      throwOnError: false
-    });
-    scheduleLatexWidgetLayoutDiagnostics(element, this.diagnostics);
+    const rendered = withLatexRenderFallback(
+      () => {
+        katex.render(this.formula, element, {
+          displayMode: this.renderDisplayMode,
+          macros: MATH_WOODS_KATEX_MACROS,
+          throwOnError: false
+        });
+        return true;
+      },
+      () => false
+    );
+    if (rendered) {
+      scheduleLatexWidgetLayoutDiagnostics(element, this.diagnostics);
+    } else {
+      element.replaceChildren(document.createTextNode(this.source));
+      element.classList.add("cm-latex-preview-error");
+      element.dataset.latexError = "true";
+      element.title = "Invalid LaTeX. Click to edit.";
+    }
     element.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -1250,6 +1266,7 @@ function buildLivePreviewDecorations(state: EditorState, revealActiveLine = true
     reportLatexPreviewDiagnostics(diagnostics);
     const widget = new LatexWidget(
       range.formula,
+      text.slice(range.from, range.to),
       renderDisplayMode,
       useBlockLayout,
       visualBlockLayout,

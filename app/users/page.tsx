@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { LocateFixed, Search } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { UserAvatar } from "@/components/UserAvatar";
+import { getCurrentUser } from "@/lib/auth";
 import { formatCompactNumber } from "@/lib/compact-number";
 import { getTranslations } from "@/lib/i18n/server";
 import { normalizeSearchText } from "@/lib/search-ranking";
@@ -41,6 +42,22 @@ function sortUsers(users: UserReputationSummary[], mode: RankingMode) {
   });
 }
 
+function rankingPositions(users: UserReputationSummary[], mode: RankingMode) {
+  const positions = new Map<number, number>();
+  let previousValue: number | null = null;
+  let previousPosition = 0;
+
+  users.forEach((user, index) => {
+    const value = rankingValue(user, mode);
+    const position = previousValue === value ? previousPosition : index + 1;
+    positions.set(user.userId, position);
+    previousValue = value;
+    previousPosition = position;
+  });
+
+  return positions;
+}
+
 function usersHref(mode: RankingMode, page: number, query: string) {
   const params = new URLSearchParams();
   if (mode !== "reputation") params.set("sort", mode);
@@ -55,7 +72,7 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<{ page?: string; q?: string; sort?: string }>;
 }) {
-  const t = await getTranslations();
+  const [t, currentUser] = await Promise.all([getTranslations(), getCurrentUser()]);
   const queryParams = await searchParams;
   const mode = parseRankingMode(queryParams.sort);
   const searchQuery = queryParams.q?.trim() ?? "";
@@ -63,7 +80,16 @@ export default async function UsersPage({
   const rankingOptions = rankingModes.map((value) => ({ value, ...t.users.rankingOptions[value] }));
   const selectedOption = rankingOptions.find((option) => option.value === mode) ?? rankingOptions[0];
   const rankedUsers = sortUsers(await getReputationLeaderboard(), mode);
-  const rankByUserId = new Map(rankedUsers.map((user, index) => [user.userId, index + 1]));
+  const rankByUserId = rankingPositions(rankedUsers, mode);
+  const currentUserIndex = currentUser
+    ? rankedUsers.findIndex((rankedUser) => rankedUser.userId === currentUser.id)
+    : -1;
+  const currentUserRank = currentUserIndex >= 0 && currentUser
+    ? rankByUserId.get(currentUser.id) ?? currentUserIndex + 1
+    : null;
+  const currentUserPage = currentUserIndex >= 0
+    ? Math.floor(currentUserIndex / USERS_PER_PAGE) + 1
+    : null;
   const users = normalizedQuery
     ? rankedUsers.filter((user) =>
         normalizeSearchText(
@@ -118,13 +144,34 @@ export default async function UsersPage({
         </div>
         <p className="result-summary">{t.users.members(users.length)}</p>
 
+        {currentUser && currentUserRank !== null && currentUserPage !== null && (
+          <div className="users-current-position">
+            <span>{t.users.yourPosition(currentUserRank)}</span>
+            <Link
+              href={`${usersHref(mode, currentUserPage, "")}#user-${currentUser.id}` as never}
+              className="button secondary"
+            >
+              <LocateFixed size={16} aria-hidden="true" />
+              {t.users.viewMyPosition}
+            </Link>
+          </div>
+        )}
+
         <div className="users-list">
           {visibleUsers.map((user, index) => (
-            <Link key={user.userId} href={`/profile/${user.profileSlug}`} className="users-row">
+            <Link
+              id={`user-${user.userId}`}
+              key={user.userId}
+              href={`/profile/${user.profileSlug}`}
+              className={`users-row${user.userId === currentUser?.id ? " is-current-user" : ""}`}
+            >
               <span className="users-rank">#{rankByUserId.get(user.userId) ?? firstUserIndex + index + 1}</span>
               <UserAvatar user={user} size="md" />
               <span className="users-main">
-                <strong>{displayNameForUser(user)}</strong>
+                <strong>
+                  {displayNameForUser(user)}
+                  {user.userId === currentUser?.id && <small className="users-you-label">{t.users.you}</small>}
+                </strong>
                 <small>{t.users.roles[user.role]}</small>
               </span>
               <span className="users-stat">

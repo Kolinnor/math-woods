@@ -29,6 +29,7 @@ const configurableNotificationTypes = [
   NotificationType.USER_REGISTERED,
   NotificationType.PROBLEM_CREATED,
   NotificationType.PROBLEM_DELETED,
+  NotificationType.PROBLEM_ATTRIBUTION_TRANSFERRED,
   NotificationType.CONCEPT_CREATED,
   NotificationType.CONCEPT_EDITED,
   NotificationType.CONTRIBUTION_REQUEST_CLAIMED,

@@ -2,6 +2,7 @@ import { NotificationType, Role } from "@prisma/client";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { isBrowserExtensionError, isOpaqueWindowScriptError } from "@/lib/client-error-filter";
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -59,6 +60,13 @@ export async function POST(request: Request) {
   const stack = cleanString(data.stack, MAX_STACK_LENGTH);
   const digest = cleanString(data.digest, MAX_DIGEST_LENGTH);
   const userAgent = cleanString(headerStore.get("user-agent"), 1000);
+
+  if (isBrowserExtensionError({ stack })) {
+    return NextResponse.json({ ok: true });
+  }
+  if (isOpaqueWindowScriptError({ message, source, stack })) {
+    return NextResponse.json({ ok: true });
+  }
 
   const report = await prisma.errorReport.create({
     data: {

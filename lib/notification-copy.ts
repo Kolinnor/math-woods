@@ -1,9 +1,14 @@
 import { NotificationType } from "@prisma/client";
 import { localizeAchievementNotification } from "./achievement-copy.ts";
 import type { InterfaceLocale } from "./i18n/types.ts";
+import {
+  USER_REGISTRATION_SUMMARY_KEY,
+  userRegistrationSummaryCopy
+} from "./user-registration-summary.ts";
 
 type LocalizableNotification = {
   type: NotificationType;
+  aggregationKey?: string | null;
   title: string;
   body: string;
   actor?: {
@@ -16,6 +21,10 @@ type LocalizableNotification = {
 };
 
 type LocalizedNotification = { title: string; body: string };
+
+type NotificationLocalizationContext = {
+  recentRegistrationCount?: number;
+};
 
 const PROBLEM_FIELD_LABELS_FR: Record<string, string> = {
   title: "titre",
@@ -383,6 +392,24 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
         body: problemTitle ? `${actor} a supprimé « ${problemTitle} ».` : `${actor} a supprimé un problème.`
       };
     }
+    case NotificationType.PROBLEM_ATTRIBUTION_TRANSFERRED: {
+      const actor = notificationActor(notification, " transferred attribution of ");
+      if (notification.title === "Problem attributed to you") {
+        return {
+          title: "Un problème vous a été attribué",
+          body: problemTitle
+            ? `${actor} vous a attribué « ${problemTitle} ».`
+            : `${actor} vous a attribué un problème.`
+        };
+      }
+      const targetName = notification.body.match(/ from you to (.+)\.$/)?.[1];
+      return {
+        title: "Attribution d’un problème transférée",
+        body: problemTitle
+          ? `${actor} a transféré l’attribution de « ${problemTitle} »${targetName ? ` à ${targetName}` : ""}.`
+          : `${actor} a transféré l’attribution d’un problème.`
+      };
+    }
     case NotificationType.CONCEPT_CREATED: {
       if (notification.title === "New concept translation") {
         const actor = notificationActor(notification, " translated ");
@@ -503,7 +530,22 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
   }
 }
 
-export function localizeNotification(notification: LocalizableNotification, locale: InterfaceLocale) {
+export function localizeNotification(
+  notification: LocalizableNotification,
+  locale: InterfaceLocale,
+  context: NotificationLocalizationContext = {}
+) {
+  if (
+    notification.type === NotificationType.USER_REGISTERED
+    && notification.aggregationKey === USER_REGISTRATION_SUMMARY_KEY
+  ) {
+    const storedCount = Number.parseInt(notification.title, 10);
+    return userRegistrationSummaryCopy(
+      locale,
+      context.recentRegistrationCount ?? (Number.isFinite(storedCount) ? storedCount : 0)
+    );
+  }
+
   if (notification.type === NotificationType.ACHIEVEMENT_UNLOCKED) {
     return localizeAchievementNotification(notification, locale);
   }

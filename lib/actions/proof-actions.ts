@@ -59,10 +59,23 @@ export async function createProofAction(problemId: number, problemSlug: string, 
   redirect(contentLanguageViewHref("/problems", problemSlug, problem.language) as Route);
 }
 
-export async function saveSolutionHintAction(problemId: number, proofId: number, formData: FormData) {
+export type SolutionHintActionState = {
+  error: "required" | "too-long" | null;
+};
+
+export async function saveSolutionHintAction(
+  problemId: number,
+  proofId: number,
+  _state: SolutionHintActionState,
+  formData: FormData
+): Promise<SolutionHintActionState> {
+  const submittedBody = formData.get("bodyMarkdown");
+  const bodyMarkdown = typeof submittedBody === "string" ? submittedBody.trim() : "";
+  if (!bodyMarkdown) return { error: "required" };
+  if (bodyMarkdown.length > CONTENT_LIMITS.discussionPost) return { error: "too-long" };
+
   const user = await requireVerifiedUser();
   await assertRateLimit(`solution-hint:${user.id}`, 12, 60_000);
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const problem = await prisma.$transaction(async (tx) => {

@@ -19,12 +19,19 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
   if (!problem) notFound();
   const canRollback = canRollbackProblem(user, problem);
 
-  const revisions = await prisma.pageRevision.findMany({
-    where: { pageType: "PROBLEM", pageId: problem.id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    include: { editedBy: true }
-  });
+  const [revisions, attributionTransfers] = await Promise.all([
+    prisma.pageRevision.findMany({
+      where: { pageType: "PROBLEM", pageId: problem.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: { editedBy: true }
+    }),
+    prisma.problemAttributionTransfer.findMany({
+      where: { problemId: problem.id },
+      orderBy: { createdAt: "desc" },
+      include: { fromUser: true, toUser: true, transferredBy: true }
+    })
+  ]);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -37,6 +44,30 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
           {t.historyPage.back}
         </Link>
       </div>
+
+      {attributionTransfers.length > 0 && (
+        <section className="mb-6 grid gap-3">
+          <h2 className="text-xl font-semibold">{t.historyPage.attributionChanges}</h2>
+          {attributionTransfers.map((transfer) => (
+            <article key={transfer.id} className="revision-card panel p-4">
+              <p className="font-semibold">
+                {t.historyPage.attributionTransferredFrom} {transfer.fromUser
+                  ? <UserName user={transfer.fromUser} />
+                  : transfer.fromDisplayName} {t.historyPage.attributionTransferredTo} {transfer.toUser
+                  ? <UserName user={transfer.toUser} />
+                  : transfer.toDisplayName}
+              </p>
+              <p className="muted text-sm">
+                {transfer.createdAt.toLocaleString(interfaceLocale)}
+                {" / "}{t.historyPage.attributionTransferredBy} {transfer.transferredBy
+                  ? <UserName user={transfer.transferredBy} />
+                  : transfer.transferredByDisplayName}
+              </p>
+              {transfer.reason && <p className="mt-3">{t.historyPage.attributionReason}: {transfer.reason}</p>}
+            </article>
+          ))}
+        </section>
+      )}
 
       <div className="grid gap-3">
         {revisions.map((revision, index) => {

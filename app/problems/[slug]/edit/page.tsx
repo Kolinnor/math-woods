@@ -13,6 +13,7 @@ import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
 import { ProblemContentOptions } from "@/components/ProblemContentOptions";
 import { ProblemClassificationFields } from "@/components/ProblemClassificationFields";
+import { ProblemAttributionTransferForm } from "@/components/ProblemAttributionTransferForm";
 import { ProblemDetailsDisclosure } from "@/components/ProblemDetailsDisclosure";
 import { ProblemConcurrentEditForm } from "@/components/ProblemConcurrentEditForm";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -34,6 +35,7 @@ import {
   canDeleteProblem,
   canEditProblem,
   canSetProblemQualityStatus,
+  canTransferProblemAttribution,
   canUseAdminTools
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
@@ -43,14 +45,24 @@ import { latestProblemTextRevisionId } from "@/lib/translation-freshness";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditProblemPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function EditProblemPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ attribution?: string }>;
+}) {
   const user = await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
+  const attributionTransferred = (await searchParams).attribution === "transferred";
   const problem = await prisma.problem.findUnique({
     where: { slug },
     include: {
       domains: { orderBy: { position: "asc" } },
+      author: {
+        select: { profileSlug: true, displayName: true, avatarBackground: true, avatarUrl: true }
+      },
       hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
       translatedFromProblem: {
         select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true }
@@ -75,6 +87,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
   const canEditArchivedProblem = canEditProblem(user, problem);
   const canDeleteCurrentProblem = canDeleteProblem(user, problem);
   const canManageFrontPageEligibility = canUseAdminTools(user);
+  const canTransferAttribution = canTransferProblemAttribution(user);
   const publishesImmediately = await canPublishProblemEditForProblem(user, problem);
   const canManageProblemHints = publishesImmediately;
   const pendingProposal = publishesImmediately
@@ -149,6 +162,11 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
     >
       <div className={problem.translatedFromProblem ? "translation-compose-page" : ""}>
         <div className="translation-compose-main">
+          {attributionTransferred && (
+            <p className="quality-banner quality-reviewed mb-4" role="status">
+              {t.contentEditor.attributionTransferred}
+            </p>
+          )}
           {pendingProposal && (
             <section className="quality-banner quality-unreviewed mb-4" role="status">
               <strong>{t.contentEditor.pendingProposal}</strong>{" "}
@@ -381,6 +399,31 @@ export default async function EditProblemPage({ params }: { params: Promise<{ sl
             </section>
           )}
 
+          {canTransferAttribution && (
+            <ProblemAttributionTransferForm
+              currentAuthor={{
+                avatarBackground: problem.author.avatarBackground,
+                avatarUrl: problem.author.avatarUrl,
+                name: problem.author.displayName?.trim() || problem.author.profileSlug,
+                profileSlug: problem.author.profileSlug
+              }}
+              labels={{
+                title: t.contentEditor.transferAttribution,
+                help: t.contentEditor.transferAttributionHelp,
+                currentAuthor: t.contentEditor.currentAuthor,
+                newAuthor: t.contentEditor.newAuthor,
+                searchPlaceholder: t.contentEditor.searchNewAuthor,
+                searching: t.contentEditor.searchingUsers,
+                noUsersFound: t.contentEditor.noUsersFound,
+                reason: t.contentEditor.transferReason,
+                reasonPlaceholder: t.contentEditor.transferReasonPlaceholder,
+                transfer: t.contentEditor.transferAttributionAction,
+                transferring: t.contentEditor.transferringAttribution,
+                confirm: t.contentEditor.confirmAttributionTransfer
+              }}
+              problemId={problem.id}
+            />
+          )}
           {canDeleteCurrentProblem && (
             <section className="danger-zone mt-6">
               <div>

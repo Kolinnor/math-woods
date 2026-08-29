@@ -19,6 +19,10 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { localizeNotification } from "@/lib/notification-copy";
 import { cleanupNotificationsForUser, notificationOpenHref } from "@/lib/notification-lifecycle";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
+import {
+  USER_REGISTRATION_SUMMARY_KEY,
+  USER_REGISTRATION_SUMMARY_WINDOW_HOURS
+} from "@/lib/user-registration-summary";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +68,17 @@ export default async function NotificationsPage() {
     })
   ]);
   const notifications = [...unreadNotifications, ...readNotifications].slice(0, 100);
+  const hasRegistrationSummary = notifications.some(
+    (notification) => notification.aggregationKey === USER_REGISTRATION_SUMMARY_KEY
+  );
+  const recentRegistrationCount = hasRegistrationSummary
+    ? await prisma.user.count({
+        where: {
+          createdAt: { gte: new Date(Date.now() - USER_REGISTRATION_SUMMARY_WINDOW_HOURS * 60 * 60 * 1000) },
+          deletedAt: null
+        }
+      })
+    : undefined;
 
   return (
     <ForestPageLayout
@@ -91,7 +106,9 @@ export default async function NotificationsPage() {
     >
       <div className="list-surface notification-page-list">
         {notifications.map((notification) => {
-          const localizedNotification = localizeNotification(notification, interfaceLocale);
+          const localizedNotification = localizeNotification(notification, interfaceLocale, {
+            recentRegistrationCount
+          });
           const content = (
             <div className="notification-item-main">
               {notification.actor && <UserAvatar user={notification.actor} size="sm" />}

@@ -12,6 +12,10 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { localizeNotification } from "@/lib/notification-copy";
 import { cleanupNotificationsForUser, notificationOpenHref } from "@/lib/notification-lifecycle";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
+import {
+  USER_REGISTRATION_SUMMARY_KEY,
+  USER_REGISTRATION_SUMMARY_WINDOW_HOURS
+} from "@/lib/user-registration-summary";
 
 export async function NotificationsMenu({ userId }: { userId: number }) {
   const [t, interfaceLocale, timeZone] = await Promise.all([
@@ -41,6 +45,17 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
       where: { userId, readAt: null, dismissedFromMenuAt: null, type: { notIn: hiddenNotificationTypes } }
     })
   ]);
+  const hasRegistrationSummary = unreadNotifications.some(
+    (notification) => notification.aggregationKey === USER_REGISTRATION_SUMMARY_KEY
+  );
+  const recentRegistrationCount = hasRegistrationSummary
+    ? await prisma.user.count({
+        where: {
+          createdAt: { gte: new Date(Date.now() - USER_REGISTRATION_SUMMARY_WINDOW_HOURS * 60 * 60 * 1000) },
+          deletedAt: null
+        }
+      })
+    : undefined;
 
   return (
     <AutoClosingDetails className="notification-menu">
@@ -75,7 +90,9 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
         </div>
         <div className="notification-list">
           {unreadNotifications.map((notification) => {
-            const localizedNotification = localizeNotification(notification, interfaceLocale);
+            const localizedNotification = localizeNotification(notification, interfaceLocale, {
+              recentRegistrationCount
+            });
             return (
               <Link
                 key={notification.id}

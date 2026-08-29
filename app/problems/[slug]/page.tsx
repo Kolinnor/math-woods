@@ -1,10 +1,11 @@
 ﻿import { ProblemVerificationMode } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ReportStatus, TargetType } from "@prisma/client";
+import { FriendshipStatus, ReportStatus, TargetType } from "@prisma/client";
 import { Check, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { Difficulty } from "@/components/Difficulty";
@@ -15,6 +16,7 @@ import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher"
 import { ProblemHints } from "@/components/ProblemHints";
 import { ProblemReactions } from "@/components/ProblemReactions";
 import { ProblemRecommendationExposure } from "@/components/ProblemRecommendationExposure";
+import { SolutionHintForm } from "@/components/SolutionHintForm";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
@@ -30,7 +32,6 @@ import {
 } from "@/lib/actions/problem-actions";
 import {
   createProofAction,
-  saveSolutionHintAction,
   voteProofAction
 } from "@/lib/actions/proof-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -79,6 +80,10 @@ import { displayNameForUser } from "@/lib/user-display";
 import { missingConceptHref } from "@/lib/wikilinks";
 
 export const dynamic = "force-dynamic";
+
+const DESKTOP_SOLVER_AVATAR_LIMIT = 16;
+const MOBILE_SOLVER_AVATAR_LIMIT = 10;
+const SOLVER_NAME_LIMIT = 3;
 
 function titleFromConceptSlug(slug: string) {
   return slug
@@ -135,6 +140,11 @@ function verificationStatusLabel(status: string) {
   return status.toLowerCase().replaceAll("_", " ");
 }
 
+function joinedSolverNames(names: string[], conjunction: "and" | "et") {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} ${conjunction} ${names.at(-1)}`;
+}
+
 const redesignCopy = {
   en: {
     solvedProgress: (done: number, total: number, domain: string) =>
@@ -146,7 +156,14 @@ const redesignCopy = {
       addRelatedAction: "Add related problems",
       exerciseProgression: "Make sure readers have enough easier exercises to build up to this one."
     },
-    solvedToo: "solved this too",
+    solverSummary: (names: string[], hiddenCount: number) => {
+      const visibleNames = names.join(", ");
+      return hiddenCount > 0
+        ? `${visibleNames}, and ${hiddenCount} ${hiddenCount === 1 ? "other" : "others"} solved this too`
+        : `${joinedSolverNames(names, "and")} solved this too`;
+    },
+    allSolvers: "Everyone who solved this problem",
+    showAllSolvers: (count: number) => `Show all ${count} people who solved this problem`,
     next: "Next, if you liked this one",
     open: "Open it",
     tiles: {
@@ -180,7 +197,15 @@ const redesignCopy = {
       addRelatedAction: "Ajouter des problèmes liés",
       exerciseProgression: "Vérifiez que les lecteurs disposent d'assez d'exercices plus faciles pour progresser jusqu'à celui-ci."
     },
-    solvedToo: "ont aussi résolu ce problème",
+    solverSummary: (names: string[], hiddenCount: number) => {
+      const visibleNames = names.join(", ");
+      if (hiddenCount > 0) {
+        return `${visibleNames} et ${hiddenCount} autre${hiddenCount === 1 ? "" : "s"} ont aussi résolu ce problème`;
+      }
+      return `${joinedSolverNames(names, "et")} ${names.length === 1 ? "a" : "ont"} aussi résolu ce problème`;
+    },
+    allSolvers: "Toutes les personnes qui ont résolu ce problème",
+    showAllSolvers: (count: number) => `Afficher les ${count} personnes qui ont résolu ce problème`,
     next: "Ensuite, si celui-ci vous a plu",
     open: "Ouvrir",
     tiles: {
@@ -338,7 +363,8 @@ export default async function ProblemPage({
     groupFavoriteRows,
     relatedSolvedAttempts,
     ownReaction,
-    groupSolvers
+    groupSolvers,
+    acceptedFriendships
   ] = await Promise.all([
     prisma.problem.findMany({
       where: {
@@ -511,8 +537,29 @@ export default async function ProblemPage({
           }
         }
       }
-    })
+    }),
+    user
+      ? prisma.friendship.findMany({
+          where: {
+            status: FriendshipStatus.ACCEPTED,
+            OR: [{ requesterId: user.id }, { addresseeId: user.id }]
+          },
+          select: { requesterId: true, addresseeId: true }
+        })
+      : Promise.resolve([])
   ]);
+  const friendIds = new Set(
+    acceptedFriendships.map((friendship) =>
+      friendship.requesterId === user?.id ? friendship.addresseeId : friendship.requesterId
+    )
+  );
+  const prioritizedGroupSolvers = [...groupSolvers].sort((left, right) =>
+    Number(friendIds.has(right.user.id)) - Number(friendIds.has(left.user.id))
+  );
+  const namedSolvers = prioritizedGroupSolvers.slice(0, SOLVER_NAME_LIMIT);
+  const hiddenSolverNameCount = prioritizedGroupSolvers.length - namedSolvers.length;
+  const desktopSolverAvatarCount = Math.min(prioritizedGroupSolvers.length, DESKTOP_SOLVER_AVATAR_LIMIT);
+  const mobileSolverAvatarCount = Math.min(prioritizedGroupSolvers.length, MOBILE_SOLVER_AVATAR_LIMIT);
   const attempt =
     attemptsInTranslationGroup.find((translationAttempt) => translationAttempt.status === "SOLVED") ??
     attemptsInTranslationGroup[0] ??
@@ -784,17 +831,61 @@ export default async function ProblemPage({
                     </a>
                   </>
                 )
-              ) : groupSolvers.length > 0 && (
-                <p>
-                  <span className="problem-solver-avatars">
-                    {groupSolvers.map(({ user: solver }) => (
-                      <UserAvatar key={solver.id} user={solver} size="sm" />
+              ) : prioritizedGroupSolvers.length > 0 && (
+                <div className="problem-solver-summary">
+                  <div className="problem-solver-avatars">
+                    {prioritizedGroupSolvers.slice(0, DESKTOP_SOLVER_AVATAR_LIMIT).map(({ user: solver }, index) => (
+                      <Link
+                        key={solver.id}
+                        href={`/profile/${solver.profileSlug}`}
+                        className={`problem-solver-avatar-link${index >= MOBILE_SOLVER_AVATAR_LIMIT ? " problem-solver-avatar-desktop-only" : ""}`}
+                        aria-label={displayNameForUser(solver)}
+                      >
+                        <UserAvatar user={solver} size="sm" />
+                      </Link>
                     ))}
-                  </span>
+                    {prioritizedGroupSolvers.length > MOBILE_SOLVER_AVATAR_LIMIT && (
+                      <AutoClosingDetails
+                        className={`problem-solver-more${prioritizedGroupSolvers.length <= DESKTOP_SOLVER_AVATAR_LIMIT ? " problem-solver-more-mobile-only" : ""}`}
+                      >
+                        <summary
+                          aria-label={copy.showAllSolvers(prioritizedGroupSolvers.length)}
+                          title={copy.showAllSolvers(prioritizedGroupSolvers.length)}
+                        >
+                          {prioritizedGroupSolvers.length > DESKTOP_SOLVER_AVATAR_LIMIT && (
+                            <span className="problem-solver-more-desktop">
+                              +{prioritizedGroupSolvers.length - desktopSolverAvatarCount}
+                            </span>
+                          )}
+                          <span className="problem-solver-more-mobile">
+                            +{prioritizedGroupSolvers.length - mobileSolverAvatarCount}
+                          </span>
+                        </summary>
+                        <div className="problem-solvers-popover">
+                          <strong>{copy.allSolvers}</strong>
+                          <div>
+                            {prioritizedGroupSolvers.map(({ user: solver }) => (
+                              <Link
+                                key={solver.id}
+                                href={`/profile/${solver.profileSlug}`}
+                                data-close-details
+                              >
+                                <UserAvatar user={solver} size="sm" />
+                                <span>{displayNameForUser(solver)}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      </AutoClosingDetails>
+                    )}
+                  </div>
                   <span className="problem-solver-names">
-                    {groupSolvers.map(({ user: solver }) => displayNameForUser(solver)).join(", ")} {copy.solvedToo}
+                    {copy.solverSummary(
+                      namedSolvers.map(({ user: solver }) => displayNameForUser(solver)),
+                      hiddenSolverNameCount
+                    )}
                   </span>
-                </p>
+                </div>
               )}
             </div>
             {!isOwnProblem && (
@@ -1321,17 +1412,18 @@ export default async function ProblemPage({
               <div className="solution-hint-body">
                 {queryParams.hint === "saved" && <p className="success-text">{t.problemDetail.solutionHintSaved}</p>}
                 <p>{t.problemDetail.solutionHintDescription}</p>
-                <form action={saveSolutionHintAction.bind(null, problem.id, ownProofForHint.id)} className="grid gap-3">
-                  <MarkdownEditor
-                    name="bodyMarkdown"
-                    initialValue={ownSolutionHint?.bodyMarkdown}
-                    minHeight="8rem"
-                    lineNumbers={false}
-                    draftKey={`problem:${problem.id}:proof:${ownProofForHint.id}:hint`}
-                    resetSignal={ownSolutionHint?.updatedAt.getTime() ?? 0}
-                  />
-                  <button type="submit">{t.problemDetail.saveSolutionHint}</button>
-                </form>
+                <SolutionHintForm
+                  problemId={problem.id}
+                  proofId={ownProofForHint.id}
+                  initialValue={ownSolutionHint?.bodyMarkdown}
+                  draftKey={`problem:${problem.id}:proof:${ownProofForHint.id}:hint`}
+                  resetSignal={ownSolutionHint?.updatedAt.getTime() ?? 0}
+                  labels={{
+                    required: t.problemDetail.solutionHintRequired,
+                    save: t.problemDetail.saveSolutionHint,
+                    tooLong: t.problemDetail.solutionHintTooLong
+                  }}
+                />
               </div>
             </details>
           )}

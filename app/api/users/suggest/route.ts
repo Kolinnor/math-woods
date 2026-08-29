@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { canUseAdminTools } from "@/lib/permissions";
 import { rankSearchMatches } from "@/lib/search-ranking";
 
 export const dynamic = "force-dynamic";
@@ -13,13 +14,14 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim().slice(0, 80) ?? "";
+  const includeSelf = url.searchParams.get("includeSelf") === "1" && canUseAdminTools(currentUser);
   if (query.length < 2) {
     return NextResponse.json({ users: [] });
   }
 
   const matches = await prisma.user.findMany({
     where: {
-      id: { not: currentUser.id },
+      ...(!includeSelf ? { id: { not: currentUser.id } } : {}),
       deletedAt: null,
       OR: [
         { profileSlug: { contains: query, mode: "insensitive" } },

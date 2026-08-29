@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { ExternalAuthProvider, NotificationType } from "@prisma/client";
+import { ExternalAuthProvider } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { createSession, requireUser, setPasswordForCurrentUser, verifyPassword } from "@/lib/auth";
 import {
@@ -14,11 +14,12 @@ import { prisma } from "@/lib/db";
 import { createAndSendEmailVerification } from "@/lib/email-verification";
 import { parseMathLevel } from "@/lib/math-levels";
 import { clearOAuthCookie, pendingOAuthAttempt } from "@/lib/oauth";
-import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
+import { inviteNewUserFromOwner } from "@/lib/owner-welcome";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
-import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
-import { profilePath, usernameLookupFilter } from "@/lib/usernames";
+import { normalizeDisplayName } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
+import { notifyTrustedUsersOfRegistration } from "@/lib/user-registration-notifications";
 
 async function availableUsername(displayName: string) {
   const base = ensureSlug(displayName, "user");
@@ -93,6 +94,7 @@ export async function completeOAuthSignupAction(formData: FormData) {
           providerEmail: attempt.providerEmail
         }
       });
+      await inviteNewUserFromOwner(tx, created.id);
       await tx.oAuthAttempt.delete({ where: { id: attempt.id } });
       return created;
     });
@@ -103,13 +105,7 @@ export async function completeOAuthSignupAction(formData: FormData) {
 
   await clearOAuthCookie();
   await createSession(user.id);
-  await notifyOwnerOfSiteActivity({
-    actor: user,
-    type: NotificationType.USER_REGISTERED,
-    title: "New account created",
-    body: `${displayNameForUser(user)} joined Math Woods.`,
-    href: profilePath(user)
-  });
+  await notifyTrustedUsersOfRegistration();
   if (!user.emailVerifiedAt) await createAndSendEmailVerification(user.id);
   redirect(attempt.returnTo as never);
 }

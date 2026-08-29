@@ -3,6 +3,7 @@ import { marked, Renderer } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { MATH_WOODS_KATEX_MACROS } from "./latex-macros.ts";
 import { findLatexRanges } from "./latex-ranges.ts";
+import { withLatexRenderFallback } from "./safe-latex-render.ts";
 import { jsxGraphCodeBlockHtml } from "./jsxgraph.ts";
 import { extractMarkdownFolds } from "./markdown-folds.ts";
 import { markdownImageSizingFromSrc } from "./markdown-images.ts";
@@ -41,19 +42,29 @@ function protectLatex(input: string, blockDisplayMath = true) {
   for (let index = ranges.length - 1; index >= 0; index -= 1) {
     const range = ranges[index];
     const token = `@@MATHHILLSLATEX${input.length}TOKEN${index}@@`;
-    replacements.set(
-      token,
-      katex.renderToString(range.formula, {
+    const source = input.slice(range.from, range.to);
+    replacements.set(token, withLatexRenderFallback(
+      () => katex.renderToString(range.formula, {
         displayMode: range.displayMode,
         macros: MATH_WOODS_KATEX_MACROS,
         throwOnError: false
-      })
-    );
+      }),
+      () => `<span class="katex-error">${escapeHtml(source)}</span>`
+    ));
     const markdownToken = blockDisplayMath ? latexTokenMarkdown(input, range, token) : token;
     output = `${output.slice(0, range.from)}${markdownToken}${output.slice(range.to)}`;
   }
 
   return { markdown: output, replacements };
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function restoreLatex(html: string, replacements: Map<string, string>) {

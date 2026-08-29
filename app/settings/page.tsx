@@ -124,8 +124,8 @@ const notificationOptions = [
   },
   {
     type: NotificationType.USER_REGISTERED,
-    title: "A user created an account",
-    description: "For the owner: when a user joins Math Woods."
+    title: "New member registrations",
+    description: "For trusted users and admins: a summary when people join Math Woods."
   },
   {
     type: NotificationType.PROBLEM_CREATED,
@@ -136,6 +136,11 @@ const notificationOptions = [
     type: NotificationType.PROBLEM_DELETED,
     title: "A problem was deleted",
     description: "For admins: when a user deletes a problem."
+  },
+  {
+    type: NotificationType.PROBLEM_ATTRIBUTION_TRANSFERRED,
+    title: "Problem attribution changes",
+    description: "When an admin transfers a problem to or from your account."
   },
   {
     type: NotificationType.CONCEPT_CREATED,

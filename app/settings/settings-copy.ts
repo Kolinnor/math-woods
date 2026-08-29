@@ -65,6 +65,9 @@ const frenchSettingsText: Record<string, string> = {
   "Type {name} to confirm.": "Saisissez {name} pour confirmer.",
   "Cancel": "Annuler",
   "Mute notification types individually.": "Désactivez séparément les types de notifications de votre choix.",
+  "Problem attribution changes": "Changements d’attribution des problèmes",
+  "When an admin transfers a problem to or from your account.":
+    "Lorsqu’un administrateur transfère un problème vers votre compte ou depuis celui-ci.",
   "Save notification settings": "Enregistrer les paramètres de notification",
   "Customize the Markdown and LaTeX writing helpers used by Math Woods editors.":
     "Personnalisez les aides à la rédaction Markdown et LaTeX utilisées dans les éditeurs de Math Woods.",
@@ -242,8 +245,9 @@ const frenchSettingsText: Record<string, string> = {
   "A site error was reported": "Une erreur du site a été signalée",
   "For admins: when a user hits a client or application error.":
     "Pour les administrateurs : lorsqu'un utilisateur rencontre une erreur du navigateur ou de l'application.",
-  "A user created an account": "Un utilisateur a créé un compte",
-  "For the owner: when a user joins Math Woods.": "Pour le propriétaire : lorsqu'un utilisateur rejoint Math Woods.",
+  "New member registrations": "Nouvelles inscriptions",
+  "For trusted users and admins: a summary when people join Math Woods.":
+    "Pour les utilisateurs de confiance et les administrateurs : un résumé lorsque des personnes rejoignent Math Woods.",
   "A problem was created": "Un problème a été créé",
   "For the owner: when a user creates a problem.": "Pour le propriétaire : lorsqu'un utilisateur crée un problème.",
   "A problem was deleted": "Un problème a été supprimé",

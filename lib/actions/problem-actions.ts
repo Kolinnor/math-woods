@@ -92,6 +92,7 @@ import {
   canReviewProblem,
   canRollbackProblem,
   canSetProblemQualityStatus,
+  canTransferProblemAttribution,
   canUseAdminTools
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
@@ -1569,6 +1570,121 @@ export async function dismissProblemTranslationStaleNoticeAction(problemId: numb
 
   revalidatePath(`/problems/${problem.slug}`);
   redirect(contentLanguageViewHref("/problems", problem.slug, problem.language) as Route);
+}
+
+export async function transferProblemAttributionAction(problemId: number, formData: FormData) {
+  const user = await requireVerifiedUser();
+  if (!canTransferProblemAttribution(user)) throw new Error("Only admins can transfer problem attribution.");
+  await assertRateLimit(`problem:attribution-transfer:${user.id}`, 20, 60_000);
+
+  const targetProfileSlug = requiredBoundedText(
+    formData.get("targetProfileSlug"),
+    CONTENT_LIMITS.shortText,
+    "New author"
+  );
+  const reason = optionalBoundedText(formData.get("reason"), CONTENT_LIMITS.longNote, "Transfer reason");
+  const initialProblem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    select: { translationGroupId: true }
+  });
+  if (!initialProblem) throw new Error("Problem not found.");
+
+  const transfer = await prisma.$transaction(async (tx) => {
+    await acquireTransactionLock(tx, `problem-edit:${initialProblem.translationGroupId}`);
+    const [problem, targetUser] = await Promise.all([
+      tx.problem.findUnique({
+        where: { id: problemId },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          authorId: true,
+          author: { select: { id: true, profileSlug: true, username: true, displayName: true } }
+        }
+      }),
+      tx.user.findUnique({
+        where: { profileSlug: targetProfileSlug },
+        select: { id: true, profileSlug: true, username: true, displayName: true, deletedAt: true }
+      })
+    ]);
+
+    if (!problem) throw new Error("Problem not found.");
+    if (!targetUser || targetUser.deletedAt) throw new Error("The selected user is unavailable.");
+    if (targetUser.id === problem.authorId) throw new Error("This user is already the problem author.");
+
+    const previousAuthorName = displayNameForUser(problem.author);
+    const targetAuthorName = displayNameForUser(targetUser);
+    const actorName = displayNameForUser(user);
+
+    await tx.problem.update({
+      where: { id: problem.id },
+      data: { authorId: targetUser.id }
+    });
+    await tx.problemAttributionTransfer.create({
+      data: {
+        problemId: problem.id,
+        fromUserId: problem.author.id,
+        toUserId: targetUser.id,
+        transferredById: user.id,
+        fromDisplayName: previousAuthorName,
+        toDisplayName: targetAuthorName,
+        transferredByDisplayName: actorName,
+        reason
+      }
+    });
+
+    const notifications = [
+      {
+        userId: targetUser.id,
+        title: "Problem attributed to you",
+        body: `${actorName} transferred attribution of "${problem.title}" to you.`,
+        href: `/problems/${problem.slug}`
+      },
+      {
+        userId: problem.author.id,
+        title: "Problem attribution transferred",
+        body: `${actorName} transferred attribution of "${problem.title}" from you to ${targetAuthorName}.`,
+        href: `/problems/${problem.slug}/history`
+      }
+    ];
+    for (const notification of notifications) {
+      if (notification.userId === user.id) continue;
+      const preference = await tx.notificationPreference.findUnique({
+        where: {
+          userId_type: {
+            userId: notification.userId,
+            type: NotificationType.PROBLEM_ATTRIBUTION_TRANSFERRED
+          }
+        },
+        select: { enabled: true }
+      });
+      if (preference?.enabled === false) continue;
+      await tx.notification.create({
+        data: {
+          ...notification,
+          actorId: user.id,
+          type: NotificationType.PROBLEM_ATTRIBUTION_TRANSFERRED
+        }
+      });
+    }
+
+    return {
+      previousAuthor: problem.author,
+      problemSlug: problem.slug,
+      targetUser
+    };
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/problems");
+  revalidatePath("/users");
+  revalidatePath("/me");
+  revalidatePath(`/profile/${transfer.previousAuthor.profileSlug}`);
+  revalidatePath(`/profile/${transfer.targetUser.profileSlug}`);
+  revalidatePath(`/problems/${transfer.problemSlug}`);
+  revalidatePath(`/problems/${transfer.problemSlug}/edit`);
+  revalidatePath(`/problems/${transfer.problemSlug}/history`);
+  redirect(`/problems/${transfer.problemSlug}/edit?attribution=transferred` as Route);
 }
 
 export async function deleteProblemAction(problemId: number) {

@@ -6,6 +6,7 @@ import { EditorState, StateEffect } from "@codemirror/state";
 import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import { creationSubmissionKey } from "../lib/creation-submission.ts";
+import { isBrowserExtensionError, isOpaqueWindowScriptError } from "../lib/client-error-filter.ts";
 import { loginHrefForReturnTo, requestReturnToPath } from "../lib/auth-return.ts";
 import {
   getBooleanAttribute,
@@ -51,6 +52,13 @@ import {
   usernameLookupFilter
 } from "../lib/usernames.ts";
 import { parseUserDiscoverySource } from "../lib/user-discovery-source.ts";
+import { notifyTrustedUsersOfRegistration } from "../lib/user-registration-notifications.ts";
+import {
+  USER_REGISTRATION_SUMMARY_HREF,
+  USER_REGISTRATION_SUMMARY_KEY,
+  userRegistrationSummaryCopy
+} from "../lib/user-registration-summary.ts";
+import { inviteNewUserFromOwner } from "../lib/owner-welcome.ts";
 import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
 import {
   HOME_GUEST_PROBLEM_GROUP_IDS,
@@ -301,6 +309,7 @@ import type { UserReputationSummary } from "../lib/user-reputation.ts";
 import {
   AUTHORED_CONCEPT_REPUTATION_POINTS,
   AUTHORED_PROBLEM_BASE_REPUTATION_POINTS,
+  AUTHORED_SOLUTION_BASE_REPUTATION_POINTS,
   authoredConceptReputationBonus,
   contentHasIllustration,
   curationActivityReputationBonus,
@@ -364,6 +373,7 @@ import {
   canReviewProblem,
   canSetConceptStatus,
   canSetProblemQualityStatus,
+  canTransferProblemAttribution,
   canUseAdminTools,
   canUseModerationTools,
   hasTrustedPrivileges,
@@ -466,6 +476,23 @@ import {
 
 assert.equal(slugify("Relations de Viète"), "relations-de-viete");
 assert.equal(slugify("  L'espace vectoriel ! "), "lespace-vectoriel");
+assert.equal(isBrowserExtensionError({
+  stack: "TypeError: broken\n    at chrome-extension://abc/content.js:1:2\n    at https://mathwoods.org/app.js:3:4"
+}), true);
+assert.equal(isBrowserExtensionError({ sourceUrl: "moz-extension://abc/content.js" }), true);
+assert.equal(isBrowserExtensionError({
+  stack: "TypeError: broken\n    at https://mathwoods.org/app.js:3:4\n    at chrome-extension://abc/content.js:1:2"
+}), false);
+assert.equal(isBrowserExtensionError({ stack: "TypeError: broken\n    at https://mathwoods.org/app.js:3:4" }), false);
+assert.equal(isOpaqueWindowScriptError({ message: "Script error.", source: "window.error" }), true);
+assert.equal(isOpaqueWindowScriptError({ message: "script error", source: "window.error", stack: "" }), true);
+assert.equal(isOpaqueWindowScriptError({
+  message: "Script error.",
+  source: "window.error",
+  stack: "Error: Script error at https://mathwoods.org/app.js:3:4"
+}), false);
+assert.equal(isOpaqueWindowScriptError({ message: "Script error.", source: "next.error-boundary" }), false);
+assert.equal(isOpaqueWindowScriptError({ message: "Cannot read properties of undefined", source: "window.error" }), false);
 assert.equal(normalizeUsernameLookup(" Paulownia "), "paulownia");
 assert.equal(normalizeUsernameLookup("ＰＡＵＬＯＷＮＩＡ"), "paulownia");
 assert.deepEqual(usernameLookupFilter("Paulownia"), { equals: "paulownia", mode: "insensitive" });
@@ -1608,6 +1635,10 @@ await assertDailyContentCreationQuota(
 assert.equal(canUseModerationTools(Role.MODERATOR), true);
 assert.equal(canUseAdminTools(Role.MODERATOR), false);
 assert.equal(canUseAdminTools(Role.ADMIN), true);
+assert.equal(canTransferProblemAttribution(Role.USER), false);
+assert.equal(canTransferProblemAttribution(Role.MODERATOR), false);
+assert.equal(canTransferProblemAttribution(Role.ADMIN), true);
+assert.equal(canTransferProblemAttribution(Role.OWNER), true);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.USER), true);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.MODERATOR), true);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.ADMIN), false);
@@ -1983,6 +2014,12 @@ const renderedLatexMacro = await renderMarkdown(String.raw`$\C + \R + \Z$`);
 assert.match(renderedLatexMacro, /mathbb/);
 assert.doesNotMatch(renderedLatexMacro, /katex-error/);
 
+const malformedLatexSource = String.raw`Before $\begin{\\}$ after`;
+const renderedMalformedLatex = await renderMarkdown(malformedLatexSource);
+assert.match(renderedMalformedLatex, /class="katex-error"/);
+assert.match(renderedMalformedLatex, /\$\\begin\{\\\\\}\$/);
+assert.match(renderedMalformedLatex, /^<p>Before .* after<\/p>\s*$/);
+
 const renderedItalicAfterLatex = await renderMarkdown(
   "*Dans le cas* $n_1$*, correspondant à la gamme chromatique usuelle.*"
 );
@@ -2294,9 +2331,11 @@ assert.doesNotMatch(liveTitleFieldSource, /title-preview/);
 const markdownEditorSource = readFileSync(join("components", "markdown", "MarkdownEditor.tsx"), "utf-8");
 assert.match(markdownEditorSource, /liveMarkdownPreviewExtension\(!titleMode\)/);
 assert.match(markdownEditorSource, /transaction\.newDoc\.lines === 1/);
+assert.match(markdownEditorSource, /withLatexRenderFallback/);
+assert.match(markdownEditorSource, /cm-latex-preview-error/);
 for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "notifications", "page.tsx")]) {
   const source = readFileSync(path, "utf-8");
-  assert.match(source, /localizeNotification\(notification, interfaceLocale\)/);
+  assert.match(source, /localizeNotification\(notification, interfaceLocale/);
   assert.match(source, /<AsyncMarkdownInline markdown=\{localizedNotification\.body\}/);
 }
 const tourSource = readFileSync(join("components", "MathWoodsTour.tsx"), "utf-8");
@@ -2311,6 +2350,7 @@ const sitemapSource = readFileSync(join("app", "sitemap.ts"), "utf-8");
 const guestProgressPromptSource = readFileSync(join("components", "GuestProgressPrompt.tsx"), "utf-8");
 const guestContentGateSource = readFileSync(join("components", "GuestContentViewGate.tsx"), "utf-8");
 const problemDetailSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
+const problemDetailCssSource = readFileSync(join("app", "styles", "64-problems.css"), "utf-8");
 const problemLedgerInteractiveRowSource = readFileSync(
   join("components", "ProblemLedgerInteractiveRow.tsx"),
   "utf-8"
@@ -2401,6 +2441,7 @@ const prometheusConfigSource = readFileSync(join("deploy", "prometheus", "promet
 const prometheusAlertsSource = readFileSync(join("deploy", "prometheus", "alerts.yml"), "utf-8");
 const productionDeploySource = readFileSync(join("deploy", "deploy.sh"), "utf-8");
 const prismaSchemaSource = readFileSync(join("prisma", "schema.prisma"), "utf-8");
+const problemAttributionFormSource = readFileSync(join("components", "ProblemAttributionTransferForm.tsx"), "utf-8");
 const conceptMergeActionsSource = readFileSync(join("lib", "actions", "concept-merge-actions.ts"), "utf-8");
 const conceptActionsSource = readFileSync(join("lib", "actions", "concept-actions.ts"), "utf-8");
 const conceptMergePageSource = readFileSync(join("app", "concepts", "[slug]", "merge", "page.tsx"), "utf-8");
@@ -2411,6 +2452,11 @@ const conceptDuplicateSuggestionsSource = readFileSync(join("components", "Conce
 const internalLinksSource = readFileSync(join("lib", "internal-links.ts"), "utf-8");
 const uniqueSlugSource = readFileSync(join("lib", "unique-slug.ts"), "utf-8");
 assert.match(prismaSchemaSource, /model ProblemRecommendationExposure[\s\S]*?dismissedAt\s+DateTime\?/);
+assert.match(prismaSchemaSource, /model ProblemAttributionTransfer[\s\S]*?fromDisplayName[\s\S]*?toDisplayName[\s\S]*?transferredByDisplayName/);
+assert.match(problemActionsSource, /transferProblemAttributionAction[\s\S]*?canTransferProblemAttribution/);
+assert.match(problemActionsSource, /acquireTransactionLock\(tx, `problem-edit:\$\{initialProblem\.translationGroupId\}`\)/);
+assert.match(problemActionsSource, /tx\.problemAttributionTransfer\.create/);
+assert.match(problemAttributionFormSource, /includeSelf=1/);
 assert.match(recommendationDismissalMigrationSource, /ADD COLUMN "dismissedAt" TIMESTAMP\(3\)/);
 assert.match(problemRecommendationActionsSource, /dismissProblemRecommendationAction[\s\S]*?dismissedAt: now/);
 assert.match(problemRecommendationActionsSource, /undoProblemRecommendationDismissalAction[\s\S]*?dismissedAt: null/);
@@ -2547,6 +2593,14 @@ assert.match(problemDetailSource, /problem-primary-actions\$\{isConjecture \? " 
 assert.match(problemDetailSource, /startAttemptAction\.bind/);
 assert.match(problemDetailSource, /unmarkProblemAttemptAction\.bind/);
 assert.match(problemDetailSource, /toggleProblemFavoriteAction\.bind/);
+assert.match(problemDetailSource, /const DESKTOP_SOLVER_AVATAR_LIMIT = 16/);
+assert.match(problemDetailSource, /const MOBILE_SOLVER_AVATAR_LIMIT = 10/);
+assert.match(problemDetailSource, /const SOLVER_NAME_LIMIT = 3/);
+assert.match(problemDetailSource, /status: FriendshipStatus\.ACCEPTED/);
+assert.match(problemDetailSource, /prioritizedGroupSolvers[\s\S]*?friendIds\.has/);
+assert.match(problemDetailSource, /<AutoClosingDetails[\s\S]*?problem-solvers-popover/);
+assert.match(problemDetailCssSource, /\.problem-solver-avatar-desktop-only[\s\S]*?display:\s*none/);
+assert.match(problemDetailCssSource, /\.problem-solvers-popover[\s\S]*?max-height:\s*320px/);
 assert.match(problemBrowserSource, /isConjecture=\{problem\.isConjecture\}/);
 assert.match(problemLedgerInteractiveRowSource, /!isConjecture && \(!signedIn \?/);
 assert.match(problemBrowserStateRouteSource, /operation === "solve" && problem\.isConjecture/);
@@ -2697,6 +2751,23 @@ assert.match(notificationsPageSource, /respondToSiteImprovementCompletionAction\
 assert.match(notificationLifecycleSource, /siteImprovementReview:[\s\S]*?SiteImprovementCompletionReviewStatus\.PENDING/);
 assert.match(notificationCopySource, /Votre suggestion a bien été prise en compte/);
 const notificationActor = { username: "alouette", displayName: "Alouette" };
+assert.deepEqual(userRegistrationSummaryCopy("fr", 1), {
+  title: "Un nouveau membre",
+  body: "Une personne a rejoint Math Woods au cours des dernières 24 heures."
+});
+assert.deepEqual(userRegistrationSummaryCopy("en", 3), {
+  title: "3 new members",
+  body: "3 people joined Math Woods in the last 24 hours."
+});
+assert.deepEqual(localizeNotification({
+  type: NotificationType.USER_REGISTERED,
+  aggregationKey: USER_REGISTRATION_SUMMARY_KEY,
+  title: "2 new members",
+  body: "2 people joined Math Woods in the last 24 hours."
+}, "fr", { recentRegistrationCount: 4 }), {
+  title: "4 nouveaux membres",
+  body: "4 personnes ont rejoint Math Woods au cours des dernières 24 heures."
+});
 const usefulVoteNotification = localizeNotification({
   type: NotificationType.SOLUTION_VOTED,
   title: "Your solution received a useful vote",
@@ -2726,6 +2797,26 @@ const problemDeletedNotification = localizeNotification({
 assert.deepEqual(problemDeletedNotification, {
   title: "Problème supprimé",
   body: "Alouette a supprimé « Une intégrale $I$ »."
+});
+const problemAttributedNotification = localizeNotification({
+  type: NotificationType.PROBLEM_ATTRIBUTION_TRANSFERRED,
+  title: "Problem attributed to you",
+  body: 'Alouette transferred attribution of "Une intégrale $I$" to you.',
+  actor: notificationActor
+}, "fr");
+assert.deepEqual(problemAttributedNotification, {
+  title: "Un problème vous a été attribué",
+  body: "Alouette vous a attribué « Une intégrale $I$ »."
+});
+const problemAttributionRemovedNotification = localizeNotification({
+  type: NotificationType.PROBLEM_ATTRIBUTION_TRANSFERRED,
+  title: "Problem attribution transferred",
+  body: 'Alouette transferred attribution of "Une intégrale $I$" from you to Cyprès.',
+  actor: notificationActor
+}, "fr");
+assert.deepEqual(problemAttributionRemovedNotification, {
+  title: "Attribution d’un problème transférée",
+  body: "Alouette a transféré l’attribution de « Une intégrale $I$ » à Cyprès."
 });
 const challengeNotification = localizeNotification({
   type: NotificationType.PROBLEM_CHALLENGE,
@@ -3329,6 +3420,7 @@ const mathematicianFixtures = [
 assert.equal(DAILY_PROBLEM_REPUTATION_POINTS, 50);
 assert.equal(AUTHORED_CONCEPT_REPUTATION_POINTS, 2);
 assert.equal(AUTHORED_PROBLEM_BASE_REPUTATION_POINTS, 4);
+assert.equal(AUTHORED_SOLUTION_BASE_REPUTATION_POINTS, 2);
 assert.equal(PROBLEM_TRANSLATION_REPUTATION_POINTS, 4);
 assert.equal(authoredConceptReputationBonus(3), 6);
 assert.equal(authoredConceptReputationBonus(-1), 0);
@@ -3350,10 +3442,11 @@ assert.equal(problemAuthorshipReputationBonus({
   solveCount: 14,
   hasIllustration: true
 }), 23);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 2, hasIllustration: true }), 0);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 3, hasIllustration: false }), 8);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 5, hasIllustration: true }), 14);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 100, hasIllustration: true }), 30);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 0, hasIllustration: false }), 2);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 2, hasIllustration: true }), 2);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 3, hasIllustration: false }), 10);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 5, hasIllustration: true }), 16);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 100, hasIllustration: true }), 32);
 assert.equal(reviewedContributionReputationBonus(101), 100);
 assert.equal(curationActivityReputationBonus(4), 0);
 assert.equal(curationActivityReputationBonus(5), 1);
@@ -4428,6 +4521,94 @@ assert.equal(creationKey?.length, 64);
 assert.equal(creationSubmissionKey("concept", 7, "12345678-draft"), creationKey);
 assert.notEqual(creationSubmissionKey("concept", 8, "12345678-draft"), creationKey);
 assert.equal(creationSubmissionKey("concept", 7, "short"), null);
+
+const ownerWelcomeFriendships: Array<Record<string, unknown>> = [];
+const ownerWelcomeNotifications: Array<Record<string, unknown>> = [];
+let existingOwnerWelcomeFriendship: { id: number } | null = null;
+const ownerWelcomeTransaction = {
+  user: {
+    findFirst: async () => ({ id: 1, username: "ancient-tree", displayName: "Ancient Tree" })
+  },
+  friendship: {
+    findFirst: async () => existingOwnerWelcomeFriendship,
+    create: async ({ data }: { data: Record<string, unknown> }) => {
+      ownerWelcomeFriendships.push(data);
+      existingOwnerWelcomeFriendship = { id: 73 };
+      return existingOwnerWelcomeFriendship;
+    }
+  },
+  notificationPreference: {
+    findUnique: async () => null
+  },
+  notification: {
+    create: async ({ data }: { data: Record<string, unknown> }) => {
+      ownerWelcomeNotifications.push(data);
+      return { id: 91 };
+    }
+  }
+} as unknown as Prisma.TransactionClient;
+
+await inviteNewUserFromOwner(ownerWelcomeTransaction, 42);
+assert.deepEqual(ownerWelcomeFriendships, [{ requesterId: 1, addresseeId: 42 }]);
+assert.deepEqual(ownerWelcomeNotifications, [{
+  userId: 42,
+  actorId: 1,
+  type: NotificationType.FRIEND_REQUEST,
+  title: "New friend request",
+  body: "Ancient Tree sent you a friend request.",
+  href: "/friends"
+}]);
+await inviteNewUserFromOwner(ownerWelcomeTransaction, 42);
+assert.equal(ownerWelcomeFriendships.length, 1);
+assert.equal(ownerWelcomeNotifications.length, 1);
+
+const registrationSummaryUpserts: Array<Record<string, unknown>> = [];
+const registrationSummaryNow = new Date("2026-08-29T12:00:00.000Z");
+const registrationNotificationClient = {
+  user: {
+    count: async () => 3,
+    findMany: async () => [{ id: 1 }, { id: 8 }]
+  },
+  notification: {
+    upsert: async (args: Record<string, unknown>) => {
+      registrationSummaryUpserts.push(args);
+      return { id: registrationSummaryUpserts.length };
+    }
+  }
+} as unknown as Parameters<typeof notifyTrustedUsersOfRegistration>[0];
+assert.deepEqual(
+  await notifyTrustedUsersOfRegistration(registrationNotificationClient, registrationSummaryNow, false),
+  { recentRegistrationCount: 3, recipientCount: 2 }
+);
+assert.equal(registrationSummaryUpserts.length, 2);
+assert.deepEqual(registrationSummaryUpserts[0], {
+  where: {
+    userId_type_aggregationKey: {
+      userId: 1,
+      type: NotificationType.USER_REGISTERED,
+      aggregationKey: USER_REGISTRATION_SUMMARY_KEY
+    }
+  },
+  update: {
+    actorId: null,
+    title: "3 new members",
+    body: "3 people joined Math Woods in the last 24 hours.",
+    href: USER_REGISTRATION_SUMMARY_HREF,
+    readAt: null,
+    dismissedFromMenuAt: null,
+    createdAt: registrationSummaryNow
+  },
+  create: {
+    userId: 1,
+    actorId: null,
+    type: NotificationType.USER_REGISTERED,
+    aggregationKey: USER_REGISTRATION_SUMMARY_KEY,
+    title: "3 new members",
+    body: "3 people joined Math Woods in the last 24 hours.",
+    href: USER_REGISTRATION_SUMMARY_HREF,
+    createdAt: registrationSummaryNow
+  }
+});
 
 const onceRateLimitKey = `core-test-once-${Date.now()}`;
 await assertRateLimitOnce(onceRateLimitKey, "same-submission", 1, 5_000);

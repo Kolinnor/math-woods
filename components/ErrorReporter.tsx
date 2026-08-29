@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { isBrowserExtensionError, isOpaqueWindowScriptError } from "@/lib/client-error-filter";
 import { sanitizeReportPath } from "@/lib/security";
 
 type ErrorReportInput = {
@@ -33,6 +34,8 @@ function reportKey(report: ErrorReportInput) {
 
 export function reportClientError(input: ErrorReportInput) {
   if (!input.message.trim()) return;
+  if (isBrowserExtensionError({ stack: input.stack })) return;
+  if (isOpaqueWindowScriptError(input)) return;
 
   const report = {
     ...input,
@@ -62,6 +65,12 @@ export function reportClientError(input: ErrorReportInput) {
 export function ErrorReporter() {
   useEffect(() => {
     function onError(event: ErrorEvent) {
+      if (isBrowserExtensionError({
+        stack: event.error instanceof Error ? event.error.stack : null,
+        sourceUrl: event.filename
+      })) {
+        return;
+      }
       reportClientError({
         message: event.message || errorMessage(event.error),
         stack: event.error instanceof Error ? event.error.stack : null,

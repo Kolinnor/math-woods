@@ -15,7 +15,6 @@ type NotificationInput = {
 };
 
 type OwnerActivityNotificationType =
-  | typeof NotificationType.USER_REGISTERED
   | typeof NotificationType.PROBLEM_CREATED
   | typeof NotificationType.CONCEPT_CREATED
   | typeof NotificationType.CONCEPT_EDITED;

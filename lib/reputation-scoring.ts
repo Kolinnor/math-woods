@@ -14,6 +14,7 @@ export const TRUSTED_PROBLEM_FAVORITE_BONUS = 1;
 export const PROBLEM_SOLVE_REPUTATION_POINTS = 1;
 export const PROBLEM_SOLVE_REPUTATION_LIMIT = 10;
 export const ILLUSTRATED_CONTENT_REPUTATION_POINTS = 2;
+export const AUTHORED_SOLUTION_BASE_REPUTATION_POINTS = 2;
 export const USEFUL_SOLUTION_VOTE_THRESHOLD = 3;
 export const USEFUL_SOLUTION_BASE_REPUTATION_POINTS = 8;
 export const USEFUL_SOLUTION_EXTRA_VOTE_POINTS = 2;
@@ -63,14 +64,17 @@ export function solutionAuthorshipReputationBonus(input: {
   hasIllustration: boolean;
 }) {
   const usefulVoteCount = Math.max(0, Math.floor(input.usefulVoteCount));
-  if (usefulVoteCount < USEFUL_SOLUTION_VOTE_THRESHOLD) return 0;
+  if (usefulVoteCount < USEFUL_SOLUTION_VOTE_THRESHOLD) {
+    return AUTHORED_SOLUTION_BASE_REPUTATION_POINTS;
+  }
 
-  return Math.min(
-    USEFUL_SOLUTION_REPUTATION_LIMIT,
-    USEFUL_SOLUTION_BASE_REPUTATION_POINTS
-      + (usefulVoteCount - USEFUL_SOLUTION_VOTE_THRESHOLD) * USEFUL_SOLUTION_EXTRA_VOTE_POINTS
-      + (input.hasIllustration ? ILLUSTRATED_CONTENT_REPUTATION_POINTS : 0)
-  );
+  return AUTHORED_SOLUTION_BASE_REPUTATION_POINTS
+    + Math.min(
+      USEFUL_SOLUTION_REPUTATION_LIMIT,
+      USEFUL_SOLUTION_BASE_REPUTATION_POINTS
+        + (usefulVoteCount - USEFUL_SOLUTION_VOTE_THRESHOLD) * USEFUL_SOLUTION_EXTRA_VOTE_POINTS
+        + (input.hasIllustration ? ILLUSTRATED_CONTENT_REPUTATION_POINTS : 0)
+    );
 }
 
 export function reviewedContributionReputationBonus(reviewedPageCount: number) {

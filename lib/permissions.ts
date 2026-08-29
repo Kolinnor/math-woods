@@ -121,6 +121,11 @@ export function canDeleteProblem(user: PermissionUser, problem: ProblemPermissio
   return canArchiveProblem(user, problem);
 }
 
+export function canTransferProblemAttribution(userOrRole: PermissionUser | Role) {
+  const role = typeof userOrRole === "string" ? userOrRole : userOrRole.role;
+  return hasAdminPrivileges(role);
+}
+
 export function canSetProblemQualityStatus(role: Role, status: QualityStatus) {
   if (status === QualityStatus.UNREVIEWED || status === QualityStatus.NEEDS_WORK) return true;
   if (status === QualityStatus.REVIEWED) return hasTrustedPrivileges(role);

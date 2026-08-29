@@ -307,6 +307,7 @@ enum NotificationType {
   USER_REGISTERED
   PROBLEM_CREATED
   PROBLEM_DELETED
+  PROBLEM_ATTRIBUTION_TRANSFERRED
   CONCEPT_CREATED
   CONCEPT_EDITED
   CONTRIBUTION_REQUEST_CLAIMED
@@ -397,6 +398,9 @@ model User {
   updatedAt                       DateTime                        @updatedAt
   deletedAt                       DateTime?
   problems                        Problem[]
+  problemAttributionsFrom         ProblemAttributionTransfer[]    @relation("ProblemAttributionFrom")
+  problemAttributionsTo           ProblemAttributionTransfer[]    @relation("ProblemAttributionTo")
+  problemAttributionsTransferred  ProblemAttributionTransfer[]    @relation("ProblemAttributionActor")
   conceptsCreated                 Concept[]                       @relation("ConceptCreatedBy")
   conceptsEdited                  Concept[]                       @relation("ConceptLastEditedBy")
   revisions                       PageRevision[]
@@ -668,6 +672,7 @@ model Problem {
   createdAt                DateTime                        @default(now())
   updatedAt                DateTime                        @updatedAt
   author                   User                            @relation(fields: [authorId], references: [id])
+  attributionTransfers     ProblemAttributionTransfer[]
   knownSource              KnownProblemSource?             @relation(fields: [knownSourceId], references: [id], onDelete: SetNull)
   thread                   DiscussionThread?
   attempts                 ProblemAttempt[]
@@ -705,6 +710,28 @@ model Problem {
   @@index([translationGroupId])
   @@index([translatedFromProblemId])
   @@index([knownSourceId])
+}
+
+model ProblemAttributionTransfer {
+  id                       Int      @id @default(autoincrement())
+  problemId                Int
+  fromUserId               Int?
+  toUserId                 Int?
+  transferredById          Int?
+  fromDisplayName          String
+  toDisplayName            String
+  transferredByDisplayName String
+  reason                   String?  @db.Text
+  createdAt                DateTime @default(now())
+  problem                  Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  fromUser                 User?    @relation("ProblemAttributionFrom", fields: [fromUserId], references: [id], onDelete: SetNull)
+  toUser                   User?    @relation("ProblemAttributionTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  transferredBy            User?    @relation("ProblemAttributionActor", fields: [transferredById], references: [id], onDelete: SetNull)
+
+  @@index([problemId, createdAt])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([transferredById])
 }
 
 model KnownProblemSource {
@@ -1079,19 +1106,19 @@ model ProblemAttempt {
 }
 
 model ProblemRecommendationExposure {
-  id                 Int                                    @id @default(autoincrement())
+  id                 Int                                   @id @default(autoincrement())
   userId             Int
   problemId          Int
   translationGroupId String
-  exposureCount      Int                                    @default(1)
-  firstOpenedAt      DateTime                               @default(now())
-  lastOpenedAt       DateTime                               @default(now())
+  exposureCount      Int                                   @default(1)
+  firstOpenedAt      DateTime                              @default(now())
+  lastOpenedAt       DateTime                              @default(now())
   dismissedAt        DateTime?
   dismissalReason    ProblemRecommendationDismissalReason?
-  createdAt          DateTime                               @default(now())
-  updatedAt          DateTime                               @updatedAt
-  user               User                                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problem            Problem                                @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  createdAt          DateTime                              @default(now())
+  updatedAt          DateTime                              @updatedAt
+  user               User                                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem            Problem                               @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, translationGroupId])
   @@index([userId, lastOpenedAt])
@@ -2019,6 +2046,7 @@ model Notification {
   userId                Int
   actorId               Int?
   type                  NotificationType
+  aggregationKey        String?
   title                 String
   body                  String
   href                  String
@@ -2031,6 +2059,7 @@ model Notification {
   trustedUserReview     TrustedUserRecommendation?
   siteImprovementReview SiteImprovementCompletionReview?
 
+  @@unique([userId, type, aggregationKey])
   @@index([userId, readAt, createdAt])
   @@index([actorId])
 }

@@ -2,7 +2,6 @@ import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypt
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { NotificationType } from "@prisma/client";
 import {
   defaultAvatarPath,
   parseAvatarBackground,
@@ -11,11 +10,12 @@ import {
 import { AUTH_RETURN_TO_HEADER, loginHrefForReturnTo } from "@/lib/auth-return";
 import { prisma } from "@/lib/db";
 import { parseMathLevel } from "@/lib/math-levels";
-import { notifyOwnerOfSiteActivity } from "@/lib/notifications";
+import { inviteNewUserFromOwner } from "@/lib/owner-welcome";
 import { canUseAdminTools, canUseModerationTools, canUseOwnerTools } from "@/lib/permissions";
 import { ensureSlug } from "@/lib/slug";
-import { displayNameForUser, normalizeDisplayName } from "@/lib/user-display";
-import { profilePath, usernameLookupFilter } from "@/lib/usernames";
+import { normalizeDisplayName } from "@/lib/user-display";
+import { usernameLookupFilter } from "@/lib/usernames";
+import { notifyTrustedUsersOfRegistration } from "@/lib/user-registration-notifications";
 
 const SESSION_COOKIE = "math_woods_session";
 const LEGACY_SESSION_COOKIES = ["math_hills_session", "math_garden_session"];
@@ -169,27 +169,25 @@ export async function registerUser(
   });
   if (usernameOwner) throw new Error("This username is already in use.");
 
-  const user = await prisma.user.create({
-    data: {
-      username,
-      profileSlug: username,
-      displayName,
-      email,
-      mathLevel,
-      avatarUrl: avatarPreset ? defaultAvatarPath(avatarPreset) : null,
-      avatarBackground,
-      passwordHash: hashPassword(password)
-    }
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        username,
+        profileSlug: username,
+        displayName,
+        email,
+        mathLevel,
+        avatarUrl: avatarPreset ? defaultAvatarPath(avatarPreset) : null,
+        avatarBackground,
+        passwordHash: hashPassword(password)
+      }
+    });
+    await inviteNewUserFromOwner(tx, created.id);
+    return created;
   });
 
   await createSession(user.id);
-  await notifyOwnerOfSiteActivity({
-    actor: user,
-    type: NotificationType.USER_REGISTERED,
-    title: "New account created",
-    body: `${displayNameForUser(user)} joined Math Woods.`,
-    href: profilePath(user)
-  });
+  await notifyTrustedUsersOfRegistration();
   return user;
 }
 
