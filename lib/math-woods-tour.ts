@@ -81,7 +81,7 @@ export const mathWoodsTourCopy = {
         target: "nav-problems",
         placement: "bottom",
         action: "open-problems",
-        text: "Cliquez maintenant sur « Problèmes » dans la véritable barre de navigation pour accéder au navigateur de problèmes."
+        text: "Cliquez maintenant sur « Problèmes » dans la barre de navigation pour accéder au navigateur de problèmes."
       },
       {
         target: "problem-browser",
