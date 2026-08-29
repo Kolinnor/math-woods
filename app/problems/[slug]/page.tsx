@@ -60,7 +60,6 @@ import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
 import { canViewProblemSolutions } from "@/lib/problem-solution-visibility";
 import { COMMUNITY_ACCEPTED_PROOF_VOTES } from "@/lib/problems";
 import { problemLinkClass } from "@/lib/problem-link";
-import { problemStyleLabel } from "@/lib/problem-styles";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { solutionConcernIsPublic } from "@/lib/solution-reports";
 import {
@@ -858,19 +857,6 @@ export default async function ProblemPage({
                   </form>
                 </>
               )}
-            </div>
-          )}
-          {problem.styles.length > 0 && (
-            <div className="problem-detail-tags zen-meta">
-              {problem.styles.map((style) => (
-                <Link
-                  key={style}
-                  href={`/problems?filterField=style&filterOp=is&filterValue=${style}`}
-                  className="tag"
-                >
-                  {problemStyleLabel(style, interfaceLocale)}
-                </Link>
-              ))}
             </div>
           )}
           {showSpoilerTags && (
