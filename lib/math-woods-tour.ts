@@ -92,7 +92,7 @@ export const mathWoodsTourCopy = {
         target: "open-problem",
         placement: "top",
         action: "open-problem",
-        text: "Cette liste contient les problèmes postés par les contributeurs. Cliquez sur le premier problème mis en évidence pour ouvrir sa véritable page."
+        text: "Cette liste contient tous les problèmes postés par la communauté. Cliquez sur le premier problème mis en évidence pour ouvrir sa page."
       },
       {
         target: "statement",
