@@ -30,7 +30,7 @@ export const mathWoodsTourCopy = {
   fr: {
     pageTitle: "C'est quoi Math Woods\u00a0?",
     intro:
-      "Découvrez les principales pages de Math Woods avec un exemple guidé d’environ trois minutes. Le parcours se déroule sur le vrai site et ne modifie ni votre compte ni votre progression.",
+      "Découvrez les principales pages de Math Woods en quelques minutes.",
     language: "Langue du tutoriel",
     start: "Démarrer le tutoriel",
     backToSite: "Retourner sur Math Woods",
