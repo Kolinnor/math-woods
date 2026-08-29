@@ -25,7 +25,7 @@ type AttributionLabels = {
   reasonPlaceholder: string;
   transfer: string;
   transferring: string;
-  confirm: (name: string) => string;
+  confirm: string;
 };
 
 function TransferButton({ disabled, labels }: { disabled: boolean; labels: AttributionLabels }) {
@@ -95,7 +95,8 @@ export function ProblemAttributionTransferForm({
         action={transferProblemAttributionAction.bind(null, problemId)}
         className="grid gap-4 p-5 pt-2"
         onSubmit={(event) => {
-          if (!selectedUser || !window.confirm(labels.confirm(selectedUser.name))) event.preventDefault();
+          const confirmation = labels.confirm.replace("{name}", selectedUser?.name ?? "");
+          if (!selectedUser || !window.confirm(confirmation)) event.preventDefault();
         }}
       >
         <p className="muted text-sm">{labels.help}</p>

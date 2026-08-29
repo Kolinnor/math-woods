@@ -419,7 +419,7 @@ export default async function EditProblemPage({
                 reasonPlaceholder: t.contentEditor.transferReasonPlaceholder,
                 transfer: t.contentEditor.transferAttributionAction,
                 transferring: t.contentEditor.transferringAttribution,
-                confirm: t.contentEditor.confirmAttributionTransfer
+                confirm: t.contentEditor.confirmAttributionTransfer("{name}")
               }}
               problemId={problem.id}
             />
