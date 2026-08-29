@@ -123,7 +123,7 @@ export const mathWoodsTourCopy = {
   en: {
     pageTitle: "What is Math Woods?",
     intro:
-      "Discover the main pages of Math Woods through a guided example lasting about three minutes. The tour runs on the real site and does not change your account or progress.",
+      "Discover the main pages of Math Woods in a few minutes.",
     language: "Tour language",
     start: "Start the tour",
     backToSite: "Back to Math Woods",
@@ -148,7 +148,7 @@ export const mathWoodsTourCopy = {
       {
         target: "progress",
         placement: "left",
-        text: "Here you can see how many problems you have solved in each category. This progress panel appears once you are signed in."
+        text: "Here you can see how many problems you have solved in each category. This progress appears once you are signed in to your account."
       },
       {
         target: "recommendations",
@@ -174,23 +174,23 @@ export const mathWoodsTourCopy = {
         target: "nav-problems",
         placement: "bottom",
         action: "open-problems",
-        text: "Now select “Problems” in the real navigation bar to open the problem browser."
+        text: "Now select “Problems” in the navigation bar to open the problem browser."
       },
       {
         target: "problem-browser",
         placement: "top",
-        text: "This is the site's real browser. You can sort problems by difficulty, filter them by domain, choose their language, or search by keyword."
+        text: "This is the problem browser. You can sort problems by difficulty, filter them by domain, or search by keyword."
       },
       {
         target: "open-problem",
         placement: "top",
         action: "open-problem",
-        text: "This list contains problems posted by contributors. Select the first highlighted problem to open its real page."
+        text: "This list contains all the problems posted by the community. Select the first highlighted problem to open its page."
       },
       {
         target: "statement",
         placement: "bottom",
-        text: "Here is a real problem statement. The controls just below let you work on it, mark it as solved, and like it. None of these actions are recorded during the tour."
+        text: "Here is a problem statement. The controls just below let you work on it, mark it as solved, and like it. None of these actions are recorded during the tour."
       },
       {
         target: "help",
