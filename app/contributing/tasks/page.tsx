@@ -1,6 +1,8 @@
 import { ConceptStatus, ProblemStatus, QualityStatus } from "@prisma/client";
 import Link from "next/link";
 import { BookOpen, Languages, ListChecks } from "lucide-react";
+import type { Route } from "next";
+import { ContributionGuideCallout } from "@/components/ContributionGuideCallout";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ContributionTasksTabs } from "@/components/ContributionTasksTabs";
 import { getCurrentUser } from "@/lib/auth";
@@ -133,12 +135,22 @@ export default async function ContributionTasksPage() {
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
       meta={<p>{copy.remaining(remaining)}</p>}
-      actions={<Link href="/contributing" className="button secondary">{copy.back}</Link>}
+      actions={
+        <>
+          <Link href={"/guide" as Route} className="button secondary">{t.guideLink}</Link>
+          <Link href="/contributing" className="button secondary">{copy.back}</Link>
+        </>
+      }
     >
       <ContributionTasksTabs
         current="content"
         labels={{ content: improvementCopy.tabTasks, site: improvementCopy.tabImprovements }}
         showSiteImprovements={Boolean(user && canUseModerationTools(user))}
+      />
+      <ContributionGuideCallout
+        text={copy.guideCallout}
+        linkLabel={copy.guideCalloutLink}
+        dismissLabel={copy.guideCalloutDismiss}
       />
       <div className="contribution-task-sections">
         {sections.map((section) => {

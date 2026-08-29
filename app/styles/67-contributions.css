@@ -759,3 +759,70 @@ button.contribution-request-button:hover,
 .contribution-page-section .prose-math {
   margin-top: 0.5rem;
 }
+
+.guide-intro {
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+  max-width: 60ch;
+}
+
+.guide-sections {
+  display: grid;
+  gap: 1.75rem;
+}
+
+.guide-section > h2 {
+  margin: 0 0 0.5rem;
+}
+
+.guide-section :is(p, ul) {
+  max-width: 70ch;
+}
+
+.contribution-task-guide {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin: 1.25rem 0 1.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.contribution-task-guide p {
+  flex: 1 1 24rem;
+  margin: 0;
+}
+
+.contribution-task-guide-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+}
+
+.contribution-task-guide .button {
+  flex: 0 0 auto;
+}
+
+.contribution-task-guide-dismiss {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  min-height: 2rem;
+  min-width: 2rem;
+  padding: 0;
+}
+
+.contribution-task-guide-dismiss:hover,
+.contribution-task-guide-dismiss:focus-visible {
+  background: var(--panel-muted);
+  color: var(--fg);
+}

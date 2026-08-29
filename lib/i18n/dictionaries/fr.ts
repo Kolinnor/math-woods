@@ -1147,6 +1147,10 @@ export const fr = {
     description: "Choisissez une tâche concrète et améliorez Math Woods une page après l'autre.",
     remaining: (count: number) => `${count} élément${count > 1 ? "s" : ""} restant${count > 1 ? "s" : ""}`,
     back: "Contribuer",
+    guideCallout:
+      "Première contribution ? Le guide explique en deux minutes ce qu'on attend d'une page, et surtout comment lier les concepts entre eux.",
+    guideCalloutLink: "Lire le guide",
+    guideCalloutDismiss: "Masquer ce rappel",
     concepts: "Concepts",
     problems: "Problèmes",
     translations: "Traductions",
@@ -1270,12 +1274,50 @@ export const fr = {
     label: "Langue",
     choose: "Choisir la langue"
   },
+  guideLink: "Guide du contributeur",
+  guide: {
+    title: "Guide du contributeur",
+    description: "Ce que Math Woods attend d'une page, en deux minutes environ.",
+    intro:
+      "Math Woods est un graphe, pas une collection de pages séparées. Une page devient utile quand elle est reliée aux autres : lier est donc l'habitude qui compte le plus ici.",
+    backToTasks: "Ce qu'il reste à faire",
+    sections: [
+      {
+        title: "Lier",
+        bodyMarkdown:
+          "Écrivez `[[Concept]]` pour lier un concept, ou `[[Concept|texte visible]]` quand la phrase demande une autre formulation. La cible placée avant le `|` est ce qui relie toutes les langues à la même idée ; le texte qui suit est ce que voit le lecteur. Les problèmes utilisent des liens Markdown ordinaires, comme `[un problème](/problems/slug)`.\n\nL'éditeur dispose d'un bouton **Lien** dans sa barre d'outils, et rappelle cette syntaxe sous la zone de texte pendant que vous écrivez.\n\nLier une page qui n'existe pas encore est utile, pas une erreur : elle devient une page demandée qu'un autre contributeur pourra reprendre, et elle apparaît comme lien entrant de l'autre côté."
+      },
+      {
+        title: "Ce que vous pouvez écrire",
+        bodyMarkdown:
+          "Les **concepts** sont des pages d'encyclopédie de type wiki : une définition, des exemples, des contre-exemples. Les **problèmes** sont des énoncés accompagnés d'indices et de solutions. Les **preuves** se rattachent à un problème. Les **playlists** et les **explorations** organisent en parcours du matériel existant.\n\nUne première version courte est bienvenue. La clarté compte davantage que l'exhaustivité."
+      },
+      {
+        title: "Les statuts",
+        bodyMarkdown:
+          "Un concept passe d'ébauche à utilisable, puis à relu. Signaler honnêtement l'état de son propre travail est plus utile que de le faire paraître achevé : les statuts **À améliorer** et « ébauche » indiquent aux autres contributeurs où l'aide est nécessaire."
+      },
+      {
+        title: "Les sources",
+        bodyMarkdown:
+          "Citez un manuel, un article ou des notes de cours quand une affirmation demande un appui, et dites-le lorsque la source est incertaine. Ne proposez que ce que vous avez écrit, ce qui appartient au domaine public, ou ce que vous avez le droit de publier sous la licence du projet. Ne recopiez pas d'énoncés ni de solutions tirés de livres ou de concours."
+      },
+      {
+        title: "Traduire",
+        bodyMarkdown:
+          "Chaque traduction est une page à part entière. En traduisant, conservez la cible du lien avant le `|` et ne traduisez que le texte visible qui suit, afin que toutes les langues restent reliées à la même idée mathématique."
+      }
+    ]
+  },
   markdownEditor: {
     toolsAriaLabel: "Outils de l'éditeur",
     insertImage: "Insérer une image",
     insertCollapsible: "Insérer une section repliable",
     insertJsxgraph: "Insérer une figure interactive JSXGraph",
     fold: "Replier",
+    link: "Lien",
+    image: "Image",
+    uploading: "Envoi en cours",
     jsxgraph: "JSXGraph",
     restoreLocalDraft: "Restaurer le brouillon local",
     discardLocalDraft: "Supprimer le brouillon local",
@@ -1299,6 +1341,9 @@ export const fr = {
     cancel: "Annuler",
     conceptLinkSyntaxHelp:
       "Les liens de concept s'écrivent [[cible|texte visible]]. La cible avant le | relie toutes les langues à la même idée ; le texte après le | est ce que voit le lecteur.",
+    syntaxHelpMore: "Guide du contributeur",
+    syntaxHelpInline:
+      "Liez un concept avec [[Nom]], ou [[Nom|texte visible]] pour afficher une autre formulation. Les problèmes utilisent [texte](/problems/slug).",
     problemLinkSyntaxHelp: "Les liens de problème sont des liens Markdown ordinaires vers /problems/slug."
   },
   contentEditor: {

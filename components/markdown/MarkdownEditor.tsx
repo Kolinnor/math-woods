@@ -17,7 +17,7 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
-import { ChevronDown, ImageIcon, Loader2, Orbit } from "lucide-react";
+import { ChevronDown, ImageIcon, Link2, Loader2, Orbit } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import { FieldHelp } from "@/components/FieldHelp";
 import { MarkdownInline } from "@/components/MarkdownInline";
@@ -1528,6 +1528,7 @@ export function MarkdownEditor({
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
   const [conflictingDraft, setConflictingDraft] = useState<MarkdownDraft | null>(null);
   const [linkMenu, setLinkMenu] = useState<LinkMenuState | null>(null);
+  const openLinkMenuRef = useRef<((x: number, y: number) => void) | null>(null);
   const [linkMenuPosition, setLinkMenuPosition] = useState<LinkMenuPosition | null>(null);
   const [linkTargetType, setLinkTargetType] = useState<LinkTargetType>("concept");
   const [linkTarget, setLinkTarget] = useState("");
@@ -1703,27 +1704,13 @@ export function MarkdownEditor({
     };
     const openLinkMenu = (event: MouseEvent) => {
       const selection = view.state.selection.main;
+      // With nothing selected, leave the browser's own context menu alone.
+      // The toolbar button is the discoverable entry point.
       if (selection.empty) return;
-
-      const selectedText = view.state.doc.sliceString(selection.from, selection.to).trim();
-      if (!selectedText) return;
-      const selectedLink = parseSelectedWikiLink(selectedText);
-      const selectedProblemLink = parseSelectedProblemLink(selectedText);
+      if (!view.state.doc.sliceString(selection.from, selection.to).trim()) return;
 
       event.preventDefault();
-      view.focus();
-      schedulePreviewFocus(view, true);
-      setLinkTargetType(selectedProblemLink ? "problem" : "concept");
-      setSelectedProblemSlug(selectedProblemLink?.slug ?? null);
-      setLinkTarget(selectedProblemLink?.slug ?? selectedLink?.target ?? cleanWikiLinkTarget(selectedText));
-      setLinkText(selectedProblemLink?.label ?? selectedLink?.label ?? selectedText);
-      setLinkMenu({
-        x: event.clientX,
-        y: event.clientY,
-        from: selection.from,
-        to: selection.to,
-        selectedText
-      });
+      openLinkMenuRef.current?.(event.clientX, event.clientY);
     };
     host.addEventListener("contextmenu", openLinkMenu);
     document.addEventListener("focusin", outsideInteraction, true);
@@ -1949,6 +1936,27 @@ export function MarkdownEditor({
     });
   }
 
+  const openLinkMenuAt = (x: number, y: number) => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const selection = view.state.selection.main;
+    const selectedText = view.state.doc.sliceString(selection.from, selection.to).trim();
+    const selectedLink = selectedText ? parseSelectedWikiLink(selectedText) : null;
+    const selectedProblemLink = selectedText ? parseSelectedProblemLink(selectedText) : null;
+
+    view.focus();
+    schedulePreviewFocus(view, true);
+    setLinkTargetType(selectedProblemLink ? "problem" : "concept");
+    setSelectedProblemSlug(selectedProblemLink?.slug ?? null);
+    setLinkTarget(
+      selectedProblemLink?.slug ?? selectedLink?.target ?? (selectedText ? cleanWikiLinkTarget(selectedText) : "")
+    );
+    setLinkText(selectedProblemLink?.label ?? selectedLink?.label ?? selectedText);
+    setLinkMenu({ x, y, from: selection.from, to: selection.to, selectedText });
+  };
+  openLinkMenuRef.current = openLinkMenuAt;
+
   function closeLinkMenu() {
     setLinkMenu(null);
     setLinkSuggestions([]);
@@ -2161,7 +2169,7 @@ export function MarkdownEditor({
             title={labels.insertImage}
           >
             {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
-            <span>{imageUploading ? "Uploading" : "Image"}</span>
+            <span>{imageUploading ? labels.uploading : labels.image}</span>
           </button>
         )}
         <button
@@ -2181,6 +2189,18 @@ export function MarkdownEditor({
         >
           <ChevronDown size={14} aria-hidden="true" />
           <span>{labels.fold}</span>
+        </button>
+        <button
+          type="button"
+          className="secondary markdown-editor-tool-button"
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            openLinkMenuAt(rect.left, rect.bottom + 4);
+          }}
+          title={labels.addLink}
+        >
+          <Link2 size={14} aria-hidden="true" />
+          <span>{labels.link}</span>
         </button>
         {imageUploadEnabled && imageUploadMessage && (
           <span className="markdown-editor-toolbar-status">
@@ -2205,6 +2225,14 @@ export function MarkdownEditor({
         )}
       </div>}
       <div ref={hostRef} className="markdown-editor-host" />
+      {!titleMode && (
+        <p className="markdown-editor-syntax-help muted text-sm">
+          {labels.syntaxHelpInline}{" "}
+          <a href="/guide" target="_blank" rel="noreferrer">
+            {labels.syntaxHelpMore}
+          </a>
+        </p>
+      )}
       {characterGuide && (
         <div
           className={`markdown-editor-character-guide${value.length > characterGuide.target ? " is-over" : ""}`}
@@ -2245,6 +2273,9 @@ export function MarkdownEditor({
               {labels.linkTypeProblem}
             </button>
           </div>
+          <p className="markdown-link-menu-syntax muted text-sm">
+            {linkTargetType === "concept" ? labels.conceptLinkSyntaxHelp : labels.problemLinkSyntaxHelp}
+          </p>
           <label>
             <span className="field-label-with-help">
               {labels.textShown}

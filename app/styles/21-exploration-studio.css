@@ -3399,6 +3399,18 @@ button.markdown-editor-tool-button:disabled svg {
   gap: 0.45rem;
 }
 
+.markdown-editor-syntax-help {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0.4rem 0 0;
+}
+
+.markdown-link-menu-syntax {
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0.1rem 0 0;
+}
+
 .markdown-link-menu-type {
   background: var(--panel-muted);
   border: 1px solid var(--line);

@@ -1142,6 +1142,10 @@ export const en = {
     description: "Pick a concrete task and help improve one page at a time.",
     remaining: (count: number) => `${count} remaining items`,
     back: "Contributing",
+    guideCallout:
+      "New here? The guide explains what a page is expected to contain, and above all how to link concepts together, in about two minutes.",
+    guideCalloutLink: "Read the guide",
+    guideCalloutDismiss: "Hide this reminder",
     concepts: "Concepts",
     problems: "Problems",
     translations: "Translations",
@@ -1265,12 +1269,50 @@ export const en = {
     label: "Language",
     choose: "Choose language"
   },
+  guideLink: "Contributor guide",
+  guide: {
+    title: "Contributor guide",
+    description: "What Math Woods expects from a page, in about two minutes.",
+    intro:
+      "Math Woods is a graph, not a collection of separate pages. A page becomes useful when it is connected to the others, so linking is the habit that matters most here.",
+    backToTasks: "What is left to do",
+    sections: [
+      {
+        title: "Linking",
+        bodyMarkdown:
+          "Write `[[Concept]]` to link a concept, or `[[Concept|visible text]]` when the sentence needs different wording. The target before `|` is what keeps every language connected to the same idea; the text after it is what readers see. Problems use ordinary Markdown links such as `[a problem](/problems/slug)`.\n\nThe editor has a **Link** button in its toolbar, and shows this syntax under the text area while you write.\n\nLinking to a page that does not exist yet is useful rather than a mistake: it becomes a requested page that another contributor can pick up, and it appears as an incoming link on the other side."
+      },
+      {
+        title: "What you can write",
+        bodyMarkdown:
+          "**Concepts** are wiki-style encyclopedia pages: a definition, examples, counterexamples. **Problems** are statements with hints and solutions. **Proofs** are attached to a problem. **Playlists** and **explorations** arrange existing material into a path.\n\nA short first version is welcome. Clarity matters more than completeness."
+      },
+      {
+        title: "Statuses",
+        bodyMarkdown:
+          "Concepts move from stub to usable to reviewed. Marking your own work honestly is more useful than making it look finished: **Needs work** and stub statuses tell other contributors where help is needed."
+      },
+      {
+        title: "Sources",
+        bodyMarkdown:
+          "Cite a textbook, paper, or lecture notes when a claim needs support, and say so when a source is uncertain. Submit only what you wrote, what is in the public domain, or what you may publish under the project licence. Do not copy statements or solutions from books or contests."
+      },
+      {
+        title: "Translating",
+        bodyMarkdown:
+          "Each translation is its own page. When you translate, keep the link target before `|` unchanged and translate only the visible text after it, so every language stays connected to the same mathematical idea."
+      }
+    ]
+  },
   markdownEditor: {
     toolsAriaLabel: "Editor tools",
     insertImage: "Insert image",
     insertCollapsible: "Insert collapsible section",
     insertJsxgraph: "Insert interactive JSXGraph",
     fold: "Fold",
+    link: "Link",
+    image: "Image",
+    uploading: "Uploading",
     jsxgraph: "JSXGraph",
     restoreLocalDraft: "Restore local draft",
     discardLocalDraft: "Discard local draft",
@@ -1294,6 +1336,9 @@ export const en = {
     cancel: "Cancel",
     conceptLinkSyntaxHelp:
       "Concept links use [[target|visible text]]. The target before | connects every language to the same idea; the text after | is what readers see.",
+    syntaxHelpMore: "Contributor guide",
+    syntaxHelpInline:
+      "Link a concept with [[Name]], or [[Name|visible text]] to show different wording. Problems use [text](/problems/slug).",
     problemLinkSyntaxHelp: "Problem links are ordinary Markdown links to /problems/slug."
   },
   contentEditor: {

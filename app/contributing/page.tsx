@@ -183,6 +183,9 @@ export default async function ContributingPage({
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3 border-t border-line pt-6">
+        <Link href={"/guide" as Route} className="button secondary">
+          {t.guideLink}
+        </Link>
         <Link href="/concepts/new" className="button secondary">
           {labels.addConcept}
         </Link>
