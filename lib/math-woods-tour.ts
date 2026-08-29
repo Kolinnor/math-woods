@@ -86,7 +86,7 @@ export const mathWoodsTourCopy = {
       {
         target: "problem-browser",
         placement: "top",
-        text: "Voici le navigateur réel du site. Vous pouvez trier les problèmes par difficulté, les filtrer par domaine, choisir leur langue ou rechercher un mot-clé."
+        text: "Voici le navigateur de problèmes. Vous pouvez trier les problèmes par difficulté, les filtrer par domaine ou rechercher un mot-clé."
       },
       {
         target: "open-problem",
