@@ -831,6 +831,11 @@ body.math-woods-tour-running .guest-progress-prompt {
   pointer-events: none !important;
 }
 
+.math-tour-live-target[data-tour-target="recommendations"] {
+  border-radius: 8px;
+  background: var(--mw-surface);
+}
+
 .math-tour-live-target-interactive {
   cursor: pointer;
   pointer-events: auto !important;
