@@ -1345,6 +1345,15 @@ assert.deepEqual(normalizeDisplayMathLineBreaks("test $$math$$", 5), {
   cursor: 5,
   changed: true
 });
+const divisibilityPrompt = String.raw`Soit $a$ et $b$ deux entiers positifs tels que $ab+1$ [[Divisibilité|divise]] $a^2+b^2$.
+Montrer que $$\frac{a^{2}+b^{2}}{ab+1}$$ est un [[carré parfait|carré parfait]].`;
+assert.equal(
+  normalizeDisplayMathLineBreaks(divisibilityPrompt).text,
+  String.raw`Soit $a$ et $b$ deux entiers positifs tels que $ab+1$ [[Divisibilité|divise]] $a^2+b^2$.
+Montrer que
+$$\frac{a^{2}+b^{2}}{ab+1}$$
+est un [[carré parfait|carré parfait]].`
+);
 assert.deepEqual(
   normalizeDisplayMathLineBreaks(
     "Applying $f$ on both sides gives\n$$f(f(f(x)))=f(x+1)$$\nbut this is also equal to $f(x)+1$.",
@@ -1798,11 +1807,13 @@ assert.deepEqual(parseLatexCustomCommands("RR => \\mathbb{R}\n% ignored\nbad lin
 ]);
 assert.deepEqual(latexTextInputShortcut("Let ", 4, 4, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 4, to: 4, insert: "$$" },
-  anchor: 5
+  anchor: 5,
+  skipDisplayMathLineBreakNormalization: true
 });
 assert.deepEqual(latexTextInputShortcut("Before after\n$$y$$", 7, 7, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 7, to: 7, insert: "$$" },
-  anchor: 8
+  anchor: 8,
+  skipDisplayMathLineBreakNormalization: true
 });
 assert.deepEqual(latexTextInputShortcut("Let x", 4, 5, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 4, to: 5, insert: "$x$" },
@@ -1810,7 +1821,8 @@ assert.deepEqual(latexTextInputShortcut("Let x", 4, 5, "$", DEFAULT_LATEX_PREFER
 });
 assert.deepEqual(latexTextInputShortcut("$", 1, 1, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 1, to: 1, insert: "$$" },
-  anchor: 2
+  anchor: 2,
+  skipDisplayMathLineBreakNormalization: true
 });
 assert.deepEqual(latexTextInputShortcut("$$", 1, 1, "$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 1, to: 1, insert: "$$" },
@@ -1818,11 +1830,13 @@ assert.deepEqual(latexTextInputShortcut("$$", 1, 1, "$", DEFAULT_LATEX_PREFERENC
 });
 assert.deepEqual(latexTextInputShortcut("Let ", 4, 4, "$$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 4, to: 4, insert: "$$" },
-  anchor: 5
+  anchor: 5,
+  skipDisplayMathLineBreakNormalization: true
 });
 assert.deepEqual(latexTextInputShortcut("Let $$", 5, 5, "$$", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 5, to: 5, insert: "" },
-  anchor: 6
+  anchor: 6,
+  skipDisplayMathLineBreakNormalization: true
 });
 const previewFocusEffect = StateEffect.define<boolean>();
 const displayMathNormalizer = createDisplayMathLineBreakNormalizer(previewFocusEffect);
@@ -1845,6 +1859,33 @@ const genuineDisplayTransaction = genuineDisplayState.update({
   selection: { anchor: 10 }
 });
 assert.equal(genuineDisplayTransaction.newDoc.toString(), "Before\n$$x$$\nafter");
+const mobileGroupedDollarState = EditorState.create({
+  doc: "Texte ",
+  extensions: [displayMathNormalizer]
+});
+const mobileOpenDollars = latexTextInputShortcut("Texte ", 6, 6, "$$", DEFAULT_LATEX_PREFERENCES)!;
+const mobileOpenTransaction = mobileGroupedDollarState.update({
+  changes: mobileOpenDollars.changes,
+  selection: { anchor: mobileOpenDollars.anchor! },
+  annotations: skipDisplayMathLineBreakNormalization.of(true)
+});
+const mobileFormulaTransaction = mobileOpenTransaction.state.update({
+  changes: { from: 7, to: 7, insert: "x" },
+  selection: { anchor: 8 }
+});
+const mobileCloseDollars = latexTextInputShortcut(
+  mobileFormulaTransaction.newDoc.toString(),
+  8,
+  8,
+  "$$",
+  DEFAULT_LATEX_PREFERENCES
+)!;
+const mobileCloseTransaction = mobileFormulaTransaction.state.update({
+  changes: mobileCloseDollars.changes,
+  selection: { anchor: mobileCloseDollars.anchor! },
+  annotations: skipDisplayMathLineBreakNormalization.of(true)
+});
+assert.equal(mobileCloseTransaction.newDoc.toString(), "Texte $x$");
 assert.deepEqual(latexTextInputShortcut("`code ", 6, 6, "$", DEFAULT_LATEX_PREFERENCES), null);
 assert.deepEqual(latexTextInputShortcut("$x$", 2, 2, "^", DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 2, to: 2, insert: "^{}" },

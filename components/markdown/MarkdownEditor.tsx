@@ -30,6 +30,10 @@ import {
 } from "@/lib/latex-preferences";
 import { latexDeleteChange, type LatexDeleteDirection } from "@/lib/latex-deletion";
 import {
+  createDisplayMathLineBreakNormalizer,
+  skipDisplayMathLineBreakNormalization
+} from "@/lib/latex-display-line-transactions";
+import {
   latexEditorPreferencesFromApi,
   latexKeyboardShortcut,
   latexShiftEnterShortcut,
@@ -946,6 +950,9 @@ function dispatchLatexShortcutResult(view: EditorView, result: LatexEditorShortc
     changes: result.changes,
     selection: typeof result.anchor === "number" ? { anchor: result.anchor } : undefined,
     effects: setPreviewFocus.of(true),
+    annotations: result.skipDisplayMathLineBreakNormalization
+      ? skipDisplayMathLineBreakNormalization.of(true)
+      : undefined,
     scrollIntoView: true
   });
 }
@@ -1080,6 +1087,7 @@ function clipboardImageFile(data: DataTransfer | null) {
 }
 
 const setPreviewFocus = StateEffect.define<boolean>();
+const displayMathLineBreakNormalizer = createDisplayMathLineBreakNormalizer(setPreviewFocus);
 const previewOnly = Transaction.addToHistory.of(false);
 const previewFocusField = StateField.define<boolean>({
   create: () => false,
@@ -1591,7 +1599,7 @@ export function MarkdownEditor({
           suppressLatexPreviewAfterLineJoin,
           liveMarkdownPreviewExtension(!titleMode),
           previewFocusEvents,
-          titleMode ? titleInputExtensions(maxLength) : [],
+          titleMode ? titleInputExtensions(maxLength) : displayMathLineBreakNormalizer,
           EditorView.domEventHandlers({
             paste: (event) => {
               if (!imageUploadEnabled) return false;
