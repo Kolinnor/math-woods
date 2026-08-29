@@ -55,7 +55,7 @@ export const mathWoodsTourCopy = {
       {
         target: "progress",
         placement: "left",
-        text: "Ici, vous voyez le nombre de problèmes que vous avez résolus dans chaque catégorie. Cette progression apparaît une fois connecté."
+        text: "Ici, vous voyez le nombre de problèmes que vous avez résolus dans chaque catégorie. Cette progression apparaît une fois connecté à votre compte."
       },
       {
         target: "recommendations",
