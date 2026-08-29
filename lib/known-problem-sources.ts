@@ -6,7 +6,7 @@ export type KnownProblemSourceIdentity = Pick<KnownProblemSource, "name" | "alia
 export const KNOWN_PROBLEM_SOURCE_ICON_SIZE = {
   default: 40,
   min: 24,
-  max: 72
+  max: 144
 } as const;
 
 export function normalizeKnownProblemSourceName(value: unknown) {

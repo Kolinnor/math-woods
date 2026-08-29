@@ -911,7 +911,8 @@ assert.equal(parseKnownProblemSourceIconSize(null), 40);
 assert.equal(parseKnownProblemSourceIconSize(""), 40);
 assert.equal(parseKnownProblemSourceIconSize("52"), 52);
 assert.equal(parseKnownProblemSourceIconSize("10"), 24);
-assert.equal(parseKnownProblemSourceIconSize("100"), 72);
+assert.equal(parseKnownProblemSourceIconSize("100"), 100);
+assert.equal(parseKnownProblemSourceIconSize("200"), 144);
 assert.equal(
   problemOriginMatchesKnownSource(" phil  caldero ", { name: "Phil Caldero", aliases: [] }),
   true
