@@ -50,6 +50,7 @@ export function MathWoodsTourOverlay({ initialLocale }: { initialLocale: MathWoo
   const requestedStep = parseMathWoodsTourStep(searchParams.get(MATH_WOODS_TOUR_STEP_PARAM), text.steps.length);
   const [stepIndex, setStepIndex] = useState(requestedStep);
   const [targetMissing, setTargetMissing] = useState(false);
+  const [spotlight, setSpotlight] = useState<{ top: number; right: number; bottom: number; left: number } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const active = searchParams.get(MATH_WOODS_TOUR_PARAM) === "1" && pathname !== "/about/tutorial";
   const step = text.steps[stepIndex];
@@ -124,12 +125,25 @@ export function MathWoodsTourOverlay({ initialLocale }: { initialLocale: MathWoo
       parents = [];
     };
 
+    const updateSpotlight = () => {
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      const margin = 9;
+      setSpotlight({
+        top: Math.max(0, rect.top - margin),
+        right: Math.min(window.innerWidth, rect.right + margin),
+        bottom: Math.min(window.innerHeight, rect.bottom + margin),
+        left: Math.max(0, rect.left - margin)
+      });
+    };
+
     const activateTarget = () => {
       cleanupTarget();
       target = visibleTarget(step.target!);
       if (!target) return false;
       setTargetMissing(false);
       target.classList.add("math-tour-live-target");
+      updateSpotlight();
       if (step.action === "open-problems" || step.action === "open-problem") {
         target.classList.add("math-tour-live-target-interactive");
       }
@@ -163,6 +177,7 @@ export function MathWoodsTourOverlay({ initialLocale }: { initialLocale: MathWoo
       }, 120);
     };
     window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", updateSpotlight, true);
 
     const handleTargetClick = (event: Event) => {
       if (!target || !target.contains(event.target as Node)) return;
@@ -184,11 +199,13 @@ export function MathWoodsTourOverlay({ initialLocale }: { initialLocale: MathWoo
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", updateSpotlight, true);
       document.removeEventListener("click", handleTargetClick, true);
       window.clearTimeout(missingTimer);
       window.clearTimeout(resizeTimer);
       window.clearTimeout(scrollTimer);
       cleanupTarget();
+      setSpotlight(null);
     };
   }, [active, navigate, step.action, step.target, stepIndex]);
 
@@ -231,7 +248,24 @@ export function MathWoodsTourOverlay({ initialLocale }: { initialLocale: MathWoo
 
   return (
     <div className="math-woods-tour-live" aria-live="polite">
-      <div className="math-tour-shade" aria-hidden="true" />
+      {spotlight ? (
+        <>
+          <div className="math-tour-shade" style={{ inset: `0 0 auto 0`, height: spotlight.top }} aria-hidden="true" />
+          <div className="math-tour-shade" style={{ inset: `${spotlight.bottom}px 0 0 0` }} aria-hidden="true" />
+          <div
+            className="math-tour-shade"
+            style={{ inset: `${spotlight.top}px auto auto 0`, width: spotlight.left, height: spotlight.bottom - spotlight.top }}
+            aria-hidden="true"
+          />
+          <div
+            className="math-tour-shade"
+            style={{ inset: `${spotlight.top}px 0 auto ${spotlight.right}px`, height: spotlight.bottom - spotlight.top }}
+            aria-hidden="true"
+          />
+        </>
+      ) : (
+        <div className="math-tour-shade" aria-hidden="true" />
+      )}
       <div
         ref={dialogRef}
         className="math-tour-callout"
