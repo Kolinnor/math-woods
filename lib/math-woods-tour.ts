@@ -42,9 +42,6 @@ export const mathWoodsTourCopy = {
     unavailable: "Cet élément n’est pas visible dans cette configuration. Vous pouvez poursuivre avec le bouton du tutoriel.",
     steps: [
       {
-        text: "Bienvenue sur Math Woods ! Le but de ce tutoriel est de vous introduire à ce qui, je l'espère, va devenir votre nouvel outil de travail. Vous allez parcourir directement les véritables pages du site."
-      },
-      {
         text: "Math Woods est un site open source dont l'objectif est de vous permettre d'apprendre des mathématiques de tout niveau, du collège au master de mathématiques fondamentales, de manière pédagogique."
       },
       {
@@ -137,9 +134,6 @@ export const mathWoodsTourCopy = {
     step: (current: number, total: number) => `Step ${current} of ${total}`,
     unavailable: "This element is not visible in the current layout. You can continue with the tour button.",
     steps: [
-      {
-        text: "Welcome to Math Woods! This tour introduces what we hope will become a new tool for your mathematical work. You will explore the site's real pages directly."
-      },
       {
         text: "Math Woods is an open-source site designed to help you learn mathematics at every level, from middle school to graduate-level pure mathematics, through clear educational content."
       },
