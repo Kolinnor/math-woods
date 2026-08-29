@@ -1566,7 +1566,7 @@ export default async function ProblemPage({
                     href={(link.exists ? (resolvedLink?.href ?? `/concepts/${link.targetSlug}`) : missingConceptHref(title)) as never}
                     className={link.exists ? "wiki-link" : "wiki-link missing"}
                   >
-                    {title}
+                    <AsyncMarkdownInline markdown={title} />
                     {link.exists && resolvedLink && <ContentLanguageFallback language={resolvedLink.language} expectedLanguage={problem.language} />}
                   </Link>
                 );
