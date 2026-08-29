@@ -3,7 +3,18 @@
 import { useState } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 
-export function HiddenHint({ postId }: { postId: number }) {
+type HiddenHintLabels = {
+  hint: string;
+  question: string;
+  guidance: string;
+  loading: string;
+  show: string;
+  keepThinking: string;
+  unavailable: string;
+  loadError: string;
+};
+
+export function HiddenHint({ postId, labels }: { postId: number; labels: HiddenHintLabels }) {
   const [confirming, setConfirming] = useState(false);
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -14,11 +25,11 @@ export function HiddenHint({ postId }: { postId: number }) {
     setError(null);
     try {
       const response = await fetch(`/api/hints/${postId}`);
-      if (!response.ok) throw new Error("This hint is not available yet.");
+      if (!response.ok) throw new Error(labels.unavailable);
       const payload = (await response.json()) as { html?: string };
       setHtml(payload.html ?? "");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load the hint.");
+      setError(caught instanceof Error ? caught.message : labels.loadError);
     } finally {
       setLoading(false);
     }
@@ -36,20 +47,18 @@ export function HiddenHint({ postId }: { postId: number }) {
     <div className="hint-guard">
       {!confirming ? (
         <button type="button" className="secondary" onClick={() => setConfirming(true)}>
-          Hint
+          {labels.hint}
         </button>
       ) : (
         <div className="hint-confirmation">
-          <h3>Show hint?</h3>
-          <p>
-            Try examples, write down what you know, and name the place where you are stuck.
-          </p>
+          <h3>{labels.question}</h3>
+          <p>{labels.guidance}</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={reveal} disabled={loading}>
-              {loading ? "Loading..." : "Show hint"}
+              {loading ? labels.loading : labels.show}
             </button>
             <button type="button" className="secondary" onClick={() => setConfirming(false)}>
-              Keep thinking
+              {labels.keepThinking}
             </button>
           </div>
           {error && <p className="hint-error">{error}</p>}

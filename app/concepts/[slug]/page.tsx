@@ -205,26 +205,25 @@ export default async function ConceptPage({
     return (
       <ForestPageLayout
         title={missingTitle}
-        eyebrow="Missing concept"
+        eyebrow={t.conceptDetail.missingEyebrow}
         heroImage="/art/birch-grove.jpg"
         heroAlt="Ivan Shishkin, Birch Grove"
-        description="This concept does not exist yet."
+        description={t.conceptDetail.missingDescription}
         workspaceClassName="forest-page-workspace-narrow"
       >
         <section className="panel grid gap-4 p-5">
           <div className="grid gap-2">
-            <h2 className="text-xl font-semibold">Help Math Woods grow</h2>
-            <p>
-              If you know about this concept, you can help create its page. A short definition,
-              one example, or a reliable reference is enough for a useful first version.
-            </p>
+            <h2 className="text-xl font-semibold">{t.conceptDetail.missingHelpTitle}</h2>
+            <p>{t.conceptDetail.missingHelpBody}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href={contributionHref as never} className="button">
-              {user ? "Create this concept" : "Sign in to create this concept"}
+              {user
+                ? t.conceptDetail.createMissingConcept
+                : t.conceptDetail.signInToCreateMissingConcept}
             </Link>
             <Link href="/concepts" className="button secondary">
-              Browse concepts
+              {t.conceptDetail.browseConcepts}
             </Link>
           </div>
         </section>

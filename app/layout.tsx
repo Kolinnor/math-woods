@@ -319,7 +319,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </nav>
           {needsEmailVerification && user && (
-            <EmailVerificationBanner userId={user.id} resendAction={resendEmailVerificationAction} />
+            <EmailVerificationBanner
+              userId={user.id}
+              resendAction={resendEmailVerificationAction}
+              labels={{
+                message: t.verifyEmailPage.bannerMessage,
+                resend: t.verifyEmailPage.resend
+              }}
+            />
           )}
         </header>
         {!user && <GuestProgressPrompt />}

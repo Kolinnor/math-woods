@@ -314,6 +314,17 @@ export default async function NewProblemPage({
             <TranslationCompanionFields
               draftSession={draftSession}
               hints={preparedHints}
+              labels={{
+                title: t.contentEditor.accompanyingContent,
+                help: t.contentEditor.accompanyingContentHelp,
+                alsoTranslate: t.contentEditor.alsoTranslateThis,
+                hints: t.contentEditor.translationHints,
+                hint: t.contentEditor.translationHint,
+                solutions: t.contentEditor.translationSolutions,
+                solution: t.contentEditor.translationSolution,
+                by: t.contentEditor.translationBy,
+                solutionHint: t.contentEditor.translationSolutionHint
+              }}
               proofs={preparedProofs.map((proof) => ({
                 id: proof.id,
                 bodyMarkdown: proof.bodyMarkdown,

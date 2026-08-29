@@ -185,7 +185,23 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
               </header>
 
               <div className="discussion-post-body">
-                {post.type === "HINT" ? <HiddenHint postId={post.id} /> : <MarkdownBlock html={post.bodyHtml} />}
+                {post.type === "HINT" ? (
+                  <HiddenHint
+                    postId={post.id}
+                    labels={{
+                      hint: copy.hint,
+                      question: t.problemDetail.showHintQuestion,
+                      guidance: t.problemDetail.hiddenHintGuidance,
+                      loading: t.problemDetail.loadingHint,
+                      show: t.problemDetail.showHint,
+                      keepThinking: t.problemDetail.keepThinking,
+                      unavailable: t.problemDetail.hintUnavailable,
+                      loadError: t.problemDetail.hintLoadError
+                    }}
+                  />
+                ) : (
+                  <MarkdownBlock html={post.bodyHtml} />
+                )}
               </div>
 
               {(canManageHint || user) && (

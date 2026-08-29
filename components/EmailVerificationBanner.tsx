@@ -32,10 +32,15 @@ export function EmailVerificationSuccessSync({ userId }: { userId: number }) {
 
 export function EmailVerificationBanner({
   userId,
-  resendAction
+  resendAction,
+  labels
 }: {
   userId: number;
   resendAction: () => Promise<void>;
+  labels: {
+    message: string;
+    resend: string;
+  };
 }) {
   const [hidden, setHidden] = useState(false);
 
@@ -92,10 +97,10 @@ export function EmailVerificationBanner({
   return (
     <div className="email-verification-banner">
       <div className="site-content-width mx-auto flex flex-wrap items-center justify-between gap-3 px-4">
-        <p>Verify your email to solve, vote, discuss, and contribute.</p>
+        <p>{labels.message}</p>
         <form action={resendAction}>
           <button type="submit" className="secondary">
-            Resend verification email
+            {labels.resend}
           </button>
         </form>
       </div>
