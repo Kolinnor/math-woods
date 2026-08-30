@@ -5,9 +5,12 @@ export function headingLevel(nodeName: string) {
   return match ? Number(match[1]) : null;
 }
 
-export function markdownPreviewClass(nodeName: string) {
-  if (nodeName === "StrongEmphasis") return "cm-md-strong";
-  if (nodeName === "Emphasis") return "cm-md-emphasis";
+export function markdownPreviewClass(nodeName: string, raw?: string) {
+  // Underscore-delimited emphasis (`_x_`, `__x__`) renders as underline, not
+  // italic/bold, so the editor preview needs to match lib/markdown.ts.
+  const isUnderscoreDelimited = raw?.startsWith("_") ?? false;
+  if (nodeName === "StrongEmphasis") return isUnderscoreDelimited ? "cm-md-underline" : "cm-md-strong";
+  if (nodeName === "Emphasis") return isUnderscoreDelimited ? "cm-md-underline" : "cm-md-emphasis";
   if (nodeName === "InlineCode") return "cm-md-inline-code";
   if (nodeName === "Strikethrough") return "cm-md-strikethrough";
   if (nodeName === "Link") return "cm-md-link";

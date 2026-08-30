@@ -3182,6 +3182,10 @@ button.markdown-editor-tool-button:disabled svg {
   font-style: italic;
 }
 
+.markdown-editor .cm-md-underline {
+  text-decoration: underline;
+}
+
 .markdown-editor .cm-md-inline-code {
   background: var(--code);
   border-radius: 3px;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Inter, Spectral } from "next/font/google";
+import localFont from "next/font/local";
 import { Github, Menu } from "lucide-react";
 import { cookies } from "next/headers";
 import "../node_modules/jsxgraph/distrib/jsxgraph.css";
@@ -169,15 +169,24 @@ const siteStructuredData = {
 const mathematiciansRoute = "/mathematicians" as Route;
 const usersRoute = "/users" as Route;
 
-const inter = Inter({
-  subsets: ["latin"],
+// Self-hosted (downloaded from Google Fonts' "latin" subset) instead of
+// next/font/google so page rendering never depends on reaching
+// fonts.googleapis.com / fonts.gstatic.com at request time.
+const inter = localFont({
+  src: "./fonts/inter-latin-variable.woff2",
+  weight: "100 900",
   display: "swap",
   variable: "--font-sans"
 });
 
-const spectral = Spectral({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+const spectral = localFont({
+  src: [
+    { path: "./fonts/spectral-latin-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/spectral-latin-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/spectral-latin-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/spectral-latin-700.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/spectral-latin-800.woff2", weight: "800", style: "normal" }
+  ],
   display: "swap",
   variable: "--font-serif"
 });
@@ -299,6 +308,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     </Link>
                   )}
                   {user && <Link href={"/friends" as never}>{t.nav.friends}</Link>}
+                  {user && <Link href={"/groups" as never}>{t.nav.groups}</Link>}
                   {user && <Link href="/settings">{t.nav.settings}</Link>}
                   {user && canUseModerationTools(user) && <Link href="/moderation">{t.nav.moderation}</Link>}
                   {user ? (
