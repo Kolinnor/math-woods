@@ -29,7 +29,9 @@ async function availableUsername(displayName: string) {
   return existing ? `${base}-${randomBytes(3).toString("hex")}` : base;
 }
 
-function oauthFailure(reason: "expired" | "invalid" | "account-used" | "email-used" | "rate-limited"): never {
+function oauthFailure(
+  reason: "expired" | "invalid" | "account-used" | "email-used" | "profile-name-used" | "rate-limited"
+): never {
   redirect(`/login/complete?error=${reason}` as never);
 }
 
@@ -56,11 +58,16 @@ export async function completeOAuthSignupAction(formData: FormData) {
   const mathLevel = parseMathLevel(formData.get("mathLevel"));
   if (!email.includes("@") || !mathLevel) oauthFailure("invalid");
 
-  const [emailOwner, username] = await Promise.all([
+  const [emailOwner, displayNameOwner, username] = await Promise.all([
     prisma.user.findFirst({ where: { email, deletedAt: null }, select: { id: true } }),
+    prisma.user.findFirst({
+      where: { displayName: { equals: displayName, mode: "insensitive" }, deletedAt: null },
+      select: { id: true }
+    }),
     availableUsername(displayName)
   ]);
   if (emailOwner) oauthFailure("email-used");
+  if (displayNameOwner) oauthFailure("profile-name-used");
 
   let user: Awaited<ReturnType<typeof prisma.user.create>>;
   try {

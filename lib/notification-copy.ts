@@ -161,6 +161,13 @@ function localizedProblemEdit(notification: LocalizableNotification): LocalizedN
 }
 
 function localizedConceptEdit(notification: LocalizableNotification): LocalizedNotification {
+  const exerciseMatch = notification.body.match(/^(.+?) added exercise "([\s\S]+)" to concept "([\s\S]+)"\.$/);
+  if (exerciseMatch) {
+    return {
+      title: "Exercice ajouté à votre concept",
+      body: `${exerciseMatch[1]} a ajouté l’exercice « ${exerciseMatch[2]} » au concept « ${exerciseMatch[3]} ».`
+    };
+  }
   const conceptTitle = firstQuoted(notification.body);
   if (!conceptTitle) return { title: "Concept modifié", body: notification.body };
 
@@ -291,6 +298,32 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
       const reason = reasonMarker >= 0 ? notification.body.slice(reasonMarker + " were not accepted: ".length) : "";
       return {
         title: "Modification proposée non retenue",
+        body: `${problemTitle
+          ? `Vos modifications proposées pour « ${problemTitle} » n’ont pas été retenues.`
+          : "Vos modifications proposées n’ont pas été retenues."}${reason ? ` Motif : ${reason}` : ""}`
+      };
+    }
+    case NotificationType.CONCEPT_EDIT_PROPOSED: {
+      const actor = notificationActor(notification, " proposed changes to ");
+      return {
+        title: "Modification de concept proposée",
+        body: problemTitle
+          ? `${actor} a proposé des modifications pour « ${problemTitle} ».`
+          : `${actor} a proposé une modification de concept.`
+      };
+    }
+    case NotificationType.CONCEPT_EDIT_APPROVED:
+      return {
+        title: "Modification de concept approuvée",
+        body: problemTitle
+          ? `Vos modifications proposées pour « ${problemTitle} » sont maintenant publiques.`
+          : "Vos modifications proposées sont maintenant publiques."
+      };
+    case NotificationType.CONCEPT_EDIT_REJECTED: {
+      const reasonMarker = notification.body.indexOf(" were not accepted: ");
+      const reason = reasonMarker >= 0 ? notification.body.slice(reasonMarker + " were not accepted: ".length) : "";
+      return {
+        title: "Modification de concept non retenue",
         body: `${problemTitle
           ? `Vos modifications proposées pour « ${problemTitle} » n’ont pas été retenues.`
           : "Vos modifications proposées n’ont pas été retenues."}${reason ? ` Motif : ${reason}` : ""}`

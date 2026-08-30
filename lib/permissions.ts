@@ -151,6 +151,18 @@ export function canEditConcept(user: PermissionUser, concept: CreatedResource) {
   return concept.createdById === user.id || hasTrustedPrivileges(user.role);
 }
 
+export function canProposeConceptEdit(user: PermissionUser) {
+  return isVerifiedContributor(user);
+}
+
+export function canPublishConceptEditForTarget(
+  user: PermissionUser,
+  concept: CreatedResource,
+  hasApprovedProposal: boolean
+) {
+  return hasTrustedPrivileges(user.role) || concept.createdById === user.id || hasApprovedProposal;
+}
+
 export function canRollbackConcept(user: PermissionUser, concept: CreatedResource) {
   return canEditConcept(user, concept);
 }

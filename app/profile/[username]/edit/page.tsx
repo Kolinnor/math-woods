@@ -5,9 +5,12 @@ import { updateProfileAction } from "@/lib/actions/user-actions";
 import { DEFAULT_AVATAR_PRESETS, type DefaultAvatarPreset } from "@/lib/avatar-presets";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getTranslations } from "@/lib/i18n/server";
+import { canChangeDisplayName, nextDisplayNameChangeAt } from "@/lib/display-name-change";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { MATH_LEVEL_OPTIONS } from "@/lib/math-levels";
+import { hasOwnerPrivileges } from "@/lib/permissions";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
+import { getRequestTimeZone } from "@/lib/server-time-zone";
 import { DISPLAY_NAME_MAX_LENGTH, displayNameForUser } from "@/lib/user-display";
 import { normalizeUsernameLookup, profilePath, publicProfileLookupWhere } from "@/lib/usernames";
 import { USER_DISCOVERY_SOURCES } from "@/lib/user-discovery-source";
@@ -15,9 +18,20 @@ import { USER_DISCOVERY_SOURCES } from "@/lib/user-discovery-source";
 export const dynamic = "force-dynamic";
 const SOCIAL_HERO_ART = PROBLEM_DOMAIN_HERO_ART["linear-algebra"];
 
-export default async function EditProfilePage({ params }: { params: Promise<{ username: string }> }) {
+export default async function EditProfilePage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ username: string }>;
+  searchParams?: Promise<{ profileError?: string }>;
+}) {
   const currentUser = await requireUser();
-  const t = await getTranslations();
+  const [t, interfaceLocale, timeZone, query] = await Promise.all([
+    getTranslations(),
+    getInterfaceLocale(),
+    getRequestTimeZone(),
+    searchParams ?? Promise.resolve({} as { profileError?: string })
+  ]);
   const { username } = await params;
 
   const user = await prisma.user.findFirst({
@@ -28,6 +42,17 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
   if (normalizeUsernameLookup(username) !== normalizeUsernameLookup(user.profileSlug)) {
     redirect(profilePath(user, "/edit"));
   }
+  const displayNameCanChange = canChangeDisplayName(user);
+  const ownerCanBypassNameLimit = hasOwnerPrivileges(user.role);
+  const nextNameChangeAt = nextDisplayNameChangeAt(user.displayNameChangedAt);
+  const nextNameChangeLabel = nextNameChangeAt
+    ? new Intl.DateTimeFormat(interfaceLocale === "fr" ? "fr-FR" : "en-GB", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: timeZone ?? "UTC"
+      }).format(nextNameChangeAt)
+    : null;
+  const displayNameHelpId = "profile-display-name-help";
   const avatarPresetLabels = Object.fromEntries(
     DEFAULT_AVATAR_PRESETS.map((preset) => [preset, t.profile.profileImagePresetLabel(preset)])
   ) as Record<DefaultAvatarPreset, string>;
@@ -66,6 +91,18 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
           uploaded: t.profile.profileImageUploaded
         }}
       />
+      {query.profileError === "name-change-locked" && (
+        <p className="quality-banner quality-needs-work" role="alert">
+          {nextNameChangeLabel
+            ? t.profile.profileNameLockedUntil(nextNameChangeLabel)
+            : t.profile.profileNameLocked}
+        </p>
+      )}
+      {query.profileError === "name-unavailable" && (
+        <p className="quality-banner quality-needs-work" role="alert">
+          {t.profile.profileNameUnavailable}
+        </p>
+      )}
       <form action={updateProfileAction} className="panel grid gap-4 p-5">
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.auth.profileName}</span>
@@ -74,8 +111,21 @@ export default async function EditProfilePage({ params }: { params: Promise<{ us
             defaultValue={displayNameForUser(user)}
             minLength={2}
             maxLength={DISPLAY_NAME_MAX_LENGTH}
+            readOnly={!displayNameCanChange}
+            aria-describedby={displayNameHelpId}
             required
           />
+          <small id={displayNameHelpId} className="muted">
+            {ownerCanBypassNameLimit
+              ? t.profile.profileNameOwnerExempt
+              : !displayNameCanChange && nextNameChangeLabel
+                ? t.profile.profileNameLockedUntil(nextNameChangeLabel)
+                : user.displayNameChangedAt
+                  ? t.profile.profileNameChangeAvailable
+                  : t.profile.profileNameFirstChange}
+            {!ownerCanBypassNameLimit && <> {t.profile.profileNameChangeCooldown}</>}
+          </small>
+          <small className="muted">{t.profile.profileNameUrlHelp(user.profileSlug)}</small>
         </label>
         <label className="grid gap-2">
           <span className="field-label-with-help text-sm font-medium">

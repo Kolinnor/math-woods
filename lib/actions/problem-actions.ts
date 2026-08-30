@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import {
   AttemptStatus,
+  ConceptStatus,
   NotificationType,
   PostType,
   ProblemStatus,
@@ -28,6 +29,13 @@ import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
+import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
+import {
+  buildConceptRevisionSnapshot,
+  conceptRevisionSnapshotInclude,
+  conceptRevisionSnapshotJson,
+  type ConceptSnapshotSource
+} from "@/lib/concept-revisions";
 import {
   parseProblemTranslationTaskKey,
   problemTranslationTaskTargetLanguage
@@ -42,6 +50,7 @@ import {
   createNotification,
   notifyAdminsOfProblemDeletion,
   notifyAdminsOfProblemEditProposal,
+  notifyConceptAuthor,
   notifyOwnerOfSiteActivity,
   notifyProblemAuthor,
   notifyProblemEditSubscribers
@@ -208,6 +217,126 @@ async function ensureProblemSnapshotRevision(
 async function renderMarkdownContent(markdown: string) {
   const { renderMarkdown } = await import("@/lib/markdown");
   return renderMarkdown(markdown);
+}
+
+async function pinLatestConceptSnapshot(
+  tx: Prisma.TransactionClient,
+  concept: ConceptSnapshotSource
+) {
+  const latestRevision = await tx.pageRevision.findFirst({
+    where: { pageType: SourceType.CONCEPT, pageId: concept.id },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true, conceptTitle: true, conceptKind: true, conceptSnapshot: true }
+  });
+  const snapshot = conceptRevisionSnapshotJson(buildConceptRevisionSnapshot(concept));
+
+  if (!latestRevision) {
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.CONCEPT,
+        pageId: concept.id,
+        markdown: concept.bodyMarkdown,
+        conceptTitle: concept.title,
+        conceptKind: concept.kind,
+        conceptSnapshot: snapshot,
+        editSummary: "Concept state captured"
+      }
+    });
+    return;
+  }
+
+  if (
+    latestRevision.conceptTitle === null ||
+    latestRevision.conceptKind === null ||
+    latestRevision.conceptSnapshot === null
+  ) {
+    await tx.pageRevision.update({
+      where: { id: latestRevision.id },
+      data: {
+        ...(latestRevision.conceptTitle === null ? { conceptTitle: concept.title } : {}),
+        ...(latestRevision.conceptKind === null ? { conceptKind: concept.kind } : {}),
+        ...(latestRevision.conceptSnapshot === null ? { conceptSnapshot: snapshot } : {})
+      }
+    });
+  }
+}
+
+async function linkNewExerciseToConceptFamily(
+  tx: Prisma.TransactionClient,
+  {
+    conceptSlug,
+    problem,
+    userId
+  }: {
+    conceptSlug: string;
+    problem: { id: number; isExercise: boolean; listed: boolean; status: ProblemStatus; title: string };
+    userId: number;
+  }
+) {
+  if (!conceptSlug || !problem.isExercise || !problem.listed || problem.status !== ProblemStatus.PUBLISHED) {
+    return null;
+  }
+
+  const requestedConcept = await tx.concept.findUnique({
+    where: { slug: conceptSlug },
+    select: { id: true, translationGroupId: true }
+  });
+  if (!requestedConcept) return null;
+
+  await acquireTransactionLock(tx, `concept-family:${requestedConcept.translationGroupId}`);
+  const concepts = await tx.concept.findMany({
+    where: {
+      translationGroupId: requestedConcept.translationGroupId,
+      status: { not: ConceptStatus.MISSING }
+    },
+    include: conceptRevisionSnapshotInclude
+  });
+  const target = concepts.find((concept) => concept.id === requestedConcept.id);
+  if (!target || target.practiceExercises.length >= MAX_CONCEPT_EXERCISES) return null;
+
+  const linkedSlugs: string[] = [];
+  for (const concept of concepts) {
+    if (
+      concept.practiceExercises.length >= MAX_CONCEPT_EXERCISES ||
+      concept.practiceExercises.some(({ problemId }) => problemId === problem.id)
+    ) {
+      continue;
+    }
+
+    await pinLatestConceptSnapshot(tx, concept);
+    const position = concept.practiceExercises.reduce(
+      (maximum, exercise) => Math.max(maximum, exercise.position),
+      -1
+    ) + 1;
+    await tx.conceptExercise.create({
+      data: { conceptId: concept.id, problemId: problem.id, position }
+    });
+    await tx.concept.update({
+      where: { id: concept.id },
+      data: { lastEditedById: userId }
+    });
+    const updated = await tx.concept.findUniqueOrThrow({
+      where: { id: concept.id },
+      include: conceptRevisionSnapshotInclude
+    });
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.CONCEPT,
+        pageId: updated.id,
+        markdown: updated.bodyMarkdown,
+        conceptTitle: updated.title,
+        conceptKind: updated.kind,
+        conceptSnapshot: conceptRevisionSnapshotJson(buildConceptRevisionSnapshot(updated)),
+        editedById: userId,
+        editSummary: `Added exercise "${problem.title}"`
+      }
+    });
+    linkedSlugs.push(updated.slug);
+  }
+
+  return linkedSlugs.includes(target.slug)
+    ? { id: target.id, slug: target.slug, title: target.title, linkedSlugs }
+    : null;
 }
 
 function intField(value: FormDataEntryValue | null, fallback: number) {
@@ -425,6 +554,9 @@ export async function createProblemAction(formData: FormData) {
     ""
   );
   const parentProblemSlug = ensureSlug(String(formData.get("parentProblemSlug") ?? ""), "");
+  const linkConceptSlug = translationGroupId
+    ? ""
+    : ensureSlug(String(formData.get("linkConceptSlug") ?? ""), "");
   const contestSlug = ensureSlug(String(formData.get("contestSlug") ?? ""), "");
   const qualityStatus = QualityStatus.UNREVIEWED;
   const styles = parseProblemStyles(formData.getAll("styles"));
@@ -600,6 +732,11 @@ export async function createProblemAction(formData: FormData) {
         userId: user.id,
         problemId: created.id
       }
+    });
+    const linkedConcept = await linkNewExerciseToConceptFamily(tx, {
+      conceptSlug: linkConceptSlug,
+      problem: created,
+      userId: user.id
     });
     if (translationGroupId) {
       const [groupAttempts, groupFavoriteUsers, groupProblems] = await Promise.all([
@@ -904,6 +1041,7 @@ export async function createProblemAction(formData: FormData) {
     });
     return {
       created,
+      linkedConcept,
       translationSourceTitle: translationSource?.title ?? null
     };
   });
@@ -923,6 +1061,22 @@ export async function createProblemAction(formData: FormData) {
     body: problemNotification.body,
     href: `/problems/${problem.created.slug}`
   });
+  if (problem.linkedConcept) {
+    for (const conceptSlug of problem.linkedConcept.linkedSlugs) {
+      revalidatePath(`/concepts/${conceptSlug}`);
+      revalidatePath(`/concepts/${conceptSlug}/edit`);
+      revalidatePath(`/concepts/${conceptSlug}/history`);
+    }
+    revalidatePath("/concepts");
+    revalidatePath("/contributing/tasks");
+    await notifyConceptAuthor({
+      conceptId: problem.linkedConcept.id,
+      actorId: user.id,
+      title: "Exercise added to your concept",
+      body: `${displayNameForUser(user)} added exercise "${problem.created.title}" to concept "${problem.linkedConcept.title}".`,
+      href: `/concepts/${problem.linkedConcept.slug}`
+    });
+  }
   if (
     translationGroupId &&
     contributionTask &&

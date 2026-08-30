@@ -79,7 +79,7 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
   const postIds = reports.filter((report) => report.targetType === "POST").map((report) => report.targetId);
   const proofIds = reports.filter((report) => report.targetType === "PROOF").map((report) => report.targetId);
 
-  const [problems, concepts, posts, proofs, flaggedProblems, controversialConcepts, errorReports, proposedEdits] = await Promise.all([
+  const [problems, concepts, posts, proofs, flaggedProblems, controversialConcepts, errorReports, proposedEdits, proposedConceptEdits] = await Promise.all([
     prisma.problem.findMany({
       where: { id: { in: problemIds } },
       select: { id: true, slug: true, title: true, status: true, qualityStatus: true }
@@ -124,6 +124,14 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
           include: { problem: { select: { title: true } }, proposer: true },
           take: 100
         })
+      : [],
+    canReviewProposedEdits
+      ? prisma.conceptEditProposal.findMany({
+          where: { status: "PENDING" },
+          orderBy: { createdAt: "asc" },
+          include: { concept: { select: { title: true } }, proposer: true },
+          take: 100
+        })
       : []
   ]);
 
@@ -139,9 +147,18 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
       description="Recent reports, light-touch triage, and content hiding when needed."
-      actions={canReviewProposedEdits ? (
-        <Link href="/moderation/problem-sources" className="button secondary">Problem sources</Link>
-      ) : undefined}
+      actions={(
+        <div className="flex flex-wrap gap-2">
+          <Link href="/moderation/profile-name-changes" className="button secondary">
+            Profile name history
+          </Link>
+          {canReviewProposedEdits && (
+            <Link href="/moderation/problem-sources" className="button secondary">
+              Problem sources
+            </Link>
+          )}
+        </div>
+      )}
       meta={
         <>
           <p>{reports.length} reports</p>
@@ -275,6 +292,31 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
               </div>
             ))}
             {proposedEdits.length === 0 && <p className="muted panel p-5">No proposed problem edits.</p>}
+          </div>
+        </section>
+      )}
+
+      {canReviewProposedEdits && (
+        <section className="mb-8">
+          <h2 className="mb-3 font-semibold">Proposed concept edits</h2>
+          <div className="grid gap-3">
+            {proposedConceptEdits.map((proposal) => (
+              <div key={proposal.id} className="panel flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <Link href={`/moderation/concept-edits/${proposal.id}` as never} className="font-medium underline">
+                    <AsyncMarkdownInline markdown={proposal.concept.title} />
+                  </Link>
+                  <p className="muted text-sm">
+                    proposed by <UserName user={proposal.proposer} /> - {formatUserDateTime(proposal.createdAt, timeZone)}
+                  </p>
+                  {proposal.editSummary && <p className="mt-1 text-sm">{proposal.editSummary}</p>}
+                </div>
+                <Link href={`/moderation/concept-edits/${proposal.id}` as never} className="button">
+                  Review changes
+                </Link>
+              </div>
+            ))}
+            {proposedConceptEdits.length === 0 && <p className="muted panel p-5">No proposed concept edits.</p>}
           </div>
         </section>
       )}

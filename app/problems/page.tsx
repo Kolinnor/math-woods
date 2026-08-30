@@ -829,7 +829,7 @@ export default async function ProblemsPage({
         labels={t.problems.domainBrowser}
         locale={interfaceLocale}
         problemCounts={domainProblemCounts}
-        contentTypeCounts={domainContentTypeCounts}
+        contentTypeCounts={showsProblems && showsExercises ? domainContentTypeCounts : undefined}
         progress={domainProgress}
         selectedDomain={domainValue}
       />

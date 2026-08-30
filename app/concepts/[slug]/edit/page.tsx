@@ -12,20 +12,28 @@ import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { deleteConceptAction, updateConceptAction } from "@/lib/actions/concept-actions";
 import { requireVerifiedUser } from "@/lib/auth";
+import { canPublishConceptEditForConcept } from "@/lib/concept-edit-access";
 import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
 import { prisma } from "@/lib/db";
 import { PROBLEM_DOMAINS, translatedDomainLabel, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { canDeleteConcept, canEditConcept, canUseAdminTools } from "@/lib/permissions";
+import { canDeleteConcept, canProposeConceptEdit, canUseAdminTools } from "@/lib/permissions";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { latestConceptTextRevisionId } from "@/lib/translation-freshness";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditConceptPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function EditConceptPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ conflict?: string }>;
+}) {
   const user = await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
+  const query = searchParams ? await searchParams : {};
   const concept = await prisma.concept.findUnique({
     where: { slug },
     include: {
@@ -59,9 +67,17 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
     if (merged) redirect(`/concepts/${merged.targetConcept.slug}/edit`);
     notFound();
   }
-  if (!canEditConcept(user, concept)) notFound();
-  const canFeatureConcept = canUseAdminTools(user);
-  const canDeleteCurrentConcept = canDeleteConcept(user, concept);
+  if (!canProposeConceptEdit(user)) notFound();
+  const publishesImmediately = await canPublishConceptEditForConcept(user, concept);
+  const canFeatureConcept = publishesImmediately && canUseAdminTools(user);
+  const canDeleteCurrentConcept = publishesImmediately && canDeleteConcept(user, concept);
+  const pendingProposal = publishesImmediately
+    ? null
+    : await prisma.conceptEditProposal.findFirst({
+        where: { conceptId: concept.id, proposerId: user.id, status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+        select: { editSummary: true }
+      });
   const [siblingTranslations, sourceRevisionId] = await Promise.all([
     prisma.concept.findMany({
       where: {
@@ -90,16 +106,31 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
 
   return (
     <ForestPageLayout
-      title={t.contentEditor.editConcept}
+      title={publishesImmediately ? t.contentEditor.editConcept : t.contentEditor.proposeEdit}
       eyebrow={<AsyncMarkdownInline markdown={concept.title} />}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      description={t.contentEditor.editDescription}
+      description={publishesImmediately ? t.contentEditor.editDescription : t.contentEditor.proposalDescription}
       workspaceClassName={concept.translatedFromConcept ? undefined : "forest-page-workspace-narrow"}
     >
       <div className={concept.translatedFromConcept ? "translation-compose-page" : ""}>
       <div className="translation-compose-main">
+      {pendingProposal && (
+        <section className="quality-banner quality-unreviewed mb-4" role="status">
+          <strong>{t.contentEditor.pendingProposal}</strong>{" "}
+          {t.contentEditor.pendingProposalHelp}
+          {pendingProposal.editSummary ? ` ${t.contentEditor.currentSummary(pendingProposal.editSummary)}` : ""}
+        </section>
+      )}
+      {query.conflict === "1" && (
+        <section className="quality-banner quality-needs-work mb-4" role="alert">
+          {t.contentEditor.conceptProposalConflict}
+        </section>
+      )}
       <form action={updateConceptAction.bind(null, concept.id)} className="panel grid gap-4 p-5">
+        {!publishesImmediately && (
+          <input type="hidden" name="baseUpdatedAt" value={concept.updatedAt.toISOString()} />
+        )}
         <LiveMarkdownTitleField
           defaultValue={concept.title}
           locale={interfaceLocale}
@@ -120,7 +151,7 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           label={t.languageSelector.label}
           help={t.contentEditor.languageMoveHelp}
         />
-        {concept.translatedFromConcept && (
+        {publishesImmediately && concept.translatedFromConcept && (
           <label className="checkbox-field">
             <input name="markTranslationFresh" type="checkbox" defaultChecked={false} />
             <span>
@@ -218,7 +249,9 @@ export default async function EditConceptPage({ params }: { params: Promise<{ sl
           <input name="editSummary" placeholder={t.contentEditor.editSummaryPlaceholder} />
         </label>
         <div className="content-editor-actions">
-          <button type="submit">{t.contentEditor.saveChanges}</button>
+          <button type="submit">
+            {publishesImmediately ? t.contentEditor.saveChanges : t.contentEditor.submitProposal}
+          </button>
           <ContentPreviewButton contentType="concept" locale={interfaceLocale} />
         </div>
       </form>

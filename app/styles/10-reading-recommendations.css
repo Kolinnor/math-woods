@@ -88,6 +88,26 @@ html[lang="fr"] .mw-locale-fr {
   position: relative;
 }
 
+.mw-difficulty-explainer:not([open]) > .mw-difficulty-popover {
+  display: none;
+}
+
+@media (hover: hover) {
+  .mw-difficulty-explainer:hover > .mw-difficulty-popover,
+  .mw-difficulty-explainer:focus-within > .mw-difficulty-popover {
+    display: grid;
+  }
+
+  .mw-difficulty-explainer::after {
+    content: "";
+    height: 8px;
+    left: 0;
+    position: absolute;
+    top: 100%;
+    width: 100%;
+  }
+}
+
 .mw-difficulty-hover-explainer {
   position: relative;
 }

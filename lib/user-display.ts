@@ -7,6 +7,7 @@ type DisplayUser = {
 
 export function normalizeDisplayName(value: FormDataEntryValue | string | null | undefined) {
   const normalized = String(value ?? "")
+    .normalize("NFKC")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -17,8 +18,15 @@ export function normalizeDisplayName(value: FormDataEntryValue | string | null |
   if (/[<>{}]/.test(normalized)) {
     throw new Error("Profile name contains unsupported characters.");
   }
+  if (/[\p{Cc}\p{Cf}]/u.test(normalized)) {
+    throw new Error("Profile name contains invisible or unsupported characters.");
+  }
 
   return normalized;
+}
+
+export function displayNameComparisonKey(displayName: string) {
+  return displayName.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 export function displayNameForUser(user: DisplayUser) {

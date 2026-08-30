@@ -16,14 +16,22 @@ import {
   conceptRevisionAutomaticSummary,
   conceptRevisionSnapshotInclude,
   conceptRevisionSnapshotJson,
+  parseConceptRevisionSnapshot,
+  type ConceptRevisionSnapshot,
   type ConceptSnapshotSource
 } from "@/lib/concept-revisions";
-import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { CREATION_SUBMISSION_FIELD, creationSubmissionKey } from "@/lib/creation-submission";
 import { prisma } from "@/lib/db";
+import { canPublishConceptEditForConcept } from "@/lib/concept-edit-access";
 import { completeDailyConceptReviewForUser } from "@/lib/daily-concept-reviews";
-import { notifyConceptAuthor, notifyOwnerOfSiteActivity } from "@/lib/notifications";
+import {
+  createNotification,
+  notifyAdminsOfConceptEditProposal,
+  notifyConceptAuthor,
+  notifyOwnerOfSiteActivity
+} from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import {
@@ -42,7 +50,7 @@ import {
   canChangeConceptStatus,
   canDeleteConcept,
   canDowngradeConceptStatus,
-  canEditConcept,
+  canProposeConceptEdit,
   canReviewConcept,
   canRollbackConcept,
   canUseAdminTools
@@ -71,6 +79,13 @@ class DuplicateConceptTitleError extends Error {
   constructor() {
     super("A concept card already exists with this title.");
     this.name = "DuplicateConceptTitleError";
+  }
+}
+
+class ConceptEditProposalConflictError extends Error {
+  constructor() {
+    super("The concept changed while this proposal was awaiting review.");
+    this.name = "ConceptEditProposalConflictError";
   }
 }
 
@@ -358,23 +373,18 @@ export async function createConceptFormAction(
 export async function updateConceptAction(conceptId: number, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`concept:update:${user.id}`, 20, 60_000);
+  const approvedProposalId = Number(formData.get("approvedProposalId"));
   const existingConcept = await prisma.concept.findUnique({
     where: { id: conceptId },
-    select: {
-      createdById: true,
-      language: true,
-      title: true,
-      kind: true,
-      translationGroupId: true,
-      translatedFromConceptId: true,
-      status: true,
-      bodyMarkdown: true,
-      needsReviewAfterEdit: true
-    }
+    include: conceptRevisionSnapshotInclude
   });
   if (!existingConcept) throw new Error("Concept not found.");
-  if (!canEditConcept(user, existingConcept)) {
-    throw new Error("You cannot edit this concept.");
+  if (!canProposeConceptEdit(user)) {
+    throw new Error("You cannot propose changes to this concept.");
+  }
+  const publishesImmediately = await canPublishConceptEditForConcept(user, existingConcept);
+  if (Number.isInteger(approvedProposalId) && approvedProposalId > 0 && !canUseAdminTools(user)) {
+    throw new Error("Only admins can approve proposed concept edits.");
   }
 
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
@@ -387,10 +397,10 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
   const exerciseIds = parseConceptExerciseIds(formData.getAll("exerciseIds"));
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary");
-  const markTranslationFresh = formData.get("markTranslationFresh") === "on";
-  const canAppearInConceptBrowser = canUseAdminTools(user)
+  const markTranslationFresh = publishesImmediately && formData.get("markTranslationFresh") === "on";
+  const canAppearInConceptBrowser = publishesImmediately && canUseAdminTools(user) && !(approvedProposalId > 0)
     ? formData.get("canAppearInConceptBrowser") === "on"
-    : undefined;
+    : existingConcept.canAppearInConceptBrowser;
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   const hasReviewSensitiveChanges =
@@ -399,13 +409,158 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     existingConcept.needsReviewAfterEdit ||
     ((existingConcept.status === ConceptStatus.REVIEWED || existingConcept.status === ConceptStatus.EXCELLENT) &&
       hasReviewSensitiveChanges);
-  const concept = await prisma.$transaction(async (tx) => {
-    await lockConceptFamilyForMutation(tx, conceptId);
-    const currentSnapshotSource = await conceptSnapshotSource(tx, conceptId);
-    await pinLatestConceptRevisionMetadata(tx, currentSnapshotSource);
-    const currentSnapshot = buildConceptRevisionSnapshot(currentSnapshotSource);
+
+  if (!publishesImmediately) {
+    const baseUpdatedAt = new Date(String(formData.get("baseUpdatedAt") ?? ""));
+    if (Number.isNaN(baseUpdatedAt.getTime())) throw new Error("Invalid concept version.");
+    let proposal;
+    try {
+      proposal = await prisma.$transaction(async (tx) => {
+        await lockConceptFamilyForMutation(tx, conceptId);
+        const current = await conceptSnapshotSource(tx, conceptId);
+        if (current.updatedAt.getTime() !== baseUpdatedAt.getTime()) {
+          throw new ConceptEditProposalConflictError();
+        }
+        const titleOrLanguageChanged =
+          title.toLowerCase() !== current.title.toLowerCase() || language !== current.language;
+        if (titleOrLanguageChanged) {
+          const existingTitle = await tx.concept.findFirst({
+            where: {
+              id: { not: conceptId },
+              language,
+              title: { equals: title, mode: "insensitive" }
+            },
+            select: { id: true }
+          });
+          if (existingTitle) throw new DuplicateConceptTitleError();
+        }
+        if (language !== current.language) {
+          const existingTranslation = await tx.concept.findFirst({
+            where: {
+              id: { not: conceptId },
+              translationGroupId: current.translationGroupId,
+              language
+            },
+            select: { id: true }
+          });
+          if (existingTranslation) throw new Error("A concept translation already exists in this language.");
+        }
+
+        const currentSnapshot = buildConceptRevisionSnapshot(current);
+        const validExercises = exerciseIds.length
+          ? await tx.problem.findMany({
+              where: { id: { in: exerciseIds }, isExercise: true, listed: true, status: "PUBLISHED" },
+              select: { id: true, slug: true, title: true }
+            })
+          : [];
+        const validExerciseById = new Map(validExercises.map((exercise) => [exercise.id, exercise]));
+        const proposedSnapshot: ConceptRevisionSnapshot = {
+          ...currentSnapshot,
+          title,
+          language,
+          bodyMarkdown,
+          domainCode,
+          kind,
+          needsReviewAfterEdit,
+          aliases: aliases
+            .filter((alias) => alias.aliasSlug !== current.slug)
+            .sort((left, right) => left.aliasSlug.localeCompare(right.aliasSlug)),
+          references: references.map(({ title: referenceTitle, url, note }) => ({
+            title: referenceTitle,
+            url,
+            note
+          })),
+          practiceExercises: exerciseIds.flatMap((exerciseId) => {
+            const exercise = validExerciseById.get(exerciseId);
+            return exercise ? [exercise] : [];
+          })
+        };
+        const changedFields = changedConceptSnapshotFields(currentSnapshot, proposedSnapshot);
+        if (changedFields.length === 0) return null;
+
+        const superseded = await tx.conceptEditProposal.findMany({
+          where: { conceptId, proposerId: user.id, status: "PENDING" },
+          select: { id: true }
+        });
+        if (superseded.length > 0) {
+          const reviewedAt = new Date();
+          await tx.conceptEditProposal.updateMany({
+            where: { id: { in: superseded.map(({ id }) => id) } },
+            data: { status: "SUPERSEDED", reviewedAt }
+          });
+          await tx.notification.updateMany({
+            where: {
+              type: NotificationType.CONCEPT_EDIT_PROPOSED,
+              href: { in: superseded.map(({ id }) => `/moderation/concept-edits/${id}`) },
+              readAt: null
+            },
+            data: { readAt: reviewedAt }
+          });
+        }
+        return tx.conceptEditProposal.create({
+          data: {
+            conceptId,
+            proposerId: user.id,
+            baseUpdatedAt: current.updatedAt,
+            baseSnapshot: conceptRevisionSnapshotJson(currentSnapshot),
+            snapshot: conceptRevisionSnapshotJson(proposedSnapshot),
+            editSummary: editSummary || conceptRevisionAutomaticSummary(changedFields)
+          }
+        });
+      });
+    } catch (error) {
+      if (error instanceof ConceptEditProposalConflictError) {
+        redirect(`/concepts/${existingConcept.slug}/edit?conflict=1` as Route);
+      }
+      throw error;
+    }
+
+    if (proposal) {
+      await notifyAdminsOfConceptEditProposal({
+        actorId: user.id,
+        actorName: displayNameForUser(user),
+        conceptTitle: existingConcept.title,
+        proposalId: proposal.id
+      });
+    }
+    redirect(
+      contentLanguageViewHref("/concepts", existingConcept.slug, existingConcept.language, {
+        editProposal: proposal ? "submitted" : "unchanged"
+      }) as Route
+    );
+  }
+
+  let concept;
+  try {
+    concept = await prisma.$transaction(async (tx) => {
+      await lockConceptFamilyForMutation(tx, conceptId);
+      const currentSnapshotSource = await conceptSnapshotSource(tx, conceptId);
+      const approvedProposal = Number.isInteger(approvedProposalId) && approvedProposalId > 0
+        ? await tx.conceptEditProposal.findFirst({
+            where: { id: approvedProposalId, conceptId, status: "PENDING" },
+            include: { proposer: true }
+          })
+        : null;
+      if (approvedProposalId > 0 && !approvedProposal) {
+        throw new Error("This proposed concept edit is no longer pending.");
+      }
+      if (approvedProposal) {
+        const proposalBaseSnapshot = parseConceptRevisionSnapshot(approvedProposal.baseSnapshot);
+        if (
+          !proposalBaseSnapshot ||
+          changedConceptSnapshotFields(
+            proposalBaseSnapshot,
+            buildConceptRevisionSnapshot(currentSnapshotSource)
+          ).length > 0
+        ) {
+          throw new ConceptEditProposalConflictError();
+        }
+      }
+      const effectiveEditorId = approvedProposal?.proposerId ?? user.id;
+      await pinLatestConceptRevisionMetadata(tx, currentSnapshotSource);
+      const currentSnapshot = buildConceptRevisionSnapshot(currentSnapshotSource);
     const titleOrLanguageChanged =
-      title.toLowerCase() !== existingConcept.title.toLowerCase() || language !== existingConcept.language;
+        title.toLowerCase() !== currentSnapshotSource.title.toLowerCase() || language !== currentSnapshotSource.language;
     if (titleOrLanguageChanged) {
       const existingTitle = await tx.concept.findFirst({
         where: {
@@ -417,11 +572,11 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       });
       if (existingTitle) throw new DuplicateConceptTitleError();
     }
-    if (language !== existingConcept.language) {
+      if (language !== currentSnapshotSource.language) {
       const existingTranslation = await tx.concept.findFirst({
         where: {
           id: { not: conceptId },
-          translationGroupId: existingConcept.translationGroupId,
+            translationGroupId: currentSnapshotSource.translationGroupId,
           language
         },
         select: { slug: true }
@@ -432,9 +587,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     }
 
     const refreshedSourceRevisionId =
-      markTranslationFresh && existingConcept.translatedFromConceptId
+        markTranslationFresh && currentSnapshotSource.translatedFromConceptId
         ? latestConceptTextRevisionIdFromRevisions(await tx.pageRevision.findMany({
-            where: { pageType: SourceType.CONCEPT, pageId: existingConcept.translatedFromConceptId },
+              where: { pageType: SourceType.CONCEPT, pageId: currentSnapshotSource.translatedFromConceptId },
             orderBy: { id: "asc" },
             select: { id: true, markdown: true, conceptTitle: true, conceptSnapshot: true }
           }))
@@ -451,9 +606,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         domainCode,
         kind,
         needsReviewAfterEdit,
-        ...(canAppearInConceptBrowser !== undefined ? { canAppearInConceptBrowser } : {}),
+          canAppearInConceptBrowser,
         ...(refreshedSourceRevisionId ? { translatedFromRevisionId: refreshedSourceRevisionId } : {}),
-        lastEditedById: user.id
+          lastEditedById: effectiveEditorId
       }
     });
 
@@ -494,18 +649,18 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         conceptTitle: updated.title,
         conceptKind: updated.kind,
         conceptSnapshot: conceptRevisionSnapshotJson(updatedSnapshot),
-        editedById: user.id,
+          editedById: effectiveEditorId,
         editSummary: editSummary || conceptRevisionAutomaticSummary(changedFields)
       }
     });
-    await completeDailyConceptReviewForUser(tx, user.id, updated.id);
+      await completeDailyConceptReviewForUser(tx, effectiveEditorId, updated.id);
 
     const sharedChangedFields = conceptTranslationSharedChanges(changedFields);
     const sharedChangedFieldSet = new Set(sharedChangedFields);
     const siblings = sharedChangedFields.length > 0
       ? (
           await tx.concept.findMany({
-            where: { translationGroupId: existingConcept.translationGroupId, id: { not: updated.id } },
+              where: { translationGroupId: currentSnapshotSource.translationGroupId, id: { not: updated.id } },
             select: { id: true, slug: true }
           })
         )
@@ -540,14 +695,40 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
           conceptTitle: siblingAfter.title,
           conceptKind: siblingAfter.kind,
           conceptSnapshot: conceptRevisionSnapshotJson(buildConceptRevisionSnapshot(siblingAfter)),
-          editedById: user.id,
+            editedById: effectiveEditorId,
           editSummary: `Shared settings updated from ${updated.language} translation`
         }
       });
     }
 
-    return { updated, synchronizedTranslationSlugs: siblings.map(({ slug }) => slug) };
-  });
+      if (approvedProposal) {
+        const reviewedAt = new Date();
+        await tx.conceptEditProposal.update({
+          where: { id: approvedProposal.id },
+          data: { status: "APPROVED", reviewedById: user.id, reviewedAt }
+        });
+        await tx.notification.updateMany({
+          where: {
+            type: NotificationType.CONCEPT_EDIT_PROPOSED,
+            href: `/moderation/concept-edits/${approvedProposal.id}`,
+            readAt: null
+          },
+          data: { readAt: reviewedAt }
+        });
+      }
+
+      return {
+        updated,
+        synchronizedTranslationSlugs: siblings.map(({ slug }) => slug),
+        approvedProposal
+      };
+    });
+  } catch (error) {
+    if (error instanceof ConceptEditProposalConflictError && approvedProposalId > 0) {
+      redirect(`/moderation/concept-edits/${approvedProposalId}?conflict=1` as Route);
+    }
+    throw error;
+  }
 
   await refreshLinksForConcept(concept.updated.slug);
   revalidatePath("/concepts");
@@ -559,21 +740,100 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     revalidatePath(`/concepts/${siblingSlug}/edit`);
     revalidatePath(`/concepts/${siblingSlug}/history`);
   }
+  const effectiveActor = concept.approvedProposal?.proposer ?? user;
   await notifyOwnerOfSiteActivity({
-    actor: user,
+    actor: effectiveActor,
     type: NotificationType.CONCEPT_EDITED,
     title: "Concept edited",
-    body: `${displayNameForUser(user)} edited "${concept.updated.title}".`,
+    body: `${displayNameForUser(effectiveActor)} edited "${concept.updated.title}".`,
     href: `/concepts/${concept.updated.slug}`
   });
   await notifyConceptAuthor({
     conceptId: concept.updated.id,
-    actorId: user.id,
+    actorId: effectiveActor.id,
     title: "Concept edited",
-    body: `${displayNameForUser(user)} edited "${concept.updated.title}".`,
+    body: `${displayNameForUser(effectiveActor)} edited "${concept.updated.title}".`,
     href: `/concepts/${concept.updated.slug}`
   });
+  if (concept.approvedProposal) {
+    await createNotification({
+      userId: concept.approvedProposal.proposerId,
+      actorId: user.id,
+      type: NotificationType.CONCEPT_EDIT_APPROVED,
+      title: "Proposed concept edit approved",
+      body: `Your proposed changes to "${concept.updated.title}" are now public.`,
+      href: `/concepts/${concept.updated.slug}/history`
+    });
+    revalidatePath("/moderation");
+  }
   redirect(contentLanguageViewHref("/concepts", concept.updated.slug, concept.updated.language) as Route);
+}
+
+export async function approveConceptEditProposalAction(proposalId: number) {
+  const user = await requireVerifiedUser();
+  if (!canUseAdminTools(user)) throw new Error("Only admins can approve proposed concept edits.");
+  await assertRateLimit(`concept-proposal-review:${user.id}`, 40, 60_000);
+
+  const proposal = await prisma.conceptEditProposal.findFirst({
+    where: { id: proposalId, status: "PENDING" },
+    include: { concept: true }
+  });
+  if (!proposal) throw new Error("This proposed concept edit is no longer pending.");
+  const snapshot = parseConceptRevisionSnapshot(proposal.snapshot);
+  if (!snapshot) throw new Error("This proposed concept edit is invalid.");
+
+  const formData = new FormData();
+  formData.set("approvedProposalId", String(proposal.id));
+  formData.set("title", snapshot.title);
+  formData.set("language", snapshot.language);
+  formData.set("bodyMarkdown", snapshot.bodyMarkdown);
+  formData.set("kind", snapshot.kind);
+  formData.set("domain", snapshot.domainCode);
+  formData.set("aliases", snapshot.aliases.map(({ alias }) => alias).join(", "));
+  formData.set(
+    "references",
+    snapshot.references.map(({ title, url, note }) => [title, url ?? "", note ?? ""].join(" | ")).join("\n")
+  );
+  for (const exercise of snapshot.practiceExercises) formData.append("exerciseIds", String(exercise.id));
+  formData.set("editSummary", proposal.editSummary || "Community concept edit approved");
+
+  await updateConceptAction(proposal.conceptId, formData);
+}
+
+export async function rejectConceptEditProposalAction(proposalId: number, formData: FormData) {
+  const user = await requireVerifiedUser();
+  if (!canUseAdminTools(user)) throw new Error("Only admins can reject proposed concept edits.");
+  await assertRateLimit(`concept-proposal-review:${user.id}`, 40, 60_000);
+  const reviewNote = optionalBoundedText(formData.get("reviewNote"), CONTENT_LIMITS.longNote, "Review note");
+  const proposal = await prisma.$transaction(async (tx) => {
+    const reviewedAt = new Date();
+    const rejected = await tx.conceptEditProposal.update({
+      where: { id: proposalId, status: "PENDING" },
+      data: { status: "REJECTED", reviewedById: user.id, reviewedAt, reviewNote },
+      include: { concept: { select: { slug: true, title: true } } }
+    });
+    await tx.notification.updateMany({
+      where: {
+        type: NotificationType.CONCEPT_EDIT_PROPOSED,
+        href: `/moderation/concept-edits/${proposalId}`,
+        readAt: null
+      },
+      data: { readAt: reviewedAt }
+    });
+    return rejected;
+  });
+  await createNotification({
+    userId: proposal.proposerId,
+    actorId: user.id,
+    type: NotificationType.CONCEPT_EDIT_REJECTED,
+    title: "Proposed concept edit not accepted",
+    body: reviewNote
+      ? `Your proposed changes to "${proposal.concept.title}" were not accepted: ${reviewNote}`
+      : `Your proposed changes to "${proposal.concept.title}" were not accepted.`,
+    href: `/concepts/${proposal.concept.slug}`
+  });
+  revalidatePath("/moderation");
+  redirect("/moderation" as Route);
 }
 
 export async function markConceptReviewedAction(conceptId: number) {

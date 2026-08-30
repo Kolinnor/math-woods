@@ -16,12 +16,14 @@ function errorMessage(reason: string | undefined, messages: {
   invalid: string;
   accountUsed: string;
   emailUsed: string;
+  profileNameUsed: string;
   expired: string;
   rateLimited: string;
 }) {
   if (reason === "invalid") return messages.invalid;
   if (reason === "account-used") return messages.accountUsed;
   if (reason === "email-used") return messages.emailUsed;
+  if (reason === "profile-name-used") return messages.profileNameUsed;
   if (reason === "expired") return messages.expired;
   if (reason === "rate-limited") return messages.rateLimited;
   return null;

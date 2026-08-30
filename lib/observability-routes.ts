@@ -19,7 +19,9 @@ const DYNAMIC_ROUTE_PATTERNS: Array<[RegExp, string]> = [
   [/^\/mathematicians\/[^/]+\/?$/, "/mathematicians/[slug]"],
   [/^\/tips\/[^/]+\/(edit|preview)\/?$/, "/tips/[id]/$1"],
   [/^\/moderation\/concept-merges\/[^/]+\/?$/, "/moderation/concept-merges/[proposalId]"],
+  [/^\/moderation\/concept-edits\/[^/]+\/?$/, "/moderation/concept-edits/[proposalId]"],
   [/^\/moderation\/problem-edits\/[^/]+\/?$/, "/moderation/problem-edits/[proposalId]"],
+  [/^\/moderation\/profile-name-changes\/?$/, "/moderation/profile-name-changes"],
   [/^\/contributing\/tasks\/site-improvements\/[^/]+\/?$/, "/contributing/tasks/site-improvements/[id]"]
 ];
 

@@ -17,10 +17,11 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
-import { ChevronDown, ImageIcon, Loader2, Orbit } from "lucide-react";
+import { ChevronDown, ImageIcon, Link2, Loader2, Orbit } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import { FieldHelp } from "@/components/FieldHelp";
 import { MarkdownInline } from "@/components/MarkdownInline";
+import { useMarkdownEditorLabels } from "@/components/markdown/MarkdownEditorLabelsContext";
 import { imageUploadNetworkError, imageUploadResponseError } from "@/lib/image-upload-errors";
 import { jsxGraphFoldRangeAtLine, type JsxGraphFoldRange } from "@/lib/jsxgraph-folding";
 import { MATH_WOODS_KATEX_MACROS } from "@/lib/latex-macros";
@@ -1511,6 +1512,7 @@ export function MarkdownEditor({
   sourceUpdatedAt = null,
   characterGuide
 }: MarkdownEditorProps) {
+  const labels = useMarkdownEditorLabels();
   const titleMode = mode === "title";
   const resolvedMinHeight = titleMode ? "3.25rem" : minHeight;
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -1527,6 +1529,7 @@ export function MarkdownEditor({
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
   const [conflictingDraft, setConflictingDraft] = useState<MarkdownDraft | null>(null);
   const [linkMenu, setLinkMenu] = useState<LinkMenuState | null>(null);
+  const openLinkMenuRef = useRef<((x: number, y: number) => void) | null>(null);
   const [linkMenuPosition, setLinkMenuPosition] = useState<LinkMenuPosition | null>(null);
   const [linkTargetType, setLinkTargetType] = useState<LinkTargetType>("concept");
   const [linkTarget, setLinkTarget] = useState("");
@@ -1702,27 +1705,13 @@ export function MarkdownEditor({
     };
     const openLinkMenu = (event: MouseEvent) => {
       const selection = view.state.selection.main;
+      // Keep the browser context menu when no text is selected. The toolbar
+      // button remains the discoverable way to create a link from scratch.
       if (selection.empty) return;
-
-      const selectedText = view.state.doc.sliceString(selection.from, selection.to).trim();
-      if (!selectedText) return;
-      const selectedLink = parseSelectedWikiLink(selectedText);
-      const selectedProblemLink = parseSelectedProblemLink(selectedText);
+      if (!view.state.doc.sliceString(selection.from, selection.to).trim()) return;
 
       event.preventDefault();
-      view.focus();
-      schedulePreviewFocus(view, true);
-      setLinkTargetType(selectedProblemLink ? "problem" : "concept");
-      setSelectedProblemSlug(selectedProblemLink?.slug ?? null);
-      setLinkTarget(selectedProblemLink?.slug ?? selectedLink?.target ?? cleanWikiLinkTarget(selectedText));
-      setLinkText(selectedProblemLink?.label ?? selectedLink?.label ?? selectedText);
-      setLinkMenu({
-        x: event.clientX,
-        y: event.clientY,
-        from: selection.from,
-        to: selection.to,
-        selectedText
-      });
+      openLinkMenuRef.current?.(event.clientX, event.clientY);
     };
     host.addEventListener("contextmenu", openLinkMenu);
     document.addEventListener("focusin", outsideInteraction, true);
@@ -1796,15 +1785,23 @@ export function MarkdownEditor({
       );
     };
 
-    updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.visualViewport?.addEventListener("resize", updatePosition);
-    window.visualViewport?.addEventListener("scroll", updatePosition);
+    const updateAll = () => {
+      const viewport = window.visualViewport;
+      const root = document.documentElement;
+      root.style.setProperty("--visual-viewport-height", `${viewport?.height ?? window.innerHeight}px`);
+      root.style.setProperty("--visual-viewport-width", `${viewport?.width ?? window.innerWidth}px`);
+      updatePosition();
+    };
+
+    updateAll();
+    window.addEventListener("resize", updateAll);
+    window.visualViewport?.addEventListener("resize", updateAll);
+    window.visualViewport?.addEventListener("scroll", updateAll);
 
     return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.visualViewport?.removeEventListener("resize", updatePosition);
-      window.visualViewport?.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", updateAll);
+      window.visualViewport?.removeEventListener("resize", updateAll);
+      window.visualViewport?.removeEventListener("scroll", updateAll);
     };
   }, [linkMenu, linkSuggestions.length, linkSuggestionsLoading, linkTarget]);
 
@@ -1888,7 +1885,7 @@ export function MarkdownEditor({
                   aliases: [],
                   meta: [
                     suggestion.domainLabel,
-                    suggestion.difficulty === null ? null : `difficulty ${suggestion.difficulty}/100`
+                    suggestion.difficulty === null ? null : `${labels.difficulty} ${suggestion.difficulty}/100`
                   ]
                     .filter(Boolean)
                     .join(" / "),
@@ -1913,7 +1910,7 @@ export function MarkdownEditor({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [linkMenu, linkTarget, linkTargetType, selectedLinkSuggestionQuery]);
+  }, [labels.difficulty, linkMenu, linkTarget, linkTargetType, selectedLinkSuggestionQuery]);
 
   function discardDraft() {
     const key = draftKeyRef.current;
@@ -1947,6 +1944,27 @@ export function MarkdownEditor({
       annotations: previewOnly
     });
   }
+
+  const openLinkMenuAt = (x: number, y: number) => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const selection = view.state.selection.main;
+    const selectedText = view.state.doc.sliceString(selection.from, selection.to).trim();
+    const selectedLink = selectedText ? parseSelectedWikiLink(selectedText) : null;
+    const selectedProblemLink = selectedText ? parseSelectedProblemLink(selectedText) : null;
+
+    view.focus();
+    schedulePreviewFocus(view, true);
+    setLinkTargetType(selectedProblemLink ? "problem" : "concept");
+    setSelectedProblemSlug(selectedProblemLink?.slug ?? null);
+    setLinkTarget(
+      selectedProblemLink?.slug ?? selectedLink?.target ?? (selectedText ? cleanWikiLinkTarget(selectedText) : "")
+    );
+    setLinkText(selectedProblemLink?.label ?? selectedLink?.label ?? selectedText);
+    setLinkMenu({ x, y, from: selection.from, to: selection.to, selectedText });
+  };
+  openLinkMenuRef.current = openLinkMenuAt;
 
   function closeLinkMenu() {
     setLinkMenu(null);
@@ -2112,7 +2130,6 @@ export function MarkdownEditor({
   }
 
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
-  const cleanLinkText = cleanWikiLinkLabel(linkText || linkMenu?.selectedText || "");
   const exactLinkSuggestion = linkSuggestions.find((suggestion) => {
     const target = cleanLinkTarget.toLowerCase();
     const aliases = suggestion.aliases.map((alias) => alias.toLowerCase());
@@ -2125,7 +2142,6 @@ export function MarkdownEditor({
   );
   const canApplyLink = Boolean(
     cleanLinkTarget &&
-      cleanLinkText &&
       (linkTargetType === "concept" || selectedProblemSlug || exactLinkSuggestion?.targetType === "problem")
   );
 
@@ -2135,10 +2151,10 @@ export function MarkdownEditor({
         <div className="markdown-draft-notice" role="status">
           <span>The server content changed after this local draft. The latest server version is shown.</span>
           <button type="button" className="secondary" onClick={restoreConflictingDraft}>
-            Restore local draft
+            {labels.restoreLocalDraft}
           </button>
           <button type="button" className="secondary" onClick={discardDraft}>
-            Discard local draft
+            {labels.discardLocalDraft}
           </button>
         </div>
       )}
@@ -2146,40 +2162,52 @@ export function MarkdownEditor({
         <div className="markdown-draft-notice">
           <span>Draft restored from {formatDraftTime(restoredDraftAt)}.</span>
           <button type="button" className="secondary" onClick={discardDraft}>
-            Discard draft
+            {labels.discardDraft}
           </button>
         </div>
       )}
-      {!titleMode && <div className="markdown-editor-toolbar" aria-label="Editor tools">
+      {!titleMode && <div className="markdown-editor-toolbar" aria-label={labels.toolsAriaLabel}>
         {imageUploadEnabled && (
           <button
             type="button"
             className="secondary markdown-editor-tool-button"
             onClick={chooseImageFile}
             disabled={imageUploading}
-            title="Insert image"
+            title={labels.insertImage}
           >
             {imageUploading ? <Loader2 size={14} aria-hidden="true" /> : <ImageIcon size={14} aria-hidden="true" />}
-            <span>{imageUploading ? "Uploading" : "Image"}</span>
+            <span>{imageUploading ? labels.uploading : labels.image}</span>
           </button>
         )}
         <button
           type="button"
           className="secondary markdown-editor-tool-button"
           onClick={insertJsxGraph}
-          title="Insert interactive JSXGraph"
+          title={labels.insertJsxgraph}
         >
           <Orbit size={14} aria-hidden="true" />
-          <span>JSXGraph</span>
+          <span>{labels.jsxgraph}</span>
         </button>
         <button
           type="button"
           className="secondary markdown-editor-tool-button"
           onClick={insertFold}
-          title="Insert collapsible section"
+          title={labels.insertCollapsible}
         >
           <ChevronDown size={14} aria-hidden="true" />
-          <span>Fold</span>
+          <span>{labels.fold}</span>
+        </button>
+        <button
+          type="button"
+          className="secondary markdown-editor-tool-button"
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            openLinkMenuAt(rect.left, rect.bottom + 4);
+          }}
+          title={labels.addLink}
+        >
+          <Link2 size={14} aria-hidden="true" />
+          <span>{labels.link}</span>
         </button>
         {imageUploadEnabled && imageUploadMessage && (
           <span className="markdown-editor-toolbar-status">
@@ -2229,16 +2257,16 @@ export function MarkdownEditor({
         >
           <div className="markdown-link-menu-title">
             <span className="markdown-link-menu-icon" aria-hidden="true" />
-            <strong>Add link</strong>
+            <strong>{labels.addLink}</strong>
           </div>
-          <div className="markdown-link-menu-type" role="group" aria-label="Link type">
+          <div className="markdown-link-menu-type" role="group" aria-label={labels.linkTypeAriaLabel}>
             <button
               type="button"
               className={linkTargetType === "concept" ? "active" : undefined}
               aria-pressed={linkTargetType === "concept"}
               onClick={() => changeLinkTargetType("concept")}
             >
-              Concept
+              {labels.linkTypeConcept}
             </button>
             <button
               type="button"
@@ -2246,13 +2274,16 @@ export function MarkdownEditor({
               aria-pressed={linkTargetType === "problem"}
               onClick={() => changeLinkTargetType("problem")}
             >
-              Problem
+              {labels.linkTypeProblem}
             </button>
           </div>
+          <p className="markdown-link-menu-syntax">
+            {linkTargetType === "concept" ? labels.conceptLinkSyntaxHelp : labels.problemLinkSyntaxHelp}
+          </p>
           <label>
             <span className="field-label-with-help">
-              Text shown
-              <FieldHelp text="Text that will appear on the page." />
+              {labels.textShown}
+              <FieldHelp text={labels.textShownHelp} />
             </span>
             <input
               value={linkText}
@@ -2267,13 +2298,13 @@ export function MarkdownEditor({
                   closeLinkMenu();
                 }
               }}
-              placeholder="Text in the article"
+              placeholder={labels.textShownPlaceholder}
             />
           </label>
           <label>
             <span className="field-label-with-help">
-              Links to
-              <FieldHelp text="Page that will open when the link is clicked." />
+              {labels.linksTo}
+              <FieldHelp text={labels.linksToHelp} />
             </span>
             <input
               ref={linkTargetInputRef}
@@ -2293,11 +2324,13 @@ export function MarkdownEditor({
                   closeLinkMenu();
                 }
               }}
-              placeholder={linkTargetType === "concept" ? "Existing or new concept" : "Existing problem"}
+              placeholder={linkTargetType === "concept" ? labels.conceptTargetPlaceholder : labels.problemTargetPlaceholder}
             />
           </label>
           <div className="markdown-link-menu-results">
-            {linkSuggestionsLoading && <p>Searching {linkTargetType === "concept" ? "concepts" : "problems"}...</p>}
+            {linkSuggestionsLoading && (
+              <p>{linkTargetType === "concept" ? labels.searchingConcepts : labels.searchingProblems}</p>
+            )}
             {!linkSuggestionsLoading &&
               linkSuggestions.map((suggestion) => (
                 <button
@@ -2312,9 +2345,9 @@ export function MarkdownEditor({
               ))}
             {linkTargetType === "concept" && cleanLinkTarget && !hasExactSuggestion && (
               <div className="markdown-link-menu-new">
-                <span>New concept link: "{cleanLinkTarget}"</span>
+                <span>{labels.newConceptLink.replace("{target}", () => cleanLinkTarget)}</span>
                 <a href={`/concepts/new?title=${encodeURIComponent(cleanLinkTarget)}`} target="_blank" rel="noreferrer">
-                  Create page
+                  {labels.createPage}
                 </a>
               </div>
             )}
@@ -2322,14 +2355,14 @@ export function MarkdownEditor({
               cleanLinkTarget &&
               !linkSuggestionsLoading &&
               linkSuggestions.length === 0 &&
-              !selectedProblemSlug && <p>No matching problems.</p>}
+              !selectedProblemSlug && <p>{labels.noMatchingProblems}</p>}
           </div>
           <div className="markdown-link-menu-actions">
             <button type="button" className="secondary" onClick={closeLinkMenu}>
-              Cancel
+              {labels.cancel}
             </button>
             <button type="button" onClick={applyLinkMenu} disabled={!canApplyLink}>
-              Add link
+              {labels.addLink}
             </button>
           </div>
         </div>

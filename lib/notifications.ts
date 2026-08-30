@@ -175,6 +175,40 @@ export async function notifyAdminsOfProblemEditProposal({
   );
 }
 
+export async function notifyAdminsOfConceptEditProposal({
+  actorId,
+  actorName,
+  conceptTitle,
+  proposalId
+}: {
+  actorId: number;
+  actorName: string;
+  conceptTitle: string;
+  proposalId: number;
+}) {
+  const admins = await prisma.user.findMany({
+    where: {
+      role: { in: [Role.ADMIN, Role.OWNER] },
+      deletedAt: null,
+      id: { not: actorId }
+    },
+    select: { id: true }
+  });
+
+  return Promise.all(
+    admins.map(({ id: userId }) =>
+      createNotification({
+        userId,
+        actorId,
+        type: NotificationType.CONCEPT_EDIT_PROPOSED,
+        title: "Concept edit proposed",
+        body: `${actorName} proposed changes to "${conceptTitle}".`,
+        href: `/moderation/concept-edits/${proposalId}`
+      })
+    )
+  );
+}
+
 export async function notifyAdminsOfProblemDeletion({
   actorId,
   actorName,

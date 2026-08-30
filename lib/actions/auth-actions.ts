@@ -63,7 +63,7 @@ export async function registerAction(formData: FormData) {
   } catch (error) {
     const reason = errorMessage(error).startsWith("Too many requests")
       ? "rate-limited"
-      : prismaErrorCode(error) === "P2002"
+      : prismaErrorCode(error) === "P2002" || errorMessage(error).includes("already in use")
         ? "already-used"
         : "invalid";
     redirect(`/login?registerError=${reason}&returnTo=${encodeURIComponent(returnTo)}` as never);

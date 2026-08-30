@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ConceptStatus, MathDomain } from "@prisma/client";
-import { Flag, GitMerge, History, MessageCircle, Pencil, Users } from "lucide-react";
+import { Flag, GitMerge, History, MessageCircle, Pencil, Plus, Users } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -22,6 +22,8 @@ import {
 } from "@/lib/actions/concept-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { canPublishConceptEditForConcept } from "@/lib/concept-edit-access";
+import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
@@ -32,7 +34,7 @@ import { markdownExcerpt } from "@/lib/metadata-text";
 import {
   canChangeConceptStatus,
   canDowngradeConceptStatus,
-  canEditConcept,
+  canProposeConceptEdit,
   canReviewConcept,
   canUseAdminTools
 } from "@/lib/permissions";
@@ -135,7 +137,7 @@ export default async function ConceptPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ viewLanguage?: string; missingTitle?: string }>;
+  searchParams?: Promise<{ viewLanguage?: string; missingTitle?: string; editProposal?: string }>;
 }) {
   const { slug } = await params;
   const queryParams = searchParams ? await searchParams : {};
@@ -180,7 +182,7 @@ export default async function ConceptPage({
         select: { id: true, slug: true, title: true, language: true, createdById: true }
       },
       mergeContributors: { include: { user: true } },
-      _count: { select: { talkPosts: true } }
+      _count: { select: { practiceExercises: true, talkPosts: true } }
     }
   });
 
@@ -423,6 +425,9 @@ export default async function ConceptPage({
       concept.translatedFromConcept &&
       (concept.translatedFromConcept.createdById === user.id || canUseAdminTools(user))
   );
+  const publishesConceptEdits = user
+    ? await canPublishConceptEditForConcept(user, concept)
+    : false;
 
   const conceptLookupSlugs = [concept.slug, ...concept.aliases.map((alias) => alias.aliasSlug)];
   const [problemBacklinks, conceptBacklinks, spoilerProblemBacklinksRaw] = await Promise.all([
@@ -504,6 +509,16 @@ export default async function ConceptPage({
     />
     <div className="concept-detail-layout">
       <article className="concept-detail-article">
+        {queryParams.editProposal === "submitted" && (
+          <p className="quality-banner quality-unreviewed mb-4" role="status">
+            {t.contentEditor.conceptProposalSubmitted}
+          </p>
+        )}
+        {queryParams.editProposal === "unchanged" && (
+          <p className="quality-banner quality-unreviewed mb-4" role="status">
+            {t.contentEditor.conceptProposalUnchanged}
+          </p>
+        )}
         {hasReadingHeader && (
           <div className="reading-header mb-5">
             {isLanguageFallback && (
@@ -729,9 +744,17 @@ export default async function ConceptPage({
 
       <aside className="concept-detail-rail">
         <nav className="problem-rail-actions concept-rail-actions" aria-label={t.conceptDetail.concept}>
-          {user && canEditConcept(user, concept) && (
+          {user && canProposeConceptEdit(user) && (
             <Link href={`/concepts/${concept.slug}/edit`}>
-              <span className="problem-rail-action-label"><Pencil size={16} aria-hidden="true" /><span>{t.conceptDetail.edit}</span></span>
+              <span className="problem-rail-action-label">
+                <Pencil size={16} aria-hidden="true" />
+                <span>{publishesConceptEdits ? t.conceptDetail.edit : t.contentEditor.proposeEdit}</span>
+              </span>
+            </Link>
+          )}
+          {user && concept._count.practiceExercises < MAX_CONCEPT_EXERCISES && (
+            <Link href={`/problems/new?exercise=1&concept=${encodeURIComponent(concept.slug)}&language=${encodeURIComponent(concept.language)}`}>
+              <span className="problem-rail-action-label"><Plus size={16} aria-hidden="true" /><span>{t.conceptDetail.createExercise}</span></span>
             </Link>
           )}
           <Link href={`/concepts/${concept.slug}/talk`}>

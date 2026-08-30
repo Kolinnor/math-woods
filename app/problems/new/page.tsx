@@ -1,5 +1,6 @@
 import type { Route } from "next";
 import Link from "next/link";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ProblemCreateForm } from "@/components/ProblemCreateForm";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
@@ -45,6 +46,7 @@ export default async function NewProblemPage({
     draft?: string;
     exercise?: string;
     contest?: string;
+    concept?: string;
     task?: string;
     completed?: string;
   }>;
@@ -62,15 +64,24 @@ export default async function NewProblemPage({
     language = "",
     exercise = "",
     contest = "",
+    concept = "",
     task = "",
     completed = ""
   } = queryParams;
   const contributionTask = parseProblemTranslationTaskKey(task);
   const explorationSlug = exploration || playlist;
   const preferredLanguage = await getPreferredContentLanguage();
-  const requestedLanguage = language ? parseActiveContentLanguage(language) : preferredLanguage;
+  const linkedConcept = concept && !translateOf
+    ? await prisma.concept.findFirst({
+        where: { slug: concept, status: { not: "MISSING" } },
+        select: { slug: true, title: true, language: true }
+      })
+    : null;
+  const requestedLanguage = language
+    ? parseActiveContentLanguage(language)
+    : linkedConcept?.language ?? preferredLanguage;
   const isListedByDefault = listed !== "0";
-  const isExerciseByDefault = exercise === "1" || exercise === "true";
+  const isExerciseByDefault = Boolean(linkedConcept) || exercise === "1" || exercise === "true";
   const parentProblem = parent
     ? await prisma.problem.findUnique({
         where: { slug: parent },
@@ -245,6 +256,7 @@ export default async function NewProblemPage({
         >
           {explorationSlug && <input type="hidden" name="addToExplorationSlug" value={explorationSlug} />}
           {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
+          {linkedConcept && <input type="hidden" name="linkConceptSlug" value={linkedConcept.slug} />}
           {sourceProblem && <input type="hidden" name="translationGroupId" value={sourceProblem.translationGroupId} />}
           {sourceProblem && <input type="hidden" name="translationSourceSlug" value={sourceProblem.slug} />}
           {sourceProblem && contributionTask && <input type="hidden" name="contributionTask" value={contributionTask} />}
@@ -254,6 +266,12 @@ export default async function NewProblemPage({
             <div className="problem-compose-section-title">{t.contentEditor.essentialInformation}</div>
             {explorationSlug && <p className="muted text-sm">{t.contentEditor.creatingForExploration}</p>}
             {parentProblem && <p className="muted text-sm">{t.contentEditor.linkedFrom(parentProblem.title)}</p>}
+            {linkedConcept && (
+              <p className="muted text-sm">
+                {t.contentEditor.creatingExerciseForConcept}{" "}
+                <strong><AsyncMarkdownInline markdown={linkedConcept.title} /></strong>
+              </p>
+            )}
             {contest && (
               <p className="quality-banner text-sm">
                 {interfaceLocale === "fr"

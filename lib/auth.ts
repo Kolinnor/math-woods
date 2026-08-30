@@ -152,12 +152,13 @@ export async function registerUser(
     where: {
       OR: [
         { username: usernameLookupFilter(username) },
-        { profileSlug: usernameLookupFilter(username) }
+        { profileSlug: usernameLookupFilter(username) },
+        { displayName: { equals: displayName, mode: "insensitive" }, deletedAt: null }
       ]
     },
     select: { id: true }
   });
-  if (usernameOwner) throw new Error("This username is already in use.");
+  if (usernameOwner) throw new Error("This profile name is already in use.");
 
   const user = await prisma.user.create({
     data: {

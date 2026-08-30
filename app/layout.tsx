@@ -35,6 +35,7 @@ import { FriendsMenu } from "@/components/FriendsMenu";
 import { GuestProgressPrompt } from "@/components/GuestProgressPrompt";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { MathWoodsTourOverlay } from "@/components/MathWoodsTourOverlay";
+import { MarkdownEditorLabelsProvider } from "@/components/markdown/MarkdownEditorLabelsContext";
 import { NavigationFeedback } from "@/components/NavigationFeedback";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { SignInLink } from "@/components/SignInLink";
@@ -342,7 +343,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <FriendsMenu user={user} />
           </div>
         )}
-        <main className="site-main site-content-width mx-auto px-4 py-8">{children}</main>
+        <main className="site-main site-content-width mx-auto px-4 py-8">
+          <MarkdownEditorLabelsProvider labels={t.markdownEditor}>{children}</MarkdownEditorLabelsProvider>
+        </main>
         <Suspense fallback={null}>
           <MathWoodsTourOverlay initialLocale={initialLanguage === "fr" ? "fr" : "en"} />
         </Suspense>

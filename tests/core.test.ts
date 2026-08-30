@@ -6,6 +6,12 @@ import { EditorState, StateEffect } from "@codemirror/state";
 import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import { creationSubmissionKey } from "../lib/creation-submission.ts";
+import {
+  canChangeDisplayName,
+  DISPLAY_NAME_CHANGE_COOLDOWN_DAYS,
+  displayNameActuallyChanged,
+  nextDisplayNameChangeAt
+} from "../lib/display-name-change.ts";
 import { normalizeEmailAddress } from "../lib/email-address.ts";
 import { isBrowserExtensionError, isOpaqueWindowScriptError } from "../lib/client-error-filter.ts";
 import { readJsonResponse } from "../lib/json-response.ts";
@@ -54,6 +60,7 @@ import {
   usernameLookupFilter
 } from "../lib/usernames.ts";
 import { parseUserDiscoverySource } from "../lib/user-discovery-source.ts";
+import { displayNameComparisonKey, normalizeDisplayName } from "../lib/user-display.ts";
 import { notifyTrustedUsersOfRegistration } from "../lib/user-registration-notifications.ts";
 import { notificationPreferenceDefault } from "../lib/notification-preference-defaults.ts";
 import {
@@ -375,7 +382,9 @@ import {
   canDeletePlaylist,
   canEditProblem,
   canEditSolution,
+  canProposeConceptEdit,
   canProposeProblemEdit,
+  canPublishConceptEditForTarget,
   canPublishProblemEdit,
   canPublishProblemEditForTarget,
   canManageUserRoles,
@@ -510,6 +519,11 @@ assert.deepEqual(
 assert.equal(await readJsonResponse(new Response("<!doctype html><title>Unavailable</title>")), null);
 assert.equal(await readJsonResponse(new Response("")), null);
 assert.equal(normalizeUsernameLookup(" Paulownia "), "paulownia");
+assert.equal(normalizeDisplayName("  Araucaria   Araucana  "), "Araucaria Araucana");
+assert.equal(normalizeDisplayName("Ｂａｏｂａｂ"), "Baobab");
+assert.equal(displayNameComparisonKey(" Baobab "), "baobab");
+assert.equal(displayNameComparisonKey("ＢＡＯＢＡＢ"), "baobab");
+assert.throws(() => normalizeDisplayName("Bao\u200Bbab"), /invisible or unsupported/);
 assert.equal(normalizeEmailAddress("  New.Address@Example.COM "), "new.address@example.com");
 assert.equal(normalizeEmailAddress("missing-at.example.com"), null);
 assert.equal(normalizeEmailAddress("two words@example.com"), null);
@@ -800,6 +814,18 @@ assert.equal(dictionaryForContentLanguage("en").guestProgressPrompt.close, "Clos
 assert.equal(dictionaryForContentLanguage("en").problemDetail.addFavorite, "I like this problem");
 assert.equal(dictionaryForContentLanguage("en").problemDetail.favorited, "I like this problem");
 assert.equal(dictionaryForContentLanguage("en").problemDetail.startAttempting, "Add to my list");
+
+for (const language of ["en", "fr"] as const) {
+  const labels = dictionaryForContentLanguage(language).markdownEditor;
+  for (const [key, value] of Object.entries(labels)) {
+    assert.equal(typeof value, "string", `${language}.markdownEditor.${key} must be serializable`);
+  }
+  assert.doesNotThrow(() => structuredClone(labels));
+  assert.ok(labels.newConceptLink.includes("{target}"));
+  for (const target of ["Polynomial", "$x$", "a$&b", "co$'t", "x$$y", "q$`z"]) {
+    assert.ok(labels.newConceptLink.replace("{target}", () => target).includes(target));
+  }
+}
 assert.deepEqual(parseSelectedTranslationIds(["3", "2", "3", "bad", "0"]), [3, 2]);
 assert.equal(translationBodyFieldName(TRANSLATED_PROOF_BODY_PREFIX, 17), "translatedProofBody:17");
 assert.equal(dictionaryForContentLanguage("es").nav.problems, "Problems");
@@ -1660,6 +1686,34 @@ assert.equal(canTransferProblemAttribution(Role.USER), false);
 assert.equal(canTransferProblemAttribution(Role.MODERATOR), false);
 assert.equal(canTransferProblemAttribution(Role.ADMIN), true);
 assert.equal(canTransferProblemAttribution(Role.OWNER), true);
+assert.equal(DISPLAY_NAME_CHANGE_COOLDOWN_DAYS, 90);
+assert.equal(canChangeDisplayName({ role: Role.USER, displayNameChangedAt: null }), true);
+const previousDisplayNameChange = new Date("2026-01-01T12:00:00.000Z");
+const nextAllowedDisplayNameChange = new Date("2026-04-01T12:00:00.000Z");
+assert.deepEqual(nextDisplayNameChangeAt(previousDisplayNameChange), nextAllowedDisplayNameChange);
+assert.equal(
+  canChangeDisplayName(
+    { role: Role.USER, displayNameChangedAt: previousDisplayNameChange },
+    new Date("2026-04-01T11:59:59.999Z")
+  ),
+  false
+);
+assert.equal(
+  canChangeDisplayName(
+    { role: Role.USER, displayNameChangedAt: previousDisplayNameChange },
+    nextAllowedDisplayNameChange
+  ),
+  true
+);
+assert.equal(
+  canChangeDisplayName(
+    { role: Role.OWNER, displayNameChangedAt: new Date("2026-03-31T12:00:00.000Z") },
+    nextAllowedDisplayNameChange
+  ),
+  true
+);
+assert.equal(displayNameActuallyChanged("Ancient Tree", "Ancient Tree"), false);
+assert.equal(displayNameActuallyChanged("Ancient Tree", "AncientTree"), true);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.USER), true);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.MODERATOR), true);
 assert.equal(shouldNotifyAdminsOfContributorCreation(Role.ADMIN), false);
@@ -1799,6 +1853,9 @@ assert.equal(canEditProblem({ id: 1, role: Role.MODERATOR }, { authorId: 2 }), t
 assert.equal(canProposeProblemEdit({ id: 1, role: Role.USER, emailVerifiedAt: null }), false);
 assert.equal(canProposeProblemEdit({ id: 1, role: Role.USER, emailVerifiedAt: new Date(0) }), true);
 assert.equal(canProposeProblemEdit({ id: 1, role: Role.MODERATOR, emailVerifiedAt: null }), true);
+assert.equal(canProposeConceptEdit({ id: 1, role: Role.USER, emailVerifiedAt: null }), false);
+assert.equal(canProposeConceptEdit({ id: 1, role: Role.USER, emailVerifiedAt: new Date(0) }), true);
+assert.equal(canProposeConceptEdit({ id: 1, role: Role.MODERATOR, emailVerifiedAt: null }), true);
 assert.equal(canPublishProblemEdit({ id: 1, role: Role.USER }), false);
 assert.equal(canPublishProblemEdit({ id: 1, role: Role.MODERATOR }), true);
 assert.equal(canPublishProblemEdit({ id: 1, role: Role.ADMIN }), true);
@@ -1806,6 +1863,10 @@ assert.equal(canPublishProblemEditForTarget({ id: 1, role: Role.USER }, { author
 assert.equal(canPublishProblemEditForTarget({ id: 1, role: Role.USER }, { authorId: 2 }, true), true);
 assert.equal(canPublishProblemEditForTarget({ id: 1, role: Role.USER }, { authorId: 2 }, false), false);
 assert.equal(canPublishProblemEditForTarget({ id: 1, role: Role.MODERATOR }, { authorId: 2 }, false), true);
+assert.equal(canPublishConceptEditForTarget({ id: 1, role: Role.USER }, { createdById: 1 }, false), true);
+assert.equal(canPublishConceptEditForTarget({ id: 1, role: Role.USER }, { createdById: 2 }, true), true);
+assert.equal(canPublishConceptEditForTarget({ id: 1, role: Role.USER }, { createdById: 2 }, false), false);
+assert.equal(canPublishConceptEditForTarget({ id: 1, role: Role.MODERATOR }, { createdById: 2 }, false), true);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 1 }), true);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.USER }, { authorId: 2 }), false);
 assert.equal(canDeletePlaylist({ id: 1, role: Role.ADMIN }, { authorId: 2 }), true);
@@ -2354,6 +2415,10 @@ assert.match(markdownEditorSource, /liveMarkdownPreviewExtension\(!titleMode\)/)
 assert.match(markdownEditorSource, /transaction\.newDoc\.lines === 1/);
 assert.match(markdownEditorSource, /withLatexRenderFallback/);
 assert.match(markdownEditorSource, /cm-latex-preview-error/);
+assert.match(markdownEditorSource, /<Link2\b/);
+assert.match(markdownEditorSource, /openLinkMenuAt\(rect\.left, rect\.bottom \+ 4\)/);
+assert.match(markdownEditorSource, /labels\.newConceptLink\.replace\("\{target\}", \(\) => cleanLinkTarget\)/);
+assert.match(markdownEditorSource, /--visual-viewport-height/);
 for (const path of [join("components", "NotificationsMenu.tsx"), join("app", "notifications", "page.tsx")]) {
   const source = readFileSync(path, "utf-8");
   assert.match(source, /localizeNotification\(notification, interfaceLocale/);
@@ -2363,6 +2428,7 @@ const tourSource = readFileSync(join("components", "MathWoodsTour.tsx"), "utf-8"
 const tourOverlaySource = readFileSync(join("components", "MathWoodsTourOverlay.tsx"), "utf-8");
 const tourCopySource = readFileSync(join("lib", "math-woods-tour.ts"), "utf-8");
 const layoutSource = readFileSync(join("app", "layout.tsx"), "utf-8");
+assert.match(layoutSource, /<MarkdownEditorLabelsProvider labels=\{t\.markdownEditor\}>/);
 const navigationFeedbackSource = readFileSync(join("components", "NavigationFeedback.tsx"), "utf-8");
 const aboutPageSource = readFileSync(join("app", "about", "page.tsx"), "utf-8");
 const legalPageSource = readFileSync(join("app", "legal", "page.tsx"), "utf-8");
@@ -2437,6 +2503,10 @@ const loginSource = readFileSync(join("app", "login", "page.tsx"), "utf-8");
 const oauthCompleteSource = readFileSync(join("app", "login", "complete", "page.tsx"), "utf-8");
 const authActionsSource = readFileSync(join("lib", "actions", "auth-actions.ts"), "utf-8");
 const oauthActionsSource = readFileSync(join("lib", "actions", "oauth-actions.ts"), "utf-8");
+const uniqueDisplayNamesMigrationSource = readFileSync(
+  join("prisma", "migrations", "20260830203000_enforce_unique_public_profile_names", "migration.sql"),
+  "utf-8"
+);
 const languageSelectorSource = readFileSync(join("components", "LanguageSelector.tsx"), "utf-8");
 const contributionTasksSource = readFileSync(join("app", "contributing", "tasks", "page.tsx"), "utf-8");
 const contributionTaskRandomSource = readFileSync(join("app", "contributing", "tasks", "random", "route.ts"), "utf-8");
@@ -2681,6 +2751,11 @@ assert.doesNotMatch(homeSource, /t\.home\.hero\.resume\(resumeProblem\.title\)/)
 assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
 assert.doesNotMatch(oauthCompleteSource, /defaultValue=\{attempt\.providerDisplayName/);
 assert.match(oauthCompleteSource, /complete\.publicPseudonymHelp/);
+assert.match(oauthActionsSource, /displayName: \{ equals: displayName, mode: "insensitive" \}/);
+assert.match(oauthActionsSource, /oauthFailure\("profile-name-used"\)/);
+assert.match(uniqueDisplayNamesMigrationSource, /"displayName" = 'baobab'/);
+assert.match(uniqueDisplayNamesMigrationSource, /'araucaria araucana'/);
+assert.match(uniqueDisplayNamesMigrationSource, /CREATE UNIQUE INDEX "User_active_displayName_lower_key"/);
 assert.doesNotMatch(loginSource, /name="discoverySource(?:Detail)?"/);
 assert.doesNotMatch(oauthCompleteSource, /name="discoverySource(?:Detail)?"/);
 assert.doesNotMatch(authActionsSource, /formData\.get\("discoverySource(?:Detail)?"\)/);
@@ -2876,6 +2951,41 @@ assert.deepEqual(conceptTranslationNotification, {
   title: "Nouvelle traduction d’un concept",
   body: "Alouette a traduit « Compact space » en français sous le titre « Espace compact »."
 });
+const exerciseAddedToConceptNotification = localizeNotification({
+  type: NotificationType.CONCEPT_EDITED,
+  title: "Exercise added to your concept",
+  body: 'Alouette added exercise "Une intégrale $I$" to concept "Espace compact".',
+  actor: notificationActor
+}, "fr");
+assert.deepEqual(exerciseAddedToConceptNotification, {
+  title: "Exercice ajouté à votre concept",
+  body: "Alouette a ajouté l’exercice « Une intégrale $I$ » au concept « Espace compact »."
+});
+assert.deepEqual(localizeNotification({
+  type: NotificationType.CONCEPT_EDIT_PROPOSED,
+  title: "Concept edit proposed",
+  body: 'Alouette proposed changes to "Espace compact".',
+  actor: notificationActor
+}, "fr"), {
+  title: "Modification de concept proposée",
+  body: "Alouette a proposé des modifications pour « Espace compact »."
+});
+assert.deepEqual(localizeNotification({
+  type: NotificationType.CONCEPT_EDIT_APPROVED,
+  title: "Proposed concept edit approved",
+  body: 'Your proposed changes to "Espace compact" are now public.'
+}, "fr"), {
+  title: "Modification de concept approuvée",
+  body: "Vos modifications proposées pour « Espace compact » sont maintenant publiques."
+});
+assert.deepEqual(localizeNotification({
+  type: NotificationType.CONCEPT_EDIT_REJECTED,
+  title: "Proposed concept edit not accepted",
+  body: 'Your proposed changes to "Espace compact" were not accepted: Please cite a source.'
+}, "fr"), {
+  title: "Modification de concept non retenue",
+  body: "Vos modifications proposées pour « Espace compact » n’ont pas été retenues. Motif : Please cite a source."
+});
 assert.deepEqual(
   localizeNotification({
     type: NotificationType.SOLUTION_VOTED,
@@ -2918,7 +3028,7 @@ assert.match(rolesPageSource, /canUseAdminTools/);
 assert.match(rolesEditPageSource, /<MarkdownEditor/);
 assert.match(rolesPageActionSource, /rolesPageContent\.upsert/);
 assert.match(rolesPageActionSource, /boundedText\([\s\S]*?trim: false/);
-assert.match(conceptDetailSource, /user && canEditConcept\(user, concept\)/);
+assert.match(conceptDetailSource, /user && canProposeConceptEdit\(user\)/);
 const latexDisplayRule = editorCssSource.match(/\.markdown-editor \.cm-latex-display \{([^}]*)\}/)?.[1] ?? "";
 assert.match(latexDisplayRule, /display:\s*inline-block/);
 assert.doesNotMatch(latexDisplayRule, /display:\s*block/);

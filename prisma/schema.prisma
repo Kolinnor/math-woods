@@ -294,6 +294,9 @@ enum NotificationType {
   PROBLEM_EDIT_PROPOSED
   PROBLEM_EDIT_APPROVED
   PROBLEM_EDIT_REJECTED
+  CONCEPT_EDIT_PROPOSED
+  CONCEPT_EDIT_APPROVED
+  CONCEPT_EDIT_REJECTED
   PROOF_ADDED
   SOLUTION_VOTED
   SOLUTION_REPORTED
@@ -378,7 +381,9 @@ model User {
   username                        String                          @unique
   // Public profile URL, kept separate from login identifiers and OAuth data.
   profileSlug                     String                          @unique
+  // A migration maintains case-insensitive uniqueness for active public names.
   displayName                     String?
+  displayNameChangedAt            DateTime?
   avatarUrl                       String?
   avatarBackground                String?
   email                           String?                         @unique
@@ -465,10 +470,28 @@ model User {
   dailyConceptReviews             DailyConceptReview[]
   problemEditProposals            ProblemEditProposal[]           @relation("ProblemEditProposalAuthor")
   reviewedProblemEditProposals    ProblemEditProposal[]           @relation("ProblemEditProposalReviewer")
+  conceptEditProposals            ConceptEditProposal[]           @relation("ConceptEditProposalAuthor")
+  reviewedConceptEditProposals    ConceptEditProposal[]           @relation("ConceptEditProposalReviewer")
   contestsCreated                 ProblemContest[]                @relation("ProblemContestCreator")
   contestSubmissions              ProblemContestSubmission[]
   trustedUserRecommendation       TrustedUserRecommendation?      @relation("TrustedUserRecommendationCandidate")
   trustedRecommendationsDecided   TrustedUserRecommendation[]     @relation("TrustedUserRecommendationDecider")
+  displayNameChanges              DisplayNameChange[]             @relation("DisplayNameChangeUser")
+  displayNameChangesMade          DisplayNameChange[]             @relation("DisplayNameChangeActor")
+}
+
+model DisplayNameChange {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  actorId        Int
+  oldDisplayName String
+  newDisplayName String
+  changedAt      DateTime @default(now())
+  user           User     @relation("DisplayNameChangeUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor          User     @relation("DisplayNameChangeActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([userId, changedAt])
+  @@index([changedAt])
 }
 
 model ExternalIdentity {
@@ -909,6 +932,7 @@ model Concept {
   dailyReviewAssignments    DailyConceptReview[]
   mergeContributors         ConceptMergeContributor[]
   mergeRedirects            ConceptRedirect[]         @relation("ConceptRedirectTarget")
+  editProposals             ConceptEditProposal[]
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
@@ -917,6 +941,29 @@ model Concept {
   @@index([domainCode])
   @@index([translationGroupId])
   @@index([translatedFromConceptId])
+}
+
+model ConceptEditProposal {
+  id            Int                       @id @default(autoincrement())
+  conceptId     Int
+  proposerId    Int
+  baseUpdatedAt DateTime
+  baseSnapshot  Json
+  snapshot      Json
+  editSummary   String?
+  status        ProblemEditProposalStatus @default(PENDING)
+  reviewedById  Int?
+  reviewNote    String?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  reviewedAt    DateTime?
+  concept       Concept                   @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  proposer      User                      @relation("ConceptEditProposalAuthor", fields: [proposerId], references: [id], onDelete: Cascade)
+  reviewedBy    User?                     @relation("ConceptEditProposalReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([conceptId, status, createdAt])
+  @@index([proposerId, status, createdAt])
 }
 
 model PageRevision {

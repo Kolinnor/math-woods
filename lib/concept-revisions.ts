@@ -118,3 +118,21 @@ export function conceptRevisionAutomaticSummary(fields: ConceptSnapshotField[]) 
   if (labels.length === 1) return `Updated ${labels[0]}`;
   return `Updated ${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
 }
+
+export function formatConceptSnapshotFieldValue(
+  field: ConceptSnapshotField,
+  value: ConceptRevisionSnapshot[ConceptSnapshotField]
+) {
+  if (field === "aliases") {
+    return (value as ConceptRevisionSnapshot["aliases"]).map(({ alias }) => alias).join(", ") || "None";
+  }
+  if (field === "references") {
+    return (value as ConceptRevisionSnapshot["references"]).map(({ title }) => title).join(", ") || "None";
+  }
+  if (field === "practiceExercises") {
+    return (value as ConceptRevisionSnapshot["practiceExercises"]).map(({ title }) => title).join(", ") || "None";
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (value === null || value === "") return "None";
+  return String(value);
+}
