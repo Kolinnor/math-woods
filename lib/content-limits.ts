@@ -1,5 +1,6 @@
 export const CONTENT_LIMITS = {
   title: 160,
+  problemTitle: 120,
   shortText: 240,
   mediumText: 1200,
   longNote: 4000,
@@ -9,6 +10,8 @@ export const CONTENT_LIMITS = {
   tagList: 1000,
   relationGroups: 12000
 } as const;
+
+export const PROBLEM_TITLE_WARNING_LENGTH = 100;
 
 type TextOptions = {
   trim?: boolean;

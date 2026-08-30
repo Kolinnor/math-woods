@@ -27,6 +27,7 @@ import { chatScrollTopAfterPrepend } from "@/lib/chat-scroll";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { ChatReplyPreview } from "@/lib/chat-replies";
 import type { InterfaceLocale } from "@/lib/i18n/types";
+import { readJsonResponse } from "@/lib/json-response";
 
 export type LiveChatMessage = DirectChatMessage;
 
@@ -47,7 +48,9 @@ type LiveChatThreadProps = {
     confirmDeleteMessage: string;
     deleteMessage: string;
     deletingMessage: string;
+    deleteMessageError: string;
     editMessage: string;
+    editMessageError: string;
     reply: string;
     edited: string;
     saveChanges: string;
@@ -115,10 +118,11 @@ export function LiveChatThread({
         { cache: "no-store" }
       );
       if (!response.ok) return;
-      const data = (await response.json()) as {
+      const data = await readJsonResponse<{
         messages?: LiveChatMessage[];
         hasOlderMessages?: boolean;
-      };
+      }>(response);
+      if (!data) return;
       const olderMessages = data.messages ?? [];
       setHasOlderMessages(Boolean(data.hasOlderMessages));
       if (olderMessages.length === 0) return;
@@ -223,13 +227,16 @@ export function LiveChatThread({
         if (!response.ok) {
           setStatus("paused");
         } else {
-          const data = (await response.json()) as {
+          const data = await readJsonResponse<{
             messages?: LiveChatMessage[];
             deletedMessageIds?: number[];
             messageUpdates?: ChatMessageUpdate[];
             reactionCursor?: number;
             reactionUpdates?: ChatReactionUpdate[];
-          };
+          }>(response);
+          if (!data) {
+            throw new Error("Invalid chat response.");
+          }
           if (
             (Array.isArray(data.messages) && data.messages.length > 0)
             || (Array.isArray(data.deletedMessageIds) && data.deletedMessageIds.length > 0)

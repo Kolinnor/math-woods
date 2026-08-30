@@ -25,6 +25,15 @@ const frenchSettingsText: Record<string, string> = {
   "Too many requests. Please try again later.": "Trop de demandes. Veuillez réessayer plus tard.",
   "Verification email could not be sent yet.": "L'e-mail de vérification n'a pas encore pu être envoyé.",
   "Your email is already verified.": "Votre adresse e-mail est déjà vérifiée.",
+  "A confirmation link was sent to your new email address.":
+    "Un lien de confirmation a été envoyé à votre nouvelle adresse e-mail.",
+  "This is already your account email address.": "Il s’agit déjà de l’adresse e-mail de votre compte.",
+  "This email address is already associated with another account.":
+    "Cette adresse e-mail est déjà associée à un autre compte.",
+  "Enter a valid email address.": "Saisissez une adresse e-mail valide.",
+  "The current password is incorrect.": "Le mot de passe actuel est incorrect.",
+  "The confirmation email could not be sent. Please try again later.":
+    "L’e-mail de confirmation n’a pas pu être envoyé. Veuillez réessayer plus tard.",
   "Settings sections": "Sections des paramètres",
   "Notifications": "Notifications",
   "Editor": "Éditeur",
@@ -35,6 +44,11 @@ const frenchSettingsText: Record<string, string> = {
   "Email delivery is configured.": "L'envoi d'e-mails est configuré.",
   "Email delivery is not configured yet.": "L'envoi d'e-mails n'est pas encore configuré.",
   "Resend verification email": "Renvoyer l'e-mail de vérification",
+  "Change email address": "Modifier l’adresse e-mail",
+  "Your current address remains active until you confirm the new one.":
+    "Votre adresse actuelle reste active jusqu’à la confirmation de la nouvelle.",
+  "New email address": "Nouvelle adresse e-mail",
+  "Send confirmation link": "Envoyer le lien de confirmation",
   "Connected accounts": "Comptes connectés",
   "Use a connected account to sign in without entering your Math Woods password.":
     "Utilisez un compte connecté pour vous identifier sans saisir votre mot de passe Math Woods.",

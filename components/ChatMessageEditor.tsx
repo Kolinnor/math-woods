@@ -4,6 +4,7 @@ import { Check, Pencil, Reply, Trash2, X } from "lucide-react";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { shouldSendChatOnEnter } from "@/lib/chat-compose";
+import { readJsonResponse } from "@/lib/json-response";
 
 export type EditedChatMessage = {
   messageId: number;
@@ -21,8 +22,10 @@ type ChatMessageEditorProps = {
     cancel: string;
     confirmDeleteMessage: string;
     deleteMessage: string;
+    deleteMessageError: string;
     deletingMessage: string;
     editMessage: string;
+    editMessageError: string;
     reply: string;
     saveChanges: string;
   };
@@ -72,15 +75,15 @@ export function ChatMessageEditor({
           body: JSON.stringify({ bodyMarkdown: draft })
         }
       );
-      const result = await response.json() as { error?: string; message?: EditedChatMessage };
-      if (!response.ok || !result.message) {
-        throw new Error(result.error || "Message could not be edited.");
+      const result = await readJsonResponse<{ error?: string; message?: EditedChatMessage }>(response);
+      if (!response.ok || !result?.message) {
+        throw new Error(result?.error || labels.editMessageError);
       }
       onChange(result.message);
       setDraft(result.message.bodyMarkdown);
       setEditing(false);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Message could not be edited.");
+      setError(saveError instanceof Error ? saveError.message : labels.editMessageError);
     } finally {
       setSaving(false);
     }
@@ -96,13 +99,13 @@ export function ChatMessageEditor({
         `/api/chat/${encodeURIComponent(otherUsername)}/messages/${messageId}`,
         { method: "DELETE" }
       );
-      const result = await response.json() as { error?: string; messageId?: number };
-      if (!response.ok || result.messageId !== messageId) {
-        throw new Error(result.error || "Message could not be deleted.");
+      const result = await readJsonResponse<{ error?: string; messageId?: number }>(response);
+      if (!response.ok || result?.messageId !== messageId) {
+        throw new Error(result?.error || labels.deleteMessageError);
       }
       onDelete(messageId);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Message could not be deleted.");
+      setError(deleteError instanceof Error ? deleteError.message : labels.deleteMessageError);
       setDeleting(false);
     }
   }

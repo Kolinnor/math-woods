@@ -168,7 +168,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 260px;
   min-height: 246px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .home-daily-problem:hover {
@@ -252,6 +252,7 @@
   align-self: start;
   aspect-ratio: 1 / 1;
   background: var(--imgbg);
+  border-radius: 0 11px 11px 0;
   overflow: hidden;
   position: relative;
   width: 100%;
@@ -290,7 +291,7 @@
   border-radius: 11px;
   color: var(--mw-text);
   display: flex;
-  gap: 16px;
+  gap: 20px;
   min-height: 92px;
   padding: 18px 20px;
 }
@@ -300,11 +301,22 @@
   border-color: var(--mw-green);
 }
 
+.home-recommendation-grid .mw-difficulty-shell {
+  flex: 0 0 88px;
+  justify-content: center;
+}
+
 .home-recommendation-grid .mw-difficulty {
   align-items: center;
   flex-direction: column;
   gap: 5px;
-  width: 46px;
+  width: 88px;
+}
+
+.home-recommendation-grid .mw-difficulty-label {
+  display: block;
+  font-size: 10px;
+  text-align: center;
 }
 
 .home-recommendation-grid strong,
@@ -559,6 +571,19 @@
 
   .home-recommendation-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-recommendation-grid > a {
+    gap: 16px;
+  }
+
+  .home-recommendation-grid .mw-difficulty-shell,
+  .home-recommendation-grid .mw-difficulty {
+    width: 78px;
+  }
+
+  .home-recommendation-grid .mw-difficulty-shell {
+    flex-basis: 78px;
   }
 
   .home-dashboard .home-tip-card {

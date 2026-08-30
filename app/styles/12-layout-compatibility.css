@@ -878,17 +878,53 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 }
 
 .friends-menu-list-view {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   max-height: min(23rem, calc(100vh - 8rem));
   min-height: 0;
+}
+
+.friends-menu-list-controls,
+.friends-menu-list-view > .friends-menu-request {
+  flex: 0 0 auto;
+}
+
+.friends-menu-search {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 0.45rem 0.6rem;
+}
+
+.friends-menu-search input {
+  background: var(--panel-muted);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 0.8rem;
+  height: 2rem;
+  min-width: 0;
+  padding: 0 0.55rem;
+  width: 100%;
+}
+
+.friends-menu-search input:focus {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  outline-offset: 0;
 }
 
 .friends-menu-list {
   border-bottom: 1px solid var(--line);
   border-top: 1px solid var(--line);
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.25rem 0;
+  scrollbar-gutter: stable;
 }
 
 .friends-mini-chat {

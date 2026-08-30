@@ -20,10 +20,12 @@ export default async function VerifyEmailPage({
   const result = token ? await verifyEmailToken(token) : { ok: false as const, reason: "missing" as const };
   const canResend = Boolean(user && !user.emailVerifiedAt);
   const labels = t.verifyEmailPage;
+  const emailChanged = result.ok && result.emailChanged;
+  const emailConflict = !result.ok && result.reason === "email-in-use";
 
   return (
     <ForestPageLayout
-      title={result.ok ? labels.verifiedTitle : labels.expiredTitle}
+      title={emailChanged ? labels.changedTitle : result.ok ? labels.verifiedTitle : emailConflict ? labels.conflictTitle : labels.expiredTitle}
       eyebrow={labels.eyebrow}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
@@ -34,7 +36,7 @@ export default async function VerifyEmailPage({
         {result.ok ? (
           <>
             <EmailVerificationSuccessSync userId={result.userId!} />
-            <p>{labels.success}</p>
+            <p>{emailChanged ? labels.changedSuccess : labels.success}</p>
             <Link href="/" className="button">
               {labels.continue}
             </Link>
@@ -42,9 +44,13 @@ export default async function VerifyEmailPage({
         ) : (
           <>
             <p className="muted">
-              {labels.invalid}
+              {emailConflict ? labels.conflict : labels.invalid}
             </p>
-            {canResend ? (
+            {emailConflict && user ? (
+              <Link href="/settings" className="button secondary">
+                {labels.chooseAnother}
+              </Link>
+            ) : canResend ? (
               <form action={resendEmailVerificationAction}>
                 <button type="submit" className="secondary">
                   {labels.resend}

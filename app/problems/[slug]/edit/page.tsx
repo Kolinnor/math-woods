@@ -186,6 +186,7 @@ export default async function EditProblemPage({
                 {publishesImmediately ? t.contentEditor.essentialInformation : t.contentEditor.proposeEdit}
               </div>
               <LiveMarkdownTitleField
+                contentKind="problem"
                 defaultValue={problem.title}
                 locale={interfaceLocale}
               />
@@ -207,7 +208,7 @@ export default async function EditProblemPage({
                   label={t.languageSelector.label}
                 />
                 <ProblemDifficultyField
-                  defaultValue={problem.difficulty}
+                  defaultValue={problem.editorialDifficulty ?? problem.difficulty}
                   help={t.contentEditor.difficultyHelp}
                   label={t.contentEditor.difficulty}
                 />

@@ -54,7 +54,7 @@ export function DailyProblemCard({
         </p>
         <div className="home-daily-meta">
           <span>{domainLabel}</span>
-          <Difficulty value={problem.difficulty} compact />
+          <Difficulty value={problem.difficulty} compact showBand />
         </div>
         <div className="home-daily-action">
           <span className="mw-primary-button">{labels.action}</span>

@@ -22,6 +22,8 @@ import { canViewProblemSolutions } from "@/lib/problem-solution-visibility";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 import { renderMarkdownCollectionForContentLanguage } from "@/lib/translated-markdown";
+import { LanguageField } from "@/components/LanguageField";
+import { contentLanguageLabel } from "@/lib/languages";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +37,8 @@ const discussionCopy = {
     noMessages: "No messages yet.",
     post: "Post",
     solution: "Solution",
-    verify: "Verify your email to join the discussion."
+    verify: "Verify your email to join the discussion.",
+    language: "Language"
   },
   fr: {
     add: "Ajouter à la discussion",
@@ -46,7 +49,8 @@ const discussionCopy = {
     noMessages: "Aucun message pour l'instant.",
     post: "Publier",
     solution: "Solution",
-    verify: "Vérifiez votre adresse e-mail pour participer à la discussion."
+    verify: "Vérifiez votre adresse e-mail pour participer à la discussion.",
+    language: "Langue"
   }
 } as const;
 
@@ -111,7 +115,7 @@ export default async function SolutionDiscussionPage({
           select: { category: true, reason: true }
         })
       : null,
-    renderMarkdownCollectionForContentLanguage([proof.bodyMarkdown], problem.language)
+    renderMarkdownCollectionForContentLanguage([proof.bodyMarkdown], proof.language)
   ]);
 
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
@@ -167,6 +171,7 @@ export default async function SolutionDiscussionPage({
                 </Link>
               </>
             )}
+            {" · "}<span className="content-language-badge" title={contentLanguageLabel(proof.language)}>{proof.language.toUpperCase()}</span>
           </p>
         </header>
         <div className="discussion-solution-body">
@@ -191,6 +196,7 @@ export default async function SolutionDiscussionPage({
                 </Link>
                 <span className="discussion-post-byline">{copy.by}</span>
                 <time dateTime={comment.createdAt.toISOString()}>{dateFormatter.format(comment.createdAt)}</time>
+                <span className="content-language-badge" title={contentLanguageLabel(comment.language)}>{comment.language.toUpperCase()}</span>
               </div>
             </header>
             <div className="discussion-post-body">
@@ -223,6 +229,7 @@ export default async function SolutionDiscussionPage({
             draftKey={`solution-discussion:${proof.id}:reply`}
             resetSignal={ownCommentResetSignal}
           />
+          <LanguageField defaultValue={interfaceLocale} label={copy.language} />
           <div className="discussion-composer-actions">
             <button type="submit">
               <Send size={16} aria-hidden="true" />

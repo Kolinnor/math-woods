@@ -67,10 +67,6 @@ export const fr = {
     password: "Mot de passe",
     profileName: "Nom de profil",
     profileNameHelp: "C'est le nom que les autres personnes verront. Il peut contenir des espaces.",
-    avatarTitle: "Choisir un avatar",
-    avatarHelp: "Choisissez un animal et un fond. Vous pourrez importer votre propre image plus tard depuis Modifier le profil.",
-    avatarAnimal: "Animal",
-    avatarBackground: "Fond",
     email: "E-mail",
     continueWithAccount: "Continuer avec un compte",
     continueWithProvider: (provider: string) => `Continuer avec ${provider}`,
@@ -129,6 +125,7 @@ export const fr = {
     friends: "Amis",
     friendsMenuSettings: "R\u00e9glages de la liste d'amis",
     closeFriendsMenu: "Fermer les amis",
+    searchFriends: "Rechercher un ami",
     sortBy: "Trier par",
     sortRecent: "Activit\u00e9 r\u00e9cente",
     sortAlphabetical: "Ordre alphab\u00e9tique",
@@ -167,6 +164,11 @@ export const fr = {
     recentChats: "Discussions récentes",
     noChatsYet: "Aucune discussion pour le moment.",
     noMessagesYet: "Aucun message pour le moment.",
+    conversationLoadError: "La conversation n’a pas pu être chargée. Une nouvelle tentative aura lieu sous peu.",
+    messageSendError: "Le message n’a pas pu être envoyé. Veuillez réessayer.",
+    editMessageError: "Le message n’a pas pu être modifié. Veuillez réessayer.",
+    deleteMessageError: "Le message n’a pas pu être supprimé. Veuillez réessayer.",
+    reactionSaveError: "La réaction n’a pas pu être enregistrée. Veuillez réessayer.",
     unreadMessages: (count: number) => `${count} message${count > 1 ? "s" : ""} non lu${count > 1 ? "s" : ""}`,
     pendingRequests: (count: number) => `${count} demande${count > 1 ? "s" : ""} en attente`,
     friendsOnly: "Réservé aux amis",
@@ -386,7 +388,7 @@ export const fr = {
       translations: "traductions",
       dailyProblems: "problèmes du jour",
       favorites: "J’aime reçus",
-      solved: "résolus"
+      solved: "résolutions reçues"
     },
     roles: {
       OWNER: "Propriétaire",
@@ -411,8 +413,8 @@ export const fr = {
         subtitle: "Problèmes aimés par les autres membres."
       },
       solved: {
-        label: "Nombre de résolutions",
-        title: "Classement par problèmes résolus",
+        label: "Résolutions reçues",
+        title: "Classement par résolutions reçues",
         subtitle: "Problèmes que les autres membres ont marqués comme résolus."
       },
       problems: {
@@ -866,7 +868,8 @@ export const fr = {
         date: "Date historique"
       },
       showSubdomains: "Afficher les sous-domaines de {domain}",
-      solvedCount: "{done} sur {total} résolus"
+      solvedCount: "{done} sur {total} résolus",
+      contentTypeCount: "{problems} problèmes · {exercises} exercices"
     },
     domainPicker: {
       domains: "Domaines",
@@ -1070,7 +1073,8 @@ export const fr = {
     edit: "Modifier",
     discussions: "Discussions",
     report: "Signaler",
-    reportPlaceholder: "Énoncé incorrect, formulation peu claire, source douteuse, texte copié...",
+    reportGuidance: "Pour un énoncé peu clair, ambigu ou possiblement incorrect, privilégiez l’onglet « Discussions » à droite. Utilisez le signalement pour les contenus nécessitant une intervention de la modération : contenu dangereux, manifestement non mathématique, plagiat, etc.",
+    reportPlaceholder: "Décrivez brièvement le contenu qui nécessite une intervention de la modération.",
     submit: "Envoyer",
     pendingVerifications: "Vérifications en attente",
     linkedConcepts: "Concepts liés",
@@ -1200,12 +1204,17 @@ export const fr = {
   },
   verifyEmailPage: {
     verifiedTitle: "E-mail vérifié",
+    changedTitle: "Adresse e-mail modifiée",
     expiredTitle: "Lien de vérification expiré",
+    conflictTitle: "Adresse e-mail indisponible",
     eyebrow: "Compte",
     description: "La vérification de l’e-mail responsabilise les contributions sans alourdir le site.",
     success: "Votre e-mail est vérifié. Vous pouvez maintenant contribuer à Math Woods.",
+    changedSuccess: "Votre nouvelle adresse e-mail est maintenant active sur votre compte Math Woods.",
     continue: "Continuer",
     invalid: "Ce lien de vérification est absent, invalide ou expiré.",
+    conflict: "Cette adresse est désormais associée à un autre compte. Votre adresse actuelle n’a pas été modifiée.",
+    chooseAnother: "Choisir une autre adresse",
     resend: "Renvoyer l’e-mail de vérification",
     bannerMessage: "Vérifiez votre adresse e-mail pour résoudre, voter, discuter et contribuer."
   },
@@ -1382,7 +1391,7 @@ export const fr = {
     deleteHint: "Supprimer l’indication",
     addHint: "Ajouter une indication",
     difficulty: "Difficulté",
-    difficultyHelp: "Le score de 1 à 100 est un repère approximatif, pas une mesure objective. Il suppose que le lecteur possède les prérequis nécessaires.\n1-10 : premiers pas / collège\n10-25 : débutant / lycée\n25-50 : intermédiaire / licence\n50-70 : avancé / master\n70-90 : expert / spécialisé\n90-100 : niveau recherche",
+    difficultyHelp: "Ce score tient compte à la fois du niveau des notions nécessaires et de la difficulté de la résolution.\n1-10 : premiers pas / collège\n11-25 : débutant / lycée\n26-50 : intermédiaire / licence\n51-70 : avancé / master\n71-90 : expert / spécialisé\n91-100 : niveau recherche",
     exercise: "Exercice",
     exerciseHelp: "Les exercices servent à pratiquer un concept précis. Ils apparaissent sur les pages des concepts liés et sont masqués par défaut dans le navigateur de problèmes, tout en restant accessibles avec le filtre Exercices.",
     showRelatedProblems: "Afficher les problèmes liés",

@@ -100,6 +100,12 @@
   min-width: 0;
 }
 
+.markdown-editor-notation-note {
+  color: var(--mw-secondary);
+  font-size: 0.82rem;
+  margin: 0.35rem 0 0;
+}
+
 .markdown-editor-title {
   max-width: 100%;
   min-width: 0;

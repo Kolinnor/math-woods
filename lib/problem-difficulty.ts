@@ -1,6 +1,22 @@
 const UNSET_DIFFICULTY_TONE = "#8a9184";
 export const PROBLEM_DIFFICULTY_HELP =
-  "The 1-100 score is a rough guide, not an objective measure. It assumes the reader has the necessary prerequisites. 1-10: First steps / middle school. 10-25: Beginner / high school. 25-50: Intermediate / undergraduate. 50-70: Advanced / graduate. 70-90: Expert / specialized. 90-100: Research-level.";
+  "The 1-100 score reflects both the level of the required concepts and the difficulty of the solution. 1-10: First steps / middle school. 11-25: Beginner / high school. 26-50: Intermediate / undergraduate. 51-70: Advanced / graduate. 71-90: Expert / specialized. 91-100: Research-level.";
+
+export const PROBLEM_DIFFICULTY_BANDS = [
+  { min: 1, max: 10, shortEn: "First steps", shortFr: "Premiers pas", detailEn: "First steps / middle school", detailFr: "Premiers pas / collège" },
+  { min: 11, max: 25, shortEn: "High school", shortFr: "Lycée", detailEn: "Beginner / high school", detailFr: "Débutant / lycée" },
+  { min: 26, max: 50, shortEn: "Undergraduate", shortFr: "Licence", detailEn: "Intermediate / undergraduate", detailFr: "Intermédiaire / licence" },
+  { min: 51, max: 70, shortEn: "Graduate", shortFr: "Master", detailEn: "Advanced / graduate", detailFr: "Avancé / master" },
+  { min: 71, max: 90, shortEn: "Expert", shortFr: "Expert", detailEn: "Expert / specialized", detailFr: "Expert / spécialisé" },
+  { min: 91, max: 100, shortEn: "Research", shortFr: "Recherche", detailEn: "Research level", detailFr: "Niveau recherche" }
+] as const;
+
+export function problemDifficultyBand(difficulty: number | null) {
+  if (!difficulty) return null;
+  const value = Math.min(100, Math.max(1, difficulty));
+  return PROBLEM_DIFFICULTY_BANDS.find((band) => value >= band.min && value <= band.max)
+    ?? PROBLEM_DIFFICULTY_BANDS.at(-1)!;
+}
 
 const DIFFICULTY_TONE_STOPS = [
   { value: 1, rgb: [79, 121, 85] },
@@ -38,11 +54,6 @@ export function problemDifficultyTone(difficulty: number | null) {
 }
 
 export function problemDifficultyBars(difficulty: number | null) {
-  if (!difficulty) return 0;
-  if (difficulty < 10) return 1;
-  if (difficulty < 25) return 2;
-  if (difficulty < 50) return 3;
-  if (difficulty < 70) return 4;
-  if (difficulty < 90) return 5;
-  return 6;
+  const band = problemDifficultyBand(difficulty);
+  return band ? PROBLEM_DIFFICULTY_BANDS.indexOf(band) + 1 : 0;
 }

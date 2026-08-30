@@ -32,6 +32,7 @@ import { markdownExcerpt } from "@/lib/metadata-text";
 import {
   canChangeConceptStatus,
   canDowngradeConceptStatus,
+  canEditConcept,
   canReviewConcept,
   canUseAdminTools
 } from "@/lib/permissions";
@@ -728,9 +729,11 @@ export default async function ConceptPage({
 
       <aside className="concept-detail-rail">
         <nav className="problem-rail-actions concept-rail-actions" aria-label={t.conceptDetail.concept}>
-          <Link href={`/concepts/${concept.slug}/edit`}>
-            <span className="problem-rail-action-label"><Pencil size={16} aria-hidden="true" /><span>{t.conceptDetail.edit}</span></span>
-          </Link>
+          {user && canEditConcept(user, concept) && (
+            <Link href={`/concepts/${concept.slug}/edit`}>
+              <span className="problem-rail-action-label"><Pencil size={16} aria-hidden="true" /><span>{t.conceptDetail.edit}</span></span>
+            </Link>
+          )}
           <Link href={`/concepts/${concept.slug}/talk`}>
             <span className="problem-rail-action-label"><MessageCircle size={16} aria-hidden="true" /><span>{t.conceptDetail.talk}</span></span>
             <span className="problem-rail-action-count">{concept._count.talkPosts}</span>

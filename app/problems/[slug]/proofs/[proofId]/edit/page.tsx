@@ -9,6 +9,8 @@ import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
 import { canEditSolution } from "@/lib/permissions";
 import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
+import { LanguageField } from "@/components/LanguageField";
+import { getInterfaceLocale } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,7 @@ export default async function EditProofPage({
   params: Promise<{ slug: string; proofId: string }>;
 }) {
   const user = await requireVerifiedUser();
-  const t = await getTranslations();
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const { slug, proofId } = await params;
   const id = Number(proofId);
   if (!Number.isInteger(id)) notFound();
@@ -54,6 +56,7 @@ export default async function EditProofPage({
       </div>
 
       <form action={updateProofAction.bind(null, proof.id, proof.problem.slug)} className="panel grid gap-4 p-5">
+        <LanguageField defaultValue={proof.language} label={interfaceLocale === "fr" ? "Langue de la solution" : "Solution language"} />
         <div className="grid gap-2">
           <span className="text-sm font-medium">{t.problemDetail.solution}</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={proof.bodyMarkdown} minHeight="18rem" />

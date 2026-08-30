@@ -209,14 +209,17 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
               cancel: t.social.cancel,
               confirmDeleteMessage: t.social.confirmDeleteMessage,
               deleteMessage: t.social.deleteMessage,
+              deleteMessageError: t.social.deleteMessageError,
               deletingMessage: t.social.deletingMessage,
               editMessage: t.social.editMessage,
+              editMessageError: t.social.editMessageError,
               reply: t.social.reply,
               edited: t.social.edited,
               saveChanges: t.social.saveChanges,
               chatImage: t.social.chatImage,
               reactions: {
                 addReaction: t.social.addReaction,
+                saveError: t.social.reactionSaveError,
                 reactionNames: t.social.reactionNames
               }
             }}

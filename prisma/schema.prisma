@@ -408,6 +408,7 @@ model User {
   attempts                        ProblemAttempt[]
   recommendationExposures         ProblemRecommendationExposure[]
   recommendationEvents            RecommendationEvent[]
+  problemDifficultyVotes          ProblemDifficultyVote[]
   problemReactions                ProblemReaction[]
   posts                           DiscussionPost[]
   playlists                       Playlist[]
@@ -650,6 +651,7 @@ model Problem {
   bodyHtml                 String
   authorId                 Int
   difficulty               Int?
+  editorialDifficulty      Int?
   domain                   MathDomain                      @default(OTHER)
   origin                   String                          @default("Unknown")
   originChapter            String?
@@ -1169,6 +1171,19 @@ model ProblemReaction {
   @@index([userId, updatedAt])
 }
 
+model ProblemDifficultyVote {
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  translationGroupId String
+  value              Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, translationGroupId])
+  @@index([translationGroupId])
+}
+
 model ProblemHint {
   id                   Int           @id @default(autoincrement())
   translationGroupId   String        @default(cuid())
@@ -1204,6 +1219,7 @@ model ProblemProof {
   authorId              Int
   translatedFromProofId Int?
   translatedById        Int?
+  language              String         @default("en")
   bodyMarkdown          String
   bodyHtml              String
   createdAt             DateTime       @default(now())
@@ -1227,6 +1243,7 @@ model ProofComment {
   id           Int          @id @default(autoincrement())
   proofId      Int
   authorId     Int
+  language     String       @default("en")
   bodyMarkdown String
   bodyHtml     String
   createdAt    DateTime     @default(now())

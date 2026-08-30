@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Send, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, Search, Send, SlidersHorizontal, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ChatMessageEditor, type EditedChatMessage } from "@/components/ChatMessageEditor";
@@ -30,6 +30,7 @@ import { CONTENT_LIMITS } from "@/lib/content-limits";
 import type { DirectChatMessage } from "@/lib/direct-chat";
 import type { ChatReplyPreview } from "@/lib/chat-replies";
 import type { FriendsMenuData } from "@/lib/friends-menu";
+import { readJsonResponse } from "@/lib/json-response";
 import {
   DEFAULT_FRIENDS_MENU_PREFERENCES,
   FRIENDS_MENU_PREFERENCES_STORAGE_KEY,
@@ -46,6 +47,7 @@ type MenuFriend = FriendsMenuData["friends"][number];
 export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuData }) {
   const [data, setData] = useState(initialData);
   const [preferences, setPreferences] = useState<FriendsMenuPreferences>(DEFAULT_FRIENDS_MENU_PREFERENCES);
+  const [friendSearch, setFriendSearch] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<MenuFriend | null>(null);
   const [messages, setMessages] = useState<DirectChatMessage[]>([]);
@@ -67,7 +69,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
     resetScroll,
     scrollToBottom
   } = useChatScroll(threadRef, selectedFriend?.username);
-  const visibleFriends = friendsForMenu(data.friends, preferences, data.locale);
+  const visibleFriends = friendsForMenu(data.friends, preferences, data.locale, friendSearch);
 
   useEffect(() => {
     isAtBottomRef.current = isAtBottom;
@@ -113,8 +115,8 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
           signal: requestController.signal
         });
         if (response.ok) {
-          const nextData = (await response.json()) as FriendsMenuData;
-          if (!stopped) setData(nextData);
+          const nextData = await readJsonResponse<FriendsMenuData>(response);
+          if (!stopped && nextData) setData(nextData);
         }
       } catch (error) {
         if (!requestController.signal.aborted) {
@@ -198,15 +200,15 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
             + `&reactionsAfter=${reactionCursorRef.current}${markRead}`,
           { cache: "no-store", signal: controller.signal }
         );
-        const result = await response.json() as {
+        const result = await readJsonResponse<{
           error?: string;
           messages?: DirectChatMessage[];
           deletedMessageIds?: number[];
           messageUpdates?: ChatMessageUpdate[];
           reactionCursor?: number;
           reactionUpdates?: ChatReactionUpdate[];
-        };
-        if (!response.ok) throw new Error(result.error || "Conversation could not be loaded.");
+        }>(response);
+        if (!response.ok || !result) throw new Error(result?.error || data.labels.conversationLoadError);
 
         if (
           !stopped
@@ -249,7 +251,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         if (!stopped) setChatError(null);
       } catch (error) {
         if (!controller.signal.aborted && !stopped) {
-          setChatError(error instanceof Error ? error.message : "Conversation could not be loaded.");
+          setChatError(error instanceof Error ? error.message : data.labels.conversationLoadError);
         }
       } finally {
         if (!stopped) {
@@ -285,8 +287,8 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         method: "POST",
         body: payload
       });
-      const result = await response.json() as { error?: string; message?: DirectChatMessage };
-      if (!response.ok || !result.message) throw new Error(result.error || "Message could not be sent.");
+      const result = await readJsonResponse<{ error?: string; message?: DirectChatMessage }>(response);
+      if (!response.ok || !result?.message) throw new Error(result?.error || data.labels.messageSendError);
       setMessages((current) => current.some((message) => message.id === result.message!.id)
         ? current
         : [...current, result.message!]);
@@ -296,7 +298,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
       setReplyingTo(null);
       noteNewMessages(0, true);
     } catch (error) {
-      setChatError(error instanceof Error ? error.message : "Message could not be sent.");
+      setChatError(error instanceof Error ? error.message : data.labels.messageSendError);
     } finally {
       setChatSending(false);
     }
@@ -363,6 +365,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
         if (open) return;
         setSelectedFriend(null);
         setSettingsOpen(false);
+        setFriendSearch("");
       }}
     >
       <summary aria-label={data.labels.friends} title={data.labels.friends} data-tour-target="chat">
@@ -550,6 +553,7 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
           </div>
         ) : (
           <div className="friends-menu-list-view">
+            <div className="friends-menu-list-controls">
             <div className="friends-menu-heading">
               <Link href={"/friends" as never} className="friends-menu-title">
                 {data.labels.friends}
@@ -616,6 +620,17 @@ export function FriendsMenuClient({ initialData }: { initialData: FriendsMenuDat
                 {data.labels.unreadMessages}
               </Link>
             )}
+            <label className="friends-menu-search">
+              <Search size={15} aria-hidden="true" />
+              <input
+                type="search"
+                value={friendSearch}
+                onChange={(event) => setFriendSearch(event.target.value)}
+                placeholder={data.labels.searchFriends}
+                aria-label={data.labels.searchFriends}
+              />
+            </label>
+            </div>
             <div className="friends-menu-list">
               {visibleFriends.map((friend) => (
                 <button key={friend.id} type="button" className="friends-menu-row" onClick={() => setSelectedFriend(friend)}>

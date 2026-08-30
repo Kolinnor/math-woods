@@ -37,13 +37,13 @@ export async function importMarkdownAction(formData: FormData) {
   const markdown = requiredBoundedText(formData.get("markdown"), CONTENT_LIMITS.importMarkdown, "Markdown content");
 
   const parsed = parseMarkdownDocument(markdown);
-  const explicitTitle = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+  const explicitTitle = boundedText(formData.get("title"), CONTENT_LIMITS.problemTitle, "Title");
   const title =
     explicitTitle ||
     getStringAttribute(parsed.attributes, "title") ||
     firstMarkdownHeading(parsed.body) ||
     "Untitled";
-  const safeTitle = boundedText(title, CONTENT_LIMITS.title, "Title");
+  const safeTitle = boundedText(title, CONTENT_LIMITS.problemTitle, "Title");
   const bodyMarkdown = requiredBoundedText(parsed.body, CONTENT_LIMITS.markdown, "Imported body");
   const language = requireActiveContentLanguage(getStringAttribute(parsed.attributes, "language") ?? "en");
 
@@ -118,6 +118,7 @@ export async function importMarkdownAction(formData: FormData) {
         bodyMarkdown,
         bodyHtml: await renderMarkdownContent(bodyMarkdown),
         difficulty,
+        editorialDifficulty: difficulty,
         domain: domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER,
         origin: normalizeProblemOrigin(
           boundedText(

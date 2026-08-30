@@ -263,6 +263,7 @@ export default async function NewProblemPage({
             )}
 
             <LiveMarkdownTitleField
+              contentKind="problem"
               locale={interfaceLocale}
               required
               placeholder={sourceProblem ? t.contentEditor.translationTitlePlaceholder(sourceProblem.title) : undefined}

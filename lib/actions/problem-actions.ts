@@ -72,6 +72,7 @@ import {
   verificationMatches
 } from "@/lib/problem-verification";
 import { parseProblemDifficulty } from "@/lib/problems";
+import { recalculateProblemDifficulty } from "@/lib/problem-difficulty-votes";
 import { canonicalProblemHintPositions } from "@/lib/problem-hints";
 import { parseProblemStyles } from "@/lib/problem-styles";
 import {
@@ -386,7 +387,7 @@ export async function deleteProblemHintAction(hintId: number, problemSlug: strin
 export async function createProblemAction(formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:create:${user.id}`, 5, 60_000);
-  const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Title") || "Untitled problem";
+  const title = boundedText(formData.get("title"), CONTENT_LIMITS.problemTitle, "Title") || "Untitled problem";
   const language = requireActiveContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
@@ -570,6 +571,7 @@ export async function createProblemAction(formData: FormData) {
         bodyMarkdown,
         bodyHtml,
         difficulty: sharedSnapshot?.difficulty ?? difficulty,
+        editorialDifficulty: sharedSnapshot?.difficulty ?? difficulty,
         domain: sharedSnapshot?.domains.find((item) => !item.spoiler)?.domain ?? domain,
         origin: normalizeProblemOrigin(sharedSnapshot?.origin ?? origin),
         originChapter: sharedSnapshot?.originChapter ?? originChapter,
@@ -813,6 +815,7 @@ export async function createProblemAction(formData: FormData) {
             authorId: sourceProof.authorId,
             translatedFromProofId: sourceProof.id,
             translatedById: sourceProof.authorId === user.id ? null : user.id,
+            language,
             bodyMarkdown: translatedBody.markdown,
             bodyHtml: translatedBody.html,
             createdAt: sourceProof.createdAt
@@ -986,7 +989,10 @@ export async function updateProblemAction(
     throw new Error("Only admins can approve proposed edits.");
   }
 
-  const title = boundedText(formData.get("title"), CONTENT_LIMITS.title, "Title") || previous.title;
+  const submittedTitle = String(formData.get("title") ?? "").trim();
+  const title = submittedTitle === previous.title
+    ? previous.title
+    : boundedText(submittedTitle, CONTENT_LIMITS.problemTitle, "Title") || previous.title;
   const language = editableContentLanguage(formData.get("language"), previous.language);
   const bodyMarkdown =
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
@@ -1241,6 +1247,7 @@ export async function updateProblemAction(
       }
 
       const bodyHtml = await renderMarkdownContent(resolvedSnapshot.bodyMarkdown);
+      const difficultyChanged = changedSnapshotFields.includes("difficulty");
       const updateResult = await tx.problem.updateMany({
         where: { id: problemId, version: current.version },
         data: {
@@ -1248,7 +1255,10 @@ export async function updateProblemAction(
           language: resolvedSnapshot.language,
           bodyMarkdown: resolvedSnapshot.bodyMarkdown,
           bodyHtml,
-          difficulty: resolvedSnapshot.difficulty,
+          difficulty: difficultyChanged ? resolvedSnapshot.difficulty : current.difficulty,
+          editorialDifficulty: difficultyChanged
+            ? resolvedSnapshot.difficulty
+            : current.editorialDifficulty ?? current.difficulty,
           domain: resolvedSnapshot.domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER,
           origin: resolvedSnapshot.origin,
           originChapter: resolvedSnapshot.originChapter,
@@ -1287,7 +1297,9 @@ export async function updateProblemAction(
         await tx.problem.updateMany({
           where: { id: { in: siblingCandidates.map((item) => item.id) } },
           data: {
-            ...(sharedChangedFieldSet.has("difficulty") ? { difficulty: resolvedSnapshot.difficulty } : {}),
+            ...(sharedChangedFieldSet.has("difficulty")
+              ? { difficulty: resolvedSnapshot.difficulty, editorialDifficulty: resolvedSnapshot.difficulty }
+              : {}),
             ...(sharedChangedFieldSet.has("domains")
               ? {
                   domain:
@@ -1324,6 +1336,10 @@ export async function updateProblemAction(
             await syncProblemSpoilerTags(sibling.id, problemSnapshotTagInput(resolvedSnapshot.spoilerTags), tx);
           }
         }
+      }
+
+      if (sharedChangedFieldSet.has("difficulty")) {
+        await recalculateProblemDifficulty(tx, current.translationGroupId);
       }
 
       await syncInternalLinks(SourceType.PROBLEM, problemId, resolvedSnapshot.bodyMarkdown, tx, resolvedSnapshot.language);

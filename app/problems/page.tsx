@@ -517,6 +517,7 @@ export default async function ProblemsPage({
       distinct: ["translationGroupId"],
       select: {
         translationGroupId: true,
+        isExercise: true,
         domain: true,
         domains: {
           where: { spoiler: false },
@@ -558,6 +559,19 @@ export default async function ProblemsPage({
   );
   const domainProblemCounts = Object.fromEntries(
     Object.entries(domainProgress).map(([domain, entry]) => [domain, entry.total])
+  );
+  const domainContentTypeCounts = Object.fromEntries(
+    Object.entries(
+      domainProgressProblemGroups.reduce<Record<string, { problems: number; exercises: number }>>((counts, problem) => {
+        const domain = parseDomainCode(problem.domains[0]?.mscCode ?? problem.domains[0]?.domain ?? problem.domain)
+          ?? String(problem.domain).toLowerCase();
+        const entry = counts[domain] ?? { problems: 0, exercises: 0 };
+        if (problem.isExercise) entry.exercises += 1;
+        else entry.problems += 1;
+        counts[domain] = entry;
+        return counts;
+      }, {})
+    )
   );
   const candidateTranslationGroupIds = [...new Set(problemCandidateKeys.map((problem) => problem.translationGroupId))];
   const displayCandidateKeys = candidateTranslationGroupIds.length
@@ -815,6 +829,7 @@ export default async function ProblemsPage({
         labels={t.problems.domainBrowser}
         locale={interfaceLocale}
         problemCounts={domainProblemCounts}
+        contentTypeCounts={domainContentTypeCounts}
         progress={domainProgress}
         selectedDomain={domainValue}
       />
@@ -1041,7 +1056,7 @@ export default async function ProblemsPage({
                     className="problem-ledger-content"
                     data-tour-target={problemIndex === 0 ? "open-problem" : undefined}
                   >
-                    <div className="problem-ledger-difficulty" style={{ color: tone }}>
+                  <div className="problem-ledger-difficulty" style={{ color: tone }}>
                     <span>{difficulty ? String(difficulty).padStart(2, "0") : "--"}</span>
                     <span className="problem-ledger-bars" aria-hidden="true">
                       {[1, 2, 3, 4, 5, 6].map((level) => (

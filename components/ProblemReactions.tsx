@@ -1,6 +1,8 @@
-import { Gauge, MessageCircleMore, ThumbsDown, ThumbsUp } from "lucide-react";
-import Link from "next/link";
-import { setProblemReactionAction } from "@/lib/actions/problem-reaction-actions";
+"use client";
+
+import { Gauge, SlidersHorizontal, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useState } from "react";
+import { setProblemDifficultyVoteAction, setProblemReactionAction } from "@/lib/actions/problem-reaction-actions";
 
 type ReactionState = {
   difficultyReaction: string | null;
@@ -11,7 +13,10 @@ export function ProblemReactions({
   labels,
   problemId,
   problemSlug,
-  reaction
+  reaction,
+  currentDifficulty,
+  difficultyVote,
+  difficultyVoteCount
 }: {
   labels: {
     howWasIt: string;
@@ -21,11 +26,22 @@ export function ProblemReactions({
     more: string;
     less: string;
     somethingElse: string;
+    rateDifficulty: string;
+    currentDifficulty: string;
+    difficultyContext: string;
+    difficultyScale: string;
+    saveDifficulty: string;
+    difficultySavedSingular: string;
+    difficultySavedPlural: string;
   };
   problemId: number;
   problemSlug: string;
   reaction: ReactionState;
+  currentDifficulty: number | null;
+  difficultyVote: number | null;
+  difficultyVoteCount: number;
 }) {
+  const [difficultyValue, setDifficultyValue] = useState(difficultyVote ?? currentDifficulty ?? 50);
   const difficulty = [
     { value: "TOO_HARD", label: labels.tooHard, icon: "↑" },
     { value: "TOO_EASY", label: labels.tooEasy, icon: "↓" },
@@ -62,9 +78,37 @@ export function ProblemReactions({
             </button>
           </form>
         ))}
-        <Link href={`/problems/${problemSlug}/discussion`} aria-label={labels.somethingElse}>
-          <i><MessageCircleMore size={16} /></i><span>{labels.somethingElse}</span>
-        </Link>
+        <details className="problem-difficulty-vote">
+          <summary aria-label={labels.rateDifficulty} title={labels.rateDifficulty}>
+            <i><SlidersHorizontal size={16} /></i><span>{labels.rateDifficulty}</span>
+          </summary>
+          <form action={setProblemDifficultyVoteAction.bind(null, problemId, problemSlug)}>
+            <strong>{labels.rateDifficulty}</strong>
+            <p>{labels.currentDifficulty}: {currentDifficulty ?? "–"}</p>
+            <label>
+              <span className="sr-only">{labels.rateDifficulty}</span>
+              <input
+                type="range"
+                name="difficulty"
+                min="1"
+                max="100"
+                value={difficultyValue}
+                onChange={(event) => setDifficultyValue(Number(event.target.value))}
+              />
+              <output>{difficultyValue}</output>
+            </label>
+            <small className="problem-difficulty-scale">{labels.difficultyScale}</small>
+            <p><b>{labels.difficultyContext}</b></p>
+            <button type="submit">{labels.saveDifficulty}</button>
+            {difficultyVoteCount > 0 && (
+              <small>
+                {difficultyVoteCount} {difficultyVoteCount === 1
+                  ? labels.difficultySavedSingular
+                  : labels.difficultySavedPlural}
+              </small>
+            )}
+          </form>
+        </details>
       </div>
     </div>
   );

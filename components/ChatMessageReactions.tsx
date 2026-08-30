@@ -9,6 +9,7 @@ import {
   type ChatReactionLabels,
   type ChatReactionSummary
 } from "@/lib/chat-reactions";
+import { readJsonResponse } from "@/lib/json-response";
 
 type ChatMessageReactionsProps = {
   labels: ChatReactionLabels;
@@ -91,17 +92,17 @@ export function ChatMessageReactions({
           body: JSON.stringify({ reaction })
         }
       );
-      const result = await response.json() as {
+      const result = await readJsonResponse<{
         error?: string;
         reactions?: ChatReactionSummary[];
-      };
-      if (!response.ok || !Array.isArray(result.reactions)) {
-        throw new Error(result.error || "Reaction could not be saved.");
+      }>(response);
+      if (!response.ok || !Array.isArray(result?.reactions)) {
+        throw new Error(result?.error || labels.saveError);
       }
       onChange(messageId, result.reactions);
       setPickerOpen(false);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Reaction could not be saved.");
+      setError(caught instanceof Error ? caught.message : labels.saveError);
     } finally {
       setPendingReaction(null);
     }

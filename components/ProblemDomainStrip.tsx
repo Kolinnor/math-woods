@@ -19,6 +19,7 @@ type ProblemDomainStripProps = {
   labels: Dictionary["problems"]["domainBrowser"];
   locale: InterfaceLocale;
   problemCounts?: Record<string, number>;
+  contentTypeCounts?: Record<string, { problems: number; exercises: number }>;
   progress?: Record<string, { done: number; total: number }>;
   selectedDomain?: string;
 };
@@ -42,6 +43,7 @@ export function ProblemDomainStrip({
   labels,
   locale,
   problemCounts,
+  contentTypeCounts,
   progress,
   selectedDomain
 }: ProblemDomainStripProps) {
@@ -173,6 +175,15 @@ export function ProblemDomainStrip({
                         String(progress[domain.value].total)
                       )}
                     </span>
+                    {contentTypeCounts?.[domain.value] && (
+                      <span className="problem-domain-tile-types">
+                        {template(
+                          template(labels.contentTypeCount, "problems", String(contentTypeCounts[domain.value].problems)),
+                          "exercises",
+                          String(contentTypeCounts[domain.value].exercises)
+                        )}
+                      </span>
+                    )}
                   </>
                 )}
               </Link>

@@ -41,6 +41,7 @@ export type ProblemSnapshotSource = {
   language: string;
   bodyMarkdown: string;
   difficulty: number | null;
+  editorialDifficulty?: number | null;
   domains: Array<{ domain: MathDomain; mscCode: string; spoiler: boolean }>;
   origin: string;
   originChapter: string | null;
@@ -108,7 +109,7 @@ export function buildProblemRevisionSnapshot(source: ProblemSnapshotSource): Pro
     title: source.title,
     language: source.language,
     bodyMarkdown: source.bodyMarkdown,
-    difficulty: source.difficulty,
+    difficulty: source.editorialDifficulty ?? source.difficulty,
     domains: source.domains.map((domain) => ({
       domain: domain.domain,
       mscCode: domain.mscCode,

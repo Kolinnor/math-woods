@@ -6,34 +6,31 @@ La réputation est calculée à la lecture à partir de l'historique complet du 
 
 ### Problèmes et exercices
 
-Un problème ou un exercice ne rapporte rien tant qu'il n'a pas reçu au moins un favori d'une autre personne.
+Chaque problème ou exercice original publié rapporte 3 points.
 
-- 4 points lorsque ce seuil est atteint ;
 - 2 points par favori externe ;
-- 1 point supplémentaire par favori provenant d'un utilisateur trusted, moderator, admin ou owner ;
-- 1 point par résolution externe, dans la limite de 10 ;
-- 2 points si le contenu contient une image ou un bloc JSXGraph.
+- les favoris de l'auteur lui-même sont exclus ;
+- le rôle de la personne qui place le favori ne change pas sa valeur.
 
-Les traductions d'un même problème sont regroupées afin de ne pas multiplier les favoris et les résolutions. Le créateur reçoit le score du groupe une seule fois. La traduction d'un problème rapporte 4 points fixes à son traducteur, indépendamment des favoris et des résolutions du problème.
+Les réactions reçues par toutes les traductions sont regroupées et créditées à l'auteur du problème original. Une traduction n'est jamais comptée comme un nouveau problème écrit. Elle rapporte 4 points fixes à son traducteur, même lorsque le traducteur est également l'auteur du problème original.
 
 ### Concepts
 
-Chaque groupe de concepts créé rapporte 2 points. Les pages fusionnées conservent le crédit de leurs contributeurs.
+Chaque concept original créé rapporte 1 point, puis 2 points supplémentaires lorsqu'il est relu. Une image ou un bloc JSXGraph ajoute 1 point. Une traduction n'est pas comptée comme un nouveau concept original et rapporte son forfait de traduction. Les pages fusionnées conservent le crédit de leurs contributeurs.
 
 ### Solutions
 
-Une solution ne rapporte rien avant d'avoir reçu trois votes « utile » provenant d'autres personnes.
+Chaque solution publiée rapporte 2 points.
 
-- 8 points au troisième vote utile ;
-- 2 points par vote utile supplémentaire ;
-- 2 points si la solution contient une image ou un bloc JSXGraph ;
-- maximum de 30 points par groupe de traductions d'une solution.
+- 2 points par vote utile externe pour les dix premiers votes ;
+- 1 point par vote utile externe à partir du onzième ;
+- aucun plafond global.
 
 Les votes de l'auteur et des traducteurs de la solution sont exclus.
 
 ### Relecture
 
-Modifier ou relire une page actuellement marquée comme relue rapporte 1 point par groupe de problèmes ou de concepts, dans la limite de 100 points. Les créations, les modifications de sa propre page et les répétitions sur une même page ne multiplient pas les points.
+Modifier une page écrite par quelqu'un d'autre et actuellement marquée comme relue rapporte 1 point par groupe de problèmes ou de concepts. Les créations, les modifications de sa propre page et les répétitions sur une même page ne multiplient pas les points. Il n'existe pas de plafond global.
 
 ## Participation
 
@@ -43,4 +40,4 @@ Le bonus d'apprentissage existant reste limité à cinq nouvelles résolutions p
 
 ## Illustrations
 
-La détection reconnaît les images Markdown, les balises HTML `img` et les blocs `jsxgraph`. Le bonus reste faible et ne peut pas rendre éligible une contribution qui n'a reçu aucun signal de qualité externe.
+Pour les concepts, la détection reconnaît les images Markdown, les balises HTML `img` et les blocs `jsxgraph`. Le bonus reste volontairement faible.

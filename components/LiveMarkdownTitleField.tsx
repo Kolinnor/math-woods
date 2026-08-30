@@ -10,15 +10,20 @@ type LiveMarkdownTitleFieldProps = {
   locale: InterfaceLocale;
   placeholder?: string;
   required?: boolean;
+  contentKind?: "concept" | "problem";
 };
 
 export function LiveMarkdownTitleField({
   defaultValue = "",
   locale,
   placeholder,
-  required = false
+  required = false,
+  contentKind = "concept"
 }: LiveMarkdownTitleFieldProps) {
   const t = dictionaryForLocale(locale);
+  const isProblem = contentKind === "problem";
+  const configuredMaxLength = isProblem ? CONTENT_LIMITS.problemTitle : CONTENT_LIMITS.title;
+  const maxLength = Math.max(configuredMaxLength, defaultValue.length);
 
   return (
     <div className="live-markdown-title-field grid gap-2">
@@ -29,7 +34,15 @@ export function LiveMarkdownTitleField({
         mode="title"
         ariaLabel={t.contentEditor.title}
         required={required}
-        maxLength={CONTENT_LIMITS.title}
+        maxLength={maxLength}
+        characterGuide={isProblem ? {
+          target: 100,
+          revealAt: 90,
+          label: locale === "fr" ? "Titre concis recommandé" : "Concise title recommended",
+          overflowMessage: locale === "fr"
+            ? `Le titre reste accepté jusqu’à ${maxLength} caractères.`
+            : `The title is still accepted up to ${maxLength} characters.`
+        } : undefined}
         placeholder={placeholder}
         lineNumbers={false}
         localDrafts={false}

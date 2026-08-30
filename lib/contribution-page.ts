@@ -30,44 +30,7 @@ export const DEFAULT_CONTRIBUTION_PAGE_CONTENT: ContributionPageContent = {
     "Ask for the pages you would like to see from the problem and concept browsers. Trusted contributors can claim a request, work on it, release it if they stop, and mark it complete when the page or problem exists."
 };
 
-export const DEFAULT_CONTRIBUTION_PAGE_SECTIONS: ContributionPageSectionContent[] = [
-  {
-    position: 1,
-    title: "Make rough work visible",
-    bodyMarkdown:
-      "Mark unfinished material honestly. Use **Needs work**, stub statuses, talk pages, edit summaries, and reports. A rough page with clear uncertainty is useful."
-  },
-  {
-    position: 2,
-    title: "Keep barriers low",
-    bodyMarkdown:
-      "Beginners should be able to add examples, ask for clarification, report copied wording, propose a better hint, or create a missing concept."
-  },
-  {
-    position: 3,
-    title: "Write for verification",
-    bodyMarkdown:
-      "Cite reliable textbooks, papers, lecture notes, or established reference works when a claim needs support. If the source is uncertain, say so. Uncertainty is useful when it is visible."
-  },
-  {
-    position: 4,
-    title: "Prefer clarity over completeness",
-    bodyMarkdown:
-      "A useful first version can be short. Add definitions, examples, counterexamples, solutions, and links when they are ready."
-  },
-  {
-    position: 5,
-    title: "Make edits accountable",
-    bodyMarkdown:
-      "Use concise edit summaries. For disputed scope, terminology, or sources, discuss the change on the talk page before repeatedly rewriting it."
-  },
-  {
-    position: 6,
-    title: "Use reports without making them scary",
-    bodyMarkdown:
-      "Reports are not only for emergencies. They can flag copied wording, questionable origins, wrong statements, spoilers, or pages that need attention."
-  }
-];
+export const DEFAULT_CONTRIBUTION_PAGE_SECTIONS: ContributionPageSectionContent[] = [];
 
 export async function ensureEditableContributionPage() {
   const [content, sectionCount] = await Promise.all([
@@ -75,7 +38,7 @@ export async function ensureEditableContributionPage() {
     prisma.contributionPageSection.count()
   ]);
 
-  if (content && sectionCount > 0) return;
+  if (content && (sectionCount > 0 || DEFAULT_CONTRIBUTION_PAGE_SECTIONS.length === 0)) return;
 
   await prisma.$transaction(async (tx) => {
     if (!content) {
@@ -87,7 +50,7 @@ export async function ensureEditableContributionPage() {
       });
     }
 
-    if (sectionCount === 0) {
+    if (sectionCount === 0 && DEFAULT_CONTRIBUTION_PAGE_SECTIONS.length > 0) {
       await tx.contributionPageSection.createMany({
         data: DEFAULT_CONTRIBUTION_PAGE_SECTIONS.map((section) => ({
           position: section.position,

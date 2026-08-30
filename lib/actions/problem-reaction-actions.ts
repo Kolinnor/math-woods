@@ -10,6 +10,8 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { recordRecommendationOutcomeIfRelevant } from "@/lib/recommendation-events";
+import { recalculateProblemDifficulty } from "@/lib/problem-difficulty-votes";
+import { acquireTransactionLock } from "@/lib/transaction-lock";
 
 export async function setProblemReactionAction(
   problemId: number,
@@ -65,6 +67,61 @@ export async function setProblemReactionAction(
     }
   }
   revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath("/problems");
+  revalidatePath("/");
+}
+
+export async function setProblemDifficultyVoteAction(
+  problemId: number,
+  problemSlug: string,
+  formData: FormData
+) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`problem-difficulty-vote:${user.id}`, 20, 60_000);
+  const value = Number(formData.get("difficulty"));
+  if (!Number.isInteger(value) || value < 1 || value > 100) {
+    throw new Error("Difficulty must be an integer from 1 to 100.");
+  }
+
+  const translationSlugs = await prisma.$transaction(async (tx) => {
+    const problem = await tx.problem.findUnique({
+      where: { id: problemId },
+      select: { id: true, slug: true, translationGroupId: true }
+    });
+    if (!problem || problem.slug !== problemSlug) throw new Error("Problem not found.");
+    await acquireTransactionLock(tx, `problem-difficulty:${problem.translationGroupId}`);
+    const solved = await tx.problemAttempt.findFirst({
+      where: {
+        userId: user.id,
+        status: "SOLVED",
+        problem: { translationGroupId: problem.translationGroupId }
+      },
+      select: { id: true }
+    });
+    if (!solved) throw new Error("Solve this problem before rating its difficulty.");
+
+    await tx.problemDifficultyVote.upsert({
+      where: {
+        userId_translationGroupId: {
+          userId: user.id,
+          translationGroupId: problem.translationGroupId
+        }
+      },
+      create: {
+        userId: user.id,
+        translationGroupId: problem.translationGroupId,
+        value
+      },
+      update: { value }
+    });
+    await recalculateProblemDifficulty(tx, problem.translationGroupId);
+    return tx.problem.findMany({
+      where: { translationGroupId: problem.translationGroupId },
+      select: { slug: true }
+    });
+  });
+
+  for (const translation of translationSlugs) revalidatePath(`/problems/${translation.slug}`);
   revalidatePath("/problems");
   revalidatePath("/");
 }

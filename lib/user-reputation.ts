@@ -12,58 +12,23 @@ import {
 } from "@prisma/client";
 import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
 import { prisma } from "@/lib/db";
-import { hasTrustedPrivileges } from "@/lib/permissions";
 import {
-  authoredConceptReputationBonus,
   COMPANION_TRANSLATION_REPUTATION_POINTS,
+  conceptAuthorshipReputationBonus,
   contentHasIllustration,
   curationActivityReputationBonus,
   dailyProblemReputationBonus,
   learningSolveReputationBonus,
+  mergeProblemAuthorshipGroups,
   PAGE_TRANSLATION_REPUTATION_POINTS,
   PROBLEM_TRANSLATION_REPUTATION_POINTS,
   problemAuthorshipReputationBonus,
   reviewedContributionReputationBonus,
   solutionAuthorshipReputationBonus,
-  translationReputationBonus
+  translationReputationBonus,
+  type ReputationProblem
 } from "@/lib/reputation-scoring";
 import { displayNameForUser } from "@/lib/user-display";
-
-type ReputationProblem = {
-  authorId: number;
-  translationGroupId: string;
-  hasIllustration: boolean;
-  attempts: Array<{
-    userId: number;
-    user: { role: Role };
-  }>;
-  favorites: Array<{
-    userId: number;
-    user: { role: Role };
-  }>;
-};
-
-function mergeTranslatedProblems(problems: ReputationProblem[]) {
-  const groups = new Map<string, ReputationProblem>();
-  for (const problem of problems) {
-    const key = `${problem.authorId}:${problem.translationGroupId}`;
-    const existing = groups.get(key);
-    if (!existing) {
-      groups.set(key, {
-        ...problem,
-        attempts: [...problem.attempts],
-        favorites: [...problem.favorites]
-      });
-      continue;
-    }
-    const attemptUsers = new Set(existing.attempts.map((attempt) => attempt.userId));
-    const favoriteUsers = new Set(existing.favorites.map((favorite) => favorite.userId));
-    existing.attempts.push(...problem.attempts.filter((attempt) => !attemptUsers.has(attempt.userId)));
-    existing.favorites.push(...problem.favorites.filter((favorite) => !favoriteUsers.has(favorite.userId)));
-    existing.hasIllustration ||= problem.hasIllustration;
-  }
-  return [...groups.values()];
-}
 
 export type UserReputationSummary = {
   userId: number;
@@ -95,12 +60,7 @@ export type UserReputationSummary = {
 
 function scoreProblem(problem: ReputationProblem) {
   const externalFavorites = problem.favorites.filter((favorite) => favorite.userId !== problem.authorId);
-  return problemAuthorshipReputationBonus({
-    favoriteCount: externalFavorites.length,
-    trustedFavoriteCount: externalFavorites.filter((favorite) => hasTrustedPrivileges(favorite.user.role)).length,
-    solveCount: problem.attempts.filter((attempt) => attempt.userId !== problem.authorId).length,
-    hasIllustration: problem.hasIllustration
-  });
+  return problemAuthorshipReputationBonus({ favoriteCount: externalFavorites.length });
 }
 
 function engagementCount(problem: ReputationProblem) {
@@ -127,6 +87,7 @@ async function authoredContentCounts(userIds: number[]) {
   if (userIds.length === 0) {
     return {
       conceptsByUser: new Map<number, number>(),
+      conceptReputationByUser: new Map<number, number>(),
       solutionsByUser: new Map<number, number>(),
       solutionReputationByUser: new Map<number, number>()
     };
@@ -135,11 +96,18 @@ async function authoredContentCounts(userIds: number[]) {
   const [concepts, solutions, mergedConceptCredits] = await Promise.all([
     prisma.concept.findMany({
       where: { createdById: { in: userIds }, status: { not: ConceptStatus.MISSING } },
-      select: { createdById: true, translationGroupId: true }
+      select: {
+        createdById: true,
+        translationGroupId: true,
+        translatedFromConceptId: true,
+        status: true,
+        needsReviewAfterEdit: true,
+        bodyMarkdown: true
+      }
     }),
     prisma.problemProof.findMany({
       where: { authorId: { in: userIds }, problem: { status: ProblemStatus.PUBLISHED } },
-      select: { id: true, authorId: true, translatedById: true, translationGroupId: true, bodyMarkdown: true }
+      select: { id: true, authorId: true, translatedById: true, translationGroupId: true }
     }),
     prisma.conceptMergeContributor.findMany({
       where: {
@@ -148,7 +116,15 @@ async function authoredContentCounts(userIds: number[]) {
       },
       select: {
         userId: true,
-        concept: { select: { translationGroupId: true } }
+        concept: {
+          select: {
+            translationGroupId: true,
+            translatedFromConceptId: true,
+            status: true,
+            needsReviewAfterEdit: true,
+            bodyMarkdown: true
+          }
+        }
       }
     })
   ]);
@@ -179,18 +155,15 @@ async function authoredContentCounts(userIds: number[]) {
     authorId: number;
     contributorIds: Set<number>;
     voterIds: Set<number>;
-    hasIllustration: boolean;
   }>();
   for (const solution of solutions) {
     const key = `${solution.authorId}:${solution.translationGroupId}`;
     const group = solutionGroups.get(key) ?? {
       authorId: solution.authorId,
       contributorIds: new Set<number>([solution.authorId]),
-      voterIds: new Set<number>(),
-      hasIllustration: false
+      voterIds: new Set<number>()
     };
     if (solution.translatedById) group.contributorIds.add(solution.translatedById);
-    group.hasIllustration ||= contentHasIllustration(solution.bodyMarkdown);
     solutionGroups.set(key, group);
   }
   for (const vote of solutionVotes) {
@@ -203,23 +176,43 @@ async function authoredContentCounts(userIds: number[]) {
 
   const solutionReputationByUser = new Map<number, number>();
   for (const group of solutionGroups.values()) {
-    const score = solutionAuthorshipReputationBonus({
-      usefulVoteCount: group.voterIds.size,
-      hasIllustration: group.hasIllustration
-    });
+    const score = solutionAuthorshipReputationBonus({ usefulVoteCount: group.voterIds.size });
     solutionReputationByUser.set(group.authorId, (solutionReputationByUser.get(group.authorId) ?? 0) + score);
   }
 
+  const conceptCredits = [
+    ...concepts.flatMap((concept) =>
+      concept.createdById === null || concept.translatedFromConceptId !== null
+        ? []
+        : [{ userId: concept.createdById, concept }]
+    ),
+    ...mergedConceptCredits.flatMap((credit) =>
+      credit.concept.translatedFromConceptId !== null ? [] : [{ userId: credit.userId, concept: credit.concept }]
+    )
+  ];
+  const conceptScoresByUserAndGroup = new Map<string, { userId: number; score: number }>();
+  for (const credit of conceptCredits) {
+    const key = `${credit.userId}:${credit.concept.translationGroupId}`;
+    const score = conceptAuthorshipReputationBonus({
+      reviewed: (
+        credit.concept.status === ConceptStatus.REVIEWED || credit.concept.status === ConceptStatus.EXCELLENT
+      ) && !credit.concept.needsReviewAfterEdit,
+      hasIllustration: contentHasIllustration(credit.concept.bodyMarkdown)
+    });
+    const current = conceptScoresByUserAndGroup.get(key);
+    if (!current || score > current.score) conceptScoresByUserAndGroup.set(key, { userId: credit.userId, score });
+  }
+  const conceptReputationByUser = new Map<number, number>();
+  for (const { userId, score } of conceptScoresByUserAndGroup.values()) {
+    conceptReputationByUser.set(userId, (conceptReputationByUser.get(userId) ?? 0) + score);
+  }
+
   return {
-    conceptsByUser: countUniqueGroups([
-      ...concepts.flatMap((concept) =>
-        concept.createdById === null ? [] : [{ userId: concept.createdById, translationGroupId: concept.translationGroupId }]
-      ),
-      ...mergedConceptCredits.map((credit) => ({
-        userId: credit.userId,
-        translationGroupId: credit.concept.translationGroupId
-      }))
-    ]),
+    conceptsByUser: countUniqueGroups(conceptCredits.map((credit) => ({
+      userId: credit.userId,
+      translationGroupId: credit.concept.translationGroupId
+    }))),
+    conceptReputationByUser,
     solutionsByUser: countUniqueGroups(solutions.map((solution) => ({
       userId: solution.authorId,
       translationGroupId: solution.translationGroupId
@@ -476,6 +469,7 @@ function summarizeUser(
   contestReputation: number,
   contestWinCount: number,
   conceptCount: number,
+  conceptReputation: number,
   solutionCount: number,
   solutionReputation: number,
   reviewedContributionCount: number,
@@ -502,7 +496,7 @@ function summarizeUser(
       + learningReputation
       + translationReputation
       + contestReputation
-      + authoredConceptReputationBonus(conceptCount)
+      + conceptReputation
       + solutionReputation
       + reviewedContributionReputationBonus(reviewedContributionCount)
       + curationActivityReputationBonus(curatedItemCount),
@@ -550,35 +544,23 @@ export async function getReputationLeaderboard() {
 
   const [rawProblems, dailyProblems, contestWins, authoredCounts, reviewedCounts, curationCounts] = await Promise.all([
     prisma.problem.findMany({
-      where: {
-        authorId: { in: userIds },
-        status: { not: "ARCHIVED" }
-      },
+      where: { status: ProblemStatus.PUBLISHED },
       select: {
         authorId: true,
         translationGroupId: true,
-        bodyMarkdown: true,
+        translatedFromProblemId: true,
         attempts: {
           where: { status: "SOLVED" },
-          select: {
-            userId: true,
-            user: { select: { role: true } }
-          }
+          select: { userId: true }
         },
         favorites: {
-          select: {
-            userId: true,
-            user: { select: { role: true } }
-          }
+          select: { userId: true }
         }
       }
     }),
     prisma.dailyProblemSchedule.findMany({
-      where: {
-        dateKey: { lte: dailyProblemDateKey() },
-        problem: { authorId: { in: userIds } }
-      },
-      select: { problem: { select: { authorId: true } } }
+      where: { dateKey: { lte: dailyProblemDateKey() } },
+      select: { problem: { select: { authorId: true, translationGroupId: true } } }
     }),
     prisma.problemContestSubmission.findMany({
       where: {
@@ -593,10 +575,10 @@ export async function getReputationLeaderboard() {
     curationActivityCounts(userIds)
   ]);
 
-  const problems = mergeTranslatedProblems(rawProblems.map((problem) => ({
-    ...problem,
-    hasIllustration: contentHasIllustration(problem.bodyMarkdown)
-  })));
+  const problems = mergeProblemAuthorshipGroups(rawProblems);
+  const originalAuthorByProblemGroup = new Map(
+    problems.map((problem) => [problem.translationGroupId, problem.authorId])
+  );
   const bonuses = await earnedReputationBonuses(userIds);
 
   const problemsByAuthor = new Map<number, ReputationProblem[]>();
@@ -608,7 +590,8 @@ export async function getReputationLeaderboard() {
 
   const dailyProblemsByAuthor = new Map<number, number>();
   for (const selection of dailyProblems) {
-    const authorId = selection.problem.authorId;
+    const authorId = originalAuthorByProblemGroup.get(selection.problem.translationGroupId)
+      ?? selection.problem.authorId;
     dailyProblemsByAuthor.set(authorId, (dailyProblemsByAuthor.get(authorId) ?? 0) + 1);
   }
 
@@ -629,6 +612,7 @@ export async function getReputationLeaderboard() {
     contestReputationByUser.get(user.id) ?? 0,
     contestWinsByUser.get(user.id) ?? 0,
     authoredCounts.conceptsByUser.get(user.id) ?? 0,
+    authoredCounts.conceptReputationByUser.get(user.id) ?? 0,
     authoredCounts.solutionsByUser.get(user.id) ?? 0,
     authoredCounts.solutionReputationByUser.get(user.id) ?? 0,
     reviewedCounts.get(user.id) ?? 0,
@@ -637,40 +621,31 @@ export async function getReputationLeaderboard() {
 }
 
 export async function getUserReputation(userId: number) {
-  const [user, rawProblems, dailyProblemCount, contestWins, authoredCounts, reviewedCounts, curationCounts] = await Promise.all([
+  const [user, rawProblems, dailyProblems, contestWins, authoredCounts, reviewedCounts, curationCounts] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { role: true }
     }),
     prisma.problem.findMany({
-      where: {
-        authorId: userId,
-        status: { not: "ARCHIVED" }
-      },
+      where: { status: ProblemStatus.PUBLISHED },
       select: {
         authorId: true,
         translationGroupId: true,
-        bodyMarkdown: true,
+        translatedFromProblemId: true,
         attempts: {
           where: { status: "SOLVED" },
-          select: {
-            userId: true,
-            user: { select: { role: true } }
-          }
+          select: { userId: true }
         },
         favorites: {
-          select: {
-            userId: true,
-            user: { select: { role: true } }
-          }
+          select: { userId: true }
         }
       }
     }),
-    prisma.dailyProblemSchedule.count({
+    prisma.dailyProblemSchedule.findMany({
       where: {
         dateKey: { lte: dailyProblemDateKey() },
-        problem: { authorId: userId }
-      }
+      },
+      select: { problem: { select: { authorId: true, translationGroupId: true } } }
     }),
     prisma.problemContestSubmission.findMany({
       where: { userId, placement: "WINNER", contest: { resultsPublishedAt: { not: null } } },
@@ -681,10 +656,14 @@ export async function getUserReputation(userId: number) {
     curationActivityCounts([userId])
   ]);
 
-  const problems = mergeTranslatedProblems(rawProblems.map((problem) => ({
-    ...problem,
-    hasIllustration: contentHasIllustration(problem.bodyMarkdown)
-  })));
+  const allProblems = mergeProblemAuthorshipGroups(rawProblems);
+  const problems = allProblems.filter((problem) => problem.authorId === userId);
+  const allOriginalAuthorsByProblemGroup = new Map(
+    allProblems.map((problem) => [problem.translationGroupId, problem.authorId])
+  );
+  const dailyProblemCount = dailyProblems.filter((selection) => (
+    allOriginalAuthorsByProblemGroup.get(selection.problem.translationGroupId) ?? selection.problem.authorId
+  ) === userId).length;
   const bonuses = await earnedReputationBonuses([userId]);
 
   return problems.reduce((total, problem) => total + scoreProblem(problem), 0)
@@ -692,7 +671,7 @@ export async function getUserReputation(userId: number) {
     + (bonuses.learningByUser.get(userId) ?? 0)
     + (bonuses.translationsByUser.get(userId) ?? 0)
     + contestWins.reduce((total, win) => total + win.contest.rewardPoints, 0)
-    + authoredConceptReputationBonus(authoredCounts.conceptsByUser.get(userId) ?? 0)
+    + (authoredCounts.conceptReputationByUser.get(userId) ?? 0)
     + (authoredCounts.solutionReputationByUser.get(userId) ?? 0)
     + reviewedContributionReputationBonus(reviewedCounts.get(userId) ?? 0)
     + curationActivityReputationBonus(curationCounts.get(userId) ?? 0);

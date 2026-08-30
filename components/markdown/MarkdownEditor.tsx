@@ -295,6 +295,7 @@ type MarkdownEditorProps = {
     target: number;
     label: string;
     overflowMessage: string;
+    revealAt?: number;
   };
 };
 
@@ -2203,7 +2204,7 @@ export function MarkdownEditor({
         )}
       </div>}
       <div ref={hostRef} className="markdown-editor-host" />
-      {characterGuide && (
+      {characterGuide && value.length >= (characterGuide.revealAt ?? 0) && (
         <div
           className={`markdown-editor-character-guide${value.length > characterGuide.target ? " is-over" : ""}`}
         >
@@ -2211,6 +2212,11 @@ export function MarkdownEditor({
           <strong>{value.length.toLocaleString()} / ~{characterGuide.target.toLocaleString()}</strong>
           {value.length > characterGuide.target && <span>{characterGuide.overflowMessage}</span>}
         </div>
+      )}
+      {!titleMode && /\\emph\s*\{/.test(value) && (
+        <p className="markdown-editor-notation-note">
+          <code>\emph&#123;texte&#125;</code> → <code>*texte*</code>
+        </p>
       )}
       {linkMenu && (
         <div

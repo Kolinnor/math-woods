@@ -9,6 +9,7 @@ import {
   setDismissedRecommendationReasonAction,
   undoProblemRecommendationDismissalAction
 } from "@/lib/actions/problem-recommendation-actions";
+import { DifficultyBandHelp } from "@/components/Difficulty";
 import { problemDifficultyTone } from "@/lib/problem-difficulty";
 
 export type RecommendedProblemItem = {
@@ -193,7 +194,10 @@ export function RecommendedProblemReader({
           <>
             <header>
               <div>
-                <p>{selected.domain}</p>
+                <p>
+                  {selected.domain}
+                  {selected.difficulty !== null && <> · <DifficultyBandHelp value={selected.difficulty} /></>}
+                </p>
                 <h3 dangerouslySetInnerHTML={{ __html: selected.titleHtml }} />
               </div>
               {visibleItems.length > 1 && (

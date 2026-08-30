@@ -6,7 +6,9 @@ import { EditorState, StateEffect } from "@codemirror/state";
 import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
 import { creationSubmissionKey } from "../lib/creation-submission.ts";
+import { normalizeEmailAddress } from "../lib/email-address.ts";
 import { isBrowserExtensionError, isOpaqueWindowScriptError } from "../lib/client-error-filter.ts";
+import { readJsonResponse } from "../lib/json-response.ts";
 import { loginHrefForReturnTo, requestReturnToPath } from "../lib/auth-return.ts";
 import {
   getBooleanAttribute,
@@ -53,13 +55,20 @@ import {
 } from "../lib/usernames.ts";
 import { parseUserDiscoverySource } from "../lib/user-discovery-source.ts";
 import { notifyTrustedUsersOfRegistration } from "../lib/user-registration-notifications.ts";
+import { notificationPreferenceDefault } from "../lib/notification-preference-defaults.ts";
 import {
   USER_REGISTRATION_SUMMARY_HREF,
   USER_REGISTRATION_SUMMARY_KEY,
   userRegistrationSummaryCopy
 } from "../lib/user-registration-summary.ts";
-import { inviteNewUserFromOwner } from "../lib/owner-welcome.ts";
-import { PROBLEM_DIFFICULTY_HELP, problemDifficultyBars, problemDifficultyTone } from "../lib/problem-difficulty.ts";
+import {
+  PROBLEM_DIFFICULTY_HELP,
+  problemDifficultyBand,
+  problemDifficultyBars,
+  problemDifficultyTone
+} from "../lib/problem-difficulty.ts";
+import { stabilizedDifficulty } from "../lib/problem-difficulty-votes.ts";
+import { selectProblemProofsForPage } from "../lib/problem-proof-translations.ts";
 import {
   HOME_GUEST_PROBLEM_GROUP_IDS,
   sortHomeGuestProblemsByDifficulty
@@ -307,15 +316,16 @@ import {
 } from "../lib/mathematicians.ts";
 import type { UserReputationSummary } from "../lib/user-reputation.ts";
 import {
-  AUTHORED_CONCEPT_REPUTATION_POINTS,
+  AUTHORED_CONCEPT_BASE_REPUTATION_POINTS,
   AUTHORED_PROBLEM_BASE_REPUTATION_POINTS,
   AUTHORED_SOLUTION_BASE_REPUTATION_POINTS,
-  authoredConceptReputationBonus,
+  conceptAuthorshipReputationBonus,
   contentHasIllustration,
   curationActivityReputationBonus,
   DAILY_PROBLEM_REPUTATION_POINTS,
   dailyProblemReputationBonus,
   learningSolveReputationBonus,
+  mergeProblemAuthorshipGroups,
   PROBLEM_TRANSLATION_REPUTATION_POINTS,
   problemAuthorshipReputationBonus,
   reviewedContributionReputationBonus,
@@ -493,7 +503,17 @@ assert.equal(isOpaqueWindowScriptError({
 }), false);
 assert.equal(isOpaqueWindowScriptError({ message: "Script error.", source: "next.error-boundary" }), false);
 assert.equal(isOpaqueWindowScriptError({ message: "Cannot read properties of undefined", source: "window.error" }), false);
+assert.deepEqual(
+  await readJsonResponse<{ ok: boolean }>(new Response('{"ok":true}', { headers: { "content-type": "application/json" } })),
+  { ok: true }
+);
+assert.equal(await readJsonResponse(new Response("<!doctype html><title>Unavailable</title>")), null);
+assert.equal(await readJsonResponse(new Response("")), null);
 assert.equal(normalizeUsernameLookup(" Paulownia "), "paulownia");
+assert.equal(normalizeEmailAddress("  New.Address@Example.COM "), "new.address@example.com");
+assert.equal(normalizeEmailAddress("missing-at.example.com"), null);
+assert.equal(normalizeEmailAddress("two words@example.com"), null);
+assert.equal(normalizeEmailAddress("a@b"), null);
 assert.equal(normalizeUsernameLookup("ＰＡＵＬＯＷＮＩＡ"), "paulownia");
 assert.deepEqual(usernameLookupFilter("Paulownia"), { equals: "paulownia", mode: "insensitive" });
 assert.equal(profilePath({ profileSlug: "anduril" }), "/profile/anduril");
@@ -583,14 +603,9 @@ const localizedFrenchRequestsPage = localizeContributionPage({
 }, "fr");
 assert.equal(localizedFrenchRequestsPage.content.title, "Requêtes");
 assert.equal(localizedFrenchRequestsPage.content.requestTitle, "Demandes de problèmes et de concepts");
-assert.equal(localizedFrenchRequestsPage.sections.length, contributionSectionFixtures.length);
-assert.ok(localizedFrenchRequestsPage.sections.every((section) => !section.title.includes("perfection")));
-assert.ok(localizedFrenchRequestsPage.sections.every((section, index) =>
-  section.title !== contributionSectionFixtures[index]?.title &&
-  section.bodyMarkdown !== contributionSectionFixtures[index]?.bodyMarkdown
-));
+assert.equal(localizedFrenchRequestsPage.sections.length, 0);
 assert.equal(problemDifficultyBars(9), 1);
-assert.equal(problemDifficultyBars(10), 2);
+assert.equal(problemDifficultyBars(10), 1);
 const revisionDiff = buildRevisionDiff(
   "Let $G$ be finite.\nThe first statement.",
   "Let $G$ be finite.\nThe revised statement.\nA new line."
@@ -604,11 +619,17 @@ assert.equal(
     .join(""),
   "revised"
 );
-assert.equal(problemDifficultyBars(25), 3);
-assert.equal(problemDifficultyBars(50), 4);
-assert.equal(problemDifficultyBars(70), 5);
-assert.equal(problemDifficultyBars(90), 6);
+assert.equal(problemDifficultyBars(11), 2);
+assert.equal(problemDifficultyBars(25), 2);
+assert.equal(problemDifficultyBars(26), 3);
+assert.equal(problemDifficultyBars(50), 3);
+assert.equal(problemDifficultyBars(51), 4);
+assert.equal(problemDifficultyBars(70), 4);
+assert.equal(problemDifficultyBars(71), 5);
+assert.equal(problemDifficultyBars(90), 5);
+assert.equal(problemDifficultyBars(91), 6);
 assert.equal(problemDifficultyBars(100), 6);
+assert.equal(problemDifficultyBand(47)?.shortFr, "Licence");
 assert.deepEqual([...HOME_GUEST_PROBLEM_GROUP_IDS], [
   "cmsivlyco002bqk01w80m0111",
   "cmsk3535w002pqk01x6f9lk7r",
@@ -1508,7 +1529,7 @@ assert.deepEqual(
 );
 assert.equal(parseProblemDifficulty("72"), 72);
 assert.equal(parseProblemDifficulty("101"), null);
-for (const range of ["1-10", "10-25", "25-50", "50-70", "70-90", "90-100"]) {
+for (const range of ["1-10", "11-25", "26-50", "51-70", "71-90", "91-100"]) {
   assert.equal(PROBLEM_DIFFICULTY_HELP.includes(range), true);
 }
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
@@ -2411,6 +2432,7 @@ const frenchFaqSource = readFileSync(join("lib", "faq-fr.ts"), "utf-8");
 const dailyProblemCardSource = readFileSync(join("components", "DailyProblemCard.tsx"), "utf-8");
 const dailyTipCardSource = readFileSync(join("components", "DailyTipCard.tsx"), "utf-8");
 const friendsMenuSource = readFileSync(join("components", "FriendsMenuClient.tsx"), "utf-8");
+const friendsMenuDataSource = readFileSync(join("lib", "friends-menu.ts"), "utf-8");
 const loginSource = readFileSync(join("app", "login", "page.tsx"), "utf-8");
 const oauthCompleteSource = readFileSync(join("app", "login", "complete", "page.tsx"), "utf-8");
 const authActionsSource = readFileSync(join("lib", "actions", "auth-actions.ts"), "utf-8");
@@ -2896,6 +2918,7 @@ assert.match(rolesPageSource, /canUseAdminTools/);
 assert.match(rolesEditPageSource, /<MarkdownEditor/);
 assert.match(rolesPageActionSource, /rolesPageContent\.upsert/);
 assert.match(rolesPageActionSource, /boundedText\([\s\S]*?trim: false/);
+assert.match(conceptDetailSource, /user && canEditConcept\(user, concept\)/);
 const latexDisplayRule = editorCssSource.match(/\.markdown-editor \.cm-latex-display \{([^}]*)\}/)?.[1] ?? "";
 assert.match(latexDisplayRule, /display:\s*inline-block/);
 assert.doesNotMatch(latexDisplayRule, /display:\s*block/);
@@ -2906,6 +2929,8 @@ const difficultyNumberRule = editorCssSource.match(/\.mw-difficulty strong \{([^
 assert.match(difficultyNumberRule, /font-variant-numeric:\s*tabular-nums/);
 assert.match(difficultyNumberRule, /min-width:\s*3ch/);
 assert.match(editorCssSource, /--mw-difficulty-column-width:\s*70px/);
+assert.match(editorCssSource, /\.mw-difficulty-label/);
+assert.match(editorCssSource, /\.mw-difficulty-popover/);
 assert.match(
   editorCssSource,
   /\.home-news-list > a \{[^}]*grid-template-columns:\s*var\(--mw-difficulty-column-width\) minmax\(0, 1fr\) auto;/s
@@ -3418,36 +3443,57 @@ const mathematicianFixtures = [
 ] satisfies UserReputationSummary[];
 
 assert.equal(DAILY_PROBLEM_REPUTATION_POINTS, 50);
-assert.equal(AUTHORED_CONCEPT_REPUTATION_POINTS, 2);
-assert.equal(AUTHORED_PROBLEM_BASE_REPUTATION_POINTS, 4);
+assert.equal(AUTHORED_CONCEPT_BASE_REPUTATION_POINTS, 1);
+assert.equal(AUTHORED_PROBLEM_BASE_REPUTATION_POINTS, 3);
 assert.equal(AUTHORED_SOLUTION_BASE_REPUTATION_POINTS, 2);
 assert.equal(PROBLEM_TRANSLATION_REPUTATION_POINTS, 4);
-assert.equal(authoredConceptReputationBonus(3), 6);
-assert.equal(authoredConceptReputationBonus(-1), 0);
+assert.equal(conceptAuthorshipReputationBonus({ reviewed: false, hasIllustration: false }), 1);
+assert.equal(conceptAuthorshipReputationBonus({ reviewed: true, hasIllustration: false }), 3);
+assert.equal(conceptAuthorshipReputationBonus({ reviewed: true, hasIllustration: true }), 4);
 assert.equal(problemAuthorshipReputationBonus({
-  favoriteCount: 0,
-  trustedFavoriteCount: 0,
-  solveCount: 20,
-  hasIllustration: true
-}), 0);
+  favoriteCount: 0
+}), 3);
 assert.equal(problemAuthorshipReputationBonus({
-  favoriteCount: 1,
-  trustedFavoriteCount: 0,
-  solveCount: 2,
-  hasIllustration: false
-}), 8);
+  favoriteCount: 1
+}), 5);
 assert.equal(problemAuthorshipReputationBonus({
-  favoriteCount: 3,
-  trustedFavoriteCount: 1,
-  solveCount: 14,
-  hasIllustration: true
-}), 23);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 0, hasIllustration: false }), 2);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 2, hasIllustration: true }), 2);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 3, hasIllustration: false }), 10);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 5, hasIllustration: true }), 16);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 100, hasIllustration: true }), 32);
-assert.equal(reviewedContributionReputationBonus(101), 100);
+  favoriteCount: 3
+}), 9);
+assert.deepEqual(mergeProblemAuthorshipGroups([
+  {
+    authorId: 2,
+    translationGroupId: "shared-problem",
+    translatedFromProblemId: 10,
+    attempts: [{ userId: 8 }],
+    favorites: [{ userId: 7 }, { userId: 9 }]
+  },
+  {
+    authorId: 1,
+    translationGroupId: "shared-problem",
+    translatedFromProblemId: null,
+    attempts: [{ userId: 8 }, { userId: 10 }],
+    favorites: [{ userId: 7 }]
+  },
+  {
+    authorId: 3,
+    translationGroupId: "translation-without-original",
+    translatedFromProblemId: 99,
+    attempts: [],
+    favorites: [{ userId: 11 }]
+  }
+]), [{
+  authorId: 1,
+  translationGroupId: "shared-problem",
+  attempts: [{ userId: 8 }, { userId: 10 }],
+  favorites: [{ userId: 7 }, { userId: 9 }]
+}]);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 0 }), 2);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 2 }), 6);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 3 }), 8);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 5 }), 12);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 10 }), 22);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 100 }), 112);
+assert.equal(reviewedContributionReputationBonus(101), 101);
 assert.equal(curationActivityReputationBonus(4), 0);
 assert.equal(curationActivityReputationBonus(5), 1);
 assert.equal(curationActivityReputationBonus(500), 20);
@@ -4438,12 +4484,17 @@ const menuFriends = [
 ];
 assert.deepEqual(
   friendsForMenu(menuFriends, { showOffline: false, sort: "recent" }, "fr").map((friend) => friend.username),
-  ["alice", "zoe"]
+  ["zoe", "alice"]
 );
 assert.deepEqual(
   friendsForMenu(menuFriends, { showOffline: true, sort: "alphabetical" }, "fr").map((friend) => friend.username),
-  ["alice", "bernard", "zoe"]
+  ["zoe", "alice", "bernard"]
 );
+assert.deepEqual(
+  friendsForMenu(menuFriends, { showOffline: true, sort: "recent" }, "fr", "zoe").map((friend) => friend.username),
+  ["zoe"]
+);
+assert.doesNotMatch(friendsMenuDataSource, /take:\s*50/);
 assert.deepEqual(parseFriendsMenuPreferences("not-json"), { showOffline: true, sort: "recent" });
 
 const translatedTip = [
@@ -4522,46 +4573,6 @@ assert.equal(creationSubmissionKey("concept", 7, "12345678-draft"), creationKey)
 assert.notEqual(creationSubmissionKey("concept", 8, "12345678-draft"), creationKey);
 assert.equal(creationSubmissionKey("concept", 7, "short"), null);
 
-const ownerWelcomeFriendships: Array<Record<string, unknown>> = [];
-const ownerWelcomeNotifications: Array<Record<string, unknown>> = [];
-let existingOwnerWelcomeFriendship: { id: number } | null = null;
-const ownerWelcomeTransaction = {
-  user: {
-    findFirst: async () => ({ id: 1, username: "ancient-tree", displayName: "Ancient Tree" })
-  },
-  friendship: {
-    findFirst: async () => existingOwnerWelcomeFriendship,
-    create: async ({ data }: { data: Record<string, unknown> }) => {
-      ownerWelcomeFriendships.push(data);
-      existingOwnerWelcomeFriendship = { id: 73 };
-      return existingOwnerWelcomeFriendship;
-    }
-  },
-  notificationPreference: {
-    findUnique: async () => null
-  },
-  notification: {
-    create: async ({ data }: { data: Record<string, unknown> }) => {
-      ownerWelcomeNotifications.push(data);
-      return { id: 91 };
-    }
-  }
-} as unknown as Prisma.TransactionClient;
-
-await inviteNewUserFromOwner(ownerWelcomeTransaction, 42);
-assert.deepEqual(ownerWelcomeFriendships, [{ requesterId: 1, addresseeId: 42 }]);
-assert.deepEqual(ownerWelcomeNotifications, [{
-  userId: 42,
-  actorId: 1,
-  type: NotificationType.FRIEND_REQUEST,
-  title: "New friend request",
-  body: "Ancient Tree sent you a friend request.",
-  href: "/friends"
-}]);
-await inviteNewUserFromOwner(ownerWelcomeTransaction, 42);
-assert.equal(ownerWelcomeFriendships.length, 1);
-assert.equal(ownerWelcomeNotifications.length, 1);
-
 const registrationSummaryUpserts: Array<Record<string, unknown>> = [];
 const registrationSummaryNow = new Date("2026-08-29T12:00:00.000Z");
 const registrationNotificationClient = {
@@ -4610,7 +4621,27 @@ assert.deepEqual(registrationSummaryUpserts[0], {
   }
 });
 
+assert.equal(notificationPreferenceDefault(NotificationType.USER_REGISTERED, Role.USER), false);
+assert.equal(notificationPreferenceDefault(NotificationType.USER_REGISTERED, Role.MODERATOR), false);
+assert.equal(notificationPreferenceDefault(NotificationType.USER_REGISTERED, Role.ADMIN), false);
+assert.equal(notificationPreferenceDefault(NotificationType.USER_REGISTERED, Role.OWNER), true);
+assert.equal(notificationPreferenceDefault(NotificationType.PROBLEM_SOLVED, Role.USER), true);
+
 const onceRateLimitKey = `core-test-once-${Date.now()}`;
+
+assert.equal(stabilizedDifficulty(40, []), 40);
+assert.equal(stabilizedDifficulty(40, [100, 100]), 40);
+assert.equal(stabilizedDifficulty(40, [100, 100, 100]), 70);
+assert.equal(stabilizedDifficulty(null, [50, 50, 50]), null);
+assert.deepEqual(
+  selectProblemProofsForPage([
+    { id: 1, translationGroupId: "a", problemId: 1, language: "en" },
+    { id: 2, translationGroupId: "a", problemId: 2, language: "fr" },
+    { id: 3, translationGroupId: "b", problemId: 1, language: "en" }
+  ], 2, "fr").map((proof) => proof.id),
+  [2, 3]
+);
+
 await assertRateLimitOnce(onceRateLimitKey, "same-submission", 1, 5_000);
 await assertRateLimitOnce(onceRateLimitKey, "same-submission", 1, 5_000);
 await assert.rejects(

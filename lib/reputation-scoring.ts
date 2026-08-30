@@ -7,20 +7,16 @@ export const LEARNING_SOLVE_LIFETIME_LIMIT = 50;
 export const PROBLEM_TRANSLATION_REPUTATION_POINTS = 4;
 export const PAGE_TRANSLATION_REPUTATION_POINTS = 2;
 export const COMPANION_TRANSLATION_REPUTATION_POINTS = 1;
-export const AUTHORED_CONCEPT_REPUTATION_POINTS = 2;
-export const AUTHORED_PROBLEM_BASE_REPUTATION_POINTS = 4;
+export const AUTHORED_CONCEPT_BASE_REPUTATION_POINTS = 1;
+export const REVIEWED_CONCEPT_REPUTATION_POINTS = 2;
+export const AUTHORED_PROBLEM_BASE_REPUTATION_POINTS = 3;
 export const PROBLEM_FAVORITE_REPUTATION_POINTS = 2;
-export const TRUSTED_PROBLEM_FAVORITE_BONUS = 1;
-export const PROBLEM_SOLVE_REPUTATION_POINTS = 1;
-export const PROBLEM_SOLVE_REPUTATION_LIMIT = 10;
-export const ILLUSTRATED_CONTENT_REPUTATION_POINTS = 2;
+export const ILLUSTRATED_CONCEPT_REPUTATION_POINTS = 1;
 export const AUTHORED_SOLUTION_BASE_REPUTATION_POINTS = 2;
-export const USEFUL_SOLUTION_VOTE_THRESHOLD = 3;
-export const USEFUL_SOLUTION_BASE_REPUTATION_POINTS = 8;
-export const USEFUL_SOLUTION_EXTRA_VOTE_POINTS = 2;
-export const USEFUL_SOLUTION_REPUTATION_LIMIT = 30;
+export const USEFUL_SOLUTION_FULL_VALUE_VOTE_LIMIT = 10;
+export const USEFUL_SOLUTION_VOTE_POINTS = 2;
+export const USEFUL_SOLUTION_LATE_VOTE_POINTS = 1;
 export const REVIEWED_CONTRIBUTION_REPUTATION_POINTS = 1;
-export const REVIEWED_CONTRIBUTION_REPUTATION_LIMIT = 100;
 export const CURATION_ITEMS_PER_REPUTATION_POINT = 5;
 export const CURATION_REPUTATION_LIMIT = 20;
 
@@ -35,53 +31,71 @@ type TranslationReputationEvent = {
   points: number;
 };
 
+export type ReputationProblem = {
+  authorId: number;
+  translationGroupId: string;
+  attempts: Array<{ userId: number }>;
+  favorites: Array<{ userId: number }>;
+};
+
+export type ReputationProblemSource = ReputationProblem & {
+  translatedFromProblemId: number | null;
+};
+
+export function mergeProblemAuthorshipGroups(problems: ReputationProblemSource[]) {
+  const groups = new Map<string, ReputationProblem & { hasOriginal: boolean }>();
+  for (const problem of problems) {
+    const key = problem.translationGroupId;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        authorId: problem.authorId,
+        translationGroupId: problem.translationGroupId,
+        attempts: [...problem.attempts],
+        favorites: [...problem.favorites],
+        hasOriginal: problem.translatedFromProblemId === null
+      });
+      continue;
+    }
+    if (problem.translatedFromProblemId === null) {
+      existing.authorId = problem.authorId;
+      existing.hasOriginal = true;
+    }
+    const attemptUsers = new Set(existing.attempts.map((attempt) => attempt.userId));
+    const favoriteUsers = new Set(existing.favorites.map((favorite) => favorite.userId));
+    existing.attempts.push(...problem.attempts.filter((attempt) => !attemptUsers.has(attempt.userId)));
+    existing.favorites.push(...problem.favorites.filter((favorite) => !favoriteUsers.has(favorite.userId)));
+  }
+  return [...groups.values()].flatMap(({ hasOriginal, ...problem }) => hasOriginal ? [problem] : []);
+}
+
 function utcDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-export function authoredConceptReputationBonus(conceptCount: number) {
-  return Math.max(0, Math.floor(conceptCount)) * AUTHORED_CONCEPT_REPUTATION_POINTS;
-}
-
-export function problemAuthorshipReputationBonus(input: {
-  favoriteCount: number;
-  trustedFavoriteCount: number;
-  solveCount: number;
+export function conceptAuthorshipReputationBonus(input: {
+  reviewed: boolean;
   hasIllustration: boolean;
 }) {
+  return AUTHORED_CONCEPT_BASE_REPUTATION_POINTS
+    + (input.reviewed ? REVIEWED_CONCEPT_REPUTATION_POINTS : 0)
+    + (input.hasIllustration ? ILLUSTRATED_CONCEPT_REPUTATION_POINTS : 0);
+}
+
+export function problemAuthorshipReputationBonus(input: { favoriteCount: number }) {
   const favoriteCount = Math.max(0, Math.floor(input.favoriteCount));
-  if (favoriteCount === 0) return 0;
-
-  return AUTHORED_PROBLEM_BASE_REPUTATION_POINTS
-    + favoriteCount * PROBLEM_FAVORITE_REPUTATION_POINTS
-    + Math.min(favoriteCount, Math.max(0, Math.floor(input.trustedFavoriteCount))) * TRUSTED_PROBLEM_FAVORITE_BONUS
-    + Math.min(PROBLEM_SOLVE_REPUTATION_LIMIT, Math.max(0, Math.floor(input.solveCount))) * PROBLEM_SOLVE_REPUTATION_POINTS
-    + (input.hasIllustration ? ILLUSTRATED_CONTENT_REPUTATION_POINTS : 0);
+  return AUTHORED_PROBLEM_BASE_REPUTATION_POINTS + favoriteCount * PROBLEM_FAVORITE_REPUTATION_POINTS;
 }
 
-export function solutionAuthorshipReputationBonus(input: {
-  usefulVoteCount: number;
-  hasIllustration: boolean;
-}) {
+export function solutionAuthorshipReputationBonus(input: { usefulVoteCount: number }) {
   const usefulVoteCount = Math.max(0, Math.floor(input.usefulVoteCount));
-  if (usefulVoteCount < USEFUL_SOLUTION_VOTE_THRESHOLD) {
-    return AUTHORED_SOLUTION_BASE_REPUTATION_POINTS;
-  }
-
   return AUTHORED_SOLUTION_BASE_REPUTATION_POINTS
-    + Math.min(
-      USEFUL_SOLUTION_REPUTATION_LIMIT,
-      USEFUL_SOLUTION_BASE_REPUTATION_POINTS
-        + (usefulVoteCount - USEFUL_SOLUTION_VOTE_THRESHOLD) * USEFUL_SOLUTION_EXTRA_VOTE_POINTS
-        + (input.hasIllustration ? ILLUSTRATED_CONTENT_REPUTATION_POINTS : 0)
-    );
+    + Math.min(usefulVoteCount, USEFUL_SOLUTION_FULL_VALUE_VOTE_LIMIT) * USEFUL_SOLUTION_VOTE_POINTS
+    + Math.max(0, usefulVoteCount - USEFUL_SOLUTION_FULL_VALUE_VOTE_LIMIT) * USEFUL_SOLUTION_LATE_VOTE_POINTS;
 }
 
 export function reviewedContributionReputationBonus(reviewedPageCount: number) {
-  return Math.min(
-    REVIEWED_CONTRIBUTION_REPUTATION_LIMIT,
-    Math.max(0, Math.floor(reviewedPageCount)) * REVIEWED_CONTRIBUTION_REPUTATION_POINTS
-  );
+  return Math.max(0, Math.floor(reviewedPageCount)) * REVIEWED_CONTRIBUTION_REPUTATION_POINTS;
 }
 
 export function curationActivityReputationBonus(curatedItemCount: number) {

@@ -4,17 +4,11 @@ import { randomBytes } from "node:crypto";
 import { ExternalAuthProvider } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { createSession, requireUser, setPasswordForCurrentUser, verifyPassword } from "@/lib/auth";
-import {
-  defaultAvatarPath,
-  parseAvatarBackground,
-  parseDefaultAvatarPreset
-} from "@/lib/avatar-presets";
 import { boundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { createAndSendEmailVerification } from "@/lib/email-verification";
 import { parseMathLevel } from "@/lib/math-levels";
 import { clearOAuthCookie, pendingOAuthAttempt } from "@/lib/oauth";
-import { inviteNewUserFromOwner } from "@/lib/owner-welcome";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { normalizeDisplayName } from "@/lib/user-display";
@@ -60,8 +54,6 @@ export async function completeOAuthSignupAction(formData: FormData) {
     ? attempt.providerEmail
     : suppliedEmail;
   const mathLevel = parseMathLevel(formData.get("mathLevel"));
-  const avatarPreset = parseDefaultAvatarPreset(formData.get("avatarPreset"));
-  const avatarBackground = parseAvatarBackground(formData.get("avatarBackground"));
   if (!email.includes("@") || !mathLevel) oauthFailure("invalid");
 
   const [emailOwner, username] = await Promise.all([
@@ -81,8 +73,6 @@ export async function completeOAuthSignupAction(formData: FormData) {
           email,
           emailVerifiedAt: attempt.providerEmailVerified && attempt.providerEmail === email ? new Date() : null,
           mathLevel,
-          avatarUrl: avatarPreset ? defaultAvatarPath(avatarPreset) : null,
-          avatarBackground,
           passwordHash: null
         }
       });
@@ -94,7 +84,6 @@ export async function completeOAuthSignupAction(formData: FormData) {
           providerEmail: attempt.providerEmail
         }
       });
-      await inviteNewUserFromOwner(tx, created.id);
       await tx.oAuthAttempt.delete({ where: { id: attempt.id } });
       return created;
     });

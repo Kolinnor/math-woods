@@ -8,6 +8,7 @@ import { UserName } from "@/components/UserName";
 import {
   changePasswordAction,
   deleteAccountAction,
+  requestEmailChangeAction,
   resendEmailVerificationAction,
   revokeOtherSessionsAction,
   updateUserDeletedStatusAction,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/actions/account-actions";
 import { resetLatexPreferencesAction, updateLatexPreferencesAction } from "@/lib/actions/latex-preference-actions";
 import { updateNotificationPreferencesAction } from "@/lib/actions/notification-actions";
+import { notificationPreferenceDefault } from "@/lib/notification-preference-defaults";
 import { disconnectExternalIdentityAction, setInitialPasswordAction } from "@/lib/actions/oauth-actions";
 import { getCurrentSession, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -401,6 +403,7 @@ export default async function SettingsPage({
     updated?: string;
     verify?: string;
     deleteAccount?: string;
+    emailChange?: string;
     adminUsers?: string;
     oauth?: string;
   }>;
@@ -570,6 +573,41 @@ export default async function SettingsPage({
           {text("Your email is already verified.")}
         </p>
       )}
+      {params.emailChange === "sent" && (
+        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">
+          {text("A confirmation link was sent to your new email address.")}
+        </p>
+      )}
+      {params.emailChange === "same-email" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          {text("This is already your account email address.")}
+        </p>
+      )}
+      {params.emailChange === "email-in-use" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          {text("This email address is already associated with another account.")}
+        </p>
+      )}
+      {params.emailChange === "invalid" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          {text("Enter a valid email address.")}
+        </p>
+      )}
+      {params.emailChange === "password" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          {text("The current password is incorrect.")}
+        </p>
+      )}
+      {params.emailChange === "send-failed" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          {text("The confirmation email could not be sent. Please try again later.")}
+        </p>
+      )}
+      {params.emailChange === "rate-limited" && (
+        <p className="panel border-amber-700 bg-amber-50 p-4 text-sm text-amber-950">
+          {text("Too many requests. Please try again later.")}
+        </p>
+      )}
 
       <nav className="tab-nav" aria-label={text("Settings sections")}>
         <Link href="/settings" className={tab === "account" ? "active" : ""}>
@@ -621,6 +659,30 @@ export default async function SettingsPage({
                 </form>
               </div>
             )}
+
+            <div className="mt-5 grid gap-3 border-t border-stone-200 pt-5">
+              <div>
+                <h3 className="font-semibold">{text("Change email address")}</h3>
+                <p className="muted text-sm">
+                  {text("Your current address remains active until you confirm the new one.")}
+                </p>
+              </div>
+              <form action={requestEmailChangeAction} className="grid gap-3">
+                <label className="grid gap-2">
+                  <span className="text-sm font-medium">{text("New email address")}</span>
+                  <input name="newEmail" type="email" maxLength={254} autoComplete="email" required />
+                </label>
+                {user.passwordHash && (
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium">{text("Current password")}</span>
+                    <input name="currentPassword" type="password" maxLength={512} autoComplete="current-password" required />
+                  </label>
+                )}
+                <div>
+                  <button type="submit" className="secondary">{text("Send confirmation link")}</button>
+                </div>
+              </form>
+            </div>
           </section>
 
           {(externalIdentities.length > 0 || oauthProviders.length > 0) && (
@@ -747,7 +809,8 @@ export default async function SettingsPage({
 
           <form action={updateNotificationPreferencesAction} className="grid gap-3">
             {notificationOptions.map((option) => {
-              const enabled = notificationPreferenceMap.get(option.type) ?? true;
+              const enabled = notificationPreferenceMap.get(option.type)
+                ?? notificationPreferenceDefault(option.type, user.role);
 
               return (
                 <label key={option.type} className="checkbox-field">

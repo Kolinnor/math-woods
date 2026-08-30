@@ -15,6 +15,7 @@ import { assertRateLimit } from "@/lib/rate-limit";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
 import { displayNameForUser } from "@/lib/user-display";
+import { editableContentLanguage, requireActiveContentLanguage } from "@/lib/languages";
 
 async function renderMarkdownContent(markdown: string) {
   const { renderMarkdown } = await import("@/lib/markdown");
@@ -25,6 +26,7 @@ export async function createProofAction(problemId: number, problemSlug: string, 
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof:${user.id}`, 6, 60_000);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Solution");
+  const language = requireActiveContentLanguage(formData.get("language"));
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
     select: { slug: true, language: true }
@@ -39,11 +41,12 @@ export async function createProofAction(problemId: number, problemSlug: string, 
       data: {
         problemId,
         authorId: user.id,
+        language,
         bodyMarkdown,
         bodyHtml
       }
     });
-    await syncInternalLinks(SourceType.PROOF, proof.id, bodyMarkdown, tx, problem.language);
+    await syncInternalLinks(SourceType.PROOF, proof.id, bodyMarkdown, tx, language);
   });
 
   revalidatePath(`/problems/${problemSlug}`);
@@ -146,7 +149,7 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
 
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
-    select: { authorId: true, translatedById: true, problem: { select: { slug: true, language: true } } }
+    select: { authorId: true, translatedById: true, language: true, problem: { select: { slug: true, language: true } } }
   });
   if (!proof || proof.problem.slug !== problemSlug) {
     throw new Error("Solution not found.");
@@ -154,14 +157,15 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
   if (!canEditSolution(user, proof)) {
     throw new Error("You cannot edit this solution.");
   }
+  const language = editableContentLanguage(formData.get("language"), proof.language);
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   await prisma.$transaction(async (tx) => {
     await tx.problemProof.update({
       where: { id: proofId },
-      data: { bodyMarkdown, bodyHtml }
+      data: { bodyMarkdown, bodyHtml, language }
     });
-    await syncInternalLinks(SourceType.PROOF, proofId, bodyMarkdown, tx, proof.problem.language);
+    await syncInternalLinks(SourceType.PROOF, proofId, bodyMarkdown, tx, language);
   });
 
   revalidatePath(`/problems/${problemSlug}`);
@@ -238,6 +242,7 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof-comment:${user.id}`, 12, 60_000);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Comment");
+  const language = requireActiveContentLanguage(formData.get("language"));
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
     select: {
@@ -254,6 +259,7 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
     data: {
       proofId,
       authorId: user.id,
+      language,
       bodyMarkdown,
       bodyHtml: await renderMarkdownContent(bodyMarkdown)
     }

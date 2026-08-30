@@ -21,6 +21,21 @@ const LEGACY_CONTRIBUTION_BANNER = {
     "A clean problem, a stub concept, a source note, a partial solution, or a correction request can already help."
 };
 
+const REMOVED_CONTRIBUTION_SECTION_TITLES = new Set([
+  "Make rough work visible",
+  "Keep barriers low",
+  "Write for verification",
+  "Prefer clarity over completeness",
+  "Make edits accountable",
+  "Use reports without making them scary",
+  "Rendre le travail en cours visible",
+  "Faciliter les premières contributions",
+  "Écrire pour permettre la vérification",
+  "Privilégier la clarté à l'exhaustivité",
+  "Documenter les modifications",
+  "Utiliser simplement les signalements"
+]);
+
 const FRENCH_CONTRIBUTION_TEXT: Record<string, string> = {
   Contribution: "Requêtes",
   Requests: "Requêtes",
@@ -70,7 +85,9 @@ export function localizeContributionPage(
       requestIntro: localizedContributionText(page.content.requestIntro, locale)
     },
     sections: page.sections
-      .filter((section) => !isLegacyContributionBanner(section))
+      .filter((section) =>
+        !isLegacyContributionBanner(section) && !REMOVED_CONTRIBUTION_SECTION_TITLES.has(section.title.trim())
+      )
       .map((section) => ({
         ...section,
         title: localizedContributionText(section.title, locale),

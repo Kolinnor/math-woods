@@ -26,12 +26,24 @@ export async function notifyTrustedUsersOfRegistration(
       where: {
         role: { in: [Role.MODERATOR, Role.ADMIN, Role.OWNER] },
         deletedAt: null,
-        notificationPreferences: {
-          none: {
-            type: NotificationType.USER_REGISTERED,
-            enabled: false
+        OR: [
+          {
+            notificationPreferences: {
+              some: {
+                type: NotificationType.USER_REGISTERED,
+                enabled: true
+              }
+            }
+          },
+          {
+            role: Role.OWNER,
+            notificationPreferences: {
+              none: {
+                type: NotificationType.USER_REGISTERED
+              }
+            }
           }
-        }
+        ]
       },
       select: { id: true }
     })

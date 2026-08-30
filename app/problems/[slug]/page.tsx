@@ -39,6 +39,7 @@ import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { translatedDomainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
+import { LanguageField } from "@/components/LanguageField";
 import { formatProblemSolvedDate, problemSolvedAt } from "@/lib/problem-solved-date";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
@@ -55,6 +56,7 @@ import {
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { problemSourcePresentation } from "@/lib/known-problem-sources";
 import { shouldShowOwnerSolvedBanner } from "@/lib/problem-owner-solved-banner";
+import { selectProblemProofsForPage } from "@/lib/problem-proof-translations";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
@@ -178,13 +180,20 @@ const redesignCopy = {
       title: "Liked by"
     },
     reactions: {
-      howWasIt: "How was it?",
+      howWasIt: "Share your thoughts",
       tooHard: "Too hard for me",
       tooEasy: "Too easy",
       feelsRight: "Difficulty feels right",
       more: "More problems like this",
       less: "Less problems like this",
-      somethingElse: "Something else"
+      somethingElse: "Something else",
+      rateDifficulty: "Rate the difficulty",
+      currentDifficulty: "Current score",
+      difficultyContext: "This score reflects both the level of the required concepts and the difficulty of the solution.",
+      difficultyScale: "1–10: first steps · 11–25: beginner / high school · 26–50: intermediate / undergraduate · 51–70: advanced / master's · 71–90: expert · 91–100: research level",
+      saveDifficulty: "Save my rating",
+      difficultySavedSingular: "rating",
+      difficultySavedPlural: "ratings"
     }
   },
   fr: {
@@ -220,13 +229,20 @@ const redesignCopy = {
       title: "Aimé par"
     },
     reactions: {
-      howWasIt: "Comment était-il ?",
+      howWasIt: "Donner votre avis",
       tooHard: "Trop difficile pour moi",
       tooEasy: "Trop facile",
       feelsRight: "Bonne difficulté",
       more: "Plus de problèmes comme celui-ci",
       less: "Moins de problèmes comme celui-ci",
-      somethingElse: "Autre chose"
+      somethingElse: "Autre chose",
+      rateDifficulty: "Évaluer la difficulté",
+      currentDifficulty: "Score actuel",
+      difficultyContext: "Ce score tient compte à la fois du niveau des notions nécessaires et de la difficulté de la résolution.",
+      difficultyScale: "1–10 : premiers pas / collège · 11–25 : débutant / lycée · 26–50 : intermédiaire / licence · 51–70 : avancé / master · 71–90 : expert · 91–100 : niveau recherche",
+      saveDifficulty: "Enregistrer ma note",
+      difficultySavedSingular: "note",
+      difficultySavedPlural: "notes"
     }
   }
 } as const;
@@ -307,6 +323,19 @@ export default async function ProblemPage({
   const canViewArchived = canViewArchivedProblem(user, problem);
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
   if (!canViewProblem(user, problem)) notFound();
+  const proofFamily = await prisma.problemProof.findMany({
+    where: { problem: { translationGroupId: problem.translationGroupId } },
+    include: {
+      author: true,
+      translatedBy: true,
+      problem: { select: { id: true, slug: true, language: true } },
+      _count: { select: { comments: true } }
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }]
+  });
+  const selectedProofs = selectProblemProofsForPage(proofFamily, problem.id, problem.language);
+  const proofProblemSlugById = new Map(selectedProofs.map((proof) => [proof.id, proof.problem.slug]));
+  problem.proofs = selectedProofs.map(({ problem: _proofProblem, ...proof }) => proof);
   const { hasFreeSource, knownSourceDuplicatesFreeSource, sourceCount } = problemSourcePresentation(
     problem.origin,
     problem.knownSource
@@ -564,6 +593,20 @@ export default async function ProblemPage({
     attemptsInTranslationGroup.find((translationAttempt) => translationAttempt.status === "SOLVED") ??
     attemptsInTranslationGroup[0] ??
     null;
+  const [ownDifficultyVote, difficultyVoteCount] = user && attempt?.status === "SOLVED"
+    ? await Promise.all([
+        prisma.problemDifficultyVote.findUnique({
+          where: {
+            userId_translationGroupId: {
+              userId: user.id,
+              translationGroupId: problem.translationGroupId
+            }
+          },
+          select: { value: true }
+        }),
+        prisma.problemDifficultyVote.count({ where: { translationGroupId: problem.translationGroupId } })
+      ])
+    : [null, 0];
   const solvedAt = problemSolvedAt(attemptsInTranslationGroup);
   const favoriteCount = groupFavoriteRows.length;
   const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
@@ -785,7 +828,7 @@ export default async function ProblemPage({
               </>
             )}
             <span>·</span>
-            <Difficulty value={problem.difficulty} compact />
+            <Difficulty value={problem.difficulty} compact explain />
             <span>·</span>
             <ContentTranslations
               currentLanguage={problem.language}
@@ -894,6 +937,9 @@ export default async function ProblemPage({
                 problemId={problem.id}
                 problemSlug={problem.slug}
                 reaction={ownReaction}
+                currentDifficulty={problem.difficulty}
+                difficultyVote={ownDifficultyVote?.value ?? null}
+                difficultyVoteCount={difficultyVoteCount}
               />
             )}
           </section>
@@ -1348,11 +1394,16 @@ export default async function ProblemPage({
                                 </Link>
                               </>
                             )}
+                            {proof.language !== problem.language && (
+                              <span className="content-language-badge" title={contentLanguageLabel(proof.language)}>
+                                {proof.language.toUpperCase()}
+                              </span>
+                            )}
                           </p>
                         </div>
                         <div className="proof-actions">
                           <Link
-                            href={`/problems/${problem.slug}/proofs/${proof.id}/discussion` as never}
+                            href={`/problems/${proofProblemSlugById.get(proof.id) ?? problem.slug}/proofs/${proof.id}/discussion` as never}
                             className="proof-discussion-link"
                             title={t.problemDetail.openDiscussion}
                           >
@@ -1363,13 +1414,13 @@ export default async function ProblemPage({
                             )}
                           </Link>
                           {canEditProof && (
-                            <Link href={`/problems/${problem.slug}/proofs/${proof.id}/edit` as never} className="button secondary">
+                            <Link href={`/problems/${proofProblemSlugById.get(proof.id) ?? problem.slug}/proofs/${proof.id}/edit` as never} className="button secondary">
                               <Pencil size={16} />
                               {t.problemDetail.editSolution}
                             </Link>
                           )}
                           {user ? (
-                            <form action={voteProofAction.bind(null, proof.id, problem.slug)}>
+                            <form action={voteProofAction.bind(null, proof.id, proofProblemSlugById.get(proof.id) ?? problem.slug)}>
                               <button
                                 type="submit"
                                 className={userVotedProof ? "secondary vote-button-active" : "secondary"}
@@ -1431,6 +1482,10 @@ export default async function ProblemPage({
             <details id="write-solution" className="add-proof">
               <summary>{proofs.length === 0 ? t.problemDetail.firstSolution : t.problemDetail.addAnotherSolution}</summary>
               <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
+                <LanguageField
+                  defaultValue={problem.language}
+                  label={interfaceLocale === "fr" ? "Langue de la solution" : "Solution language"}
+                />
                 <MarkdownEditor
                   name="bodyMarkdown"
                   minHeight="12rem"
@@ -1448,6 +1503,7 @@ export default async function ProblemPage({
           <details>
             <summary>{t.problemDetail.report}</summary>
             <form action={reportProblemAction.bind(null, problem.id)} className="mt-3 grid gap-2">
+              <p className="muted text-sm">{t.problemDetail.reportGuidance}</p>
               <textarea
                 name="reason"
                 placeholder={t.problemDetail.reportPlaceholder}

@@ -41,12 +41,22 @@ export function parseFriendsMenuPreferences(raw: string | null): FriendsMenuPref
 export function friendsForMenu<Friend extends FriendsMenuPreferenceFriend>(
   friends: Friend[],
   preferences: FriendsMenuPreferences,
-  locale: string
+  locale: string,
+  search = ""
 ) {
+  const normalizedSearch = normalizeFriendSearch(search);
+
   return friends
     .filter((friend) => preferences.showOffline || friend.online || friend.unreadCount > 0)
+    .filter((friend) => !normalizedSearch || normalizeFriendSearch(`${friend.name} ${friend.username}`).includes(normalizedSearch))
     .slice()
     .sort((left, right) => {
+      const unreadDifference = Number(right.unreadCount > 0) - Number(left.unreadCount > 0);
+      if (unreadDifference !== 0) return unreadDifference;
+
+      const onlineDifference = Number(right.online) - Number(left.online);
+      if (onlineDifference !== 0) return onlineDifference;
+
       if (preferences.sort === "recent") {
         const activityDifference = activityTime(right.lastSeenAt) - activityTime(left.lastSeenAt);
         if (activityDifference !== 0) return activityDifference;
@@ -55,6 +65,14 @@ export function friendsForMenu<Friend extends FriendsMenuPreferenceFriend>(
       return left.name.localeCompare(right.name, locale, { sensitivity: "base" })
         || left.username.localeCompare(right.username, locale, { sensitivity: "base" });
     });
+}
+
+function normalizeFriendSearch(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLocaleLowerCase();
 }
 
 function activityTime(value: string | null) {

@@ -8,11 +8,13 @@ import {
   requireUser,
   revokeOtherSessionsForCurrentUser,
   signOutUser,
-  updatePasswordForCurrentUser
+  updatePasswordForCurrentUser,
+  verifyPassword
 } from "@/lib/auth";
 import { boundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { createAndSendEmailVerification } from "@/lib/email-verification";
+import { normalizeEmailAddress } from "@/lib/email-address";
+import { createAndSendEmailChangeVerification, createAndSendEmailVerification } from "@/lib/email-verification";
 import { assignableRolesFor, canAssignRole } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { displayNameForUser } from "@/lib/user-display";
@@ -45,6 +47,39 @@ export async function resendEmailVerificationAction() {
   const delivery = await createAndSendEmailVerification(user.id);
   revalidatePath("/settings");
   redirect(delivery.sent ? "/settings?verify=sent" : `/settings?verify=${delivery.reason}`);
+}
+
+export async function requestEmailChangeAction(formData: FormData) {
+  const user = await requireUser();
+  try {
+    await assertRateLimit(`email-change:${user.id}`, 5, 60 * 60 * 1000);
+  } catch {
+    redirect("/settings?emailChange=rate-limited");
+  }
+
+  const email = normalizeEmailAddress(formData.get("newEmail"));
+  if (!email) redirect("/settings?emailChange=invalid");
+
+  const account = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { passwordHash: true }
+  });
+  if (!account) redirect("/login");
+
+  if (account.passwordHash) {
+    const currentPassword = String(formData.get("currentPassword") ?? "");
+    if (currentPassword.length > 512 || !verifyPassword(currentPassword, account.passwordHash)) {
+      redirect("/settings?emailChange=password");
+    }
+  }
+
+  const delivery = await createAndSendEmailChangeVerification(user.id, email);
+  if (delivery.sent) redirect("/settings?emailChange=sent");
+
+  const status = delivery.reason === "same-email" || delivery.reason === "email-in-use"
+    ? delivery.reason
+    : "send-failed";
+  redirect(`/settings?emailChange=${status}`);
 }
 
 export async function deleteAccountAction(formData: FormData) {

@@ -35,6 +35,7 @@ export type FriendsMenuData = {
     friends: string;
     friendsMenuSettings: string;
     closeFriendsMenu: string;
+    searchFriends: string;
     sortBy: string;
     sortRecent: string;
     sortAlphabetical: string;
@@ -56,6 +57,10 @@ export type FriendsMenuData = {
     noFriendsYet: string;
     noFriendsToShow: string;
     noMessagesYet: string;
+    conversationLoadError: string;
+    messageSendError: string;
+    editMessageError: string;
+    deleteMessageError: string;
     newMessagesBelow: string;
     offline: string;
     online: string;
@@ -98,8 +103,7 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
           select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
         }
       },
-      orderBy: { updatedAt: "desc" },
-      take: 50
+      orderBy: { updatedAt: "desc" }
     }),
     prisma.friendship.count({
       where: {
@@ -188,6 +192,7 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
       friends: t.social.friends,
       friendsMenuSettings: t.social.friendsMenuSettings,
       closeFriendsMenu: t.social.closeFriendsMenu,
+      searchFriends: t.social.searchFriends,
       sortBy: t.social.sortBy,
       sortRecent: t.social.sortRecent,
       sortAlphabetical: t.social.sortAlphabetical,
@@ -196,6 +201,7 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
       challenge: t.social.challenge,
       reactions: {
         addReaction: t.social.addReaction,
+        saveError: t.social.reactionSaveError,
         reactionNames: t.social.reactionNames
       },
       cancel: t.social.cancel,
@@ -212,6 +218,10 @@ export async function friendsMenuDataForUser(user: PermissionUser): Promise<Frie
       noFriendsYet: t.social.noFriendsYet,
       noFriendsToShow: t.social.noFriendsToShow,
       noMessagesYet: t.social.noMessagesYet,
+      conversationLoadError: t.social.conversationLoadError,
+      messageSendError: t.social.messageSendError,
+      editMessageError: t.social.editMessageError,
+      deleteMessageError: t.social.deleteMessageError,
       newMessagesBelow: t.social.newMessagesBelowLabel,
       offline: t.social.offline,
       online: t.social.online,

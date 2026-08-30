@@ -705,7 +705,7 @@ export default async function HomePage({
                     )?.value ?? problem.domain;
                     return (
                       <Link key={problem.id} href={`/problems/${problem.slug}`}>
-                        <Difficulty value={problem.difficulty} />
+                        <Difficulty value={problem.difficulty} showBand />
                         <span>
                           <strong><AsyncMarkdownInline markdown={problem.title} /><ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} /></strong>
                           <small>
@@ -824,7 +824,7 @@ export default async function HomePage({
               <div className="home-recommendation-grid">
                 {recommendedData.recommendations.slice(0, 4).map(({ problem }) => (
                   <Link key={problem.id} href={`/problems/${problem.slug}?recommended=1`}>
-                    <Difficulty value={problem.difficulty} />
+                    <Difficulty value={problem.difficulty} showBand />
                     <span>
                       <strong><AsyncMarkdownInline markdown={problem.title} /><ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} /></strong>
                       <small>{translatedDomainLabel(problem.domains[0] ?? "OTHER", t.home.domainLabels)}</small>

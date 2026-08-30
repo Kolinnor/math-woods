@@ -65,10 +65,6 @@ export const en = {
     password: "Password",
     profileName: "Profile name",
     profileNameHelp: "This is the name other people will see. It can contain spaces.",
-    avatarTitle: "Choose an avatar",
-    avatarHelp: "Pick an animal and a background. You can upload your own image later from Edit profile.",
-    avatarAnimal: "Animal",
-    avatarBackground: "Background",
     email: "Email",
     continueWithAccount: "Continue with an account",
     continueWithProvider: (provider: string) => `Continue with ${provider}`,
@@ -127,6 +123,7 @@ export const en = {
     friends: "Friends",
     friendsMenuSettings: "Friend list settings",
     closeFriendsMenu: "Close friends",
+    searchFriends: "Search friends",
     sortBy: "Sort by",
     sortRecent: "Recent activity",
     sortAlphabetical: "Alphabetical",
@@ -165,6 +162,11 @@ export const en = {
     recentChats: "Recent chats",
     noChatsYet: "No chats yet.",
     noMessagesYet: "No messages yet.",
+    conversationLoadError: "The conversation could not be loaded. We will try again shortly.",
+    messageSendError: "The message could not be sent. Please try again.",
+    editMessageError: "The message could not be edited. Please try again.",
+    deleteMessageError: "The message could not be deleted. Please try again.",
+    reactionSaveError: "The reaction could not be saved. Please try again.",
     unreadMessages: (count: number) => `${count} unread ${count === 1 ? "message" : "messages"}`,
     pendingRequests: (count: number) => `${count} pending ${count === 1 ? "request" : "requests"}`,
     friendsOnly: "Friends only",
@@ -384,7 +386,7 @@ export const en = {
       translations: "translations",
       dailyProblems: "problems of the day",
       favorites: "likes received",
-      solved: "solved"
+      solved: "solves received"
     },
     roles: {
       OWNER: "Owner",
@@ -409,8 +411,8 @@ export const en = {
         subtitle: "Problems liked by other members."
       },
       solved: {
-        label: "Number of solved",
-        title: "Ranking by solved problems",
+        label: "Solves received",
+        title: "Ranking by solves received",
         subtitle: "Problems that other members have marked as solved."
       },
       problems: {
@@ -861,7 +863,8 @@ export const en = {
         date: "Historical date"
       },
       showSubdomains: "Show {domain} subdomains",
-      solvedCount: "{done} of {total} solved"
+      solvedCount: "{done} of {total} solved",
+      contentTypeCount: "{problems} problems · {exercises} exercises"
     },
     domainPicker: {
       domains: "Domains",
@@ -1065,7 +1068,8 @@ export const en = {
     edit: "Edit",
     discussions: "Discussions",
     report: "Report",
-    reportPlaceholder: "Incorrect statement, unclear wording, questionable source, copied wording...",
+    reportGuidance: "For an unclear, ambiguous, or possibly incorrect statement, please use the Discussion tab on the right. Report content that needs moderator intervention, such as dangerous, clearly non-mathematical, or plagiarized content.",
+    reportPlaceholder: "Briefly describe the content that needs moderator attention.",
     submit: "Submit",
     pendingVerifications: "Pending verifications",
     linkedConcepts: "Linked concepts",
@@ -1195,12 +1199,17 @@ export const en = {
   },
   verifyEmailPage: {
     verifiedTitle: "Email verified",
+    changedTitle: "Email changed",
     expiredTitle: "Verification link expired",
+    conflictTitle: "Email unavailable",
     eyebrow: "Account",
     description: "Email verification keeps contributions accountable without making the site heavy.",
     success: "Your email is verified. You can now contribute to Math Woods.",
+    changedSuccess: "Your new email address is now active on your Math Woods account.",
     continue: "Continue",
     invalid: "This email verification link is missing, invalid, or expired.",
+    conflict: "This email address is now associated with another account. Your current address has not changed.",
+    chooseAnother: "Choose another address",
     resend: "Resend verification email",
     bannerMessage: "Verify your email to solve, vote, discuss, and contribute."
   },
@@ -1377,7 +1386,7 @@ export const en = {
     deleteHint: "Delete hint",
     addHint: "Add hint",
     difficulty: "Difficulty",
-    difficultyHelp: "The 1-100 score is a rough guide, not an objective measure. It assumes the reader has the necessary prerequisites.\n1-10: First steps / middle school\n10-25: Beginner / high school\n25-50: Intermediate / undergraduate\n50-70: Advanced / graduate\n70-90: Expert / specialized\n90-100: Research-level",
+    difficultyHelp: "This score reflects both the level of the required concepts and the difficulty of the solution.\n1-10: First steps / middle school\n11-25: Beginner / high school\n26-50: Intermediate / undergraduate\n51-70: Advanced / graduate\n71-90: Expert / specialized\n91-100: Research level",
     exercise: "Exercise",
     exerciseHelp: "Exercises are designed to practise a specific concept. They appear on linked concept pages and are hidden from the default problem-browser view, while remaining available through the Exercises filter.",
     showRelatedProblems: "Show related problems",

@@ -21,6 +21,7 @@ export type ChatReactionSummary = {
 
 export type ChatReactionLabels = {
   addReaction: string;
+  saveError: string;
   reactionNames: Record<ChatReaction, string>;
 };
 
