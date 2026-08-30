@@ -1784,15 +1784,30 @@ export function MarkdownEditor({
       );
     };
 
-    updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.visualViewport?.addEventListener("resize", updatePosition);
-    window.visualViewport?.addEventListener("scroll", updatePosition);
+    // 100vh/100vw track the layout viewport, which does not shrink when a mobile
+    // keyboard opens: only the visual viewport does. Publish its size so the CSS
+    // caps follow, otherwise the panel keeps its height and its buttons end up
+    // behind the keyboard.
+    const publishViewportSize = () => {
+      const viewport = window.visualViewport;
+      const root = document.documentElement;
+      root.style.setProperty("--visual-viewport-height", `${viewport?.height ?? window.innerHeight}px`);
+      root.style.setProperty("--visual-viewport-width", `${viewport?.width ?? window.innerWidth}px`);
+    };
+    const updateAll = () => {
+      publishViewportSize();
+      updatePosition();
+    };
+
+    updateAll();
+    window.addEventListener("resize", updateAll);
+    window.visualViewport?.addEventListener("resize", updateAll);
+    window.visualViewport?.addEventListener("scroll", updateAll);
 
     return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.visualViewport?.removeEventListener("resize", updatePosition);
-      window.visualViewport?.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", updateAll);
+      window.visualViewport?.removeEventListener("resize", updateAll);
+      window.visualViewport?.removeEventListener("scroll", updateAll);
     };
   }, [linkMenu, linkSuggestions.length, linkSuggestionsLoading, linkTarget]);
 
@@ -2121,7 +2136,6 @@ export function MarkdownEditor({
   }
 
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
-  const cleanLinkText = cleanWikiLinkLabel(linkText || linkMenu?.selectedText || "");
   const exactLinkSuggestion = linkSuggestions.find((suggestion) => {
     const target = cleanLinkTarget.toLowerCase();
     const aliases = suggestion.aliases.map((alias) => alias.toLowerCase());
@@ -2132,9 +2146,11 @@ export function MarkdownEditor({
       selectedLinkSuggestionQuery === cleanLinkTarget ||
       (linkTargetType === "problem" && selectedProblemSlug)
   );
+  // A target alone is enough: both markup helpers fall back to it for the label,
+  // which is the plain [[target]] form the help text teaches. Requiring a second
+  // field also disagreed with Enter on the target input, which never checked it.
   const canApplyLink = Boolean(
     cleanLinkTarget &&
-      cleanLinkText &&
       (linkTargetType === "concept" || selectedProblemSlug || exactLinkSuggestion?.targetType === "problem")
   );
 
@@ -2339,7 +2355,7 @@ export function MarkdownEditor({
               ))}
             {linkTargetType === "concept" && cleanLinkTarget && !hasExactSuggestion && (
               <div className="markdown-link-menu-new">
-                <span>{labels.newConceptLink.replace("{target}", cleanLinkTarget)}</span>
+                <span>{labels.newConceptLink.replace("{target}", () => cleanLinkTarget)}</span>
                 <a href={`/concepts/new?title=${encodeURIComponent(cleanLinkTarget)}`} target="_blank" rel="noreferrer">
                   {labels.createPage}
                 </a>

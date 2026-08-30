@@ -36,6 +36,7 @@ const STATIC_ROUTES = new Set([
   "/contributing",
   "/contributing/edit",
   "/contributing/tasks",
+  "/guide",
   "/contributing/tasks/site-improvements",
   "/explorations",
   "/explorations/new",

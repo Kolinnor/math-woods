@@ -4618,4 +4618,56 @@ await assert.rejects(
   RateLimitError
 );
 
+
+// --- contributor link guidance --------------------------------------------
+
+// The concept template teaches the wiki-link syntax. Its examples must stay in
+// backticks: a bare [[polynomial]] would be extracted as a real edge, so every
+// draft saved without cleaning the template would inflate that concept's
+// backlink count.
+for (const [name, dictionary] of [["en", en], ["fr", fr]] as const) {
+  assert.deepEqual(
+    extractWikiLinks(dictionary.contentEditor.defaultConceptContent),
+    [],
+    `${name} concept template must not contain live wiki links`
+  );
+  assert.match(dictionary.contentEditor.defaultConceptContent, /`\[\[/);
+}
+
+// The whole markdownEditor slice crosses the RSC boundary through a provider
+// mounted in the root layout. A function value there throws at request time on
+// every route, and neither tsc nor next build reports it.
+for (const [name, dictionary] of [["en", en], ["fr", fr]] as const) {
+  for (const [key, value] of Object.entries(dictionary.markdownEditor)) {
+    assert.equal(typeof value, "string", `${name}.markdownEditor.${key} must be a serialisable string`);
+  }
+  assert.doesNotThrow(() => structuredClone(dictionary.markdownEditor));
+}
+
+// newConceptLink is interpolated with String.replace, where $&, $`, $' and $$
+// are substitution patterns. A concept title containing them must survive.
+for (const [name, dictionary] of [["en", en], ["fr", fr]] as const) {
+  const template = dictionary.markdownEditor.newConceptLink;
+  assert.ok(template.includes("{target}"), `${name} newConceptLink must carry a {target} placeholder`);
+  for (const target of ["Polynomial", "$x$", "a$&b", "co$'t", "x$$y", "q$`z"]) {
+    assert.ok(
+      template.replace("{target}", () => target).includes(target),
+      `${name} newConceptLink must preserve ${target}`
+    );
+  }
+  // The naive form is what used to corrupt the preview.
+  assert.notEqual(template.replace("{target}", "a$&b"), template.replace("{target}", () => "a$&b"));
+}
+
+// The guide shows the syntax too, so it must not link out either.
+for (const [name, dictionary] of [["en", en], ["fr", fr]] as const) {
+  for (const section of dictionary.guide.sections) {
+    assert.deepEqual(
+      extractWikiLinks(section.bodyMarkdown),
+      [],
+      `${name} guide section "${section.title}" must not contain live wiki links`
+    );
+  }
+}
+
 console.log("core tests ok");

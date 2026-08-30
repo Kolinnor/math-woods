@@ -1276,11 +1276,13 @@ export const en = {
     intro:
       "Math Woods is a graph, not a collection of separate pages. A page becomes useful when it is connected to the others, so linking is the habit that matters most here.",
     backToTasks: "What is left to do",
+    createConcept: "Create a concept",
+    missingConcepts: "See missing concepts",
     sections: [
       {
         title: "Linking",
         bodyMarkdown:
-          "Write `[[Concept]]` to link a concept, or `[[Concept|visible text]]` when the sentence needs different wording. The target before `|` is what keeps every language connected to the same idea; the text after it is what readers see. Problems use ordinary Markdown links such as `[a problem](/problems/slug)`.\n\nThe editor has a **Link** button in its toolbar, and shows this syntax under the text area while you write.\n\nLinking to a page that does not exist yet is useful rather than a mistake: it becomes a requested page that another contributor can pick up, and it appears as an incoming link on the other side."
+          "Write `[[Concept]]` to link a concept, or `[[Concept|visible text]]` when the sentence needs different wording. The target before `|` is what keeps every language connected to the same idea; the text after it is what readers see. Problems use ordinary Markdown links such as `[a problem](/problems/slug)`.\n\nThe editor has a **Link** button in its toolbar, and shows this syntax under the text area while you write.\n\nLinking to a page that does not exist yet is useful rather than a mistake: the link leads to a missing concept, which the concept browser lists so another contributor can write it."
       },
       {
         title: "What you can write",
@@ -1290,7 +1292,7 @@ export const en = {
       {
         title: "Statuses",
         bodyMarkdown:
-          "Concepts move from stub to usable to reviewed. Marking your own work honestly is more useful than making it look finished: **Needs work** and stub statuses tell other contributors where help is needed."
+          "Concepts move from **Stub** to **Usable** to **Reviewed**. Marking your own work honestly is more useful than making it look finished: the **Stub** and **Needs work** statuses tell other contributors where help is needed."
       },
       {
         title: "Sources",
@@ -1415,7 +1417,7 @@ export const en = {
     translateExercise: "Also translate this exercise",
     conceptStubDescription: "A stub can be useful: name the idea, add a link, cite one source.",
     defaultConceptContent:
-      "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to [[polynomial]].\n- The text after | changes; the target before it stays the same: [[polynomial|polynomials]].",
+      "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Link a concept like this: `[[polynomial]]`.\n- The text after | changes; the target before it stays the same: `[[polynomial|polynomials]]`.",
     editDescription: "Changes create a revision and refresh outgoing links automatically.",
     editProblemDescription: "Changes create a revision and refresh wikilinks automatically.",
     proposalDescription: "Your changes will be sent to an admin for review before anyone else can see them.",

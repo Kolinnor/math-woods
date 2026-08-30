@@ -1281,11 +1281,13 @@ export const fr = {
     intro:
       "Math Woods est un graphe, pas une collection de pages séparées. Une page devient utile quand elle est reliée aux autres : lier est donc l'habitude qui compte le plus ici.",
     backToTasks: "Ce qu'il reste à faire",
+    createConcept: "Créer un concept",
+    missingConcepts: "Voir les concepts manquants",
     sections: [
       {
         title: "Lier",
         bodyMarkdown:
-          "Écrivez `[[Concept]]` pour lier un concept, ou `[[Concept|texte visible]]` quand la phrase demande une autre formulation. La cible placée avant le `|` est ce qui relie toutes les langues à la même idée ; le texte qui suit est ce que voit le lecteur. Les problèmes utilisent des liens Markdown ordinaires, comme `[un problème](/problems/slug)`.\n\nL'éditeur dispose d'un bouton **Lien** dans sa barre d'outils, et rappelle cette syntaxe sous la zone de texte pendant que vous écrivez.\n\nLier une page qui n'existe pas encore est utile, pas une erreur : elle devient une page demandée qu'un autre contributeur pourra reprendre, et elle apparaît comme lien entrant de l'autre côté."
+          "Écrivez `[[Concept]]` pour lier un concept, ou `[[Concept|texte visible]]` quand la phrase demande une autre formulation. La cible placée avant le `|` est ce qui relie toutes les langues à la même idée ; le texte qui suit est ce que voit le lecteur. Les problèmes utilisent des liens Markdown ordinaires, comme `[un problème](/problems/slug)`.\n\nL'éditeur dispose d'un bouton **Lien** dans sa barre d'outils, et rappelle cette syntaxe sous la zone de texte pendant que vous écrivez.\n\nLier une page qui n'existe pas encore est utile, pas une erreur : le lien mène à un concept manquant que le navigateur des concepts recense, et qu'un autre contributeur pourra créer."
       },
       {
         title: "Ce que vous pouvez écrire",
@@ -1295,7 +1297,7 @@ export const fr = {
       {
         title: "Les statuts",
         bodyMarkdown:
-          "Un concept passe d'ébauche à utilisable, puis à relu. Signaler honnêtement l'état de son propre travail est plus utile que de le faire paraître achevé : les statuts **À améliorer** et « ébauche » indiquent aux autres contributeurs où l'aide est nécessaire."
+          "Un concept passe d'**Ébauche** à **Utilisable**, puis à **Relu**. Signaler honnêtement l'état de son propre travail est plus utile que de le faire paraître achevé : les statuts **Ébauche** et **À retravailler** indiquent aux autres contributeurs où l'aide est nécessaire."
       },
       {
         title: "Les sources",
@@ -1420,7 +1422,7 @@ export const fr = {
     translateExercise: "Traduire aussi cet exercice",
     conceptStubDescription: "Une ébauche peut déjà être utile : nommez l’idée, ajoutez un lien et citez une source.",
     defaultConceptContent:
-      "##### Définition intuitive\n\nÀ compléter.\n\n##### Définition formelle\n\nÀ compléter avec LaTeX.\n\n##### Exemples\n\n- Exemple lié à [[polynomial|polynôme]].\n- Le texte après le | change ; la cible avant reste la même : [[polynomial|polynômes]].",
+      "##### Définition intuitive\n\nÀ compléter.\n\n##### Définition formelle\n\nÀ compléter avec LaTeX.\n\n##### Exemples\n\n- Liez un concept ainsi : `[[polynomial|polynôme]]`.\n- Le texte après le | change ; la cible avant reste la même : `[[polynomial|polynômes]]`.",
     editDescription: "Les modifications créent une révision et actualisent automatiquement les liens sortants.",
     editProblemDescription: "Les modifications créent une révision et actualisent automatiquement les liens wiki.",
     proposalDescription: "Vos modifications seront envoyées à un administrateur pour relecture avant d’être visibles par les autres utilisateurs.",

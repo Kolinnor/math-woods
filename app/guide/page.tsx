@@ -23,9 +23,17 @@ export default async function GuidePage() {
       heroImage="/art/oak-grove.jpg"
       heroAlt="Ivan Shishkin, Oak Grove"
       actions={
-        <Link href={"/contributing/tasks" as Route} className="button secondary">
-          {t.guide.backToTasks}
-        </Link>
+        <>
+          <Link href={"/concepts/new" as Route} className="button">
+            {t.guide.createConcept}
+          </Link>
+          <Link href={"/concepts" as Route} className="button secondary">
+            {t.guide.missingConcepts}
+          </Link>
+          <Link href={"/contributing/tasks" as Route} className="button secondary">
+            {t.guide.backToTasks}
+          </Link>
+        </>
       }
     >
       <p className="guide-intro">{t.guide.intro}</p>
