@@ -1292,7 +1292,7 @@ export const fr = {
       {
         title: "Ce que vous pouvez écrire",
         bodyMarkdown:
-          "Les **concepts** sont des pages d'encyclopédie de type wiki : une définition, des exemples, des contre-exemples. Les **problèmes** sont des énoncés accompagnés d'indices et de solutions. Les **preuves** se rattachent à un problème. Les **playlists** et les **explorations** organisent en parcours du matériel existant.\n\nUne première version courte est bienvenue. La clarté compte davantage que l'exhaustivité."
+          "Les **concepts** sont des pages d'encyclopédie de type wiki : une définition, des exemples, des contre-exemples. Les **problèmes** sont des énoncés accompagnés d'indices et de solutions. Les **preuves** se rattachent à un problème. Les **playlists** sont des suites ordonnées de problèmes, chacun pouvant porter une note. Les **explorations** sont des parcours interactifs à embranchements, où le lecteur répond et avance à son rythme.\n\nUne première version courte est bienvenue. La clarté compte davantage que l'exhaustivité."
       },
       {
         title: "Les statuts",
@@ -1302,7 +1302,7 @@ export const fr = {
       {
         title: "Les sources",
         bodyMarkdown:
-          "Citez un manuel, un article ou des notes de cours quand une affirmation demande un appui, et dites-le lorsque la source est incertaine. Ne proposez que ce que vous avez écrit, ce qui appartient au domaine public, ou ce que vous avez le droit de publier sous la licence du projet. Ne recopiez pas d'énoncés ni de solutions tirés de livres ou de concours."
+          "Citez un manuel, un article ou des notes de cours quand une affirmation demande un appui, et dites-le lorsque la source est incertaine. Ne proposez que ce que vous avez écrit, ce qui appartient au domaine public, ou ce que vous avez le droit de publier sous la licence du projet. Ne recopiez pas d'énoncés ni de solutions tirés de livres ou de concours. Si vous adaptez, traduisez ou reformulez une source, citez-la clairement et faites en sorte que la nouvelle formulation soit véritablement la vôtre. Les règles complètes figurent dans CONTRIBUTING.md."
       },
       {
         title: "Traduire",

@@ -1287,7 +1287,7 @@ export const en = {
       {
         title: "What you can write",
         bodyMarkdown:
-          "**Concepts** are wiki-style encyclopedia pages: a definition, examples, counterexamples. **Problems** are statements with hints and solutions. **Proofs** are attached to a problem. **Playlists** and **explorations** arrange existing material into a path.\n\nA short first version is welcome. Clarity matters more than completeness."
+          "**Concepts** are wiki-style encyclopedia pages: a definition, examples, counterexamples. **Problems** are statements with hints and solutions. **Proofs** are attached to a problem. **Playlists** are ordered selections of problems, each of which can carry a note. **Explorations** are branching interactive paths where the reader answers and moves forward at their own pace.\n\nA short first version is welcome. Clarity matters more than completeness."
       },
       {
         title: "Statuses",
@@ -1297,7 +1297,7 @@ export const en = {
       {
         title: "Sources",
         bodyMarkdown:
-          "Cite a textbook, paper, or lecture notes when a claim needs support, and say so when a source is uncertain. Submit only what you wrote, what is in the public domain, or what you may publish under the project licence. Do not copy statements or solutions from books or contests."
+          "Cite a textbook, paper, or lecture notes when a claim needs support, and say so when a source is uncertain. Submit only what you wrote, what is in the public domain, or what you may publish under the project licence. Do not copy statements or solutions from books or contests. When you adapt, translate, or reformulate a source, cite it clearly and make the new expression genuinely your own. The full rules are in CONTRIBUTING.md."
       },
       {
         title: "Translating",
