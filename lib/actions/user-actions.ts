@@ -72,6 +72,7 @@ export async function updateProfileAction(formData: FormData) {
         where: { id: current.id },
         data: {
           displayName,
+          ...(nameChanged ? { displayNameUniquenessExempt: false } : {}),
           ...(nameChanged ? { displayNameChangedAt: now } : {}),
           bio,
           mathLevel,

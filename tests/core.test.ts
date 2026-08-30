@@ -2755,6 +2755,8 @@ assert.match(oauthActionsSource, /displayName: \{ equals: displayName, mode: "in
 assert.match(oauthActionsSource, /oauthFailure\("profile-name-used"\)/);
 assert.match(uniqueDisplayNamesMigrationSource, /"displayName" = 'baobab'/);
 assert.match(uniqueDisplayNamesMigrationSource, /'araucaria araucana'/);
+assert.match(uniqueDisplayNamesMigrationSource, /"displayNameUniquenessExempt"/);
+assert.match(uniqueDisplayNamesMigrationSource, /ROW_NUMBER\(\) OVER/);
 assert.match(uniqueDisplayNamesMigrationSource, /CREATE UNIQUE INDEX "User_active_displayName_lower_key"/);
 assert.doesNotMatch(loginSource, /name="discoverySource(?:Detail)?"/);
 assert.doesNotMatch(oauthCompleteSource, /name="discoverySource(?:Detail)?"/);

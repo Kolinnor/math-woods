@@ -1,3 +1,6 @@
+ALTER TABLE "User"
+ADD COLUMN "displayNameUniquenessExempt" BOOLEAN NOT NULL DEFAULT false;
+
 DO $$
 DECLARE
   target_user_id INTEGER;
@@ -59,20 +62,24 @@ BEGIN
 END
 $$;
 
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT LOWER("displayName")
-    FROM "User"
-    WHERE "displayName" IS NOT NULL AND "deletedAt" IS NULL
-    GROUP BY LOWER("displayName")
-    HAVING COUNT(*) > 1
-  ) THEN
-    RAISE EXCEPTION 'Cannot enforce public profile-name uniqueness: other case-insensitive conflicts exist.';
-  END IF;
-END
-$$;
+WITH ranked_names AS (
+  SELECT
+    "id",
+    ROW_NUMBER() OVER (
+      PARTITION BY LOWER("displayName")
+      ORDER BY "createdAt", "id"
+    ) AS name_position
+  FROM "User"
+  WHERE "displayName" IS NOT NULL AND "deletedAt" IS NULL
+)
+UPDATE "User" AS target
+SET "displayNameUniquenessExempt" = true
+FROM ranked_names
+WHERE target."id" = ranked_names."id"
+  AND ranked_names.name_position > 1;
 
 CREATE UNIQUE INDEX "User_active_displayName_lower_key"
 ON "User" (LOWER("displayName"))
-WHERE "displayName" IS NOT NULL AND "deletedAt" IS NULL;
+WHERE "displayName" IS NOT NULL
+  AND "deletedAt" IS NULL
+  AND "displayNameUniquenessExempt" = false;

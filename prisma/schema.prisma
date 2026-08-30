@@ -383,6 +383,7 @@ model User {
   profileSlug                     String                          @unique
   // A migration maintains case-insensitive uniqueness for active public names.
   displayName                     String?
+  displayNameUniquenessExempt     Boolean                         @default(false)
   displayNameChangedAt            DateTime?
   avatarUrl                       String?
   avatarBackground                String?
