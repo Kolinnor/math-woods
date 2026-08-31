@@ -1606,7 +1606,11 @@ export const fr = {
     addAnnouncement: "Ajouter une annonce",
     titleLabel: "Titre",
     messageLabel: "Message",
-    posted: "Annonce publiée."
+    posted: "Annonce publiée.",
+    deleteAnnouncement: "Supprimer l'annonce",
+    confirmDelete: "Êtes-vous sûr de vouloir effacer cette annonce ?",
+    yes: "Oui",
+    no: "Non"
   },
   recentChangesPage: {
     title: "Modifications récentes",

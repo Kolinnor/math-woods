@@ -19,7 +19,50 @@
 }
 
 .announcement-card-new {
-  border-left: 3px solid var(--mw-green);
+  border-left: 8px solid rgba(50, 168, 82, 0.5);
+}
+
+.announcement-card-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.announcement-delete-button {
+  flex: none;
+}
+
+.announcement-delete-confirm {
+  background: var(--notice-red-bg);
+  border: 1px solid var(--notice-red-border);
+  border-radius: 7px;
+  color: var(--notice-text);
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  position: relative;
+}
+
+.announcement-delete-confirm p {
+  margin: 0;
+  padding-right: 1.5rem;
+}
+
+.announcement-delete-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.announcement-delete-confirm-close {
+  background: none;
+  border: none;
+  color: var(--notice-text);
+  cursor: pointer;
+  padding: 0.15rem;
+  position: absolute;
+  right: 0.6rem;
+  top: 0.6rem;
 }
 
 @media (min-width: 901px) {

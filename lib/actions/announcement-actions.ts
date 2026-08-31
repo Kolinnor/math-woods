@@ -25,3 +25,13 @@ export async function createAnnouncementAction(formData: FormData) {
   revalidatePath("/announcements");
   redirect("/announcements?announcementPosted=1");
 }
+
+export async function deleteAnnouncementAction(announcementId: number) {
+  const admin = await requireAdmin();
+  await assertRateLimit(`announcement:delete:${admin.id}`, 20, 60 * 60_000);
+
+  await prisma.announcement.delete({ where: { id: announcementId } });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/announcements");
+}

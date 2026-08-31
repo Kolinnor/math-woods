@@ -1,3 +1,4 @@
+import { DeleteAnnouncementButton } from "@/components/DeleteAnnouncementButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
@@ -73,7 +74,20 @@ export default async function AnnouncementsPage({
               key={announcement.id}
               className={`panel p-4${isNew ? " announcement-card-new" : ""}`}
             >
-              <h2 className="font-semibold">{announcement.title}</h2>
+              <div className="announcement-card-header">
+                <h2 className="font-semibold">{announcement.title}</h2>
+                {canManageAnnouncements && (
+                  <DeleteAnnouncementButton
+                    announcementId={announcement.id}
+                    labels={{
+                      delete: labels.deleteAnnouncement,
+                      confirmMessage: labels.confirmDelete,
+                      yes: labels.yes,
+                      no: labels.no
+                    }}
+                  />
+                )}
+              </div>
               <p className="muted text-sm">
                 {announcement.createdBy && <UserName user={announcement.createdBy} />}
                 {" · "}

@@ -1601,7 +1601,11 @@ export const en = {
     addAnnouncement: "Add an announcement",
     titleLabel: "Title",
     messageLabel: "Message",
-    posted: "Announcement posted."
+    posted: "Announcement posted.",
+    deleteAnnouncement: "Delete announcement",
+    confirmDelete: "Are you sure you want to delete this announcement?",
+    yes: "Yes",
+    no: "No"
   },
   recentChangesPage: {
     title: "Recent changes",
