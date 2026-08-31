@@ -1,0 +1,54 @@
+/* Home hero "Annonces" button + unread badge, and the /announcements list. */
+.home-dashboard .home-announcements-button {
+  gap: 0.5em;
+}
+
+.home-announcement-badge {
+  align-items: center;
+  background: var(--mw-green);
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 800;
+  height: 1.2rem;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1.2rem;
+  padding: 0 0.35rem;
+}
+
+.announcement-card-new {
+  border-left: 3px solid var(--mw-green);
+}
+
+@media (min-width: 901px) {
+  .home-dashboard .home-member-hero-copy {
+    display: grid;
+    gap: clamp(20px, 3vw, 42px);
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+
+  .home-dashboard .home-member-hero-copy h1 {
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .home-dashboard .home-announcements-button {
+    justify-self: end;
+    width: fit-content;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .home-dashboard .home-member-hero-copy {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-dashboard .home-announcements-button {
+    justify-self: start;
+    width: min(680px, 100%);
+  }
+}

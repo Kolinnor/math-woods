@@ -568,7 +568,7 @@ export const en = {
   home: {
     hero: {
       welcomeBack: (name: string) => `Welcome back, ${name}`,
-      resume: "Resume:",
+      announcements: "Announcements",
       findLevel: "Find a problem at my level",
       guestTitle: "Math Woods is a quiet place for problem solving and studying mathematics",
       startSolving: "Start solving problems",
@@ -1592,6 +1592,16 @@ export const en = {
     noDetails: "No further provenance details are known yet.",
     noRelatedPages: "No related pages yet.",
     noMatches: "No quotes match this search."
+  },
+  announcementsPage: {
+    title: "Announcements",
+    eyebrow: "News from Math Woods",
+    description: "The latest announcements from the team.",
+    empty: "No announcements yet.",
+    addAnnouncement: "Add an announcement",
+    titleLabel: "Title",
+    messageLabel: "Message",
+    posted: "Announcement posted."
   },
   recentChangesPage: {
     title: "Recent changes",

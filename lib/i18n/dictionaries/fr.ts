@@ -571,7 +571,7 @@ export const fr = {
   home: {
     hero: {
       welcomeBack: (name: string) => `Bon retour, ${name}`,
-      resume: "Reprendre :",
+      announcements: "Annonces",
       findLevel: "Trouver un problème à mon niveau",
       guestTitle: "Math Woods est un lieu calme pour résoudre des problèmes et étudier les mathématiques",
       startSolving: "Commencer à résoudre",
@@ -1597,6 +1597,16 @@ export const fr = {
     noDetails: "Aucun détail supplémentaire sur la provenance n’est connu pour le moment.",
     noRelatedPages: "Aucune page liée pour le moment.",
     noMatches: "Aucune citation ne correspond à cette recherche."
+  },
+  announcementsPage: {
+    title: "Annonces",
+    eyebrow: "Nouvelles de Math Woods",
+    description: "Les dernières annonces de l'équipe.",
+    empty: "Aucune annonce pour le moment.",
+    addAnnouncement: "Ajouter une annonce",
+    titleLabel: "Titre",
+    messageLabel: "Message",
+    posted: "Annonce publiée."
   },
   recentChangesPage: {
     title: "Modifications récentes",

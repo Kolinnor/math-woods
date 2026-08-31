@@ -2741,13 +2741,10 @@ assert.equal(
   homePriorityForLocale({ language: "en", title: "English", body: "Text" }, "fr"),
   DEFAULT_HOME_PRIORITIES.fr
 );
-assert.match(
-  homeSource,
-  /className="home-resume-prefix"\>\{t\.home\.hero\.resume\}\<\/span\>/,
-);
-assert.match(homeSource, /AsyncMarkdownInline markdown=\{resumeProblem\.title\} className="home-resume-title"/);
-assert.match(editorCssSource, /\.home-resume-title \{[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/);
-assert.doesNotMatch(homeSource, /t\.home\.hero\.resume\(resumeProblem\.title\)/);
+assert.match(homeSource, /href=\{"\/announcements" as Route\}/);
+assert.match(homeSource, /className="home-announcement-badge"\>\{unreadAnnouncements\}<\/span>/);
+assert.match(editorCssSource, /\.home-announcement-badge \{[\s\S]*?background: var\(--mw-green\);/);
+assert.doesNotMatch(homeSource, /resumeProblem|home-resume-button/);
 assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
 assert.doesNotMatch(oauthCompleteSource, /defaultValue=\{attempt\.providerDisplayName/);
 assert.match(oauthCompleteSource, /complete\.publicPseudonymHelp/);

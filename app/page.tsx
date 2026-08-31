@@ -13,6 +13,7 @@ import { Difficulty } from "@/components/Difficulty";
 import { ProgressTicks } from "@/components/ProgressTicks";
 import { RevealSolvedDailyProblem } from "@/components/RevealSolvedDailyProblem";
 import { UserAvatar } from "@/components/UserAvatar";
+import { cappedAnnouncementCount, unreadAnnouncementCount } from "@/lib/announcements";
 import { getCurrentUser } from "@/lib/auth";
 import {
   automaticDailyProblemGroup,
@@ -168,40 +169,9 @@ export default async function HomePage({
   });
   if (featuredContest) await maybeSendContestLifecycleNotifications(featuredContest.id);
 
-  const resumeAttempt = user
-    ? await prisma.problemAttempt.findFirst({
-        where: {
-          userId: user.id,
-          status: { not: AttemptStatus.SOLVED },
-          problem: { status: "PUBLISHED", listed: true }
-        },
-        orderBy: { updatedAt: "desc" },
-        select: { problem: { select: { translationGroupId: true } } }
-      })
-    : null;
-  const resumeTranslations = resumeAttempt
-    ? await prisma.problem.findMany({
-        where: {
-          translationGroupId: resumeAttempt.problem.translationGroupId,
-          status: "PUBLISHED",
-          listed: true,
-          language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) }
-        },
-        select: {
-          title: true,
-          slug: true,
-          language: true,
-          translatedFromProblemId: true
-        }
-      })
-    : [];
-  const resumeProblem = selectContentTranslation(
-    resumeTranslations.map((problem) => ({
-      ...problem,
-      isSource: problem.translatedFromProblemId === null
-    })),
-    locale
-  );
+  const unreadAnnouncements = user
+    ? cappedAnnouncementCount(await unreadAnnouncementCount(user))
+    : 0;
 
   const dailyWhere = {
     status: "PUBLISHED" as const,
@@ -784,17 +754,15 @@ export default async function HomePage({
         <div className="home-hero-overlay home-hero-overlay-member" />
         <div className="home-member-hero-copy">
           <h1>{user ? t.home.hero.welcomeBack(displayNameForUser(user)) : t.home.hero.guestTitle}</h1>
-          {resumeProblem && (
-            <Link
-              href={`/problems/${resumeProblem.slug}`}
-              className="home-button home-button-light home-resume-button"
-              title={resumeProblem.title}
-            >
-              <span className="home-resume-prefix">{t.home.hero.resume}</span>
-              <AsyncMarkdownInline markdown={resumeProblem.title} className="home-resume-title" />
-              <ContentLanguageFallback language={resumeProblem.language} expectedLanguage={preferredLanguage} />
-            </Link>
-          )}
+          <Link
+            href={"/announcements" as Route}
+            className="home-button home-button-light home-announcements-button"
+          >
+            {t.home.hero.announcements}
+            {unreadAnnouncements > 0 && (
+              <span className="home-announcement-badge">{unreadAnnouncements}</span>
+            )}
+          </Link>
         </div>
       </section>
 
