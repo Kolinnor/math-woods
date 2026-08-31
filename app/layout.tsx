@@ -308,7 +308,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     </Link>
                   )}
                   {user && <Link href={"/friends" as never}>{t.nav.friends}</Link>}
-                  {user && <Link href={"/groups" as never}>{t.nav.groups}</Link>}
                   {user && <Link href="/settings">{t.nav.settings}</Link>}
                   {user && canUseModerationTools(user) && <Link href="/moderation">{t.nav.moderation}</Link>}
                   {user ? (
