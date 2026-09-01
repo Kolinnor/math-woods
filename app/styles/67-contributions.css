@@ -67,7 +67,78 @@
   color: var(--accent);
   display: flex;
   gap: 0.55rem;
+  justify-content: space-between;
   padding-bottom: 0.55rem;
+}
+
+.contribution-task-section-heading > div,
+.contribution-task-guide-link {
+  align-items: center;
+  display: flex;
+}
+
+.contribution-task-section-heading > div {
+  gap: 0.55rem;
+}
+
+.contribution-task-guide-link {
+  color: var(--link);
+  flex: none;
+  font-size: 0.8rem;
+  font-weight: 750;
+  gap: 0.35rem;
+}
+
+.contribution-task-guide-link:hover {
+  text-decoration: underline;
+}
+
+.concept-contributor-guide {
+  max-width: 72ch;
+}
+
+.concept-guide-admin-layout {
+  display: grid;
+  gap: 2rem;
+}
+
+.concept-guide-inline-editor {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 1.25rem;
+  padding-top: 1.5rem;
+}
+
+.concept-guide-inline-editor-heading {
+  max-width: 72ch;
+}
+
+.concept-guide-inline-editor-heading h2 {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.concept-guide-inline-editor-heading p {
+  color: var(--muted);
+}
+
+.concept-contributor-guide .prose-math > h2:not(:first-child) {
+  border-top: 1px solid var(--line);
+  margin-top: 2rem;
+  padding-top: 1.4rem;
+}
+
+.concept-guide-editor-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.concept-guide-editor-grid h2 {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  margin: 0;
 }
 
 .contribution-task-section-heading h2 {
@@ -181,6 +252,10 @@
 
   .contribution-task-card > header {
     gap: 0.65rem;
+  }
+
+  .concept-guide-editor-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -5,6 +5,11 @@ type OwnerSolvedBannerInput = {
   isExercise: boolean;
 };
 
+type OwnerProblemBannerInput = OwnerSolvedBannerInput & {
+  hasExternalSolvers: boolean;
+  hasSolvedAttempt: boolean;
+};
+
 export function shouldShowOwnerSolvedBanner({
   hasAnyProof,
   hasOwnProof,
@@ -13,4 +18,12 @@ export function shouldShowOwnerSolvedBanner({
 }: OwnerSolvedBannerInput) {
   if (!hasOwnProof) return !hasAnyProof;
   return isExercise || !hasRelatedProblems;
+}
+
+export function shouldShowOwnerProblemBanner({
+  hasExternalSolvers,
+  hasSolvedAttempt,
+  ...improvementInput
+}: OwnerProblemBannerInput) {
+  return hasExternalSolvers || (hasSolvedAttempt && shouldShowOwnerSolvedBanner(improvementInput));
 }

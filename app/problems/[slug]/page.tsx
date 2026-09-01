@@ -55,7 +55,7 @@ import {
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { problemSourcePresentation } from "@/lib/known-problem-sources";
-import { shouldShowOwnerSolvedBanner } from "@/lib/problem-owner-solved-banner";
+import { shouldShowOwnerProblemBanner, shouldShowOwnerSolvedBanner } from "@/lib/problem-owner-solved-banner";
 import { selectProblemProofsForPage } from "@/lib/problem-proof-translations";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
@@ -152,6 +152,8 @@ const redesignCopy = {
     solvedProgress: (done: number, total: number, domain: string) =>
       `Solved. You have solved ${done} of ${total} problems in ${domain}.`,
     ownerSolved: {
+      activity: (count: number) => `${count} ${count === 1 ? "person has" : "people have"} solved this problem.`,
+      nextStep: "To take it further",
       writeSolution: "Help readers learn from your problem by writing a solution.",
       writeSolutionAction: "Write a solution",
       addRelated: "Give readers another way into this problem by creating a related problem.",
@@ -163,6 +165,12 @@ const redesignCopy = {
       return hiddenCount > 0
         ? `${visibleNames}, and ${hiddenCount} ${hiddenCount === 1 ? "other" : "others"} solved this too`
         : `${joinedSolverNames(names, "and")} solved this too`;
+    },
+    ownerSolverSummary: (names: string[], hiddenCount: number) => {
+      const visibleNames = names.join(", ");
+      return hiddenCount > 0
+        ? `${visibleNames}, and ${hiddenCount} ${hiddenCount === 1 ? "other" : "others"} solved this problem`
+        : `${joinedSolverNames(names, "and")} ${names.length === 1 ? "has" : "have"} solved this problem`;
     },
     allSolvers: "Everyone who solved this problem",
     showAllSolvers: (count: number) => `Show all ${count} people who solved this problem`,
@@ -200,6 +208,8 @@ const redesignCopy = {
     solvedProgress: (done: number, total: number, domain: string) =>
       `Résolu. Vous avez résolu ${done} problèmes sur ${total} en ${domain}.`,
     ownerSolved: {
+      activity: (count: number) => `${count} personne${count === 1 ? " a" : "s ont"} résolu ce problème.`,
+      nextStep: "Pour aller plus loin",
       writeSolution: "Aidez les lecteurs à apprendre grâce à votre problème en rédigeant une solution.",
       writeSolutionAction: "Rédiger une solution",
       addRelated: "Donnez aux lecteurs une autre façon d'aborder ce problème en ajoutant un problème lié.",
@@ -212,6 +222,13 @@ const redesignCopy = {
         return `${visibleNames} et ${hiddenCount} autre${hiddenCount === 1 ? "" : "s"} ont aussi résolu ce problème`;
       }
       return `${joinedSolverNames(names, "et")} ${names.length === 1 ? "a" : "ont"} aussi résolu ce problème`;
+    },
+    ownerSolverSummary: (names: string[], hiddenCount: number) => {
+      const visibleNames = names.join(", ");
+      if (hiddenCount > 0) {
+        return `${visibleNames} et ${hiddenCount} autre${hiddenCount === 1 ? "" : "s"} ont résolu ce problème`;
+      }
+      return `${joinedSolverNames(names, "et")} ${names.length === 1 ? "a" : "ont"} résolu ce problème`;
     },
     allSolvers: "Toutes les personnes qui ont résolu ce problème",
     showAllSolvers: (count: number) => `Afficher les ${count} personnes qui ont résolu ce problème`,
@@ -609,6 +626,63 @@ export default async function ProblemPage({
     : [null, 0];
   const solvedAt = problemSolvedAt(attemptsInTranslationGroup);
   const favoriteCount = groupFavoriteRows.length;
+  const hasExternalSolvers = prioritizedGroupSolvers.length > 0;
+  const renderSolverSummary = (ownerView: boolean) => (
+    <div className="problem-solver-summary">
+      <div className="problem-solver-avatars">
+        {prioritizedGroupSolvers.slice(0, DESKTOP_SOLVER_AVATAR_LIMIT).map(({ user: solver }, index) => (
+          <Link
+            key={solver.id}
+            href={`/profile/${solver.profileSlug}`}
+            className={`problem-solver-avatar-link${index >= MOBILE_SOLVER_AVATAR_LIMIT ? " problem-solver-avatar-desktop-only" : ""}`}
+            aria-label={displayNameForUser(solver)}
+          >
+            <UserAvatar user={solver} size="sm" />
+          </Link>
+        ))}
+        {prioritizedGroupSolvers.length > MOBILE_SOLVER_AVATAR_LIMIT && (
+          <AutoClosingDetails
+            className={`problem-solver-more${prioritizedGroupSolvers.length <= DESKTOP_SOLVER_AVATAR_LIMIT ? " problem-solver-more-mobile-only" : ""}`}
+          >
+            <summary
+              aria-label={copy.showAllSolvers(prioritizedGroupSolvers.length)}
+              title={copy.showAllSolvers(prioritizedGroupSolvers.length)}
+            >
+              {prioritizedGroupSolvers.length > DESKTOP_SOLVER_AVATAR_LIMIT && (
+                <span className="problem-solver-more-desktop">
+                  +{prioritizedGroupSolvers.length - desktopSolverAvatarCount}
+                </span>
+              )}
+              <span className="problem-solver-more-mobile">
+                +{prioritizedGroupSolvers.length - mobileSolverAvatarCount}
+              </span>
+            </summary>
+            <div className="problem-solvers-popover">
+              <strong>{copy.allSolvers}</strong>
+              <div>
+                {prioritizedGroupSolvers.map(({ user: solver }) => (
+                  <Link
+                    key={solver.id}
+                    href={`/profile/${solver.profileSlug}`}
+                    data-close-details
+                  >
+                    <UserAvatar user={solver} size="sm" />
+                    <span>{displayNameForUser(solver)}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </AutoClosingDetails>
+        )}
+      </div>
+      <span className="problem-solver-names">
+        {(ownerView ? copy.ownerSolverSummary : copy.solverSummary)(
+          namedSolvers.map(({ user: solver }) => displayNameForUser(solver)),
+          hiddenSolverNameCount
+        )}
+      </span>
+    </div>
+  );
   const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
   const targetViewLanguage = requestedLanguage ?? preferredLanguage;
   const selectedTranslation = selectContentTranslation(
@@ -673,11 +747,19 @@ export default async function ProblemPage({
   );
   const ownProofResetSignal = user ? problem.proofs.filter((proof) => proof.authorId === user.id).at(-1)?.id ?? 0 : 0;
   const ownProofForHint = user ? problem.proofs.filter((proof) => proof.authorId === user.id).at(-1) ?? null : null;
-  const showOwnerSolvedBanner = shouldShowOwnerSolvedBanner({
+  const showOwnerImprovement = shouldShowOwnerSolvedBanner({
     hasAnyProof: problem.proofs.length > 0,
     hasOwnProof: Boolean(ownProofForHint),
     hasRelatedProblems,
     isExercise: problem.isExercise
+  });
+  const showOwnerProblemBanner = shouldShowOwnerProblemBanner({
+    hasAnyProof: problem.proofs.length > 0,
+    hasOwnProof: Boolean(ownProofForHint),
+    hasRelatedProblems,
+    isExercise: problem.isExercise,
+    hasExternalSolvers,
+    hasSolvedAttempt: attempt?.status === "SOLVED"
   });
   const ownSolutionHint = ownProofForHint
     ? problem.hints.find((hint) => hint.proofId === ownProofForHint.id) ?? null
@@ -839,24 +921,33 @@ export default async function ProblemPage({
             />
           </div>
         </header>
-        {attempt?.status === "SOLVED" && (!isOwnProblem || showOwnerSolvedBanner) && (
+        {(isOwnProblem ? showOwnerProblemBanner : attempt?.status === "SOLVED") && (
           <section className={`problem-solved-banner${isOwnProblem ? " problem-solved-banner-owner" : ""}`} role="status">
-            <span className="problem-solved-check"><Check size={20} /></span>
+            <span className="problem-solved-check">
+              {isOwnProblem && hasExternalSolvers ? <Users size={20} /> : <Check size={20} />}
+            </span>
             <div className="problem-solved-copy">
-              <strong>
-                {isOwnProblem
-                  ? ownProofForHint
-                    ? problem.isExercise
-                      ? copy.ownerSolved.exerciseProgression
-                      : copy.ownerSolved.addRelated
-                    : copy.ownerSolved.writeSolution
-                  : copy.solvedProgress(
+              {isOwnProblem && hasExternalSolvers ? (
+                <>
+                  <strong>{copy.ownerSolved.activity(prioritizedGroupSolvers.length)}</strong>
+                  {renderSolverSummary(true)}
+                </>
+              ) : (
+                <strong>
+                  {isOwnProblem
+                    ? ownProofForHint
+                      ? problem.isExercise
+                        ? copy.ownerSolved.exerciseProgression
+                        : copy.ownerSolved.addRelated
+                      : copy.ownerSolved.writeSolution
+                    : copy.solvedProgress(
                       domainSolvedCount,
                       domainProblemGroups.length,
                       translatedDomainLabel(heroDomain, t.home.domainLabels)
                     )}
-              </strong>
-              {isOwnProblem ? (
+                </strong>
+              )}
+              {isOwnProblem && !hasExternalSolvers ? (
                 ownProofForHint ? (
                   problem.isExercise ? null : (
                     <>
@@ -874,63 +965,24 @@ export default async function ProblemPage({
                     </a>
                   </>
                 )
-              ) : prioritizedGroupSolvers.length > 0 && (
-                <div className="problem-solver-summary">
-                  <div className="problem-solver-avatars">
-                    {prioritizedGroupSolvers.slice(0, DESKTOP_SOLVER_AVATAR_LIMIT).map(({ user: solver }, index) => (
-                      <Link
-                        key={solver.id}
-                        href={`/profile/${solver.profileSlug}`}
-                        className={`problem-solver-avatar-link${index >= MOBILE_SOLVER_AVATAR_LIMIT ? " problem-solver-avatar-desktop-only" : ""}`}
-                        aria-label={displayNameForUser(solver)}
-                      >
-                        <UserAvatar user={solver} size="sm" />
-                      </Link>
-                    ))}
-                    {prioritizedGroupSolvers.length > MOBILE_SOLVER_AVATAR_LIMIT && (
-                      <AutoClosingDetails
-                        className={`problem-solver-more${prioritizedGroupSolvers.length <= DESKTOP_SOLVER_AVATAR_LIMIT ? " problem-solver-more-mobile-only" : ""}`}
-                      >
-                        <summary
-                          aria-label={copy.showAllSolvers(prioritizedGroupSolvers.length)}
-                          title={copy.showAllSolvers(prioritizedGroupSolvers.length)}
-                        >
-                          {prioritizedGroupSolvers.length > DESKTOP_SOLVER_AVATAR_LIMIT && (
-                            <span className="problem-solver-more-desktop">
-                              +{prioritizedGroupSolvers.length - desktopSolverAvatarCount}
-                            </span>
-                          )}
-                          <span className="problem-solver-more-mobile">
-                            +{prioritizedGroupSolvers.length - mobileSolverAvatarCount}
-                          </span>
-                        </summary>
-                        <div className="problem-solvers-popover">
-                          <strong>{copy.allSolvers}</strong>
-                          <div>
-                            {prioritizedGroupSolvers.map(({ user: solver }) => (
-                              <Link
-                                key={solver.id}
-                                href={`/profile/${solver.profileSlug}`}
-                                data-close-details
-                              >
-                                <UserAvatar user={solver} size="sm" />
-                                <span>{displayNameForUser(solver)}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      </AutoClosingDetails>
-                    )}
-                  </div>
-                  <span className="problem-solver-names">
-                    {copy.solverSummary(
-                      namedSolvers.map(({ user: solver }) => displayNameForUser(solver)),
-                      hiddenSolverNameCount
-                    )}
-                  </span>
-                </div>
-              )}
+              ) : !isOwnProblem && hasExternalSolvers ? renderSolverSummary(false) : null}
             </div>
+            {isOwnProblem && hasExternalSolvers && showOwnerImprovement && (
+              <div className="problem-owner-next-step">
+                <span>{copy.ownerSolved.nextStep}</span>
+                {ownProofForHint ? (
+                  problem.isExercise ? (
+                    <p>{copy.ownerSolved.exerciseProgression}</p>
+                  ) : (
+                    <Link href={`/problems/${problem.slug}/edit#related-problems-editor`}>
+                      {copy.ownerSolved.addRelatedAction}
+                    </Link>
+                  )
+                ) : (
+                  <a href="#write-solution">{copy.ownerSolved.writeSolutionAction}</a>
+                )}
+              </div>
+            )}
             {!isOwnProblem && (
               <ProblemReactions
                 labels={copy.reactions}

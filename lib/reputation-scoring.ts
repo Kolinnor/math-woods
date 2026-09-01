@@ -12,10 +12,8 @@ export const REVIEWED_CONCEPT_REPUTATION_POINTS = 2;
 export const AUTHORED_PROBLEM_BASE_REPUTATION_POINTS = 3;
 export const PROBLEM_FAVORITE_REPUTATION_POINTS = 2;
 export const ILLUSTRATED_CONCEPT_REPUTATION_POINTS = 1;
-export const AUTHORED_SOLUTION_BASE_REPUTATION_POINTS = 2;
-export const USEFUL_SOLUTION_FULL_VALUE_VOTE_LIMIT = 10;
-export const USEFUL_SOLUTION_VOTE_POINTS = 2;
-export const USEFUL_SOLUTION_LATE_VOTE_POINTS = 1;
+export const AUTHORED_SOLUTION_BASE_REPUTATION_POINTS = 1;
+export const USEFUL_SOLUTION_VOTE_POINTS = 1;
 export const REVIEWED_CONTRIBUTION_REPUTATION_POINTS = 1;
 export const CURATION_ITEMS_PER_REPUTATION_POINT = 5;
 export const CURATION_REPUTATION_LIMIT = 20;
@@ -89,9 +87,7 @@ export function problemAuthorshipReputationBonus(input: { favoriteCount: number 
 
 export function solutionAuthorshipReputationBonus(input: { usefulVoteCount: number }) {
   const usefulVoteCount = Math.max(0, Math.floor(input.usefulVoteCount));
-  return AUTHORED_SOLUTION_BASE_REPUTATION_POINTS
-    + Math.min(usefulVoteCount, USEFUL_SOLUTION_FULL_VALUE_VOTE_LIMIT) * USEFUL_SOLUTION_VOTE_POINTS
-    + Math.max(0, usefulVoteCount - USEFUL_SOLUTION_FULL_VALUE_VOTE_LIMIT) * USEFUL_SOLUTION_LATE_VOTE_POINTS;
+  return AUTHORED_SOLUTION_BASE_REPUTATION_POINTS + usefulVoteCount * USEFUL_SOLUTION_VOTE_POINTS;
 }
 
 export function reviewedContributionReputationBonus(reviewedPageCount: number) {

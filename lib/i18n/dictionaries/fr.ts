@@ -386,6 +386,7 @@ export const fr = {
     stats: {
       reputation: "réputation",
       problems: "problèmes",
+      solutions: "solutions",
       translations: "traductions",
       dailyProblems: "problèmes du jour",
       favorites: "J’aime reçus",
@@ -422,6 +423,11 @@ export const fr = {
         label: "Nombre de problèmes",
         title: "Classement par problèmes créés",
         subtitle: "Tous les membres, classés selon le nombre de problèmes qu'ils ont créés."
+      },
+      solutions: {
+        label: "Nombre de solutions",
+        title: "Classement par solutions écrites",
+        subtitle: "Solutions publiques écrites par chaque membre."
       },
       translations: {
         label: "Nombre de traductions",
@@ -1159,6 +1165,7 @@ export const fr = {
     description: "Choisissez une tâche concrète et améliorez Math Woods une page après l'autre.",
     remaining: (count: number) => `${count} élément${count > 1 ? "s" : ""} restant${count > 1 ? "s" : ""}`,
     back: "Contribuer",
+    conceptGuide: "Guide pour écrire un concept",
     concepts: "Concepts",
     problems: "Problèmes",
     translations: "Traductions",
@@ -1288,6 +1295,21 @@ export const fr = {
     label: "Langue",
     choose: "Choisir la langue"
   },
+  conceptGuide: {
+    openGuide: "Guide pour écrire un concept",
+    createConcept: "Créer un concept",
+    backToContributing: "Retour à Contribuer",
+    edit: "Modifier le guide",
+    editTitle: "Modifier le guide des concepts",
+    editDescription: "Les versions française et anglaise sont enregistrées séparément et apparaissent immédiatement.",
+    backToGuide: "Retour au guide",
+    saved: "Guide des concepts mis à jour.",
+    languageName: { en: "Version anglaise", fr: "Version française" },
+    titleField: "Titre de la page",
+    descriptionField: "Courte description",
+    contentField: "Contenu du guide",
+    save: "Enregistrer cette version"
+  },
   markdownEditor: {
     toolsAriaLabel: "Outils de l'éditeur",
     insertImage: "Insérer une image",
@@ -1389,15 +1411,15 @@ export const fr = {
     allProblemLanguagesExist: "Toutes les langues prises en charge existent déjà pour ce problème.",
     allConceptLanguagesExist: "Toutes les langues prises en charge existent déjà pour ce concept.",
     aliases: "Alias",
-    aliasesHelp: "Noms alternatifs du concept. Séparez les alias par des virgules ou des retours à la ligne ; les espaces autour de chaque alias sont ignorés. Exemple : groupe cyclique, groupe monogène.",
+    aliasesHelp: "Noms alternatifs du concept. Saisissez un alias par ligne ; les virgules sont également acceptées. Exemple : groupe cyclique, groupe monogène.",
     references: "Références",
     linkedExercises: "Exercices liés",
     linkedExercisesTranslationHelp: "Les exercices sont des pages de problèmes complètes. Traduisez-les dans un onglet séparé ; leur version traduite restera automatiquement liée à ce concept.",
     sourceLanguage: (language: string) => `Source : ${language}`,
     openLanguageVersion: (language: string) => `Ouvrir la version ${language}`,
     translateExercise: "Traduire aussi cet exercice",
-    conceptStubDescription: "Une ébauche peut déjà être utile : nommez l’idée, ajoutez un lien et citez une source.",
-    defaultConceptContent: "##### Définition intuitive\n\nÀ compléter.\n\n##### Définition formelle\n\nÀ compléter avec LaTeX.\n\n##### Exemples\n\n- Exemple lié à [[polynomial|polynôme]].",
+    conceptStubDescription: "Une courte définition précise et un exemple peuvent déjà former une première version utile.",
+    defaultConceptContent: "##### Définition intuitive (si utile)\n\nAjoutez une ou deux phrases seulement si elles aident à situer l’idée.\n\n##### Définition formelle\n\nÀ compléter avec LaTeX.\n\n##### Exemples\n\n- Exemple lié à `[[polynomial|polynôme]]`.",
     editDescription: "Les modifications créent une révision et actualisent automatiquement les liens sortants.",
     editProblemDescription: "Les modifications créent une révision et actualisent automatiquement les liens wiki.",
     proposalDescription: "Vos modifications seront envoyées à un administrateur pour relecture avant d’être visibles par les autres utilisateurs.",
@@ -1508,6 +1530,7 @@ export const fr = {
     usefulDocuments: "Documents utiles",
     usefulDocumentsDescription: "Quelques références pour contribuer et modifier le contenu.",
     contributionGuidelines: "Guide de contribution",
+    conceptContributorGuide: "Guide pour écrire un concept",
     suggestImprovement: "Proposer une amélioration",
     credits: "Crédits",
     forestCreditBeforeLink: "Tableaux de forêt d’Ivan Chichkine (1832-1898), dans le domaine public via",

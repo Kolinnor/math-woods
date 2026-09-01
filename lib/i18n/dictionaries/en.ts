@@ -384,6 +384,7 @@ export const en = {
     stats: {
       reputation: "reputation",
       problems: "problems",
+      solutions: "solutions",
       translations: "translations",
       dailyProblems: "problems of the day",
       favorites: "likes received",
@@ -420,6 +421,11 @@ export const en = {
         label: "Number of problems",
         title: "Ranking by problems created",
         subtitle: "All members, ranked by how many problems they have created."
+      },
+      solutions: {
+        label: "Number of solutions",
+        title: "Ranking by solutions written",
+        subtitle: "Public solutions written by each member."
       },
       translations: {
         label: "Number of translations",
@@ -1154,6 +1160,7 @@ export const en = {
     description: "Pick a concrete task and help improve one page at a time.",
     remaining: (count: number) => `${count} remaining items`,
     back: "Contributing",
+    conceptGuide: "Guide to writing concepts",
     concepts: "Concepts",
     problems: "Problems",
     translations: "Translations",
@@ -1283,6 +1290,21 @@ export const en = {
     label: "Language",
     choose: "Choose language"
   },
+  conceptGuide: {
+    openGuide: "Guide to writing concepts",
+    createConcept: "Create a concept",
+    backToContributing: "Back to Contributing",
+    edit: "Edit guide",
+    editTitle: "Edit the concept guide",
+    editDescription: "The French and English versions are saved independently and appear immediately.",
+    backToGuide: "Back to the guide",
+    saved: "Concept guide updated.",
+    languageName: { en: "English version", fr: "French version" },
+    titleField: "Page title",
+    descriptionField: "Short description",
+    contentField: "Guide content",
+    save: "Save this version"
+  },
   markdownEditor: {
     toolsAriaLabel: "Editor tools",
     insertImage: "Insert image",
@@ -1384,15 +1406,15 @@ export const en = {
     allProblemLanguagesExist: "All supported languages already exist for this problem.",
     allConceptLanguagesExist: "All supported languages already exist for this concept.",
     aliases: "Aliases",
-    aliasesHelp: "Alternative names for this concept. Separate aliases with commas or line breaks; spaces around each alias are ignored. Example: cyclic group, monogenic group.",
+    aliasesHelp: "Alternative names for this concept. Enter one alias per line; commas are also accepted. Example: cyclic group, monogenic group.",
     references: "References",
     linkedExercises: "Linked exercises",
     linkedExercisesTranslationHelp: "Exercises are full problem pages. Translate any of them in a separate tab; their translated version will remain linked to this concept automatically.",
     sourceLanguage: (language: string) => `Source: ${language}`,
     openLanguageVersion: (language: string) => `Open ${language} version`,
     translateExercise: "Also translate this exercise",
-    conceptStubDescription: "A stub can be useful: name the idea, add a link, cite one source.",
-    defaultConceptContent: "## Intuitive definition\n\nTo be completed.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to [[polynomial]].",
+    conceptStubDescription: "A short precise definition and one example can already make a useful first version.",
+    defaultConceptContent: "## Intuitive definition (when useful)\n\nAdd one or two sentences only if they help situate the idea.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to `[[polynomial]]`.",
     editDescription: "Changes create a revision and refresh outgoing links automatically.",
     editProblemDescription: "Changes create a revision and refresh wikilinks automatically.",
     proposalDescription: "Your changes will be sent to an admin for review before anyone else can see them.",
@@ -1503,6 +1525,7 @@ export const en = {
     usefulDocuments: "Useful documents",
     usefulDocumentsDescription: "Short references for editing and contributing.",
     contributionGuidelines: "Contribution guidelines",
+    conceptContributorGuide: "Guide to writing concepts",
     suggestImprovement: "Suggest an improvement",
     credits: "Credits",
     forestCreditBeforeLink: "Forest paintings by Ivan Shishkin (1832-1898), public domain via",

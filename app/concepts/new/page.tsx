@@ -1,5 +1,6 @@
 import { ConceptCreateForm, ConceptSubmitButton } from "@/components/ConceptCreateForm";
 import { ConceptDuplicateSuggestions } from "@/components/ConceptDuplicateSuggestions";
+import { ConceptContributorGuideLink } from "@/components/ConceptContributorGuideLink";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { FieldHelp } from "@/components/FieldHelp";
@@ -16,6 +17,7 @@ import { CREATION_SUBMISSION_FIELD } from "@/lib/creation-submission";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
+import { canUseAdminTools } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownForTranslation } from "@/lib/translated-markdown";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
@@ -27,7 +29,7 @@ export default async function NewConceptPage({
 }: {
   searchParams: Promise<{ title?: string; translateOf?: string; language?: string; draft?: string }>;
 }) {
-  await requireVerifiedUser();
+  const user = await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const queryParams = await searchParams;
   const draftSession = requireDraftSession("/concepts/new", queryParams);
@@ -157,11 +159,16 @@ export default async function NewConceptPage({
               {t.contentEditor.aliases}
               <FieldHelp text={t.contentEditor.aliasesHelp} />
             </span>
-            <input name="aliases" />
+            <textarea name="aliases" rows={3} />
           </label>
         </div>
         <div className="grid gap-2">
-          <span className="text-sm font-medium">{t.contentEditor.content}</span>
+          <div className="content-editor-section-heading">
+            <span className="text-sm font-medium">{t.contentEditor.content}</span>
+            {canUseAdminTools(user) && (
+              <ConceptContributorGuideLink label={t.conceptGuide.openGuide} />
+            )}
+          </div>
           {sourceConcept && (
             <p className="translation-link-note">
               {t.contentEditor.translationLinksNote}

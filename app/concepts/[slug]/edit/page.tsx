@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ConceptContributorGuideLink } from "@/components/ConceptContributorGuideLink";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
@@ -181,11 +182,20 @@ export default async function EditConceptPage({
               {t.contentEditor.aliases}
               <FieldHelp text={t.contentEditor.aliasesHelp} />
             </span>
-            <input name="aliases" defaultValue={concept.aliases.map((alias) => alias.alias).join(", ")} />
+            <textarea
+              name="aliases"
+              rows={3}
+              defaultValue={concept.aliases.map((alias) => alias.alias).join("\n")}
+            />
           </label>
         </div>
         <div className="grid gap-2">
-          <span className="text-sm font-medium">{t.contentEditor.content}</span>
+          <div className="content-editor-section-heading">
+            <span className="text-sm font-medium">{t.contentEditor.content}</span>
+            {canUseAdminTools(user) && (
+              <ConceptContributorGuideLink label={t.conceptGuide.openGuide} />
+            )}
+          </div>
           <MarkdownEditor
             name="bodyMarkdown"
             initialValue={concept.bodyMarkdown}

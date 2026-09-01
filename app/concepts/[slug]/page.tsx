@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import { ConceptStatus, MathDomain } from "@prisma/client";
 import { Flag, GitMerge, History, MessageCircle, Pencil, Plus, Users } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -228,6 +228,11 @@ export default async function ConceptPage({
             <Link href="/concepts" className="button secondary">
               {t.conceptDetail.browseConcepts}
             </Link>
+            {user && canUseAdminTools(user) && (
+              <Link href={"/contributing/guides/concepts" as Route} className="button secondary">
+                {t.conceptGuide.openGuide}
+              </Link>
+            )}
           </div>
         </section>
       </ForestPageLayout>

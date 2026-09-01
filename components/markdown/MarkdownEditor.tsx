@@ -1410,7 +1410,12 @@ function buildLivePreviewDecorations(state: EditorState, revealActiveLine = true
       const activeTo = isMarkup ? (parent?.to ?? node.to) : node.to;
       const active = selectionOverlapsRange(state, activeFrom, activeTo);
       const level = headingLevel(node.name);
-      const previewClass = markdownPreviewClass(node.name);
+      const previewClass = markdownPreviewClass(
+        node.name,
+        node.name === "Emphasis" || node.name === "StrongEmphasis"
+          ? state.doc.sliceString(node.from, node.to)
+          : undefined
+      );
 
       if (level) {
         decorations.push(

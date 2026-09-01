@@ -20,10 +20,9 @@ Chaque concept original créé rapporte 1 point, puis 2 points supplémentaires 
 
 ### Solutions
 
-Chaque solution publiée rapporte 2 points.
+Chaque solution publiée rapporte 1 point.
 
-- 2 points par vote utile externe pour les dix premiers votes ;
-- 1 point par vote utile externe à partir du onzième ;
+- 1 point par vote utile externe ;
 - aucun plafond global.
 
 Les votes de l'auteur et des traducteurs de la solution sont exclus.

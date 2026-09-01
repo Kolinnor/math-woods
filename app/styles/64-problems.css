@@ -448,6 +448,7 @@ body:has(.problem-detail-shell) .site-main {
   justify-content: center;
 }
 .problem-solved-copy {
+  flex: 1 1 360px;
   min-width: 0;
 }
 .problem-solved-copy > strong {
@@ -475,6 +476,35 @@ body:has(.problem-detail-shell) .site-main {
 }
 .problem-solved-next-action:hover,
 .problem-solved-next-action:focus-visible {
+  color: #d8f1e1;
+}
+.problem-owner-next-step {
+  border-left: 1px solid rgb(255 255 255 / 0.28);
+  flex: 0 1 280px;
+  margin-left: auto;
+  min-width: 210px;
+  padding-left: 18px;
+}
+.problem-owner-next-step > span {
+  color: #bfe0cb;
+  display: block;
+  font-size: 11.5px;
+  margin-bottom: 3px;
+}
+.problem-owner-next-step a,
+.problem-owner-next-step p {
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0;
+}
+.problem-owner-next-step a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.problem-owner-next-step a:hover,
+.problem-owner-next-step a:focus-visible {
   color: #d8f1e1;
 }
 .problem-solver-avatars {
@@ -1028,6 +1058,15 @@ body:has(.problem-detail-shell) .site-main {
     padding-top: 10px;
     width: calc(100% - 46px);
   }
+
+  .problem-owner-next-step {
+    border-left: 0;
+    border-top: 1px solid rgb(255 255 255 / 0.28);
+    flex: 1 0 calc(100% - 46px);
+    margin-left: 46px;
+    padding-left: 0;
+    padding-top: 10px;
+  }
 }
 @media (max-width: 700px) {
   .problems-page-shell .problems-hero-content {
@@ -1126,6 +1165,12 @@ body:has(.problem-detail-shell) .site-main {
   .problem-reactions {
     margin-left: 0;
     width: 100%;
+  }
+
+  .problem-owner-next-step {
+    flex-basis: 100%;
+    margin-left: 0;
+    min-width: 0;
   }
 
   .problem-reactions > div {

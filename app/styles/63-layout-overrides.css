@@ -96,6 +96,27 @@
   gap: 0.65rem;
 }
 
+.content-editor-section-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  justify-content: space-between;
+}
+
+.concept-contributor-guide-link {
+  align-items: center;
+  color: var(--link);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+
+.concept-contributor-guide-link:hover {
+  text-decoration: underline;
+}
+
 .live-markdown-title-field {
   min-width: 0;
 }

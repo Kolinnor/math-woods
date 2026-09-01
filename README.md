@@ -29,22 +29,37 @@ Because it is open-source, anyone can help improve the code and the content of t
 
 ## Running Math Woods locally
 
-Math Woods uses Node.js 22 and PostgreSQL. Docker is the simplest way to start the local database.
+Math Woods uses Node.js 22 and PostgreSQL. Install [Node.js 22](https://nodejs.org/) and
+[Docker Desktop](https://www.docker.com/products/docker-desktop/) before starting. Docker only runs the local database;
+the Next.js application runs through Node.js on your computer.
+
+Clone your fork (or the main repository), then run the following commands from the cloned `math-woods` directory:
 
 ```bash
-git clone https://github.com/Kolinnor/math-woods.git
+git clone https://github.com/YOUR-USERNAME/math-woods.git
 cd math-woods
 cp .env.example .env
-docker compose up -d
 npm install
-npm run prisma:generate
-npm run prisma:migrate
-npm run db:seed
+docker compose up -d postgres
+npm run local:setup
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). On Windows, use `npm.cmd` when PowerShell prevents the `npm`
-wrapper from running.
+Open [http://localhost:3000](http://localhost:3000). The local demo account is:
+
+```text
+Username: curator
+Email: curator@example.com
+Password: curator-demo
+```
+
+Either the username or the email can be used on the login page. If this account does not work, run
+`npm run db:seed` again and check that the command ends with `Demo data ready`. This recreates the account when it is
+missing and resets its local password to `curator-demo`.
+
+On Windows, use `npm.cmd` instead of `npm` if PowerShell prevents the wrapper from running. After the initial setup,
+`powershell -ExecutionPolicy Bypass -File scripts/launch-dev.ps1` can start PostgreSQL and the development server for
+subsequent sessions.
 
 External login providers, email delivery, Redis-compatible rate limiting, and object storage are optional during local
 development. Their environment variables are documented in [`.env.example`](./.env.example). Never commit a real

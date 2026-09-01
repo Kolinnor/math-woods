@@ -1,17 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { ensureSlug } from "@/lib/slug";
+import { parseAliases } from "@/lib/concept-aliases";
 
-export function parseAliases(input: FormDataEntryValue | null) {
-  const aliases = String(input ?? "")
-    .split(/[,\n]/)
-    .map((alias) => alias.trim())
-    .filter(Boolean);
-
-  return Array.from(new Map(aliases.map((alias) => [ensureSlug(alias), alias])).entries())
-    .filter(([aliasSlug]) => Boolean(aliasSlug))
-    .map(([aliasSlug, alias]) => ({ aliasSlug, alias }));
-}
+export { parseAliases } from "@/lib/concept-aliases";
 
 export function parseReferences(input: FormDataEntryValue | null) {
   return String(input ?? "")
@@ -61,6 +52,21 @@ export async function syncConceptAliases(
   });
   if (redirectConflict) {
     throw new Error(`An alias conflicts with the merged concept "${redirectConflict.sourceTitle}".`);
+  }
+  const aliasConflict = await tx.conceptAlias.findFirst({
+    where: {
+      conceptId: { not: conceptId },
+      aliasSlug: { in: filteredAliases.map((alias) => alias.aliasSlug) }
+    },
+    select: {
+      alias: true,
+      concept: { select: { title: true } }
+    }
+  });
+  if (aliasConflict) {
+    throw new Error(
+      `The alias "${aliasConflict.alias}" is already used by the concept "${aliasConflict.concept.title}".`
+    );
   }
 
   await tx.conceptAlias.deleteMany({ where: { conceptId } });

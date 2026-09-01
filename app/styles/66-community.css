@@ -235,7 +235,7 @@
   color: inherit;
   display: grid;
   gap: 1rem;
-  grid-template-columns: 3.5rem auto minmax(0, 1fr) repeat(6, minmax(4.75rem, auto));
+  grid-template-columns: 3.5rem auto minmax(0, 1fr) repeat(7, minmax(4.75rem, auto));
   padding: 1rem;
   text-decoration: none;
   transition: background-color 120ms ease;

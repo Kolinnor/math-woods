@@ -51,6 +51,7 @@ import {
   translationSourcesMissingLanguage
 } from "../lib/contribution-tasks.ts";
 import { localizeContributionPage } from "../lib/contribution-page-copy.ts";
+import { canUseStoredConceptContributorGuide } from "../lib/concept-contributor-guide-locale.ts";
 import { slugify } from "../lib/slug.ts";
 import { isSitePresenceId, sitePresenceIsActive } from "../lib/site-presence-config.ts";
 import {
@@ -82,7 +83,7 @@ import {
 } from "../lib/home-guest-problems.ts";
 import { DEFAULT_HOME_PRIORITIES, homePriorityForLocale } from "../lib/home-priorities.ts";
 import { formatProblemSolvedDate, problemSolvedAt } from "../lib/problem-solved-date.ts";
-import { shouldShowOwnerSolvedBanner } from "../lib/problem-owner-solved-banner.ts";
+import { shouldShowOwnerProblemBanner, shouldShowOwnerSolvedBanner } from "../lib/problem-owner-solved-banner.ts";
 import {
   isProblemRecommendationEligible,
   RECOMMENDATION_DIFFICULTY_CEILING
@@ -363,6 +364,7 @@ import { DEFAULT_LATEX_PREFERENCES } from "../lib/latex-preferences.ts";
 import { latexCursorTargetForArrow, latexCursorTargetForVerticalArrow } from "../lib/latex-navigation.ts";
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
+import { parseAliases } from "../lib/concept-aliases.ts";
 import { renderInlineMarkdown, renderMarkdown } from "../lib/markdown.ts";
 import {
   DEFAULT_MARKDOWN_FOLD_TITLE,
@@ -845,6 +847,10 @@ assert.deepEqual(
   extractWikiLinks("Code `[[ignored]]` then [[polynomial]].").map((link) => [link.targetSlug, link.label]),
   [["polynomial", "polynomial"]]
 );
+for (const dictionary of [en, fr]) {
+  assert.deepEqual(extractWikiLinks(dictionary.contentEditor.defaultConceptContent), []);
+  assert.match(dictionary.contentEditor.defaultConceptContent, /`\[\[/);
+}
 
 const html = replaceWikiLinks(
   "A lire: [[racine primitive|racines primitives]].",
@@ -1044,6 +1050,14 @@ assert.equal(
 );
 assert.deepEqual(parseConceptRevisionSnapshot(baseConceptSnapshot), baseConceptSnapshot);
 assert.equal(parseConceptRevisionSnapshot({ ...baseConceptSnapshot, schemaVersion: 2 }), null);
+assert.deepEqual(parseAliases("Cyclic group, monogenic group\nGenerated group"), [
+  { aliasSlug: "cyclic-group", alias: "Cyclic group" },
+  { aliasSlug: "monogenic-group", alias: "monogenic group" },
+  { aliasSlug: "generated-group", alias: "Generated group" }
+]);
+assert.deepEqual(parseAliases("Cyclic group\ncyclic-group\n  Cyclic group  "), [
+  { aliasSlug: "cyclic-group", alias: "Cyclic group" }
+]);
 assert.deepEqual(parseProblemContentTypes(undefined), ["problem"]);
 assert.deepEqual(parseProblemContentTypes(["exercise"]), ["exercise"]);
 assert.deepEqual(parseProblemContentTypes(["exercise", "problem", "unknown"]), ["problem", "exercise"]);
@@ -1875,6 +1889,9 @@ assert.equal(canManageUserRoles(Role.OWNER), true);
 assert.equal(headingLevel("ATXHeading3"), 3);
 assert.equal(headingLevel("Paragraph"), null);
 assert.equal(markdownPreviewClass("StrongEmphasis"), "cm-md-strong");
+assert.equal(markdownPreviewClass("StrongEmphasis", "__underlined__"), "cm-md-underline");
+assert.equal(markdownPreviewClass("Emphasis", "_underlined_"), "cm-md-underline");
+assert.equal(markdownPreviewClass("Emphasis", "*italic*"), "cm-md-emphasis");
 assert.equal(markdownHeadingLineText("Existing title", 4), "#### Existing title");
 assert.equal(markdownHeadingLineText("## Existing title", 4), "#### Existing title");
 assert.equal(markdownHeadingLineText("", 5), "##### ");
@@ -2085,6 +2102,16 @@ assert.equal(wikiLinkDeleteChange(wikiLinkBoundaryText, wikiLinkBoundaryTo + 1, 
 const codedWikiLink = "Code `[[Eulerian path]]`";
 const codedWikiLinkBoundary = codedWikiLink.indexOf("]]", codedWikiLink.indexOf("[[")) + 2;
 assert.equal(wikiLinkDeleteChange(codedWikiLink, codedWikiLinkBoundary, "backward"), null);
+
+const renderedUnderline = await renderMarkdown(
+  "_underlined_ and __also underlined__, *italic*, **bold**, variable_name, and $x_1$."
+);
+assert.match(renderedUnderline, /<u>underlined<\/u>/);
+assert.match(renderedUnderline, /<u>also underlined<\/u>/);
+assert.match(renderedUnderline, /<em>italic<\/em>/);
+assert.match(renderedUnderline, /<strong>bold<\/strong>/);
+assert.match(renderedUnderline, /variable_name/);
+assert.doesNotMatch(renderedUnderline, /<u>name<\/u>/);
 
 const renderedLatex = await renderMarkdown(
   "A real sequence $(u_n)_{n\\geq 0}$ satisfies $u_{n+1}=u_n$ for every $n\\geq 0$."
@@ -2472,6 +2499,14 @@ const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
 const homePrioritiesPageSource = readFileSync(join("app", "tips", "priorities", "page.tsx"), "utf-8");
 const homePriorityActionsSource = readFileSync(join("lib", "actions", "home-priority-actions.ts"), "utf-8");
 const tipsAdminTabsSource = readFileSync(join("components", "TipsAdminTabs.tsx"), "utf-8");
+const conceptContributorGuidePageSource = readFileSync(
+  join("app", "contributing", "guides", "concepts", "page.tsx"),
+  "utf-8"
+);
+const conceptContributorGuideActionsSource = readFileSync(
+  join("lib", "actions", "concept-contributor-guide-actions.ts"),
+  "utf-8"
+);
 const problemBrowserSource = readFileSync(join("app", "problems", "page.tsx"), "utf-8");
 const recommendedProblemReaderSource = readFileSync(join("components", "RecommendedProblemReader.tsx"), "utf-8");
 const problemRecommendationActionsSource = readFileSync(
@@ -2505,6 +2540,10 @@ const authActionsSource = readFileSync(join("lib", "actions", "auth-actions.ts")
 const oauthActionsSource = readFileSync(join("lib", "actions", "oauth-actions.ts"), "utf-8");
 const uniqueDisplayNamesMigrationSource = readFileSync(
   join("prisma", "migrations", "20260830203000_enforce_unique_public_profile_names", "migration.sql"),
+  "utf-8"
+);
+const araucariaProfileSlugMigrationSource = readFileSync(
+  join("prisma", "migrations", "20260831114500_update_araucaria_profile_slug", "migration.sql"),
   "utf-8"
 );
 const languageSelectorSource = readFileSync(join("components", "LanguageSelector.tsx"), "utf-8");
@@ -2733,6 +2772,29 @@ assert.match(homePriorityActionsSource, /prisma\.homePriorityContent\.upsert/);
 assert.match(homePriorityActionsSource, /revalidatePath\("\/"\)/);
 assert.match(tipsAdminTabsSource, /\/tips\/priorities/);
 assert.equal(homePriorityForLocale(null, "fr"), DEFAULT_HOME_PRIORITIES.fr);
+assert.match(conceptContributorGuidePageSource, /!user \|\| !canUseAdminTools\(user\)\) notFound\(\)/);
+assert.match(conceptContributorGuidePageSource, /updateConceptContributorGuideAction\.bind/);
+assert.match(conceptContributorGuideActionsSource, /!canUseAdminTools\(user\)/);
+assert.equal(canUseStoredConceptContributorGuide(null, "fr"), false);
+assert.equal(
+  canUseStoredConceptContributorGuide(
+    {
+      language: "fr",
+      title: "Guide personnalisé",
+      description: "Description personnalisée",
+      bodyMarkdown: "## Contenu personnalisé"
+    },
+    "fr"
+  ),
+  true
+);
+assert.equal(
+  canUseStoredConceptContributorGuide(
+    { language: "en", title: "English", description: "Description", bodyMarkdown: "## Body" },
+    "fr"
+  ),
+  false
+);
 assert.deepEqual(
   homePriorityForLocale({ language: "fr", title: "À relire", body: "Trois pages cette semaine." }, "fr"),
   { language: "fr", title: "À relire", body: "Trois pages cette semaine." }
@@ -2755,6 +2817,8 @@ assert.match(oauthActionsSource, /displayName: \{ equals: displayName, mode: "in
 assert.match(oauthActionsSource, /oauthFailure\("profile-name-used"\)/);
 assert.match(uniqueDisplayNamesMigrationSource, /"displayName" = 'baobab'/);
 assert.match(uniqueDisplayNamesMigrationSource, /'araucaria araucana'/);
+assert.match(araucariaProfileSlugMigrationSource, /"profileSlug" = 'araucaria-araucana'/);
+assert.match(araucariaProfileSlugMigrationSource, /LOWER\("username"\) = 'baobab'/);
 assert.match(uniqueDisplayNamesMigrationSource, /"displayNameUniquenessExempt"/);
 assert.match(uniqueDisplayNamesMigrationSource, /ROW_NUMBER\(\) OVER/);
 assert.match(uniqueDisplayNamesMigrationSource, /CREATE UNIQUE INDEX "User_active_displayName_lower_key"/);
@@ -3557,7 +3621,7 @@ const mathematicianFixtures = [
 assert.equal(DAILY_PROBLEM_REPUTATION_POINTS, 50);
 assert.equal(AUTHORED_CONCEPT_BASE_REPUTATION_POINTS, 1);
 assert.equal(AUTHORED_PROBLEM_BASE_REPUTATION_POINTS, 3);
-assert.equal(AUTHORED_SOLUTION_BASE_REPUTATION_POINTS, 2);
+assert.equal(AUTHORED_SOLUTION_BASE_REPUTATION_POINTS, 1);
 assert.equal(PROBLEM_TRANSLATION_REPUTATION_POINTS, 4);
 assert.equal(conceptAuthorshipReputationBonus({ reviewed: false, hasIllustration: false }), 1);
 assert.equal(conceptAuthorshipReputationBonus({ reviewed: true, hasIllustration: false }), 3);
@@ -3599,12 +3663,12 @@ assert.deepEqual(mergeProblemAuthorshipGroups([
   attempts: [{ userId: 8 }, { userId: 10 }],
   favorites: [{ userId: 7 }, { userId: 9 }]
 }]);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 0 }), 2);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 2 }), 6);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 3 }), 8);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 5 }), 12);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 10 }), 22);
-assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 100 }), 112);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 0 }), 1);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 2 }), 3);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 3 }), 4);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 5 }), 6);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 10 }), 11);
+assert.equal(solutionAuthorshipReputationBonus({ usefulVoteCount: 100 }), 101);
 assert.equal(reviewedContributionReputationBonus(101), 101);
 assert.equal(curationActivityReputationBonus(4), 0);
 assert.equal(curationActivityReputationBonus(5), 1);
@@ -4428,6 +4492,10 @@ assert.equal(normalizedObservabilityRoute("/profile/real-person-name"), "/profil
 assert.equal(normalizedObservabilityRoute("/concepts/norm/edit"), "/concepts/[slug]/edit");
 assert.equal(normalizedObservabilityRoute("/problems"), "/problems");
 assert.equal(normalizedObservabilityRoute("/problems/new"), "/problems/new");
+assert.equal(
+  normalizedObservabilityRoute("/contributing/guides/concepts"),
+  "/contributing/guides/concepts"
+);
 assert.equal(normalizedObservabilityRoute("/untrusted-arbitrary-value"), "/other");
 
 assert.equal(
@@ -4513,6 +4581,39 @@ assert.equal(
     hasOwnProof: true,
     hasRelatedProblems: true,
     isExercise: true
+  }),
+  true
+);
+assert.equal(
+  shouldShowOwnerProblemBanner({
+    hasAnyProof: true,
+    hasOwnProof: true,
+    hasRelatedProblems: true,
+    isExercise: false,
+    hasExternalSolvers: true,
+    hasSolvedAttempt: false
+  }),
+  true
+);
+assert.equal(
+  shouldShowOwnerProblemBanner({
+    hasAnyProof: false,
+    hasOwnProof: false,
+    hasRelatedProblems: false,
+    isExercise: false,
+    hasExternalSolvers: false,
+    hasSolvedAttempt: false
+  }),
+  false
+);
+assert.equal(
+  shouldShowOwnerProblemBanner({
+    hasAnyProof: false,
+    hasOwnProof: false,
+    hasRelatedProblems: false,
+    isExercise: false,
+    hasExternalSolvers: false,
+    hasSolvedAttempt: true
   }),
   true
 );

@@ -1,6 +1,7 @@
 import { ConceptStatus, ProblemStatus, QualityStatus } from "@prisma/client";
+import type { Route } from "next";
 import Link from "next/link";
-import { BookOpen, Languages, ListChecks } from "lucide-react";
+import { BookOpen, BookOpenText, Languages, ListChecks } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ContributionTasksTabs } from "@/components/ContributionTasksTabs";
 import { getCurrentUser } from "@/lib/auth";
@@ -12,7 +13,7 @@ import {
 } from "@/lib/contribution-tasks";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { canUseModerationTools } from "@/lib/permissions";
+import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
 import { siteImprovementCopy } from "@/lib/site-improvements";
 
 export const dynamic = "force-dynamic";
@@ -119,9 +120,14 @@ export default async function ContributionTasksPage() {
     { key: "concepts-missing-en", title: copy.tasks.conceptsMissingEn.title, description: copy.tasks.conceptsMissingEn.description, remaining: conceptsMissingEn.length, total: conceptGroupTotal }
   ];
   const sections = [
-    { title: copy.concepts, icon: BookOpen, tasks: conceptTasks },
-    { title: copy.problems, icon: ListChecks, tasks: problemTasks },
-    { title: copy.translations, icon: Languages, tasks: translationTasks }
+    {
+      title: copy.concepts,
+      icon: BookOpen,
+      tasks: conceptTasks,
+      guideHref: user && canUseAdminTools(user) ? "/contributing/guides/concepts" : null
+    },
+    { title: copy.problems, icon: ListChecks, tasks: problemTasks, guideHref: null },
+    { title: copy.translations, icon: Languages, tasks: translationTasks, guideHref: null }
   ];
   const remaining = sections.flatMap((section) => section.tasks).reduce((sum, task) => sum + task.remaining, 0);
 
@@ -146,8 +152,16 @@ export default async function ContributionTasksPage() {
           return (
             <section key={section.title} className="contribution-task-section">
               <header className="contribution-task-section-heading">
-                <Icon size={20} aria-hidden="true" />
-                <h2>{section.title}</h2>
+                <div>
+                  <Icon size={20} aria-hidden="true" />
+                  <h2>{section.title}</h2>
+                </div>
+                {section.guideHref && (
+                  <Link href={section.guideHref as Route} className="contribution-task-guide-link">
+                    <BookOpenText size={15} aria-hidden="true" />
+                    {copy.conceptGuide}
+                  </Link>
+                )}
               </header>
               <div className="contribution-task-grid">
                 {section.tasks.map((task) => <TaskCard key={task.key} task={task} buttonLabel={copy.openRandom} completeLabel={copy.complete} />)}

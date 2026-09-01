@@ -1,5 +1,5 @@
 import katex from "katex";
-import { marked, Renderer } from "marked";
+import { marked, Renderer, Tokenizer, type Token, type Tokens, type TokenizerAndRendererExtension } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { MATH_WOODS_KATEX_MACROS } from "./latex-macros.ts";
 import { findLatexRanges } from "./latex-ranges.ts";
@@ -103,6 +103,51 @@ function normalizeLatexLists(markdown: string) {
     }
   );
 }
+
+function isWordChar(char: string) {
+  return /[\p{L}\p{N}]/u.test(char);
+}
+
+const UNDERLINE_RULE = /^(_+)(?!\s)([\s\S]*?[^_\s])\1(?!_)(?![\p{L}\p{N}])/u;
+const defaultTokenizer = new Tokenizer();
+
+marked.use({
+  tokenizer: {
+    emStrong(src, maskedSrc, prevChar) {
+      if (src[0] === "_") return undefined;
+      return defaultTokenizer.emStrong.call(this, src, maskedSrc, prevChar);
+    }
+  }
+});
+
+const underlineExtension: TokenizerAndRendererExtension = {
+  name: "underline",
+  level: "inline",
+  start(src) {
+    return src.match(/_/)?.index;
+  },
+  tokenizer(src, tokens) {
+    const match = UNDERLINE_RULE.exec(src);
+    if (!match) return undefined;
+
+    const prevToken = tokens.at(-1) as { raw?: string } | undefined;
+    const prevChar = prevToken?.raw?.slice(-1) ?? "";
+    if (prevChar && isWordChar(prevChar)) return undefined;
+
+    const text = match[2];
+    return {
+      type: "underline",
+      raw: match[0],
+      text,
+      tokens: this.lexer.inlineTokens(text)
+    };
+  },
+  renderer(token) {
+    return `<u>${this.parser.parseInline((token as Tokens.Generic & { tokens: Token[] }).tokens)}</u>`;
+  }
+};
+
+marked.use({ extensions: [underlineExtension] });
 
 const markdownRenderer = new Renderer();
 const defaultCodeRenderer = markdownRenderer.code.bind(markdownRenderer);
