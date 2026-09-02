@@ -4,9 +4,11 @@ import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
+import { deleteStoredChatImage } from "@/lib/chat-images";
 import { CONTENT_LIMITS, optionalBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { materializeFriendRequestIntro, sendDirectChatMessage } from "@/lib/direct-chat";
+import { directChatPair, materializeFriendRequestIntro, sendDirectChatMessage } from "@/lib/direct-chat";
+import { getChatImageStorageConfig } from "@/lib/image-storage";
 import { clearFriendRequestNotifications } from "@/lib/notification-lifecycle";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -275,6 +277,57 @@ export async function createChatMessageAction(
     return {
       error: error instanceof Error ? error.message : "Message could not be sent."
     };
+  }
+
+  revalidatePath("/friends");
+  revalidatePath(`/chat/${otherUsername}`);
+  redirect(`/chat/${otherUsername}` as never);
+}
+
+export async function deleteDirectChatAction(otherUsername: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`chat-delete:${user.id}`, 10, 60_000);
+
+  const otherUser = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(otherUsername) },
+    select: { id: true, deletedAt: true }
+  });
+  if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) {
+    throw new Error("Chat not found.");
+  }
+
+  const pair = directChatPair(user.id, otherUser.id);
+  const chat = await prisma.directChat.findUnique({
+    where: { userAId_userBId: pair },
+    select: { id: true, userAId: true, userBId: true, userACleared: true, userBCleared: true }
+  });
+
+  if (chat) {
+    const isUserA = chat.userAId === user.id;
+    const otherAlreadyCleared = isUserA ? chat.userBCleared : chat.userACleared;
+
+    if (otherAlreadyCleared) {
+      // Both sides have now cleared the conversation: nobody can see it anymore, so purge it for good.
+      const messagesWithImages = await prisma.chatMessage.findMany({
+        where: { directChatId: chat.id, imageKey: { not: null } },
+        select: { imageKey: true }
+      });
+      await prisma.directChat.delete({ where: { id: chat.id } });
+
+      const config = getChatImageStorageConfig();
+      if (config) {
+        await Promise.all(
+          messagesWithImages.map((message) =>
+            message.imageKey ? deleteStoredChatImage(config, message.imageKey).catch(() => false) : null
+          )
+        );
+      }
+    } else {
+      await prisma.directChat.update({
+        where: { id: chat.id },
+        data: isUserA ? { userACleared: new Date() } : { userBCleared: new Date() }
+      });
+    }
   }
 
   revalidatePath("/friends");

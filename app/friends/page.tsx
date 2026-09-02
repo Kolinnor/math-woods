@@ -227,15 +227,17 @@ export default async function FriendsPage() {
           <div className="friend-list">
             {recentChats.map((chat) => {
               const friend = chat.userAId === user.id ? chat.userB : chat.userA;
+              const clearedAt = chat.userAId === user.id ? chat.userACleared : chat.userBCleared;
               const latest = chat.messages[0];
+              const visibleLatest = latest && (!clearedAt || latest.createdAt > clearedAt) ? latest : null;
               return (
                 <Link key={chat.id} href={`/chat/${friend.username}` as never} className="chat-preview-row">
                   <UserAvatar user={friend} size="md" />
                   <span className="chat-preview-copy">
                     <strong>{displayNameForUser(friend)}</strong>
                     <span>
-                      {latest
-                        ? `${displayNameForUser(latest.author)}: ${latest.bodyMarkdown.slice(0, 120)}`
+                      {visibleLatest
+                        ? `${displayNameForUser(visibleLatest.author)}: ${visibleLatest.bodyMarkdown.slice(0, 120)}`
                         : t.social.noMessagesYet}
                     </span>
                   </span>
