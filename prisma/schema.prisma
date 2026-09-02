@@ -406,6 +406,7 @@ model User {
   lastSeenAnnouncementAt          DateTime?
   conceptGuideAcknowledgedAt      DateTime?
   problems                        Problem[]
+  reviewedProblems                Problem[]                       @relation("ProblemReviewedBy")
   problemAttributionsFrom         ProblemAttributionTransfer[]    @relation("ProblemAttributionFrom")
   problemAttributionsTo           ProblemAttributionTransfer[]    @relation("ProblemAttributionTo")
   problemAttributionsTransferred  ProblemAttributionTransfer[]    @relation("ProblemAttributionActor")
@@ -698,12 +699,14 @@ model Problem {
   status                   ProblemStatus                   @default(PUBLISHED)
   qualityStatus            QualityStatus                   @default(UNREVIEWED)
   needsReviewAfterEdit     Boolean                         @default(false)
+  reviewedById             Int?
   verificationMode         ProblemVerificationMode         @default(NONE)
   verificationPrompt       String?
   verificationAnswer       String?
   createdAt                DateTime                        @default(now())
   updatedAt                DateTime                        @updatedAt
   author                   User                            @relation(fields: [authorId], references: [id])
+  reviewedBy               User?                           @relation("ProblemReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   attributionTransfers     ProblemAttributionTransfer[]
   knownSource              KnownProblemSource?             @relation(fields: [knownSourceId], references: [id], onDelete: SetNull)
   thread                   DiscussionThread?

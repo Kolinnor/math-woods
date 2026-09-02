@@ -1404,9 +1404,16 @@ export async function updateProblemAction(
 
       const bodyHtml = await renderMarkdownContent(resolvedSnapshot.bodyMarkdown);
       const difficultyChanged = changedSnapshotFields.includes("difficulty");
+      const reviewedByUpdate: { reviewedById?: number | null } =
+        resolvedSnapshot.qualityStatus !== QualityStatus.REVIEWED
+          ? { reviewedById: null }
+          : current.qualityStatus !== QualityStatus.REVIEWED
+            ? { reviewedById: user.id }
+            : {};
       const updateResult = await tx.problem.updateMany({
         where: { id: problemId, version: current.version },
         data: {
+          ...reviewedByUpdate,
           title: resolvedSnapshot.title,
           language: resolvedSnapshot.language,
           bodyMarkdown: resolvedSnapshot.bodyMarkdown,
@@ -1965,6 +1972,7 @@ export async function markProblemReviewedAction(problemId: number, problemSlug: 
       data: {
         qualityStatus: QualityStatus.REVIEWED,
         needsReviewAfterEdit: false,
+        reviewedById: user.id,
         version: { increment: 1 }
       }
     });
@@ -2019,6 +2027,7 @@ export async function downgradeProblemQualityStatusAction(
       data: {
         qualityStatus: nextStatus,
         needsReviewAfterEdit: false,
+        reviewedById: null,
         version: { increment: 1 }
       }
     });
@@ -2108,6 +2117,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
     const updateResult = await tx.problem.updateMany({
       where: { id: problemId, version: expectedVersion },
       data: {
+        ...(qualityStatus !== current.qualityStatus ? { reviewedById: null } : {}),
         ...(snapshot
           ? {
               title: snapshot.title,

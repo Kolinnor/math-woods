@@ -963,6 +963,8 @@ export const en = {
     needsWorkNotice: "This problem has been marked as needing work.",
     unreviewedNotice: "This problem has not been reviewed by trusted users yet.",
     markReviewed: "Mark as reviewed",
+    reviewedCreditProblem: "reviewed this problem.",
+    reviewedCreditExercise: "reviewed this exercise.",
     playlistSpecific: "Exploration-specific / unlisted",
     spoilerDomainHiddenUntilSolved: "spoiler domain hidden until solved",
     origin: "Origin:",
