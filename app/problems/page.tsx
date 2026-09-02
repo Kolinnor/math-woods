@@ -17,6 +17,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { prisma } from "@/lib/db";
+import { hasTrustedPrivileges } from "@/lib/permissions";
 import {
   domainCodeAliases,
   domainDescription,
@@ -437,6 +438,15 @@ export default async function ProblemsPage({
   const advancedClauses = advancedFilters
     .map((filter) => advancedFilterWhere(filter, showSpoilerTags))
     .filter((filter): filter is Prisma.ProblemWhereInput => Boolean(filter));
+  const isTrustedViewer = user ? hasTrustedPrivileges(user.role) : false;
+  const hasExplicitStatusFilter = Boolean(qualityValue) || advancedFilters.some((filter) => filter.field === "status");
+  const qualityWhereClause: Prisma.ProblemWhereInput | undefined = qualityValue
+    ? { qualityStatus: qualityValue }
+    : hasExplicitStatusFilter || isTrustedViewer
+      ? undefined
+      : user
+        ? { OR: [{ qualityStatus: QualityStatus.REVIEWED }, { authorId: user.id }] }
+        : { qualityStatus: QualityStatus.REVIEWED };
   const requestedPage = Math.max(1, Number.parseInt(page, 10) || 1);
   const orderBy: Prisma.ProblemOrderByWithRelationInput =
     sortValue === "solved"
@@ -478,7 +488,7 @@ export default async function ProblemsPage({
     ...(styleValue ? [{ styles: { has: styleValue } }] : []),
     ...(difficultyWhere ? [difficultyWhere] : []),
     ...(domainValue ? [domainWhere(domainValue, showSpoilerTags)] : []),
-    ...(qualityValue ? [{ qualityStatus: qualityValue }] : []),
+    ...(qualityWhereClause ? [qualityWhereClause] : []),
     ...(progressFilterWhere ? [progressFilterWhere] : []),
     ...(ownershipWhere ? [ownershipWhere] : []),
     ...(solutionWhere ? [solutionWhere] : []),
@@ -580,7 +590,7 @@ export default async function ProblemsPage({
           translationGroupId: { in: candidateTranslationGroupIds },
           status: "PUBLISHED",
           listed: true,
-          ...(qualityValue ? { qualityStatus: qualityValue } : {}),
+          ...(qualityWhereClause ?? {}),
           language: { in: languageValues }
         },
         select: {
