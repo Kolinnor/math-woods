@@ -144,6 +144,16 @@ export const en = {
     addFriendTitle: "Add a friend",
     addFriendDescription: "Enter a username to send a friend request.",
     usernamePlaceholder: "username",
+    introMessagePlaceholder: "Introduce yourself (optional)",
+    friendRequestBanner: (name: string) => `${name} isn't your friend yet. Would you like to add them?`,
+    addFriendDialog: {
+      trigger: "Add friend",
+      title: "Add {name} as a friend?",
+      messagePlaceholder: "Introduce yourself (optional)",
+      cancel: "Cancel",
+      send: "Send request",
+      sending: "Sending..."
+    },
     sending: "Sending...",
     onlineFriends: "Online friends",
     noFriendsOnline: "No friends online.",
