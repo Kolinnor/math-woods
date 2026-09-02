@@ -17,12 +17,12 @@ import { CREATION_SUBMISSION_FIELD } from "@/lib/creation-submission";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
-import { canUseAdminTools } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownForTranslation } from "@/lib/translated-markdown";
 import { nextMissingTranslationLanguage } from "@/lib/translation-routing";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export default async function NewConceptPage({
   searchParams
@@ -32,8 +32,17 @@ export default async function NewConceptPage({
   const user = await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const queryParams = await searchParams;
-  const draftSession = requireDraftSession("/concepts/new", queryParams);
   const { title = "", translateOf = "", language = "" } = queryParams;
+  if (!user.conceptGuideAcknowledgedAt) {
+    const returnToParams = new URLSearchParams();
+    if (title) returnToParams.set("title", title);
+    if (translateOf) returnToParams.set("translateOf", translateOf);
+    if (language) returnToParams.set("language", language);
+    if (queryParams.draft) returnToParams.set("draft", queryParams.draft);
+    const returnTo = `/concepts/new${returnToParams.size ? `?${returnToParams}` : ""}`;
+    redirect(`/contributing/guides/concepts?required=1&returnTo=${encodeURIComponent(returnTo)}`);
+  }
+  const draftSession = requireDraftSession("/concepts/new", queryParams);
   const preferredLanguage = await getPreferredContentLanguage();
   const requestedLanguage = language ? parseActiveContentLanguage(language) : preferredLanguage;
   const sourceConcept = translateOf
@@ -165,9 +174,7 @@ export default async function NewConceptPage({
         <div className="grid gap-2">
           <div className="content-editor-section-heading">
             <span className="text-sm font-medium">{t.contentEditor.content}</span>
-            {canUseAdminTools(user) && (
-              <ConceptContributorGuideLink label={t.conceptGuide.openGuide} />
-            )}
+            <ConceptContributorGuideLink label={t.conceptGuide.openGuide} />
           </div>
           {sourceConcept && (
             <p className="translation-link-note">

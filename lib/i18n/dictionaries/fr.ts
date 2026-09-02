@@ -329,7 +329,7 @@ export const fr = {
     inbox: "Boîte de réception",
     openMenu: "Ouvrir les notifications",
     closeMenu: "Fermer les notifications",
-    clear: "Supprimer les notifications",
+    clear: "Effacer",
     noUnread: "Aucune notification non lue.",
     noNotifications: "Aucune notification pour le moment.",
     description: "Mises à jour récentes liées aux problèmes, concepts, discussions et activités du site.",
@@ -578,6 +578,7 @@ export const fr = {
     hero: {
       welcomeBack: (name: string) => `Bon retour, ${name}`,
       resume: "Reprendre :",
+      announcements: "Annonces",
       findLevel: "Trouver un problème à mon niveau",
       guestTitle: "Math Woods est un lieu calme pour résoudre des problèmes et étudier les mathématiques",
       startSolving: "Commencer à résoudre",
@@ -999,6 +1000,12 @@ export const fr = {
     communityAccepted: "Acceptée par la communauté",
     solutionBy: "Solution par",
     editSolution: "Modifier la solution",
+    translateSolution: "Traduire cette solution",
+    translateSolutionDescription: (language: string) =>
+      `Traduisez cette solution en ${language}. L’auteur original restera crédité et vous apparaîtrez comme traducteur.`,
+    solutionTranslationLinksRequired:
+      "Conservez dans la traduction tous les liens vers des concepts présents dans la solution source.",
+    publishSolutionTranslation: "Publier la traduction",
     viewProblem: "Voir le problème",
     saveSolution: "Enregistrer la solution",
     cancel: "Annuler",
@@ -1308,7 +1315,14 @@ export const fr = {
     titleField: "Titre de la page",
     descriptionField: "Courte description",
     contentField: "Contenu du guide",
-    save: "Enregistrer cette version"
+    save: "Enregistrer cette version",
+    acknowledgementTitle: "Avant de créer un concept",
+    acknowledgementDescription: "Lisez ce guide une fois, puis confirmez que vous suivrez ces principes lors de vos contributions.",
+    acknowledge: "J’ai lu le guide — continuer",
+    acknowledgedTitle: "Guide lu",
+    acknowledgedDescription: "Vous pourrez revenir consulter ce guide à tout moment.",
+    continueToConcept: "Continuer vers la création du concept",
+    signInToContinue: "Se connecter pour continuer"
   },
   markdownEditor: {
     toolsAriaLabel: "Outils de l'éditeur",
@@ -1620,6 +1634,20 @@ export const fr = {
     noDetails: "Aucun détail supplémentaire sur la provenance n’est connu pour le moment.",
     noRelatedPages: "Aucune page liée pour le moment.",
     noMatches: "Aucune citation ne correspond à cette recherche."
+  },
+  announcementsPage: {
+    title: "Annonces",
+    eyebrow: "Nouvelles de Math Woods",
+    description: "Les dernières annonces de l'équipe.",
+    empty: "Aucune annonce pour le moment.",
+    addAnnouncement: "Ajouter une annonce",
+    titleLabel: "Titre",
+    messageLabel: "Message",
+    posted: "Annonce publiée.",
+    deleteAnnouncement: "Supprimer l'annonce",
+    confirmDelete: "Êtes-vous sûr de vouloir effacer cette annonce ?",
+    yes: "Oui",
+    no: "Non"
   },
   recentChangesPage: {
     title: "Modifications récentes",

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Route } from "next";
 
 type TipsAdminTabsProps = {
-  active: "library" | "daily-tip" | "daily-problem" | "priorities";
+  active: "library" | "daily-tip" | "daily-problem" | "daily-problem-history" | "priorities";
 };
 
 export function TipsAdminTabs({ active }: TipsAdminTabsProps) {
@@ -22,6 +22,12 @@ export function TipsAdminTabs({ active }: TipsAdminTabsProps) {
         aria-current={active === "daily-problem" ? "page" : undefined}
       >
         Problem of the day
+      </Link>
+      <Link
+        href={"/tips/problem-of-the-day/history" as Route}
+        aria-current={active === "daily-problem-history" ? "page" : undefined}
+      >
+        Daily history
       </Link>
       <Link
         href={"/tips/priorities" as Route}

@@ -192,9 +192,7 @@ export default async function EditConceptPage({
         <div className="grid gap-2">
           <div className="content-editor-section-heading">
             <span className="text-sm font-medium">{t.contentEditor.content}</span>
-            {canUseAdminTools(user) && (
-              <ConceptContributorGuideLink label={t.conceptGuide.openGuide} />
-            )}
+            <ConceptContributorGuideLink label={t.conceptGuide.openGuide} />
           </div>
           <MarkdownEditor
             name="bodyMarkdown"

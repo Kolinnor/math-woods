@@ -1,0 +1,161 @@
+.daily-problem-history-summary {
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 1rem;
+}
+
+.daily-problem-history-summary > div {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.9rem 1rem;
+}
+
+.daily-problem-history-summary > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.daily-problem-history-summary strong {
+  color: var(--accent-strong);
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.45rem;
+}
+
+.daily-problem-history-summary span,
+.daily-problem-history-date span,
+.daily-problem-history-problem > span,
+.daily-problem-history-uses span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.daily-problem-history-intro {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.daily-problem-history-intro svg {
+  color: var(--accent-strong);
+  flex: none;
+}
+
+.daily-problem-history-intro p {
+  margin: 0;
+}
+
+.daily-problem-history-search {
+  align-items: end;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: 0.85rem;
+}
+
+.daily-problem-history-search label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.daily-problem-history-search label > span {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.daily-problem-history-list {
+  border-top: 1px solid var(--line);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.daily-problem-history-list > li {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 9.5rem minmax(0, 1fr) minmax(9rem, auto);
+  padding: 0.9rem 0.35rem;
+}
+
+.daily-problem-history-date,
+.daily-problem-history-problem,
+.daily-problem-history-uses {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.daily-problem-history-date {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.daily-problem-history-date svg {
+  color: var(--accent-strong);
+  grid-row: 1 / 3;
+  margin-top: 0.15rem;
+}
+
+.daily-problem-history-date time,
+.daily-problem-history-uses strong {
+  font-size: 0.9rem;
+}
+
+.daily-problem-history-problem > a {
+  color: var(--ink);
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.03rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.daily-problem-history-problem > a:hover {
+  color: var(--accent-strong);
+}
+
+.daily-problem-history-uses {
+  justify-items: end;
+  text-align: right;
+}
+
+.daily-problem-history-uses span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.55rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .tips-admin-tabs {
+    overflow-x: auto;
+  }
+
+  .tips-admin-tabs a {
+    flex: none;
+  }
+
+  .daily-problem-history-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-problem-history-summary > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .daily-problem-history-search,
+  .daily-problem-history-list > li {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-problem-history-uses {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .daily-problem-history-uses span {
+    justify-content: flex-start;
+  }
+}

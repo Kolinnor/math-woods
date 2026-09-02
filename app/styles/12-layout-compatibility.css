@@ -1455,9 +1455,22 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 }
 
 .notification-title-link {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel-muted) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+  border-radius: 5px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
   color: var(--ink);
+  display: inline-flex;
   font-weight: 700;
+  padding: 0.25rem 0.6rem;
   text-shadow: none;
+}
+
+.notification-title-link:hover {
+  background: var(--panel-muted);
+  border-color: var(--line);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
 }
 
 .notification-clear-button {
@@ -1476,9 +1489,10 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 
 .notification-close-button {
   align-items: center;
-  background: transparent;
-  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--panel-muted) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
   border-radius: 5px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
   color: var(--muted);
   display: inline-flex;
   height: 1.9rem;
@@ -1491,6 +1505,7 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
 .notification-close-button:hover {
   background: var(--panel-muted);
   border-color: var(--line);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
   color: var(--ink);
 }
 

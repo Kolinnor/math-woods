@@ -1,11 +1,13 @@
 "use server";
 
+import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import type { InterfaceLocale } from "@/lib/i18n/types";
+import { safeReturnTo } from "@/lib/oauth-utils";
 import { canUseAdminTools } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 
@@ -37,4 +39,16 @@ export async function updateConceptContributorGuideAction(language: string, form
   revalidatePath("/contributing/guides/concepts");
   revalidatePath("/contributing/guides/concepts/edit");
   redirect(`/contributing/guides/concepts?saved=${locale}`);
+}
+
+export async function acknowledgeConceptContributorGuideAction(returnTo: string) {
+  const user = await requireUser();
+  await assertRateLimit(`concept-guide-acknowledge:${user.id}`, 10, 60_000);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { conceptGuideAcknowledgedAt: new Date() }
+  });
+
+  redirect(safeReturnTo(returnTo, "/concepts/new") as Route);
 }

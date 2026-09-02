@@ -143,6 +143,9 @@ async function lockConceptFamilyForMutation(tx: Prisma.TransactionClient, concep
 
 export async function createConceptAction(formData: FormData) {
   const user = await requireVerifiedUser();
+  if (!user.conceptGuideAcknowledgedAt) {
+    redirect("/contributing/guides/concepts?required=1&returnTo=%2Fconcepts%2Fnew");
+  }
   const submissionKey = creationSubmissionKey(
     "concept",
     user.id,

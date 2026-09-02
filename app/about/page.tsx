@@ -74,11 +74,9 @@ export default async function AboutPage() {
           <Link href="/contributing" className="button secondary">
             {t.about.contributionGuidelines}
           </Link>
-          {canEditFaq && (
-            <Link href={"/contributing/guides/concepts" as Route} className="button secondary">
-              {t.about.conceptContributorGuide}
-            </Link>
-          )}
+          <Link href={"/contributing/guides/concepts" as Route} className="button secondary">
+            {t.about.conceptContributorGuide}
+          </Link>
         </div>
       </section>
 

@@ -403,6 +403,8 @@ model User {
   createdAt                       DateTime                        @default(now())
   updatedAt                       DateTime                        @updatedAt
   deletedAt                       DateTime?
+  lastSeenAnnouncementAt          DateTime?
+  conceptGuideAcknowledgedAt      DateTime?
   problems                        Problem[]
   problemAttributionsFrom         ProblemAttributionTransfer[]    @relation("ProblemAttributionFrom")
   problemAttributionsTo           ProblemAttributionTransfer[]    @relation("ProblemAttributionTo")
@@ -439,6 +441,7 @@ model User {
   notificationPreferences         NotificationPreference[]
   siteAnnouncementsCreated        SiteAnnouncement[]              @relation("SiteAnnouncementCreator")
   siteAnnouncementRecipients      SiteAnnouncementRecipient[]
+  announcementsCreated            Announcement[]                  @relation("AnnouncementAuthor")
   conceptMergeProposalsCreated    ConceptMergeProposal[]          @relation("ConceptMergeProposer")
   conceptMergeProposalsReviewed   ConceptMergeProposal[]          @relation("ConceptMergeReviewer")
   conceptMergeCredits             ConceptMergeContributor[]
@@ -2164,6 +2167,18 @@ model SiteAnnouncementRecipient {
 
   @@id([announcementId, userId])
   @@index([userId, acknowledgedAt, createdAt])
+}
+
+model Announcement {
+  id           Int      @id @default(autoincrement())
+  title        String
+  bodyMarkdown String
+  bodyHtml     String
+  createdById  Int?
+  createdAt    DateTime @default(now())
+  createdBy    User?    @relation("AnnouncementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
 }
 
 model TrustedUserRecommendation {

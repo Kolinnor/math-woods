@@ -27,11 +27,13 @@ import { latexDeleteChange } from "../lib/latex-deletion.ts";
 import { MATH_WOODS_KATEX_MACROS } from "../lib/latex-macros.ts";
 import { markdownDraftConflictsWithSource } from "../lib/markdown-drafts.ts";
 import { markdownImageSizingFromSrc, markdownImageSrcWithWidth } from "../lib/markdown-images.ts";
+import { markdownInsertionText } from "../lib/markdown-insertion.ts";
 import { assertRateLimitOnce, RateLimitError } from "../lib/rate-limit.ts";
 import { mathWoodsTourCopy, parseMathWoodsTourStep } from "../lib/math-woods-tour.ts";
 import { parseObservabilityRange } from "../lib/observability-dashboard.ts";
 import { normalizedObservabilityRoute } from "../lib/observability-routes.ts";
 import { localizeNotification } from "../lib/notification-copy.ts";
+import { announcementUnreadSince, cappedAnnouncementCount } from "../lib/announcement-read-state.ts";
 import {
   MAX_CONCEPT_EXERCISES,
   parseConceptExerciseCount,
@@ -76,7 +78,10 @@ import {
   problemDifficultyTone
 } from "../lib/problem-difficulty.ts";
 import { stabilizedDifficulty } from "../lib/problem-difficulty-votes.ts";
-import { selectProblemProofsForPage } from "../lib/problem-proof-translations.ts";
+import {
+  missingProblemProofTranslationTarget,
+  selectProblemProofsForPage
+} from "../lib/problem-proof-translations.ts";
 import {
   HOME_GUEST_PROBLEM_GROUP_IDS,
   sortHomeGuestProblemsByDifficulty
@@ -2360,6 +2365,32 @@ const borderedMarkdownImageSrc = markdownImageSrcWithWidth(
   65,
   true
 );
+assert.equal(
+  markdownInsertionText({
+    before: "Before ",
+    after: " after",
+    markdown: "![diagram](https://images.mathwoods.org/uploads/diagram.png)",
+    spacing: "line"
+  }),
+  "\n![diagram](https://images.mathwoods.org/uploads/diagram.png)\n"
+);
+assert.equal(
+  markdownInsertionText({
+    before: "Before ",
+    after: " after",
+    markdown: "```jsxgraph\n// graph\n```"
+  }),
+  "\n\n```jsxgraph\n// graph\n```\n\n"
+);
+assert.equal(
+  markdownInsertionText({
+    before: "",
+    after: "",
+    markdown: "![diagram](https://images.mathwoods.org/uploads/diagram.png)",
+    spacing: "line"
+  }),
+  "![diagram](https://images.mathwoods.org/uploads/diagram.png)"
+);
 assert.equal(borderedMarkdownImageSrc.endsWith("#mw-width-65&mw-border"), true);
 assert.deepEqual(markdownImageSizingFromSrc(borderedMarkdownImageSrc), {
   src: "https://images.mathwoods.org/uploads/diagram.png",
@@ -2558,6 +2589,9 @@ const notificationCopySource = readFileSync(join("lib", "notification-copy.ts"),
 const notificationsSource = readFileSync(join("lib", "notifications.ts"), "utf-8");
 const siteAnnouncementActionsSource = readFileSync(join("lib", "actions", "site-announcement-actions.ts"), "utf-8");
 const siteAnnouncementToastSource = readFileSync(join("components", "SiteAnnouncementToast.tsx"), "utf-8");
+const announcementActionsSource = readFileSync(join("lib", "actions", "announcement-actions.ts"), "utf-8");
+const announcementsPageSource = readFileSync(join("app", "announcements", "page.tsx"), "utf-8");
+const announcementSeenMarkerSource = readFileSync(join("components", "AnnouncementSeenMarker.tsx"), "utf-8");
 const moderationPageSource = readFileSync(join("app", "moderation", "page.tsx"), "utf-8");
 const performancePageSource = readFileSync(join("app", "moderation", "performance", "page.tsx"), "utf-8");
 const webVitalsReporterSource = readFileSync(join("components", "WebVitalsReporter.tsx"), "utf-8");
@@ -2605,6 +2639,7 @@ assert.match(recommendedProblemReaderSource, /ALREADY_KNOWN/);
 assert.match(recommendedProblemReaderSource, /NOT_INTERESTED_IN_DOMAIN/);
 assert.match(recommendedProblemReaderSource, /\/problems\/\$\{selected\.slug\}#report/);
 assert.match(prismaSchemaSource, /model SiteAnnouncementRecipient[\s\S]*?@@id\(\[announcementId, userId\]\)/);
+assert.match(prismaSchemaSource, /model Announcement[\s\S]*?@@index\(\[createdAt\]\)/);
 assert.match(prismaSchemaSource, /model ConceptRedirect[\s\S]*?sourceSlug\s+String\s+@unique/);
 assert.match(prismaSchemaSource, /model ConceptMergeContributor[\s\S]*?@@id\(\[conceptId, userId\]\)/);
 assert.match(conceptMergeActionsSource, /acquireTransactionLock\(tx, `concept-family:\$\{groupId\}`\)/);
@@ -2633,6 +2668,11 @@ assert.match(siteAnnouncementActionsSource, /deletedAt: null,[\s\S]*?role: \{ in
 assert.match(siteAnnouncementActionsSource, /announcementId,[\s\S]*?userId: user\.id,[\s\S]*?acknowledgedAt: null/);
 assert.match(siteAnnouncementToastSource, /acknowledgedAt: null/);
 assert.match(siteAnnouncementToastSource, /announcement: \{ cancelledAt: null \}/);
+assert.match(announcementActionsSource, /const admin = await requireAdmin\(\)/);
+assert.match(announcementActionsSource, /markAnnouncementsSeenAction/);
+assert.match(announcementSeenMarkerSource, /useEffect/);
+assert.match(announcementSeenMarkerSource, /markAnnouncementsSeenAction\(\)/);
+assert.doesNotMatch(announcementsPageSource, /await markAnnouncementsSeen/);
 assert.match(layoutSource, /<SiteAnnouncementToast userId=\{user\.id\} \/>/);
 assert.match(moderationPageSource, /canUseOwnerTools\(user\)/);
 assert.match(moderationPageSource, /action=\{sendSiteAnnouncementAction\}/);
@@ -2772,9 +2812,13 @@ assert.match(homePriorityActionsSource, /prisma\.homePriorityContent\.upsert/);
 assert.match(homePriorityActionsSource, /revalidatePath\("\/"\)/);
 assert.match(tipsAdminTabsSource, /\/tips\/priorities/);
 assert.equal(homePriorityForLocale(null, "fr"), DEFAULT_HOME_PRIORITIES.fr);
-assert.match(conceptContributorGuidePageSource, /!user \|\| !canUseAdminTools\(user\)\) notFound\(\)/);
+assert.doesNotMatch(conceptContributorGuidePageSource, /notFound\(\)/);
+assert.match(conceptContributorGuidePageSource, /canEditGuide = Boolean\(user && canUseAdminTools\(user\)\)/);
+assert.match(conceptContributorGuidePageSource, /acknowledgeConceptContributorGuideAction\.bind/);
 assert.match(conceptContributorGuidePageSource, /updateConceptContributorGuideAction\.bind/);
 assert.match(conceptContributorGuideActionsSource, /!canUseAdminTools\(user\)/);
+assert.match(conceptContributorGuideActionsSource, /conceptGuideAcknowledgedAt: new Date\(\)/);
+assert.match(conceptActionsSource, /if \(!user\.conceptGuideAcknowledgedAt\)/);
 assert.equal(canUseStoredConceptContributorGuide(null, "fr"), false);
 assert.equal(
   canUseStoredConceptContributorGuide(
@@ -2810,6 +2854,21 @@ assert.match(
 assert.match(homeSource, /AsyncMarkdownInline markdown=\{resumeProblem\.title\} className="home-resume-title"/);
 assert.match(editorCssSource, /\.home-resume-title \{[\s\S]*?text-overflow: ellipsis;[\s\S]*?white-space: nowrap;/);
 assert.doesNotMatch(homeSource, /t\.home\.hero\.resume\(resumeProblem\.title\)/);
+assert.match(homeSource, /href=\{"\/announcements" as Route\}/);
+assert.match(homeSource, /className="home-announcement-badge"\>\{unreadAnnouncements\}<\/span>/);
+assert.equal(cappedAnnouncementCount(120), 99);
+const accountCreatedAt = new Date("2026-08-31T12:00:00Z");
+assert.equal(
+  announcementUnreadSince({ createdAt: accountCreatedAt, lastSeenAnnouncementAt: null }).getTime(),
+  accountCreatedAt.getTime()
+);
+assert.equal(
+  announcementUnreadSince({
+    createdAt: accountCreatedAt,
+    lastSeenAnnouncementAt: new Date("2026-08-31T13:00:00Z")
+  }).toISOString(),
+  "2026-08-31T13:00:00.000Z"
+);
 assert.match(oauthCompleteSource, /name="displayName"[\s\S]*?autoComplete="nickname"/);
 assert.doesNotMatch(oauthCompleteSource, /defaultValue=\{attempt\.providerDisplayName/);
 assert.match(oauthCompleteSource, /complete\.publicPseudonymHelp/);
@@ -4853,6 +4912,48 @@ assert.deepEqual(
     { id: 3, translationGroupId: "b", problemId: 1, language: "en" }
   ], 2, "fr").map((proof) => proof.id),
   [2, 3]
+);
+const proofTranslationFamily = [
+  { id: 1, translationGroupId: "a", problemId: 1, language: "en" },
+  { id: 2, translationGroupId: "b", problemId: 2, language: "fr" }
+];
+const problemTranslationFamily = [
+  { id: 1, slug: "problem-en", language: "en" },
+  { id: 2, slug: "probleme-fr", language: "fr" }
+];
+assert.equal(
+  missingProblemProofTranslationTarget(
+    proofTranslationFamily[0],
+    proofTranslationFamily,
+    problemTranslationFamily,
+    2
+  )?.id,
+  2
+);
+assert.equal(
+  missingProblemProofTranslationTarget(
+    { id: 3, translationGroupId: "a", problemId: 2, language: "fr" },
+    [...proofTranslationFamily, { id: 3, translationGroupId: "a", problemId: 2, language: "fr" }],
+    problemTranslationFamily,
+    2
+  ),
+  null
+);
+assert.match(problemDetailSource, /translateProofAction\.bind/);
+assert.match(problemDetailSource, /translateSolution=\$\{proof\.id\}/);
+assert.match(proofActionsSource, /translatedFromProofId: sourceProof\.id/);
+assert.match(proofActionsSource, /translatedById: sourceProof\.authorId === user\.id \? null : user\.id/);
+assert.deepEqual(
+  localizeNotification({
+    type: NotificationType.PROOF_ADDED,
+    title: "Your solution was translated",
+    body: 'Mira translated your solution to "A short proof".',
+    actor: { username: "mira", displayName: "Mira" }
+  }, "fr"),
+  {
+    title: "Votre solution a été traduite",
+    body: "Mira a traduit votre solution à « A short proof »."
+  }
 );
 
 await assertRateLimitOnce(onceRateLimitKey, "same-submission", 1, 5_000);

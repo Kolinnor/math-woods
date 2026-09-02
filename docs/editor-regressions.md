@@ -6,6 +6,23 @@ This file records editor bugs that have already happened in Math Woods. Read it 
 
 The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
 
+## 2026-09-01 - Image uploads must not create empty paragraphs
+
+Symptom:
+
+- Uploading an image in the middle of a line created a large visual gap before the following text even though the
+  author had not inserted an empty line.
+
+Root cause:
+
+- The shared block insertion helper surrounded every inserted block with two line breaks. That paragraph spacing is
+  useful for JSXGraph and fold blocks, but unnecessarily added an empty editor line around ordinary images.
+
+Guardrail:
+
+- Keep uploaded images on their own logical line with one line break on either side when adjacent text exists.
+- Preserve paragraph spacing for JSXGraph and fold blocks, which rely on block-level Markdown separation.
+
 ## 2026-08-13 - JSXGraph source can be folded without changing Markdown
 
 Expected behavior:

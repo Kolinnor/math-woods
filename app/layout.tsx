@@ -27,6 +27,8 @@ import "./styles/70-discussions.css";
 import "./styles/80-guided-tour.css";
 import "./styles/90-resume-banner.css";
 import "./styles/91-mobile-density.css";
+import "./styles/92-announcements.css";
+import "./styles/93-daily-problem-history.css";
 import { AchievementToast } from "@/components/AchievementToast";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";

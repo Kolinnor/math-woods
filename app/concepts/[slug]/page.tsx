@@ -228,11 +228,9 @@ export default async function ConceptPage({
             <Link href="/concepts" className="button secondary">
               {t.conceptDetail.browseConcepts}
             </Link>
-            {user && canUseAdminTools(user) && (
-              <Link href={"/contributing/guides/concepts" as Route} className="button secondary">
-                {t.conceptGuide.openGuide}
-              </Link>
-            )}
+            <Link href={"/contributing/guides/concepts" as Route} className="button secondary">
+              {t.conceptGuide.openGuide}
+            </Link>
           </div>
         </section>
       </ForestPageLayout>

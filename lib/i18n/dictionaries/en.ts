@@ -575,6 +575,7 @@ export const en = {
     hero: {
       welcomeBack: (name: string) => `Welcome back, ${name}`,
       resume: "Resume:",
+      announcements: "Announcements",
       findLevel: "Find a problem at my level",
       guestTitle: "Math Woods is a quiet place for problem solving and studying mathematics",
       startSolving: "Start solving problems",
@@ -994,6 +995,12 @@ export const en = {
     communityAccepted: "Community accepted",
     solutionBy: "Solution by",
     editSolution: "Edit solution",
+    translateSolution: "Translate this solution",
+    translateSolutionDescription: (language: string) =>
+      `Translate this solution into ${language}. The original author will remain credited and you will be shown as the translator.`,
+    solutionTranslationLinksRequired:
+      "Keep every concept link from the source solution in the translation.",
+    publishSolutionTranslation: "Publish translation",
     viewProblem: "View problem",
     saveSolution: "Save solution",
     cancel: "Cancel",
@@ -1303,7 +1310,14 @@ export const en = {
     titleField: "Page title",
     descriptionField: "Short description",
     contentField: "Guide content",
-    save: "Save this version"
+    save: "Save this version",
+    acknowledgementTitle: "Before creating a concept",
+    acknowledgementDescription: "Please read this guide once and confirm that you will follow these principles when contributing.",
+    acknowledge: "I have read the guide — continue",
+    acknowledgedTitle: "Guide read",
+    acknowledgedDescription: "You can return to this guide whenever you need it.",
+    continueToConcept: "Continue to concept creation",
+    signInToContinue: "Sign in to continue"
   },
   markdownEditor: {
     toolsAriaLabel: "Editor tools",
@@ -1615,6 +1629,20 @@ export const en = {
     noDetails: "No further provenance details are known yet.",
     noRelatedPages: "No related pages yet.",
     noMatches: "No quotes match this search."
+  },
+  announcementsPage: {
+    title: "Announcements",
+    eyebrow: "News from Math Woods",
+    description: "The latest announcements from the team.",
+    empty: "No announcements yet.",
+    addAnnouncement: "Add an announcement",
+    titleLabel: "Title",
+    messageLabel: "Message",
+    posted: "Announcement posted.",
+    deleteAnnouncement: "Delete announcement",
+    confirmDelete: "Are you sure you want to delete this announcement?",
+    yes: "Yes",
+    no: "No"
   },
   recentChangesPage: {
     title: "Recent changes",

@@ -129,6 +129,48 @@
   padding-top: 1.4rem;
 }
 
+.concept-guide-acknowledgement {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 1.25rem;
+  justify-content: space-between;
+  padding: 1.25rem 0;
+}
+
+.concept-guide-acknowledgement > div {
+  max-width: 62ch;
+}
+
+.concept-guide-acknowledgement h2 {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  margin: 0 0 0.3rem;
+}
+
+.concept-guide-acknowledgement p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.concept-guide-acknowledgement form,
+.concept-guide-acknowledgement .button {
+  flex: none;
+}
+
+@media (max-width: 700px) {
+  .concept-guide-acknowledgement {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .concept-guide-acknowledgement button,
+  .concept-guide-acknowledgement .button {
+    width: 100%;
+  }
+}
+
 .concept-guide-editor-grid {
   display: grid;
   gap: 1.25rem;

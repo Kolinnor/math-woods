@@ -5,6 +5,12 @@ type ProofTranslationCandidate = {
   language: string;
 };
 
+type ProblemTranslationCandidate = {
+  id: number;
+  slug: string;
+  language: string;
+};
+
 export function selectProblemProofsForPage<T extends ProofTranslationCandidate>(
   proofs: T[],
   problemId: number,
@@ -22,4 +28,24 @@ export function selectProblemProofsForPage<T extends ProofTranslationCandidate>(
     }
   }
   return [...selectedByGroup.values()];
+}
+
+export function missingProblemProofTranslationTarget<
+  TProof extends ProofTranslationCandidate,
+  TProblem extends ProblemTranslationCandidate
+>(
+  proof: TProof,
+  proofFamily: readonly TProof[],
+  problemFamily: readonly TProblem[],
+  preferredProblemId: number
+) {
+  const occupiedProblemIds = new Set(
+    proofFamily
+      .filter((candidate) => candidate.translationGroupId === proof.translationGroupId)
+      .map((candidate) => candidate.problemId)
+  );
+  const candidates = problemFamily.filter(
+    (candidate) => candidate.language !== proof.language && !occupiedProblemIds.has(candidate.id)
+  );
+  return candidates.find((candidate) => candidate.id === preferredProblemId) ?? candidates[0] ?? null;
 }

@@ -8,7 +8,11 @@ import { checkHintAchievements, checkProofAchievements } from "@/lib/achievement
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { syncInternalLinks } from "@/lib/internal-links";
+import {
+  assertTranslationWikiLinksPreserved,
+  syncInternalLinks,
+  TranslationWikiLinksPreservedError
+} from "@/lib/internal-links";
 import { createNotification, notifyProblemAuthor } from "@/lib/notifications";
 import { canDeleteSolution, canEditSolution } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -60,6 +64,112 @@ export async function createProofAction(problemId: number, problemSlug: string, 
     href: `/problems/${problemSlug}`
   });
   redirect(contentLanguageViewHref("/problems", problemSlug, problem.language) as Route);
+}
+
+export async function translateProofAction(
+  problemId: number,
+  problemSlug: string,
+  sourceProofId: number,
+  formData: FormData
+) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`proof:translate:${user.id}`, 6, 60_000);
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Solution");
+
+  const [problem, sourceProof] = await Promise.all([
+    prisma.problem.findUnique({
+      where: { id: problemId },
+      select: { id: true, slug: true, title: true, language: true, translationGroupId: true }
+    }),
+    prisma.problemProof.findUnique({
+      where: { id: sourceProofId },
+      select: {
+        id: true,
+        problemId: true,
+        authorId: true,
+        language: true,
+        translationGroupId: true,
+        bodyMarkdown: true,
+        createdAt: true,
+        problem: { select: { translationGroupId: true } }
+      }
+    })
+  ]);
+  if (!problem || problem.slug !== problemSlug) throw new Error("Problem not found.");
+  if (
+    !sourceProof
+    || sourceProof.problemId === problem.id
+    || sourceProof.language === problem.language
+    || sourceProof.problem.translationGroupId !== problem.translationGroupId
+  ) {
+    throw new Error("Source solution not found.");
+  }
+
+  const bodyHtml = await renderMarkdownContent(bodyMarkdown);
+  let translatedProof;
+  try {
+    translatedProof = await prisma.$transaction(async (tx) => {
+      await acquireTransactionLock(tx, `proof-translation:${sourceProof.translationGroupId}:${problem.id}`);
+      const existingTranslation = await tx.problemProof.findUnique({
+        where: {
+          translationGroupId_problemId: {
+            translationGroupId: sourceProof.translationGroupId,
+            problemId: problem.id
+          }
+        },
+        select: { id: true }
+      });
+      if (existingTranslation) throw new Error("This solution has already been translated for this problem.");
+
+      await assertTranslationWikiLinksPreserved(
+        sourceProof.bodyMarkdown,
+        bodyMarkdown,
+        sourceProof.language,
+        problem.language,
+        tx
+      );
+      const created = await tx.problemProof.create({
+        data: {
+          translationGroupId: sourceProof.translationGroupId,
+          problemId: problem.id,
+          authorId: sourceProof.authorId,
+          translatedFromProofId: sourceProof.id,
+          translatedById: sourceProof.authorId === user.id ? null : user.id,
+          language: problem.language,
+          bodyMarkdown,
+          bodyHtml,
+          createdAt: sourceProof.createdAt
+        }
+      });
+      await syncInternalLinks(SourceType.PROOF, created.id, bodyMarkdown, tx, problem.language);
+      return created;
+    });
+  } catch (error) {
+    if (error instanceof TranslationWikiLinksPreservedError) {
+      const returnHref = contentLanguageViewHref("/problems", problem.slug, problem.language);
+      const separator = returnHref.includes("?") ? "&" : "?";
+      redirect(
+        `${returnHref}${separator}translateSolution=${sourceProof.id}&solutionTranslationError=links#translate-solution` as Route
+      );
+    }
+    throw error;
+  }
+
+  if (sourceProof.authorId !== user.id) {
+    await createNotification({
+      userId: sourceProof.authorId,
+      actorId: user.id,
+      type: NotificationType.PROOF_ADDED,
+      title: "Your solution was translated",
+      body: `${displayNameForUser(user)} translated your solution to "${problem.title}".`,
+      href: `/problems/${problem.slug}#solution-${translatedProof.id}`
+    });
+  }
+
+  revalidatePath(`/problems/${problem.slug}`);
+  revalidatePath("/users");
+  revalidatePath(`/profile/${user.profileSlug}`);
+  redirect(contentLanguageViewHref("/problems", problem.slug, problem.language) as Route);
 }
 
 export type SolutionHintActionState = {

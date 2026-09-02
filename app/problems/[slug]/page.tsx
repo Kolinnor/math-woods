@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FriendshipStatus, ReportStatus, TargetType } from "@prisma/client";
-import { Check, Flag, Heart, History, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
+import { Check, Flag, Heart, History, Languages, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
@@ -32,6 +32,7 @@ import {
 } from "@/lib/actions/problem-actions";
 import {
   createProofAction,
+  translateProofAction,
   voteProofAction
 } from "@/lib/actions/proof-actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -56,7 +57,10 @@ import {
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { problemSourcePresentation } from "@/lib/known-problem-sources";
 import { shouldShowOwnerProblemBanner, shouldShowOwnerSolvedBanner } from "@/lib/problem-owner-solved-banner";
-import { selectProblemProofsForPage } from "@/lib/problem-proof-translations";
+import {
+  missingProblemProofTranslationTarget,
+  selectProblemProofsForPage
+} from "@/lib/problem-proof-translations";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { selectProblemHintsForLanguage } from "@/lib/problem-hints";
 import { canViewProblem, visibleProblemWhere } from "@/lib/problem-visibility";
@@ -273,6 +277,8 @@ export default async function ProblemPage({
     challenge?: string;
     hint?: string;
     solution?: string;
+    solutionTranslationError?: string;
+    translateSolution?: string;
     translateHint?: string;
     verification?: string;
     editProposal?: string;
@@ -419,7 +425,7 @@ export default async function ProblemPage({
         ...visibleProblemWhere(user),
         ...(canViewArchived ? {} : { status: { not: "ARCHIVED" } })
       },
-      select: { slug: true, title: true, language: true, translatedFromProblemId: true },
+      select: { id: true, slug: true, title: true, language: true, translatedFromProblemId: true },
       orderBy: { language: "asc" }
     }),
     prisma.problemHint.findMany({
@@ -742,6 +748,38 @@ export default async function ProblemPage({
   const relatedSolvedGroupIds = new Set(
     relatedSolvedAttempts.map((attempt) => attempt.problem.translationGroupId)
   );
+  const problemTranslationFamily = [
+    { id: problem.id, slug: problem.slug, language: problem.language },
+    ...translations.map(({ id, slug: translationSlug, language }) => ({ id, slug: translationSlug, language }))
+  ];
+  const proofTranslationHrefById = new Map(
+    selectedProofs.flatMap((proof) => {
+      const target = missingProblemProofTranslationTarget(
+        proof,
+        proofFamily,
+        problemTranslationFamily,
+        problem.id
+      );
+      return target
+        ? [[proof.id, `/problems/${target.slug}?${TRANSLATION_VIEW_LANGUAGE_PARAM}=${encodeURIComponent(
+            target.language
+          )}&translateSolution=${proof.id}#translate-solution`] as const]
+        : [];
+    })
+  );
+  const requestedSourceProofId = Number(queryParams.translateSolution);
+  const requestedSourceProof = Number.isInteger(requestedSourceProofId)
+    ? proofFamily.find((proof) => proof.id === requestedSourceProofId) ?? null
+    : null;
+  const translationSourceProof = requestedSourceProof
+    && missingProblemProofTranslationTarget(
+      requestedSourceProof,
+      proofFamily,
+      problemTranslationFamily,
+      problem.id
+    )?.id === problem.id
+      ? requestedSourceProof
+      : null;
   const proofs = [...problem.proofs].sort(
     (a, b) => (proofVotes.get(b.id) ?? 0) - (proofVotes.get(a.id) ?? 0) || a.createdAt.getTime() - b.createdAt.getTime()
   );
@@ -1471,6 +1509,15 @@ export default async function ProblemPage({
                               {t.problemDetail.editSolution}
                             </Link>
                           )}
+                          {user && proofTranslationHrefById.has(proof.id) && (
+                            <Link
+                              href={proofTranslationHrefById.get(proof.id) as never}
+                              className="button secondary"
+                            >
+                              <Languages size={16} aria-hidden="true" />
+                              {t.problemDetail.translateSolution}
+                            </Link>
+                          )}
                           {user ? (
                             <form action={voteProofAction.bind(null, proof.id, proofProblemSlugById.get(proof.id) ?? problem.slug)}>
                               <button
@@ -1531,23 +1578,55 @@ export default async function ProblemPage({
             </details>
           )}
           {user && (
-            <details id="write-solution" className="add-proof">
-              <summary>{proofs.length === 0 ? t.problemDetail.firstSolution : t.problemDetail.addAnotherSolution}</summary>
-              <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
-                <LanguageField
-                  defaultValue={problem.language}
-                  label={interfaceLocale === "fr" ? "Langue de la solution" : "Solution language"}
-                />
-                <MarkdownEditor
-                  name="bodyMarkdown"
-                  minHeight="12rem"
-                  lineNumbers={false}
-                  draftKey={`problem:${problem.id}:new-solution`}
-                  resetSignal={ownProofResetSignal}
-                />
-                <button type="submit">{t.problemDetail.publishSolution}</button>
-              </form>
-            </details>
+            translationSourceProof ? (
+              <details id="translate-solution" className="add-proof" open>
+                <summary>{t.problemDetail.translateSolution}</summary>
+                <div className="grid gap-3 pt-3">
+                  <p className="muted text-sm">
+                    {t.problemDetail.translateSolutionDescription(contentLanguageLabel(problem.language))}
+                  </p>
+                  {queryParams.solutionTranslationError === "links" && (
+                    <p className="error-text">{t.problemDetail.solutionTranslationLinksRequired}</p>
+                  )}
+                  <form
+                    action={translateProofAction.bind(
+                      null,
+                      problem.id,
+                      problem.slug,
+                      translationSourceProof.id
+                    )}
+                    className="grid gap-3"
+                  >
+                    <MarkdownEditor
+                      name="bodyMarkdown"
+                      initialValue={translationSourceProof.bodyMarkdown}
+                      minHeight="12rem"
+                      lineNumbers={false}
+                      draftKey={`problem:${problem.id}:translate-solution:${translationSourceProof.id}`}
+                    />
+                    <button type="submit">{t.problemDetail.publishSolutionTranslation}</button>
+                  </form>
+                </div>
+              </details>
+            ) : (
+              <details id="write-solution" className="add-proof">
+                <summary>{proofs.length === 0 ? t.problemDetail.firstSolution : t.problemDetail.addAnotherSolution}</summary>
+                <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
+                  <LanguageField
+                    defaultValue={problem.language}
+                    label={interfaceLocale === "fr" ? "Langue de la solution" : "Solution language"}
+                  />
+                  <MarkdownEditor
+                    name="bodyMarkdown"
+                    minHeight="12rem"
+                    lineNumbers={false}
+                    draftKey={`problem:${problem.id}:new-solution`}
+                    resetSignal={ownProofResetSignal}
+                  />
+                  <button type="submit">{t.problemDetail.publishSolution}</button>
+                </form>
+              </details>
+            )
           )}
         </section>
 

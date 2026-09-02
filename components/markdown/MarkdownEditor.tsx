@@ -73,6 +73,7 @@ import {
   normalizeMarkdownImageWidth,
   type MarkdownImageWidth
 } from "@/lib/markdown-images";
+import { markdownInsertionText, type MarkdownInsertionSpacing } from "@/lib/markdown-insertion";
 import {
   findProblemLinkRanges,
   findWikiLinkRanges,
@@ -1073,18 +1074,20 @@ function parseMarkdownImage(markdown: string) {
   };
 }
 
-function imageInsertText(view: EditorView, imageMarkdown: string) {
+function blockInsertText(
+  view: EditorView,
+  markdown: string,
+  spacing: MarkdownInsertionSpacing = "paragraph"
+) {
   const selection = view.state.selection.main;
   const line = view.state.doc.lineAt(selection.from);
   const before = view.state.doc.sliceString(line.from, selection.from);
   const after = view.state.doc.sliceString(selection.to, line.to);
-  const prefix = before.trim() ? "\n\n" : "";
-  const suffix = after.trim() ? "\n\n" : "";
 
   return {
     from: selection.from,
     to: selection.to,
-    insert: `${prefix}${imageMarkdown}${suffix}`
+    insert: markdownInsertionText({ before, after, markdown, spacing })
   };
 }
 
@@ -2077,7 +2080,11 @@ export function MarkdownEditor({
         throw new Error("The upload service accepted the image but did not return its public URL.");
       }
 
-      const insert = imageInsertText(view, markdownImage(data.image.publicUrl, imageAltText(file.name, selectedText)));
+      const insert = blockInsertText(
+        view,
+        markdownImage(data.image.publicUrl, imageAltText(file.name, selectedText)),
+        "line"
+      );
       view.dispatch({
         changes: insert,
         selection: { anchor: insert.from + insert.insert.length },
@@ -2104,7 +2111,7 @@ export function MarkdownEditor({
     const view = viewRef.current;
     if (!view) return;
 
-    const insertion = imageInsertText(view, JSXGRAPH_MARKDOWN_TEMPLATE);
+    const insertion = blockInsertText(view, JSXGRAPH_MARKDOWN_TEMPLATE);
     view.dispatch({
       changes: insertion,
       selection: { anchor: insertion.from + insertion.insert.length },
@@ -2120,7 +2127,7 @@ export function MarkdownEditor({
 
     const selection = view.state.selection.main;
     const selectedText = view.state.doc.sliceString(selection.from, selection.to);
-    const insertion = imageInsertText(view, markdownFoldBlock(selectedText));
+    const insertion = blockInsertText(view, markdownFoldBlock(selectedText));
     const titleStart = insertion.from + insertion.insert.indexOf(DEFAULT_MARKDOWN_FOLD_TITLE);
     view.dispatch({
       changes: insertion,

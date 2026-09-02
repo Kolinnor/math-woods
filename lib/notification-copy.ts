@@ -330,6 +330,15 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
       };
     }
     case NotificationType.PROOF_ADDED: {
+      if (notification.title === "Your solution was translated") {
+        const actor = notificationActor(notification, " translated your solution");
+        return {
+          title: "Votre solution a été traduite",
+          body: problemTitle
+            ? `${actor} a traduit votre solution à « ${problemTitle} ».`
+            : `${actor} a traduit votre solution.`
+        };
+      }
       const actor = notificationActor(notification, " added a solution");
       return { title: "Nouvelle solution à votre problème", body: `${actor} a ajouté une solution.` };
     }

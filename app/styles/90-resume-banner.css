@@ -33,8 +33,8 @@
   }
 
   .home-dashboard .home-resume-button {
-    justify-self: end;
-    width: fit-content;
+    flex: 1 1 auto;
+    width: auto;
   }
 }
 
@@ -46,7 +46,7 @@
   }
 
   .home-dashboard .home-resume-button {
-    justify-self: start;
-    width: min(680px, 100%);
+    flex: 1 1 auto;
+    width: auto;
   }
 }
