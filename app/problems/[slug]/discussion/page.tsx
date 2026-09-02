@@ -9,17 +9,18 @@ import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { SignInLink } from "@/components/SignInLink";
 import { UserName } from "@/components/UserName";
+import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 import { reportPostAction } from "@/lib/actions/moderation-actions";
 import {
   createDiscussionPostAction,
-  deleteHintAction,
-  updateHintAction,
+  deleteDiscussionPostAction,
+  updateDiscussionPostAction,
   votePostAction
 } from "@/lib/actions/problem-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { canEditDiscussionHint, canViewArchivedProblem } from "@/lib/permissions";
+import { canEditDiscussionPost, canViewArchivedProblem } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
@@ -30,7 +31,11 @@ const discussionCopy = {
     add: "Add to the discussion",
     back: "Back to problem",
     by: "by",
+    confirmDelete: "Delete this message? This cannot be undone.",
+    delete: "Delete",
     deleteHint: "Delete hint",
+    edit: "Edit",
+    edited: "Edited",
     editHint: "Edit hint",
     hint: "Hint",
     join: "to join the discussion.",
@@ -41,6 +46,7 @@ const discussionCopy = {
     removeUseful: "Remove useful vote",
     report: "Report",
     reportPlaceholder: "Off-topic, spoiler, or incorrect information...",
+    save: "Save",
     saveHint: "Save hint",
     submitReport: "Submit report"
   },
@@ -48,7 +54,11 @@ const discussionCopy = {
     add: "Ajouter à la discussion",
     back: "Retour au problème",
     by: "par",
+    confirmDelete: "Supprimer ce message ? Cette action est irréversible.",
+    delete: "Supprimer",
     deleteHint: "Supprimer l'indication",
+    edit: "Modifier",
+    edited: "Modifié",
     editHint: "Modifier l'indication",
     hint: "Indication",
     join: "pour participer a la discussion.",
@@ -59,6 +69,7 @@ const discussionCopy = {
     removeUseful: "Retirer le vote utile",
     report: "Signaler",
     reportPlaceholder: "Hors sujet, divulgation, information incorrecte...",
+    save: "Enregistrer",
     saveHint: "Enregistrer l'indication",
     submitReport: "Envoyer le signalement"
   }
@@ -148,8 +159,9 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
 
       <section className="discussion-thread" aria-label={t.problemDetail.discussions}>
         {posts.map((post) => {
-          const canManageHint = Boolean(user && post.type === "HINT" && canEditDiscussionHint(user, post));
+          const canManagePost = Boolean(user && canEditDiscussionPost(user, post));
           const hasUsefulVote = ownPostVoteIds.has(post.id);
+          const isHint = post.type === "HINT";
 
           return (
             <article key={post.id} className={`discussion-post${post.type === "HINT" ? " discussion-post-hint" : ""}`}>
@@ -160,6 +172,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                   </Link>
                   <span className="discussion-post-byline">{copy.by}</span>
                   <time dateTime={post.createdAt.toISOString()}>{dateFormatter.format(post.createdAt)}</time>
+                  {post.editedAt && <span className="muted">{" · "}{copy.edited}</span>}
                 </div>
                 <div className="discussion-post-header-actions">
                   {post.type === "HINT" && (
@@ -204,16 +217,16 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                 )}
               </div>
 
-              {(canManageHint || user) && (
+              {(canManagePost || user) && (
                 <footer className="discussion-post-footer">
-                  {canManageHint && (
+                  {canManagePost && (
                     <>
                       <details>
                         <summary>
                           <Pencil size={14} aria-hidden="true" />
-                          {copy.editHint}
+                          {isHint ? copy.editHint : copy.edit}
                         </summary>
-                        <form action={updateHintAction.bind(null, post.id, problem.slug, true)} className="discussion-inline-form">
+                        <form action={updateDiscussionPostAction.bind(null, post.id, problem.slug, true)} className="discussion-inline-form">
                           <LazyMarkdownEditor
                             name="bodyMarkdown"
                             initialValue={post.bodyMarkdown}
@@ -221,15 +234,15 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
                             lineNumbers={false}
                           />
                           <button type="submit" className="secondary">
-                            {copy.saveHint}
+                            {isHint ? copy.saveHint : copy.save}
                           </button>
                         </form>
                       </details>
-                      <form action={deleteHintAction.bind(null, post.id, problem.slug, true)}>
-                        <button type="submit" className="discussion-text-action discussion-delete-action">
+                      <form action={deleteDiscussionPostAction.bind(null, post.id, problem.slug, true)}>
+                        <ConfirmSubmitButton className="discussion-text-action discussion-delete-action" message={copy.confirmDelete}>
                           <Trash2 size={14} aria-hidden="true" />
-                          {copy.deleteHint}
-                        </button>
+                          {isHint ? copy.deleteHint : copy.delete}
+                        </ConfirmSubmitButton>
                       </form>
                     </>
                   )}

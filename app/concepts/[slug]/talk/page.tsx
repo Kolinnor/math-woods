@@ -1,4 +1,4 @@
-import { ArrowLeft, MessageCircle, MessageSquarePlus, Send } from "lucide-react";
+import { ArrowLeft, MessageCircle, MessageSquarePlus, Pencil, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -7,10 +7,16 @@ import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { SignInLink } from "@/components/SignInLink";
 import { UserName } from "@/components/UserName";
-import { createConceptTalkPostAction } from "@/lib/actions/concept-community-actions";
+import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
+import {
+  createConceptTalkPostAction,
+  deleteConceptTalkPostAction,
+  updateConceptTalkPostAction
+} from "@/lib/actions/concept-community-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
+import { canEditConceptTalkPost } from "@/lib/permissions";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export const dynamic = "force-dynamic";
@@ -19,20 +25,30 @@ const talkCopy = {
   en: {
     add: "Add to the discussion",
     back: "Back to concept",
+    confirmDelete: "Delete this message? This cannot be undone.",
+    delete: "Delete",
     discussion: "Discussion",
+    edit: "Edit",
+    edited: "Edited",
     join: "to join the discussion.",
     messages: (count: number) => `${count} ${count === 1 ? "message" : "messages"}`,
     noMessages: "No messages yet.",
-    post: "Post"
+    post: "Post",
+    save: "Save"
   },
   fr: {
     add: "Ajouter à la discussion",
     back: "Retour au concept",
+    confirmDelete: "Supprimer ce message ? Cette action est irréversible.",
+    delete: "Supprimer",
     discussion: "Discussion",
+    edit: "Modifier",
+    edited: "Modifié",
     join: "pour participer a la discussion.",
     messages: (count: number) => `${count} message${count === 1 ? "" : "s"}`,
     noMessages: "Aucun message pour l'instant.",
-    post: "Publier"
+    post: "Publier",
+    save: "Enregistrer"
   }
 } as const;
 
@@ -49,6 +65,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
     where: { slug },
     include: {
       talkPosts: {
+        where: { deletedAt: null },
         include: { author: true },
         orderBy: { createdAt: "asc" }
       }
@@ -94,21 +111,53 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
       )}
 
       <section className="discussion-thread" aria-label={copy.discussion}>
-        {concept.talkPosts.map((post) => (
-          <article key={post.id} className="discussion-post">
-            <header className="discussion-post-header">
-              <div className="discussion-post-author">
-                <Link href={`/profile/${post.author.profileSlug}`}>
-                  <UserName user={post.author} />
-                </Link>
-                <time dateTime={post.createdAt.toISOString()}>{dateFormatter.format(post.createdAt)}</time>
+        {concept.talkPosts.map((post) => {
+          const canManagePost = Boolean(user && canEditConceptTalkPost(user, post));
+
+          return (
+            <article key={post.id} className="discussion-post">
+              <header className="discussion-post-header">
+                <div className="discussion-post-author">
+                  <Link href={`/profile/${post.author.profileSlug}`}>
+                    <UserName user={post.author} />
+                  </Link>
+                  <time dateTime={post.createdAt.toISOString()}>{dateFormatter.format(post.createdAt)}</time>
+                  {post.editedAt && <span className="muted">{" · "}{copy.edited}</span>}
+                </div>
+              </header>
+              <div className="discussion-post-body">
+                <MarkdownBlock html={post.bodyHtml} />
               </div>
-            </header>
-            <div className="discussion-post-body">
-              <MarkdownBlock html={post.bodyHtml} />
-            </div>
-          </article>
-        ))}
+              {canManagePost && (
+                <footer className="discussion-post-footer">
+                  <details>
+                    <summary>
+                      <Pencil size={14} aria-hidden="true" />
+                      {copy.edit}
+                    </summary>
+                    <form action={updateConceptTalkPostAction.bind(null, post.id, concept.slug)} className="discussion-inline-form">
+                      <LazyMarkdownEditor
+                        name="bodyMarkdown"
+                        initialValue={post.bodyMarkdown}
+                        minHeight="7rem"
+                        lineNumbers={false}
+                      />
+                      <button type="submit" className="secondary">
+                        {copy.save}
+                      </button>
+                    </form>
+                  </details>
+                  <form action={deleteConceptTalkPostAction.bind(null, post.id, concept.slug)}>
+                    <ConfirmSubmitButton className="discussion-text-action discussion-delete-action" message={copy.confirmDelete}>
+                      <Trash2 size={14} aria-hidden="true" />
+                      {copy.delete}
+                    </ConfirmSubmitButton>
+                  </form>
+                </footer>
+              )}
+            </article>
+          );
+        })}
 
         {concept.talkPosts.length === 0 && (
           <div className="discussion-empty-state">
