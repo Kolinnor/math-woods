@@ -14,7 +14,7 @@ import {
   TranslationWikiLinksPreservedError
 } from "@/lib/internal-links";
 import { createNotification, notifyProblemAuthor } from "@/lib/notifications";
-import { canDeleteSolution, canEditSolution } from "@/lib/permissions";
+import { canDeleteSolution, canEditProofComment, canEditSolution } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
@@ -395,4 +395,51 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
   revalidatePath(`/problems/${problemSlug}`);
   revalidatePath(discussionHref);
   redirect(`${discussionHref}#comment-${comment.id}` as Route);
+}
+
+export async function updateProofCommentAction(commentId: number, problemSlug: string, formData: FormData) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`proof-comment:update:${user.id}`, 30, 60_000);
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Comment");
+  const comment = await prisma.proofComment.findFirst({
+    where: { id: commentId, deletedAt: null, proof: { problem: { slug: problemSlug } } },
+    select: { id: true, authorId: true, proofId: true }
+  });
+  if (!comment) throw new Error("Comment not found.");
+  if (!canEditProofComment(user, comment)) {
+    throw new Error("You cannot edit this comment.");
+  }
+
+  await prisma.proofComment.update({
+    where: { id: comment.id },
+    data: {
+      bodyMarkdown,
+      bodyHtml: await renderMarkdownContent(bodyMarkdown),
+      editedAt: new Date()
+    }
+  });
+
+  revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/proofs/${comment.proofId}/discussion`);
+}
+
+export async function deleteProofCommentAction(commentId: number, problemSlug: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`proof-comment:delete:${user.id}`, 30, 60_000);
+  const comment = await prisma.proofComment.findFirst({
+    where: { id: commentId, deletedAt: null, proof: { problem: { slug: problemSlug } } },
+    select: { id: true, authorId: true, proofId: true }
+  });
+  if (!comment) throw new Error("Comment not found.");
+  if (!canEditProofComment(user, comment)) {
+    throw new Error("You cannot delete this comment.");
+  }
+
+  await prisma.proofComment.update({
+    where: { id: comment.id },
+    data: { deletedAt: new Date() }
+  });
+
+  revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/proofs/${comment.proofId}/discussion`);
 }

@@ -233,12 +233,20 @@ export function canDeletePlaylist(user: PermissionUser, playlist: PlaylistPermis
   return playlist.authorId === user.id || hasAdminPrivileges(user.role);
 }
 
-export function canEditDiscussionHint(user: PermissionUser, hint: AuthoredResource) {
-  return hint.authorId === user.id || hasTrustedPrivileges(user.role);
+export function canEditDiscussionPost(user: PermissionUser, post: AuthoredResource) {
+  return post.authorId === user.id || hasTrustedPrivileges(user.role);
 }
 
 export function canEditVerificationMessage(user: PermissionUser, message: AuthoredResource) {
   return message.authorId === user.id;
+}
+
+export function canEditProofComment(user: PermissionUser, comment: AuthoredResource) {
+  return comment.authorId === user.id || hasTrustedPrivileges(user.role);
+}
+
+export function canEditConceptTalkPost(user: PermissionUser, post: AuthoredResource) {
+  return post.authorId === user.id || hasTrustedPrivileges(user.role);
 }
 
 export function canReviewProblemVerification(user: PermissionUser, problem: ProblemPermissionTarget) {

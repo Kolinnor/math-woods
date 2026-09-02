@@ -93,7 +93,7 @@ import { assertRateLimit } from "@/lib/rate-limit";
 import { recordRecommendationOutcomeIfRelevant } from "@/lib/recommendation-events";
 import {
   canArchiveProblem,
-  canEditDiscussionHint,
+  canEditDiscussionPost,
   canEditVerificationMessage,
   canEditProblem,
   canProposeProblemEdit,
@@ -2771,39 +2771,39 @@ export async function createDiscussionPostAction(
   redirect(returnToDiscussion ? (`/problems/${problem.slug}/discussion` as Route) : `/problems/${problem.slug}`);
 }
 
-export async function updateHintAction(
+export async function updateDiscussionPostAction(
   postId: number,
   problemSlug: string,
   returnToDiscussionOrFormData: boolean | FormData,
   maybeFormData?: FormData
 ) {
   const user = await requireVerifiedUser();
-  await assertRateLimit(`hint:update:${user.id}`, 30, 60_000);
+  await assertRateLimit(`discussion-post:update:${user.id}`, 30, 60_000);
   const returnToDiscussion = typeof returnToDiscussionOrFormData === "boolean" ? returnToDiscussionOrFormData : false;
   const formData =
     typeof returnToDiscussionOrFormData === "boolean" ? maybeFormData : returnToDiscussionOrFormData;
-  if (!(formData instanceof FormData)) throw new Error("Hint content is missing.");
-  const hint = await prisma.discussionPost.findFirst({
+  if (!(formData instanceof FormData)) throw new Error("Message content is missing.");
+  const post = await prisma.discussionPost.findFirst({
     where: {
       id: postId,
-      type: PostType.HINT,
       deletedAt: null,
       thread: { problem: { slug: problemSlug } }
     },
     select: { id: true, authorId: true }
   });
 
-  if (!hint) throw new Error("Hint not found.");
-  if (!canEditDiscussionHint(user, hint)) {
-    throw new Error("You cannot edit this hint.");
+  if (!post) throw new Error("Message not found.");
+  if (!canEditDiscussionPost(user, post)) {
+    throw new Error("You cannot edit this message.");
   }
 
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Message");
   await prisma.discussionPost.update({
-    where: { id: hint.id },
+    where: { id: post.id },
     data: {
       bodyMarkdown,
-      bodyHtml: await renderMarkdownContent(bodyMarkdown)
+      bodyHtml: await renderMarkdownContent(bodyMarkdown),
+      editedAt: new Date()
     }
   });
 
@@ -2812,26 +2812,25 @@ export async function updateHintAction(
   redirect(returnToDiscussion ? (`/problems/${problemSlug}/discussion` as Route) : `/problems/${problemSlug}`);
 }
 
-export async function deleteHintAction(postId: number, problemSlug: string, returnToDiscussion = false) {
+export async function deleteDiscussionPostAction(postId: number, problemSlug: string, returnToDiscussion = false) {
   const user = await requireVerifiedUser();
-  await assertRateLimit(`hint:delete:${user.id}`, 30, 60_000);
-  const hint = await prisma.discussionPost.findFirst({
+  await assertRateLimit(`discussion-post:delete:${user.id}`, 30, 60_000);
+  const post = await prisma.discussionPost.findFirst({
     where: {
       id: postId,
-      type: PostType.HINT,
       deletedAt: null,
       thread: { problem: { slug: problemSlug } }
     },
     select: { id: true, authorId: true }
   });
 
-  if (!hint) throw new Error("Hint not found.");
-  if (!canEditDiscussionHint(user, hint)) {
-    throw new Error("You cannot delete this hint.");
+  if (!post) throw new Error("Message not found.");
+  if (!canEditDiscussionPost(user, post)) {
+    throw new Error("You cannot delete this message.");
   }
 
   await prisma.discussionPost.update({
-    where: { id: hint.id },
+    where: { id: post.id },
     data: { deletedAt: new Date() }
   });
 
