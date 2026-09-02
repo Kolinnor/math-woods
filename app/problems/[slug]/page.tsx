@@ -1,7 +1,7 @@
 ﻿import { ProblemVerificationMode } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FriendshipStatus, ReportStatus, TargetType } from "@prisma/client";
+import { FriendshipStatus, QualityStatus, ReportStatus, TargetType } from "@prisma/client";
 import { Check, Flag, Heart, History, Languages, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -19,10 +19,12 @@ import { ProblemRecommendationExposure } from "@/components/ProblemRecommendatio
 import { SolutionHintForm } from "@/components/SolutionHintForm";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
+import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
   createProblemHintFromProblemAction,
   dismissProblemTranslationStaleNoticeAction,
+  downgradeProblemQualityStatusAction,
   markProblemReviewedAction,
   markProblemSolvedAction,
   startAttemptAction,
@@ -46,6 +48,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import {
+  canDowngradeProblemQualityStatus,
   canEditProblem,
   canProposeProblemEdit,
   canEditSolution,
@@ -837,6 +840,11 @@ export default async function ProblemPage({
     .filter((group) => group.relations.length > 0);
   const isProblemAuthor = Boolean(user && problem.authorId === user.id);
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
+  const qualityDowngradeTargets = user
+    ? [QualityStatus.UNREVIEWED, QualityStatus.NEEDS_WORK].filter((status) =>
+        canDowngradeProblemQualityStatus(user, problem, status)
+      )
+    : [];
   const canProposeCurrentProblem = Boolean(user && canProposeProblemEdit(user));
   const publishesProblemEdits = user
     ? await canPublishProblemEditForProblem(user, problem)
@@ -1125,6 +1133,37 @@ export default async function ProblemPage({
               </form>
             )}
           </div>
+        )}
+
+        {qualityDowngradeTargets.length > 0 && (
+          <details className="concept-status-controls mb-4">
+            <summary>{t.problemDetail.changeStatus}</summary>
+            <form action={downgradeProblemQualityStatusAction.bind(null, problem.id, problem.slug)}>
+              <p>{t.problemDetail.changeStatusHelp}</p>
+              <label>
+                <span>{t.problemDetail.qualityStatusFieldLabel}</span>
+                <select name="status" defaultValue={qualityDowngradeTargets[0]} required>
+                  {qualityDowngradeTargets.map((status) => (
+                    <option key={status} value={status}>
+                      {t.quality[status]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t.problemDetail.statusChangeReason}</span>
+                <textarea
+                  name="reason"
+                  maxLength={240}
+                  placeholder={t.problemDetail.statusChangeReasonPlaceholder}
+                  required
+                />
+              </label>
+              <ConfirmSubmitButton className="secondary" message={t.problemDetail.confirmStatusChange}>
+                {t.problemDetail.applyStatusChange}
+              </ConfirmSubmitButton>
+            </form>
+          </details>
         )}
 
         </div>

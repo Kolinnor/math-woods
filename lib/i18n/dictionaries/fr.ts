@@ -1070,6 +1070,13 @@ export const fr = {
     verificationRequestClosed: "Cette demande de vérification est close.",
     review: "Vérification",
     status: "Statut",
+    changeStatus: "Changer le statut",
+    changeStatusHelp: "Rétrogradez ce problème lorsque son statut actuel ne correspond plus à son contenu.",
+    qualityStatusFieldLabel: "Nouveau statut",
+    statusChangeReason: "Raison",
+    statusChangeReasonPlaceholder: "Expliquez brièvement ce qui manque ou pourquoi le statut doit changer.",
+    confirmStatusChange: "Rétrograder ce problème ? Le changement et sa raison apparaîtront dans l'historique.",
+    applyStatusChange: "Changer le statut",
     verificationStatuses: {
       PENDING: "En attente",
       APPROVED: "Approuvée",

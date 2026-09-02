@@ -1065,6 +1065,13 @@ export const en = {
     verificationRequestClosed: "This verification request is closed.",
     review: "Review",
     status: "Status",
+    changeStatus: "Change status",
+    changeStatusHelp: "Downgrade this problem when its current status no longer reflects its content.",
+    qualityStatusFieldLabel: "New status",
+    statusChangeReason: "Reason",
+    statusChangeReasonPlaceholder: "Briefly explain what is missing or why the status should change.",
+    confirmStatusChange: "Downgrade this problem? The change and its reason will appear in the history.",
+    applyStatusChange: "Change status",
     verificationStatuses: {
       PENDING: "Pending",
       APPROVED: "Approved",
