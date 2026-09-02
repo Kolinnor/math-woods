@@ -65,6 +65,13 @@ export function directChatPair(userId: number, otherUserId: number) {
     : { userAId: otherUserId, userBId: userId };
 }
 
+export function directChatClearedAtFor(
+  chat: { userAId: number; userBId: number; userACleared: Date | null; userBCleared: Date | null },
+  userId: number
+) {
+  return chat.userAId === userId ? chat.userACleared : chat.userBCleared;
+}
+
 export async function materializeFriendRequestIntro(friendship: {
   requesterId: number;
   addresseeId: number;

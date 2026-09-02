@@ -594,14 +594,16 @@ model Friendship {
 }
 
 model DirectChat {
-  id        Int           @id @default(autoincrement())
-  userAId   Int
-  userBId   Int
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  userA     User          @relation("DirectChatUserA", fields: [userAId], references: [id], onDelete: Cascade)
-  userB     User          @relation("DirectChatUserB", fields: [userBId], references: [id], onDelete: Cascade)
-  messages  ChatMessage[]
+  id           Int           @id @default(autoincrement())
+  userAId      Int
+  userBId      Int
+  userACleared DateTime?
+  userBCleared DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userA        User          @relation("DirectChatUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB        User          @relation("DirectChatUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages     ChatMessage[]
 
   @@unique([userAId, userBId])
   @@index([userBId])
