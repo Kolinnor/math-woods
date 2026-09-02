@@ -301,6 +301,7 @@ export default async function ProblemPage({
     where: { slug },
     include: {
       author: true,
+      reviewedBy: true,
       knownSource: true,
       domains: { orderBy: { position: "asc" } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
@@ -945,7 +946,7 @@ export default async function ProblemPage({
           <h1 id="problem-title"><AsyncMarkdownInline markdown={problem.title} /></h1>
           <div className="problem-title-meta">
             <Link href={`/profile/${problem.author.profileSlug}`}>
-              {t.problemDetail.by} <UserName user={problem.author} />
+              {t.problemDetail.by} <UserName user={problem.author} className="problem-author-name" />
             </Link>
             {translationCreator?.editedBy && translationCreator.editedBy.id !== problem.authorId && (
               <>
@@ -1169,6 +1170,17 @@ export default async function ProblemPage({
         </div>
 
         <article className="problem-detail-article" aria-labelledby="problem-title">
+
+        {problem.qualityStatus === "REVIEWED" && problem.reviewedBy && (
+          <p className="problem-reviewed-credit">
+            <UserAvatar user={problem.reviewedBy} size="sm" />
+            <Link href={`/profile/${problem.reviewedBy.profileSlug}`}>
+              {displayNameForUser(problem.reviewedBy)}
+            </Link>
+            {" "}
+            {problem.isExercise ? t.problemDetail.reviewedCreditExercise : t.problemDetail.reviewedCreditProblem}
+          </p>
+        )}
 
         <section className="problem-statement reading-surface" data-tour-target="statement">
           <MarkdownBlock html={problemBodyHtml} />

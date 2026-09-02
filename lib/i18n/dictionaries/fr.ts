@@ -968,6 +968,8 @@ export const fr = {
     needsWorkNotice: "Ce problème a été marqué comme à retravailler.",
     unreviewedNotice: "Ce problème n'a pas encore été relu par des utilisateurs de confiance.",
     markReviewed: "Marquer comme relu",
+    reviewedCreditProblem: "a relu ce problème.",
+    reviewedCreditExercise: "a relu cet exercice.",
     playlistSpecific: "Spécifique à une exploration / non listé",
     spoilerDomainHiddenUntilSolved: "domaine spoiler masqué jusqu'à résolution",
     origin: "Origine :",

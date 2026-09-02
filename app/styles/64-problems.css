@@ -796,6 +796,23 @@ body:has(.problem-detail-shell) .site-main {
   padding: 0.2rem 0.3rem;
   text-transform: uppercase;
 }
+.problem-reviewed-credit {
+  align-items: center;
+  color: var(--mw-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+.problem-reviewed-credit a {
+  color: var(--mw-text);
+  text-decoration: none;
+}
+.problem-author-name > span:last-child {
+  font-weight: 700;
+}
+
 .problem-detail-shell .problem-statement {
   background: var(--mw-reading-surface);
   border: 1px solid var(--mw-border);
