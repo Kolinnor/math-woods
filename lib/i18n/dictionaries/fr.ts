@@ -148,6 +148,7 @@ export const fr = {
     usernamePlaceholder: "nom d'utilisateur",
     introMessagePlaceholder: "Un message pour vous présenter (facultatif)",
     friendRequestBanner: (name: string) => `${name} ne fait pas partie de vos amis. Voulez-vous l'ajouter ?`,
+    friendRequestNoMessage: "Aucun message.",
     addFriendDialog: {
       trigger: "Ajouter un ami",
       title: "Voulez-vous ajouter {name} en ami ?",
@@ -197,6 +198,9 @@ export const fr = {
     deleteMessage: "Supprimer le message",
     deletingMessage: "Suppression du message",
     confirmDeleteMessage: "Supprimer ce message ? Cette action est irréversible.",
+    deleteConversation: "Supprimer la conversation",
+    deletingConversation: "Suppression...",
+    confirmDeleteConversation: "Supprimer cette conversation pour vous ? L'autre personne conservera la sienne. Cette action est irréversible.",
     reply: "Répondre",
     replyingTo: "Réponse à {name}",
     cancelReply: "Annuler la réponse",

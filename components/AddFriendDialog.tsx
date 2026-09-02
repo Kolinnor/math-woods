@@ -29,7 +29,7 @@ function SendButton({ labels }: { labels: AddFriendDialogLabels }) {
   const { pending } = useFormStatus();
 
   return (
-    <button type="submit" disabled={pending}>
+    <button type="submit" className="add-friend-primary-button" disabled={pending}>
       {pending ? labels.sending : labels.send}
     </button>
   );
@@ -61,7 +61,7 @@ export function AddFriendDialog({
 
   return (
     <>
-      <button type="button" onClick={() => dialogRef.current?.showModal()}>
+      <button type="button" className="add-friend-primary-button" onClick={() => dialogRef.current?.showModal()}>
         {labels.trigger}
       </button>
 

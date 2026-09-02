@@ -146,6 +146,7 @@ export const en = {
     usernamePlaceholder: "username",
     introMessagePlaceholder: "Introduce yourself (optional)",
     friendRequestBanner: (name: string) => `${name} isn't your friend yet. Would you like to add them?`,
+    friendRequestNoMessage: "No message.",
     addFriendDialog: {
       trigger: "Add friend",
       title: "Add {name} as a friend?",
@@ -195,6 +196,9 @@ export const en = {
     deleteMessage: "Delete message",
     deletingMessage: "Deleting message",
     confirmDeleteMessage: "Delete this message? This cannot be undone.",
+    deleteConversation: "Delete conversation",
+    deletingConversation: "Deleting...",
+    confirmDeleteConversation: "Delete this conversation for you? The other person will keep their copy. This cannot be undone.",
     reply: "Reply",
     replyingTo: "Replying to {name}",
     cancelReply: "Cancel reply",

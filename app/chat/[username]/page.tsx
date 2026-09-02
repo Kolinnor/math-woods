@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AddFriendDialog } from "@/components/AddFriendDialog";
 import { ChatMessageForm } from "@/components/ChatMessageForm";
 import { ChatReplyProvider } from "@/components/ChatReplyContext";
+import { DeleteConversationButton } from "@/components/DeleteConversationButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -85,23 +86,25 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
         }
       >
         <div className="chat-page">
-          {introHtml && (
-            <section className="chat-thread panel p-5">
-              <article className="chat-message">
-                <UserAvatar user={friendship.requester} size="sm" />
-                <div>
-                  <p className="meta">
-                    <Link href={`/profile/${friendship.requester.profileSlug}`}>{displayNameForUser(friendship.requester)}</Link>
-                    {" · "}
-                    <time dateTime={friendship.createdAt.toISOString()}>
-                      {formatUserShortDateTime(friendship.createdAt, timeZone)}
-                    </time>
-                  </p>
+          <section className="chat-thread panel p-5">
+            <article className="chat-message">
+              <UserAvatar user={friendship.requester} size="sm" />
+              <div>
+                <p className="meta">
+                  <Link href={`/profile/${friendship.requester.profileSlug}`}>{displayNameForUser(friendship.requester)}</Link>
+                  {" · "}
+                  <time dateTime={friendship.createdAt.toISOString()}>
+                    {formatUserShortDateTime(friendship.createdAt, timeZone)}
+                  </time>
+                </p>
+                {introHtml ? (
                   <MarkdownBlock html={introHtml} />
-                </div>
-              </article>
-            </section>
-          )}
+                ) : (
+                  <p className="muted">{t.social.friendRequestNoMessage}</p>
+                )}
+              </div>
+            </article>
+          </section>
           <div className="quality-banner friend-request-banner">
             <span>{t.social.friendRequestBanner(displayNameForUser(friendship.requester))}</span>
             <div className="flex flex-wrap gap-2">
@@ -156,11 +159,17 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
   }
 
   const pair = directChatPair(user.id, otherUser.id);
+  const chatCleared = await prisma.directChat.findUnique({
+    where: { userAId_userBId: pair },
+    select: { userACleared: true, userBCleared: true }
+  });
+  const clearedAt = pair.userAId === user.id ? chatCleared?.userACleared : chatCleared?.userBCleared;
+
   const chat = await prisma.directChat.findUnique({
     where: { userAId_userBId: pair },
     include: {
       messages: {
-        where: { deletedAt: null },
+        where: { deletedAt: null, ...(clearedAt ? { createdAt: { gt: clearedAt } } : {}) },
         include: {
           author: {
             select: {
@@ -244,6 +253,14 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
             recipientAvatarUrl={otherUser.avatarUrl}
             recipientName={displayNameForUser(otherUser)}
             recipientProfileSlug={otherUser.profileSlug}
+          />
+          <DeleteConversationButton
+            otherUsername={otherUser.username}
+            labels={{
+              delete: t.social.deleteConversation,
+              deleting: t.social.deletingConversation,
+              confirm: t.social.confirmDeleteConversation
+            }}
           />
         </>
       }

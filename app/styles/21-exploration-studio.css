@@ -4690,6 +4690,18 @@ a:hover .content-language-fallback {
   justify-content: space-between;
 }
 
+.friend-request-banner button[type="submit"]:not(.secondary),
+.add-friend-primary-button {
+  background: var(--accent);
+  border: 1px solid var(--accent-border);
+  color: white;
+}
+
+.friend-request-banner button[type="submit"]:not(.secondary):hover,
+.add-friend-primary-button:hover {
+  background: var(--accent-hover);
+}
+
 .translation-stale-banner {
   align-items: center;
   display: flex;
