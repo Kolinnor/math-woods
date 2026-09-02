@@ -139,6 +139,23 @@ export function canReviewProblem(user: PermissionUser, problem: ProblemPermissio
   );
 }
 
+const PROBLEM_QUALITY_RANK: Record<QualityStatus, number> = {
+  [QualityStatus.NEEDS_WORK]: 0,
+  [QualityStatus.UNREVIEWED]: 1,
+  [QualityStatus.REVIEWED]: 2
+};
+
+export function canDowngradeProblemQualityStatus(
+  user: PermissionUser,
+  problem: ProblemPermissionTarget & { qualityStatus: QualityStatus },
+  nextStatus: QualityStatus
+) {
+  const currentRank = PROBLEM_QUALITY_RANK[problem.qualityStatus];
+  const nextRank = PROBLEM_QUALITY_RANK[nextStatus];
+  if (nextRank >= currentRank) return false;
+  return problem.authorId === user.id || hasTrustedPrivileges(user.role);
+}
+
 export function canEditSolution(user: PermissionUser, solution: AuthoredResource) {
   return solution.authorId === user.id || solution.translatedById === user.id || hasTrustedPrivileges(user.role);
 }

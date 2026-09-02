@@ -29,6 +29,7 @@ import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
+import { contentParticipantIds } from "@/lib/content-participants";
 import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
 import {
   buildConceptRevisionSnapshot,
@@ -93,6 +94,7 @@ import { assertRateLimit } from "@/lib/rate-limit";
 import { recordRecommendationOutcomeIfRelevant } from "@/lib/recommendation-events";
 import {
   canArchiveProblem,
+  canDowngradeProblemQualityStatus,
   canEditDiscussionPost,
   canEditVerificationMessage,
   canEditProblem,
@@ -1984,6 +1986,82 @@ export async function markProblemReviewedAction(problemId: number, problemSlug: 
   revalidatePath(`/problems/${problemSlug}`);
   revalidatePath(`/problems/${problemSlug}/edit`);
   revalidatePath(`/problems/${problemSlug}/history`);
+}
+
+export async function downgradeProblemQualityStatusAction(
+  problemId: number,
+  problemSlug: string,
+  formData: FormData
+) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`problem:downgrade:${user.id}`, 20, 60_000);
+
+  const requestedStatus = String(formData.get("status") ?? "");
+  if (!Object.values(QualityStatus).includes(requestedStatus as QualityStatus)) {
+    throw new Error("Invalid problem status.");
+  }
+  const nextStatus = requestedStatus as QualityStatus;
+  const reason = requiredBoundedText(formData.get("reason"), CONTENT_LIMITS.shortText, "Reason");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const problem = await problemSnapshotSource(tx, problemId);
+    if (!canDowngradeProblemQualityStatus(user, problem, nextStatus)) {
+      throw new Error("You cannot change this problem to that status.");
+    }
+    await acquireTransactionLock(tx, `problem-edit:${problem.translationGroupId}`);
+    const current = await problemSnapshotSource(tx, problemId);
+    if (!canDowngradeProblemQualityStatus(user, current, nextStatus)) {
+      throw new Error("You cannot change this problem to that status.");
+    }
+    await ensureProblemSnapshotRevision(tx, current);
+    const updated = await tx.problem.update({
+      where: { id: problemId },
+      data: {
+        qualityStatus: nextStatus,
+        needsReviewAfterEdit: false,
+        version: { increment: 1 }
+      }
+    });
+    const updatedSnapshot = await problemSnapshotSource(tx, updated.id);
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.PROBLEM,
+        pageId: updated.id,
+        markdown: updatedSnapshot.bodyMarkdown,
+        problemVersion: updatedSnapshot.version,
+        problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(updatedSnapshot)),
+        editedById: user.id,
+        editSummary: `Status changed from ${current.qualityStatus.toLowerCase()} to ${nextStatus.toLowerCase()}: ${reason}`
+      }
+    });
+    return { current, updated };
+  });
+
+  revalidatePath("/problems");
+  revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/edit`);
+  revalidatePath(`/problems/${problemSlug}/history`);
+
+  if (result.current.qualityStatus !== result.updated.qualityStatus) {
+    const recipientIds = await contentParticipantIds({
+      pageType: SourceType.PROBLEM,
+      pageId: result.updated.id,
+      primaryAuthorId: result.updated.authorId,
+      actorId: user.id
+    });
+    await Promise.all(
+      recipientIds.map((userId) =>
+        createNotification({
+          userId,
+          actorId: user.id,
+          type: NotificationType.PROBLEM_EDITED,
+          title: "Problem status changed",
+          body: `${displayNameForUser(user)} changed "${result.updated.title}" from ${result.current.qualityStatus.toLowerCase()} to ${result.updated.qualityStatus.toLowerCase()}: ${reason}`,
+          href: `/problems/${problemSlug}/history`
+        })
+      )
+    );
+  }
 }
 
 export async function rollbackProblemRevisionAction(problemId: number, revisionId: number, expectedVersion: number) {
