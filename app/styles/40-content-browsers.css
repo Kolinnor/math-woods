@@ -323,6 +323,17 @@ button.relation-remove-button {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.friend-add-form textarea {
+  grid-column: 1 / -1;
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.friend-add-form button[type="submit"] {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
 .friend-form-message {
   border-radius: 6px;
   font-size: 0.9rem;

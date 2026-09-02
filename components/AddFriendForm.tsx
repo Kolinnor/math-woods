@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { sendFriendRequestByUsernameFormAction } from "@/lib/actions/social-actions";
+import { CONTENT_LIMITS } from "@/lib/content-limits";
 
 const initialState = {
   ok: false,
@@ -13,6 +14,7 @@ type AddFriendFormLabels = {
   addFriend: string;
   sending: string;
   usernamePlaceholder: string;
+  introMessagePlaceholder: string;
 };
 
 function AddFriendSubmitButton({ labels }: { labels: AddFriendFormLabels }) {
@@ -31,6 +33,12 @@ export function AddFriendForm({ labels }: { labels: AddFriendFormLabels }) {
   return (
     <form action={formAction} className="friend-add-form">
       <input name="username" placeholder={labels.usernamePlaceholder} required />
+      <textarea
+        name="introMessage"
+        maxLength={CONTENT_LIMITS.shortText}
+        placeholder={labels.introMessagePlaceholder}
+        aria-label={labels.introMessagePlaceholder}
+      />
       <AddFriendSubmitButton labels={labels} />
       {state.message && (
         <p className={state.ok ? "friend-form-message friend-form-success" : "friend-form-message friend-form-error"} role="status" aria-live="polite">

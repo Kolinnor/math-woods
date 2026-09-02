@@ -578,14 +578,15 @@ model Session {
 }
 
 model Friendship {
-  id          Int              @id @default(autoincrement())
-  requesterId Int
-  addresseeId Int
-  status      FriendshipStatus @default(PENDING)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  id           Int              @id @default(autoincrement())
+  requesterId  Int
+  addresseeId  Int
+  status       FriendshipStatus @default(PENDING)
+  introMessage String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  requester    User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee    User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
 
   @@unique([requesterId, addresseeId])
   @@index([addresseeId, status, updatedAt])

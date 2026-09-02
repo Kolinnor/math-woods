@@ -13,6 +13,7 @@ import type { ChatReactionSummary } from "@/lib/chat-reactions";
 import { normalizeChatReplyToId, type ChatReplyPreview } from "@/lib/chat-replies";
 import { prisma } from "@/lib/db";
 import { getChatImageStorageConfig } from "@/lib/image-storage";
+import { renderMarkdown } from "@/lib/markdown";
 import { createNotification } from "@/lib/notifications";
 import { displayNameForUser } from "@/lib/user-display";
 import { usernameLookupFilter } from "@/lib/usernames";
@@ -62,6 +63,32 @@ export function directChatPair(userId: number, otherUserId: number) {
   return userId < otherUserId
     ? { userAId: userId, userBId: otherUserId }
     : { userAId: otherUserId, userBId: userId };
+}
+
+export async function materializeFriendRequestIntro(friendship: {
+  requesterId: number;
+  addresseeId: number;
+  introMessage: string | null;
+  createdAt: Date;
+}) {
+  if (!friendship.introMessage) return;
+
+  const pair = directChatPair(friendship.requesterId, friendship.addresseeId);
+  const bodyHtml = await renderMarkdown(friendship.introMessage);
+  const chat = await prisma.directChat.upsert({
+    where: { userAId_userBId: pair },
+    update: {},
+    create: pair
+  });
+  await prisma.chatMessage.create({
+    data: {
+      directChatId: chat.id,
+      authorId: friendship.requesterId,
+      bodyMarkdown: friendship.introMessage,
+      bodyHtml,
+      createdAt: friendship.createdAt
+    }
+  });
 }
 
 export async function acceptedFriendshipBetween(userId: number, otherUserId: number) {

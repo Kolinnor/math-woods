@@ -3,6 +3,7 @@ import { ConceptStatus, FriendshipStatus } from "@prisma/client";
 import { ExternalLink, Handshake } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { AddFriendDialog } from "@/components/AddFriendDialog";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
@@ -12,8 +13,7 @@ import {
   acceptFriendRequestAction,
   cancelFriendRequestAction,
   declineFriendRequestAction,
-  removeFriendAction,
-  sendFriendRequestAction
+  removeFriendAction
 } from "@/lib/actions/social-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -286,9 +286,7 @@ export default async function ProfilePage({
       </button>
     </form>
   ) : currentUser ? (
-    <form action={sendFriendRequestAction.bind(null, user.username)}>
-      <button type="submit">{t.social.addFriend}</button>
-    </form>
+    <AddFriendDialog username={user.username} displayName={displayNameForUser(user)} labels={t.social.addFriendDialog} />
   ) : null;
   const profileActions = isSelf ? (
     <Link href={profilePath(user, "/edit")} className="button secondary">
