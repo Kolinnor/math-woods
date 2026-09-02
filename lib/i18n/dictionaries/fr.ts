@@ -329,7 +329,7 @@ export const fr = {
     inbox: "Boîte de réception",
     openMenu: "Ouvrir les notifications",
     closeMenu: "Fermer les notifications",
-    clear: "Supprimer les notifications",
+    clear: "Effacer",
     noUnread: "Aucune notification non lue.",
     noNotifications: "Aucune notification pour le moment.",
     description: "Mises à jour récentes liées aux problèmes, concepts, discussions et activités du site.",
