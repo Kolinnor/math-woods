@@ -4,8 +4,9 @@ import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
+import { CONTENT_LIMITS, optionalBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { sendDirectChatMessage } from "@/lib/direct-chat";
+import { materializeFriendRequestIntro, sendDirectChatMessage } from "@/lib/direct-chat";
 import { clearFriendRequestNotifications } from "@/lib/notification-lifecycle";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -50,9 +51,14 @@ async function notifyFriendRequestAccepted({
   });
 }
 
-export async function sendFriendRequestAction(username: string) {
+export async function sendFriendRequestAction(username: string, formData?: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`friend-request:${user.id}`, 20, 60_000);
+  const introMessage = optionalBoundedText(
+    formData?.get("introMessage"),
+    CONTENT_LIMITS.shortText,
+    "Introduction message"
+  );
   const target = await prisma.user.findFirst({
     where: { username: usernameLookupFilter(username) },
     select: { id: true, username: true, profileSlug: true, deletedAt: true }
@@ -68,6 +74,7 @@ export async function sendFriendRequestAction(username: string) {
         where: { id: existing.id },
         data: { status: FriendshipStatus.ACCEPTED }
       });
+      await materializeFriendRequestIntro(existing);
       await clearFriendRequestNotifications(user.id, target.id);
       await notifyFriendRequestAccepted({
         requesterId: target.id,
@@ -88,7 +95,8 @@ export async function sendFriendRequestAction(username: string) {
   await prisma.friendship.create({
     data: {
       requesterId: user.id,
-      addresseeId: target.id
+      addresseeId: target.id,
+      introMessage
     }
   });
 
@@ -97,7 +105,9 @@ export async function sendFriendRequestAction(username: string) {
     actorId: user.id,
     type: NotificationType.FRIEND_REQUEST,
     title: "New friend request",
-    body: `${displayNameForUser(user)} sent you a friend request.`,
+    body: introMessage
+      ? `${displayNameForUser(user)} sent you a friend request: "${introMessage}"`
+      : `${displayNameForUser(user)} sent you a friend request.`,
     href: "/friends"
   });
 
@@ -124,6 +134,7 @@ export async function acceptFriendRequestAction(friendshipId: number) {
     where: { id: friendship.id },
     data: { status: FriendshipStatus.ACCEPTED }
   });
+  await materializeFriendRequestIntro(friendship);
   await clearFriendRequestNotifications(user.id, friendship.requesterId);
 
   await notifyFriendRequestAccepted({
@@ -204,7 +215,7 @@ export async function removeFriendAction(friendshipId: number) {
 export async function sendFriendRequestByUsernameAction(formData: FormData) {
   const username = String(formData.get("username") ?? "").trim();
   if (!username) throw new Error("Username is required.");
-  await sendFriendRequestAction(username);
+  await sendFriendRequestAction(username, formData);
   redirect("/friends" as never);
 }
 
@@ -216,7 +227,22 @@ export async function sendFriendRequestByUsernameFormAction(
   if (!username) return { ok: false, message: "Enter a username." };
 
   try {
-    await sendFriendRequestAction(username);
+    await sendFriendRequestAction(username, formData);
+    return { ok: true, message: "Friend request sent." };
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    const message = error instanceof Error ? error.message : "Could not send this friend request.";
+    return { ok: false, message };
+  }
+}
+
+export async function sendFriendRequestFormAction(
+  username: string,
+  _state: { ok: boolean; message: string | null },
+  formData: FormData
+) {
+  try {
+    await sendFriendRequestAction(username, formData);
     return { ok: true, message: "Friend request sent." };
   } catch (error) {
     if (isNextRedirectError(error)) throw error;

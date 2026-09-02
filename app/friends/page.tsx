@@ -126,7 +126,8 @@ export default async function FriendsPage() {
             labels={{
               addFriend: t.social.addFriend,
               sending: t.social.sending,
-              usernamePlaceholder: t.social.usernamePlaceholder
+              usernamePlaceholder: t.social.usernamePlaceholder,
+              introMessagePlaceholder: t.social.introMessagePlaceholder
             }}
           />
         </section>

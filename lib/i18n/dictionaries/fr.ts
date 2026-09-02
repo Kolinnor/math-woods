@@ -146,6 +146,16 @@ export const fr = {
     addFriendTitle: "Ajouter un ami",
     addFriendDescription: "Entrez un nom d'utilisateur pour envoyer une demande d'ami.",
     usernamePlaceholder: "nom d'utilisateur",
+    introMessagePlaceholder: "Un message pour vous présenter (facultatif)",
+    friendRequestBanner: (name: string) => `${name} ne fait pas partie de vos amis. Voulez-vous l'ajouter ?`,
+    addFriendDialog: {
+      trigger: "Ajouter un ami",
+      title: "Voulez-vous ajouter {name} en ami ?",
+      messagePlaceholder: "Un message pour vous présenter (facultatif)",
+      cancel: "Annuler",
+      send: "Envoyer la demande",
+      sending: "Envoi..."
+    },
     sending: "Envoi...",
     onlineFriends: "Amis en ligne",
     noFriendsOnline: "Aucun ami en ligne.",

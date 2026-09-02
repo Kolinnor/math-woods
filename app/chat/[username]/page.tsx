@@ -1,19 +1,23 @@
 import { FriendshipStatus, NotificationType } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AddFriendDialog } from "@/components/AddFriendDialog";
 import { ChatMessageForm } from "@/components/ChatMessageForm";
 import { ChatReplyProvider } from "@/components/ChatReplyContext";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveChatThread, type LiveChatMessage } from "@/components/LiveChatThread";
+import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { ProblemChallengeDialog } from "@/components/ProblemChallengeDialog";
 import { UserAvatar } from "@/components/UserAvatar";
-import { sendFriendRequestAction } from "@/lib/actions/social-actions";
+import { acceptFriendRequestAction, declineFriendRequestAction } from "@/lib/actions/social-actions";
 import { requireVerifiedUser } from "@/lib/auth";
 import { chatImageUrl } from "@/lib/chat-image-config";
+import { formatUserShortDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
 import { directChatPair, directChatReplyPreview } from "@/lib/direct-chat";
 import { summarizeChatReactions } from "@/lib/chat-reactions";
 import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
+import { renderMarkdown } from "@/lib/markdown";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
@@ -56,13 +60,65 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
     },
     include: {
       requester: {
-        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
       },
       addressee: {
-        select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
+        select: { id: true, username: true, profileSlug: true, displayName: true, avatarUrl: true, avatarBackground: true }
       }
     }
   });
+
+  if (friendship?.status === FriendshipStatus.PENDING && friendship.addresseeId === user.id) {
+    const introHtml = friendship.introMessage ? await renderMarkdown(friendship.introMessage) : null;
+    return (
+      <ForestPageLayout
+        title={displayNameForUser(otherUser)}
+        eyebrow={t.social.privateChat}
+        heroImage={SOCIAL_HERO_ART.src}
+        heroAlt={SOCIAL_HERO_ART.alt}
+        description={t.social.privateChatDescription}
+        workspaceClassName="forest-page-workspace-narrow"
+        actions={
+          <Link href={"/friends" as never} className="button secondary">
+            {t.social.friends}
+          </Link>
+        }
+      >
+        <div className="chat-page">
+          {introHtml && (
+            <section className="chat-thread panel p-5">
+              <article className="chat-message">
+                <UserAvatar user={friendship.requester} size="sm" />
+                <div>
+                  <p className="meta">
+                    <Link href={`/profile/${friendship.requester.profileSlug}`}>{displayNameForUser(friendship.requester)}</Link>
+                    {" · "}
+                    <time dateTime={friendship.createdAt.toISOString()}>
+                      {formatUserShortDateTime(friendship.createdAt, timeZone)}
+                    </time>
+                  </p>
+                  <MarkdownBlock html={introHtml} />
+                </div>
+              </article>
+            </section>
+          )}
+          <div className="quality-banner friend-request-banner">
+            <span>{t.social.friendRequestBanner(displayNameForUser(friendship.requester))}</span>
+            <div className="flex flex-wrap gap-2">
+              <form action={acceptFriendRequestAction.bind(null, friendship.id)}>
+                <button type="submit">{t.social.accept}</button>
+              </form>
+              <form action={declineFriendRequestAction.bind(null, friendship.id)}>
+                <button type="submit" className="secondary">
+                  {t.social.decline}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </ForestPageLayout>
+    );
+  }
 
   if (friendship?.status !== FriendshipStatus.ACCEPTED) {
     return (
@@ -85,9 +141,11 @@ export default async function ChatPage({ params }: { params: Promise<{ username:
           </div>
           <p className="muted">{t.social.friendsOnlyDescription}</p>
           <div className="flex flex-wrap gap-2">
-            <form action={sendFriendRequestAction.bind(null, otherUser.username)}>
-              <button type="submit">{t.social.sendFriendRequest}</button>
-            </form>
+            <AddFriendDialog
+              username={otherUser.username}
+              displayName={displayNameForUser(otherUser)}
+              labels={{ ...t.social.addFriendDialog, trigger: t.social.sendFriendRequest }}
+            />
             <Link href={"/friends" as never} className="button secondary">
               {t.social.friends}
             </Link>
