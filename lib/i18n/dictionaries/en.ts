@@ -1512,7 +1512,7 @@ export const en = {
     openLanguageVersion: (language: string) => `Open ${language} version`,
     translateExercise: "Also translate this exercise",
     conceptStubDescription: "A short precise definition and one example can already make a useful first version.",
-    defaultConceptContent: "## Intuitive definition (when useful)\n\nAdd one or two sentences only if they help situate the idea.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples\n\n- Example linked to `[[polynomial]]`.",
+    defaultConceptContent: "## Intuitive definition\n\nAdd one or two sentences if they help situate the idea.\n\n## Formal definition\n\nTo be completed with LaTeX.\n\n## Examples and Remarks\n\nYou can _underline_, write in *italics* or in **bold**. Don't forget to link concepts, for example [[Polynomial|polynomial]] (concept on the left, text on the right).",
     editDescription: "Changes create a revision and refresh outgoing links automatically.",
     editProblemDescription: "Changes create a revision and refresh wikilinks automatically.",
     proposalDescription: "Your changes will be sent to an admin for review before anyone else can see them.",
