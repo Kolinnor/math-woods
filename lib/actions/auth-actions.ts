@@ -6,6 +6,7 @@ import { registerUser, signInWithPassword, signOutUser } from "@/lib/auth";
 import { boundedText } from "@/lib/content-limits";
 import { createAndSendEmailVerification } from "@/lib/email-verification";
 import { safeReturnTo } from "@/lib/oauth-utils";
+import { createAndSendPasswordReset, resetPasswordWithToken } from "@/lib/password-reset";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { currentClientAddress } from "@/lib/request-context";
 
@@ -72,6 +73,54 @@ export async function registerAction(formData: FormData) {
   const delivery = await createAndSendEmailVerification(user.id);
   if (hasCustomReturnTo) redirect(returnTo as never);
   redirect(delivery.sent ? "/settings?verify=sent" : `/settings?verify=${delivery.reason}`);
+}
+
+export async function requestPasswordResetAction(formData: FormData) {
+  const identifier = boundedText(formData.get("identifier"), 320, "Identifier");
+  const clientAddress = await currentClientAddress();
+  const normalizedIdentifier = identifier.toLowerCase();
+
+  try {
+    await Promise.all([
+      assertRateLimit(`password-reset:identifier:${normalizedIdentifier}`, 3, 60 * 60_000),
+      assertRateLimit(`password-reset:ip:${clientAddress}`, 10, 60 * 60_000)
+    ]);
+  } catch {
+    redirect("/forgot-password?resetRequest=rate-limited" as never);
+  }
+
+  const delivery = await createAndSendPasswordReset(identifier);
+  if (!delivery.sent && delivery.reason === "not-configured") {
+    redirect("/forgot-password?resetRequest=not-configured" as never);
+  }
+
+  redirect("/forgot-password?resetRequest=sent" as never);
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const token = boundedText(formData.get("token"), 512, "Token", { trim: false });
+  const identifier = boundedText(formData.get("identifier"), 320, "Identifier");
+  const password = boundedText(formData.get("password"), 512, "Password", { trim: false });
+  const confirmPassword = boundedText(formData.get("confirmPassword"), 512, "Confirm password", { trim: false });
+  const tokenParam = `token=${encodeURIComponent(token)}`;
+
+  if (password !== confirmPassword) {
+    redirect(`/reset-password?${tokenParam}&resetError=mismatch` as never);
+  }
+
+  const clientAddress = await currentClientAddress();
+  try {
+    await assertRateLimit(`password-reset:submit:${clientAddress}`, 20, 15 * 60_000);
+  } catch {
+    redirect(`/reset-password?${tokenParam}&resetError=rate-limited` as never);
+  }
+
+  const result = await resetPasswordWithToken(token, identifier, password);
+  if (!result.ok) {
+    redirect(`/reset-password?${tokenParam}&resetError=${result.reason}` as never);
+  }
+
+  redirect("/login?passwordReset=1" as never);
 }
 
 export async function logoutAction() {

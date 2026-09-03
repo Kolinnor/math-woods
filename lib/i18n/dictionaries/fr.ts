@@ -65,6 +65,8 @@ export const fr = {
     signInToResend: "Se connecter pour renvoyer l'e-mail",
     usernameOrEmail: "Nom d'utilisateur ou e-mail",
     password: "Mot de passe",
+    forgotPassword: "Mot de passe oublié ?",
+    passwordResetSuccess: "Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter.",
     profileName: "Nom de profil",
     profileNameHelp: "C'est le nom que les autres personnes verront. Il peut contenir des espaces.",
     email: "E-mail",
@@ -92,7 +94,8 @@ export const fr = {
       oauthUnavailable: "Ce service de connexion n’est pas disponible pour le moment.",
       oauthDeactivated: "Ce compte externe est lié à un compte Math Woods désactivé. Réactivez ce compte avant de vous reconnecter.",
       oauthFailed: "La connexion externe n’a pas pu aboutir. Veuillez réessayer.",
-      oauthUnknownProvider: "Service de connexion inconnu."
+      oauthUnknownProvider: "Service de connexion inconnu.",
+      tooManyPasswordResets: "Trop de tentatives. Veuillez patienter un instant, puis réessayer."
     },
     complete: {
       title: "Finaliser la connexion",
@@ -1272,6 +1275,37 @@ export const fr = {
     chooseAnother: "Choisir une autre adresse",
     resend: "Renvoyer l’e-mail de vérification",
     bannerMessage: "Vérifiez votre adresse e-mail pour résoudre, voter, discuter et contribuer."
+  },
+  forgotPasswordPage: {
+    title: "Mot de passe oublié",
+    eyebrow: "Compte",
+    description: "Indiquez votre nom d'utilisateur ou votre e-mail et nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+    identifierLabel: "Nom d'utilisateur ou e-mail",
+    submit: "Envoyer le lien de réinitialisation",
+    sent: "Si un compte correspond à ce nom d'utilisateur ou cet e-mail, un lien de réinitialisation a été envoyé. Vérifiez votre boîte de réception.",
+    notConfigured: "L'envoi d'e-mails n'est pas encore configuré sur ce serveur. Veuillez contacter un administrateur.",
+    rateLimited: "Trop de requêtes. Veuillez patienter un instant, puis réessayer.",
+    backToLogin: "Retour à la connexion"
+  },
+  resetPasswordPage: {
+    title: "Choisir un nouveau mot de passe",
+    eyebrow: "Compte",
+    description: "Confirmez votre identité et choisissez un nouveau mot de passe pour votre compte Math Woods.",
+    identifierLabel: "Nom d'utilisateur ou e-mail",
+    identifierHelp: "Indiquez le nom d'utilisateur ou l'e-mail du compte auquel ce lien de réinitialisation a été envoyé.",
+    passwordLabel: "Nouveau mot de passe",
+    confirmPasswordLabel: "Confirmer le nouveau mot de passe",
+    submit: "Réinitialiser le mot de passe",
+    invalidTitle: "Lien de réinitialisation expiré",
+    invalid: "Ce lien de réinitialisation est absent, invalide ou expiré.",
+    requestNew: "Demander un nouveau lien",
+    errors: {
+      mismatch: "Les deux mots de passe ne correspondent pas.",
+      expired: "Ce lien de réinitialisation a expiré. Veuillez en demander un nouveau.",
+      "identifier-mismatch": "Le nom d'utilisateur ou l'e-mail saisi ne correspond pas à ce lien de réinitialisation.",
+      "weak-password": "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+      "rate-limited": "Trop de tentatives. Veuillez patienter un instant, puis réessayer."
+    }
   },
   conceptDetail: {
     concept: "Concept",
