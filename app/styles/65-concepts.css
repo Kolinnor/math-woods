@@ -1000,3 +1000,129 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+.concept-usefulness {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem 1.1rem;
+}
+
+.concept-usefulness-question {
+  font-weight: 650;
+  margin: 0 0 0.9rem;
+}
+
+.concept-usefulness-scale {
+  max-width: 22rem;
+}
+
+.concept-usefulness-numbers {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.concept-usefulness-option {
+  align-items: center;
+  background: var(--panel);
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 650;
+  height: 1.75rem;
+  justify-content: center;
+  text-decoration: none;
+  width: 1.75rem;
+}
+
+.concept-usefulness-option:not(:disabled):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.concept-usefulness-option.is-chosen {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.concept-usefulness-option:disabled {
+  cursor: default;
+}
+
+.concept-usefulness-option:disabled:not(.is-chosen) {
+  opacity: 0.55;
+}
+
+.concept-usefulness-bar {
+  background: linear-gradient(to right, #ea4335, #f4b400, #32a852);
+  border-radius: 999px;
+  height: 7px;
+}
+
+.concept-usefulness-captions {
+  color: var(--muted);
+  display: flex;
+  font-size: 0.72rem;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+}
+
+.concept-usefulness-footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.concept-usefulness-average {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.concept-usefulness-voted {
+  align-items: center;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.concept-usefulness-revote-trigger {
+  background: none;
+  border: none;
+  color: var(--link);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.concept-usefulness-error {
+  color: #c0392b;
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.concept-usefulness-revote-confirm {
+  background: var(--notice-red-bg);
+  border-radius: 6px;
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.concept-usefulness-revote-confirm p {
+  margin: 0 0 0.6rem;
+}
+
+.concept-usefulness-revote-confirm-actions {
+  display: flex;
+  gap: 0.6rem;
+}

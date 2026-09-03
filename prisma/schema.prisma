@@ -447,6 +447,7 @@ model User {
   announcementsCreated            Announcement[]                  @relation("AnnouncementAuthor")
   announcementLikes               AnnouncementLike[]
   announcementComments            AnnouncementComment[]
+  conceptUsefulnessVotes          ConceptUsefulnessVote[]
   conceptMergeProposalsCreated    ConceptMergeProposal[]          @relation("ConceptMergeProposer")
   conceptMergeProposalsReviewed   ConceptMergeProposal[]          @relation("ConceptMergeReviewer")
   conceptMergeCredits             ConceptMergeContributor[]
@@ -959,6 +960,7 @@ model Concept {
   mergeContributors         ConceptMergeContributor[]
   mergeRedirects            ConceptRedirect[]         @relation("ConceptRedirectTarget")
   editProposals             ConceptEditProposal[]
+  usefulnessVotes           ConceptUsefulnessVote[]
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
@@ -967,6 +969,19 @@ model Concept {
   @@index([domainCode])
   @@index([translationGroupId])
   @@index([translatedFromConceptId])
+}
+
+model ConceptUsefulnessVote {
+  userId    Int
+  conceptId Int
+  value     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  concept   Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@id([userId, conceptId])
+  @@index([conceptId])
 }
 
 model ConceptEditProposal {

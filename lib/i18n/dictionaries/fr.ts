@@ -1309,6 +1309,22 @@ export const fr = {
     }
   },
   conceptDetail: {
+    usefulness: {
+      question: "Avez-vous trouvé cette page utile ?",
+      notUseful: "Pas utile",
+      veryUseful: "Très utile",
+      confirm: "Confirmer",
+      thanks: "Merci pour votre vote !",
+      revote: "Revoter",
+      revoteConfirmTitle: "Voulez-vous changer votre vote ?",
+      revoteConfirmYes: "Oui, changer",
+      revoteConfirmNo: "Annuler",
+      averageLabel: "Moyenne :",
+      voteSingular: "vote",
+      votePlural: "votes",
+      signInPrompt: "Connectez-vous pour voter",
+      updateFailed: "Votre vote n'a pas pu être enregistré. Réessayez."
+    },
     concept: "Concept",
     editedBy: (name: string) => `modifié par ${name}`,
     statusLabel: (domain: string, status: string) => `${domain} / ${status}`,

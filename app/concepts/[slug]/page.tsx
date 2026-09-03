@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { ConceptShareLauncher } from "@/components/ConceptShareLauncher";
 import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
 import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
+import { ConceptUsefulnessGauge } from "@/components/ConceptUsefulnessGauge";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
@@ -511,6 +512,20 @@ export default async function ConceptPage({
     resolveConceptLinksForLanguage(conceptBacklinks.map((item) => item.slug), concept.language),
     resolveConceptTitlesForLanguage(conceptBacklinks.map((item) => item.slug), concept.language)
   ]);
+  const [usefulnessAggregate, usefulnessUserVote] = await Promise.all([
+    prisma.conceptUsefulnessVote.aggregate({
+      where: { conceptId: concept.id },
+      _avg: { value: true },
+      _count: true
+    }),
+    user
+      ? prisma.conceptUsefulnessVote.findUnique({
+          where: { userId_conceptId: { userId: user.id, conceptId: concept.id } },
+          select: { value: true }
+        })
+      : null
+  ]);
+  const conceptSignInHref = `/login?returnTo=${encodeURIComponent(`/concepts/${concept.slug}`)}`;
 
   return (
     <ForestPageLayout
@@ -686,6 +701,16 @@ export default async function ConceptPage({
             </form>
           </details>
         )}
+
+        <ConceptUsefulnessGauge
+          conceptId={concept.id}
+          signedIn={Boolean(user)}
+          signInHref={conceptSignInHref}
+          initialUserValue={usefulnessUserVote?.value ?? null}
+          initialAverage={usefulnessAggregate._avg.value}
+          initialCount={usefulnessAggregate._count}
+          labels={t.conceptDetail.usefulness}
+        />
 
         <section className="reading-surface concept-reading-surface">
           <MarkdownBlock html={conceptBodyHtml} />

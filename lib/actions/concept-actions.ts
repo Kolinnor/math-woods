@@ -1266,3 +1266,30 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
   });
   redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
 }
+
+export async function voteConceptUsefulnessAction(conceptId: number, value: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`concept:usefulness:${user.id}`, 30, 60_000);
+
+  if (!Number.isInteger(value) || value < 1 || value > 5) {
+    throw new Error("Invalid usefulness value.");
+  }
+
+  await prisma.conceptUsefulnessVote.upsert({
+    where: { userId_conceptId: { userId: user.id, conceptId } },
+    create: { userId: user.id, conceptId, value },
+    update: { value }
+  });
+
+  const aggregate = await prisma.conceptUsefulnessVote.aggregate({
+    where: { conceptId },
+    _avg: { value: true },
+    _count: true
+  });
+
+  return {
+    value,
+    average: aggregate._avg.value ?? value,
+    count: aggregate._count
+  };
+}
