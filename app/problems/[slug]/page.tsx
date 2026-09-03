@@ -12,6 +12,7 @@ import { Difficulty } from "@/components/Difficulty";
 import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { ParticleBurstZone } from "@/components/ParticleBurstZone";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
 import { ProblemHints } from "@/components/ProblemHints";
 import { ProblemReactions } from "@/components/ProblemReactions";
@@ -1207,12 +1208,14 @@ export default async function ProblemPage({
                 </button>
               </form>
             ) : problem.verificationMode === ProblemVerificationMode.NONE || user.id === problem.authorId ? (
-              <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
-                <button type="submit" className="problem-action-tile solve">
-                  <Check size={25} />
-                  <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.solveSub}</small></span>
-                </button>
-              </form>
+              <ParticleBurstZone kind="confetti" active>
+                <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
+                  <button type="submit" className="problem-action-tile solve">
+                    <Check size={25} />
+                    <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.solveSub}</small></span>
+                  </button>
+                </form>
+              </ParticleBurstZone>
             ) : (
               <a href="#problem-verification" className="problem-action-tile solve">
                 <Check size={25} />
@@ -1261,12 +1264,14 @@ export default async function ProblemPage({
                 <span><strong>{t.problemDetail.yourProblem}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
               </span>
             ) : user ? (
-              <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
-                <button type="submit" className="problem-action-tile problem-favorite-main favorite" aria-pressed={Boolean(favorite)}>
-                  <Heart size={25} fill={favorite ? "currentColor" : "none"} />
-                  <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
-                </button>
-              </form>
+              <ParticleBurstZone kind="heart" active={!favorite}>
+                <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
+                  <button type="submit" className="problem-action-tile problem-favorite-main favorite" aria-pressed={Boolean(favorite)}>
+                    <Heart size={25} fill={favorite ? "currentColor" : "none"} />
+                    <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
+                  </button>
+                </form>
+              </ParticleBurstZone>
             ) : (
               <Link href={problemSignInHref as never} className="problem-action-tile problem-favorite-main favorite">
                 <Heart size={25} />
@@ -1570,24 +1575,26 @@ export default async function ProblemPage({
                             </Link>
                           )}
                           {user ? (
-                            <form action={voteProofAction.bind(null, proof.id, proofProblemSlugById.get(proof.id) ?? problem.slug)}>
-                              <button
-                                type="submit"
-                                className={userVotedProof ? "secondary vote-button-active" : "secondary"}
-                                disabled={isOwnProof}
-                                aria-pressed={userVotedProof}
-                                title={
-                                  isOwnProof
-                                    ? t.problemDetail.cannotVoteOwnSolution
-                                    : userVotedProof
-                                      ? t.problemDetail.removeUsefulVote
-                                      : t.problemDetail.markUseful
-                                }
-                              >
-                                <ThumbsUp size={16} />
-                                {votes}
-                              </button>
-                            </form>
+                            <ParticleBurstZone kind="thumb" active={!userVotedProof && !isOwnProof}>
+                              <form action={voteProofAction.bind(null, proof.id, proofProblemSlugById.get(proof.id) ?? problem.slug)}>
+                                <button
+                                  type="submit"
+                                  className={userVotedProof ? "secondary vote-button-active" : "secondary"}
+                                  disabled={isOwnProof}
+                                  aria-pressed={userVotedProof}
+                                  title={
+                                    isOwnProof
+                                      ? t.problemDetail.cannotVoteOwnSolution
+                                      : userVotedProof
+                                        ? t.problemDetail.removeUsefulVote
+                                        : t.problemDetail.markUseful
+                                  }
+                                >
+                                  <ThumbsUp size={16} />
+                                  {votes}
+                                </button>
+                              </form>
+                            </ParticleBurstZone>
                           ) : (
                             <span className="meta">{t.problemDetail.usefulVotes(votes)}</span>
                           )}

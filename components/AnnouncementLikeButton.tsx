@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ThumbsUp } from "lucide-react";
+import { ParticleBurstZone } from "@/components/ParticleBurstZone";
 import { toggleAnnouncementLikeAction } from "@/lib/actions/announcement-actions";
 
 export function AnnouncementLikeButton({
@@ -34,16 +35,18 @@ export function AnnouncementLikeButton({
   };
 
   return (
-    <button
-      type="button"
-      className={`discussion-useful-button${liked ? " is-active" : ""}`}
-      aria-pressed={liked}
-      title={liked ? labels.unlike : labels.like}
-      onClick={toggle}
-      disabled={isPending}
-    >
-      <ThumbsUp size={15} aria-hidden="true" fill={liked ? "currentColor" : "none"} />
-      <span>{count}</span>
-    </button>
+    <ParticleBurstZone kind="thumb" active={!liked}>
+      <button
+        type="button"
+        className={`discussion-useful-button${liked ? " is-active" : ""}`}
+        aria-pressed={liked}
+        title={liked ? labels.unlike : labels.like}
+        onClick={toggle}
+        disabled={isPending}
+      >
+        <ThumbsUp size={15} aria-hidden="true" fill={liked ? "currentColor" : "none"} />
+        <span>{count}</span>
+      </button>
+    </ParticleBurstZone>
   );
 }
