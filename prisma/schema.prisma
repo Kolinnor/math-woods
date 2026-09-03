@@ -327,6 +327,7 @@ enum NotificationType {
   TRUSTED_USER_CANDIDATE
   TRUSTED_USER_PROMOTED
   SITE_IMPROVEMENT_COMPLETED
+  ANNOUNCEMENT_COMMENTED
 }
 
 enum TrustedUserRecommendationStatus {
@@ -406,6 +407,7 @@ model User {
   lastSeenAnnouncementAt          DateTime?
   conceptGuideAcknowledgedAt      DateTime?
   problems                        Problem[]
+  reviewedProblems                Problem[]                       @relation("ProblemReviewedBy")
   problemAttributionsFrom         ProblemAttributionTransfer[]    @relation("ProblemAttributionFrom")
   problemAttributionsTo           ProblemAttributionTransfer[]    @relation("ProblemAttributionTo")
   problemAttributionsTransferred  ProblemAttributionTransfer[]    @relation("ProblemAttributionActor")
@@ -427,6 +429,7 @@ model User {
   externalIdentities              ExternalIdentity[]
   oauthLinkAttempts               OAuthAttempt[]                  @relation("OAuthAttemptLinkUser")
   emailVerificationTokens         EmailVerificationToken[]
+  passwordResetTokens             PasswordResetToken[]
   favorites                       ProblemFavorite[]
   problemHints                    ProblemHint[]
   problemHintTranslations         ProblemHint[]                   @relation("ProblemHintTranslator")
@@ -442,6 +445,9 @@ model User {
   siteAnnouncementsCreated        SiteAnnouncement[]              @relation("SiteAnnouncementCreator")
   siteAnnouncementRecipients      SiteAnnouncementRecipient[]
   announcementsCreated            Announcement[]                  @relation("AnnouncementAuthor")
+  announcementLikes               AnnouncementLike[]
+  announcementComments            AnnouncementComment[]
+  conceptUsefulnessVotes          ConceptUsefulnessVote[]
   conceptMergeProposalsCreated    ConceptMergeProposal[]          @relation("ConceptMergeProposer")
   conceptMergeProposalsReviewed   ConceptMergeProposal[]          @relation("ConceptMergeReviewer")
   conceptMergeCredits             ConceptMergeContributor[]
@@ -564,6 +570,18 @@ model EmailVerificationToken {
   @@index([expiresAt])
 }
 
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model Session {
   id         Int      @id @default(autoincrement())
   tokenHash  String   @unique
@@ -578,14 +596,15 @@ model Session {
 }
 
 model Friendship {
-  id          Int              @id @default(autoincrement())
-  requesterId Int
-  addresseeId Int
-  status      FriendshipStatus @default(PENDING)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  id           Int              @id @default(autoincrement())
+  requesterId  Int
+  addresseeId  Int
+  status       FriendshipStatus @default(PENDING)
+  introMessage String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  requester    User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee    User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
 
   @@unique([requesterId, addresseeId])
   @@index([addresseeId, status, updatedAt])
@@ -593,14 +612,16 @@ model Friendship {
 }
 
 model DirectChat {
-  id        Int           @id @default(autoincrement())
-  userAId   Int
-  userBId   Int
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  userA     User          @relation("DirectChatUserA", fields: [userAId], references: [id], onDelete: Cascade)
-  userB     User          @relation("DirectChatUserB", fields: [userBId], references: [id], onDelete: Cascade)
-  messages  ChatMessage[]
+  id           Int           @id @default(autoincrement())
+  userAId      Int
+  userBId      Int
+  userACleared DateTime?
+  userBCleared DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userA        User          @relation("DirectChatUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB        User          @relation("DirectChatUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages     ChatMessage[]
 
   @@unique([userAId, userBId])
   @@index([userBId])
@@ -695,12 +716,14 @@ model Problem {
   status                   ProblemStatus                   @default(PUBLISHED)
   qualityStatus            QualityStatus                   @default(UNREVIEWED)
   needsReviewAfterEdit     Boolean                         @default(false)
+  reviewedById             Int?
   verificationMode         ProblemVerificationMode         @default(NONE)
   verificationPrompt       String?
   verificationAnswer       String?
   createdAt                DateTime                        @default(now())
   updatedAt                DateTime                        @updatedAt
   author                   User                            @relation(fields: [authorId], references: [id])
+  reviewedBy               User?                           @relation("ProblemReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   attributionTransfers     ProblemAttributionTransfer[]
   knownSource              KnownProblemSource?             @relation(fields: [knownSourceId], references: [id], onDelete: SetNull)
   thread                   DiscussionThread?
@@ -937,6 +960,7 @@ model Concept {
   mergeContributors         ConceptMergeContributor[]
   mergeRedirects            ConceptRedirect[]         @relation("ConceptRedirectTarget")
   editProposals             ConceptEditProposal[]
+  usefulnessVotes           ConceptUsefulnessVote[]
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
@@ -945,6 +969,19 @@ model Concept {
   @@index([domainCode])
   @@index([translationGroupId])
   @@index([translatedFromConceptId])
+}
+
+model ConceptUsefulnessVote {
+  userId    Int
+  conceptId Int
+  value     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  concept   Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@id([userId, conceptId])
+  @@index([conceptId])
 }
 
 model ConceptEditProposal {
@@ -1114,15 +1151,17 @@ model ConceptExercise {
 }
 
 model ConceptTalkPost {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   conceptId    Int
   authorId     Int
   bodyMarkdown String
   bodyHtml     String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  concept      Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
-  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  editedAt     DateTime?
+  deletedAt    DateTime?
+  concept      Concept   @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  author       User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([conceptId, createdAt])
 }
@@ -1299,6 +1338,8 @@ model ProofComment {
   bodyHtml     String
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  editedAt     DateTime?
+  deletedAt    DateTime?
   proof        ProblemProof @relation(fields: [proofId], references: [id], onDelete: Cascade)
   author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
@@ -1386,6 +1427,7 @@ model DiscussionPost {
   score        Int              @default(0)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
+  editedAt     DateTime?
   deletedAt    DateTime?
   thread       DiscussionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   author       User             @relation(fields: [authorId], references: [id])
@@ -2170,15 +2212,43 @@ model SiteAnnouncementRecipient {
 }
 
 model Announcement {
-  id           Int      @id @default(autoincrement())
+  id           Int                    @id @default(autoincrement())
   title        String
   bodyMarkdown String
   bodyHtml     String
   createdById  Int?
-  createdAt    DateTime @default(now())
-  createdBy    User?    @relation("AnnouncementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime               @default(now())
+  createdBy    User?                  @relation("AnnouncementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  likes        AnnouncementLike[]
+  comments     AnnouncementComment[]
 
   @@index([createdAt])
+}
+
+model AnnouncementLike {
+  userId         Int
+  announcementId Int
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, announcementId])
+  @@index([announcementId])
+}
+
+model AnnouncementComment {
+  id             Int          @id @default(autoincrement())
+  announcementId Int
+  authorId       Int?
+  bodyMarkdown   String
+  bodyHtml       String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  author         User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([announcementId, createdAt])
+  @@index([authorId])
 }
 
 model TrustedUserRecommendation {

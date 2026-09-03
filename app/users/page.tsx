@@ -6,6 +6,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { formatCompactNumber } from "@/lib/compact-number";
 import { getTranslations } from "@/lib/i18n/server";
+import { countOnlineUsers } from "@/lib/online-users";
 import { normalizeSearchText } from "@/lib/search-ranking";
 import { getReputationLeaderboard, type UserReputationSummary } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
@@ -81,7 +82,11 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<{ page?: string; q?: string; sort?: string }>;
 }) {
-  const [t, currentUser] = await Promise.all([getTranslations(), getCurrentUser()]);
+  const [t, currentUser, onlineCount] = await Promise.all([
+    getTranslations(),
+    getCurrentUser(),
+    countOnlineUsers()
+  ]);
   const queryParams = await searchParams;
   const mode = parseRankingMode(queryParams.sort);
   const searchQuery = queryParams.q?.trim() ?? "";
@@ -119,7 +124,9 @@ export default async function UsersPage({
       heroAlt="Ivan Shishkin, The Forest Clearing"
       meta={
         <>
-          <p>{t.users.members(users.length)}</p>
+          <p>
+            {t.users.members(users.length)} · {t.users.online(onlineCount)}
+          </p>
           <p>{selectedOption.label}</p>
         </>
       }
@@ -151,7 +158,9 @@ export default async function UsersPage({
             <UsersRankingSelect options={rankingOptions} value={mode} label={t.users.rankingMode} />
           </div>
         </div>
-        <p className="result-summary">{t.users.members(users.length)}</p>
+        <p className="result-summary">
+          {t.users.members(users.length)} · {t.users.online(onlineCount)}
+        </p>
 
         {currentUser && currentUserRank !== null && currentUserPage !== null && (
           <div className="users-current-position">

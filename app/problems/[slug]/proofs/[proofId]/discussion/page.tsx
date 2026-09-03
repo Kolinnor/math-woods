@@ -1,5 +1,5 @@
 import { ProblemVerificationMode, ReportStatus, TargetType } from "@prisma/client";
-import { ArrowLeft, Flag, MessageCircle, MessageSquarePlus, Send } from "lucide-react";
+import { ArrowLeft, Flag, MessageCircle, MessageSquarePlus, Pencil, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -8,13 +8,19 @@ import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { SignInLink } from "@/components/SignInLink";
 import { UserName } from "@/components/UserName";
+import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 import { reportProofAction } from "@/lib/actions/moderation-actions";
-import { createProofCommentAction } from "@/lib/actions/proof-actions";
+import {
+  createProofCommentAction,
+  deleteProofCommentAction,
+  updateProofCommentAction
+} from "@/lib/actions/proof-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import {
   canEditProblem,
+  canEditProofComment,
   canViewArchivedProblem,
   isVerifiedContributor
 } from "@/lib/permissions";
@@ -32,10 +38,15 @@ const discussionCopy = {
     add: "Add to the discussion",
     back: "Back to problem",
     by: "by",
+    confirmDelete: "Delete this message? This cannot be undone.",
+    delete: "Delete",
+    edit: "Edit",
+    edited: "Edited",
     join: "to join the discussion.",
     messages: (count: number) => `${count} ${count === 1 ? "message" : "messages"}`,
     noMessages: "No messages yet.",
     post: "Post",
+    save: "Save",
     solution: "Solution",
     verify: "Verify your email to join the discussion.",
     language: "Language"
@@ -44,10 +55,15 @@ const discussionCopy = {
     add: "Ajouter à la discussion",
     back: "Retour au problème",
     by: "par",
+    confirmDelete: "Supprimer ce message ? Cette action est irréversible.",
+    delete: "Supprimer",
+    edit: "Modifier",
+    edited: "Modifié",
     join: "pour participer à la discussion.",
     messages: (count: number) => `${count} message${count === 1 ? "" : "s"}`,
     noMessages: "Aucun message pour l'instant.",
     post: "Publier",
+    save: "Enregistrer",
     solution: "Solution",
     verify: "Vérifiez votre adresse e-mail pour participer à la discussion.",
     language: "Langue"
@@ -79,6 +95,7 @@ export default async function SolutionDiscussionPage({
       author: true,
       translatedBy: true,
       comments: {
+        where: { deletedAt: null },
         include: { author: true },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }]
       },
@@ -187,23 +204,55 @@ export default async function SolutionDiscussionPage({
       {user && !canContribute && <p className="discussion-sign-in">{copy.verify}</p>}
 
       <section className="discussion-thread solution-comment-thread" aria-label={t.problemDetail.discussions}>
-        {proof.comments.map((comment) => (
-          <article id={`comment-${comment.id}`} key={comment.id} className="discussion-post">
-            <header className="discussion-post-header">
-              <div className="discussion-post-author">
-                <Link href={`/profile/${comment.author.profileSlug}`}>
-                  <UserName user={comment.author} />
-                </Link>
-                <span className="discussion-post-byline">{copy.by}</span>
-                <time dateTime={comment.createdAt.toISOString()}>{dateFormatter.format(comment.createdAt)}</time>
-                <span className="content-language-badge" title={contentLanguageLabel(comment.language)}>{comment.language.toUpperCase()}</span>
+        {proof.comments.map((comment) => {
+          const canManageComment = Boolean(user && canEditProofComment(user, comment));
+
+          return (
+            <article id={`comment-${comment.id}`} key={comment.id} className="discussion-post">
+              <header className="discussion-post-header">
+                <div className="discussion-post-author">
+                  <Link href={`/profile/${comment.author.profileSlug}`}>
+                    <UserName user={comment.author} />
+                  </Link>
+                  <span className="discussion-post-byline">{copy.by}</span>
+                  <time dateTime={comment.createdAt.toISOString()}>{dateFormatter.format(comment.createdAt)}</time>
+                  <span className="content-language-badge" title={contentLanguageLabel(comment.language)}>{comment.language.toUpperCase()}</span>
+                  {comment.editedAt && <span className="muted">{" · "}{copy.edited}</span>}
+                </div>
+              </header>
+              <div className="discussion-post-body">
+                <MarkdownBlock html={comment.bodyHtml} />
               </div>
-            </header>
-            <div className="discussion-post-body">
-              <MarkdownBlock html={comment.bodyHtml} />
-            </div>
-          </article>
-        ))}
+              {canManageComment && (
+                <footer className="discussion-post-footer">
+                  <details>
+                    <summary>
+                      <Pencil size={14} aria-hidden="true" />
+                      {copy.edit}
+                    </summary>
+                    <form action={updateProofCommentAction.bind(null, comment.id, problem.slug)} className="discussion-inline-form">
+                      <LazyMarkdownEditor
+                        name="bodyMarkdown"
+                        initialValue={comment.bodyMarkdown}
+                        minHeight="7rem"
+                        lineNumbers={false}
+                      />
+                      <button type="submit" className="secondary">
+                        {copy.save}
+                      </button>
+                    </form>
+                  </details>
+                  <form action={deleteProofCommentAction.bind(null, comment.id, problem.slug)}>
+                    <ConfirmSubmitButton className="discussion-text-action discussion-delete-action" message={copy.confirmDelete}>
+                      <Trash2 size={14} aria-hidden="true" />
+                      {copy.delete}
+                    </ConfirmSubmitButton>
+                  </form>
+                </footer>
+              )}
+            </article>
+          );
+        })}
 
         {proof.comments.length === 0 && (
           <div className="discussion-empty-state">

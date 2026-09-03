@@ -1,0 +1,99 @@
+/* Light heart/thumb bursts and a firework pop, spawned from a click position (see lib/particle-burst.ts). */
+.mw-particle-burst-zone {
+  display: contents;
+}
+
+.mw-particle-burst {
+  height: 0;
+  pointer-events: none;
+  position: fixed;
+  width: 0;
+  z-index: 2000;
+}
+
+.mw-particle {
+  animation: mw-particle-fly 850ms ease-out forwards;
+  animation-delay: var(--mw-particle-delay, 0ms);
+  left: 0;
+  line-height: 1;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+}
+
+.mw-particle-heart,
+.mw-particle-thumb {
+  font-size: 1.15rem;
+}
+
+.mw-particle-heart {
+  color: #ea4335;
+}
+
+.mw-particle-thumb {
+  color: var(--accent, #32a852);
+}
+
+@keyframes mw-particle-fly {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.5);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -50%)
+      translate(calc(var(--mw-particle-dx, 0px) * 0.45), calc(var(--mw-particle-dy, -30px) * 0.45))
+      rotate(calc(var(--mw-particle-rotate, 0deg) * 0.5)) scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--mw-particle-dx, 0px), var(--mw-particle-dy, -30px))
+      rotate(var(--mw-particle-rotate, 0deg)) scale(0.9);
+  }
+}
+
+.mw-firework-burst {
+  height: 0;
+  pointer-events: none;
+  position: fixed;
+  width: 0;
+  z-index: 2000;
+}
+
+.mw-firework-spark {
+  background: var(--mw-spark-color, #ffd97d);
+  border-radius: 2px;
+  box-shadow: 0 0 6px 1.5px var(--mw-spark-color, #ffd97d);
+  height: 12px;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  transform-origin: center;
+  width: 3px;
+  animation: mw-firework-spark-fly 600ms ease-out forwards;
+  animation-delay: var(--mw-spark-delay, 0ms);
+}
+
+@keyframes mw-firework-spark-fly {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--mw-spark-angle, 0deg)) translateY(0) scaleY(1);
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--mw-spark-angle, 0deg)) translateY(var(--mw-spark-distance, 40px))
+      scaleY(0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mw-particle,
+  .mw-firework-spark {
+    animation: none;
+    display: none;
+  }
+}

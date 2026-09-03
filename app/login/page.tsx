@@ -33,7 +33,13 @@ function registerErrorMessage(reason: string | undefined, t: Awaited<ReturnType<
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams?: Promise<{ loginError?: string; registerError?: string; oauthError?: string; returnTo?: string }>;
+  searchParams?: Promise<{
+    loginError?: string;
+    registerError?: string;
+    oauthError?: string;
+    returnTo?: string;
+    passwordReset?: string;
+  }>;
 }) {
   const t = await getTranslations();
   const params = searchParams ? await searchParams : {};
@@ -42,6 +48,7 @@ export default async function LoginPage({
   const oauthError = oauthErrorMessage(params.oauthError, t);
   const providers = configuredOAuthProviders();
   const returnTo = safeReturnTo(params.returnTo);
+  const passwordReset = params.passwordReset === "1";
 
   return (
     <ForestPageLayout
@@ -51,6 +58,9 @@ export default async function LoginPage({
       description={t.auth.description}
     >
     <div className="grid gap-6">
+      {passwordReset && (
+        <p className="panel border-green-700 bg-green-50 p-4 text-sm text-green-900">{t.auth.passwordResetSuccess}</p>
+      )}
       {oauthError && <p className="quality-banner quality-needs-work">{oauthError}</p>}
       {providers.length > 0 && (
         <section className="panel oauth-login-panel">
@@ -83,6 +93,9 @@ export default async function LoginPage({
             <span className="text-sm font-medium">{t.auth.password}</span>
             <input name="password" type="password" required />
           </label>
+          <Link href="/forgot-password" className="text-sm">
+            {t.auth.forgotPassword}
+          </Link>
           <button type="submit">{t.auth.signIn}</button>
         </form>
       </section>

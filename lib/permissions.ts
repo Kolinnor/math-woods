@@ -139,6 +139,23 @@ export function canReviewProblem(user: PermissionUser, problem: ProblemPermissio
   );
 }
 
+const PROBLEM_QUALITY_RANK: Record<QualityStatus, number> = {
+  [QualityStatus.NEEDS_WORK]: 0,
+  [QualityStatus.UNREVIEWED]: 1,
+  [QualityStatus.REVIEWED]: 2
+};
+
+export function canDowngradeProblemQualityStatus(
+  user: PermissionUser,
+  problem: ProblemPermissionTarget & { qualityStatus: QualityStatus },
+  nextStatus: QualityStatus
+) {
+  const currentRank = PROBLEM_QUALITY_RANK[problem.qualityStatus];
+  const nextRank = PROBLEM_QUALITY_RANK[nextStatus];
+  if (nextRank >= currentRank) return false;
+  return problem.authorId === user.id || hasTrustedPrivileges(user.role);
+}
+
 export function canEditSolution(user: PermissionUser, solution: AuthoredResource) {
   return solution.authorId === user.id || solution.translatedById === user.id || hasTrustedPrivileges(user.role);
 }
@@ -233,12 +250,20 @@ export function canDeletePlaylist(user: PermissionUser, playlist: PlaylistPermis
   return playlist.authorId === user.id || hasAdminPrivileges(user.role);
 }
 
-export function canEditDiscussionHint(user: PermissionUser, hint: AuthoredResource) {
-  return hint.authorId === user.id || hasTrustedPrivileges(user.role);
+export function canEditDiscussionPost(user: PermissionUser, post: AuthoredResource) {
+  return post.authorId === user.id || hasTrustedPrivileges(user.role);
 }
 
 export function canEditVerificationMessage(user: PermissionUser, message: AuthoredResource) {
   return message.authorId === user.id;
+}
+
+export function canEditProofComment(user: PermissionUser, comment: AuthoredResource) {
+  return comment.authorId === user.id || hasTrustedPrivileges(user.role);
+}
+
+export function canEditConceptTalkPost(user: PermissionUser, post: AuthoredResource) {
+  return post.authorId === user.id || hasTrustedPrivileges(user.role);
 }
 
 export function canReviewProblemVerification(user: PermissionUser, problem: ProblemPermissionTarget) {

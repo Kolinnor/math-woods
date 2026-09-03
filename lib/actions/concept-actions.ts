@@ -22,6 +22,7 @@ import {
 } from "@/lib/concept-revisions";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
+import { contentParticipantIds } from "@/lib/content-participants";
 import { CREATION_SUBMISSION_FIELD, creationSubmissionKey } from "@/lib/creation-submission";
 import { prisma } from "@/lib/db";
 import { canPublishConceptEditForConcept } from "@/lib/concept-edit-access";
@@ -1031,20 +1032,29 @@ export async function downgradeConceptStatusAction(conceptId: number, formData: 
   if (result.current.status !== result.updated.status) {
     const notification = {
       title: "Concept status changed",
-      body: `${displayNameForUser(user)} changed \"${result.updated.title}\" from ${result.current.status.toLowerCase()} to ${result.updated.status.toLowerCase()}.`,
+      body: `${displayNameForUser(user)} changed \"${result.updated.title}\" from ${result.current.status.toLowerCase()} to ${result.updated.status.toLowerCase()}: ${reason}`,
       href: `/concepts/${result.updated.slug}/history`
     };
+    const recipientIds = await contentParticipantIds({
+      pageType: SourceType.CONCEPT,
+      pageId: result.updated.id,
+      primaryAuthorId: result.current.createdById,
+      actorId: user.id
+    });
     await Promise.all([
       notifyOwnerOfSiteActivity({
         actor: user,
         type: NotificationType.CONCEPT_EDITED,
         ...notification
       }),
-      notifyConceptAuthor({
-        conceptId: result.updated.id,
-        actorId: user.id,
-        ...notification
-      })
+      ...recipientIds.map((userId) =>
+        createNotification({
+          userId,
+          actorId: user.id,
+          type: NotificationType.CONCEPT_EDITED,
+          ...notification
+        })
+      )
     ]);
   }
 }
@@ -1255,4 +1265,31 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
     href: `/concepts/${concept.slug}`
   });
   redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
+}
+
+export async function voteConceptUsefulnessAction(conceptId: number, value: number) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`concept:usefulness:${user.id}`, 30, 60_000);
+
+  if (!Number.isInteger(value) || value < 1 || value > 5) {
+    throw new Error("Invalid usefulness value.");
+  }
+
+  await prisma.conceptUsefulnessVote.upsert({
+    where: { userId_conceptId: { userId: user.id, conceptId } },
+    create: { userId: user.id, conceptId, value },
+    update: { value }
+  });
+
+  const aggregate = await prisma.conceptUsefulnessVote.aggregate({
+    where: { conceptId },
+    _avg: { value: true },
+    _count: true
+  });
+
+  return {
+    value,
+    average: aggregate._avg.value ?? value,
+    count: aggregate._count
+  };
 }

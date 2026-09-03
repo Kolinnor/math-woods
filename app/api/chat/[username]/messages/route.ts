@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { CHAT_IMAGE_MAX_INPUT_BYTES, chatImageUrl } from "@/lib/chat-image-config";
 import {
+  directChatClearedAtFor,
   directChatPair,
   directChatReplyPreview,
   acceptedFriendshipBetween,
@@ -66,7 +67,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
   const pair = directChatPair(user.id, otherUser.id);
   const chat = await prisma.directChat.findUnique({
     where: { userAId_userBId: pair },
-    select: { id: true }
+    select: { id: true, userAId: true, userBId: true, userACleared: true, userBCleared: true }
   });
 
   if (!chat) {
@@ -76,12 +77,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     );
   }
 
+  const clearedAt = directChatClearedAtFor(chat, user.id);
+
   const [messages, updatedMessages] = await Promise.all([
     prisma.chatMessage.findMany({
       where: {
         directChatId: chat.id,
         id: beforeId > 0 ? { lt: beforeId } : { gt: afterId },
-        deletedAt: null
+        deletedAt: null,
+        ...(clearedAt ? { createdAt: { gt: clearedAt } } : {})
       },
       include: {
         author: {
@@ -121,7 +125,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     prisma.chatMessage.findMany({
       where: {
         directChatId: chat.id,
-        updatedAt: { gt: reactionsAfter }
+        updatedAt: { gt: reactionsAfter },
+        ...(clearedAt ? { createdAt: { gt: clearedAt } } : {})
       },
       select: {
         id: true,

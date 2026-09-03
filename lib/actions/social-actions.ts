@@ -4,8 +4,11 @@ import { FriendshipStatus, NotificationType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
+import { deleteStoredChatImage } from "@/lib/chat-images";
+import { CONTENT_LIMITS, optionalBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
-import { sendDirectChatMessage } from "@/lib/direct-chat";
+import { directChatPair, materializeFriendRequestIntro, sendDirectChatMessage } from "@/lib/direct-chat";
+import { getChatImageStorageConfig } from "@/lib/image-storage";
 import { clearFriendRequestNotifications } from "@/lib/notification-lifecycle";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -50,9 +53,14 @@ async function notifyFriendRequestAccepted({
   });
 }
 
-export async function sendFriendRequestAction(username: string) {
+export async function sendFriendRequestAction(username: string, formData?: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`friend-request:${user.id}`, 20, 60_000);
+  const introMessage = optionalBoundedText(
+    formData?.get("introMessage"),
+    CONTENT_LIMITS.shortText,
+    "Introduction message"
+  );
   const target = await prisma.user.findFirst({
     where: { username: usernameLookupFilter(username) },
     select: { id: true, username: true, profileSlug: true, deletedAt: true }
@@ -68,6 +76,7 @@ export async function sendFriendRequestAction(username: string) {
         where: { id: existing.id },
         data: { status: FriendshipStatus.ACCEPTED }
       });
+      await materializeFriendRequestIntro(existing);
       await clearFriendRequestNotifications(user.id, target.id);
       await notifyFriendRequestAccepted({
         requesterId: target.id,
@@ -88,7 +97,8 @@ export async function sendFriendRequestAction(username: string) {
   await prisma.friendship.create({
     data: {
       requesterId: user.id,
-      addresseeId: target.id
+      addresseeId: target.id,
+      introMessage
     }
   });
 
@@ -97,7 +107,9 @@ export async function sendFriendRequestAction(username: string) {
     actorId: user.id,
     type: NotificationType.FRIEND_REQUEST,
     title: "New friend request",
-    body: `${displayNameForUser(user)} sent you a friend request.`,
+    body: introMessage
+      ? `${displayNameForUser(user)} sent you a friend request: "${introMessage}"`
+      : `${displayNameForUser(user)} sent you a friend request.`,
     href: "/friends"
   });
 
@@ -124,6 +136,7 @@ export async function acceptFriendRequestAction(friendshipId: number) {
     where: { id: friendship.id },
     data: { status: FriendshipStatus.ACCEPTED }
   });
+  await materializeFriendRequestIntro(friendship);
   await clearFriendRequestNotifications(user.id, friendship.requesterId);
 
   await notifyFriendRequestAccepted({
@@ -204,7 +217,7 @@ export async function removeFriendAction(friendshipId: number) {
 export async function sendFriendRequestByUsernameAction(formData: FormData) {
   const username = String(formData.get("username") ?? "").trim();
   if (!username) throw new Error("Username is required.");
-  await sendFriendRequestAction(username);
+  await sendFriendRequestAction(username, formData);
   redirect("/friends" as never);
 }
 
@@ -216,7 +229,22 @@ export async function sendFriendRequestByUsernameFormAction(
   if (!username) return { ok: false, message: "Enter a username." };
 
   try {
-    await sendFriendRequestAction(username);
+    await sendFriendRequestAction(username, formData);
+    return { ok: true, message: "Friend request sent." };
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    const message = error instanceof Error ? error.message : "Could not send this friend request.";
+    return { ok: false, message };
+  }
+}
+
+export async function sendFriendRequestFormAction(
+  username: string,
+  _state: { ok: boolean; message: string | null },
+  formData: FormData
+) {
+  try {
+    await sendFriendRequestAction(username, formData);
     return { ok: true, message: "Friend request sent." };
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
@@ -249,6 +277,57 @@ export async function createChatMessageAction(
     return {
       error: error instanceof Error ? error.message : "Message could not be sent."
     };
+  }
+
+  revalidatePath("/friends");
+  revalidatePath(`/chat/${otherUsername}`);
+  redirect(`/chat/${otherUsername}` as never);
+}
+
+export async function deleteDirectChatAction(otherUsername: string) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`chat-delete:${user.id}`, 10, 60_000);
+
+  const otherUser = await prisma.user.findFirst({
+    where: { username: usernameLookupFilter(otherUsername) },
+    select: { id: true, deletedAt: true }
+  });
+  if (!otherUser || otherUser.deletedAt || otherUser.id === user.id) {
+    throw new Error("Chat not found.");
+  }
+
+  const pair = directChatPair(user.id, otherUser.id);
+  const chat = await prisma.directChat.findUnique({
+    where: { userAId_userBId: pair },
+    select: { id: true, userAId: true, userBId: true, userACleared: true, userBCleared: true }
+  });
+
+  if (chat) {
+    const isUserA = chat.userAId === user.id;
+    const otherAlreadyCleared = isUserA ? chat.userBCleared : chat.userACleared;
+
+    if (otherAlreadyCleared) {
+      // Both sides have now cleared the conversation: nobody can see it anymore, so purge it for good.
+      const messagesWithImages = await prisma.chatMessage.findMany({
+        where: { directChatId: chat.id, imageKey: { not: null } },
+        select: { imageKey: true }
+      });
+      await prisma.directChat.delete({ where: { id: chat.id } });
+
+      const config = getChatImageStorageConfig();
+      if (config) {
+        await Promise.all(
+          messagesWithImages.map((message) =>
+            message.imageKey ? deleteStoredChatImage(config, message.imageKey).catch(() => false) : null
+          )
+        );
+      }
+    } else {
+      await prisma.directChat.update({
+        where: { id: chat.id },
+        data: isUserA ? { userACleared: new Date() } : { userBCleared: new Date() }
+      });
+    }
   }
 
   revalidatePath("/friends");

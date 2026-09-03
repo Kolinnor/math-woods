@@ -29,6 +29,7 @@ import { unlockDate } from "@/lib/attempts";
 import { prisma } from "@/lib/db";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
+import { contentParticipantIds } from "@/lib/content-participants";
 import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
 import {
   buildConceptRevisionSnapshot,
@@ -93,7 +94,8 @@ import { assertRateLimit } from "@/lib/rate-limit";
 import { recordRecommendationOutcomeIfRelevant } from "@/lib/recommendation-events";
 import {
   canArchiveProblem,
-  canEditDiscussionHint,
+  canDowngradeProblemQualityStatus,
+  canEditDiscussionPost,
   canEditVerificationMessage,
   canEditProblem,
   canProposeProblemEdit,
@@ -1402,9 +1404,16 @@ export async function updateProblemAction(
 
       const bodyHtml = await renderMarkdownContent(resolvedSnapshot.bodyMarkdown);
       const difficultyChanged = changedSnapshotFields.includes("difficulty");
+      const reviewedByUpdate: { reviewedById?: number | null } =
+        resolvedSnapshot.qualityStatus !== QualityStatus.REVIEWED
+          ? { reviewedById: null }
+          : current.qualityStatus !== QualityStatus.REVIEWED
+            ? { reviewedById: user.id }
+            : {};
       const updateResult = await tx.problem.updateMany({
         where: { id: problemId, version: current.version },
         data: {
+          ...reviewedByUpdate,
           title: resolvedSnapshot.title,
           language: resolvedSnapshot.language,
           bodyMarkdown: resolvedSnapshot.bodyMarkdown,
@@ -1963,6 +1972,7 @@ export async function markProblemReviewedAction(problemId: number, problemSlug: 
       data: {
         qualityStatus: QualityStatus.REVIEWED,
         needsReviewAfterEdit: false,
+        reviewedById: user.id,
         version: { increment: 1 }
       }
     });
@@ -1984,6 +1994,83 @@ export async function markProblemReviewedAction(problemId: number, problemSlug: 
   revalidatePath(`/problems/${problemSlug}`);
   revalidatePath(`/problems/${problemSlug}/edit`);
   revalidatePath(`/problems/${problemSlug}/history`);
+}
+
+export async function downgradeProblemQualityStatusAction(
+  problemId: number,
+  problemSlug: string,
+  formData: FormData
+) {
+  const user = await requireVerifiedUser();
+  await assertRateLimit(`problem:downgrade:${user.id}`, 20, 60_000);
+
+  const requestedStatus = String(formData.get("status") ?? "");
+  if (!Object.values(QualityStatus).includes(requestedStatus as QualityStatus)) {
+    throw new Error("Invalid problem status.");
+  }
+  const nextStatus = requestedStatus as QualityStatus;
+  const reason = requiredBoundedText(formData.get("reason"), CONTENT_LIMITS.shortText, "Reason");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const problem = await problemSnapshotSource(tx, problemId);
+    if (!canDowngradeProblemQualityStatus(user, problem, nextStatus)) {
+      throw new Error("You cannot change this problem to that status.");
+    }
+    await acquireTransactionLock(tx, `problem-edit:${problem.translationGroupId}`);
+    const current = await problemSnapshotSource(tx, problemId);
+    if (!canDowngradeProblemQualityStatus(user, current, nextStatus)) {
+      throw new Error("You cannot change this problem to that status.");
+    }
+    await ensureProblemSnapshotRevision(tx, current);
+    const updated = await tx.problem.update({
+      where: { id: problemId },
+      data: {
+        qualityStatus: nextStatus,
+        needsReviewAfterEdit: false,
+        reviewedById: null,
+        version: { increment: 1 }
+      }
+    });
+    const updatedSnapshot = await problemSnapshotSource(tx, updated.id);
+    await tx.pageRevision.create({
+      data: {
+        pageType: SourceType.PROBLEM,
+        pageId: updated.id,
+        markdown: updatedSnapshot.bodyMarkdown,
+        problemVersion: updatedSnapshot.version,
+        problemSnapshot: problemRevisionSnapshotJson(buildProblemRevisionSnapshot(updatedSnapshot)),
+        editedById: user.id,
+        editSummary: `Status changed from ${current.qualityStatus.toLowerCase()} to ${nextStatus.toLowerCase()}: ${reason}`
+      }
+    });
+    return { current, updated };
+  });
+
+  revalidatePath("/problems");
+  revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/edit`);
+  revalidatePath(`/problems/${problemSlug}/history`);
+
+  if (result.current.qualityStatus !== result.updated.qualityStatus) {
+    const recipientIds = await contentParticipantIds({
+      pageType: SourceType.PROBLEM,
+      pageId: result.updated.id,
+      primaryAuthorId: result.updated.authorId,
+      actorId: user.id
+    });
+    await Promise.all(
+      recipientIds.map((userId) =>
+        createNotification({
+          userId,
+          actorId: user.id,
+          type: NotificationType.PROBLEM_EDITED,
+          title: "Problem status changed",
+          body: `${displayNameForUser(user)} changed "${result.updated.title}" from ${result.current.qualityStatus.toLowerCase()} to ${result.updated.qualityStatus.toLowerCase()}: ${reason}`,
+          href: `/problems/${problemSlug}/history`
+        })
+      )
+    );
+  }
 }
 
 export async function rollbackProblemRevisionAction(problemId: number, revisionId: number, expectedVersion: number) {
@@ -2030,6 +2117,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
     const updateResult = await tx.problem.updateMany({
       where: { id: problemId, version: expectedVersion },
       data: {
+        ...(qualityStatus !== current.qualityStatus ? { reviewedById: null } : {}),
         ...(snapshot
           ? {
               title: snapshot.title,
@@ -2771,39 +2859,39 @@ export async function createDiscussionPostAction(
   redirect(returnToDiscussion ? (`/problems/${problem.slug}/discussion` as Route) : `/problems/${problem.slug}`);
 }
 
-export async function updateHintAction(
+export async function updateDiscussionPostAction(
   postId: number,
   problemSlug: string,
   returnToDiscussionOrFormData: boolean | FormData,
   maybeFormData?: FormData
 ) {
   const user = await requireVerifiedUser();
-  await assertRateLimit(`hint:update:${user.id}`, 30, 60_000);
+  await assertRateLimit(`discussion-post:update:${user.id}`, 30, 60_000);
   const returnToDiscussion = typeof returnToDiscussionOrFormData === "boolean" ? returnToDiscussionOrFormData : false;
   const formData =
     typeof returnToDiscussionOrFormData === "boolean" ? maybeFormData : returnToDiscussionOrFormData;
-  if (!(formData instanceof FormData)) throw new Error("Hint content is missing.");
-  const hint = await prisma.discussionPost.findFirst({
+  if (!(formData instanceof FormData)) throw new Error("Message content is missing.");
+  const post = await prisma.discussionPost.findFirst({
     where: {
       id: postId,
-      type: PostType.HINT,
       deletedAt: null,
       thread: { problem: { slug: problemSlug } }
     },
     select: { id: true, authorId: true }
   });
 
-  if (!hint) throw new Error("Hint not found.");
-  if (!canEditDiscussionHint(user, hint)) {
-    throw new Error("You cannot edit this hint.");
+  if (!post) throw new Error("Message not found.");
+  if (!canEditDiscussionPost(user, post)) {
+    throw new Error("You cannot edit this message.");
   }
 
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Hint");
+  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Message");
   await prisma.discussionPost.update({
-    where: { id: hint.id },
+    where: { id: post.id },
     data: {
       bodyMarkdown,
-      bodyHtml: await renderMarkdownContent(bodyMarkdown)
+      bodyHtml: await renderMarkdownContent(bodyMarkdown),
+      editedAt: new Date()
     }
   });
 
@@ -2812,26 +2900,25 @@ export async function updateHintAction(
   redirect(returnToDiscussion ? (`/problems/${problemSlug}/discussion` as Route) : `/problems/${problemSlug}`);
 }
 
-export async function deleteHintAction(postId: number, problemSlug: string, returnToDiscussion = false) {
+export async function deleteDiscussionPostAction(postId: number, problemSlug: string, returnToDiscussion = false) {
   const user = await requireVerifiedUser();
-  await assertRateLimit(`hint:delete:${user.id}`, 30, 60_000);
-  const hint = await prisma.discussionPost.findFirst({
+  await assertRateLimit(`discussion-post:delete:${user.id}`, 30, 60_000);
+  const post = await prisma.discussionPost.findFirst({
     where: {
       id: postId,
-      type: PostType.HINT,
       deletedAt: null,
       thread: { problem: { slug: problemSlug } }
     },
     select: { id: true, authorId: true }
   });
 
-  if (!hint) throw new Error("Hint not found.");
-  if (!canEditDiscussionHint(user, hint)) {
-    throw new Error("You cannot delete this hint.");
+  if (!post) throw new Error("Message not found.");
+  if (!canEditDiscussionPost(user, post)) {
+    throw new Error("You cannot delete this message.");
   }
 
   await prisma.discussionPost.update({
-    where: { id: hint.id },
+    where: { id: post.id },
     data: { deletedAt: new Date() }
   });
 

@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { ConceptShareLauncher } from "@/components/ConceptShareLauncher";
 import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
 import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
+import { ConceptUsefulnessGauge } from "@/components/ConceptUsefulnessGauge";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
@@ -264,7 +265,9 @@ export default async function ConceptPage({
     outgoingLinks,
     backlinks,
     practiceSolvedAttempts,
-    localizedPracticeProblems
+    localizedPracticeProblems,
+    practiceProofs,
+    practiceHints
   ] = await Promise.all([
     prisma.concept.findMany({
       where: {
@@ -316,6 +319,18 @@ export default async function ConceptPage({
             translatedFromProblemId: true
           }
         })
+      : [],
+    practiceTranslationGroupIds.length
+      ? prisma.problemProof.findMany({
+          where: { problem: { translationGroupId: { in: practiceTranslationGroupIds } } },
+          select: { problem: { select: { translationGroupId: true } } }
+        })
+      : [],
+    practiceTranslationGroupIds.length
+      ? prisma.problemHint.findMany({
+          where: { problem: { translationGroupId: { in: practiceTranslationGroupIds } } },
+          select: { problem: { select: { translationGroupId: true } } }
+        })
       : []
   ]);
   const localizedPracticeProblemByGroup = new Map(
@@ -333,6 +348,16 @@ export default async function ConceptPage({
     const solvedUsers = solvedUsersByPracticeGroup.get(groupId) ?? new Set<number>();
     solvedUsers.add(attempt.userId);
     solvedUsersByPracticeGroup.set(groupId, solvedUsers);
+  }
+  const solutionCountByPracticeGroup = new Map<string, number>();
+  for (const proof of practiceProofs) {
+    const groupId = proof.problem.translationGroupId;
+    solutionCountByPracticeGroup.set(groupId, (solutionCountByPracticeGroup.get(groupId) ?? 0) + 1);
+  }
+  const hintCountByPracticeGroup = new Map<string, number>();
+  for (const hint of practiceHints) {
+    const groupId = hint.problem.translationGroupId;
+    hintCountByPracticeGroup.set(groupId, (hintCountByPracticeGroup.get(groupId) ?? 0) + 1);
   }
   const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
   const targetViewLanguage = requestedLanguage ?? preferredLanguage;
@@ -387,7 +412,8 @@ export default async function ConceptPage({
         )
         .map(async ({ problem }) => {
           const solvedUsers = solvedUsersByPracticeGroup.get(problem.translationGroupId) ?? new Set<number>();
-          const externalSolvedCount = [...solvedUsers].filter((userId) => userId !== problem.authorId).length;
+          const solutionCount = solutionCountByPracticeGroup.get(problem.translationGroupId) ?? 0;
+          const hintCount = hintCountByPracticeGroup.get(problem.translationGroupId) ?? 0;
           const [titleHtml, blurbHtml] = await Promise.all([
             renderInlineMarkdown(problem.title),
             renderMarkdownForContentLanguage(problem.bodyMarkdown, problem.language)
@@ -398,7 +424,7 @@ export default async function ConceptPage({
             titleHtml,
             difficultyTone: problemDifficultyTone(problem.difficulty),
             solved: Boolean(user && solvedUsers.has(user.id)),
-            solvedCountLabel: t.problems.solvedCount(externalSolvedCount),
+            solvedCountLabel: `${t.problems.solutionsCount(solutionCount)} · ${t.problems.hintsCount(hintCount)}`,
             blurbHtml
           };
         })
@@ -486,6 +512,20 @@ export default async function ConceptPage({
     resolveConceptLinksForLanguage(conceptBacklinks.map((item) => item.slug), concept.language),
     resolveConceptTitlesForLanguage(conceptBacklinks.map((item) => item.slug), concept.language)
   ]);
+  const [usefulnessAggregate, usefulnessUserVote] = await Promise.all([
+    prisma.conceptUsefulnessVote.aggregate({
+      where: { conceptId: concept.id },
+      _avg: { value: true },
+      _count: true
+    }),
+    user
+      ? prisma.conceptUsefulnessVote.findUnique({
+          where: { userId_conceptId: { userId: user.id, conceptId: concept.id } },
+          select: { value: true }
+        })
+      : null
+  ]);
+  const conceptSignInHref = `/login?returnTo=${encodeURIComponent(`/concepts/${concept.slug}`)}`;
 
   return (
     <ForestPageLayout
@@ -661,6 +701,16 @@ export default async function ConceptPage({
             </form>
           </details>
         )}
+
+        <ConceptUsefulnessGauge
+          conceptId={concept.id}
+          signedIn={Boolean(user)}
+          signInHref={conceptSignInHref}
+          initialUserValue={usefulnessUserVote?.value ?? null}
+          initialAverage={usefulnessAggregate._avg.value}
+          initialCount={usefulnessAggregate._count}
+          labels={t.conceptDetail.usefulness}
+        />
 
         <section className="reading-surface concept-reading-surface">
           <MarkdownBlock html={conceptBodyHtml} />

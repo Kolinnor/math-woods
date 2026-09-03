@@ -1581,22 +1581,23 @@ assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.val
 assert.equal(FLAT_DOMAIN_OPTIONS.some((option) => /^\d{2}\s/.test(option.label)), false);
 assert.equal(PROBLEM_DOMAINS.length, 20);
 assert.equal(PROBLEM_DOMAINS.some((option) => /^\d{2}-XX$/.test(option.value)), false);
-assert.equal(PROBLEM_DOMAINS.some((option) => option.value === "algebraic-topology"), false);
+assert.equal(PROBLEM_DOMAINS.some((option) => option.value === "algebraic-topology"), true);
 assert.equal(new Set(FLAT_PROBLEM_DOMAIN_OPTIONS.map((option) => option.value)).size, FLAT_PROBLEM_DOMAIN_OPTIONS.length);
 assert.equal(Object.keys(PROBLEM_DOMAIN_HERO_ART).length, PROBLEM_DOMAINS.length);
 assert.equal(parseDomainCode("26"), "real-analysis");
 assert.equal(parseDomainCode("52-XX"), "geometry");
 assert.equal(parseDomainCode("GEOMETRY"), "geometry");
 assert.equal(parseDomainCode("algebra-groups"), "algebra-groups");
-assert.equal(domainLabel("algebra-groups"), "Groups");
+assert.equal(domainLabel("algebra-groups"), "Group");
 assert.equal(coarseDomainForCode("algebra-groups"), MathDomain.ALGEBRA);
 assert.equal(domainCodeAliases("algebra").includes("algebra-groups"), true);
-assert.equal(parseDomainCode("algebraic-topology"), "topology-algebraic-topology");
-assert.equal(parseDomainCode("55-XX"), "topology-algebraic-topology");
-assert.equal(domainCodeAliases("general-topology").includes("algebraic-topology"), true);
+assert.equal(parseDomainCode("algebraic-topology"), "algebraic-topology");
+assert.equal(parseDomainCode("55-XX"), "algebraic-topology");
+assert.equal(domainCodeAliases("algebraic-topology").includes("topology-algebraic-topology"), true);
 assert.equal(domainLabel("general-topology"), "Topology");
+assert.equal(domainLabel("algebraic-topology"), "Algebraic topology");
 assert.equal(translatedDomainLabel("algebra", { [MathDomain.ALGEBRA]: "Algèbre" }), "Algèbre");
-assert.equal(translatedDomainLabel("algebra-groups", { [MathDomain.ALGEBRA]: "Algèbre" }), "Groups");
+assert.equal(translatedDomainLabel("algebra-groups", { [MathDomain.ALGEBRA]: "Algèbre" }), "Group");
 const algebraSubdomains = PROBLEM_DOMAINS.find((domain) => domain.value === "algebra")?.children ?? [];
 assert.deepEqual(
   algebraSubdomains.map((domain) => domain.label),
@@ -3806,7 +3807,7 @@ assert.equal(
   frenchProblemDomains
     .find((domain) => domain.value === "linear-algebra")
     ?.children?.find((domain) => domain.value === "linear-algebra-lie-algebras")?.label,
-  "Algèbres de Lie"
+  "Algèbre de Lie"
 );
 
 assert.equal(normalizeProblemChallengeMessage("  Try this one!  "), "Try this one!");

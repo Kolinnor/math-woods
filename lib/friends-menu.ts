@@ -5,11 +5,10 @@ import { dictionaryForLocale, getInterfaceLocale } from "@/lib/i18n/server";
 import type { InterfaceLocale } from "@/lib/i18n/types";
 import type { ProblemChallengeLabels } from "@/lib/problem-challenges";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
+import { ONLINE_WINDOW_MS } from "@/lib/online-users";
 import { canUseOwnerTools, type PermissionUser } from "@/lib/permissions";
 import { activeSitePresenceCount } from "@/lib/site-presence";
 import { displayNameForUser } from "@/lib/user-display";
-
-const ONLINE_WINDOW_MS = 10 * 60 * 1000;
 
 export type FriendsMenuData = {
   actionCount: number;

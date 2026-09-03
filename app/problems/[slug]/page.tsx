@@ -1,7 +1,7 @@
 ﻿import { ProblemVerificationMode } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FriendshipStatus, ReportStatus, TargetType } from "@prisma/client";
+import { FriendshipStatus, QualityStatus, ReportStatus, TargetType } from "@prisma/client";
 import { Check, Flag, Heart, History, Languages, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -12,6 +12,7 @@ import { Difficulty } from "@/components/Difficulty";
 import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { ParticleBurstZone } from "@/components/ParticleBurstZone";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
 import { ProblemHints } from "@/components/ProblemHints";
 import { ProblemReactions } from "@/components/ProblemReactions";
@@ -19,10 +20,12 @@ import { ProblemRecommendationExposure } from "@/components/ProblemRecommendatio
 import { SolutionHintForm } from "@/components/SolutionHintForm";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
+import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
 import { reportProblemAction } from "@/lib/actions/moderation-actions";
 import {
   createProblemHintFromProblemAction,
   dismissProblemTranslationStaleNoticeAction,
+  downgradeProblemQualityStatusAction,
   markProblemReviewedAction,
   markProblemSolvedAction,
   startAttemptAction,
@@ -46,6 +49,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import {
+  canDowngradeProblemQualityStatus,
   canEditProblem,
   canProposeProblemEdit,
   canEditSolution,
@@ -298,6 +302,7 @@ export default async function ProblemPage({
     where: { slug },
     include: {
       author: true,
+      reviewedBy: true,
       knownSource: true,
       domains: { orderBy: { position: "asc" } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
@@ -837,6 +842,11 @@ export default async function ProblemPage({
     .filter((group) => group.relations.length > 0);
   const isProblemAuthor = Boolean(user && problem.authorId === user.id);
   const canEditCurrentProblem = Boolean(user && canEditProblem(user, problem));
+  const qualityDowngradeTargets = user
+    ? [QualityStatus.UNREVIEWED, QualityStatus.NEEDS_WORK].filter((status) =>
+        canDowngradeProblemQualityStatus(user, problem, status)
+      )
+    : [];
   const canProposeCurrentProblem = Boolean(user && canProposeProblemEdit(user));
   const publishesProblemEdits = user
     ? await canPublishProblemEditForProblem(user, problem)
@@ -937,7 +947,7 @@ export default async function ProblemPage({
           <h1 id="problem-title"><AsyncMarkdownInline markdown={problem.title} /></h1>
           <div className="problem-title-meta">
             <Link href={`/profile/${problem.author.profileSlug}`}>
-              {t.problemDetail.by} <UserName user={problem.author} />
+              {t.problemDetail.by} <UserName user={problem.author} className="problem-author-name" />
             </Link>
             {translationCreator?.editedBy && translationCreator.editedBy.id !== problem.authorId && (
               <>
@@ -1127,9 +1137,51 @@ export default async function ProblemPage({
           </div>
         )}
 
+        {qualityDowngradeTargets.length > 0 && (
+          <details className="concept-status-controls mb-4">
+            <summary>{t.problemDetail.changeStatus}</summary>
+            <form action={downgradeProblemQualityStatusAction.bind(null, problem.id, problem.slug)}>
+              <p>{t.problemDetail.changeStatusHelp}</p>
+              <label>
+                <span>{t.problemDetail.qualityStatusFieldLabel}</span>
+                <select name="status" defaultValue={qualityDowngradeTargets[0]} required>
+                  {qualityDowngradeTargets.map((status) => (
+                    <option key={status} value={status}>
+                      {t.quality[status]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t.problemDetail.statusChangeReason}</span>
+                <textarea
+                  name="reason"
+                  maxLength={240}
+                  placeholder={t.problemDetail.statusChangeReasonPlaceholder}
+                  required
+                />
+              </label>
+              <ConfirmSubmitButton className="secondary" message={t.problemDetail.confirmStatusChange}>
+                {t.problemDetail.applyStatusChange}
+              </ConfirmSubmitButton>
+            </form>
+          </details>
+        )}
+
         </div>
 
         <article className="problem-detail-article" aria-labelledby="problem-title">
+
+        {problem.qualityStatus === "REVIEWED" && problem.reviewedBy && (
+          <p className="problem-reviewed-credit">
+            <UserAvatar user={problem.reviewedBy} size="sm" />
+            <Link href={`/profile/${problem.reviewedBy.profileSlug}`}>
+              {displayNameForUser(problem.reviewedBy)}
+            </Link>
+            {" "}
+            {problem.isExercise ? t.problemDetail.reviewedCreditExercise : t.problemDetail.reviewedCreditProblem}
+          </p>
+        )}
 
         <section className="problem-statement reading-surface" data-tour-target="statement">
           <MarkdownBlock html={problemBodyHtml} />
@@ -1156,12 +1208,14 @@ export default async function ProblemPage({
                 </button>
               </form>
             ) : problem.verificationMode === ProblemVerificationMode.NONE || user.id === problem.authorId ? (
-              <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
-                <button type="submit" className="problem-action-tile solve">
-                  <Check size={25} />
-                  <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.solveSub}</small></span>
-                </button>
-              </form>
+              <ParticleBurstZone kind="confetti" active>
+                <form action={markProblemSolvedAction.bind(null, problem.id, problem.slug)}>
+                  <button type="submit" className="problem-action-tile solve">
+                    <Check size={25} />
+                    <span><strong>{t.problemDetail.markSolved}</strong><small>{copy.tiles.solveSub}</small></span>
+                  </button>
+                </form>
+              </ParticleBurstZone>
             ) : (
               <a href="#problem-verification" className="problem-action-tile solve">
                 <Check size={25} />
@@ -1210,12 +1264,14 @@ export default async function ProblemPage({
                 <span><strong>{t.problemDetail.yourProblem}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
               </span>
             ) : user ? (
-              <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
-                <button type="submit" className="problem-action-tile problem-favorite-main favorite" aria-pressed={Boolean(favorite)}>
-                  <Heart size={25} fill={favorite ? "currentColor" : "none"} />
-                  <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
-                </button>
-              </form>
+              <ParticleBurstZone kind="heart" active={!favorite}>
+                <form action={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}>
+                  <button type="submit" className="problem-action-tile problem-favorite-main favorite" aria-pressed={Boolean(favorite)}>
+                    <Heart size={25} fill={favorite ? "currentColor" : "none"} />
+                    <span><strong>{favorite ? t.problemDetail.favorited : t.problemDetail.addFavorite}</strong><small>{copy.tiles.favoriteSub(favoriteCount)}</small></span>
+                  </button>
+                </form>
+              </ParticleBurstZone>
             ) : (
               <Link href={problemSignInHref as never} className="problem-action-tile problem-favorite-main favorite">
                 <Heart size={25} />
@@ -1519,24 +1575,26 @@ export default async function ProblemPage({
                             </Link>
                           )}
                           {user ? (
-                            <form action={voteProofAction.bind(null, proof.id, proofProblemSlugById.get(proof.id) ?? problem.slug)}>
-                              <button
-                                type="submit"
-                                className={userVotedProof ? "secondary vote-button-active" : "secondary"}
-                                disabled={isOwnProof}
-                                aria-pressed={userVotedProof}
-                                title={
-                                  isOwnProof
-                                    ? t.problemDetail.cannotVoteOwnSolution
-                                    : userVotedProof
-                                      ? t.problemDetail.removeUsefulVote
-                                      : t.problemDetail.markUseful
-                                }
-                              >
-                                <ThumbsUp size={16} />
-                                {votes}
-                              </button>
-                            </form>
+                            <ParticleBurstZone kind="thumb" active={!userVotedProof && !isOwnProof}>
+                              <form action={voteProofAction.bind(null, proof.id, proofProblemSlugById.get(proof.id) ?? problem.slug)}>
+                                <button
+                                  type="submit"
+                                  className={userVotedProof ? "secondary vote-button-active" : "secondary"}
+                                  disabled={isOwnProof}
+                                  aria-pressed={userVotedProof}
+                                  title={
+                                    isOwnProof
+                                      ? t.problemDetail.cannotVoteOwnSolution
+                                      : userVotedProof
+                                        ? t.problemDetail.removeUsefulVote
+                                        : t.problemDetail.markUseful
+                                  }
+                                >
+                                  <ThumbsUp size={16} />
+                                  {votes}
+                                </button>
+                              </form>
+                            </ParticleBurstZone>
                           ) : (
                             <span className="meta">{t.problemDetail.usefulVotes(votes)}</span>
                           )}

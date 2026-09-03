@@ -23,9 +23,6 @@ Cache-Control: public, max-age=31536000, immutable
 | category-theory | Forest Distant Views |
 | algebra | Oak Grove |
 | linear-algebra | The Forest Clearing |
-| number-theory | Birch Forest |
-| representation-theory | Pine Forest |
-| algebraic-geometry | The Dark Wood |
 | geometry | Oaks in Old Peterhof |
 | differential-geometry | Mast-Tree Grove |
 | general-topology | Forest |
@@ -33,10 +30,12 @@ Cache-Control: public, max-age=31536000, immutable
 | real-analysis | Pine Forest |
 | complex-analysis | Pine on Sand |
 | functional-analysis | Branches. A Study |
+| several-variable-functions | Mixed Forest |
 | differential-equations | Birches after Storm |
 | probability-statistics | At the Edge of the Pine Forest |
-| combinatorics | Mixed Forest |
+| computation | Autumn |
 | graphs-discrete-math | Wind-Fallen Trees |
-| scientific-computing | Autumn |
-| mathematical-physics | Winter |
+| history-of-mathematics | Winter |
 | other | Forest Landscape with Herons |
+| misc | Rye |
+| enigma | In the Wild North |

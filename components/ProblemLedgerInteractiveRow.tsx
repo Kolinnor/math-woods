@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Check, Heart, House, Target } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { ParticleBurstZone } from "@/components/ParticleBurstZone";
 
 type BrowserOperation = "solve" | "unsolve" | "attempt" | "unattempt" | "favorite";
 
@@ -104,31 +105,33 @@ export function ProblemLedgerInteractiveRow({
             <Check size={14} strokeWidth={3} />
           </Link>
         ) : (
-          <button
-            type="button"
-            className={`problem-ledger-check${solved ? " is-solved" : ""}`}
-            title={solveLabel}
-            aria-label={solveLabel}
-            aria-pressed={solved}
-            disabled={pending !== null}
-            onClick={() => {
-              const wasSolved = solved;
-              const wasAttempted = attempted;
-              void persist(
-                solved ? "unsolve" : "solve",
-                () => {
-                  setSolved(!wasSolved);
-                  if (wasSolved) setAttempted(true);
-                },
-                () => {
-                  setSolved(wasSolved);
-                  setAttempted(wasAttempted);
-                }
-              );
-            }}
-          >
-            <Check size={14} strokeWidth={3} />
-          </button>
+          <ParticleBurstZone kind="confetti" active={!solved}>
+            <button
+              type="button"
+              className={`problem-ledger-check${solved ? " is-solved" : ""}`}
+              title={solveLabel}
+              aria-label={solveLabel}
+              aria-pressed={solved}
+              disabled={pending !== null}
+              onClick={() => {
+                const wasSolved = solved;
+                const wasAttempted = attempted;
+                void persist(
+                  solved ? "unsolve" : "solve",
+                  () => {
+                    setSolved(!wasSolved);
+                    if (wasSolved) setAttempted(true);
+                  },
+                  () => {
+                    setSolved(wasSolved);
+                    setAttempted(wasAttempted);
+                  }
+                );
+              }}
+            >
+              <Check size={14} strokeWidth={3} />
+            </button>
+          </ParticleBurstZone>
         ))}
       </div>
 
@@ -174,32 +177,34 @@ export function ProblemLedgerInteractiveRow({
             {favoriteCount}
           </Link>
         ) : (
-          <button
-            type="button"
-            className={favorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
-            title={favorite ? labels.removeFavorite : labels.addFavorite}
-            aria-label={favorite ? labels.removeFavorite : labels.addFavorite}
-            aria-pressed={favorite}
-            disabled={pending !== null}
-            onClick={() => {
-              const wasFavorite = favorite;
-              const previousCount = favoriteCount;
-              void persist(
-                "favorite",
-                () => {
-                  setFavorite(!wasFavorite);
-                  setFavoriteCount(Math.max(0, previousCount + (wasFavorite ? -1 : 1)));
-                },
-                () => {
-                  setFavorite(wasFavorite);
-                  setFavoriteCount(previousCount);
-                }
-              );
-            }}
-          >
-            <Heart size={15} fill={favorite ? "currentColor" : "none"} />
-            {favoriteCount}
-          </button>
+          <ParticleBurstZone kind="heart" active={!favorite}>
+            <button
+              type="button"
+              className={favorite ? "problem-favorite-count problem-favorite-count-own" : "problem-favorite-count"}
+              title={favorite ? labels.removeFavorite : labels.addFavorite}
+              aria-label={favorite ? labels.removeFavorite : labels.addFavorite}
+              aria-pressed={favorite}
+              disabled={pending !== null}
+              onClick={() => {
+                const wasFavorite = favorite;
+                const previousCount = favoriteCount;
+                void persist(
+                  "favorite",
+                  () => {
+                    setFavorite(!wasFavorite);
+                    setFavoriteCount(Math.max(0, previousCount + (wasFavorite ? -1 : 1)));
+                  },
+                  () => {
+                    setFavorite(wasFavorite);
+                    setFavoriteCount(previousCount);
+                  }
+                );
+              }}
+            >
+              <Heart size={15} fill={favorite ? "currentColor" : "none"} />
+              {favoriteCount}
+            </button>
+          </ParticleBurstZone>
         )}
       </div>
 

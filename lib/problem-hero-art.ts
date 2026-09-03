@@ -30,21 +30,6 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
     alt: "Ivan Shishkin, The Forest Clearing",
     painting: "The Forest Clearing"
   },
-  "number-theory": {
-    src: `${IMAGE_BASE}/number-theory.webp`,
-    alt: "Ivan Shishkin, Birch Forest",
-    painting: "Birch Forest"
-  },
-  "representation-theory": {
-    src: `${IMAGE_BASE}/representation-theory.webp`,
-    alt: "Ivan Shishkin, Pine Forest",
-    painting: "Pine Forest"
-  },
-  "algebraic-geometry": {
-    src: `${IMAGE_BASE}/algebraic-geometry.webp`,
-    alt: "Ivan Shishkin, The Dark Wood",
-    painting: "The Dark Wood"
-  },
   geometry: {
     src: `${IMAGE_BASE}/geometry.webp`,
     alt: "Ivan Shishkin, Oaks in Old Peterhof",
@@ -59,6 +44,11 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
     src: `${IMAGE_BASE}/general-topology.webp`,
     alt: "Ivan Shishkin, Forest",
     painting: "Forest"
+  },
+  "algebraic-topology": {
+    src: `${IMAGE_BASE}/algebraic-topology.webp`,
+    alt: "Ivan Shishkin, Forest Lodge",
+    painting: "Forest Lodge"
   },
   "real-analysis": {
     src: `${IMAGE_BASE}/real-analysis.webp`,
@@ -75,6 +65,11 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
     alt: "Ivan Shishkin, Branches. A Study",
     painting: "Branches. A Study"
   },
+  "several-variable-functions": {
+    src: `${IMAGE_BASE}/several-variable-functions.webp`,
+    alt: "Ivan Shishkin, Mixed Forest",
+    painting: "Mixed Forest"
+  },
   "differential-equations": {
     src: `${IMAGE_BASE}/differential-equations.webp`,
     alt: "Ivan Shishkin, Birches after Storm",
@@ -85,23 +80,18 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
     alt: "Ivan Shishkin, At the Edge of the Pine Forest",
     painting: "At the Edge of the Pine Forest"
   },
-  combinatorics: {
-    src: `${IMAGE_BASE}/combinatorics.webp`,
-    alt: "Ivan Shishkin, Mixed Forest",
-    painting: "Mixed Forest"
+  computation: {
+    src: `${IMAGE_BASE}/computation.webp`,
+    alt: "Ivan Shishkin, Autumn",
+    painting: "Autumn"
   },
   "graphs-discrete-math": {
     src: `${IMAGE_BASE}/graphs-discrete-math.webp`,
     alt: "Ivan Shishkin, Wind-Fallen Trees",
     painting: "Wind-Fallen Trees"
   },
-  "scientific-computing": {
-    src: `${IMAGE_BASE}/scientific-computing.webp`,
-    alt: "Ivan Shishkin, Autumn",
-    painting: "Autumn"
-  },
-  "mathematical-physics": {
-    src: `${IMAGE_BASE}/mathematical-physics.webp`,
+  "history-of-mathematics": {
+    src: `${IMAGE_BASE}/history-of-mathematics.webp`,
     alt: "Ivan Shishkin, Winter",
     painting: "Winter"
   },
@@ -109,6 +99,16 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
     src: `${IMAGE_BASE}/other.webp`,
     alt: "Ivan Shishkin, Forest Landscape with Herons",
     painting: "Forest Landscape with Herons"
+  },
+  misc: {
+    src: `${IMAGE_BASE}/misc.webp`,
+    alt: "Ivan Shishkin, Rye",
+    painting: "Rye"
+  },
+  enigma: {
+    src: `${IMAGE_BASE}/enigma.webp`,
+    alt: "Ivan Shishkin, In the Wild North",
+    painting: "In the Wild North"
   }
 };
 

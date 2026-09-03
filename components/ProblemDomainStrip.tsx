@@ -5,7 +5,9 @@ import { ChevronDown } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
+import { MatrixGlyph } from "@/components/MatrixGlyph";
 import { ProgressTicks } from "@/components/ProgressTicks";
+import { TopologyBlobGlyph } from "@/components/TopologyBlobGlyph";
 import type { ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
 import type { Dictionary, InterfaceLocale } from "@/lib/i18n/types";
 import { searchFilterHref } from "@/lib/search-filters";
@@ -47,7 +49,7 @@ export function ProblemDomainStrip({
   progress,
   selectedDomain
 }: ProblemDomainStripProps) {
-  const [sort, setSort] = useState<SortKey>("count");
+  const [sort, setSort] = useState<SortKey>("family");
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(initiallyExpanded);
   const searchParams = useSearchParams();
@@ -62,7 +64,7 @@ export function ProblemDomainStrip({
       if (sort === "name") return a.label.localeCompare(b.label, locale);
       if (sort === "diff") return a.diff - b.diff || a.label.localeCompare(b.label, locale);
       if (sort === "date") return a.year - b.year || a.label.localeCompare(b.label, locale);
-      return families[a.family].order - families[b.family].order || a.label.localeCompare(b.label, locale);
+      return families[a.family].order - families[b.family].order;
     });
   }, [domains, families, locale, problemCounts, sort]);
   const activeSortLabel =
@@ -159,7 +161,15 @@ export function ProblemDomainStrip({
                 scroll={false}
               >
                 <span className="problem-domain-glyph" style={{ backgroundColor: families[domain.family].color }}>
-                  {domain.glyph}
+                  {domain.value === "general-topology" ? (
+                    <TopologyBlobGlyph fill={families[domain.family].color} />
+                  ) : domain.value === "linear-algebra" ? (
+                    <MatrixGlyph />
+                  ) : domain.value === "computation" ? (
+                    <span style={{ display: "inline-block", transform: "translate(-1.5px, 1.5px)" }}>{domain.glyph}</span>
+                  ) : (
+                    domain.glyph
+                  )}
                 </span>
                 <span>{domain.label}</span>
                 {progress?.[domain.value] && (
