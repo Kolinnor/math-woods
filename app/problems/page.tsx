@@ -676,7 +676,7 @@ export default async function ProblemsPage({
     return problem ? [problem] : [];
   });
   const displayedTranslationGroupIds = problems.map((problem) => problem.translationGroupId);
-  const [groupAttempts, groupFavorites] = displayedTranslationGroupIds.length
+  const [groupAttempts, groupFavorites, groupProofs, groupHints] = displayedTranslationGroupIds.length
     ? await Promise.all([
         prisma.problemAttempt.findMany({
           where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
@@ -692,9 +692,21 @@ export default async function ProblemsPage({
             userId: true,
             problem: { select: { translationGroupId: true } }
           }
+        }),
+        prisma.problemProof.findMany({
+          where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
+          select: {
+            problem: { select: { translationGroupId: true } }
+          }
+        }),
+        prisma.problemHint.findMany({
+          where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
+          select: {
+            problem: { select: { translationGroupId: true } }
+          }
         })
       ])
-    : [[], []];
+    : [[], [], [], []];
   const solvedUsersByGroup = new Map<string, Set<number>>();
   const favoriteUsersByGroup = new Map<string, Set<number>>();
   const openedTranslationGroupIds = new Set<string>();
@@ -713,6 +725,16 @@ export default async function ProblemsPage({
     const favoriteUsers = favoriteUsersByGroup.get(groupId) ?? new Set<number>();
     favoriteUsers.add(favorite.userId);
     favoriteUsersByGroup.set(groupId, favoriteUsers);
+  }
+  const solutionCountByGroup = new Map<string, number>();
+  for (const proof of groupProofs) {
+    const groupId = proof.problem.translationGroupId;
+    solutionCountByGroup.set(groupId, (solutionCountByGroup.get(groupId) ?? 0) + 1);
+  }
+  const hintCountByGroup = new Map<string, number>();
+  for (const hint of groupHints) {
+    const groupId = hint.problem.translationGroupId;
+    hintCountByGroup.set(groupId, (hintCountByGroup.get(groupId) ?? 0) + 1);
   }
   const paginationParams = {
     q: query,
@@ -1000,7 +1022,8 @@ export default async function ProblemsPage({
               const isSolved = Boolean(user && groupSolvedUsers.has(user.id));
               const isOpened = !isSolved && openedTranslationGroupIds.has(problem.translationGroupId);
               const isUserFavorite = Boolean(!isOwnProblem && user && groupFavoriteUsers.has(user.id));
-              const externalSolveCount = [...groupSolvedUsers].filter((userId) => userId !== problem.authorId).length;
+              const groupSolutionCount = solutionCountByGroup.get(problem.translationGroupId) ?? 0;
+              const groupHintCount = hintCountByGroup.get(problem.translationGroupId) ?? 0;
               const externalFavoriteCount = [...groupFavoriteUsers].filter((userId) => userId !== problem.authorId).length;
               const revealSpoilerDomains = showSpoilerTags || isSolved;
               const visibleDomainCodes = problem.domains.length
@@ -1101,7 +1124,9 @@ export default async function ProblemsPage({
                         {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""}
                       </span>
                       <span aria-hidden="true">·</span>
-                      <span className="problem-ledger-solve-count">{t.problems.solvedCount(externalSolveCount)}</span>
+                      <span className="problem-ledger-solve-count">{t.problems.solutionsCount(groupSolutionCount)}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="problem-ledger-solve-count">{t.problems.hintsCount(groupHintCount)}</span>
                     </div>
                     </div>
                   </Link>
