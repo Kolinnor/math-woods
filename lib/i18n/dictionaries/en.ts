@@ -1710,7 +1710,14 @@ export const en = {
     deleteAnnouncement: "Delete announcement",
     confirmDelete: "Are you sure you want to delete this announcement?",
     yes: "Yes",
-    no: "No"
+    no: "No",
+    like: "Like",
+    unlike: "Unlike",
+    discussion: (count: number) => `Have your say (${count})`,
+    noComments: "No comments yet.",
+    publishComment: "Post",
+    deleteComment: "Delete comment",
+    confirmDeleteComment: "Delete this comment? This cannot be undone."
   },
   recentChangesPage: {
     title: "Recent changes",

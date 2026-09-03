@@ -569,6 +569,15 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
           : notification.body
       };
     }
+    case NotificationType.ANNOUNCEMENT_COMMENTED: {
+      const actor = notificationActor(notification, " commented on ");
+      return {
+        title: "Nouveau commentaire sur votre annonce",
+        body: problemTitle
+          ? `${actor} a commenté « ${problemTitle} ».`
+          : `${actor} a commenté votre annonce.`
+      };
+    }
   }
 }
 

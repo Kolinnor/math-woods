@@ -1715,7 +1715,14 @@ export const fr = {
     deleteAnnouncement: "Supprimer l'annonce",
     confirmDelete: "Êtes-vous sûr de vouloir effacer cette annonce ?",
     yes: "Oui",
-    no: "Non"
+    no: "Non",
+    like: "J'aime",
+    unlike: "Retirer mon like",
+    discussion: (count: number) => `Donnez votre avis (${count})`,
+    noComments: "Aucun commentaire pour le moment.",
+    publishComment: "Publier",
+    deleteComment: "Supprimer le commentaire",
+    confirmDeleteComment: "Supprimer ce commentaire ? Cette action est irréversible."
   },
   recentChangesPage: {
     title: "Modifications récentes",

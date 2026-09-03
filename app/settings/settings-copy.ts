@@ -297,7 +297,10 @@ const frenchSettingsText: Record<string, string> = {
     "Pour les utilisateurs de confiance et les administrateurs : un ancien concept à améliorer, sans nouvelle suggestion avant son traitement.",
   "Weekly contest updates": "Actualités du concours hebdomadaire",
   "When a contest begins, approaches its deadline, or announces its results.":
-    "Lorsqu'un concours commence, approche de sa date limite ou annonce ses résultats."
+    "Lorsqu'un concours commence, approche de sa date limite ou annonce ses résultats.",
+  "Comments on your announcements": "Commentaires sur vos annonces",
+  "When someone comments on an announcement you posted.":
+    "Lorsqu'une personne commente une annonce que vous avez publiée."
 };
 
 export function settingsText(locale: string, text: string) {

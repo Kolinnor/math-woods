@@ -327,6 +327,7 @@ enum NotificationType {
   TRUSTED_USER_CANDIDATE
   TRUSTED_USER_PROMOTED
   SITE_IMPROVEMENT_COMPLETED
+  ANNOUNCEMENT_COMMENTED
 }
 
 enum TrustedUserRecommendationStatus {
@@ -444,6 +445,8 @@ model User {
   siteAnnouncementsCreated        SiteAnnouncement[]              @relation("SiteAnnouncementCreator")
   siteAnnouncementRecipients      SiteAnnouncementRecipient[]
   announcementsCreated            Announcement[]                  @relation("AnnouncementAuthor")
+  announcementLikes               AnnouncementLike[]
+  announcementComments            AnnouncementComment[]
   conceptMergeProposalsCreated    ConceptMergeProposal[]          @relation("ConceptMergeProposer")
   conceptMergeProposalsReviewed   ConceptMergeProposal[]          @relation("ConceptMergeReviewer")
   conceptMergeCredits             ConceptMergeContributor[]
@@ -2194,15 +2197,43 @@ model SiteAnnouncementRecipient {
 }
 
 model Announcement {
-  id           Int      @id @default(autoincrement())
+  id           Int                    @id @default(autoincrement())
   title        String
   bodyMarkdown String
   bodyHtml     String
   createdById  Int?
-  createdAt    DateTime @default(now())
-  createdBy    User?    @relation("AnnouncementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime               @default(now())
+  createdBy    User?                  @relation("AnnouncementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  likes        AnnouncementLike[]
+  comments     AnnouncementComment[]
 
   @@index([createdAt])
+}
+
+model AnnouncementLike {
+  userId         Int
+  announcementId Int
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, announcementId])
+  @@index([announcementId])
+}
+
+model AnnouncementComment {
+  id             Int          @id @default(autoincrement())
+  announcementId Int
+  authorId       Int?
+  bodyMarkdown   String
+  bodyHtml       String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  author         User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([announcementId, createdAt])
+  @@index([authorId])
 }
 
 model TrustedUserRecommendation {

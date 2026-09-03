@@ -210,6 +210,11 @@ const notificationOptions = [
     type: NotificationType.CONTEST_UPDATE,
     title: "Weekly contest updates",
     description: "When a contest begins, approaches its deadline, or announces its results."
+  },
+  {
+    type: NotificationType.ANNOUNCEMENT_COMMENTED,
+    title: "Comments on your announcements",
+    description: "When someone comments on an announcement you posted."
   }
 ] as const;
 
