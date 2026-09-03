@@ -1517,7 +1517,7 @@ export const fr = {
     openLanguageVersion: (language: string) => `Ouvrir la version ${language}`,
     translateExercise: "Traduire aussi cet exercice",
     conceptStubDescription: "Une courte définition précise et un exemple peuvent déjà former une première version utile.",
-    defaultConceptContent: "##### Définition intuitive (si utile)\n\nAjoutez une ou deux phrases seulement si elles aident à situer l’idée.\n\n##### Définition formelle\n\nÀ compléter avec LaTeX.\n\n##### Exemples\n\n- Exemple lié à `[[polynomial|polynôme]]`.",
+    defaultConceptContent: "##### Définition intuitive\n\nAjoutez une ou deux phrases si elles aident à situer l’idée.\n\n##### Définition formelle\n\nÀ compléter avec LaTeX.\n\n##### Exemples et Remarques\n\nVous pouvez _souligner_, écrire en *italique* ou en **gras**. N’oubliez pas d’associer des concepts, par exemple [[Polynôme|polynôme]] (concept à gauche, texte à droite).",
     editDescription: "Les modifications créent une révision et actualisent automatiquement les liens sortants.",
     editProblemDescription: "Les modifications créent une révision et actualisent automatiquement les liens wiki.",
     proposalDescription: "Vos modifications seront envoyées à un administrateur pour relecture avant d’être visibles par les autres utilisateurs.",
