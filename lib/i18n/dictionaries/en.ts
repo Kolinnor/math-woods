@@ -377,6 +377,7 @@ export const en = {
     title: "Users",
     community: "Community",
     members: (count: number) => `${count} members`,
+    online: (count: number) => `${count} online`,
     rankingMode: "Ranking mode",
     search: "Search users",
     searchPlaceholder: "Username or name",
