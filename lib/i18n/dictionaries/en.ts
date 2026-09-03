@@ -63,6 +63,8 @@ export const en = {
     signInToResend: "Sign in to resend",
     usernameOrEmail: "Username or email",
     password: "Password",
+    forgotPassword: "Forgot password?",
+    passwordResetSuccess: "Your password has been reset. You can now sign in.",
     profileName: "Profile name",
     profileNameHelp: "This is the name other people will see. It can contain spaces.",
     email: "Email",
@@ -90,7 +92,8 @@ export const en = {
       oauthUnavailable: "This sign-in provider is not available right now.",
       oauthDeactivated: "This external account is linked to a deactivated Math Woods account. Reactivate that account before signing in again.",
       oauthFailed: "The external sign-in could not be completed. Please try again.",
-      oauthUnknownProvider: "Unknown sign-in provider."
+      oauthUnknownProvider: "Unknown sign-in provider.",
+      tooManyPasswordResets: "Too many requests. Please wait a moment and try again."
     },
     complete: {
       title: "Complete sign in",
@@ -1257,6 +1260,37 @@ export const en = {
     chooseAnother: "Choose another address",
     resend: "Resend verification email",
     bannerMessage: "Verify your email to solve, vote, discuss, and contribute."
+  },
+  forgotPasswordPage: {
+    title: "Forgot password",
+    eyebrow: "Account",
+    description: "Enter your username or email and we will send you a link to choose a new password.",
+    identifierLabel: "Username or email",
+    submit: "Send reset link",
+    sent: "If an account matches that username or email, a reset link has been sent. Check your inbox.",
+    notConfigured: "Email delivery is not configured on this server yet. Please contact an administrator.",
+    rateLimited: "Too many requests. Please wait a moment and try again.",
+    backToLogin: "Back to login"
+  },
+  resetPasswordPage: {
+    title: "Choose a new password",
+    eyebrow: "Account",
+    description: "Confirm your identity and choose a new password for your Math Woods account.",
+    identifierLabel: "Username or email",
+    identifierHelp: "Enter the username or email of the account this reset link was sent to.",
+    passwordLabel: "New password",
+    confirmPasswordLabel: "Confirm new password",
+    submit: "Reset password",
+    invalidTitle: "Reset link expired",
+    invalid: "This password reset link is missing, invalid, or expired.",
+    requestNew: "Request a new link",
+    errors: {
+      mismatch: "The two passwords do not match.",
+      expired: "This password reset link has expired. Please request a new one.",
+      "identifier-mismatch": "The username or email you entered does not match this reset link.",
+      "weak-password": "The new password must be at least 8 characters.",
+      "rate-limited": "Too many attempts. Please wait a moment and try again."
+    }
   },
   conceptDetail: {
     concept: "Concept",
