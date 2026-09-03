@@ -379,6 +379,7 @@ export const fr = {
     title: "Utilisateurs",
     community: "Communauté",
     members: (count: number) => `${count} membre${count > 1 ? "s" : ""}`,
+    online: (count: number) => `${count} connecté${count > 1 ? "s" : ""}`,
     rankingMode: "Mode de classement",
     search: "Rechercher un utilisateur",
     searchPlaceholder: "Pseudo ou nom",
