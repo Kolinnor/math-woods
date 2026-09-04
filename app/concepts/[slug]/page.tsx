@@ -24,6 +24,7 @@ import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublishConceptEditForConcept } from "@/lib/concept-edit-access";
 import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
+import { distinctContentCountsByProblemGroup } from "@/lib/content-translation-counts";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
@@ -56,6 +57,8 @@ import {
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
 import { cleanWikiLinkTarget, missingConceptHref } from "@/lib/wikilinks";
+import { formatLibraryReference } from "@/lib/library";
+import { localizedTranslation } from "@/lib/library-queries";
 
 export const dynamic = "force-dynamic";
 
@@ -178,6 +181,10 @@ export default async function ConceptPage({
         }
       },
       references: { orderBy: { position: "asc" } },
+      libraryReferences: {
+        include: { reference: { include: { translations: true } } },
+        orderBy: { position: "asc" }
+      },
       translatedFromConcept: {
         select: { id: true, slug: true, title: true, language: true, createdById: true }
       },
@@ -322,13 +329,13 @@ export default async function ConceptPage({
     practiceTranslationGroupIds.length
       ? prisma.problemProof.findMany({
           where: { problem: { translationGroupId: { in: practiceTranslationGroupIds } } },
-          select: { problem: { select: { translationGroupId: true } } }
+          select: { translationGroupId: true, problem: { select: { translationGroupId: true } } }
         })
       : [],
     practiceTranslationGroupIds.length
       ? prisma.problemHint.findMany({
           where: { problem: { translationGroupId: { in: practiceTranslationGroupIds } } },
-          select: { problem: { select: { translationGroupId: true } } }
+          select: { translationGroupId: true, problem: { select: { translationGroupId: true } } }
         })
       : []
   ]);
@@ -348,16 +355,8 @@ export default async function ConceptPage({
     solvedUsers.add(attempt.userId);
     solvedUsersByPracticeGroup.set(groupId, solvedUsers);
   }
-  const solutionCountByPracticeGroup = new Map<string, number>();
-  for (const proof of practiceProofs) {
-    const groupId = proof.problem.translationGroupId;
-    solutionCountByPracticeGroup.set(groupId, (solutionCountByPracticeGroup.get(groupId) ?? 0) + 1);
-  }
-  const hintCountByPracticeGroup = new Map<string, number>();
-  for (const hint of practiceHints) {
-    const groupId = hint.problem.translationGroupId;
-    hintCountByPracticeGroup.set(groupId, (hintCountByPracticeGroup.get(groupId) ?? 0) + 1);
-  }
+  const solutionCountByPracticeGroup = distinctContentCountsByProblemGroup(practiceProofs);
+  const hintCountByPracticeGroup = distinctContentCountsByProblemGroup(practiceHints);
   const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
   const targetViewLanguage = requestedLanguage ?? preferredLanguage;
   const selectedTranslation = selectContentTranslation(
@@ -749,22 +748,21 @@ export default async function ConceptPage({
           </details>
         </div>
 
-        {concept.references.length > 0 && (
+        {concept.libraryReferences.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-3 text-lg font-semibold">{t.conceptDetail.references}</h2>
           <ol className="grid list-decimal gap-3 pl-6 text-sm">
-            {concept.references.map((reference) => (
-              <li key={reference.id}>
-                {reference.url ? (
-                  <a href={reference.url} rel="noopener noreferrer" className="underline">
-                    {reference.title}
-                  </a>
-                ) : (
-                  <span>{reference.title}</span>
-                )}
-                {reference.note && <span className="muted"> — {reference.note}</span>}
-              </li>
-            ))}
+            {concept.libraryReferences.map((link) => {
+              const translatedReference = localizedTranslation(link.reference.translations, interfaceLocale);
+              return <li key={link.id}>
+                {user && canUseAdminTools(user) ? <Link href={`/library/references/${link.reference.slug}`} className="underline">
+                  {translatedReference?.displayTitle ?? link.reference.canonicalTitle}
+                </Link> : (translatedReference?.displayTitle ?? link.reference.canonicalTitle)}{translatedReference && <ContentLanguageFallback language={translatedReference.language} expectedLanguage={interfaceLocale} />}
+                <span className="muted"> — {formatLibraryReference(link.reference)}</span>
+                {link.locator && <span className="muted"> · {link.locator}</span>}
+                {link.note && <span className="muted"> · {link.note}</span>}
+              </li>;
+            })}
           </ol>
         </section>
         )}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ConceptKind, ConceptStatus, MathDomain, NotificationType, Prisma, QualityStatus, ReportCategory, Role, UserMathLevel } from "@prisma/client";
+import { ConceptKind, ConceptStatus, LibraryStatus, MathDomain, NotificationType, Prisma, QualityStatus, ReportCategory, Role, UserMathLevel } from "@prisma/client";
 import { EditorState, StateEffect } from "@codemirror/state";
 import sharp from "sharp";
 import { discussionIsUnlocked, formatUnlockDistance, unlockDate } from "../lib/attempts.ts";
@@ -66,6 +66,7 @@ import { parseUserDiscoverySource } from "../lib/user-discovery-source.ts";
 import { displayNameComparisonKey, normalizeDisplayName } from "../lib/user-display.ts";
 import { notifyTrustedUsersOfRegistration } from "../lib/user-registration-notifications.ts";
 import { notificationPreferenceDefault } from "../lib/notification-preference-defaults.ts";
+import { formatLibraryReference, libraryPage, normalizeReferenceDedupeKey } from "../lib/library.ts";
 import {
   USER_REGISTRATION_SUMMARY_HREF,
   USER_REGISTRATION_SUMMARY_KEY,
@@ -370,6 +371,8 @@ import { latexCursorTargetForArrow, latexCursorTargetForVerticalArrow } from "..
 import { findLatexRanges } from "../lib/latex-ranges.ts";
 import { findLatexSyntaxTokens } from "../lib/latex-syntax-highlight.ts";
 import { parseAliases } from "../lib/concept-aliases.ts";
+import { directChatClearPlan } from "../lib/chat-clear.ts";
+import { distinctContentCountsByProblemGroup } from "../lib/content-translation-counts.ts";
 import { renderInlineMarkdown, renderMarkdown } from "../lib/markdown.ts";
 import {
   DEFAULT_MARKDOWN_FOLD_TITLE,
@@ -387,7 +390,11 @@ import {
   canAssignRole,
   canChangeConceptStatus,
   canDeletePlaylist,
+  canEditConceptTalkPost,
+  canEditDiscussionPost,
+  canEditLibraryDraft,
   canEditProblem,
+  canEditProofComment,
   canEditSolution,
   canProposeConceptEdit,
   canProposeProblemEdit,
@@ -396,6 +403,8 @@ import {
   canPublishProblemEditForTarget,
   canManageUserRoles,
   canReviewConcept,
+  canReviewLibraryEntry,
+  canViewLibraryEntry,
   canReviewProblem,
   canSetConceptStatus,
   canSetProblemQualityStatus,
@@ -1701,6 +1710,33 @@ await assertDailyContentCreationQuota(
 assert.equal(canUseModerationTools(Role.MODERATOR), true);
 assert.equal(canUseAdminTools(Role.MODERATOR), false);
 assert.equal(canUseAdminTools(Role.ADMIN), true);
+for (const canEditMessage of [canEditDiscussionPost, canEditProofComment, canEditConceptTalkPost]) {
+  assert.equal(canEditMessage({ id: 7, role: Role.USER }, { authorId: 7 }), true);
+  assert.equal(canEditMessage({ id: 8, role: Role.MODERATOR }, { authorId: 7 }), false);
+  assert.equal(canEditMessage({ id: 9, role: Role.ADMIN }, { authorId: 7 }), false);
+}
+assert.deepEqual(
+  [...distinctContentCountsByProblemGroup([
+    { translationGroupId: "solution-a", problem: { translationGroupId: "problem-a" } },
+    { translationGroupId: "solution-a", problem: { translationGroupId: "problem-a" } },
+    { translationGroupId: "solution-b", problem: { translationGroupId: "problem-a" } },
+    { translationGroupId: "solution-c", problem: { translationGroupId: "problem-b" } }
+  ])],
+  [["problem-a", 2], ["problem-b", 1]]
+);
+const firstChatClear = new Date("2026-09-04T10:00:00.000Z");
+const secondChatClear = new Date("2026-09-04T12:00:00.000Z");
+assert.deepEqual(
+  directChatClearPlan(
+    { userAId: 1, userBId: 2, userACleared: firstChatClear, userBCleared: null },
+    2,
+    secondChatClear
+  ),
+  {
+    data: { userBCleared: secondChatClear },
+    purgeThrough: firstChatClear
+  }
+);
 assert.equal(canTransferProblemAttribution(Role.USER), false);
 assert.equal(canTransferProblemAttribution(Role.MODERATOR), false);
 assert.equal(canTransferProblemAttribution(Role.ADMIN), true);
@@ -2526,6 +2562,7 @@ const disallowSolvedConjecturesMigrationSource = readFileSync(
 );
 const moderationActionsSource = readFileSync(join("lib", "actions", "moderation-actions.ts"), "utf-8");
 const conceptDetailSource = readFileSync(join("app", "concepts", "[slug]", "page.tsx"), "utf-8");
+const conceptEditPageSource = readFileSync(join("app", "concepts", "[slug]", "edit", "page.tsx"), "utf-8");
 const homeSource = readFileSync(join("app", "page.tsx"), "utf-8");
 const homePrioritiesPageSource = readFileSync(join("app", "tips", "priorities", "page.tsx"), "utf-8");
 const homePriorityActionsSource = readFileSync(join("lib", "actions", "home-priority-actions.ts"), "utf-8");
@@ -2818,7 +2855,10 @@ assert.match(conceptContributorGuidePageSource, /acknowledgeConceptContributorGu
 assert.match(conceptContributorGuidePageSource, /updateConceptContributorGuideAction\.bind/);
 assert.match(conceptContributorGuideActionsSource, /!canUseAdminTools\(user\)/);
 assert.match(conceptContributorGuideActionsSource, /conceptGuideAcknowledgedAt: new Date\(\)/);
-assert.match(conceptActionsSource, /if \(!user\.conceptGuideAcknowledgedAt\)/);
+assert.equal((conceptActionsSource.match(/if \(!user\.conceptGuideAcknowledgedAt/g) ?? []).length, 2);
+assert.match(conceptActionsSource, /!user\.conceptGuideAcknowledgedAt && !isApprovingProposal/);
+assert.match(conceptEditPageSource, /if \(!user\.conceptGuideAcknowledgedAt\)/);
+assert.match(conceptEditPageSource, /\/contributing\/guides\/concepts\?required=1&returnTo=/);
 assert.equal(canUseStoredConceptContributorGuide(null, "fr"), false);
 assert.equal(
   canUseStoredConceptContributorGuide(
@@ -3110,6 +3150,24 @@ assert.deepEqual(localizeNotification({
 }, "fr"), {
   title: "Modification de concept non retenue",
   body: "Vos modifications proposées pour « Espace compact » n’ont pas été retenues. Motif : Please cite a source."
+});
+assert.deepEqual(localizeNotification({
+  type: NotificationType.LIBRARY_ENTRY_SUBMITTED,
+  title: "Library entry awaiting review",
+  body: 'Alouette submitted a library historical milestone: "La naissance du calcul".',
+  actor: notificationActor
+}, "fr"), {
+  title: "Fiche de la bibliothèque à relire",
+  body: "Alouette a envoyé un repère historique en relecture : « La naissance du calcul »."
+});
+assert.deepEqual(localizeNotification({
+  type: NotificationType.LIBRARY_ENTRY_CHANGES_REQUESTED,
+  title: "Changes requested on your library entry",
+  body: 'Alouette requested changes to your library reference: "Algèbre". Feedback: Ajouter l’édition utilisée.',
+  actor: notificationActor
+}, "fr"), {
+  title: "Modifications demandées sur votre fiche",
+  body: "Alouette a demandé des modifications sur votre référence « Algèbre ». Retour : Ajouter l’édition utilisée."
 });
 assert.deepEqual(
   localizeNotification({
@@ -4898,6 +4956,52 @@ assert.equal(notificationPreferenceDefault(NotificationType.USER_REGISTERED, Rol
 assert.equal(notificationPreferenceDefault(NotificationType.USER_REGISTERED, Role.ADMIN), false);
 assert.equal(notificationPreferenceDefault(NotificationType.USER_REGISTERED, Role.OWNER), true);
 assert.equal(notificationPreferenceDefault(NotificationType.PROBLEM_SOLVED, Role.USER), true);
+
+assert.equal(normalizeReferenceDedupeKey({ title: "Different title", doi: "https://doi.org/10.1000/ABC" }), "doi:10.1000/abc");
+assert.equal(normalizeReferenceDedupeKey({ title: "A book", isbn: "978-1-234-56789-X" }), "isbn:978123456789x");
+assert.equal(formatLibraryReference({ canonicalTitle: "Algebra", authors: "A. Author", publisher: "Trees", year: 2026, yearLabel: null, formattedOverride: null }), "A. Author. Algebra. Trees. 2026");
+assert.deepEqual(libraryPage(undefined, 65, 30), { page: 1, totalPages: 3, skip: 0, take: 30 });
+assert.deepEqual(libraryPage("99", 65, 30), { page: 3, totalPages: 3, skip: 60, take: 30 });
+assert.deepEqual(libraryPage("invalid", 0, 30), { page: 1, totalPages: 1, skip: 0, take: 30 });
+assert.equal(canEditLibraryDraft({ id: 1, role: Role.USER, emailVerifiedAt: new Date() }, { createdById: 1, status: LibraryStatus.DRAFT }), true);
+assert.equal(canEditLibraryDraft({ id: 1, role: Role.USER, emailVerifiedAt: new Date() }, { createdById: 1, status: LibraryStatus.PUBLISHED }), false);
+assert.equal(canEditLibraryDraft({ id: 2, role: Role.MODERATOR }, { createdById: 1, status: LibraryStatus.DRAFT }), false);
+assert.equal(canEditLibraryDraft({ id: 2, role: Role.MODERATOR }, { createdById: 1, status: LibraryStatus.PUBLISHED }), true);
+assert.equal(canEditLibraryDraft({ id: 2, role: Role.ADMIN }, { createdById: 1, status: LibraryStatus.ARCHIVED }), true);
+assert.equal(canReviewLibraryEntry({ id: 2, role: Role.MODERATOR }, { createdById: 1 }), true);
+assert.equal(canReviewLibraryEntry({ id: 1, role: Role.MODERATOR }, { createdById: 1 }), false);
+assert.equal(canReviewLibraryEntry({ id: 1, role: Role.ADMIN }, { createdById: 1 }), true);
+assert.equal(canViewLibraryEntry(null, { createdById: 1, status: LibraryStatus.PUBLISHED }), true);
+assert.equal(canViewLibraryEntry({ id: 2, role: Role.MODERATOR }, { createdById: 1, status: LibraryStatus.DRAFT }), false);
+assert.equal(canViewLibraryEntry({ id: 2, role: Role.MODERATOR }, { createdById: 1, status: LibraryStatus.PENDING_REVIEW }), true);
+assert.equal(canViewLibraryEntry({ id: 2, role: Role.ADMIN }, { createdById: 1, status: LibraryStatus.ARCHIVED }), true);
+
+// The public workflow permissions remain separate from the temporary admin rollout.
+assert.equal(canUseAdminTools(Role.USER), false);
+assert.equal(canUseAdminTools(Role.MODERATOR), false);
+assert.equal(canUseAdminTools(Role.ADMIN), true);
+assert.equal(canUseAdminTools(Role.OWNER), true);
+for (const path of tsxFiles(join("app", "library")).filter((path) => path.endsWith("page.tsx") || path.endsWith("layout.tsx"))) {
+  assert.match(readFileSync(path, "utf-8"), /requireAdmin\(\)/, path);
+}
+const libraryActionsSource = readFileSync(join("lib", "actions", "library-actions.ts"), "utf-8");
+const libraryActionBodies = libraryActionsSource.split(/export async function /).slice(1);
+assert.ok(libraryActionBodies.length > 0);
+for (const body of libraryActionBodies) {
+  assert.match(body, /\{\s*const user = await requireAdmin\(\);/);
+}
+assert.doesNotMatch(libraryActionsSource, /requireVerifiedUser|requireUser|Role\.MODERATOR/);
+const libraryExportSource = readFileSync(join("app", "library", "references", "export", "route.ts"), "utf-8");
+assert.match(libraryExportSource, /if \(!user \|\| !canUseAdminTools\(user\)\)/);
+assert.match(libraryExportSource, /status: user \? 403 : 401/);
+assert.ok(libraryExportSource.indexOf("!canUseAdminTools(user)") < libraryExportSource.indexOf("prisma.libraryReference.findMany"));
+assert.match(libraryExportSource, /"Cache-Control": "private, no-store"/);
+assert.doesNotMatch(sitemapSource, /\/library/);
+assert.equal((layoutSource.match(/user && canUseAdminTools\(user\) && <Link href=\{libraryRoute\}/g) ?? []).length, 2);
+for (const source of [problemActionsSource, conceptActionsSource]) {
+  assert.match(source, /submittedLibraryReferences = canUseAdminTools\(user\) \? parseLibraryReferenceLinks/);
+  assert.match(source, /submittedLibraryReferences = publishesImmediately && canUseAdminTools\(user\)/);
+}
 
 const onceRateLimitKey = `core-test-once-${Date.now()}`;
 

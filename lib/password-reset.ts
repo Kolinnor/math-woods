@@ -114,14 +114,26 @@ export async function resetPasswordWithToken(
 
   if (newPassword.length < 8) return { ok: false, reason: "weak-password" };
 
-  await prisma.$transaction([
-    prisma.user.update({
+  const resetApplied = await prisma.$transaction(async (tx) => {
+    const consumed = await tx.passwordResetToken.deleteMany({
+      where: {
+        id: reset.id,
+        tokenHash: tokenHash(token),
+        expiresAt: { gt: new Date() }
+      }
+    });
+    if (consumed.count !== 1) return false;
+
+    await tx.user.update({
       where: { id: reset.userId },
       data: { passwordHash: hashPassword(newPassword) }
-    }),
-    prisma.session.deleteMany({ where: { userId: reset.userId } }),
-    prisma.passwordResetToken.deleteMany({ where: { userId: reset.userId } })
-  ]);
+    });
+    await tx.session.deleteMany({ where: { userId: reset.userId } });
+    await tx.passwordResetToken.deleteMany({ where: { userId: reset.userId } });
+    return true;
+  });
+
+  if (!resetApplied) return { ok: false, reason: "expired" };
 
   return { ok: true };
 }

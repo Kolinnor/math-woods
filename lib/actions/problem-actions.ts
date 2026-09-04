@@ -64,6 +64,7 @@ import {
 import { problemCreationNotificationCopy } from "@/lib/problem-creation-notifications";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { normalizeProblemOrigin } from "@/lib/problem-origin";
+import { parseLibraryReferenceLinks, syncProblemLibraryReferences } from "@/lib/library-linking";
 import { parseKnownProblemSourceId } from "@/lib/known-problem-sources";
 import { linkSpecificProblem, parseProblemRelationGroups, syncProblemRelationGroups } from "@/lib/problem-relations";
 import {
@@ -537,6 +538,7 @@ export async function createProblemAction(formData: FormData) {
   const requestedKnownSourceId = canUseAdminTools(user)
     ? parseKnownProblemSourceId(formData.get("knownSourceId"))
     : null;
+  const submittedLibraryReferences = canUseAdminTools(user) ? parseLibraryReferenceLinks(formData, true) : [];
   const listed = formData.get("listed") === "on";
   const isExercise = formData.get("isExercise") === "on";
   const showRelatedProblems = formData.get("showRelatedProblems") === "on";
@@ -729,6 +731,14 @@ export async function createProblemAction(formData: FormData) {
         thread: { create: {} }
       }
     });
+    const inheritedLibraryReferences = sharedProblem
+      ? await tx.problemLibraryReference.findMany({
+          where: { problemId: sharedProblem.id },
+          select: { referenceId: true, role: true, locator: true, note: true, isPrimary: true },
+          orderBy: { position: "asc" }
+        })
+      : submittedLibraryReferences;
+    await syncProblemLibraryReferences(tx, created.id, inheritedLibraryReferences);
     await tx.problemFavorite.create({
       data: {
         userId: user.id,
@@ -1154,17 +1164,24 @@ export async function updateProblemAction(
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
-  const origin = normalizeProblemOrigin(boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin"));
+  const origin = formData.has("origin")
+    ? normalizeProblemOrigin(boundedText(formData.get("origin"), CONTENT_LIMITS.shortText, "Origin"))
+    : previous.origin;
   const originChapter = formData.has("originChapter")
     ? optionalBoundedText(formData.get("originChapter"), CONTENT_LIMITS.shortText, "Origin chapter")
     : previous.originChapter;
   const originPage = formData.has("originPage")
     ? optionalBoundedText(formData.get("originPage"), CONTENT_LIMITS.shortText, "Origin page")
     : previous.originPage;
-  const originNote = optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note");
-  const knownSourceId = canUseAdminTools(user)
+  const originNote = formData.has("originNote")
+    ? optionalBoundedText(formData.get("originNote"), CONTENT_LIMITS.longNote, "Origin note")
+    : previous.originNote;
+  const knownSourceId = canUseAdminTools(user) && formData.has("knownSourceId")
     ? parseKnownProblemSourceId(formData.get("knownSourceId"))
     : previous.knownSourceId;
+  const submittedLibraryReferences = publishesImmediately && canUseAdminTools(user) && formData.get("libraryReferencesSubmitted") === "1"
+    ? parseLibraryReferenceLinks(formData, true)
+    : null;
   if (knownSourceId && knownSourceId !== previous.knownSourceId) {
     const knownSource = await prisma.knownProblemSource.findFirst({
       where: { id: knownSourceId, active: true },
@@ -1507,6 +1524,9 @@ export async function updateProblemAction(
 
       await syncInternalLinks(SourceType.PROBLEM, problemId, resolvedSnapshot.bodyMarkdown, tx, resolvedSnapshot.language);
       await syncProblemDomains(tx, problemId, resolvedSnapshot.domains);
+      if (submittedLibraryReferences) {
+        await syncProblemLibraryReferences(tx, problemId, submittedLibraryReferences);
+      }
       await syncProblemRelationGroups(tx, problemId, problemSnapshotRelationInput(resolvedSnapshot));
       await syncProblemTags(problemId, problemSnapshotTagInput(resolvedSnapshot.tags), tx);
       await syncProblemSpoilerTags(problemId, problemSnapshotTagInput(resolvedSnapshot.spoilerTags), tx);

@@ -1,4 +1,4 @@
-import { ConceptStatus, QualityStatus, Role } from "@prisma/client";
+import { ConceptStatus, LibraryStatus, QualityStatus, Role } from "@prisma/client";
 
 export type PermissionUser = {
   id: number;
@@ -60,6 +60,44 @@ export function canUseAdminTools(userOrRole: PermissionUser | Role) {
 export function canUseOwnerTools(userOrRole: PermissionUser | Role) {
   const role = typeof userOrRole === "string" ? userOrRole : userOrRole.role;
   return hasOwnerPrivileges(role);
+}
+
+export function canCreateLibraryEntry(user: PermissionUser) {
+  return isVerifiedContributor(user);
+}
+
+export function canViewLibraryEntry(
+  user: PermissionUser | null,
+  entry: { createdById: number | null; status: LibraryStatus }
+) {
+  if (entry.status === LibraryStatus.PUBLISHED) return true;
+  if (!user) return false;
+  if (entry.createdById === user.id) return true;
+  if (entry.status === LibraryStatus.PENDING_REVIEW) return hasTrustedPrivileges(user.role);
+  return entry.status === LibraryStatus.ARCHIVED && hasAdminPrivileges(user.role);
+}
+
+export function canEditLibraryDraft(
+  user: PermissionUser,
+  entry: { createdById: number | null; status: LibraryStatus }
+) {
+  if (entry.status === LibraryStatus.PUBLISHED) return hasTrustedPrivileges(user.role);
+  if (entry.status === LibraryStatus.ARCHIVED) return hasAdminPrivileges(user.role);
+  return entry.createdById === user.id && (
+    entry.status === LibraryStatus.DRAFT || entry.status === LibraryStatus.NEEDS_WORK
+  );
+}
+
+export function canReviewLibraryEntry(
+  user: PermissionUser,
+  entry: { createdById: number | null }
+) {
+  if (!hasTrustedPrivileges(user.role)) return false;
+  return hasAdminPrivileges(user.role) || entry.createdById !== user.id;
+}
+
+export function canArchiveLibraryEntry(user: PermissionUser) {
+  return hasAdminPrivileges(user.role);
 }
 
 export function canManageUserRoles(userOrRole: PermissionUser | Role) {
@@ -251,7 +289,7 @@ export function canDeletePlaylist(user: PermissionUser, playlist: PlaylistPermis
 }
 
 export function canEditDiscussionPost(user: PermissionUser, post: AuthoredResource) {
-  return post.authorId === user.id || hasTrustedPrivileges(user.role);
+  return post.authorId === user.id;
 }
 
 export function canEditVerificationMessage(user: PermissionUser, message: AuthoredResource) {
@@ -259,11 +297,11 @@ export function canEditVerificationMessage(user: PermissionUser, message: Author
 }
 
 export function canEditProofComment(user: PermissionUser, comment: AuthoredResource) {
-  return comment.authorId === user.id || hasTrustedPrivileges(user.role);
+  return comment.authorId === user.id;
 }
 
 export function canEditConceptTalkPost(user: PermissionUser, post: AuthoredResource) {
-  return post.authorId === user.id || hasTrustedPrivileges(user.role);
+  return post.authorId === user.id;
 }
 
 export function canReviewProblemVerification(user: PermissionUser, problem: ProblemPermissionTarget) {

@@ -39,6 +39,7 @@ export const en = {
     playlists: "Explorations",
     tips: "Homepage",
     mathematicians: "Mathematicians",
+    library: "Library",
     users: "Users",
     tour: "Getting started with Math Woods",
     searchAriaLabel: "Search Math Woods",

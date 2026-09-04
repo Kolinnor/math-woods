@@ -170,7 +170,7 @@ const siteStructuredData = {
   ]
 };
 
-const mathematiciansRoute = "/mathematicians" as Route;
+const libraryRoute = "/library" as Route;
 const usersRoute = "/users" as Route;
 
 const inter = localFont({
@@ -270,7 +270,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
               <Link href={usersRoute}>{t.nav.users}</Link>
               {activeContest && <Link href="/contest">{t.nav.contest}</Link>}
-              {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}
+              {user && canUseAdminTools(user) && <Link href={libraryRoute}>{t.nav.library}</Link>}
             </div>
             <div className="nav-tools">
               {!user && (
@@ -294,7 +294,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
                     <Link href={usersRoute}>{t.nav.users}</Link>
                     {activeContest && <Link href="/contest">{t.nav.contest}</Link>}
-                    {user && canUseAdminTools(user) && <Link href={mathematiciansRoute}>{t.nav.mathematicians}</Link>}
+                    {user && canUseAdminTools(user) && <Link href={libraryRoute}>{t.nav.library}</Link>}
                   </div>
                   <div className="nav-menu-divider nav-menu-primary-divider" />
                   <Link href="/recent-changes">{t.nav.recentChanges}</Link>

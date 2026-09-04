@@ -3,10 +3,9 @@ import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ProblemCreateForm } from "@/components/ProblemCreateForm";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
-import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
-import { KnownProblemSourceSelect } from "@/components/KnownProblemSourceSelect";
+import { LibraryReferencePicker } from "@/components/library/LibraryReferencePicker";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
@@ -19,14 +18,13 @@ import { ProblemVerificationFields } from "@/components/ProblemVerificationField
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { TranslationCompanionFields } from "@/components/TranslationCompanionFields";
 import { requireVerifiedUser } from "@/lib/auth";
+import { canUseAdminTools } from "@/lib/permissions";
 import { parseProblemTranslationTaskKey } from "@/lib/contribution-tasks";
 import { PROBLEM_DOMAINS, translatedDomainOptions } from "@/lib/domains";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { parseActiveContentLanguage } from "@/lib/languages";
-import { localizedProblemOrigin } from "@/lib/problem-origin";
-import { canUseAdminTools } from "@/lib/permissions";
 import { orderProblemHintsByCanonicalOrder } from "@/lib/problem-hints";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { prepareMarkdownCollectionForTranslation } from "@/lib/translated-markdown";
@@ -107,6 +105,10 @@ export default async function NewProblemPage({
           originPage: true,
           originNote: true,
           knownSourceId: true,
+          libraryReferences: {
+            orderBy: { position: "asc" },
+            select: { referenceId: true, role: true, locator: true, note: true, isPrimary: true }
+          },
           listed: true,
           verificationMode: true,
           verificationPrompt: true,
@@ -212,14 +214,11 @@ export default async function NewProblemPage({
   const initialDomainSpoilers = sourceProblem
     ? sourceProblem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)
     : [];
-  const canManageKnownSources = canUseAdminTools(user);
-  const knownSources = canManageKnownSources
-    ? await prisma.knownProblemSource.findMany({
-        where: { active: true },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true, active: true }
-      })
-    : [];
+  const libraryReferences = await prisma.libraryReference.findMany({
+    where: { status: "PUBLISHED" },
+    orderBy: { canonicalTitle: "asc" },
+    select: { id: true, canonicalTitle: true, referenceType: true }
+  });
 
   return (
     <ForestPageLayout
@@ -359,37 +358,12 @@ export default async function NewProblemPage({
             </button>
             <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
             <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
-                <section className="problem-compose-subsection">
-                  <h2>{t.contentEditor.source}</h2>
-                  <label className="grid gap-2">
-                    <span className="field-label-with-help text-sm font-medium">
-                      {t.contentEditor.source}
-                      <FieldHelp text={t.contentEditor.originHelp} />
-                    </span>
-                    <input
-                      name="origin"
-                      defaultValue={localizedProblemOrigin(sourceProblem?.origin, t.contentEditor.unknown)}
-                      placeholder={t.contentEditor.unknown}
-                    />
-                  </label>
-                  {canManageKnownSources && (
-                    <KnownProblemSourceSelect
-                      defaultValue={sourceProblem?.knownSourceId}
-                      label={t.contentEditor.recognizedSource}
-                      help={t.contentEditor.recognizedSourceHelp}
-                      noneLabel={t.contentEditor.noRecognizedSource}
-                      archivedLabel={t.contentEditor.archivedSource}
-                      sources={knownSources}
-                    />
-                  )}
-                  <label className="grid gap-2">
-                    <span className="field-label-with-help text-sm font-medium">
-                      {t.contentEditor.moreSourceDetails}
-                      <FieldHelp text={t.contentEditor.provenanceHelp} />
-                    </span>
-                    <textarea className="compact-textarea" name="originNote" defaultValue={sourceProblem?.originNote ?? ""} />
-                  </label>
-                </section>
+                {canUseAdminTools(user) && <LibraryReferencePicker
+                  locale={interfaceLocale}
+                  allowPrimary
+                  options={libraryReferences.map((reference) => ({ id: reference.id, title: reference.canonicalTitle, type: reference.referenceType }))}
+                  initial={sourceProblem?.libraryReferences.map((reference) => ({ ...reference, locator: reference.locator ?? "", note: reference.note ?? "" }))}
+                />}
 
                 <ProblemClassificationFields
                   initialStyles={sourceProblem?.styles}

@@ -7,7 +7,7 @@ import { DeleteProblemButton } from "@/components/DeleteProblemButton";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
-import { KnownProblemSourceSelect } from "@/components/KnownProblemSourceSelect";
+import { LibraryReferencePicker } from "@/components/library/LibraryReferencePicker";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
@@ -39,7 +39,6 @@ import {
   canUseAdminTools
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
-import { localizedProblemOrigin } from "@/lib/problem-origin";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { latestProblemTextRevisionId } from "@/lib/translation-freshness";
 
@@ -79,6 +78,10 @@ export default async function EditProblemPage({
           }
         },
         orderBy: { position: "asc" }
+      },
+      libraryReferences: {
+        orderBy: { position: "asc" },
+        select: { referenceId: true, role: true, locator: true, note: true, isPrimary: true }
       }
     }
   });
@@ -104,7 +107,7 @@ export default async function EditProblemPage({
     problem.qualityStatus === QualityStatus.REVIEWED &&
     canSetProblemQualityStatus(user.role, QualityStatus.REVIEWED);
   if (problem.status === "ARCHIVED" && !canEditArchivedProblem) notFound();
-  const [siblingTranslations, sourceRevisionId, knownSources] = await Promise.all([
+  const [siblingTranslations, sourceRevisionId, libraryReferences] = await Promise.all([
     prisma.problem.findMany({
       where: {
         translationGroupId: problem.translationGroupId,
@@ -115,18 +118,11 @@ export default async function EditProblemPage({
     problem.translatedFromProblemId
       ? latestProblemTextRevisionId(problem.translatedFromProblemId)
       : null,
-    canManageFrontPageEligibility
-      ? prisma.knownProblemSource.findMany({
-          where: {
-            OR: [
-              { active: true },
-              ...(problem.knownSourceId ? [{ id: problem.knownSourceId }] : [])
-            ]
-          },
-          orderBy: { name: "asc" },
-          select: { id: true, name: true, active: true }
-        })
-      : Promise.resolve([])
+    prisma.libraryReference.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: { canonicalTitle: "asc" },
+      select: { id: true, canonicalTitle: true, referenceType: true }
+    })
   ]);
   const staleTranslation = Boolean(
     sourceRevisionId && problem.translatedFromRevisionId && sourceRevisionId > problem.translatedFromRevisionId
@@ -227,33 +223,14 @@ export default async function EditProblemPage({
               <button type="submit">{publishesImmediately ? t.contentEditor.saveChanges : t.contentEditor.submitForReview}</button>
               <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
               <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
-                  <section className="problem-compose-subsection">
-                    <h2>{t.contentEditor.source}</h2>
-                    <label className="grid gap-2">
-                      <span className="field-label-with-help text-sm font-medium">
-                        {t.contentEditor.source}
-                        <FieldHelp text={t.contentEditor.originHelp} />
-                      </span>
-                      <input name="origin" defaultValue={localizedProblemOrigin(problem.origin, t.contentEditor.unknown)} />
-                    </label>
-                    {canManageFrontPageEligibility && (
-                      <KnownProblemSourceSelect
-                        defaultValue={problem.knownSourceId}
-                        label={t.contentEditor.recognizedSource}
-                        help={t.contentEditor.recognizedSourceHelp}
-                        noneLabel={t.contentEditor.noRecognizedSource}
-                        archivedLabel={t.contentEditor.archivedSource}
-                        sources={knownSources}
-                      />
-                    )}
-                    <label className="grid gap-2">
-                      <span className="field-label-with-help text-sm font-medium">
-                        {t.contentEditor.moreSourceDetails}
-                        <FieldHelp text={t.contentEditor.provenanceHelp} />
-                      </span>
-                      <textarea className="compact-textarea" name="originNote" defaultValue={problem.originNote ?? ""} />
-                    </label>
-                  </section>
+                  {publishesImmediately && canUseAdminTools(user) && (
+                    <LibraryReferencePicker
+                      locale={interfaceLocale}
+                      allowPrimary
+                      options={libraryReferences.map((reference) => ({ id: reference.id, title: reference.canonicalTitle, type: reference.referenceType }))}
+                      initial={problem.libraryReferences.map((reference) => ({ ...reference, locator: reference.locator ?? "", note: reference.note ?? "" }))}
+                    />
+                  )}
 
                   <ProblemClassificationFields
                     initialStyles={problem.styles}

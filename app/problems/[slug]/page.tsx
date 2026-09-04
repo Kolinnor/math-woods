@@ -59,7 +59,8 @@ import {
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
-import { problemSourcePresentation } from "@/lib/known-problem-sources";
+import { formatLibraryReference, referenceRoleLabel } from "@/lib/library";
+import { localizedTranslation } from "@/lib/library-queries";
 import { shouldShowOwnerProblemBanner, shouldShowOwnerSolvedBanner } from "@/lib/problem-owner-solved-banner";
 import {
   missingProblemProofTranslationTarget,
@@ -304,6 +305,10 @@ export default async function ProblemPage({
       author: true,
       reviewedBy: true,
       knownSource: true,
+      libraryReferences: {
+        include: { reference: { include: { translations: true } } },
+        orderBy: { position: "asc" }
+      },
       domains: { orderBy: { position: "asc" } },
       spoilerTags: { include: { tag: true }, orderBy: { tag: { name: "asc" } } },
       hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
@@ -364,11 +369,7 @@ export default async function ProblemPage({
   const selectedProofs = selectProblemProofsForPage(proofFamily, problem.id, problem.language);
   const proofProblemSlugById = new Map(selectedProofs.map((proof) => [proof.id, proof.problem.slug]));
   problem.proofs = selectedProofs.map(({ problem: _proofProblem, ...proof }) => proof);
-  const { hasFreeSource, knownSourceDuplicatesFreeSource, sourceCount } = problemSourcePresentation(
-    problem.origin,
-    problem.knownSource
-  );
-  const hasSpecifiedOrigin = sourceCount > 0 || Boolean(problem.originChapter || problem.originPage || problem.originNote);
+  const hasSpecifiedOrigin = problem.libraryReferences.length > 0;
 
   const proofIds = problem.proofs.map((proof) => proof.id);
   const relatedProblems = problem.relatedGroups.flatMap((group) =>
@@ -1303,38 +1304,19 @@ export default async function ProblemPage({
         {hasSpecifiedOrigin && (
           <section className="problem-origin-note zen-meta" aria-labelledby="problem-source-heading">
             <strong id="problem-source-heading" className="problem-source-heading">
-              {sourceCount <= 1 ? t.problemDetail.source : t.problemDetail.sources}
+              {problem.libraryReferences.length <= 1 ? t.problemDetail.source : t.problemDetail.sources}
             </strong>
-            <div className="problem-source-identities">
-              {problem.knownSource && (
-                <span className="problem-source-identity">
-                  {problem.knownSource.iconUrl && (
-                    <img
-                      src={problem.knownSource.iconUrl}
-                      alt=""
-                      className="problem-source-icon"
-                      style={{
-                        blockSize: problem.knownSource.iconSize,
-                        flexBasis: problem.knownSource.iconSize,
-                        inlineSize: problem.knownSource.iconSize
-                      }}
-                    />
-                  )}
-                  <span>{problem.knownSource.name}</span>
-                </span>
-              )}
-              {hasFreeSource && !knownSourceDuplicatesFreeSource && <span>{problem.origin}</span>}
-            </div>
-            {(problem.originChapter || problem.originPage || problem.originNote) && (
-              <details>
-                <summary>{t.problemDetail.moreDetails}</summary>
-                <div className="grid gap-1 pt-2">
-                  {problem.originChapter && <p>{t.problemDetail.chapterOrSection} {problem.originChapter}</p>}
-                  {problem.originPage && <p>{t.problemDetail.pageOrProblemNumber} {problem.originPage}</p>}
-                  {problem.originNote && <p className="whitespace-pre-wrap"><AsyncMarkdownInline markdown={problem.originNote} /></p>}
-                </div>
-              </details>
-            )}
+            <ol className="problem-library-references">
+              {problem.libraryReferences.map((link) => {
+                const translatedReference = localizedTranslation(link.reference.translations, interfaceLocale);
+                return (
+                  <li key={link.id}>
+                    {link.reference.iconUrl && <img src={link.reference.iconUrl} alt="" className="problem-source-icon" style={{ blockSize: link.reference.iconSize, inlineSize: link.reference.iconSize }} />}
+                    <span><span>{user && canUseAdminTools(user) ? <Link href={`/library/references/${link.reference.slug}`}>{translatedReference?.displayTitle ?? link.reference.canonicalTitle}</Link> : (translatedReference?.displayTitle ?? link.reference.canonicalTitle)}{translatedReference && <ContentLanguageFallback language={translatedReference.language} expectedLanguage={interfaceLocale} />}</span><small>{formatLibraryReference(link.reference)} · {referenceRoleLabel(link.role, interfaceLocale)}{link.locator ? ` · ${link.locator}` : ""}</small>{link.note && <span className="muted"><AsyncMarkdownInline markdown={link.note} /></span>}</span>
+                  </li>
+                );
+              })}
+            </ol>
           </section>
         )}
 

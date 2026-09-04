@@ -93,7 +93,7 @@ export default async function LoginPage({
             <span className="text-sm font-medium">{t.auth.password}</span>
             <input name="password" type="password" required />
           </label>
-          <Link href="/forgot-password" className="text-sm">
+          <Link href={"/forgot-password" as never} className="text-sm">
             {t.auth.forgotPassword}
           </Link>
           <button type="submit">{t.auth.signIn}</button>

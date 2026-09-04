@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { deleteStoredChatImage } from "@/lib/chat-images";
+import { directChatClearPlan } from "@/lib/chat-clear";
 import { CONTENT_LIMITS, optionalBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { directChatPair, materializeFriendRequestIntro, sendDirectChatMessage } from "@/lib/direct-chat";
@@ -303,30 +304,38 @@ export async function deleteDirectChatAction(otherUsername: string) {
   });
 
   if (chat) {
-    const isUserA = chat.userAId === user.id;
-    const otherAlreadyCleared = isUserA ? chat.userBCleared : chat.userACleared;
-
-    if (otherAlreadyCleared) {
-      // Both sides have now cleared the conversation: nobody can see it anymore, so purge it for good.
-      const messagesWithImages = await prisma.chatMessage.findMany({
-        where: { directChatId: chat.id, imageKey: { not: null } },
-        select: { imageKey: true }
-      });
-      await prisma.directChat.delete({ where: { id: chat.id } });
-
-      const config = getChatImageStorageConfig();
-      if (config) {
-        await Promise.all(
-          messagesWithImages.map((message) =>
-            message.imageKey ? deleteStoredChatImage(config, message.imageKey).catch(() => false) : null
-          )
-        );
-      }
-    } else {
-      await prisma.directChat.update({
+    const clearedAt = new Date();
+    const clearPlan = directChatClearPlan(chat, user.id, clearedAt);
+    const messagesWithImages = await prisma.$transaction(async (tx) => {
+      await tx.directChat.update({
         where: { id: chat.id },
-        data: isUserA ? { userACleared: new Date() } : { userBCleared: new Date() }
+        data: clearPlan.data
       });
+
+      if (!clearPlan.purgeThrough) return [];
+
+      const removableMessages = await tx.chatMessage.findMany({
+        where: {
+          directChatId: chat.id,
+          createdAt: { lte: clearPlan.purgeThrough }
+        },
+        select: { id: true, imageKey: true }
+      });
+      if (removableMessages.length) {
+        await tx.chatMessage.deleteMany({
+          where: { id: { in: removableMessages.map((message) => message.id) } }
+        });
+      }
+      return removableMessages.filter((message) => message.imageKey);
+    });
+
+    const config = getChatImageStorageConfig();
+    if (config && messagesWithImages.length) {
+      await Promise.all(
+        messagesWithImages.map((message) =>
+          message.imageKey ? deleteStoredChatImage(config, message.imageKey).catch(() => false) : null
+        )
+      );
     }
   }
 

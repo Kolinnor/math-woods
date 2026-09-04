@@ -62,7 +62,7 @@ export default async function ResetPasswordPage({
         ) : (
           <>
             <p className="muted">{labels.invalid}</p>
-            <Link href="/forgot-password" className="button secondary">
+            <Link href={"/forgot-password" as never} className="button secondary">
               {labels.requestNew}
             </Link>
           </>

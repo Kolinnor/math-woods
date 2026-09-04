@@ -8,9 +8,11 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { LibraryReferencePicker } from "@/components/library/LibraryReferencePicker";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { requireVerifiedUser } from "@/lib/auth";
+import { canUseAdminTools } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { requireDraftSession } from "@/lib/draft-session";
 import { CREATION_SUBMISSION_FIELD } from "@/lib/creation-submission";
@@ -56,6 +58,10 @@ export default async function NewConceptPage({
           kind: true,
           language: true,
           translationGroupId: true,
+          libraryReferences: {
+            orderBy: { position: "asc" },
+            select: { referenceId: true, role: true, locator: true, note: true }
+          },
           practiceExercises: {
             orderBy: { position: "asc" },
             select: {
@@ -96,6 +102,11 @@ export default async function NewConceptPage({
   const defaultContent = sourceConcept
     ? await prepareMarkdownForTranslation(sourceConcept.bodyMarkdown, initialLanguage)
     : t.contentEditor.defaultConceptContent;
+  const libraryReferences = await prisma.libraryReference.findMany({
+    where: { status: "PUBLISHED" },
+    orderBy: { canonicalTitle: "asc" },
+    select: { id: true, canonicalTitle: true, referenceType: true }
+  });
 
   return (
     <ForestPageLayout
@@ -217,13 +228,11 @@ export default async function NewConceptPage({
             </div>
           </section>
         )}
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">{t.contentEditor.references}</span>
-          <textarea
-            name="references"
-            placeholder={"Reference title | https://example.org/source | Optional note\nBook title | | Chapter 3"}
-          />
-        </label>
+        {canUseAdminTools(user) && <LibraryReferencePicker
+          locale={interfaceLocale}
+          options={libraryReferences.map((reference) => ({ id: reference.id, title: reference.canonicalTitle, type: reference.referenceType }))}
+          initial={sourceConcept?.libraryReferences.map((reference) => ({ ...reference, locator: reference.locator ?? "", note: reference.note ?? "", isPrimary: false }))}
+        />}
           {sourceConcept && !targetTranslationLanguage && (
             <p className="quality-banner quality-needs-work text-sm" role="status">
               {t.contentEditor.allConceptLanguagesExist}

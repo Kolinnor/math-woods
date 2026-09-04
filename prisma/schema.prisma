@@ -61,6 +61,51 @@ enum ConceptKind {
   NOTATION
 }
 
+enum LibraryStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  NEEDS_WORK
+  ARCHIVED
+}
+
+enum LibraryReferenceType {
+  BOOK
+  ARTICLE
+  LECTURE_NOTES
+  THESIS
+  VIDEO
+  CHANNEL
+  WEBSITE
+  COMPETITION
+  DATABASE
+  OTHER
+}
+
+enum LibraryReferenceRole {
+  SOURCE
+  FURTHER_READING
+  PROOF
+  ATTRIBUTION
+}
+
+enum HistoryEra {
+  ANCIENT
+  MEDIEVAL
+  EARLY_MODERN
+  MODERN
+  CONTEMPORARY
+}
+
+enum HistoryMilestoneType {
+  DISCOVERY
+  PUBLICATION
+  NOTATION
+  INSTITUTION
+  BIOGRAPHICAL
+  OTHER
+}
+
 enum ConceptMergeKind {
   TRANSLATION_LINK
   DUPLICATE
@@ -328,6 +373,9 @@ enum NotificationType {
   TRUSTED_USER_PROMOTED
   SITE_IMPROVEMENT_COMPLETED
   ANNOUNCEMENT_COMMENTED
+  LIBRARY_ENTRY_SUBMITTED
+  LIBRARY_ENTRY_PUBLISHED
+  LIBRARY_ENTRY_CHANGES_REQUESTED
 }
 
 enum TrustedUserRecommendationStatus {
@@ -476,6 +524,12 @@ model User {
   explorationEditionsPublished    ExplorationEdition[]            @relation("ExplorationEditionPublisher")
   explorationSessions             ExplorationSession[]
   mathematiciansCreated           Mathematician[]                 @relation("MathematicianCreatedBy")
+  mathematiciansReviewed          Mathematician[]                 @relation("MathematicianReviewedBy")
+  libraryReferencesCreated        LibraryReference[]              @relation("LibraryReferenceCreatedBy")
+  libraryReferencesReviewed       LibraryReference[]              @relation("LibraryReferenceReviewedBy")
+  historyMilestonesCreated        HistoryMilestone[]              @relation("HistoryMilestoneCreatedBy")
+  historyMilestonesReviewed       HistoryMilestone[]              @relation("HistoryMilestoneReviewedBy")
+  libraryHomepageUpdates          LibraryHomepageSelection[]      @relation("LibraryHomepageUpdatedBy")
   dailyConceptReviews             DailyConceptReview[]
   problemEditProposals            ProblemEditProposal[]           @relation("ProblemEditProposalAuthor")
   reviewedProblemEditProposals    ProblemEditProposal[]           @relation("ProblemEditProposalReviewer")
@@ -540,20 +594,96 @@ model OAuthAttempt {
 }
 
 model Mathematician {
-  id              Int      @id @default(autoincrement())
-  slug            String   @unique
+  id              Int                             @id @default(autoincrement())
+  slug            String                          @unique
   name            String
   lifespan        String
   birthPlace      String
   portraitUrl     String?
-  contentMarkdown String   @default("")
-  contentHtml     String   @default("")
+  contentMarkdown String                          @default("")
+  contentHtml     String                          @default("")
+  fields          String[]                        @default([])
+  status          LibraryStatus                   @default(DRAFT)
+  imageAlt        String?
+  imageCredit     String?
+  imageCreditUrl  String?
+  imageLicense    String?
   createdById     Int?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdBy       User?    @relation("MathematicianCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedById    Int?
+  reviewNote      String?
+  reviewedAt      DateTime?
+  submittedAt     DateTime?
+  publishedAt     DateTime?
+  createdAt       DateTime                        @default(now())
+  updatedAt       DateTime                        @updatedAt
+  createdBy       User?                           @relation("MathematicianCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedBy      User?                           @relation("MathematicianReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  translations    MathematicianTranslation[]
+  works           MathematicianWork[]
+  conceptLinks    MathematicianConcept[]
+  problemLinks    MathematicianProblem[]
+  milestoneLinks  HistoryMilestoneMathematician[]
+  featuredIn      LibraryHomepageSelection[]
 
   @@index([name])
+  @@index([status, name])
+}
+
+model MathematicianTranslation {
+  id                    Int           @id @default(autoincrement())
+  mathematicianId       Int
+  language              String
+  displayName           String
+  teaser                String        @default("")
+  birthPlace            String        @default("")
+  biographyMarkdown     String        @default("")
+  biographyHtml         String        @default("")
+  contributionsMarkdown String        @default("")
+  contributionsHtml     String        @default("")
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  mathematician         Mathematician @relation(fields: [mathematicianId], references: [id], onDelete: Cascade)
+
+  @@unique([mathematicianId, language])
+  @@index([language, displayName])
+}
+
+model MathematicianWork {
+  id              Int              @id @default(autoincrement())
+  mathematicianId Int
+  referenceId     Int
+  note            String?
+  position        Int              @default(0)
+  createdAt       DateTime         @default(now())
+  mathematician   Mathematician    @relation(fields: [mathematicianId], references: [id], onDelete: Cascade)
+  reference       LibraryReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@unique([mathematicianId, referenceId])
+  @@index([referenceId])
+}
+
+model MathematicianConcept {
+  mathematicianId Int
+  conceptId       Int
+  note            String?
+  position        Int           @default(0)
+  mathematician   Mathematician @relation(fields: [mathematicianId], references: [id], onDelete: Cascade)
+  concept         Concept       @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@id([mathematicianId, conceptId])
+  @@index([conceptId])
+}
+
+model MathematicianProblem {
+  mathematicianId Int
+  problemId       Int
+  note            String?
+  position        Int           @default(0)
+  mathematician   Mathematician @relation(fields: [mathematicianId], references: [id], onDelete: Cascade)
+  problem         Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([mathematicianId, problemId])
+  @@index([problemId])
 }
 
 model EmailVerificationToken {
@@ -725,6 +855,8 @@ model Problem {
   reviewedBy               User?                           @relation("ProblemReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   attributionTransfers     ProblemAttributionTransfer[]
   knownSource              KnownProblemSource?             @relation(fields: [knownSourceId], references: [id], onDelete: SetNull)
+  libraryReferences        ProblemLibraryReference[]
+  mathematicianLinks       MathematicianProblem[]
   thread                   DiscussionThread?
   attempts                 ProblemAttempt[]
   recommendationExposures  ProblemRecommendationExposure[]
@@ -798,6 +930,100 @@ model KnownProblemSource {
   problems  Problem[]
 
   @@index([active, name])
+}
+
+model LibraryReference {
+  id                 Int                           @id @default(autoincrement())
+  slug               String                        @unique
+  referenceType      LibraryReferenceType          @default(OTHER)
+  canonicalTitle     String
+  authors            String?
+  publisher          String?
+  year               Int?
+  yearLabel          String?
+  url                String?
+  doi                String?
+  isbn               String?
+  citationKey        String?                       @unique
+  bibtex             String?
+  formattedOverride  String?
+  aliases            String[]                      @default([])
+  iconUrl            String?
+  iconSize           Int                           @default(40)
+  imageAlt           String?
+  imageCredit        String?
+  imageCreditUrl     String?
+  imageLicense       String?
+  dedupeKey          String                        @unique
+  status             LibraryStatus                 @default(DRAFT)
+  createdById        Int?
+  reviewedById       Int?
+  reviewNote         String?
+  reviewedAt         DateTime?
+  submittedAt        DateTime?
+  publishedAt        DateTime?
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+  createdBy          User?                         @relation("LibraryReferenceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedBy         User?                         @relation("LibraryReferenceReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  translations       LibraryReferenceTranslation[]
+  problemLinks       ProblemLibraryReference[]
+  conceptLinks       ConceptLibraryReference[]
+  milestoneLinks     HistoryMilestoneReference[]
+  mathematicianWorks MathematicianWork[]
+  featuredIn         LibraryHomepageSelection[]
+
+  @@index([status, referenceType, canonicalTitle])
+  @@index([doi])
+  @@index([isbn])
+}
+
+model LibraryReferenceTranslation {
+  id                  Int              @id @default(autoincrement())
+  referenceId         Int
+  language            String
+  displayTitle        String?
+  descriptionMarkdown String           @default("")
+  descriptionHtml     String           @default("")
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  reference           LibraryReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@unique([referenceId, language])
+  @@index([language])
+}
+
+model ProblemLibraryReference {
+  id          Int                  @id @default(autoincrement())
+  problemId   Int
+  referenceId Int
+  role        LibraryReferenceRole @default(SOURCE)
+  locator     String?
+  note        String?
+  position    Int                  @default(0)
+  isPrimary   Boolean              @default(false)
+  problem     Problem              @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  reference   LibraryReference     @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, referenceId])
+  @@index([referenceId])
+  @@index([problemId, position])
+}
+
+model ConceptLibraryReference {
+  id          Int                  @id @default(autoincrement())
+  conceptId   Int
+  referenceId Int
+  role        LibraryReferenceRole @default(FURTHER_READING)
+  locator     String?
+  note        String?
+  position    Int                  @default(0)
+  concept     Concept              @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  reference   LibraryReference     @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@unique([conceptId, referenceId])
+  @@index([referenceId])
+  @@index([conceptId, position])
 }
 
 model ProblemContest {
@@ -948,6 +1174,8 @@ model Concept {
   lastEditedBy              User?                     @relation("ConceptLastEditedBy", fields: [lastEditedById], references: [id])
   aliases                   ConceptAlias[]
   references                ConceptReference[]
+  libraryReferences         ConceptLibraryReference[]
+  mathematicianLinks        MathematicianConcept[]
   practiceExercises         ConceptExercise[]
   talkPosts                 ConceptTalkPost[]
   circuitNodes              PlaylistNode[]
@@ -959,6 +1187,7 @@ model Concept {
   mergeContributors         ConceptMergeContributor[]
   mergeRedirects            ConceptRedirect[]         @relation("ConceptRedirectTarget")
   editProposals             ConceptEditProposal[]
+  historyMilestoneConcepts  HistoryMilestoneConcept[]
 
   @@unique([translationGroupId, language])
   @@index([language, updatedAt])
@@ -967,6 +1196,101 @@ model Concept {
   @@index([domainCode])
   @@index([translationGroupId])
   @@index([translatedFromConceptId])
+}
+
+model HistoryMilestone {
+  id             Int                             @id @default(autoincrement())
+  slug           String                          @unique
+  sortYear       Int
+  era            HistoryEra
+  milestoneType  HistoryMilestoneType            @default(OTHER)
+  status         LibraryStatus                   @default(DRAFT)
+  imageUrl       String?
+  imageAlt       String?
+  imageCredit    String?
+  imageCreditUrl String?
+  imageLicense   String?
+  createdById    Int?
+  reviewedById   Int?
+  reviewNote     String?
+  reviewedAt     DateTime?
+  submittedAt    DateTime?
+  publishedAt    DateTime?
+  createdAt      DateTime                        @default(now())
+  updatedAt      DateTime                        @updatedAt
+  createdBy      User?                           @relation("HistoryMilestoneCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedBy     User?                           @relation("HistoryMilestoneReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  translations   HistoryMilestoneTranslation[]
+  conceptLinks   HistoryMilestoneConcept[]
+  referenceLinks HistoryMilestoneReference[]
+  mathematicians HistoryMilestoneMathematician[]
+  featuredIn     LibraryHomepageSelection[]
+
+  @@index([status, sortYear])
+  @@index([era, sortYear])
+}
+
+model HistoryMilestoneTranslation {
+  id              Int              @id @default(autoincrement())
+  milestoneId     Int
+  language        String
+  yearLabel       String
+  title           String
+  summaryMarkdown String
+  summaryHtml     String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  milestone       HistoryMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@unique([milestoneId, language])
+  @@index([language, title])
+}
+
+model HistoryMilestoneConcept {
+  milestoneId Int
+  conceptId   Int
+  position    Int              @default(0)
+  milestone   HistoryMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  concept     Concept          @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@id([milestoneId, conceptId])
+  @@index([conceptId])
+}
+
+model HistoryMilestoneReference {
+  milestoneId Int
+  referenceId Int
+  note        String?
+  position    Int              @default(0)
+  milestone   HistoryMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  reference   LibraryReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@id([milestoneId, referenceId])
+  @@index([referenceId])
+}
+
+model HistoryMilestoneMathematician {
+  milestoneId     Int
+  mathematicianId Int
+  position        Int              @default(0)
+  milestone       HistoryMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  mathematician   Mathematician    @relation(fields: [mathematicianId], references: [id], onDelete: Cascade)
+
+  @@id([milestoneId, mathematicianId])
+  @@index([mathematicianId])
+}
+
+model LibraryHomepageSelection {
+  id              Int               @id @default(1)
+  milestoneId     Int?
+  mathematicianId Int?
+  referenceId     Int?
+  updatedById     Int?
+  updatedAt       DateTime          @updatedAt
+  milestone       HistoryMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  mathematician   Mathematician?    @relation(fields: [mathematicianId], references: [id], onDelete: SetNull)
+  reference       LibraryReference? @relation(fields: [referenceId], references: [id], onDelete: SetNull)
+  updatedBy       User?             @relation("LibraryHomepageUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 }
 
 model ConceptEditProposal {

@@ -34,6 +34,7 @@ import {
   notifyOwnerOfSiteActivity
 } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
+import { parseLibraryReferenceLinks, syncConceptLibraryReferences } from "@/lib/library-linking";
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import {
   assertTranslationWikiLinksPreserved,
@@ -169,6 +170,7 @@ export async function createConceptAction(formData: FormData) {
   const domain = coarseDomainForCode(domainCode);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
+  const submittedLibraryReferences = canUseAdminTools(user) ? parseLibraryReferenceLinks(formData, false) : [];
 
   const translationSourceIdentity =
     translationGroupId && translationSourceSlug
@@ -289,6 +291,18 @@ export async function createConceptAction(formData: FormData) {
         : references,
       tx
     );
+    const inheritedLibraryReferences = sharedConcept
+      ? await tx.conceptLibraryReference.findMany({
+          where: { conceptId: sharedConcept.id },
+          select: { referenceId: true, role: true, locator: true, note: true },
+          orderBy: { position: "asc" }
+        })
+      : submittedLibraryReferences;
+    await syncConceptLibraryReferences(
+      tx,
+      created.id,
+      inheritedLibraryReferences.map((reference) => ({ ...reference, isPrimary: false }))
+    );
     if (sharedConcept?.practiceExercises.length) {
       await tx.conceptExercise.createMany({
         data: sharedConcept.practiceExercises.map(({ problemId, position }) => ({
@@ -376,7 +390,6 @@ export async function createConceptFormAction(
 
 export async function updateConceptAction(conceptId: number, formData: FormData) {
   const user = await requireVerifiedUser();
-  await assertRateLimit(`concept:update:${user.id}`, 20, 60_000);
   const approvedProposalId = Number(formData.get("approvedProposalId"));
   const existingConcept = await prisma.concept.findUnique({
     where: { id: conceptId },
@@ -386,8 +399,14 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   if (!canProposeConceptEdit(user)) {
     throw new Error("You cannot propose changes to this concept.");
   }
+  const isApprovingProposal = Number.isInteger(approvedProposalId) && approvedProposalId > 0;
+  if (!user.conceptGuideAcknowledgedAt && !isApprovingProposal) {
+    const returnTo = `/concepts/${encodeURIComponent(existingConcept.slug)}/edit`;
+    redirect(`/contributing/guides/concepts?required=1&returnTo=${encodeURIComponent(returnTo)}`);
+  }
+  await assertRateLimit(`concept:update:${user.id}`, 20, 60_000);
   const publishesImmediately = await canPublishConceptEditForConcept(user, existingConcept);
-  if (Number.isInteger(approvedProposalId) && approvedProposalId > 0 && !canUseAdminTools(user)) {
+  if (isApprovingProposal && !canUseAdminTools(user)) {
     throw new Error("Only admins can approve proposed concept edits.");
   }
 
@@ -398,7 +417,17 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const domainCode = parseDomainCode(formData.get("domain"));
   const domain = coarseDomainForCode(domainCode);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
-  const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
+  const references = formData.has("references")
+    ? parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"))
+    : existingConcept.references.map(({ title: referenceTitle, url, note, position }) => ({
+        title: referenceTitle,
+        url,
+        note,
+        position
+      }));
+  const submittedLibraryReferences = publishesImmediately && canUseAdminTools(user) && formData.get("libraryReferencesSubmitted") === "1"
+    ? parseLibraryReferenceLinks(formData, false)
+    : null;
   const exerciseIds = parseConceptExerciseIds(formData.getAll("exerciseIds"));
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary");
   const markTranslationFresh = publishesImmediately && formData.get("markTranslationFresh") === "on";
@@ -619,6 +648,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     await syncInternalLinks(SourceType.CONCEPT, updated.id, bodyMarkdown, tx, language);
     await syncConceptAliases(updated.id, aliases, tx);
     await syncConceptReferences(updated.id, references, tx);
+    if (submittedLibraryReferences) {
+      await syncConceptLibraryReferences(tx, updated.id, submittedLibraryReferences);
+    }
     const validExercises = exerciseIds.length
       ? await tx.problem.findMany({
           where: {

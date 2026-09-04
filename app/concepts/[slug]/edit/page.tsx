@@ -7,6 +7,7 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { LibraryReferencePicker } from "@/components/library/LibraryReferencePicker";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { OrderedProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -54,6 +55,10 @@ export default async function EditConceptPage({
         }
       },
       references: { orderBy: { position: "asc" } },
+      libraryReferences: {
+        orderBy: { position: "asc" },
+        select: { referenceId: true, role: true, locator: true, note: true }
+      },
       translatedFromConcept: {
         select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true }
       }
@@ -69,6 +74,14 @@ export default async function EditConceptPage({
     notFound();
   }
   if (!canProposeConceptEdit(user)) notFound();
+  if (!user.conceptGuideAcknowledgedAt) {
+    const returnToParams = new URLSearchParams();
+    if (query.conflict) returnToParams.set("conflict", query.conflict);
+    const returnTo = `/concepts/${encodeURIComponent(concept.slug)}/edit${
+      returnToParams.size ? `?${returnToParams}` : ""
+    }`;
+    redirect(`/contributing/guides/concepts?required=1&returnTo=${encodeURIComponent(returnTo)}`);
+  }
   const publishesImmediately = await canPublishConceptEditForConcept(user, concept);
   const canFeatureConcept = publishesImmediately && canUseAdminTools(user);
   const canDeleteCurrentConcept = publishesImmediately && canDeleteConcept(user, concept);
@@ -79,7 +92,7 @@ export default async function EditConceptPage({
         orderBy: { createdAt: "desc" },
         select: { editSummary: true }
       });
-  const [siblingTranslations, sourceRevisionId] = await Promise.all([
+  const [siblingTranslations, sourceRevisionId, libraryReferences] = await Promise.all([
     prisma.concept.findMany({
       where: {
         translationGroupId: concept.translationGroupId,
@@ -89,7 +102,12 @@ export default async function EditConceptPage({
     }),
     concept.translatedFromConceptId
       ? latestConceptTextRevisionId(concept.translatedFromConceptId)
-      : null
+      : null,
+    prisma.libraryReference.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: { canonicalTitle: "asc" },
+      select: { id: true, canonicalTitle: true, referenceType: true }
+    })
   ]);
   const staleTranslation = Boolean(
     sourceRevisionId && concept.translatedFromRevisionId && sourceRevisionId > concept.translatedFromRevisionId
@@ -230,15 +248,13 @@ export default async function EditConceptPage({
             />
           </div>
         </details>
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">{t.contentEditor.references}</span>
-          <textarea
-            name="references"
-            defaultValue={concept.references
-              .map((reference) => [reference.title, reference.url ?? "", reference.note ?? ""].join(" | "))
-              .join("\n")}
+        {publishesImmediately && canUseAdminTools(user) && (
+          <LibraryReferencePicker
+            locale={interfaceLocale}
+            options={libraryReferences.map((reference) => ({ id: reference.id, title: reference.canonicalTitle, type: reference.referenceType }))}
+            initial={concept.libraryReferences.map((reference) => ({ ...reference, locator: reference.locator ?? "", note: reference.note ?? "", isPrimary: false }))}
           />
-        </label>
+        )}
         {canFeatureConcept && (
           <label className="checkbox-field">
             <input

@@ -41,6 +41,7 @@ export const fr = {
     playlists: "Explorations",
     tips: "Homepage",
     mathematicians: "Mathématiciens",
+    library: "Bibliothèque",
     users: "Utilisateurs",
     tour: "Premiers pas sur Math Woods",
     searchAriaLabel: "Rechercher sur Math Woods",

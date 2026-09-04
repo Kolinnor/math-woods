@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { historicalMathematicianSlugExists } from "@/lib/historical-mathematicians";
 import { ensureSlug } from "@/lib/slug";
 
-type SlugModel = "problem" | "concept" | "playlist" | "quote" | "mathematician";
+type SlugModel = "problem" | "concept" | "playlist" | "quote" | "mathematician" | "libraryReference" | "historyMilestone";
 
 export async function uniqueSlug(model: SlugModel, title: string, preferredSuffix?: string): Promise<string> {
   const base = ensureSlug(title);
@@ -40,6 +40,12 @@ async function findBySlug(model: SlugModel, slug: string) {
   }
   if (model === "mathematician") {
     return historicalMathematicianSlugExists(slug);
+  }
+  if (model === "libraryReference") {
+    return prisma.libraryReference.findUnique({ where: { slug }, select: { id: true } });
+  }
+  if (model === "historyMilestone") {
+    return prisma.historyMilestone.findUnique({ where: { slug }, select: { id: true } });
   }
   return prisma.playlist.findUnique({ where: { slug }, select: { id: true } });
 }

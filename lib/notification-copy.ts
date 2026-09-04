@@ -255,6 +255,12 @@ function localizedConceptShare(notification: LocalizableNotification): Localized
   };
 }
 
+function localizedLibraryKind(body: string) {
+  if (body.includes("historical milestone")) return "repère historique";
+  if (body.includes("mathematician")) return "mathématicien";
+  return "référence";
+}
+
 function localizeFrenchNotification(notification: LocalizableNotification): LocalizedNotification {
   const problemTitle = firstQuoted(notification.body);
 
@@ -471,6 +477,32 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
     }
     case NotificationType.CONCEPT_EDITED:
       return localizedConceptEdit(notification);
+    case NotificationType.LIBRARY_ENTRY_SUBMITTED: {
+      const actor = notificationActor(notification, " submitted a library ");
+      const entryTitle = firstQuoted(notification.body);
+      return {
+        title: "Fiche de la bibliothèque à relire",
+        body: `${actor} a envoyé ${localizedLibraryKind(notification.body) === "référence" ? "une" : "un"} ${localizedLibraryKind(notification.body)} en relecture${entryTitle ? ` : « ${entryTitle} »` : ""}.`
+      };
+    }
+    case NotificationType.LIBRARY_ENTRY_PUBLISHED: {
+      const actor = notificationActor(notification, " published your library ");
+      const entryTitle = firstQuoted(notification.body);
+      return {
+        title: "Votre fiche de la bibliothèque a été publiée",
+        body: `${actor} a publié votre ${localizedLibraryKind(notification.body)}${entryTitle ? ` « ${entryTitle} »` : ""}.`
+      };
+    }
+    case NotificationType.LIBRARY_ENTRY_CHANGES_REQUESTED: {
+      const actor = notificationActor(notification, " requested changes to your library ");
+      const entryTitle = firstQuoted(notification.body);
+      const feedbackMarker = notification.body.indexOf(". Feedback: ");
+      const feedback = feedbackMarker >= 0 ? notification.body.slice(feedbackMarker + ". Feedback: ".length) : "";
+      return {
+        title: "Modifications demandées sur votre fiche",
+        body: `${actor} a demandé des modifications sur votre ${localizedLibraryKind(notification.body)}${entryTitle ? ` « ${entryTitle} »` : ""}.${feedback ? ` Retour : ${feedback}` : ""}`
+      };
+    }
     case NotificationType.CONTRIBUTION_REQUEST_CLAIMED: {
       const actor = notificationActor(notification, " started working on ");
       const request = firstQuoted(notification.body);

@@ -153,8 +153,8 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
             Profile name history
           </Link>
           {canReviewProposedEdits && (
-            <Link href="/moderation/problem-sources" className="button secondary">
-              Problem sources
+            <Link href="/library/references" className="button secondary">
+              References
             </Link>
           )}
         </div>

@@ -16,6 +16,7 @@ import { RecommendedProblemReader } from "@/components/RecommendedProblemReader"
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
+import { distinctContentCountsByProblemGroup } from "@/lib/content-translation-counts";
 import { prisma } from "@/lib/db";
 import { hasTrustedPrivileges } from "@/lib/permissions";
 import {
@@ -696,12 +697,14 @@ export default async function ProblemsPage({
         prisma.problemProof.findMany({
           where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
           select: {
+            translationGroupId: true,
             problem: { select: { translationGroupId: true } }
           }
         }),
         prisma.problemHint.findMany({
           where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
           select: {
+            translationGroupId: true,
             problem: { select: { translationGroupId: true } }
           }
         })
@@ -726,16 +729,8 @@ export default async function ProblemsPage({
     favoriteUsers.add(favorite.userId);
     favoriteUsersByGroup.set(groupId, favoriteUsers);
   }
-  const solutionCountByGroup = new Map<string, number>();
-  for (const proof of groupProofs) {
-    const groupId = proof.problem.translationGroupId;
-    solutionCountByGroup.set(groupId, (solutionCountByGroup.get(groupId) ?? 0) + 1);
-  }
-  const hintCountByGroup = new Map<string, number>();
-  for (const hint of groupHints) {
-    const groupId = hint.problem.translationGroupId;
-    hintCountByGroup.set(groupId, (hintCountByGroup.get(groupId) ?? 0) + 1);
-  }
+  const solutionCountByGroup = distinctContentCountsByProblemGroup(groupProofs);
+  const hintCountByGroup = distinctContentCountsByProblemGroup(groupHints);
   const paginationParams = {
     q: query,
     tag: tagSlug,
