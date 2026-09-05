@@ -8,7 +8,7 @@ import { dictionaryForLocale } from "@/lib/i18n/dictionary";
 import type { InterfaceLocale } from "@/lib/i18n/types";
 
 type ContentPreviewButtonProps = {
-  contentType: "concept" | "problem";
+  contentType: "concept" | "problem" | "solution";
   locale?: InterfaceLocale;
 };
 
@@ -53,7 +53,16 @@ export function ContentPreviewButton({ contentType, locale = "en" }: ContentPrev
     }
   }
 
+  // Solutions are written in a form with no title field, so the preview sheet shows
+  // the body alone rather than inventing a heading for it.
+  const hasTitleField = contentType !== "solution";
   const fallbackTitle = contentType === "problem" ? t.contentEditor.untitledProblem : t.contentEditor.untitledConcept;
+  const typeLabel =
+    contentType === "problem"
+      ? t.searchPage.problems
+      : contentType === "concept"
+        ? t.searchPage.concepts
+        : t.problemDetail.solution;
 
   return (
     <>
@@ -98,12 +107,12 @@ export function ContentPreviewButton({ contentType, locale = "en" }: ContentPrev
           )}
           {!loading && preview?.titleHtml !== undefined && preview.bodyHtml !== undefined && (
             <article className={`content-preview-sheet content-preview-${contentType}`}>
-              <p className="content-preview-type">
-                {contentType === "problem" ? t.searchPage.problems : t.searchPage.concepts}
-              </p>
-              <h1>
-                <MarkdownInline html={preview.titleHtml || fallbackTitle} />
-              </h1>
+              <p className="content-preview-type">{typeLabel}</p>
+              {hasTitleField && (
+                <h1>
+                  <MarkdownInline html={preview.titleHtml || fallbackTitle} />
+                </h1>
+              )}
               <div className="content-preview-markdown">
                 <MarkdownBlock html={preview.bodyHtml} />
               </div>

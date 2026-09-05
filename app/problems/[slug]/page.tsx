@@ -8,6 +8,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
+import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { Difficulty } from "@/components/Difficulty";
 import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -1644,7 +1645,10 @@ export default async function ProblemPage({
                       lineNumbers={false}
                       draftKey={`problem:${problem.id}:translate-solution:${translationSourceProof.id}`}
                     />
-                    <button type="submit">{t.problemDetail.publishSolutionTranslation}</button>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="submit">{t.problemDetail.publishSolutionTranslation}</button>
+                      <ContentPreviewButton contentType="solution" locale={interfaceLocale} />
+                    </div>
                   </form>
                 </div>
               </details>
@@ -1663,7 +1667,10 @@ export default async function ProblemPage({
                     draftKey={`problem:${problem.id}:new-solution`}
                     resetSignal={ownProofResetSignal}
                   />
-                  <button type="submit">{t.problemDetail.publishSolution}</button>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="submit">{t.problemDetail.publishSolution}</button>
+                    <ContentPreviewButton contentType="solution" locale={interfaceLocale} />
+                  </div>
                 </form>
               </details>
             )

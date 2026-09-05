@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserName } from "@/components/UserName";
@@ -63,6 +64,7 @@ export default async function EditProofPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="submit">{t.problemDetail.saveSolution}</button>
+          <ContentPreviewButton contentType="solution" locale={interfaceLocale} />
           <Link href={`/problems/${proof.problem.slug}`} className="button secondary">
             {t.problemDetail.cancel}
           </Link>

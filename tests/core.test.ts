@@ -2501,6 +2501,20 @@ for (const path of liveTitleEditorPaths) {
   assert.match(source, /<LiveMarkdownTitleField\b/);
   assert.doesNotMatch(source, /<input\b[^>]*name=["']title["']/);
 }
+// Composing a solution offers the same preview as composing a problem or a concept.
+// The problem page carries two of them: the translate form and the new-solution form.
+const problemPageSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
+assert.equal(problemPageSource.match(/<ContentPreviewButton contentType="solution"/g)?.length, 2);
+const proofEditSource = readFileSync(
+  join("app", "problems", "[slug]", "proofs", "[proofId]", "edit", "page.tsx"),
+  "utf-8"
+);
+assert.match(proofEditSource, /<ContentPreviewButton contentType="solution"/);
+const contentPreviewSource = readFileSync(join("components", "ContentPreviewButton.tsx"), "utf-8");
+assert.match(contentPreviewSource, /"concept" \| "problem" \| "solution"/);
+// Solution forms have no title input, so the sheet must not print a heading for them.
+assert.match(contentPreviewSource, /hasTitleField = contentType !== "solution"/);
+
 const liveTitleFieldSource = readFileSync(join("components", "LiveMarkdownTitleField.tsx"), "utf-8");
 assert.match(liveTitleFieldSource, /mode=["']title["']/);
 assert.doesNotMatch(liveTitleFieldSource, /title-preview/);
