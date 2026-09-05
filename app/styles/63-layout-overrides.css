@@ -266,6 +266,14 @@
   padding-top: 1.2rem;
 }
 
+/* A solution preview has no title above it, so the rule that separates a
+   heading from the body would float under the type label on its own. */
+.content-preview-solution .content-preview-markdown {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
 @media (max-width: 600px) {
   .content-preview-dialog {
     max-height: calc(100dvh - 1rem);

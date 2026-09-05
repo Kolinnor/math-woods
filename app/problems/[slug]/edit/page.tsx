@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
+import { DraftTextInput } from "@/components/DraftTextInput";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
@@ -127,6 +128,9 @@ export default async function EditProblemPage({
   const staleTranslation = Boolean(
     sourceRevisionId && problem.translatedFromRevisionId && sourceRevisionId > problem.translatedFromRevisionId
   );
+  const draftResetSignal = publishesImmediately
+    ? problem.version
+    : `${problem.version}:${pendingProposal?.createdAt.getTime() ?? 0}`;
   const relatedGroups = await Promise.all(problem.relatedGroups.map(async (group) => ({
     title: group.title,
     problems: await Promise.all(group.relations.map(async ({ targetProblem }) => ({
@@ -192,7 +196,7 @@ export default async function EditProblemPage({
                   name="bodyMarkdown"
                   initialValue={problem.bodyMarkdown}
                   draftKey={`problem:${problem.id}:statement`}
-                  resetSignal={problem.version}
+                  resetSignal={draftResetSignal}
                   sourceUpdatedAt={problem.updatedAt.getTime()}
                 />
               </div>
@@ -306,7 +310,12 @@ export default async function EditProblemPage({
                         {t.contentEditor.editSummary}
                         <FieldHelp text={t.contentEditor.editSummaryHelp} />
                       </span>
-                      <input name="editSummary" placeholder={t.contentEditor.problemEditSummaryPlaceholder} />
+                      <DraftTextInput
+                        name="editSummary"
+                        draftKey={`problem:${problem.id}:edit-summary`}
+                        resetSignal={draftResetSignal}
+                        placeholder={t.contentEditor.problemEditSummaryPlaceholder}
+                      />
                     </label>
                   </section>
 

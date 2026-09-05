@@ -425,6 +425,7 @@ import {
   FLAT_DOMAIN_OPTIONS,
   FLAT_PROBLEM_DOMAIN_OPTIONS,
   parseDomainCode,
+  parentProblemDomainForCode,
   PROBLEM_DOMAINS,
   translatedDomainLabel,
   translatedDomainOptions
@@ -1588,24 +1589,27 @@ for (const range of ["1-10", "11-25", "26-50", "51-70", "71-90", "91-100"]) {
 }
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
 assert.equal(FLAT_DOMAIN_OPTIONS.some((option) => /^\d{2}\s/.test(option.label)), false);
-assert.equal(PROBLEM_DOMAINS.length, 20);
+assert.equal(PROBLEM_DOMAINS.length, 21);
 assert.equal(PROBLEM_DOMAINS.some((option) => /^\d{2}-XX$/.test(option.value)), false);
-assert.equal(PROBLEM_DOMAINS.some((option) => option.value === "algebraic-topology"), false);
+assert.equal(PROBLEM_DOMAINS.some((option) => option.value === "algebraic-topology"), true);
 assert.equal(new Set(FLAT_PROBLEM_DOMAIN_OPTIONS.map((option) => option.value)).size, FLAT_PROBLEM_DOMAIN_OPTIONS.length);
-assert.equal(Object.keys(PROBLEM_DOMAIN_HERO_ART).length, PROBLEM_DOMAINS.length);
+for (const domain of PROBLEM_DOMAINS) {
+  assert.ok(PROBLEM_DOMAIN_HERO_ART[domain.value], `Missing hero for ${domain.value}`);
+}
 assert.equal(parseDomainCode("26"), "real-analysis");
 assert.equal(parseDomainCode("52-XX"), "geometry");
 assert.equal(parseDomainCode("GEOMETRY"), "geometry");
 assert.equal(parseDomainCode("algebra-groups"), "algebra-groups");
-assert.equal(domainLabel("algebra-groups"), "Groups");
+assert.equal(domainLabel("algebra-groups"), "Group");
 assert.equal(coarseDomainForCode("algebra-groups"), MathDomain.ALGEBRA);
 assert.equal(domainCodeAliases("algebra").includes("algebra-groups"), true);
-assert.equal(parseDomainCode("algebraic-topology"), "topology-algebraic-topology");
-assert.equal(parseDomainCode("55-XX"), "topology-algebraic-topology");
-assert.equal(domainCodeAliases("general-topology").includes("algebraic-topology"), true);
+assert.equal(parseDomainCode("algebraic-topology"), "algebraic-topology");
+assert.equal(parseDomainCode("55-XX"), "algebraic-topology");
+assert.equal(domainCodeAliases("algebraic-topology").includes("topology-algebraic-topology"), true);
 assert.equal(domainLabel("general-topology"), "Topology");
+assert.equal(domainLabel("algebraic-topology"), "Algebraic topology");
 assert.equal(translatedDomainLabel("algebra", { [MathDomain.ALGEBRA]: "Algèbre" }), "Algèbre");
-assert.equal(translatedDomainLabel("algebra-groups", { [MathDomain.ALGEBRA]: "Algèbre" }), "Groups");
+assert.equal(translatedDomainLabel("algebra-groups", { [MathDomain.ALGEBRA]: "Algèbre" }), "Group");
 const algebraSubdomains = PROBLEM_DOMAINS.find((domain) => domain.value === "algebra")?.children ?? [];
 assert.deepEqual(
   algebraSubdomains.map((domain) => domain.label),
@@ -1618,6 +1622,56 @@ assert.equal(heroArtForProblemDomain("60-XX").painting, "At the Edge of the Pine
 assert.equal(heroArtForProblemDomain("46").painting, "Branches. A Study");
 assert.equal(heroArtForProblemDomain("algebra-groups"), PROBLEM_DOMAIN_HERO_ART.algebra);
 assert.equal(heroArtForProblemDomain(undefined), PROBLEM_DOMAIN_HERO_ART.other);
+// Snapshot of persisted codes and aliases before PR #7. A taxonomy change must
+// preserve editing (including spoiler flags) and filtering without a DB rewrite.
+const legacyProblemDomains = JSON.parse(
+  readFileSync(join("tests", "fixtures", "problem-domains-before-pr7.json"), "utf-8")
+) as Array<{ value: string; domain: MathDomain; aliases: string[] }>;
+const renamedProblemDomains: Record<string, string> = {
+  "category-theory-categories": "category-theory",
+  "topology-algebraic-topology": "algebraic-topology",
+  "topology-differential-geometry": "differential-geometry",
+  "topology-general-topology": "general-topology",
+  "real-analysis-ordinary-differential-equations": "differential-equations-ordinary",
+  "discrete-mathematics-combinatorics": "combinatorics"
+};
+for (const legacy of legacyProblemDomains) {
+  for (const raw of [legacy.value, ...legacy.aliases]) {
+    const expected = raw === "01" || raw === "01-XX"
+      ? "history-of-mathematics"
+      : raw === "COMBINATORICS"
+        ? "combinatorics"
+        : renamedProblemDomains[legacy.value] ?? legacy.value;
+    assert.equal(parseDomainCode(raw), expected, `Legacy domain ${raw}`);
+    const expectedCoarse = legacy.value === "topology-differential-geometry" ? MathDomain.GEOMETRY : legacy.domain;
+    assert.deepEqual(parseProblemDomains([raw], null, [raw]), [
+      { domain: expectedCoarse, mscCode: expected, spoiler: true }
+    ], `Editing legacy domain ${raw}`);
+    assert.ok(domainCodeAliases(expected).includes(raw), `Filter must include stored code ${raw}`);
+    const parent = parentProblemDomainForCode(raw);
+    assert.ok(parent, `Legacy domain ${raw} needs a visible parent`);
+    assert.ok(domainCodeAliases(parent.value).includes(raw), `Parent filter must include ${raw}`);
+  }
+}
+assert.equal(parseDomainCode(null), "other");
+assert.equal(parseDomainCode("unknown-domain"), "other");
+assert.equal(parseDomainCode("misc"), "other");
+assert.equal(parentProblemDomainForCode("algebraic-geometry")?.value, "algebraic-geometry");
+for (const option of FLAT_PROBLEM_DOMAIN_OPTIONS) {
+  assert.ok(fr.home.domainLabels[option.value as keyof typeof fr.home.domainLabels], `Missing FR label: ${option.value}`);
+  assert.ok(en.home.domainLabels[option.value as keyof typeof en.home.domainLabels], `Missing EN label: ${option.value}`);
+}
+const regroupedDomainProgress = buildProgressMap(
+  [
+    { translationGroupId: "arithmetic", code: "number-theory" },
+    { translationGroupId: "counting", code: "discrete-mathematics-combinatorics" },
+    { translationGroupId: "physics", code: "mathematical-physics" }
+  ],
+  new Set(["arithmetic"]),
+  (problem) => parentProblemDomainForCode(problem.code)?.value ?? "other"
+);
+assert.deepEqual(regroupedDomainProgress.get("graphs-discrete-math"), { done: 1, total: 2 });
+assert.deepEqual(regroupedDomainProgress.get("applied-mathematics"), { done: 0, total: 1 });
 assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
   { domain: "ARITHMETIC", mscCode: "number-theory", spoiler: false },
   { domain: "ANALYSIS", mscCode: "real-analysis", spoiler: true }
@@ -2501,6 +2555,20 @@ for (const path of liveTitleEditorPaths) {
   assert.match(source, /<LiveMarkdownTitleField\b/);
   assert.doesNotMatch(source, /<input\b[^>]*name=["']title["']/);
 }
+// Composing a solution offers the same preview as composing a problem or a concept.
+// The problem page carries two of them: the translate form and the new-solution form.
+const problemPageSource = readFileSync(join("app", "problems", "[slug]", "page.tsx"), "utf-8");
+assert.equal(problemPageSource.match(/<ContentPreviewButton contentType="solution"/g)?.length, 2);
+const proofEditSource = readFileSync(
+  join("app", "problems", "[slug]", "proofs", "[proofId]", "edit", "page.tsx"),
+  "utf-8"
+);
+assert.match(proofEditSource, /<ContentPreviewButton contentType="solution"/);
+const contentPreviewSource = readFileSync(join("components", "ContentPreviewButton.tsx"), "utf-8");
+assert.match(contentPreviewSource, /"concept" \| "problem" \| "solution"/);
+// Solution forms have no title input, so the sheet must not print a heading for them.
+assert.match(contentPreviewSource, /hasTitleField = contentType !== "solution"/);
+
 const liveTitleFieldSource = readFileSync(join("components", "LiveMarkdownTitleField.tsx"), "utf-8");
 assert.match(liveTitleFieldSource, /mode=["']title["']/);
 assert.doesNotMatch(liveTitleFieldSource, /title-preview/);
@@ -3864,7 +3932,7 @@ assert.equal(
   frenchProblemDomains
     .find((domain) => domain.value === "linear-algebra")
     ?.children?.find((domain) => domain.value === "linear-algebra-lie-algebras")?.label,
-  "Algèbres de Lie"
+  "Algèbre de Lie"
 );
 
 assert.equal(normalizeProblemChallengeMessage("  Try this one!  "), "Try this one!");

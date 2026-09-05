@@ -105,6 +105,37 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
     alt: "Ivan Shishkin, Winter",
     painting: "Winter"
   },
+  // Reuse existing objects; adding a category must not require a new upload.
+  "algebraic-topology": {
+    src: `${IMAGE_BASE}/general-topology.webp`,
+    alt: "Ivan Shishkin, Forest",
+    painting: "Forest"
+  },
+  "several-variable-functions": {
+    src: `${IMAGE_BASE}/combinatorics.webp`,
+    alt: "Ivan Shishkin, Mixed Forest",
+    painting: "Mixed Forest"
+  },
+  computation: {
+    src: `${IMAGE_BASE}/scientific-computing.webp`,
+    alt: "Ivan Shishkin, Autumn",
+    painting: "Autumn"
+  },
+  "history-of-mathematics": {
+    src: `${IMAGE_BASE}/mathematical-physics.webp`,
+    alt: "Ivan Shishkin, Winter",
+    painting: "Winter"
+  },
+  "applied-mathematics": {
+    src: `${IMAGE_BASE}/other.webp`,
+    alt: "Ivan Shishkin, Forest Landscape with Herons",
+    painting: "Forest Landscape with Herons"
+  },
+  enigma: {
+    src: "/art/rye.jpg",
+    alt: "Ivan Shishkin, Rye",
+    painting: "Rye"
+  },
   other: {
     src: `${IMAGE_BASE}/other.webp`,
     alt: "Ivan Shishkin, Forest Landscape with Herons",

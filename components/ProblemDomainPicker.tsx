@@ -2,6 +2,8 @@
 
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { MatrixGlyph } from "@/components/MatrixGlyph";
+import { TopologyBlobGlyph } from "@/components/TopologyBlobGlyph";
 import type { DomainOption, ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
 import type { Dictionary, InterfaceLocale } from "@/lib/i18n/types";
 
@@ -11,7 +13,7 @@ const DOMAIN_FAMILY_COLORS: Record<ProblemDomainFamily, string> = {
   geom: "#a87f2e",
   ana: "#2f6f6a",
   prob: "#3d5f7a",
-  app: "#a85f33",
+  app: "#a13a3a",
   other: "#1f1f1f"
 };
 
@@ -35,9 +37,9 @@ function isProblemDomainOption(domain: DomainOption): domain is ProblemDomainOpt
 
 function findOption(domains: DomainOption[], value: string) {
   const normalized = value.trim().toUpperCase();
-  return domains
-    .flatMap((domain) => [domain, ...(domain.children ?? [])])
-    .find((domain) => domain.value.toUpperCase() === normalized || domain.aliases?.some((alias) => alias.toUpperCase() === normalized));
+  const options = domains.flatMap((domain) => [domain, ...(domain.children ?? [])]);
+  return options.find((domain) => domain.value.toUpperCase() === normalized)
+    ?? options.find((domain) => domain.aliases?.some((alias) => alias.toUpperCase() === normalized));
 }
 
 function template(value: string, key: string, replacement: string | number) {
@@ -188,7 +190,15 @@ export function ProblemDomainPicker({
                 }}
               >
                 <span className="domain-picker-glyph" style={color ? { backgroundColor: color } : undefined}>
-                  {glyph}
+                  {domain.value === "general-topology" && color ? (
+                    <TopologyBlobGlyph fill={color} />
+                  ) : domain.value === "linear-algebra" ? (
+                    <MatrixGlyph />
+                  ) : domain.value === "computation" ? (
+                    <span style={{ display: "inline-block", transform: "translate(-1.5px, 1.5px)" }}>{glyph}</span>
+                  ) : (
+                    glyph
+                  )}
                 </span>
                 <span>{domain.label}</span>
               </button>

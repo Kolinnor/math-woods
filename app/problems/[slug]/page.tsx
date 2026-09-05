@@ -8,6 +8,7 @@ import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
+import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { Difficulty } from "@/components/Difficulty";
 import { GuestContentViewGate } from "@/components/GuestContentViewGate";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -936,9 +937,11 @@ export default async function ProblemPage({
                 {t.problems.exerciseBadge}
               </span>
             )}
-            <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
-              {t.quality[problem.qualityStatus]}
-            </span>
+            {(problem.qualityStatus !== "REVIEWED" || !problem.reviewedBy) && (
+              <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
+                {t.quality[problem.qualityStatus]}
+              </span>
+            )}
             {problem.needsReviewAfterEdit && (
               <span className="problem-review-badge problem-review-edited">
                 {t.problems.editedSinceReview}
@@ -960,6 +963,28 @@ export default async function ProblemPage({
             )}
             <span>·</span>
             <Difficulty value={problem.difficulty} compact explain />
+            {problem.qualityStatus === "REVIEWED" && problem.reviewedBy && (
+              <>
+                <span>·</span>
+                <details className="problem-reviewed-meta">
+                  <summary
+                    aria-label={`${t.problemDetail.reviewedByCredit} ${displayNameForUser(problem.reviewedBy)}`}
+                  >
+                    <Check size={13} aria-hidden="true" />
+                    {t.quality.REVIEWED}
+                  </summary>
+                  <span className="problem-reviewed-meta-popover">
+                    <UserAvatar user={problem.reviewedBy} size="sm" />
+                    <span>
+                      {t.problemDetail.reviewedByCredit}{" "}
+                      <Link href={`/profile/${problem.reviewedBy.profileSlug}`}>
+                        {displayNameForUser(problem.reviewedBy)}
+                      </Link>
+                    </span>
+                  </span>
+                </details>
+              </>
+            )}
             <span>·</span>
             <ContentTranslations
               currentLanguage={problem.language}
@@ -1172,17 +1197,6 @@ export default async function ProblemPage({
         </div>
 
         <article className="problem-detail-article" aria-labelledby="problem-title">
-
-        {problem.qualityStatus === "REVIEWED" && problem.reviewedBy && (
-          <p className="problem-reviewed-credit">
-            <UserAvatar user={problem.reviewedBy} size="sm" />
-            <Link href={`/profile/${problem.reviewedBy.profileSlug}`}>
-              {displayNameForUser(problem.reviewedBy)}
-            </Link>
-            {" "}
-            {problem.isExercise ? t.problemDetail.reviewedCreditExercise : t.problemDetail.reviewedCreditProblem}
-          </p>
-        )}
 
         <section className="problem-statement reading-surface" data-tour-target="statement">
           <MarkdownBlock html={problemBodyHtml} />
@@ -1644,7 +1658,10 @@ export default async function ProblemPage({
                       lineNumbers={false}
                       draftKey={`problem:${problem.id}:translate-solution:${translationSourceProof.id}`}
                     />
-                    <button type="submit">{t.problemDetail.publishSolutionTranslation}</button>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="submit">{t.problemDetail.publishSolutionTranslation}</button>
+                      <ContentPreviewButton contentType="solution" locale={interfaceLocale} />
+                    </div>
                   </form>
                 </div>
               </details>
@@ -1663,7 +1680,10 @@ export default async function ProblemPage({
                     draftKey={`problem:${problem.id}:new-solution`}
                     resetSignal={ownProofResetSignal}
                   />
-                  <button type="submit">{t.problemDetail.publishSolution}</button>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="submit">{t.problemDetail.publishSolution}</button>
+                    <ContentPreviewButton contentType="solution" locale={interfaceLocale} />
+                  </div>
                 </form>
               </details>
             )

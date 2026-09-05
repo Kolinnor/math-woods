@@ -1880,6 +1880,10 @@ body:has(.home-dashboard-guest) .guest-home-sign-in {
   margin-top: 3rem;
 }
 
+body:has(.floating-friends-menu) .site-footer > div {
+  padding-bottom: max(5rem, calc(4rem + env(safe-area-inset-bottom)));
+}
+
 .site-footer a:hover {
   color: var(--ink);
 }

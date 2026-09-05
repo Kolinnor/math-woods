@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ConceptContributorGuideLink } from "@/components/ConceptContributorGuideLink";
+import { DraftTextInput } from "@/components/DraftTextInput";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
@@ -90,7 +91,7 @@ export default async function EditConceptPage({
     : await prisma.conceptEditProposal.findFirst({
         where: { conceptId: concept.id, proposerId: user.id, status: "PENDING" },
         orderBy: { createdAt: "desc" },
-        select: { editSummary: true }
+        select: { createdAt: true, editSummary: true }
       });
   const [siblingTranslations, sourceRevisionId, libraryReferences] = await Promise.all([
     prisma.concept.findMany({
@@ -112,6 +113,9 @@ export default async function EditConceptPage({
   const staleTranslation = Boolean(
     sourceRevisionId && concept.translatedFromRevisionId && sourceRevisionId > concept.translatedFromRevisionId
   );
+  const draftResetSignal = publishesImmediately
+    ? concept.updatedAt.getTime()
+    : `${concept.updatedAt.getTime()}:${pendingProposal?.createdAt.getTime() ?? 0}`;
   const initialExercises: TipPickerProblem[] = await Promise.all(
     concept.practiceExercises.map(async ({ problem }) => ({
       id: problem.id,
@@ -216,7 +220,7 @@ export default async function EditConceptPage({
             name="bodyMarkdown"
             initialValue={concept.bodyMarkdown}
             draftKey={`concept:${concept.id}:body`}
-            resetSignal={concept.updatedAt.getTime()}
+            resetSignal={draftResetSignal}
             sourceUpdatedAt={concept.updatedAt.getTime()}
           />
         </div>
@@ -270,7 +274,12 @@ export default async function EditConceptPage({
         )}
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.contentEditor.editSummary}</span>
-          <input name="editSummary" placeholder={t.contentEditor.editSummaryPlaceholder} />
+          <DraftTextInput
+            name="editSummary"
+            draftKey={`concept:${concept.id}:edit-summary`}
+            resetSignal={draftResetSignal}
+            placeholder={t.contentEditor.editSummaryPlaceholder}
+          />
         </label>
         <div className="content-editor-actions">
           <button type="submit">

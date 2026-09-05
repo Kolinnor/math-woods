@@ -25,6 +25,7 @@ import {
   domainLabel,
   FLAT_PROBLEM_DOMAIN_OPTIONS,
   parseDomainCode,
+  parentProblemDomainForCode,
   PROBLEM_DOMAIN_FAMILIES,
   PROBLEM_DOMAINS,
   translatedDomainLabel as translatedDomainOptionLabel,
@@ -564,8 +565,7 @@ export default async function ProblemsPage({
       domainProgressProblemGroups,
       solvedTranslationGroupIdSet,
       (problem) =>
-        parseDomainCode(problem.domains[0]?.mscCode ?? problem.domains[0]?.domain ?? problem.domain) ??
-        String(problem.domain).toLowerCase()
+        parentProblemDomainForCode(problem.domains[0]?.mscCode ?? problem.domains[0]?.domain ?? problem.domain)?.value ?? "other"
     )
   );
   const domainProblemCounts = Object.fromEntries(
@@ -574,8 +574,8 @@ export default async function ProblemsPage({
   const domainContentTypeCounts = Object.fromEntries(
     Object.entries(
       domainProgressProblemGroups.reduce<Record<string, { problems: number; exercises: number }>>((counts, problem) => {
-        const domain = parseDomainCode(problem.domains[0]?.mscCode ?? problem.domains[0]?.domain ?? problem.domain)
-          ?? String(problem.domain).toLowerCase();
+        const domain = parentProblemDomainForCode(problem.domains[0]?.mscCode ?? problem.domains[0]?.domain ?? problem.domain)?.value
+          ?? "other";
         const entry = counts[domain] ?? { problems: 0, exercises: 0 };
         if (problem.isExercise) entry.exercises += 1;
         else entry.problems += 1;

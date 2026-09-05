@@ -796,18 +796,60 @@ body:has(.problem-detail-shell) .site-main {
   padding: 0.2rem 0.3rem;
   text-transform: uppercase;
 }
-.problem-reviewed-credit {
-  align-items: center;
-  color: var(--mw-secondary);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 0.85rem;
-  gap: 0.5rem;
-  margin-bottom: 0.85rem;
+.problem-reviewed-meta {
+  position: relative;
 }
-.problem-reviewed-credit a {
+.problem-reviewed-meta summary {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  color: var(--accent);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 800;
+  gap: 0.22rem;
+  line-height: 1;
+  list-style: none;
+  padding: 0.25rem 0.42rem;
+  white-space: nowrap;
+}
+.problem-reviewed-meta summary::-webkit-details-marker {
+  display: none;
+}
+.problem-reviewed-meta summary:hover,
+.problem-reviewed-meta summary:focus-visible,
+.problem-reviewed-meta[open] summary {
+  border-color: var(--mw-green);
+  color: var(--mw-green);
+}
+.problem-reviewed-meta-popover {
+  align-items: center;
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  color: var(--mw-secondary);
+  display: none;
+  font-size: 0.78rem;
+  gap: 0.45rem;
+  left: 0;
+  max-width: min(18rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.6rem;
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  width: max-content;
+  z-index: 35;
+}
+.problem-reviewed-meta-popover a {
   color: var(--mw-text);
-  text-decoration: none;
+  font-weight: 700;
+}
+.problem-reviewed-meta:hover .problem-reviewed-meta-popover,
+.problem-reviewed-meta:focus-within .problem-reviewed-meta-popover,
+.problem-reviewed-meta[open] .problem-reviewed-meta-popover {
+  display: flex;
 }
 .problem-author-name > span:last-child {
   font-weight: 700;
