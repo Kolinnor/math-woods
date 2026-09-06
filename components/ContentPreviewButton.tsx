@@ -4,6 +4,8 @@ import { Eye, Loader2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownInline } from "@/components/MarkdownInline";
+import { ProblemCitations } from "@/components/ProblemCitations";
+import type { ProblemCitation } from "@/lib/problem-citations";
 import { dictionaryForLocale } from "@/lib/i18n/dictionary";
 import type { InterfaceLocale } from "@/lib/i18n/types";
 
@@ -13,6 +15,8 @@ type ContentPreviewButtonProps = {
 };
 
 type PreviewResponse = {
+  isOriginal?: boolean;
+  citations?: ProblemCitation[];
   titleHtml?: string;
   bodyHtml?: string;
   error?: string;
@@ -41,7 +45,7 @@ export function ContentPreviewButton({ contentType, locale = "en" }: ContentPrev
       const response = await fetch("/api/content-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, bodyMarkdown })
+        body: JSON.stringify({ title, bodyMarkdown, isOriginal: contentType === "problem" && formData.get("isOriginal") === "true", citations: JSON.parse(String(formData.get(contentType === "concept" ? "conceptCitations" : "problemCitations") ?? "[]")) })
       });
       const result = await response.json() as PreviewResponse;
       if (!response.ok) throw new Error(result.error || t.contentEditor.previewFailed);
@@ -116,6 +120,7 @@ export function ContentPreviewButton({ contentType, locale = "en" }: ContentPrev
               <div className="content-preview-markdown">
                 <MarkdownBlock html={preview.bodyHtml} />
               </div>
+              <ProblemCitations citations={preview.citations ?? []} isOriginal={preview.isOriginal} locale={locale} />
             </article>
           )}
         </div>

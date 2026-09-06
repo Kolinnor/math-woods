@@ -30,7 +30,7 @@ export const PROBLEM_DOMAIN_HERO_ART: Record<string, ProblemHeroArt> = {
     alt: "Ivan Shishkin, The Forest Clearing",
     painting: "The Forest Clearing"
   },
-  "number-theory": {
+  arithmetic: {
     src: `${IMAGE_BASE}/number-theory.webp`,
     alt: "Ivan Shishkin, Birch Forest",
     painting: "Birch Forest"

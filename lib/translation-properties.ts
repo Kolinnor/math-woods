@@ -10,6 +10,7 @@ export const PROBLEM_TRANSLATION_SHARED_FIELDS = [
   "knownSourceId",
   "listed",
   "isExercise",
+  "isOriginal",
   "isConjecture",
   "styles",
   "showRelatedProblems",

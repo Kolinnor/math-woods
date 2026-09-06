@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { frontmatter, markdownResponse } from "@/lib/export-markdown";
 import { prisma } from "@/lib/db";
 import { domainLabel } from "@/lib/domains";
+import { parseConceptCitations } from "@/lib/concept-citations";
+import { citationText } from "@/lib/problem-citations";
+import { pageBibliographyResponse } from "@/lib/page-bibliography";
 
 export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -10,7 +13,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     include: {
       lastEditedBy: true,
       aliases: { orderBy: { alias: "asc" } },
-      references: { orderBy: { position: "asc" } }
+      references: { orderBy: { position: "asc" } },
+      libraryReferences: { orderBy: { position: "asc" } }
     }
   });
 
@@ -19,10 +23,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
       where: { sourceSlug: slug },
       include: { targetConcept: true }
     });
-    if (merged) return Response.redirect(new URL(`/concepts/${merged.targetConcept.slug}/export`, request.url), 308);
+    if (merged) return Response.redirect(new URL(`/concepts/${merged.targetConcept.slug}/export${new URL(request.url).search}`, request.url), 308);
+    const alias = await prisma.conceptAlias.findUnique({ where: { aliasSlug: slug }, include: { concept: { select: { slug: true } } } });
+    if (alias) return Response.redirect(new URL(`/concepts/${alias.concept.slug}/export${new URL(request.url).search}`, request.url), 308);
     notFound();
   }
 
+  const citations = parseConceptCitations(concept.libraryReferences);
+  const format = new URL(request.url).searchParams.get("format");
+  if (format === "bibtex" || format === "json") return pageBibliographyResponse(prisma, { type: "concept", slug: concept.slug, title: concept.title, language: concept.language }, citations, format);
   const markdown =
     frontmatter({
       type: "concept",
@@ -36,9 +45,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
       lastEditedBy: concept.lastEditedBy?.username
     }) +
     concept.bodyMarkdown +
-    (concept.references.length
-      ? `\n\n## References\n\n${concept.references
-          .map((reference) => `- ${reference.url ? `[${reference.title}](${reference.url})` : reference.title}${reference.note ? ` — ${reference.note}` : ""}`)
+    (citations.length
+      ? `\n\n## References\n\n${citations
+          .map((reference) => `- ${reference.url ? `[${citationText(reference)}](${reference.url})` : citationText(reference)}${reference.note ? ` — ${reference.note}` : ""}`)
           .join("\n")}\n`
       : "");
 

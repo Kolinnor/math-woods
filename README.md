@@ -27,6 +27,11 @@ Math Woods is a place for solving and sharing mathematical problems. Problems ar
 
 Because it is open-source, anyone can help improve the code and the content of the website.
 
+To correct the concept contributor guide, edit its
+[French](./content/guides/concepts/fr.md) or [English](./content/guides/concepts/en.md)
+Markdown source. Site edits and pull request corrections are synchronized
+[when preparing and deploying a release](./docs/concept-guide-sync.md).
+
 ## Running Math Woods locally
 
 Math Woods uses Node.js 22 and PostgreSQL. Install [Node.js 22](https://nodejs.org/) and

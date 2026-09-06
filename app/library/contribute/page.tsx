@@ -45,7 +45,7 @@ export default async function LibraryContributePage() {
 
   return (
     <ForestPageLayout title={fr ? "Contribuer à la bibliothèque" : "Contribute to the library"} description={reviewer ? (fr ? "Proposez une fiche ou relisez les contributions en attente." : "Suggest an entry or review pending contributions.") : (fr ? "Vos propositions sont relues avant leur publication." : "Your suggestions are reviewed before publication.")} heroImage="/art/birch-grove.jpg">
-      <LibraryTabs active="contribution" locale={locale} />
+      <LibraryTabs locale={locale} />
       <div className="library-contribution-actions">
         <Link href="/library/mathematicians/new"><UsersRound size={20} /><span>{fr ? "Proposer un mathématicien" : "Suggest a mathematician"}</span><Plus size={16} /></Link>
         <Link href="/library/history/new"><Clock3 size={20} /><span>{fr ? "Proposer un repère" : "Suggest a milestone"}</span><Plus size={16} /></Link>

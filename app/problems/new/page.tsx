@@ -5,7 +5,9 @@ import { ProblemCreateForm } from "@/components/ProblemCreateForm";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
-import { LibraryReferencePicker } from "@/components/library/LibraryReferencePicker";
+import { ProblemCitationEditor } from "@/components/ProblemCitationEditor";
+import { canRevealProblemCitations } from "@/lib/problem-citation-access";
+import { parseProblemCitations } from "@/lib/problem-citations";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
@@ -91,12 +93,14 @@ export default async function NewProblemPage({
         where: { slug: translateOf },
         select: {
           slug: true,
+          authorId: true,
           title: true,
           bodyMarkdown: true,
           language: true,
           translationGroupId: true,
           difficulty: true,
           isExercise: true,
+          isOriginal: true,
           isConjecture: true,
           styles: true,
           showRelatedProblems: true,
@@ -107,7 +111,6 @@ export default async function NewProblemPage({
           knownSourceId: true,
           libraryReferences: {
             orderBy: { position: "asc" },
-            select: { referenceId: true, role: true, locator: true, note: true, isPrimary: true }
           },
           listed: true,
           verificationMode: true,
@@ -214,12 +217,8 @@ export default async function NewProblemPage({
   const initialDomainSpoilers = sourceProblem
     ? sourceProblem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)
     : [];
-  const libraryReferences = await prisma.libraryReference.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { canonicalTitle: "asc" },
-    select: { id: true, canonicalTitle: true, referenceType: true }
-  });
 
+  const revealSourceCitations = sourceProblem ? await canRevealProblemCitations(user, sourceProblem) : true;
   return (
     <ForestPageLayout
       title={sourceProblem ? t.contentEditor.translation : isExerciseByDefault ? t.contentEditor.newExercise : t.contentEditor.newProblem}
@@ -352,18 +351,13 @@ export default async function NewProblemPage({
             />
           )}
 
+          <ProblemCitationEditor locale={interfaceLocale} initialOriginal={sourceProblem?.isOriginal ?? false} initial={parseProblemCitations(sourceProblem?.libraryReferences.filter((item) => revealSourceCitations || !item.spoiler) ?? [])} draftKey={`mw-citations:${user.id}:new:${draftSession}`} />
           <div className="problem-compose-actions">
             <button type="submit" disabled={Boolean(sourceProblem && !targetTranslationLanguage)}>
               {t.contentEditor.publish}
             </button>
             <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
             <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
-                {canUseAdminTools(user) && <LibraryReferencePicker
-                  locale={interfaceLocale}
-                  allowPrimary
-                  options={libraryReferences.map((reference) => ({ id: reference.id, title: reference.canonicalTitle, type: reference.referenceType }))}
-                  initial={sourceProblem?.libraryReferences.map((reference) => ({ ...reference, locator: reference.locator ?? "", note: reference.note ?? "" }))}
-                />}
 
                 <ProblemClassificationFields
                   initialStyles={sourceProblem?.styles}

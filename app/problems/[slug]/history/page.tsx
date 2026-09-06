@@ -8,16 +8,27 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canRollbackProblem } from "@/lib/permissions";
+import { canEditProblem } from "@/lib/permissions";
+import { parseProblemRevisionSnapshot, formatProblemSnapshotFieldValue } from "@/lib/problem-revisions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProblemHistoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const [user, t, interfaceLocale] = await Promise.all([requireUser(), getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
-  const problem = await prisma.problem.findUnique({ where: { slug } });
+  const problem = await prisma.problem.findUnique({ where: { slug }, include: { libraryReferences: true } });
 
   if (!problem) notFound();
   const canRollback = canRollbackProblem(user, problem);
+  const solved = await prisma.problemAttempt.findFirst({ where: { userId: user.id, status: "SOLVED", problem: { translationGroupId: problem.translationGroupId } }, select: { id: true } });
+  const revealCitations = canEditProblem(user, problem) || Boolean(solved);
+  const hiddenKeys = new Set(problem.libraryReferences.filter((item) => item.spoiler).map((item) => item.citationKey));
+  const citationHistoryText = (snapshot: unknown) => {
+    const parsed = parseProblemRevisionSnapshot(snapshot as Parameters<typeof parseProblemRevisionSnapshot>[0]);
+    const citations = parsed?.citations;
+    const originality = parsed?.isOriginal === undefined ? "" : `Original : ${parsed.isOriginal ? (interfaceLocale === "fr" ? "Oui" : "Yes") : (interfaceLocale === "fr" ? "Non" : "No")}\n`;
+    return originality + formatProblemSnapshotFieldValue("citations", citations?.filter((item) => revealCitations || (!item.spoiler && !hiddenKeys.has(item.citationKey))));
+  };
 
   const [revisions, attributionTransfers] = await Promise.all([
     prisma.pageRevision.findMany({
@@ -32,6 +43,11 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
       include: { fromUser: true, toUser: true, transferredBy: true }
     })
   ]);
+  for (const revision of revisions) {
+    for (const citation of parseProblemRevisionSnapshot(revision.problemSnapshot)?.citations ?? []) {
+      if (citation.spoiler) hiddenKeys.add(citation.citationKey);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -97,6 +113,10 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
                 )}
               </div>
               <p className="mt-3">{revision.editSummary || t.historyPage.noSummary}</p>
+              <details className="mt-3"><summary>{interfaceLocale === "fr" ? "Références de cette révision" : "References in this revision"}</summary>
+                <pre className="whitespace-pre-wrap break-words">{citationHistoryText(revision.problemSnapshot)}</pre>
+                {previousRevision && <RevisionDiff afterMarkdown={citationHistoryText(revision.problemSnapshot)} beforeMarkdown={citationHistoryText(previousRevision.problemSnapshot)} beforeRevisionId={previousRevision.id} revisionId={revision.id} labels={t.historyPage} />}
+              </details>
               {previousRevision ? (
                 <RevisionDiff
                   afterMarkdown={revision.markdown}

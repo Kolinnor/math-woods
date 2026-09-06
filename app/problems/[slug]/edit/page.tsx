@@ -8,7 +8,9 @@ import { DraftTextInput } from "@/components/DraftTextInput";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
-import { LibraryReferencePicker } from "@/components/library/LibraryReferencePicker";
+import { ProblemCitationEditor } from "@/components/ProblemCitationEditor";
+import { canRevealProblemCitations } from "@/lib/problem-citation-access";
+import { parseProblemCitations } from "@/lib/problem-citations";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ProblemDifficultyField } from "@/components/ProblemDifficultyField";
@@ -82,7 +84,6 @@ export default async function EditProblemPage({
       },
       libraryReferences: {
         orderBy: { position: "asc" },
-        select: { referenceId: true, role: true, locator: true, note: true, isPrimary: true }
       }
     }
   });
@@ -108,7 +109,7 @@ export default async function EditProblemPage({
     problem.qualityStatus === QualityStatus.REVIEWED &&
     canSetProblemQualityStatus(user.role, QualityStatus.REVIEWED);
   if (problem.status === "ARCHIVED" && !canEditArchivedProblem) notFound();
-  const [siblingTranslations, sourceRevisionId, libraryReferences] = await Promise.all([
+  const [siblingTranslations, sourceRevisionId] = await Promise.all([
     prisma.problem.findMany({
       where: {
         translationGroupId: problem.translationGroupId,
@@ -118,12 +119,7 @@ export default async function EditProblemPage({
     }),
     problem.translatedFromProblemId
       ? latestProblemTextRevisionId(problem.translatedFromProblemId)
-      : null,
-    prisma.libraryReference.findMany({
-      where: { status: "PUBLISHED" },
-      orderBy: { canonicalTitle: "asc" },
-      select: { id: true, canonicalTitle: true, referenceType: true }
-    })
+      : null
   ]);
   const staleTranslation = Boolean(
     sourceRevisionId && problem.translatedFromRevisionId && sourceRevisionId > problem.translatedFromRevisionId
@@ -131,6 +127,7 @@ export default async function EditProblemPage({
   const draftResetSignal = publishesImmediately
     ? problem.version
     : `${problem.version}:${pendingProposal?.createdAt.getTime() ?? 0}`;
+  const revealCitations = await canRevealProblemCitations(user, problem);
   const relatedGroups = await Promise.all(problem.relatedGroups.map(async (group) => ({
     title: group.title,
     problems: await Promise.all(group.relations.map(async ({ targetProblem }) => ({
@@ -223,18 +220,11 @@ export default async function EditProblemPage({
               />
             </section>
 
+            <ProblemCitationEditor locale={interfaceLocale} initialOriginal={problem.isOriginal} initial={parseProblemCitations(problem.libraryReferences.filter((item) => revealCitations || !item.spoiler))} draftKey={`mw-citations:${user.id}:problem:${problem.id}`} />
             <div className="problem-compose-actions">
               <button type="submit">{publishesImmediately ? t.contentEditor.saveChanges : t.contentEditor.submitForReview}</button>
               <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
               <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
-                  {publishesImmediately && canUseAdminTools(user) && (
-                    <LibraryReferencePicker
-                      locale={interfaceLocale}
-                      allowPrimary
-                      options={libraryReferences.map((reference) => ({ id: reference.id, title: reference.canonicalTitle, type: reference.referenceType }))}
-                      initial={problem.libraryReferences.map((reference) => ({ ...reference, locator: reference.locator ?? "", note: reference.note ?? "" }))}
-                    />
-                  )}
 
                   <ProblemClassificationFields
                     initialStyles={problem.styles}

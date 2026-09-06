@@ -22,8 +22,14 @@ fi
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d postgres valkey
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run guides:check
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run references:check
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run bibliography:check
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run internal-links:reconcile
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run achievements:backfill
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run guides:apply
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run references:reconcile
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm migrate npm run bibliography:upgrade
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d app uptime-kuma node-exporter cadvisor prometheus
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" kill -s SIGHUP prometheus
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --force-recreate caddy

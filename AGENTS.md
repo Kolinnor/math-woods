@@ -35,10 +35,18 @@ Production runs on the Infomaniak VPS:
 Normal local verification before deploy:
 
 ```powershell
-npx.cmd tsc --noEmit
-npm.cmd run test:core
-npm.cmd run build
+npm.cmd run deploy:prepare
 ```
+
+This exports the public FR/EN contributor guide from production, merges site edits into
+`content/guides/concepts/*.md`, then runs TypeScript, core tests and the build.
+Run it BEFORE presenting the deployment commit for approval. Review the Markdown and
+`site-snapshot.json` diff together; never edit the snapshot manually or bypass a conflict.
+See `docs/concept-guide-sync.md` for conflict resolution and offline checks.
+
+Always show the exact commit message and wait for the user's validation before committing.
+Deploy only on explicit request. The user has explicitly authorized publication of the
+code to the public GitHub remote alongside each deployment; push to both remotes then.
 
 Normal deployment archive excludes `.next`, `node_modules`, `.git`, `backups`, and `.env.production`.
 Never overwrite the server `.env.production`, and never delete backups.

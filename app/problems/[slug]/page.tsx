@@ -60,7 +60,9 @@ import {
   canViewArchivedProblem
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
-import { formatLibraryReference, referenceRoleLabel } from "@/lib/library";
+import { ProblemCitations } from "@/components/ProblemCitations";
+import { parseProblemCitations, visibleProblemCitations } from "@/lib/problem-citations";
+import { canRevealProblemCitations } from "@/lib/problem-citation-access";
 import { localizedTranslation } from "@/lib/library-queries";
 import { shouldShowOwnerProblemBanner, shouldShowOwnerSolvedBanner } from "@/lib/problem-owner-solved-banner";
 import {
@@ -370,7 +372,6 @@ export default async function ProblemPage({
   const selectedProofs = selectProblemProofsForPage(proofFamily, problem.id, problem.language);
   const proofProblemSlugById = new Map(selectedProofs.map((proof) => [proof.id, proof.problem.slug]));
   problem.proofs = selectedProofs.map(({ problem: _proofProblem, ...proof }) => proof);
-  const hasSpecifiedOrigin = problem.libraryReferences.length > 0;
 
   const proofIds = problem.proofs.map((proof) => proof.id);
   const relatedProblems = problem.relatedGroups.flatMap((group) =>
@@ -870,6 +871,7 @@ export default async function ProblemPage({
     (ownVerificationRequests.length > 0 && attempt?.status !== "SOLVED")
   );
   const revealSpoilerDetails = attempt?.status === "SOLVED" || isProblemAuthor;
+  const readableCitations = visibleProblemCitations(parseProblemCitations(problem.libraryReferences), await canRevealProblemCitations(user, problem));
   const showSpoilerTags = problem.spoilerTags.length > 0 && revealSpoilerDetails;
   const problemDomains = problem.domains.length
     ? problem.domains.filter((item) => revealSpoilerDetails || !item.spoiler).map((item) => item.mscCode)
@@ -1315,24 +1317,13 @@ export default async function ProblemPage({
             )}
           </div>
         </section>
-        {hasSpecifiedOrigin && (
-          <section className="problem-origin-note zen-meta" aria-labelledby="problem-source-heading">
-            <strong id="problem-source-heading" className="problem-source-heading">
-              {problem.libraryReferences.length <= 1 ? t.problemDetail.source : t.problemDetail.sources}
-            </strong>
-            <ol className="problem-library-references">
-              {problem.libraryReferences.map((link) => {
-                const translatedReference = localizedTranslation(link.reference.translations, interfaceLocale);
-                return (
-                  <li key={link.id}>
-                    {link.reference.iconUrl && <img src={link.reference.iconUrl} alt="" className="problem-source-icon" style={{ blockSize: link.reference.iconSize, inlineSize: link.reference.iconSize }} />}
-                    <span><span>{user && canUseAdminTools(user) ? <Link href={`/library/references/${link.reference.slug}`}>{translatedReference?.displayTitle ?? link.reference.canonicalTitle}</Link> : (translatedReference?.displayTitle ?? link.reference.canonicalTitle)}{translatedReference && <ContentLanguageFallback language={translatedReference.language} expectedLanguage={interfaceLocale} />}</span><small>{formatLibraryReference(link.reference)} · {referenceRoleLabel(link.role, interfaceLocale)}{link.locator ? ` · ${link.locator}` : ""}</small>{link.note && <span className="muted"><AsyncMarkdownInline markdown={link.note} /></span>}</span>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        )}
+        <ProblemCitations citations={readableCitations} isOriginal={problem.isOriginal} locale={interfaceLocale} exportHref={`/problems/${problem.slug}/export`} />
+        {canProposeCurrentProblem && readableCitations.some((item) => item.referenceId === null) && <details className="zen-meta">
+          <summary>{interfaceLocale === "fr" ? "Proposer une ressource au catalogue (facultatif)" : "Propose a catalogue resource (optional)"}</summary>
+          <ul>{readableCitations.filter((item) => item.referenceId === null).map((item) => <li key={item.citationKey}>
+            <Link href={{ pathname: "/contributing/references", query: { problem: problem.slug, citation: item.citationKey } }}>{item.text}</Link>
+          </li>)}</ul>
+        </details>}
 
         {problem.showRelatedProblems && (
           <section className="zen-hide related-problems-section mt-8">

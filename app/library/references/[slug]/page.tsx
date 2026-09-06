@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { ExternalLink, Pencil } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -14,6 +14,7 @@ import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { formatLibraryReference, referenceRoleLabel, referenceTypeLabel } from "@/lib/library";
 import { libraryCopy } from "@/lib/library-copy";
+import { referenceBibtexReport } from "@/lib/reference-bibtex";
 import { localizedTranslation } from "@/lib/library-queries";
 import { canArchiveLibraryEntry, canEditLibraryDraft, canReviewLibraryEntry, canViewLibraryEntry } from "@/lib/permissions";
 
@@ -26,6 +27,9 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
     prisma.libraryReference.findUnique({
       where: { slug },
       include: {
+        mergedInto: { select: { slug: true } },
+        work: true,
+        editions: { where: { status: "PUBLISHED", searchable: true, mergedIntoId: null }, orderBy: [{ year: "asc" }, { id: "asc" }] },
         translations: true,
         createdBy: true,
         reviewedBy: true,
@@ -37,8 +41,10 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
     })
   ]);
   if (!entry || !canViewLibraryEntry(user, entry)) notFound();
+  if (entry.mergedInto) permanentRedirect(`/library/references/${entry.mergedInto.slug}`);
   const translation = localizedTranslation(entry.translations, locale);
   const copy = libraryCopy[locale];
+  const bibliography = referenceBibtexReport(entry, locale);
   return (
     <ForestPageLayout title={<>{translation?.displayTitle ?? entry.canonicalTitle}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={locale} />}</>} description={referenceTypeLabel(entry.referenceType, locale)} heroImage="/art/oak-grove.jpg" actions={user && canEditLibraryDraft(user, entry) ? <Link href={`/library/references/${entry.slug}/edit?lang=${locale}`} className="primary"><Pencil size={16} />{copy.edit}</Link> : undefined}>
       <LibraryTabs active="references" locale={locale} />
@@ -49,10 +55,20 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
       <article className="panel library-reference-detail">
         <div className="library-reference-title-row">{entry.iconUrl && <div className="library-reference-icon-wrap"><img src={entry.iconUrl} alt={entry.imageAlt ?? ""} style={{ width: entry.iconSize, height: entry.iconSize }} /><ImageCredit credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} label={copy.imageCredit} /></div>}<p className="library-citation">{formatLibraryReference(entry)}</p></div>
         {entry.url && <a className="button secondary" href={entry.url} rel="noreferrer"><ExternalLink size={16} />{locale === "fr" ? "Consulter" : "Open"}</a>}
-        <dl className="library-metadata">{entry.doi && <><dt>DOI</dt><dd>{entry.doi}</dd></>}{entry.isbn && <><dt>ISBN</dt><dd>{entry.isbn}</dd></>}{entry.citationKey && <><dt>{locale === "fr" ? "Clé de citation" : "Citation key"}</dt><dd>{entry.citationKey}</dd></>}</dl>
+        {entry.work && <p>{locale === "fr" ? "Édition de : " : "Edition of: "}<Link href={`/library/references/${entry.work.slug}`}>{entry.work.canonicalTitle}</Link></p>}
+        {entry.editions.length > 0 && <details className="library-form-section"><summary>{locale === "fr" ? `Éditions et traductions (${entry.editions.length})` : `Editions and translations (${entry.editions.length})`}</summary><ul>{entry.editions.map(edition => <li key={edition.id}><Link href={`/library/references/${edition.slug}`}>{formatLibraryReference(edition)}</Link></li>)}</ul></details>}
+        <details className="library-form-section"><summary>{locale === "fr" ? "Détails bibliographiques et BibTeX" : "Bibliographic details and BibTeX"}</summary><div>
+          <dl className="library-metadata">{([
+            ["DOI", entry.doi], ["ISBN", entry.isbn], [locale === "fr" ? "Clé de citation" : "Citation key", bibliography.key],
+            [locale === "fr" ? "Édition" : "Edition", entry.edition], ["Volume", entry.volume],
+            [locale === "fr" ? "Traducteurs" : "Translators", entry.translator], [locale === "fr" ? "Responsables de l’édition" : "Editors", entry.editors],
+            [locale === "fr" ? "Revue" : "Journal", entry.journal], [locale === "fr" ? "Numéro" : "Issue", entry.issue], ["Pages", entry.pages]
+          ] as const).filter(([, value]) => value).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+          {[...bibliography.errors, ...bibliography.warnings].map((message, index) => <p className="muted" key={index}>{message}</p>)}
+          <pre className="library-bibtex">{bibliography.text}</pre>
+        </div></details>
         {translation?.descriptionHtml && <div className="prose-math" dangerouslySetInnerHTML={{ __html: translation.descriptionHtml }} />}
         {(entry.problemLinks.length > 0 || entry.conceptLinks.length > 0 || entry.mathematicianWorks.length > 0 || entry.milestoneLinks.length > 0) && <section><h2>{locale === "fr" ? "Liens dans Math Woods" : "Links on Math Woods"}</h2><ul className="library-bibliography">{entry.problemLinks.map((link) => <li key={`p-${link.id}`}><Link href={`/problems/${link.problem.slug}`}>{link.problem.title}</Link><ContentLanguageFallback language={link.problem.language} expectedLanguage={locale} /> · {referenceRoleLabel(link.role, locale)}{link.locator ? `, ${link.locator}` : ""}</li>)}{entry.conceptLinks.map((link) => <li key={`c-${link.id}`}><Link href={`/concepts/${link.concept.slug}`}>{link.concept.title}</Link><ContentLanguageFallback language={link.concept.language} expectedLanguage={locale} /> · {referenceRoleLabel(link.role, locale)}{link.locator ? `, ${link.locator}` : ""}</li>)}{entry.mathematicianWorks.map(({ mathematician, note }) => { const t = localizedTranslation(mathematician.translations, locale); return <li key={`m-${mathematician.id}`}><Link href={`/library/mathematicians/${mathematician.slug}`}>{t?.displayName ?? mathematician.name}</Link>{t && <ContentLanguageFallback language={t.language} expectedLanguage={locale} />}{note ? ` · ${note}` : ""}</li>; })}{entry.milestoneLinks.map(({ milestone, note }) => { const t = localizedTranslation(milestone.translations, locale); return <li key={`h-${milestone.id}`}><Link href={`/library/history/${milestone.slug}`}>{t?.title ?? milestone.slug}</Link>{t && <ContentLanguageFallback language={t.language} expectedLanguage={locale} />}{note ? ` · ${note}` : ""}</li>; })}</ul></section>}
-        {entry.bibtex && <details className="library-bibtex"><summary>BibTeX</summary><pre>{entry.bibtex}</pre></details>}
         {user && <LibraryReviewActions entity="reference" id={entry.id} locale={locale} status={entry.status} canReview={canReviewLibraryEntry(user, entry)} canArchive={canArchiveLibraryEntry(user)} />}
       </article>
     </ForestPageLayout>

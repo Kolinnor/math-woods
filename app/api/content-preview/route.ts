@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { CONTENT_LIMITS } from "@/lib/content-limits";
 import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { parseProblemCitations } from "@/lib/problem-citations";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -38,5 +39,10 @@ export async function POST(request: Request) {
     renderMarkdown(bodyMarkdown)
   ]);
 
-  return NextResponse.json({ titleHtml, bodyHtml });
+  try {
+    const citations = parseProblemCitations((payload as { citations?: unknown }).citations ?? []);
+    return NextResponse.json({ titleHtml, bodyHtml, citations, isOriginal: (payload as { isOriginal?: unknown }).isOriginal === true });
+  } catch {
+    return NextResponse.json({ error: "Invalid references." }, { status: 400 });
+  }
 }

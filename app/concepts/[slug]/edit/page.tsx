@@ -8,7 +8,8 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
-import { LibraryReferencePicker } from "@/components/library/LibraryReferencePicker";
+import { ProblemCitationEditor } from "@/components/ProblemCitationEditor";
+import { parseConceptCitations } from "@/lib/concept-citations";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { OrderedProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
@@ -58,7 +59,6 @@ export default async function EditConceptPage({
       references: { orderBy: { position: "asc" } },
       libraryReferences: {
         orderBy: { position: "asc" },
-        select: { referenceId: true, role: true, locator: true, note: true }
       },
       translatedFromConcept: {
         select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true }
@@ -93,7 +93,7 @@ export default async function EditConceptPage({
         orderBy: { createdAt: "desc" },
         select: { createdAt: true, editSummary: true }
       });
-  const [siblingTranslations, sourceRevisionId, libraryReferences] = await Promise.all([
+  const [siblingTranslations, sourceRevisionId] = await Promise.all([
     prisma.concept.findMany({
       where: {
         translationGroupId: concept.translationGroupId,
@@ -103,12 +103,7 @@ export default async function EditConceptPage({
     }),
     concept.translatedFromConceptId
       ? latestConceptTextRevisionId(concept.translatedFromConceptId)
-      : null,
-    prisma.libraryReference.findMany({
-      where: { status: "PUBLISHED" },
-      orderBy: { canonicalTitle: "asc" },
-      select: { id: true, canonicalTitle: true, referenceType: true }
-    })
+      : null
   ]);
   const staleTranslation = Boolean(
     sourceRevisionId && concept.translatedFromRevisionId && sourceRevisionId > concept.translatedFromRevisionId
@@ -252,13 +247,7 @@ export default async function EditConceptPage({
             />
           </div>
         </details>
-        {publishesImmediately && canUseAdminTools(user) && (
-          <LibraryReferencePicker
-            locale={interfaceLocale}
-            options={libraryReferences.map((reference) => ({ id: reference.id, title: reference.canonicalTitle, type: reference.referenceType }))}
-            initial={concept.libraryReferences.map((reference) => ({ ...reference, locator: reference.locator ?? "", note: reference.note ?? "", isPrimary: false }))}
-          />
-        )}
+        <ProblemCitationEditor contentType="concept" locale={interfaceLocale} initial={parseConceptCitations(concept.libraryReferences)} draftKey={`mw-citations:${user.id}:concept:${concept.id}`} />
         {canFeatureConcept && (
           <label className="checkbox-field">
             <input

@@ -625,7 +625,7 @@ export const en = {
     domainLabels: {
       ALGEBRA: "Algebra",
       ANALYSIS: "Analysis",
-      ARITHMETIC: "Number theory",
+      ARITHMETIC: "Arithmetic",
       GEOMETRY: "Geometry",
       COMBINATORICS: "Combinatorics",
       PROBABILITY: "Probability",
@@ -636,6 +636,7 @@ export const en = {
       "category-theory": "Category theory",
       algebra: "General algebra",
       "linear-algebra": "Linear algebra",
+      arithmetic: "Arithmetic",
       "number-theory": "Number theory",
       "representation-theory": "Representation theory",
       "linear-algebra-geometry": "Geometry",
@@ -969,6 +970,7 @@ export const en = {
     ],
     sortOptions: [
       { value: "newest", label: "Newest" },
+      { value: "oldest", label: "Oldest" },
       { value: "solved", label: "Most solved" },
       { value: "favorited", label: "Most liked" },
       { value: "difficulty", label: "Hardest first" },
@@ -1793,6 +1795,7 @@ export const en = {
       translatedFromRevisionId: "translation freshness",
       aliases: "aliases",
       references: "references",
+      citations: "bibliography",
       practiceExercises: "linked exercises"
     }
   },

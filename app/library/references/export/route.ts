@@ -1,36 +1,8 @@
-import { LibraryReferenceType, LibraryStatus } from "@prisma/client";
+import { LibraryStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { canUseAdminTools } from "@/lib/permissions";
-
-function cleanBibtexValue(value: string) {
-  return value.replace(/[{}]/g, "").trim();
-}
-
-function fallbackBibtex(reference: {
-  citationKey: string | null;
-  slug: string;
-  referenceType: LibraryReferenceType;
-  canonicalTitle: string;
-  authors: string | null;
-  publisher: string | null;
-  year: number | null;
-  url: string | null;
-  doi: string | null;
-  isbn: string | null;
-}) {
-  const entryType = reference.referenceType === LibraryReferenceType.BOOK ? "book" : reference.referenceType === LibraryReferenceType.ARTICLE ? "article" : "misc";
-  const fields = [
-    ["title", reference.canonicalTitle],
-    ["author", reference.authors],
-    ["publisher", reference.publisher],
-    ["year", reference.year?.toString()],
-    ["url", reference.url],
-    ["doi", reference.doi],
-    ["isbn", reference.isbn]
-  ].filter((field): field is [string, string] => Boolean(field[1]));
-  return `@${entryType}{${reference.citationKey ?? reference.slug},\n${fields.map(([key, value]) => `  ${key} = {${cleanBibtexValue(value)}}`).join(",\n")}\n}`;
-}
+import { exportReferenceBibtex, generatedBibtex, upgradeLegacyBibliography } from "@/lib/reference-bibtex";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -42,23 +14,34 @@ export async function GET(request: Request) {
   }
   const format = new URL(request.url).searchParams.get("format") === "json" ? "json" : "bibtex";
   const references = await prisma.libraryReference.findMany({
-    where: { status: LibraryStatus.PUBLISHED },
-    include: { translations: true },
+    where: { status: LibraryStatus.PUBLISHED, searchable: true, mergedIntoId: null },
+    include: { translations: true, work: { select: { slug: true } } },
     orderBy: { canonicalTitle: "asc" }
   });
+  try {
   if (format === "json") {
-    const publicReferences = references.map((reference) => ({
+    const publicReferences = references.map(upgradeLegacyBibliography).map((reference) => ({
       slug: reference.slug,
+      workSlug: reference.work?.slug ?? null,
       type: reference.referenceType,
       title: reference.canonicalTitle,
       authors: reference.authors,
       publisher: reference.publisher,
       year: reference.year,
+      yearLabel: reference.yearLabel,
+      edition: reference.edition,
+      volume: reference.volume,
+      translator: reference.translator,
+      editors: reference.editors,
+      journal: reference.journal,
+      issue: reference.issue,
+      pages: reference.pages,
       url: reference.url,
       doi: reference.doi,
       isbn: reference.isbn,
       citationKey: reference.citationKey,
-      bibtex: reference.bibtex,
+      bibtex: generatedBibtex(reference),
+      originalBibtex: reference.bibtex,
       translations: reference.translations.map((translation) => ({
         language: translation.language,
         title: translation.displayTitle,
@@ -69,7 +52,10 @@ export async function GET(request: Request) {
       headers: { "Content-Type": "application/json; charset=utf-8", "Content-Disposition": "attachment; filename=math-woods-references.json", "Cache-Control": "private, no-store" }
     });
   }
-  return new Response(references.map((reference) => reference.bibtex?.trim() || fallbackBibtex(reference)).join("\n\n"), {
+  return new Response(exportReferenceBibtex(references), {
     headers: { "Content-Type": "application/x-bibtex; charset=utf-8", "Content-Disposition": "attachment; filename=math-woods-references.bib", "Cache-Control": "private, no-store" }
   });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Unable to export BibTeX. Correct the bibliography records and try again." }, { status: 422, headers: { "Cache-Control": "private, no-store" } });
+  }
 }

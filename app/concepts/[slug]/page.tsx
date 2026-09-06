@@ -57,7 +57,8 @@ import {
   TRANSLATION_VIEW_LANGUAGE_PARAM
 } from "@/lib/translation-routing";
 import { cleanWikiLinkTarget, missingConceptHref } from "@/lib/wikilinks";
-import { formatLibraryReference } from "@/lib/library";
+import { ProblemCitations } from "@/components/ProblemCitations";
+import { parseConceptCitations } from "@/lib/concept-citations";
 import { localizedTranslation } from "@/lib/library-queries";
 
 export const dynamic = "force-dynamic";
@@ -748,24 +749,13 @@ export default async function ConceptPage({
           </details>
         </div>
 
-        {concept.libraryReferences.length > 0 && (
-        <section className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold">{t.conceptDetail.references}</h2>
-          <ol className="grid list-decimal gap-3 pl-6 text-sm">
-            {concept.libraryReferences.map((link) => {
-              const translatedReference = localizedTranslation(link.reference.translations, interfaceLocale);
-              return <li key={link.id}>
-                {user && canUseAdminTools(user) ? <Link href={`/library/references/${link.reference.slug}`} className="underline">
-                  {translatedReference?.displayTitle ?? link.reference.canonicalTitle}
-                </Link> : (translatedReference?.displayTitle ?? link.reference.canonicalTitle)}{translatedReference && <ContentLanguageFallback language={translatedReference.language} expectedLanguage={interfaceLocale} />}
-                <span className="muted"> — {formatLibraryReference(link.reference)}</span>
-                {link.locator && <span className="muted"> · {link.locator}</span>}
-                {link.note && <span className="muted"> · {link.note}</span>}
-              </li>;
-            })}
-          </ol>
-        </section>
-        )}
+        <ProblemCitations citations={parseConceptCitations(concept.libraryReferences)} locale={interfaceLocale} exportHref={`/concepts/${concept.slug}/export`} />
+        {user?.emailVerifiedAt && concept.libraryReferences.some(item => item.referenceId === null) && <details className="zen-meta">
+          <summary>{interfaceLocale === "fr" ? "Proposer une ressource au catalogue (facultatif)" : "Propose a catalogue resource (optional)"}</summary>
+          <ul>{concept.libraryReferences.filter(item => item.referenceId === null).map(item => <li key={item.citationKey}>
+            <Link href={{ pathname: "/contributing/references", query: { concept: concept.slug, citation: item.citationKey } }}>{item.text}</Link>
+          </li>)}</ul>
+        </details>}
       </article>
 
       <aside className="concept-detail-rail">

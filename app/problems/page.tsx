@@ -87,6 +87,7 @@ const DIFFICULTY_RANGES: DifficultyRange[] = [
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
   { value: "solved", label: "Most solved" },
   { value: "favorited", label: "Most liked" },
   { value: "difficulty", label: "Hardest first" },
@@ -432,7 +433,7 @@ export default async function ProblemsPage({
         ? { authorId: { not: user.id } }
         : null;
   const normalizedSort = sort === "attempted" ? "solved" : sort;
-  const sortValue = ["newest", "solved", "favorited", "difficulty", "easiest"].includes(normalizedSort)
+  const sortValue = ["newest", "oldest", "solved", "favorited", "difficulty", "easiest"].includes(normalizedSort)
     ? normalizedSort
     : "newest";
   const advancedLogic = filterLogic === "OR" ? "OR" : "AND";
@@ -459,7 +460,7 @@ export default async function ProblemsPage({
           ? { difficulty: "desc" }
           : sortValue === "easiest"
             ? { difficulty: "asc" }
-            : { createdAt: "desc" };
+            : { createdAt: sortValue === "oldest" ? "asc" : "desc" };
   const queryClauses: Prisma.ProblemWhereInput[] = [];
   if (query) {
     for (const variant of databaseSearchVariants) {

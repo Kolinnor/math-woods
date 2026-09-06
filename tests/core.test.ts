@@ -1589,7 +1589,7 @@ for (const range of ["1-10", "11-25", "26-50", "51-70", "71-90", "91-100"]) {
 }
 assert.equal(FLAT_DOMAIN_OPTIONS.filter((option) => /^\d{2}-XX$/.test(option.value)).length, 63);
 assert.equal(FLAT_DOMAIN_OPTIONS.some((option) => /^\d{2}\s/.test(option.label)), false);
-assert.equal(PROBLEM_DOMAINS.length, 21);
+assert.equal(PROBLEM_DOMAINS.length, 22);
 assert.equal(PROBLEM_DOMAINS.some((option) => /^\d{2}-XX$/.test(option.value)), false);
 assert.equal(PROBLEM_DOMAINS.some((option) => option.value === "algebraic-topology"), true);
 assert.equal(new Set(FLAT_PROBLEM_DOMAIN_OPTIONS.map((option) => option.value)).size, FLAT_PROBLEM_DOMAIN_OPTIONS.length);
@@ -1641,7 +1641,9 @@ for (const legacy of legacyProblemDomains) {
       ? "history-of-mathematics"
       : raw === "COMBINATORICS"
         ? "combinatorics"
-        : renamedProblemDomains[legacy.value] ?? legacy.value;
+        : raw === "ARITHMETIC"
+          ? "arithmetic"
+          : renamedProblemDomains[legacy.value] ?? legacy.value;
     assert.equal(parseDomainCode(raw), expected, `Legacy domain ${raw}`);
     const expectedCoarse = legacy.value === "topology-differential-geometry" ? MathDomain.GEOMETRY : legacy.domain;
     assert.deepEqual(parseProblemDomains([raw], null, [raw]), [
@@ -1657,6 +1659,15 @@ assert.equal(parseDomainCode(null), "other");
 assert.equal(parseDomainCode("unknown-domain"), "other");
 assert.equal(parseDomainCode("misc"), "other");
 assert.equal(parentProblemDomainForCode("algebraic-geometry")?.value, "algebraic-geometry");
+for (const code of ["arithmetic", "number-theory", "ARITHMETIC", "11", "11-XX"]) {
+  assert.equal(parentProblemDomainForCode(code)?.value, "arithmetic");
+  assert.ok(domainCodeAliases("arithmetic").includes(code));
+  assert.equal(domainCodeAliases("graphs-discrete-math").includes(code), false);
+  assert.equal(heroArtForProblemDomain(code), PROBLEM_DOMAIN_HERO_ART.arithmetic);
+}
+assert.equal(translatedDomainLabel("arithmetic", fr.home.domainLabels), "Arithmétique");
+assert.equal(translatedDomainLabel("number-theory", fr.home.domainLabels), "Théorie des nombres");
+assert.equal(domainCodeAliases("number-theory").includes("arithmetic"), false);
 for (const option of FLAT_PROBLEM_DOMAIN_OPTIONS) {
   assert.ok(fr.home.domainLabels[option.value as keyof typeof fr.home.domainLabels], `Missing FR label: ${option.value}`);
   assert.ok(en.home.domainLabels[option.value as keyof typeof en.home.domainLabels], `Missing EN label: ${option.value}`);
@@ -1670,7 +1681,8 @@ const regroupedDomainProgress = buildProgressMap(
   new Set(["arithmetic"]),
   (problem) => parentProblemDomainForCode(problem.code)?.value ?? "other"
 );
-assert.deepEqual(regroupedDomainProgress.get("graphs-discrete-math"), { done: 1, total: 2 });
+assert.deepEqual(regroupedDomainProgress.get("arithmetic"), { done: 1, total: 1 });
+assert.deepEqual(regroupedDomainProgress.get("graphs-discrete-math"), { done: 0, total: 1 });
 assert.deepEqual(regroupedDomainProgress.get("applied-mathematics"), { done: 0, total: 1 });
 assert.deepEqual(parseProblemDomains(["11-XX", "26-XX"], null, ["26-XX"]), [
   { domain: "ARITHMETIC", mscCode: "number-theory", spoiler: false },
@@ -5056,9 +5068,12 @@ const libraryActionsSource = readFileSync(join("lib", "actions", "library-action
 const libraryActionBodies = libraryActionsSource.split(/export async function /).slice(1);
 assert.ok(libraryActionBodies.length > 0);
 for (const body of libraryActionBodies) {
-  assert.match(body, /\{\s*const user = await requireAdmin\(\);/);
+  if (body.startsWith("proposeLibraryReferenceAction(")) {
+    assert.match(body, /requireVerifiedUser\(\)/);
+    assert.match(body, /status: LibraryStatus.PENDING_REVIEW/);
+  } else assert.match(body, /\{\s*const user = await requireAdmin\(\);/);
 }
-assert.doesNotMatch(libraryActionsSource, /requireVerifiedUser|requireUser|Role\.MODERATOR/);
+assert.doesNotMatch(libraryActionsSource, /requireUser\(|Role\.MODERATOR/);
 const libraryExportSource = readFileSync(join("app", "library", "references", "export", "route.ts"), "utf-8");
 assert.match(libraryExportSource, /if \(!user \|\| !canUseAdminTools\(user\)\)/);
 assert.match(libraryExportSource, /status: user \? 403 : 401/);
@@ -5066,10 +5081,11 @@ assert.ok(libraryExportSource.indexOf("!canUseAdminTools(user)") < libraryExport
 assert.match(libraryExportSource, /"Cache-Control": "private, no-store"/);
 assert.doesNotMatch(sitemapSource, /\/library/);
 assert.equal((layoutSource.match(/user && canUseAdminTools\(user\) && <Link href=\{libraryRoute\}/g) ?? []).length, 2);
-for (const source of [problemActionsSource, conceptActionsSource]) {
-  assert.match(source, /submittedLibraryReferences = canUseAdminTools\(user\) \? parseLibraryReferenceLinks/);
-  assert.match(source, /submittedLibraryReferences = publishesImmediately && canUseAdminTools\(user\)/);
-}
+assert.match(conceptActionsSource, /submittedConceptCitations\(formData\)/);
+assert.match(conceptActionsSource, /validateConceptCitations\(/);
+assert.match(conceptActionsSource, /syncConceptCitations\(/);
+assert.match(problemActionsSource, /submittedProblemCitations\(formData\)/);
+assert.match(problemActionsSource, /validateProblemCitations\(tx, submittedSnapshot.citations, problemId\)/);
 
 const onceRateLimitKey = `core-test-once-${Date.now()}`;
 

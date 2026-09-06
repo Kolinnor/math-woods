@@ -44,5 +44,9 @@ export async function syncProblemLibraryReferences(tx: DbClient, problemId: numb
 export async function syncConceptLibraryReferences(tx: DbClient, conceptId: number, links: SubmittedLibraryReferenceLink[]) {
   await validateLibraryReferenceLinks(tx, links);
   await tx.conceptLibraryReference.deleteMany({ where: { conceptId } });
-  if (links.length) await tx.conceptLibraryReference.createMany({ data: links.map(({ isPrimary: _isPrimary, ...link }, position) => ({ conceptId, ...link, position })) });
+  const records = await tx.libraryReference.findMany({ where: { id: { in: links.map(link => link.referenceId) } } });
+  if (links.length) await tx.conceptLibraryReference.createMany({ data: links.map(({ isPrimary: _isPrimary, ...link }, position) => {
+    const record = records.find(r => r.id === link.referenceId)!;
+    return { conceptId, ...link, position, text: [record.authors, record.canonicalTitle].filter(Boolean).join(" — "), url: record.url };
+  }) });
 }

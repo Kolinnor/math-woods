@@ -628,7 +628,7 @@ export const fr = {
     domainLabels: {
       ALGEBRA: "Algèbre",
       ANALYSIS: "Analyse",
-      ARITHMETIC: "Théorie des nombres",
+      ARITHMETIC: "Arithmétique",
       GEOMETRY: "Géométrie",
       COMBINATORICS: "Combinatoire",
       PROBABILITY: "Probabilités",
@@ -639,6 +639,7 @@ export const fr = {
       "category-theory": "Théorie des catégories",
       algebra: "Algèbre générale",
       "linear-algebra": "Algèbre linéaire",
+      arithmetic: "Arithmétique",
       "number-theory": "Théorie des nombres",
       "representation-theory": "Théorie des représentations",
       "linear-algebra-geometry": "Géométrie",
@@ -974,6 +975,7 @@ export const fr = {
     ],
     sortOptions: [
       { value: "newest", label: "Plus récents" },
+      { value: "oldest", label: "Les plus anciens" },
       { value: "solved", label: "Les plus résolus" },
       { value: "favorited", label: "Les plus aimés" },
       { value: "difficulty", label: "Plus difficiles d'abord" },
@@ -1798,6 +1800,7 @@ export const fr = {
       translatedFromRevisionId: "actualité de la traduction",
       aliases: "alias",
       references: "références",
+      citations: "bibliographie",
       practiceExercises: "exercices liés"
     }
   },

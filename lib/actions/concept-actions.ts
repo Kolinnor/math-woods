@@ -34,7 +34,10 @@ import {
   notifyOwnerOfSiteActivity
 } from "@/lib/notifications";
 import { parseAliases, parseReferences, syncConceptAliases, syncConceptReferences } from "@/lib/concept-metadata";
-import { parseLibraryReferenceLinks, syncConceptLibraryReferences } from "@/lib/library-linking";
+import { legacyConceptCitations, parseConceptCitations, submittedConceptCitations } from "@/lib/concept-citations";
+import { syncConceptCitations, validateConceptCitations } from "@/lib/concept-citations-db";
+import { mergeProblemCitations, translatedProblemCitations } from "@/lib/problem-citations";
+import { acknowledgeCitationDraft } from "@/lib/citation-draft-receipt";
 import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import {
   assertTranslationWikiLinksPreserved,
@@ -170,7 +173,7 @@ export async function createConceptAction(formData: FormData) {
   const domain = coarseDomainForCode(domainCode);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
-  const submittedLibraryReferences = canUseAdminTools(user) ? parseLibraryReferenceLinks(formData, false) : [];
+  const submittedCitations = submittedConceptCitations(formData);
 
   const translationSourceIdentity =
     translationGroupId && translationSourceSlug
@@ -291,18 +294,8 @@ export async function createConceptAction(formData: FormData) {
         : references,
       tx
     );
-    const inheritedLibraryReferences = sharedConcept
-      ? await tx.conceptLibraryReference.findMany({
-          where: { conceptId: sharedConcept.id },
-          select: { referenceId: true, role: true, locator: true, note: true },
-          orderBy: { position: "asc" }
-        })
-      : submittedLibraryReferences;
-    await syncConceptLibraryReferences(
-      tx,
-      created.id,
-      inheritedLibraryReferences.map((reference) => ({ ...reference, isPrimary: false }))
-    );
+    const inheritedCitations = parseConceptCitations((translationSource ?? sharedConcept)?.libraryReferences ?? []);
+    await syncConceptCitations(tx, created.id, submittedCitations ?? (sharedConcept ? inheritedCitations : legacyConceptCitations(references)), inheritedCitations.flatMap(c => c.referenceId === null ? [] : [c.referenceId]));
     if (sharedConcept?.practiceExercises.length) {
       await tx.conceptExercise.createMany({
         data: sharedConcept.practiceExercises.map(({ problemId, position }) => ({
@@ -331,6 +324,7 @@ export async function createConceptAction(formData: FormData) {
   });
 
   const concept = creationResult.concept;
+  await acknowledgeCitationDraft(formData);
   if (!creationResult.created) {
     redirect(contentLanguageViewHref("/concepts", concept.slug, concept.language) as Route);
   }
@@ -425,9 +419,10 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         note,
         position
       }));
-  const submittedLibraryReferences = publishesImmediately && canUseAdminTools(user) && formData.get("libraryReferencesSubmitted") === "1"
-    ? parseLibraryReferenceLinks(formData, false)
-    : null;
+  const submittedCitations = submittedConceptCitations(formData);
+  const rawCitationBase = formData.get("conceptCitationsBase");
+  if (typeof rawCitationBase === "string" && rawCitationBase.length > 300000) throw new Error("Invalid reference baseline.");
+  const citationBase = typeof rawCitationBase === "string" ? parseConceptCitations(JSON.parse(rawCitationBase)) : undefined;
   const exerciseIds = parseConceptExerciseIds(formData.getAll("exerciseIds"));
   const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary");
   const markTranslationFresh = publishesImmediately && formData.get("markTranslationFresh") === "on";
@@ -480,6 +475,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         }
 
         const currentSnapshot = buildConceptRevisionSnapshot(current);
+        if (submittedCitations !== undefined) await validateConceptCitations(tx, submittedCitations, conceptId);
         const validExercises = exerciseIds.length
           ? await tx.problem.findMany({
               where: { id: { in: exerciseIds }, isExercise: true, listed: true, status: "PUBLISHED" },
@@ -489,6 +485,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         const validExerciseById = new Map(validExercises.map((exercise) => [exercise.id, exercise]));
         const proposedSnapshot: ConceptRevisionSnapshot = {
           ...currentSnapshot,
+          citations: submittedCitations ?? currentSnapshot.citations,
           title,
           language,
           bodyMarkdown,
@@ -556,6 +553,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         proposalId: proposal.id
       });
     }
+    await acknowledgeCitationDraft(formData);
     redirect(
       contentLanguageViewHref("/concepts", existingConcept.slug, existingConcept.language, {
         editProposal: proposal ? "submitted" : "unchanged"
@@ -592,6 +590,8 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       const effectiveEditorId = approvedProposal?.proposerId ?? user.id;
       await pinLatestConceptRevisionMetadata(tx, currentSnapshotSource);
       const currentSnapshot = buildConceptRevisionSnapshot(currentSnapshotSource);
+      const citationMerge = mergeProblemCitations(citationBase ?? (isApprovingProposal ? currentSnapshot.citations : undefined), currentSnapshot.citations, submittedCitations);
+      if (citationMerge.conflict) throw new ConceptEditProposalConflictError();
     const titleOrLanguageChanged =
         title.toLowerCase() !== currentSnapshotSource.title.toLowerCase() || language !== currentSnapshotSource.language;
     if (titleOrLanguageChanged) {
@@ -648,9 +648,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     await syncInternalLinks(SourceType.CONCEPT, updated.id, bodyMarkdown, tx, language);
     await syncConceptAliases(updated.id, aliases, tx);
     await syncConceptReferences(updated.id, references, tx);
-    if (submittedLibraryReferences) {
-      await syncConceptLibraryReferences(tx, updated.id, submittedLibraryReferences);
-    }
+    if (citationMerge.merged !== undefined) await syncConceptCitations(tx, updated.id, citationMerge.merged);
     const validExercises = exerciseIds.length
       ? await tx.problem.findMany({
           where: {
@@ -693,7 +691,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
 
     const sharedChangedFields = conceptTranslationSharedChanges(changedFields);
     const sharedChangedFieldSet = new Set(sharedChangedFields);
-    const siblings = sharedChangedFields.length > 0
+    const siblings = sharedChangedFields.length > 0 || changedFields.includes("citations")
       ? (
           await tx.concept.findMany({
               where: { translationGroupId: currentSnapshotSource.translationGroupId, id: { not: updated.id } },
@@ -704,9 +702,14 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     for (const sibling of siblings) {
       const siblingBefore = await conceptSnapshotSource(tx, sibling.id);
       await pinLatestConceptRevisionMetadata(tx, siblingBefore);
+      if (changedFields.includes("citations")) {
+        const translated = translatedProblemCitations(currentSnapshot.citations ?? [], updatedSnapshot.citations ?? [], parseConceptCitations(siblingBefore.libraryReferences));
+        await syncConceptCitations(tx, sibling.id, translated, (currentSnapshot.citations ?? []).flatMap(c => c.referenceId === null ? [] : [c.referenceId]));
+      }
       await tx.concept.update({
         where: { id: sibling.id },
         data: {
+          ...(changedFields.includes("citations") ? { updatedAt: new Date() } : {}),
           ...(sharedChangedFieldSet.has("domainCode") ? { domain, domainCode } : {}),
           ...(sharedChangedFieldSet.has("kind") ? { kind } : {}),
           ...(sharedChangedFieldSet.has("canAppearInConceptBrowser")
@@ -763,6 +766,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     if (error instanceof ConceptEditProposalConflictError && approvedProposalId > 0) {
       redirect(`/moderation/concept-edits/${approvedProposalId}?conflict=1` as Route);
     }
+    if (error instanceof ConceptEditProposalConflictError) redirect(`/concepts/${existingConcept.slug}/edit?conflict=1` as Route);
     throw error;
   }
 
@@ -802,6 +806,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
     });
     revalidatePath("/moderation");
   }
+  await acknowledgeCitationDraft(formData);
   redirect(contentLanguageViewHref("/concepts", concept.updated.slug, concept.updated.language) as Route);
 }
 
@@ -826,6 +831,7 @@ export async function approveConceptEditProposalAction(proposalId: number) {
   formData.set("kind", snapshot.kind);
   formData.set("domain", snapshot.domainCode);
   formData.set("aliases", snapshot.aliases.map(({ alias }) => alias).join(", "));
+  if (snapshot.citations !== undefined) formData.set("conceptCitations", JSON.stringify(snapshot.citations));
   formData.set(
     "references",
     snapshot.references.map(({ title, url, note }) => [title, url ?? "", note ?? ""].join(" | ")).join("\n")
@@ -1246,7 +1252,9 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
 
   const concept = await prisma.$transaction(async (tx) => {
     await lockConceptFamilyForMutation(tx, conceptId);
-    await pinLatestConceptRevisionMetadata(tx, await conceptSnapshotSource(tx, conceptId));
+    const before = await conceptSnapshotSource(tx, conceptId);
+    await pinLatestConceptRevisionMetadata(tx, before);
+    const restoredSnapshot = parseConceptRevisionSnapshot(revision.conceptSnapshot);
     const updated = await tx.concept.update({
       where: { id: conceptId },
       data: {
@@ -1262,6 +1270,18 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
     });
 
     await syncInternalLinks(SourceType.CONCEPT, conceptId, revision.markdown, tx);
+    if (restoredSnapshot?.citations !== undefined) {
+      const historical = restoredSnapshot.citations.flatMap(c => c.referenceId === null ? [] : [c.referenceId]);
+      await syncConceptCitations(tx, conceptId, restoredSnapshot.citations, historical);
+      const siblings = await tx.concept.findMany({ where: { translationGroupId: before.translationGroupId, id: { not: conceptId } }, include: conceptRevisionSnapshotInclude });
+      for (const sibling of siblings) {
+        await pinLatestConceptRevisionMetadata(tx, sibling);
+        await syncConceptCitations(tx, sibling.id, translatedProblemCitations(parseConceptCitations(before.libraryReferences), restoredSnapshot.citations, parseConceptCitations(sibling.libraryReferences)), historical);
+        await tx.concept.update({ where: { id: sibling.id }, data: { updatedAt: new Date() } });
+        const after = await conceptSnapshotSource(tx, sibling.id);
+        await tx.pageRevision.create({ data: { pageType: SourceType.CONCEPT, pageId: sibling.id, markdown: after.bodyMarkdown, conceptTitle: after.title, conceptKind: after.kind, conceptSnapshot: conceptRevisionSnapshotJson(buildConceptRevisionSnapshot(after)), editedById: user.id, editSummary: `References restored from ${updated.language} translation` } });
+      }
+    }
     const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));
     await tx.pageRevision.create({
       data: {
@@ -1282,6 +1302,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
 
   await refreshLinksForConcept(concept.slug);
   revalidatePath(`/concepts/${concept.slug}`);
+  revalidatePath("/concepts", "layout");
   await notifyOwnerOfSiteActivity({
     actor: user,
     type: NotificationType.CONCEPT_EDITED,

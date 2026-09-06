@@ -838,6 +838,7 @@ model Problem {
   license                  String                          @default("CC BY-SA 4.0")
   listed                   Boolean                         @default(true)
   isExercise               Boolean                         @default(false)
+  isOriginal               Boolean                         @default(false)
   isConjecture             Boolean                         @default(false)
   styles                   ProblemStyle[]                  @default([])
   showRelatedProblems      Boolean                         @default(true)
@@ -939,6 +940,16 @@ model LibraryReference {
   canonicalTitle     String
   authors            String?
   publisher          String?
+  edition            String?
+  volume             String?
+  translator         String?
+  editors            String?
+  journal            String?
+  issue              String?
+  pages              String?
+  workId             Int?
+  work               LibraryReference?             @relation("ReferenceEditions", fields: [workId], references: [id], onDelete: SetNull)
+  editions           LibraryReference[]             @relation("ReferenceEditions")
   year               Int?
   yearLabel          String?
   url                String?
@@ -946,6 +957,7 @@ model LibraryReference {
   isbn               String?
   citationKey        String?                       @unique
   bibtex             String?
+  bibliographyVersion Int                       @default(1)
   formattedOverride  String?
   aliases            String[]                      @default([])
   iconUrl            String?
@@ -967,6 +979,10 @@ model LibraryReference {
   createdBy          User?                         @relation("LibraryReferenceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   reviewedBy         User?                         @relation("LibraryReferenceReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   translations       LibraryReferenceTranslation[]
+  searchable         Boolean                       @default(true)
+  mergedIntoId       Int?
+  mergedInto         LibraryReference?             @relation("MergedReference", fields: [mergedIntoId], references: [id])
+  mergedFrom         LibraryReference[]            @relation("MergedReference")
   problemLinks       ProblemLibraryReference[]
   conceptLinks       ConceptLibraryReference[]
   milestoneLinks     HistoryMilestoneReference[]
@@ -974,6 +990,7 @@ model LibraryReference {
   featuredIn         LibraryHomepageSelection[]
 
   @@index([status, referenceType, canonicalTitle])
+  @@index([workId])
   @@index([doi])
   @@index([isbn])
 }
@@ -996,16 +1013,21 @@ model LibraryReferenceTranslation {
 model ProblemLibraryReference {
   id          Int                  @id @default(autoincrement())
   problemId   Int
-  referenceId Int
+  referenceId Int?
+  citationKey String               @default(cuid())
+  text        String               @default("")
+  url         String?
+  spoiler     Boolean              @default(false)
   role        LibraryReferenceRole @default(SOURCE)
   locator     String?
   note        String?
   position    Int                  @default(0)
   isPrimary   Boolean              @default(false)
   problem     Problem              @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  reference   LibraryReference     @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  reference   LibraryReference?    @relation(fields: [referenceId], references: [id], onDelete: SetNull)
 
   @@unique([problemId, referenceId])
+  @@unique([problemId, citationKey])
   @@index([referenceId])
   @@index([problemId, position])
 }
@@ -1013,15 +1035,19 @@ model ProblemLibraryReference {
 model ConceptLibraryReference {
   id          Int                  @id @default(autoincrement())
   conceptId   Int
-  referenceId Int
+  referenceId Int?
+  citationKey String               @default(cuid())
+  text        String               @default("")
+  url         String?
   role        LibraryReferenceRole @default(FURTHER_READING)
   locator     String?
   note        String?
   position    Int                  @default(0)
   concept     Concept              @relation(fields: [conceptId], references: [id], onDelete: Cascade)
-  reference   LibraryReference     @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  reference   LibraryReference?    @relation(fields: [referenceId], references: [id], onDelete: SetNull)
 
   @@unique([conceptId, referenceId])
+  @@unique([conceptId, citationKey])
   @@index([referenceId])
   @@index([conceptId, position])
 }

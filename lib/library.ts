@@ -60,6 +60,9 @@ export function milestoneTypeLabel(type: HistoryMilestoneType, locale: "en" | "f
 }
 
 export function normalizeReferenceDedupeKey(input: {
+  edition?: string | null;
+  volume?: string | null;
+  translator?: string | null;
   doi?: string | null;
   isbn?: string | null;
   url?: string | null;
@@ -67,6 +70,8 @@ export function normalizeReferenceDedupeKey(input: {
   authors?: string | null;
   year?: number | null;
 }) {
+  const editionSuffix = [input.edition, input.volume, input.translator].some(Boolean)
+    ? `|edition:${[input.edition, input.volume, input.translator].map((value) => value?.trim().toLowerCase() ?? "").join("|")}` : "";
   const doi = input.doi?.trim().toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, "");
   if (doi) return `doi:${doi}`;
   const isbn = input.isbn?.replace(/[^0-9x]/gi, "").toLowerCase();
@@ -75,15 +80,21 @@ export function normalizeReferenceDedupeKey(input: {
     try {
       const url = new URL(input.url);
       url.hash = "";
-      return `url:${url.toString().replace(/\/$/, "").toLowerCase()}`;
+      return `url:${url.toString().replace(/\/$/, "").toLowerCase()}${editionSuffix}`;
     } catch {
       // Fall back to a title-based key; URL validation happens in the action.
     }
   }
-  return `title:${[input.title, input.authors, input.year].filter(Boolean).join("|").trim().toLowerCase().replace(/\s+/g, " ")}`;
+  return `title:${[input.title, input.authors, input.year].filter(Boolean).join("|").trim().toLowerCase().replace(/\s+/g, " ")}${editionSuffix}`;
 }
 
 export function formatLibraryReference(reference: {
+  edition?: string | null;
+  volume?: string | null;
+  translator?: string | null;
+  journal?: string | null;
+  issue?: string | null;
+  pages?: string | null;
   canonicalTitle: string;
   authors: string | null;
   publisher: string | null;
@@ -95,6 +106,12 @@ export function formatLibraryReference(reference: {
   return [
     reference.authors,
     reference.canonicalTitle,
+    reference.edition,
+    reference.volume ? `vol. ${reference.volume}` : null,
+    reference.translator ? `trad. ${reference.translator}` : null,
+    reference.journal,
+    reference.issue ? `n° ${reference.issue}` : null,
+    reference.pages ? `p. ${reference.pages}` : null,
     reference.publisher,
     reference.yearLabel ?? reference.year?.toString()
   ].filter(Boolean).join(". ");

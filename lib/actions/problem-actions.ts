@@ -64,7 +64,10 @@ import {
 import { problemCreationNotificationCopy } from "@/lib/problem-creation-notifications";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
 import { normalizeProblemOrigin } from "@/lib/problem-origin";
-import { parseLibraryReferenceLinks, syncProblemLibraryReferences } from "@/lib/library-linking";
+import { submittedProblemCitations, parseProblemCitations, mergeProblemCitations, translatedProblemCitations, preserveHiddenCitations, visibleProblemCitations } from "@/lib/problem-citations";
+import { canRevealProblemCitations } from "@/lib/problem-citation-access";
+import { syncProblemCitations, validateProblemCitations } from "@/lib/problem-citations-db";
+import { acknowledgeCitationDraft } from "@/lib/citation-draft-receipt";
 import { parseKnownProblemSourceId } from "@/lib/known-problem-sources";
 import { linkSpecificProblem, parseProblemRelationGroups, syncProblemRelationGroups } from "@/lib/problem-relations";
 import {
@@ -152,6 +155,7 @@ class ProblemEditConflictError extends Error {
 }
 
 const problemRevisionSnapshotInclude = {
+  libraryReferences: { orderBy: { position: "asc" as const } },
   domains: { orderBy: { position: "asc" as const } },
   tags: { include: { tag: { select: { name: true, slug: true } } } },
   spoilerTags: { include: { tag: { select: { name: true, slug: true } } } },
@@ -538,7 +542,7 @@ export async function createProblemAction(formData: FormData) {
   const requestedKnownSourceId = canUseAdminTools(user)
     ? parseKnownProblemSourceId(formData.get("knownSourceId"))
     : null;
-  const submittedLibraryReferences = canUseAdminTools(user) ? parseLibraryReferenceLinks(formData, true) : [];
+  const submittedCitations = submittedProblemCitations(formData);
   const listed = formData.get("listed") === "on";
   const isExercise = formData.get("isExercise") === "on";
   const showRelatedProblems = formData.get("showRelatedProblems") === "on";
@@ -717,6 +721,7 @@ export async function createProblemAction(formData: FormData) {
         license: sharedProblem?.license,
         listed: sharedSnapshot?.listed ?? listed,
         isExercise: sharedSnapshot?.isExercise ?? isExercise,
+        isOriginal: sharedSnapshot?.isOriginal ?? formData.get("isOriginal") === "true",
         isConjecture: sharedSnapshot?.isConjecture ?? isConjecture,
         styles: sharedSnapshot?.styles ?? styles,
         showRelatedProblems: sharedSnapshot?.showRelatedProblems ?? showRelatedProblems,
@@ -734,11 +739,12 @@ export async function createProblemAction(formData: FormData) {
     const inheritedLibraryReferences = sharedProblem
       ? await tx.problemLibraryReference.findMany({
           where: { problemId: sharedProblem.id },
-          select: { referenceId: true, role: true, locator: true, note: true, isPrimary: true },
           orderBy: { position: "asc" }
         })
-      : submittedLibraryReferences;
-    await syncProblemLibraryReferences(tx, created.id, inheritedLibraryReferences);
+      : [];
+    const inheritedCitations = parseProblemCitations(inheritedLibraryReferences);
+    const revealSource = sharedProblem ? await canRevealProblemCitations(user, sharedProblem) : true;
+    await syncProblemCitations(tx, created.id, submittedCitations === undefined ? inheritedCitations : preserveHiddenCitations(inheritedCitations, submittedCitations, revealSource), { historical: inheritedCitations.flatMap((item) => item.referenceId === null ? [] : [item.referenceId]) });
     await tx.problemFavorite.create({
       data: {
         userId: user.id,
@@ -1089,6 +1095,7 @@ export async function createProblemAction(formData: FormData) {
       href: `/concepts/${problem.linkedConcept.slug}`
     });
   }
+  await acknowledgeCitationDraft(formData);
   if (
     translationGroupId &&
     contributionTask &&
@@ -1179,9 +1186,24 @@ export async function updateProblemAction(
   const knownSourceId = canUseAdminTools(user) && formData.has("knownSourceId")
     ? parseKnownProblemSourceId(formData.get("knownSourceId"))
     : previous.knownSourceId;
-  const submittedLibraryReferences = publishesImmediately && canUseAdminTools(user) && formData.get("libraryReferencesSubmitted") === "1"
-    ? parseLibraryReferenceLinks(formData, true)
-    : null;
+  let submittedCitations = submittedProblemCitations(formData);
+  let isOriginal = formData.has("isOriginal") ? formData.get("isOriginal") === "true" : previous.isOriginal;
+  if (formData.has("isOriginalBase")) {
+    const originalBase = formData.get("isOriginalBase") === "true";
+    if (isOriginal === originalBase) isOriginal = previous.isOriginal;
+  }
+  const revealCitations = await canRevealProblemCitations(user, previous);
+  if (submittedCitations && formData.has("problemCitationsBase")) {
+    const rawBase = String(formData.get("problemCitationsBase"));
+    if (rawBase.length > 300000) throw new Error("Invalid citation draft.");
+    const citationBase = parseProblemCitations(JSON.parse(rawBase));
+    const merge = mergeProblemCitations(citationBase, visibleProblemCitations(parseProblemCitations(previous.libraryReferences), revealCitations), submittedCitations);
+    if (merge.conflict && acceptedConflictVersion !== previous.version) {
+      return { status: "conflict", currentVersion: previous.version, editorName: null, editedAt: null, conflictingFields: ["references"] };
+    }
+    submittedCitations = merge.merged;
+  }
+  if (submittedCitations !== undefined) submittedCitations = preserveHiddenCitations(parseProblemCitations(previous.libraryReferences), submittedCitations, revealCitations);
   if (knownSourceId && knownSourceId !== previous.knownSourceId) {
     const knownSource = await prisma.knownProblemSource.findFirst({
       where: { id: knownSourceId, active: true },
@@ -1232,6 +1254,8 @@ export async function updateProblemAction(
   }
 
   const submittedSnapshot: ProblemRevisionSnapshot = {
+    isOriginal,
+    ...(submittedCitations !== undefined ? { citations: submittedCitations } : {}),
     schemaVersion: 1,
     title,
     language,
@@ -1273,6 +1297,7 @@ export async function updateProblemAction(
         if (current.version !== baseVersion) throw new ProblemEditConflictError(current.version);
 
         const currentSnapshot = buildProblemRevisionSnapshot(current);
+        if (submittedSnapshot.citations) await validateProblemCitations(tx, submittedSnapshot.citations, problemId);
         submittedSnapshot.status = current.status;
         submittedSnapshot.qualityStatus = current.qualityStatus;
         submittedSnapshot.canAppearOnFrontPage = current.canAppearOnFrontPage;
@@ -1328,6 +1353,7 @@ export async function updateProblemAction(
       };
     }
 
+    await acknowledgeCitationDraft(formData);
     if (proposal) {
       await notifyAdminsOfProblemEditProposal({
         actorId: user.id,
@@ -1447,6 +1473,7 @@ export async function updateProblemAction(
           knownSourceId: resolvedSnapshot.knownSourceId,
           listed: resolvedSnapshot.listed,
           isExercise: resolvedSnapshot.isExercise,
+          isOriginal: resolvedSnapshot.isOriginal ?? current.isOriginal,
           isConjecture: resolvedSnapshot.isConjecture,
           styles: resolvedSnapshot.styles,
           showRelatedProblems: resolvedSnapshot.showRelatedProblems,
@@ -1464,7 +1491,8 @@ export async function updateProblemAction(
 
       const sharedChangedFields = problemTranslationSharedChanges(changedSnapshotFields);
       const sharedChangedFieldSet = new Set(sharedChangedFields);
-      const siblingCandidates = sharedChangedFields.length
+      const citationsChanged = changedSnapshotFields.includes("citations");
+      const siblingCandidates = sharedChangedFields.length || citationsChanged
         ? await tx.problem.findMany({
             where: { translationGroupId: current.translationGroupId, id: { not: problemId } },
             select: { id: true }
@@ -1494,6 +1522,7 @@ export async function updateProblemAction(
             ...(sharedChangedFieldSet.has("knownSourceId") ? { knownSourceId: resolvedSnapshot.knownSourceId } : {}),
             ...(sharedChangedFieldSet.has("listed") ? { listed: resolvedSnapshot.listed } : {}),
             ...(sharedChangedFieldSet.has("isExercise") ? { isExercise: resolvedSnapshot.isExercise } : {}),
+            ...(sharedChangedFieldSet.has("isOriginal") ? { isOriginal: resolvedSnapshot.isOriginal } : {}),
             ...(sharedChangedFieldSet.has("isConjecture") ? { isConjecture: resolvedSnapshot.isConjecture } : {}),
             ...(sharedChangedFieldSet.has("styles") ? { styles: resolvedSnapshot.styles } : {}),
             ...(sharedChangedFieldSet.has("showRelatedProblems")
@@ -1506,6 +1535,11 @@ export async function updateProblemAction(
           }
         });
         for (const sibling of siblingCandidates) {
+          if (citationsChanged && resolvedSnapshot.citations) {
+            const existing = parseProblemCitations(await tx.problemLibraryReference.findMany({ where: { problemId: sibling.id }, orderBy: { position: "asc" } }));
+            const translated = translatedProblemCitations(currentSnapshot.citations ?? [], resolvedSnapshot.citations, existing);
+            await syncProblemCitations(tx, sibling.id, translated, { historical: currentSnapshot.citations?.flatMap((item) => item.referenceId === null ? [] : [item.referenceId]) });
+          }
           if (sharedChangedFieldSet.has("domains")) {
             await syncProblemDomains(tx, sibling.id, resolvedSnapshot.domains);
           }
@@ -1524,8 +1558,8 @@ export async function updateProblemAction(
 
       await syncInternalLinks(SourceType.PROBLEM, problemId, resolvedSnapshot.bodyMarkdown, tx, resolvedSnapshot.language);
       await syncProblemDomains(tx, problemId, resolvedSnapshot.domains);
-      if (submittedLibraryReferences) {
-        await syncProblemLibraryReferences(tx, problemId, submittedLibraryReferences);
+      if (resolvedSnapshot.citations !== undefined) {
+        await syncProblemCitations(tx, problemId, resolvedSnapshot.citations);
       }
       await syncProblemRelationGroups(tx, problemId, problemSnapshotRelationInput(resolvedSnapshot));
       await syncProblemTags(problemId, problemSnapshotTagInput(resolvedSnapshot.tags), tx);
@@ -1642,6 +1676,7 @@ export async function updateProblemAction(
       href: `/problems/${problem.updated.slug}/history#revision-${problem.revisionId}`
     });
   }
+  await acknowledgeCitationDraft(formData);
   redirect(contentLanguageViewHref("/problems", problem.updated.slug, problem.updated.language) as Route);
 }
 
@@ -1661,6 +1696,8 @@ export async function approveProblemEditProposalAction(proposalId: number) {
   const formData = new FormData();
   formData.set("baseVersion", String(proposal.baseVersion));
   formData.set("approvedProposalId", String(proposal.id));
+  if (snapshot.isOriginal !== undefined) formData.set("isOriginal", String(snapshot.isOriginal));
+  if (snapshot.citations !== undefined) formData.set("problemCitations", JSON.stringify(snapshot.citations));
   formData.set("title", snapshot.title);
   formData.set("language", snapshot.language);
   formData.set("bodyMarkdown", snapshot.bodyMarkdown);
@@ -2151,6 +2188,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               knownSourceId: snapshot.knownSourceId,
               listed: snapshot.listed,
               isExercise: snapshot.isExercise,
+              isOriginal: snapshot.isOriginal ?? current.isOriginal,
               isConjecture: snapshot.isConjecture,
               styles: snapshot.styles,
               showRelatedProblems: snapshot.showRelatedProblems,
@@ -2177,6 +2215,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
 
     await syncInternalLinks(SourceType.PROBLEM, problemId, markdown, tx, snapshot?.language ?? current.language);
     if (snapshot) {
+      if (snapshot.citations !== undefined) await syncProblemCitations(tx, problemId, snapshot.citations, { historical: snapshot.citations.flatMap((item) => item.referenceId === null ? [] : [item.referenceId]) });
       await syncProblemDomains(tx, problemId, snapshot.domains);
       await syncProblemRelationGroups(tx, problemId, problemSnapshotRelationInput(snapshot));
       await syncProblemTags(problemId, problemSnapshotTagInput(snapshot.tags), tx);
@@ -2189,11 +2228,13 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
             translationGroupId: current.translationGroupId,
             id: { not: problemId },
             OR: [
+              ...(snapshot.citations !== undefined ? [{ id: { not: problemId } }] : []),
               snapshot.difficulty === null
                 ? { difficulty: { not: null } }
                 : { OR: [{ difficulty: null }, { difficulty: { not: snapshot.difficulty } }] },
               { canAppearOnFrontPage: { not: snapshot.canAppearOnFrontPage } },
               { isExercise: { not: snapshot.isExercise } },
+              ...(snapshot.isOriginal !== undefined ? [{ isOriginal: { not: snapshot.isOriginal } }] : []),
               { isConjecture: { not: snapshot.isConjecture } },
               { NOT: { styles: { equals: snapshot.styles } } },
               { showRelatedProblems: { not: snapshot.showRelatedProblems } },
@@ -2207,6 +2248,11 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
       : [];
     for (const sibling of siblingCandidates) {
       await ensureProblemSnapshotRevision(tx, await problemSnapshotSource(tx, sibling.id));
+      if (snapshot?.citations !== undefined) {
+        const existing = parseProblemCitations(await tx.problemLibraryReference.findMany({ where: { problemId: sibling.id }, orderBy: { position: "asc" } }));
+        const translated = translatedProblemCitations(parseProblemCitations(current.libraryReferences), snapshot.citations, existing);
+        await syncProblemCitations(tx, sibling.id, translated, { historical: snapshot.citations.flatMap((item) => item.referenceId === null ? [] : [item.referenceId]) });
+      }
     }
     if (snapshot && siblingCandidates.length) {
       await tx.problem.updateMany({
@@ -2214,6 +2260,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
         data: {
           difficulty: snapshot.difficulty,
           isExercise: snapshot.isExercise,
+          ...(snapshot.isOriginal !== undefined ? { isOriginal: snapshot.isOriginal } : {}),
           isConjecture: snapshot.isConjecture,
           styles: snapshot.styles,
           showRelatedProblems: snapshot.showRelatedProblems,

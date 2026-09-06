@@ -1,0 +1,1 @@
+ALTER TABLE "Problem" ADD COLUMN "isOriginal" BOOLEAN NOT NULL DEFAULT false;

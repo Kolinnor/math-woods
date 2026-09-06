@@ -382,12 +382,19 @@
 .library-reference-title-row img { flex: 0 0 auto; object-fit: contain; }
 .library-reference-icon-wrap { flex: 0 0 auto; position: relative; }
 .library-metadata { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 15px; }
+.library-metadata > div { display: contents; }
+.library-reference-detail pre.library-bibtex { max-width: 100%; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .library-metadata dt { color: var(--mw-secondary); font-weight: 700; }
 .library-bibtex pre { margin-top: 10px; max-width: 100%; overflow-x: auto; }
 .library-history-hero-image { max-height: 420px; overflow: hidden; }
 .library-history-hero-image img { max-height: 420px; object-position: center; }
 
 .library-entry-form { padding: 22px; }
+.library-reference-form .library-form-grid > label { align-content: start; }
+.library-reference-form textarea[rows="2"] { min-height: 4.5rem; font-family: inherit; resize: vertical; }
+.library-reference-form .reference-import-choice { display: flex; align-items: start; margin-block: 12px; }
+.reference-import-choice input { width: auto; flex: 0 0 auto; margin-top: 4px; }
+.reference-import-choice span { overflow-wrap: anywhere; min-width: 0; }
 .library-form-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .library-form-section { border-top: 1px solid var(--mw-border); padding-top: 14px; }
 .library-form-section summary { cursor: pointer; font-weight: 800; }

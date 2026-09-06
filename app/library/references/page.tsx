@@ -25,6 +25,7 @@ export default async function LibraryReferencesPage({ searchParams }: { searchPa
   const q = query.q?.trim();
   const where: Prisma.LibraryReferenceWhereInput = {
       AND: [
+        { searchable: true, mergedIntoId: null },
         visibleLibraryEntryWhere(user),
         type ? { referenceType: type } : {},
         q ? { OR: [{ canonicalTitle: { contains: q, mode: "insensitive" } }, { authors: { contains: q, mode: "insensitive" } }, { publisher: { contains: q, mode: "insensitive" } }, { doi: { contains: q, mode: "insensitive" } }, { isbn: { contains: q, mode: "insensitive" } }, { citationKey: { contains: q, mode: "insensitive" } }, { url: { contains: q, mode: "insensitive" } }, { aliases: { has: q } }, { translations: { some: { OR: [{ displayTitle: { contains: q, mode: "insensitive" } }, { descriptionMarkdown: { contains: q, mode: "insensitive" } }] } } }] } : {}

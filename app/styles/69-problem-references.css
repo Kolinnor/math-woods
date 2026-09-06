@@ -1,0 +1,41 @@
+.problem-citation-editor { padding: clamp(16px, 3vw, 28px); border: 1px solid var(--line); background: var(--panel); border-radius: 12px; margin-block: 20px; display: grid; gap: 14px; }
+.problem-citation-editor h2, .problem-reference-dialog h2 { margin: 0; font-size: 1.1rem; }
+.problem-citation-list { display: grid; gap: 16px; min-width: 0; }
+.problem-citation-card { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 12px; }
+.problem-citation-card legend { padding-inline: 6px; font-weight: 600; font-size: .85rem; }
+.problem-citation-card label, .problem-reference-dialog label { display: grid; gap: 5px; min-width: 0; }
+.problem-citation-card input:not([type=checkbox]), .problem-citation-card textarea, .problem-citation-card select, .problem-reference-dialog input { width: 100%; min-width: 0; box-sizing: border-box; }
+.problem-citation-card textarea { min-height: 4.5rem; font-family: inherit; resize: vertical; }
+.problem-citation-card-heading { display: flex; align-items: start; gap: 12px; }
+.problem-citation-card-heading > :first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.problem-citation-card-heading button { flex-shrink: 0; }
+.problem-citation-checkbox { display: flex !important; align-items: center; gap: 8px !important; font-size: .9rem; }
+.problem-citation-checkbox input { width: auto; }
+.problem-citation-original { display: flex; align-items: center; gap: 8px; }
+.problem-citation-original .field-help { color: #267542; border-color: #267542; flex-shrink: 0; }
+.problem-citation-original .field-help::after { left: -90px; max-width: calc(100vw - 64px); }
+.problem-citation-card details > textarea { margin-top: 12px; }
+.problem-citation-card details[open] { display: grid; gap: 12px; }
+.problem-citation-card details label { margin-top: 12px; }
+.problem-citation-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+.problem-reference-dialog { width: min(640px, calc(100vw - 32px)); max-height: 80dvh; padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel, #fff); color: var(--text); overflow: auto; }
+.problem-reference-dialog::backdrop { background: rgb(15 25 15 / .55); }
+.problem-reference-dialog-header { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.problem-reference-dialog [role=status] { padding-block: 12px; min-height: 44px; }
+.problem-reference-results { list-style: none; padding: 0; margin: 0 0 18px; }
+.problem-reference-results li { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--line); padding-block: 14px; }
+.problem-reference-results li div { min-width: 0; overflow-wrap: anywhere; }
+.problem-reference-results li p { font-size: .85rem; margin: 4px 0 0; }
+.problem-reference-results button { flex-shrink: 0; }
+.problem-reference-dialog > button { margin-top: 16px; }
+.problem-citations-reading { border-top: 1px solid var(--line); margin-block: 20px; padding-top: 16px; overflow-wrap: anywhere; }
+.problem-citations-reading h2 { font-size: 1rem; margin-bottom: 8px; }
+.problem-citations-reading ol { padding-left: 22px; }
+.problem-citations-reading li { padding-block: 4px; white-space: pre-wrap; }
+.problem-citations-reading li p { margin: 4px 0; font-size: .9rem; }
+@media (max-width: 600px) {
+  .problem-citation-card-heading { flex-direction: column; }
+  .problem-citation-card-heading > :first-child { width: 100%; }
+  .problem-reference-dialog { padding: 16px; }
+  .problem-reference-results li { align-items: start; gap: 8px; flex-direction: column; }
+}

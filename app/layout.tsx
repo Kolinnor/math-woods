@@ -23,6 +23,7 @@ import "./styles/64-problems.css";
 import "./styles/65-concepts.css";
 import "./styles/66-community.css";
 import "./styles/67-contributions.css";
+import "./styles/69-problem-references.css";
 import "./styles/70-discussions.css";
 import "./styles/80-guided-tour.css";
 import "./styles/90-resume-banner.css";
@@ -31,6 +32,7 @@ import "./styles/92-announcements.css";
 import "./styles/93-daily-problem-history.css";
 import "./styles/94-particle-burst.css";
 import { AchievementToast } from "@/components/AchievementToast";
+import { CitationDraftReceipt } from "@/components/CitationDraftReceipt";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ErrorReporter } from "@/components/ErrorReporter";
@@ -253,6 +255,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${inter.variable} ${spectral.variable}`}>
         <Suspense fallback={null}>
           <NavigationFeedback />
+          <CitationDraftReceipt />
         </Suspense>
         <ErrorReporter />
         <WebVitalsReporter />

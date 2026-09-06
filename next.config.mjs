@@ -38,6 +38,9 @@ const nextConfig = {
   typedRoutes: true,
   poweredByHeader: false,
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/contributing/guides/concepts": ["./content/guides/concepts/*.md"]
+  },
   images: imageRemotePatterns.length
     ? {
         remotePatterns: imageRemotePatterns

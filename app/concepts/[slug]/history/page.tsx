@@ -55,6 +55,8 @@ function conceptSnapshotValue(
         ),
         t.historyPage.none
       );
+    case "citations":
+      return joinedOrNone((snapshot.citations ?? []).map(c => [c.text, c.locator, c.note, c.url].filter(Boolean).join(" — ")), t.historyPage.none);
     case "practiceExercises":
       return joinedOrNone(snapshot.practiceExercises.map((exercise) => exercise.title), t.historyPage.none);
   }

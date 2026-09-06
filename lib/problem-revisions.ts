@@ -6,8 +6,11 @@ import {
   QualityStatus,
   type Prisma
 } from "@prisma/client";
+import { citationText, mergeProblemCitations, parseProblemCitations, type ProblemCitation } from "./problem-citations.ts";
 
 export type ProblemRevisionSnapshot = {
+  isOriginal?: boolean;
+  citations?: ProblemCitation[];
   schemaVersion: 1;
   title: string;
   language: string;
@@ -37,6 +40,8 @@ export type ProblemRevisionSnapshot = {
 };
 
 export type ProblemSnapshotSource = {
+  isOriginal?: boolean;
+  libraryReferences?: ProblemCitation[];
   title: string;
   language: string;
   bodyMarkdown: string;
@@ -69,6 +74,8 @@ export type ProblemSnapshotSource = {
 };
 
 export const PROBLEM_SNAPSHOT_FIELD_LABELS = {
+  isOriginal: "original problem",
+  citations: "references",
   title: "title",
   language: "language",
   bodyMarkdown: "statement",
@@ -106,6 +113,8 @@ function sameValue(left: unknown, right: unknown) {
 export function buildProblemRevisionSnapshot(source: ProblemSnapshotSource): ProblemRevisionSnapshot {
   return {
     schemaVersion: 1,
+    ...(source.isOriginal !== undefined ? { isOriginal: source.isOriginal } : {}),
+    ...(source.libraryReferences ? { citations: parseProblemCitations(source.libraryReferences) } : {}),
     title: source.title,
     language: source.language,
     bodyMarkdown: source.bodyMarkdown,
@@ -165,6 +174,7 @@ export function parseProblemRevisionSnapshot(value: Prisma.JsonValue | null): Pr
 
   return {
     ...candidate,
+    ...(Array.isArray(candidate.citations) ? { citations: parseProblemCitations(candidate.citations) } : {}),
     qualityStatus,
     isExercise: candidate.isExercise === true,
     isConjecture:
@@ -191,13 +201,19 @@ export function changedProblemSnapshotFields(
   before: ProblemRevisionSnapshot,
   after: ProblemRevisionSnapshot
 ): ProblemSnapshotField[] {
-  return PROBLEM_SNAPSHOT_FIELDS.filter((field) => !sameValue(before[field], after[field]));
+  return PROBLEM_SNAPSHOT_FIELDS.filter((field) =>
+    !((field === "citations" || field === "isOriginal") && (before[field] === undefined || after[field] === undefined)) &&
+    !sameValue(before[field], after[field]));
 }
 
 export function formatProblemSnapshotFieldValue(
   field: ProblemSnapshotField,
   value: ProblemRevisionSnapshot[ProblemSnapshotField]
 ) {
+  if (field === "citations") {
+    return Array.isArray(value) ? (value as ProblemCitation[]).map((item) =>
+      `${citationText(item)}${item.url ? ` (${item.url})` : ""}${item.note ? ` — ${item.note}` : ""} [${item.role}${item.spoiler ? ", hidden until solved" : ""}]`).join("\n") || "None" : "Not recorded in this revision";
+  }
   if (value === null || value === "") return "None";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (field === "domains" && Array.isArray(value)) {
@@ -228,6 +244,13 @@ export function mergeProblemRevisionSnapshots(
   const conflicts: ProblemSnapshotField[] = [];
 
   for (const field of PROBLEM_SNAPSHOT_FIELDS) {
+    if (field === "isOriginal" && submitted.isOriginal === undefined) { merged.isOriginal = current.isOriginal; continue; }
+    if (field === "citations") {
+      const result = mergeProblemCitations(base.citations, current.citations, submitted.citations);
+      merged.citations = result.merged;
+      if (result.conflict) conflicts.push(field);
+      continue;
+    }
     const currentChanged = !sameValue(base[field], current[field]);
     const submittedChanged = !sameValue(base[field], submitted[field]);
 

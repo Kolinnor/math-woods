@@ -19,12 +19,16 @@ import { refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-link
 import { assertRateLimit } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
+import { parseConceptCitations } from "@/lib/concept-citations";
+import { syncConceptCitations } from "@/lib/concept-citations-db";
+import { conceptRevisionSnapshotInclude, buildConceptRevisionSnapshot, conceptRevisionSnapshotJson } from "@/lib/concept-revisions";
 
 type MergeTx = Prisma.TransactionClient;
 
 const mergeConceptInclude = {
   aliases: true,
   references: { orderBy: { position: "asc" as const } },
+  libraryReferences: { orderBy: { position: "asc" as const } },
   practiceExercises: { orderBy: { position: "asc" as const } },
   quoteLinks: { select: { quoteId: true } },
   mergeContributors: true
@@ -406,6 +410,12 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
     for (const conflict of canonicalAliasConflicts) aliasCandidates.delete(conflict.slug);
 
     const references = new Map<string, { title: string; url: string | null; note: string | null }>();
+    const mergedCitations = parseConceptCitations(survivor.libraryReferences);
+    for (const incoming of parseConceptCitations(duplicate.libraryReferences)) {
+      if (mergedCitations.some(c => c.text === incoming.text && c.url === incoming.url && c.note === incoming.note && c.locator === incoming.locator && c.referenceId === incoming.referenceId)) continue;
+      mergedCitations.push({ ...incoming, citationKey: `merged-${duplicate.id}-${incoming.citationKey}`.slice(0, 100), referenceId: mergedCitations.some(c => c.referenceId !== null && c.referenceId === incoming.referenceId) ? null : incoming.referenceId });
+    }
+    parseConceptCitations(mergedCitations);
     for (const reference of [...survivor.references, ...duplicate.references]) {
       const key = `${reference.url?.trim().toLocaleLowerCase() ?? ""}|${reference.title.trim().toLocaleLowerCase()}|${reference.note?.trim().toLocaleLowerCase() ?? ""}`;
       if (!references.has(key)) references.set(key, { title: reference.title, url: reference.url, note: reference.note });
@@ -538,6 +548,7 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
         data: [...references.values()].map((reference, position) => ({ conceptId: survivor.id, ...reference, position }))
       });
     }
+    await syncConceptCitations(tx, survivor.id, mergedCitations, mergedCitations.flatMap(c => c.referenceId === null ? [] : [c.referenceId]));
     if (exerciseIds.length > 0) {
       await tx.conceptExercise.createMany({
         data: exerciseIds.map((problemId, position) => ({ conceptId: survivor.id, problemId, position }))
@@ -552,7 +563,8 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
         conceptTitle: title,
         conceptKind: survivor.kind,
         editedById: admin.id,
-        editSummary: `Merged duplicate concept ${duplicate.title}`
+        editSummary: `Merged duplicate concept ${duplicate.title}`,
+        conceptSnapshot: conceptRevisionSnapshotJson(buildConceptRevisionSnapshot(await tx.concept.findUniqueOrThrow({ where: { id: survivor.id }, include: conceptRevisionSnapshotInclude })))
       }
     });
 

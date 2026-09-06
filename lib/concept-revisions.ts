@@ -1,8 +1,11 @@
 import { ConceptKind, ConceptStatus, type Prisma } from "@prisma/client";
+import { parseConceptCitations } from "./concept-citations.ts";
+import type { ProblemCitation } from "./problem-citations.ts";
 
 export const conceptRevisionSnapshotInclude = {
   aliases: { orderBy: { aliasSlug: "asc" as const } },
   references: { orderBy: { position: "asc" as const } },
+  libraryReferences: { orderBy: { position: "asc" as const } },
   practiceExercises: {
     orderBy: { position: "asc" as const },
     include: { problem: { select: { id: true, slug: true, title: true } } }
@@ -26,6 +29,7 @@ export type ConceptRevisionSnapshot = {
   translatedFromRevisionId: number | null;
   aliases: Array<{ alias: string; aliasSlug: string }>;
   references: Array<{ title: string; url: string | null; note: string | null }>;
+  citations?: ProblemCitation[];
   practiceExercises: Array<{ id: number; slug: string; title: string }>;
 };
 
@@ -41,6 +45,7 @@ export const CONCEPT_SNAPSHOT_FIELD_LABELS = {
   translatedFromRevisionId: "translation freshness",
   aliases: "aliases",
   references: "references",
+  citations: "bibliography",
   practiceExercises: "linked exercises"
 } as const;
 
@@ -65,6 +70,7 @@ export function buildConceptRevisionSnapshot(source: ConceptSnapshotSource): Con
     translatedFromRevisionId: source.translatedFromRevisionId,
     aliases: source.aliases.map(({ alias, aliasSlug }) => ({ alias, aliasSlug })),
     references: source.references.map(({ title, url, note }) => ({ title, url, note })),
+    citations: parseConceptCitations(source.libraryReferences ?? []),
     practiceExercises: source.practiceExercises.map(({ problem }) => ({
       id: problem.id,
       slug: problem.slug,
@@ -79,7 +85,7 @@ export function conceptRevisionSnapshotJson(snapshot: ConceptRevisionSnapshot): 
 
 export function parseConceptRevisionSnapshot(value: Prisma.JsonValue | null): ConceptRevisionSnapshot | null {
   if (!value || Array.isArray(value) || typeof value !== "object") return null;
-  const candidate = value as Record<string, unknown>;
+  const candidate = { ...value } as Record<string, unknown>;
   if (candidate.schemaVersion !== 1) return null;
   if (
     typeof candidate.title !== "string" ||
@@ -94,6 +100,8 @@ export function parseConceptRevisionSnapshot(value: Prisma.JsonValue | null): Co
   ) {
     return null;
   }
+  try { if (candidate.citations !== undefined) candidate.citations = parseConceptCitations(candidate.citations); }
+  catch { return null; }
   return candidate as unknown as ConceptRevisionSnapshot;
 }
 
@@ -102,6 +110,8 @@ export function changedConceptSnapshotFields(
   after: ConceptRevisionSnapshot
 ): ConceptSnapshotField[] {
   return CONCEPT_SNAPSHOT_FIELDS.filter((field) => {
+    if (field === "citations" && (before.citations === undefined || after.citations === undefined)) return false;
+    if (field === "references" && before.citations !== undefined && after.citations !== undefined) return false;
     if (field === "practiceExercises") {
       return !sameValue(
         before.practiceExercises.map((exercise) => exercise.id),
@@ -129,6 +139,7 @@ export function formatConceptSnapshotFieldValue(
   if (field === "references") {
     return (value as ConceptRevisionSnapshot["references"]).map(({ title }) => title).join(", ") || "None";
   }
+  if (field === "citations") return (value as ProblemCitation[] | undefined)?.map(c => [c.text, c.locator, c.note, c.url].filter(Boolean).join(" — ")).join("; ") || "None";
   if (field === "practiceExercises") {
     return (value as ConceptRevisionSnapshot["practiceExercises"]).map(({ title }) => title).join(", ") || "None";
   }

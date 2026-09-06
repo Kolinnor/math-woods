@@ -1,17 +1,16 @@
 import Link from "next/link";
-import { BookOpen, Clock3, LibraryBig, PenLine, UsersRound } from "lucide-react";
+import { BookOpen, Clock3, LibraryBig, UsersRound } from "lucide-react";
 import { libraryCopy } from "@/lib/library-copy";
 
-type LibrarySection = "overview" | "history" | "mathematicians" | "references" | "contribution";
+type LibrarySection = "overview" | "history" | "mathematicians" | "references";
 
-export function LibraryTabs({ active, locale }: { active: LibrarySection; locale: "en" | "fr" }) {
+export function LibraryTabs({ active, locale }: { active?: LibrarySection; locale: "en" | "fr" }) {
   const copy = libraryCopy[locale];
   const tabs = [
     { key: "overview", href: "/library", label: copy.overview, icon: LibraryBig },
     { key: "history", href: "/library/history", label: copy.history, icon: Clock3 },
     { key: "mathematicians", href: "/library/mathematicians", label: copy.mathematicians, icon: UsersRound },
-    { key: "references", href: "/library/references", label: copy.references, icon: BookOpen },
-    { key: "contribution", href: "/library/contribute", label: copy.contribution, icon: PenLine }
+    { key: "references", href: "/library/references", label: copy.references, icon: BookOpen }
   ] as const;
 
   return (

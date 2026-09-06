@@ -8,7 +8,8 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
 import { LiveMarkdownTitleField } from "@/components/LiveMarkdownTitleField";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
-import { LibraryReferencePicker } from "@/components/library/LibraryReferencePicker";
+import { ProblemCitationEditor } from "@/components/ProblemCitationEditor";
+import { parseConceptCitations } from "@/lib/concept-citations";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
 import { requireVerifiedUser } from "@/lib/auth";
@@ -60,7 +61,6 @@ export default async function NewConceptPage({
           translationGroupId: true,
           libraryReferences: {
             orderBy: { position: "asc" },
-            select: { referenceId: true, role: true, locator: true, note: true }
           },
           practiceExercises: {
             orderBy: { position: "asc" },
@@ -102,11 +102,6 @@ export default async function NewConceptPage({
   const defaultContent = sourceConcept
     ? await prepareMarkdownForTranslation(sourceConcept.bodyMarkdown, initialLanguage)
     : t.contentEditor.defaultConceptContent;
-  const libraryReferences = await prisma.libraryReference.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { canonicalTitle: "asc" },
-    select: { id: true, canonicalTitle: true, referenceType: true }
-  });
 
   return (
     <ForestPageLayout
@@ -228,11 +223,7 @@ export default async function NewConceptPage({
             </div>
           </section>
         )}
-        {canUseAdminTools(user) && <LibraryReferencePicker
-          locale={interfaceLocale}
-          options={libraryReferences.map((reference) => ({ id: reference.id, title: reference.canonicalTitle, type: reference.referenceType }))}
-          initial={sourceConcept?.libraryReferences.map((reference) => ({ ...reference, locator: reference.locator ?? "", note: reference.note ?? "", isPrimary: false }))}
-        />}
+        <ProblemCitationEditor contentType="concept" locale={interfaceLocale} initial={parseConceptCitations(sourceConcept?.libraryReferences ?? [])} draftKey={`mw-citations:${user.id}:concept-new:${draftSession}`} />
           {sourceConcept && !targetTranslationLanguage && (
             <p className="quality-banner quality-needs-work text-sm" role="status">
               {t.contentEditor.allConceptLanguagesExist}

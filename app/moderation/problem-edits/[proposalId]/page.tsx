@@ -40,6 +40,7 @@ export default async function ProblemEditProposalPage({
       reviewedBy: true,
       problem: {
         include: {
+          libraryReferences: { orderBy: { position: "asc" } },
           domains: { orderBy: { position: "asc" } },
           tags: { include: { tag: true } },
           spoilerTags: { include: { tag: true } },

@@ -209,6 +209,10 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
       ["linear-algebra-representations-characters", "Representation and character"]
     ]
   ),
+  withSubdomains(
+    problemDomain("arithmetic", "Arithmetic", MathDomain.ARITHMETIC, "ℤ", "found", 3, -300, [MathDomain.ARITHMETIC]),
+    [["number-theory", "Number theory", [MathDomain.ARITHMETIC, "11", "11-XX"]]]
+  ),
   problemDomain("algebraic-geometry", "Algebraic geometry", MathDomain.ALGEBRA, "⊙", "geom", 4, 1900, ["14", "14-XX"]),
   withSubdomains(
     problemDomain("geometry", "Geometry", MathDomain.GEOMETRY, "△", "geom", 2, -300, [MathDomain.GEOMETRY, "51", "51-XX", "52", "52-XX"]),
@@ -292,8 +296,7 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
     children: [
       option("combinatorics", "Combinatorics", MathDomain.COMBINATORICS, [MathDomain.COMBINATORICS, "05", "05-XX", "discrete-mathematics-combinatorics"]),
       option("discrete-mathematics-discrete-analysis", "Discrete analysis", MathDomain.COMBINATORICS),
-      option("discrete-mathematics-graph-theory", "Graph theory", MathDomain.COMBINATORICS),
-      option("number-theory", "Number theory", MathDomain.ARITHMETIC, [MathDomain.ARITHMETIC, "11", "11-XX"])
+      option("discrete-mathematics-graph-theory", "Graph theory", MathDomain.COMBINATORICS)
     ]
   },
   withSubdomains(

@@ -10,8 +10,8 @@ import {
   Role
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { requireAdmin, requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, boundedText, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { normalizeReferenceDedupeKey } from "@/lib/library";
@@ -26,8 +26,38 @@ import {
 import { assertRateLimit } from "@/lib/rate-limit";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
+import { citationUrl } from "@/lib/problem-citations";
+import { readReferenceBibliography, validateReferenceWork } from "@/lib/reference-editions";
 
 type LibraryEntity = "mathematician" | "reference" | "milestone";
+
+function requireReadableReferenceTitle(title: string) {
+  if (/^\s*@\w+\s*[{(]/.test(title)) throw new Error("Enter a readable title. Paste the full bibliography entry in the BibTeX field.");
+}
+
+export async function proposeLibraryReferenceAction(_state: { message: string; success: boolean }, formData: FormData) {
+  const user = await requireVerifiedUser();
+  const fr = formData.get("language") === "fr";
+  try {
+    await assertRateLimit(`reference-proposal:${user.id}`, 8, 60_000);
+    const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+    if (/^\s*@\w+\s*[{(]/.test(title)) throw new Error(fr ? "Indiquez le titre de la ressource, pas une entrée BibTeX." : "Enter the resource title, not a BibTeX entry.");
+    const authors = optionalBoundedText(formData.get("authors"), CONTENT_LIMITS.mediumText, "Authors");
+    const url = citationUrl(formData.get("url"));
+    const dedupeKey = normalizeReferenceDedupeKey({ title, authors, url });
+    const duplicate = await prisma.libraryReference.findFirst({ where: { dedupeKey }, select: { id: true } });
+    if (duplicate) return { success: true, message: fr ? "Cette ressource a déjà été proposée. Votre référence libre reste inchangée." : "This resource has already been proposed. Your free reference is unchanged." };
+    const slug = await uniqueSlug("libraryReference", title);
+    await prisma.libraryReference.create({ data: {
+      canonicalTitle: title, authors, url, dedupeKey, slug, referenceType: LibraryReferenceType.OTHER,
+      status: LibraryStatus.PENDING_REVIEW, createdById: user.id, submittedAt: new Date(),
+      translations: { create: { language: fr ? "fr" : "en", displayTitle: title, descriptionMarkdown: "", descriptionHtml: "" } }
+    } });
+    await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "reference", slug, title });
+    revalidatePath("/library/contribute");
+    return { success: true, message: fr ? "Proposition envoyée pour validation. Votre problème et sa référence restent inchangés." : "Proposal sent for review. Your problem and its reference are unchanged." };
+  } catch (error) { return { success: false, message: error instanceof Error ? error.message : (fr ? "Envoi impossible." : "Unable to submit.") }; }
+}
 type SaveIntent = "draft" | "submit";
 type ReviewDecision = "publish" | "changes" | "archive" | "restore";
 
@@ -339,13 +369,17 @@ export async function createLibraryReferenceAction(formData: FormData) {
 
   const canonicalTitle = requiredBoundedText(formData.get("canonicalTitle"), CONTENT_LIMITS.title, "Title");
   const displayTitle = boundedText(formData.get("displayTitle"), CONTENT_LIMITS.title, "Displayed title") || canonicalTitle;
+  requireReadableReferenceTitle(canonicalTitle);
+  requireReadableReferenceTitle(displayTitle);
   const authors = optionalBoundedText(formData.get("authors"), CONTENT_LIMITS.mediumText, "Authors");
   const year = parseOptionalInt(formData.get("year"), "Year", -5000, 3000);
   const url = optionalHttpsUrl(formData.get("url"), "Reference URL");
   const doi = optionalBoundedText(formData.get("doi"), CONTENT_LIMITS.shortText, "DOI");
   const isbn = optionalBoundedText(formData.get("isbn"), CONTENT_LIMITS.shortText, "ISBN");
-  const citationKey = optionalBoundedText(formData.get("citationKey"), CONTENT_LIMITS.shortText, "Citation key");
-  const dedupeKey = normalizeReferenceDedupeKey({ title: canonicalTitle, authors, year, url, doi, isbn });
+  const bibliography = readReferenceBibliography(formData);
+  const { citationKey } = bibliography;
+  const referenceType = enumValue(formData.get("referenceType"), Object.values(LibraryReferenceType), "Reference type");
+  const dedupeKey = normalizeReferenceDedupeKey({ title: canonicalTitle, authors, year, url, doi, isbn, ...bibliography });
   const duplicate = await prisma.libraryReference.findFirst({
     where: { OR: [{ dedupeKey }, ...(citationKey ? [{ citationKey }] : [])] },
     select: { slug: true }
@@ -358,11 +392,14 @@ export async function createLibraryReferenceAction(formData: FormData) {
   const intent = saveIntent(formData);
   const slug = await uniqueSlug("libraryReference", canonicalTitle);
 
-  const reference = await prisma.libraryReference.create({
+  const reference = await prisma.$transaction(async tx => {
+    const workId = await validateReferenceWork(tx, formData, referenceType);
+    return tx.libraryReference.create({
     data: {
       slug,
       canonicalTitle,
-      referenceType: enumValue(formData.get("referenceType"), Object.values(LibraryReferenceType), "Reference type"),
+      referenceType,
+      workId,
       authors,
       publisher: optionalBoundedText(formData.get("publisher"), CONTENT_LIMITS.shortText, "Publisher"),
       year,
@@ -370,8 +407,7 @@ export async function createLibraryReferenceAction(formData: FormData) {
       url,
       doi,
       isbn,
-      citationKey,
-      bibtex: optionalBoundedText(formData.get("bibtex"), CONTENT_LIMITS.longNote, "BibTeX"),
+      ...bibliography,
       formattedOverride: optionalBoundedText(formData.get("formattedOverride"), CONTENT_LIMITS.mediumText, "Display citation"),
       aliases: boundedText(formData.get("aliases"), CONTENT_LIMITS.tagList, "Aliases").split("\n").map((item) => item.trim()).filter(Boolean),
       iconUrl: optionalHttpsUrl(formData.get("iconUrl"), "Pictogram URL"),
@@ -387,6 +423,7 @@ export async function createLibraryReferenceAction(formData: FormData) {
       translations: { create: { language, displayTitle, descriptionMarkdown, descriptionHtml } }
     }
   });
+  });
   revalidateLibrary("reference", slug);
   if (intent === "submit") {
     await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "reference", slug, title: displayTitle });
@@ -396,17 +433,21 @@ export async function createLibraryReferenceAction(formData: FormData) {
 
 export async function updateLibraryReferenceAction(id: number, formData: FormData) {
   const user = await requireAdmin();
-  const entry = await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, createdById: true, status: true, submittedAt: true, updatedAt: true } });
+  const entry = await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, canonicalTitle: true, mergedIntoId: true, createdById: true, status: true, submittedAt: true, updatedAt: true } });
   if (!entry || !canEditLibraryDraft(user, entry)) throw new Error("You cannot edit this entry.");
   const canonicalTitle = requiredBoundedText(formData.get("canonicalTitle"), CONTENT_LIMITS.title, "Title");
   const displayTitle = boundedText(formData.get("displayTitle"), CONTENT_LIMITS.title, "Displayed title") || canonicalTitle;
+  requireReadableReferenceTitle(canonicalTitle);
+  requireReadableReferenceTitle(displayTitle);
   const authors = optionalBoundedText(formData.get("authors"), CONTENT_LIMITS.mediumText, "Authors");
   const year = parseOptionalInt(formData.get("year"), "Year", -5000, 3000);
   const url = optionalHttpsUrl(formData.get("url"), "Reference URL");
   const doi = optionalBoundedText(formData.get("doi"), CONTENT_LIMITS.shortText, "DOI");
   const isbn = optionalBoundedText(formData.get("isbn"), CONTENT_LIMITS.shortText, "ISBN");
-  const citationKey = optionalBoundedText(formData.get("citationKey"), CONTENT_LIMITS.shortText, "Citation key");
-  const dedupeKey = normalizeReferenceDedupeKey({ title: canonicalTitle, authors, year, url, doi, isbn });
+  const bibliography = readReferenceBibliography(formData);
+  const { citationKey } = bibliography;
+  const referenceType = enumValue(formData.get("referenceType"), Object.values(LibraryReferenceType), "Reference type");
+  const dedupeKey = normalizeReferenceDedupeKey({ title: canonicalTitle, authors, year, url, doi, isbn, ...bibliography });
   const duplicate = await prisma.libraryReference.findFirst({
     where: { id: { not: id }, OR: [{ dedupeKey }, ...(citationKey ? [{ citationKey }] : [])] },
     select: { canonicalTitle: true }
@@ -418,11 +459,16 @@ export async function updateLibraryReferenceAction(id: number, formData: FormDat
   const baseUpdatedAt = submittedBaseUpdatedAt(formData);
   if (entry.updatedAt.getTime() !== baseUpdatedAt.getTime()) throw new Error("This entry changed after you opened it. Reload the page before saving your work.");
 
-  await prisma.libraryReference.update({
+  const descriptionHtml = await renderMarkdown(descriptionMarkdown);
+  await prisma.$transaction(async tx => {
+    const workId = await validateReferenceWork(tx, formData, referenceType, id);
+    await tx.libraryReference.update({
     where: { id, updatedAt: baseUpdatedAt },
     data: {
       canonicalTitle,
-      referenceType: enumValue(formData.get("referenceType"), Object.values(LibraryReferenceType), "Reference type"),
+      ...(/^\s*@\w+\s*[{(]/.test(entry.canonicalTitle) && !entry.mergedIntoId ? { searchable: true } : {}),
+      referenceType,
+      workId,
       authors,
       publisher: optionalBoundedText(formData.get("publisher"), CONTENT_LIMITS.shortText, "Publisher"),
       year,
@@ -430,8 +476,7 @@ export async function updateLibraryReferenceAction(id: number, formData: FormDat
       url,
       doi,
       isbn,
-      citationKey,
-      bibtex: optionalBoundedText(formData.get("bibtex"), CONTENT_LIMITS.longNote, "BibTeX"),
+      ...bibliography,
       formattedOverride: optionalBoundedText(formData.get("formattedOverride"), CONTENT_LIMITS.mediumText, "Display citation"),
       aliases: boundedText(formData.get("aliases"), CONTENT_LIMITS.tagList, "Aliases").split("\n").map((item) => item.trim()).filter(Boolean),
       iconUrl: optionalHttpsUrl(formData.get("iconUrl"), "Pictogram URL"),
@@ -449,17 +494,31 @@ export async function updateLibraryReferenceAction(id: number, formData: FormDat
       translations: {
         upsert: {
           where: { referenceId_language: { referenceId: id, language } },
-          create: { language, displayTitle, descriptionMarkdown, descriptionHtml: await renderMarkdown(descriptionMarkdown) },
-          update: { displayTitle, descriptionMarkdown, descriptionHtml: await renderMarkdown(descriptionMarkdown) }
+          create: { language, displayTitle, descriptionMarkdown, descriptionHtml },
+          update: { displayTitle, descriptionMarkdown, descriptionHtml }
         }
       }
     }
+  });
   });
   revalidateLibrary("reference", entry.slug);
   if (intent === "submit" && entry.status !== LibraryStatus.PENDING_REVIEW && entry.status !== LibraryStatus.PUBLISHED) {
     await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "reference", slug: entry.slug, title: displayTitle });
   }
   redirect(`/library/references/${entry.slug}`);
+}
+
+export async function saveLibraryReferenceFormAction(id: number | null, _state: { error: string }, formData: FormData) {
+  const user = await requireAdmin();
+  if (!canCreateLibraryEntry(user)) throw new Error("You cannot edit library entries.");
+  try {
+    if (id === null) await createLibraryReferenceAction(formData);
+    else await updateLibraryReferenceAction(id, formData);
+    return { error: "" };
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: error instanceof Error ? error.message : (formData.get("language") === "fr" ? "Enregistrement impossible." : "Unable to save.") };
+  }
 }
 
 export async function createHistoryMilestoneAction(formData: FormData) {
