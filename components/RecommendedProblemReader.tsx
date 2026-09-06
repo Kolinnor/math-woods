@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/problem-recommendation-actions";
 import { DifficultyBandHelp } from "@/components/Difficulty";
 import { problemDifficultyTone } from "@/lib/problem-difficulty";
+import { displayTypography } from "@/lib/display-typography";
 
 export type RecommendedProblemItem = {
   id: number;
@@ -184,7 +185,7 @@ export function RecommendedProblemReader({
               {item.difficulty ?? "--"}
             </span>
             <span>
-              <strong dangerouslySetInnerHTML={{ __html: item.titleHtml }} />
+              <strong dangerouslySetInnerHTML={{ __html: displayTypography(item.titleHtml) }} />
             </span>
           </button>
         ))}
@@ -198,7 +199,7 @@ export function RecommendedProblemReader({
                   {selected.domain}
                   {selected.difficulty !== null && <> · <DifficultyBandHelp value={selected.difficulty} /></>}
                 </p>
-                <h3 dangerouslySetInnerHTML={{ __html: selected.titleHtml }} />
+                <h3 dangerouslySetInnerHTML={{ __html: displayTypography(selected.titleHtml) }} />
               </div>
               {visibleItems.length > 1 && (
                 <div className="recommendation-reader-arrows">
@@ -225,7 +226,7 @@ export function RecommendedProblemReader({
                 if (event.key === "Enter") router.push(`/problems/${selected.slug}?recommended=1`);
               }}
             >
-              <div className="prose-math" dangerouslySetInnerHTML={{ __html: selected.bodyHtml }} />
+              <div className="prose-math" dangerouslySetInnerHTML={{ __html: displayTypography(selected.bodyHtml) }} />
               {overflows && <span className="recommendation-statement-fade" aria-hidden="true" />}
             </div>
           </>

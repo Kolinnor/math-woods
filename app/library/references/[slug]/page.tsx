@@ -16,7 +16,7 @@ import { formatLibraryReference, referenceRoleLabel, referenceTypeLabel } from "
 import { libraryCopy } from "@/lib/library-copy";
 import { referenceBibtexReport } from "@/lib/reference-bibtex";
 import { localizedTranslation } from "@/lib/library-queries";
-import { canArchiveLibraryEntry, canEditLibraryDraft, canReviewLibraryEntry, canViewLibraryEntry } from "@/lib/permissions";
+import { canArchiveLibraryEntry, canEditLibraryReference, canReviewLibraryEntry, canViewLibraryEntry } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -46,14 +46,17 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
   const copy = libraryCopy[locale];
   const bibliography = referenceBibtexReport(entry, locale);
   return (
-    <ForestPageLayout title={<>{translation?.displayTitle ?? entry.canonicalTitle}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={locale} />}</>} description={referenceTypeLabel(entry.referenceType, locale)} heroImage="/art/oak-grove.jpg" actions={user && canEditLibraryDraft(user, entry) ? <Link href={`/library/references/${entry.slug}/edit?lang=${locale}`} className="primary"><Pencil size={16} />{copy.edit}</Link> : undefined}>
+    <ForestPageLayout title={<>{translation?.displayTitle ?? entry.canonicalTitle}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={locale} />}</>} description={referenceTypeLabel(entry.referenceType, locale)} heroImage="/art/oak-grove.jpg">
       <LibraryTabs active="references" locale={locale} />
       {query.duplicate && <p className="quality-banner">{locale === "fr" ? "Cette référence existe déjà : vous avez été redirigé vers sa fiche." : "This reference already exists, so you were redirected to its record."}</p>}
       <div className="library-detail-heading"><LibraryStatusBadge status={entry.status} locale={locale} /></div>
       <LibraryAttribution creator={entry.createdBy} reviewer={entry.reviewedBy} locale={locale} />
       <LibraryReviewNote status={entry.status} note={entry.reviewNote} locale={locale} />
       <article className="panel library-reference-detail">
-        <div className="library-reference-title-row">{entry.iconUrl && <div className="library-reference-icon-wrap"><img src={entry.iconUrl} alt={entry.imageAlt ?? ""} style={{ width: entry.iconSize, height: entry.iconSize }} /><ImageCredit credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} label={copy.imageCredit} /></div>}<p className="library-citation">{formatLibraryReference(entry)}</p></div>
+        <div className="library-reference-heading">
+          <div className="library-reference-title-row">{entry.iconUrl && <div className="library-reference-icon-wrap"><img src={entry.iconUrl} alt={entry.imageAlt ?? ""} style={{ width: entry.iconSize, height: entry.iconSize }} /><ImageCredit credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} label={copy.imageCredit} /></div>}<p className="library-citation">{formatLibraryReference(entry)}</p></div>
+          {user && canEditLibraryReference(user, entry) && <Link href={`/library/references/${entry.slug}/edit?lang=${locale}`} className="button primary"><Pencil size={16} aria-hidden="true" />{copy.edit}</Link>}
+        </div>
         {entry.url && <a className="button secondary" href={entry.url} rel="noreferrer"><ExternalLink size={16} />{locale === "fr" ? "Consulter" : "Open"}</a>}
         {entry.work && <p>{locale === "fr" ? "Édition de : " : "Edition of: "}<Link href={`/library/references/${entry.work.slug}`}>{entry.work.canonicalTitle}</Link></p>}
         {entry.editions.length > 0 && <details className="library-form-section"><summary>{locale === "fr" ? `Éditions et traductions (${entry.editions.length})` : `Editions and translations (${entry.editions.length})`}</summary><ul>{entry.editions.map(edition => <li key={edition.id}><Link href={`/library/references/${edition.slug}`}>{formatLibraryReference(edition)}</Link></li>)}</ul></details>}

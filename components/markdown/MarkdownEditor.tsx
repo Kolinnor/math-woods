@@ -89,6 +89,7 @@ import { ensureSlug } from "@/lib/slug";
 import { JSXGRAPH_MARKDOWN_TEMPLATE } from "@/lib/jsxgraph";
 import { cleanWikiLinkLabel, cleanWikiLinkTarget, problemLinkMarkup, wikiLinkMarkup } from "@/lib/wikilinks";
 import { wikiLinkDeleteChange } from "@/lib/wiki-link-deletion";
+import { clearAcknowledgedEditorDrafts, markEditorDraftSubmission } from "@/lib/editor-draft-receipts";
 
 const DRAFT_PREFIX = "math-woods-markdown-draft";
 const DRAFT_SUBMIT_PREFIX = `${DRAFT_PREFIX}:submit`;
@@ -291,6 +292,7 @@ type MarkdownEditorProps = {
   draftKey?: string;
   localDrafts?: boolean;
   resetSignal?: string | number | null;
+  confirmDraftSave?: boolean;
   imageUploadEnabled?: boolean;
   sourceUpdatedAt?: number | null;
   characterGuide?: {
@@ -1516,6 +1518,7 @@ export function MarkdownEditor({
   draftKey,
   localDrafts = true,
   resetSignal = null,
+  confirmDraftSave = false,
   imageUploadEnabled = true,
   sourceUpdatedAt = null,
   characterGuide
@@ -1559,7 +1562,11 @@ export function MarkdownEditor({
       removeDraftSubmit(resolvedDraftKey);
     }
     const currentResetSignal = resetSignalValue(resetSignal);
-    if (activeDraftKey && currentResetSignal !== null) {
+    if (confirmDraftSave) {
+      clearAcknowledgedEditorDrafts();
+      if (activeDraftKey) removeDraftSubmit(activeDraftKey);
+    }
+    if (!confirmDraftSave && activeDraftKey && currentResetSignal !== null) {
       const submit = readDraftSubmit(activeDraftKey);
       const submittedThenChanged =
         submit &&
@@ -1727,6 +1734,10 @@ export function MarkdownEditor({
     const form = host.closest("form");
     const markDraftSubmitted = () => {
       const key = draftKeyRef.current;
+      if (confirmDraftSave) {
+        if (key && form) markEditorDraftSubmission(form, key, view.state.doc.toString());
+        return;
+      }
       const currentResetSignal = resetSignalValue(resetSignalRef.current);
       if (!key || currentResetSignal === null) return;
       writeDraftSubmit(key, currentResetSignal);
@@ -1741,7 +1752,7 @@ export function MarkdownEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [draftKey, imageUploadEnabled, initialValue, localDrafts, minHeight, name, showLineNumbers, sourceUpdatedAt]);
+  }, [confirmDraftSave, draftKey, imageUploadEnabled, initialValue, localDrafts, minHeight, name, showLineNumbers, sourceUpdatedAt]);
 
   useEffect(() => {
     if (!linkMenu) return;
@@ -1814,6 +1825,7 @@ export function MarkdownEditor({
   }, [linkMenu, linkSuggestions.length, linkSuggestionsLoading, linkTarget]);
 
   useEffect(() => {
+    if (confirmDraftSave) { resetSignalRef.current = resetSignal; return; }
     if (resetSignalRef.current === resetSignal) return;
 
     const key = draftKeyRef.current;
@@ -1847,7 +1859,7 @@ export function MarkdownEditor({
       },
       annotations: previewOnly
     });
-  }, [initialValue, resetSignal]);
+  }, [confirmDraftSave, initialValue, resetSignal]);
 
   useEffect(() => {
     if (!linkMenu) {
@@ -2161,7 +2173,7 @@ export function MarkdownEditor({
     <div className={titleMode ? "markdown-editor markdown-editor-title" : "markdown-editor"}>
       {!titleMode && conflictingDraft && (
         <div className="markdown-draft-notice" role="status">
-          <span>The server content changed after this local draft. The latest server version is shown.</span>
+          <span>{labels.localDraftConflict}</span>
           <button type="button" className="secondary" onClick={restoreConflictingDraft}>
             {labels.restoreLocalDraft}
           </button>

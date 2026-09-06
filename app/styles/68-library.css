@@ -90,6 +90,11 @@
   margin-top: 12px;
 }
 
+.library-catalogue-export { color: var(--mw-secondary); font-size: 13px; margin-top: 24px; }
+.library-catalogue-export summary { cursor: pointer; width: fit-content; }
+.library-catalogue-export > div { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; }
+.library-catalogue-export a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
 .library-person-feature {
   align-items: flex-start;
   display: grid;
@@ -198,6 +203,25 @@
 .library-card-image { aspect-ratio: 16 / 10; }
 .library-card-body { padding: 17px; }
 
+.library-mathematician-grid { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+.library-add-mathematician {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 2px dashed var(--mw-green);
+  color: var(--mw-green);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  justify-content: center;
+  min-height: 260px;
+  padding: 28px;
+  text-align: center;
+  text-decoration: none;
+}
+.library-add-mathematician span { font-size: 20px; font-weight: 750; }
+.library-add-mathematician:hover { border-style: solid; text-decoration: none; }
+.library-add-mathematician:focus-visible { outline: 3px solid var(--mw-green); outline-offset: 4px; }
+
 .library-card-heading {
   align-items: flex-start;
   display: flex;
@@ -296,6 +320,12 @@
 }
 
 .library-reference-row > img { object-fit: contain; }
+.library-reference-row:not(:has(> img)) { grid-template-columns: minmax(0, 1fr) auto; }
+.library-reference-row > div:first-of-type { min-width: 0; overflow-wrap: anywhere; }
+.library-reference-row-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.library-reference-edit { align-items: center; color: var(--mw-green); display: inline-flex; font-size: 14px; gap: 6px; padding: 8px 0; }
+.library-reference-edit:hover { text-decoration: underline; }
+.library-reference-edit:focus-visible { outline: 2px solid var(--mw-green); outline-offset: 3px; }
 .library-reference-row h2 { font-size: 19px; }
 .library-citation { line-height: 1.55; }
 .library-reference-usage { margin-top: 5px; }
@@ -368,6 +398,17 @@
 
 .library-detail-image { aspect-ratio: 4 / 5; }
 .library-portrait-placeholder { align-items: center; aspect-ratio: 4 / 5; background: var(--panel-muted); display: flex; font-family: var(--font-serif); font-size: 64px; justify-content: center; }
+.library-portrait-fields > div { display: grid; gap: 12px; }
+.library-portrait-source { bottom: 7px; display: flex; justify-content: flex-end; left: 7px; pointer-events: none; position: absolute; right: 7px; z-index: 3; }
+.library-portrait-source-trigger {
+  align-items: center; background: rgb(255 255 255 / .92); border: 1px solid var(--mw-border); border-radius: 50%;
+  color: var(--mw-green); display: flex; font-size: 13px; height: 24px; justify-content: center;
+  line-height: 1; min-height: 0; padding: 0; pointer-events: auto; width: 24px;
+}
+.library-portrait-source-trigger:focus-visible { outline: 2px solid var(--mw-green); outline-offset: 2px; }
+.library-portrait-source-content { background: var(--mw-surface); border: 1px solid var(--mw-border); border-radius: 6px; bottom: 100%; box-shadow: var(--shadow); color: var(--ink); font-size: 12px; overflow-wrap: anywhere; padding: 10px; pointer-events: auto; position: absolute; right: 0; width: min(240px, 100%); }
+.library-portrait-source-content p { margin: 0; }
+.library-portrait-source-content p + p { margin-top: 4px; }
 .library-detail-content { display: grid; gap: 26px; }
 .library-detail-content > section + section { border-top: 1px solid var(--mw-border); padding-top: 22px; }
 
@@ -379,6 +420,10 @@
 .library-reference-detail,
 .library-history-detail { display: grid; gap: 22px; padding: 24px; }
 .library-reference-title-row { align-items: center; display: flex; gap: 18px; }
+.library-reference-heading { align-items: center; display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; }
+.library-reference-heading .library-reference-title-row { flex: 1 1 240px; min-width: 0; }
+.library-reference-heading .library-citation { min-width: 0; overflow-wrap: anywhere; }
+.library-reference-heading > .button { flex: 0 0 auto; }
 .library-reference-title-row img { flex: 0 0 auto; object-fit: contain; }
 .library-reference-icon-wrap { flex: 0 0 auto; position: relative; }
 .library-metadata { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 15px; }
@@ -390,6 +435,19 @@
 .library-history-hero-image img { max-height: 420px; object-position: center; }
 
 .library-entry-form { padding: 22px; }
+.library-name-fields { display: grid; gap: 10px; }
+.library-name-label { align-items: center; display: flex; gap: 8px; }
+.library-name-label label { font-size: 14px; font-weight: 750; }
+.library-name-label .field-help::after { left: -40px; width: min(22rem, calc(100vw - 100px)); }
+.library-name-suggestions { border-left: 3px solid var(--mw-green); padding-left: 12px; }
+.library-name-suggestions > p { font-size: 14px; margin: 0 0 8px; }
+.library-name-suggestions > a { align-items: center; display: flex; gap: 10px; padding: 6px 0; }
+.library-name-suggestions img { border-radius: 4px; height: 40px; object-fit: cover; width: 32px; }
+.library-name-suggestions span { display: grid; }
+.library-name-suggestions small { color: var(--muted); }
+.library-person-aliases { color: var(--muted); font-size: 14px; }
+.library-person-aliases summary { cursor: pointer; width: fit-content; }
+.library-person-aliases ul { margin: 8px 0; padding-left: 20px; }
 .library-reference-form .library-form-grid > label { align-content: start; }
 .library-reference-form textarea[rows="2"] { min-height: 4.5rem; font-family: inherit; resize: vertical; }
 .library-reference-form .reference-import-choice { display: flex; align-items: start; margin-block: 12px; }
@@ -624,6 +682,8 @@
   .library-global-search button { grid-column: 1 / -1; }
   .library-feature-image { max-width: 150px; }
   .library-reference-row { grid-template-columns: auto minmax(0, 1fr); }
+  .library-reference-row:not(:has(> img)) { grid-template-columns: minmax(0, 1fr); }
+  .library-reference-row-actions { grid-column: 1 / -1; }
   .library-external-link { grid-column: 2; justify-self: start; }
   .library-timeline > li { gap: 10px; grid-template-columns: 72px minmax(0, 1fr); }
   .library-timeline > li::before { left: 63px; }

@@ -22,7 +22,7 @@ export function LibraryReviewActions({
     <div className="library-review-actions">
       {canReview && status === LibraryStatus.PENDING_REVIEW && (
         <>
-          <form action={reviewLibraryEntryAction.bind(null, entity, id, "publish")}><button className="primary">{copy.publish}</button></form>
+          <form action={reviewLibraryEntryAction.bind(null, entity, id, "publish")}><input type="hidden" name="language" value={locale} /><button className="primary">{copy.publish}</button></form>
           <form action={reviewLibraryEntryAction.bind(null, entity, id, "changes")} className="library-review-feedback-form">
             <label>
               <span>{copy.reviewNote}</span>

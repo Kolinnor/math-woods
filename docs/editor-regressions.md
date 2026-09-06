@@ -1,5 +1,29 @@
 # Markdown and LaTeX Editor Regression Log
 
+## 2026-09-06 - A conflict is not a successful draft submission
+
+Symptom: submitting a concept proposal after another edit redirected to the conflict
+page and deleted both the Markdown draft and its edit summary.
+
+Cause: the editor treated a recent submit marker followed by a changed reset signal
+as success. The conflict redirect also changes that signal through `updatedAt`.
+
+Guardrails:
+
+- Concept and problem body editors use `confirmDraftSave`; their reset signals no
+  longer authorize deletion. Edit summaries use the same explicit receipt protocol.
+- The existing post-save acknowledgement sends only validated draft keys and unique
+  submission tokens, after a successful save/proposal. No receipt is emitted by
+  conflict or validation-error paths. Cookies never contain the edited content.
+- A matching receipt clears only the submitted local draft. Further typing replaces
+  its token, so a late receipt cannot erase newer work or a newer draft in another tab.
+- Old submit markers are discarded without deleting drafts. Conflicting drafts retain
+  the existing restore/discard choice; latest server content remains the default.
+- Other Markdown uses (chat, comments, hints) retain their existing reset behavior.
+
+Validation: receipt unit tests and a browser regression using the actual CodeMirror
+editor cover a conflict reload, summary restoration, success and edits after submit.
+
 This file records editor bugs that have already happened in Math Woods. Read it before touching
 `components/markdown/MarkdownEditor.tsx`, `lib/latex-ranges.ts`, `lib/markdown.ts`, or the editor CSS in
 `app/globals.css`.

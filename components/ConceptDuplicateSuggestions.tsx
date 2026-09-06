@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { InterfaceLocale } from "@/lib/i18n/types";
+import { displayTypography } from "@/lib/display-typography";
 
 type SuggestedConcept = {
   language: string;
@@ -70,7 +71,7 @@ export function ConceptDuplicateSuggestions({ initialTitle, locale }: { initialT
           <div>
             {suggestions.map((concept) => (
               <Link key={concept.slug} href={`/concepts/${concept.slug}`} target="_blank">
-                <span dangerouslySetInnerHTML={{ __html: concept.titleHtml }} />
+                <span dangerouslySetInnerHTML={{ __html: displayTypography(concept.titleHtml) }} />
                 <small>{concept.language.toUpperCase()} · {copy.open}</small>
               </Link>
             ))}

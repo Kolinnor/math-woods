@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { ImageCredit } from "@/components/library/ImageCredit";
+import { PortraitSource } from "@/components/library/PortraitSource";
 import { LibraryAttribution } from "@/components/library/LibraryAttribution";
 import { LibraryReviewActions } from "@/components/library/LibraryReviewActions";
 import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
@@ -16,6 +16,7 @@ import { getInterfaceLocale } from "@/lib/i18n/server";
 import { formatLibraryReference } from "@/lib/library";
 import { libraryCopy } from "@/lib/library-copy";
 import { localizedTranslation } from "@/lib/library-queries";
+import { mathematicianName } from "@/lib/mathematician-names";
 import { canArchiveLibraryEntry, canEditLibraryDraft, canReviewLibraryEntry, canViewLibraryEntry } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +25,8 @@ type PageProps = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   await requireAdmin();
   const { slug } = await params;
-  const entry = await prisma.mathematician.findUnique({ where: { slug }, select: { name: true } });
-  return { title: entry?.name ?? "Mathematician" };
+  const [locale, entry] = await Promise.all([getInterfaceLocale(), prisma.mathematician.findUnique({ where: { slug }, select: { name: true, translations: { select: { language: true, displayName: true } } } })]);
+  return { title: entry ? mathematicianName(entry, locale) : "Mathematician" };
 }
 
 export default async function LibraryMathematicianPage({ params }: PageProps) {
@@ -55,12 +56,12 @@ export default async function LibraryMathematicianPage({ params }: PageProps) {
     <ForestPageLayout title={<>{translation?.displayName ?? entry.name}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={locale} />}</>} description={translation?.teaser} heroImage="/art/birch-grove.jpg" actions={canEdit ? <Link href={`/library/mathematicians/${entry.slug}/edit?lang=${locale}`} className="primary"><Pencil size={16} />{copy.edit}</Link> : undefined}>
       <LibraryTabs active="mathematicians" locale={locale} />
       <div className="library-detail-heading"><LibraryStatusBadge status={entry.status} locale={locale} /><p>{entry.lifespan}{translation?.birthPlace ? ` · ${translation.birthPlace}` : ""}</p></div>
+      {entry.aliases.length > 0 && <details className="library-person-aliases"><summary>{locale === "fr" ? "Autres noms" : "Other names"}</summary><ul>{entry.aliases.map(alias => <li key={alias}>{alias}</li>)}</ul></details>}
       <LibraryAttribution creator={entry.createdBy} reviewer={entry.reviewedBy} locale={locale} />
       <LibraryReviewNote status={entry.status} note={entry.reviewNote} locale={locale} />
       <div className="library-detail-layout">
         <aside className="library-portrait-panel">
-          {entry.portraitUrl ? <div className="library-detail-image"><img src={entry.portraitUrl} alt={entry.imageAlt ?? translation?.displayName ?? entry.name} /><ImageCredit credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} label={copy.imageCredit} /></div> : <div className="library-portrait-placeholder">{entry.name.charAt(0)}</div>}
-          {entry.fields.length > 0 && <p className="library-tags">{entry.fields.join(" · ")}</p>}
+          {entry.portraitUrl ? <div className="library-detail-image"><img src={entry.portraitUrl} alt={entry.imageAlt ?? translation?.displayName ?? entry.name} /><PortraitSource credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} locale={locale} /></div> : <div className="library-portrait-placeholder">{entry.name.charAt(0)}</div>}
         </aside>
         <div className="library-detail-content">
           {translation?.biographyHtml && <section><h2>{locale === "fr" ? "Biographie" : "Biography"}</h2><div className="prose-math" dangerouslySetInnerHTML={{ __html: translation.biographyHtml }} /></section>}

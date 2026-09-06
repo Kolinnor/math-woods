@@ -1,6 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { clearAcknowledgedEditorDrafts } from "@/lib/editor-draft-receipts";
 
 export function clearAcknowledgedCitationDraft() {
   try {
@@ -16,6 +17,6 @@ export function clearAcknowledgedCitationDraft() {
 
 export function CitationDraftReceipt() {
   const pathname = usePathname();
-  useEffect(clearAcknowledgedCitationDraft, [pathname]);
+  useEffect(() => { clearAcknowledgedCitationDraft(); clearAcknowledgedEditorDrafts(); }, [pathname]);
   return null;
 }

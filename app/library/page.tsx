@@ -12,7 +12,7 @@ import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { formatLibraryReference, historyEraLabel, referenceTypeLabel } from "@/lib/library";
 import { libraryCopy } from "@/lib/library-copy";
-import { localizedTranslation } from "@/lib/library-queries";
+import { localizedTranslation, searchMathematicians } from "@/lib/library-queries";
 import { canUseAdminTools } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -135,18 +135,7 @@ async function searchLibrary(q: string, locale: "en" | "fr") {
       orderBy: { sortYear: "asc" },
       take: 6
     }),
-    prisma.mathematician.findMany({
-      where: {
-        status: LibraryStatus.PUBLISHED,
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { translations: { some: { OR: [{ displayName: { contains: q, mode: "insensitive" } }, { teaser: { contains: q, mode: "insensitive" } }] } } }
-        ]
-      },
-      include: { translations: true },
-      orderBy: { name: "asc" },
-      take: 6
-    }),
+    searchMathematicians(q.slice(0, 160), locale).then(people => people.slice(0, 6)),
     prisma.libraryReference.findMany({
       where: {
         status: LibraryStatus.PUBLISHED,

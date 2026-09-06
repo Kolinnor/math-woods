@@ -88,6 +88,15 @@ export function canEditLibraryDraft(
   );
 }
 
+export function canEditLibraryReference(
+  user: PermissionUser,
+  entry: { createdById: number | null; status: LibraryStatus }
+) {
+  return entry.status === LibraryStatus.PENDING_REVIEW
+    ? hasAdminPrivileges(user.role)
+    : canEditLibraryDraft(user, entry);
+}
+
 export function canReviewLibraryEntry(
   user: PermissionUser,
   entry: { createdById: number | null }

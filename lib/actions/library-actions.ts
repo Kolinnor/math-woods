@@ -21,6 +21,7 @@ import {
   canArchiveLibraryEntry,
   canCreateLibraryEntry,
   canEditLibraryDraft,
+  canEditLibraryReference,
   canReviewLibraryEntry
 } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -28,12 +29,10 @@ import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
 import { citationUrl } from "@/lib/problem-citations";
 import { readReferenceBibliography, validateReferenceWork } from "@/lib/reference-editions";
+import { requireReadableReferenceTitle } from "@/lib/reference-title";
+import { parseMathematicianAliases } from "@/lib/mathematician-names";
 
 type LibraryEntity = "mathematician" | "reference" | "milestone";
-
-function requireReadableReferenceTitle(title: string) {
-  if (/^\s*@\w+\s*[{(]/.test(title)) throw new Error("Enter a readable title. Paste the full bibliography entry in the BibTeX field.");
-}
 
 export async function proposeLibraryReferenceAction(_state: { message: string; success: boolean }, formData: FormData) {
   const user = await requireVerifiedUser();
@@ -41,7 +40,7 @@ export async function proposeLibraryReferenceAction(_state: { message: string; s
   try {
     await assertRateLimit(`reference-proposal:${user.id}`, 8, 60_000);
     const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
-    if (/^\s*@\w+\s*[{(]/.test(title)) throw new Error(fr ? "Indiquez le titre de la ressource, pas une entrée BibTeX." : "Enter the resource title, not a BibTeX entry.");
+    requireReadableReferenceTitle(title, fr ? "fr" : "en");
     const authors = optionalBoundedText(formData.get("authors"), CONTENT_LIMITS.mediumText, "Authors");
     const url = citationUrl(formData.get("url"));
     const dedupeKey = normalizeReferenceDedupeKey({ title, authors, url });
@@ -234,8 +233,9 @@ export async function createMathematicianAction(formData: FormData) {
   await assertRateLimit(`library-mathematician:${user.id}`, 12, 60_000);
 
   const language = formLanguage(formData);
-  const canonicalName = requiredBoundedText(formData.get("canonicalName"), CONTENT_LIMITS.title, "Canonical name");
-  const displayName = boundedText(formData.get("displayName"), CONTENT_LIMITS.title, "Displayed name") || canonicalName;
+  const canonicalName = requiredBoundedText(formData.get("name") ?? formData.get("canonicalName"), CONTENT_LIMITS.title, language === "fr" ? "Nom" : "Name");
+  const displayName = formData.has("name") ? canonicalName : boundedText(formData.get("displayName"), CONTENT_LIMITS.title, "Name") || canonicalName;
+  const aliases = parseMathematicianAliases(formData.get("aliases") ?? "", displayName, language);
   const lifespan = boundedText(formData.get("lifespan"), CONTENT_LIMITS.shortText, "Dates");
   const birthPlace = boundedText(formData.get("birthPlace"), CONTENT_LIMITS.shortText, "Birthplace");
   const teaser = boundedText(formData.get("teaser"), CONTENT_LIMITS.mediumText, "Introduction");
@@ -258,6 +258,7 @@ export async function createMathematicianAction(formData: FormData) {
       data: {
       slug,
       name: canonicalName,
+      aliases,
       lifespan,
       birthPlace,
       portraitUrl: optionalHttpsUrl(formData.get("imageUrl"), "Image URL"),
@@ -292,8 +293,9 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
   await assertRateLimit(`library-mathematician-edit:${user.id}`, 20, 60_000);
 
   const language = formLanguage(formData);
-  const canonicalName = requiredBoundedText(formData.get("canonicalName"), CONTENT_LIMITS.title, "Canonical name");
-  const displayName = boundedText(formData.get("displayName"), CONTENT_LIMITS.title, "Displayed name") || canonicalName;
+  const submittedName = requiredBoundedText(formData.get("name") ?? formData.get("canonicalName"), CONTENT_LIMITS.title, language === "fr" ? "Nom" : "Name");
+  const displayName = formData.has("name") ? submittedName : boundedText(formData.get("displayName"), CONTENT_LIMITS.title, "Name") || submittedName;
+  const aliases = formData.has("aliases") ? parseMathematicianAliases(formData.get("aliases"), displayName, language) : undefined;
   const biographyMarkdown = boundedText(formData.get("biographyMarkdown"), CONTENT_LIMITS.markdown, "Biography");
   const contributionsMarkdown = boundedText(formData.get("contributionsMarkdown"), CONTENT_LIMITS.markdown, "Contributions");
   const [biographyHtml, contributionsHtml] = await Promise.all([renderMarkdown(biographyMarkdown), renderMarkdown(contributionsMarkdown)]);
@@ -309,14 +311,17 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
     await tx.mathematician.update({
       where: { id, updatedAt: baseUpdatedAt },
       data: {
-      name: canonicalName,
+      // The single field edits this language only. Keep the original fallback
+      // and slug; old forms can still submit their two explicit name fields.
+      name: formData.has("name") ? undefined : submittedName,
+      aliases,
       lifespan: boundedText(formData.get("lifespan"), CONTENT_LIMITS.shortText, "Dates"),
       portraitUrl: optionalHttpsUrl(formData.get("imageUrl"), "Image URL"),
       imageAlt: optionalBoundedText(formData.get("imageAlt"), CONTENT_LIMITS.shortText, "Image description"),
       imageCredit: optionalBoundedText(formData.get("imageCredit"), CONTENT_LIMITS.shortText, "Image credit"),
       imageCreditUrl: optionalHttpsUrl(formData.get("imageCreditUrl"), "Image credit URL"),
       imageLicense: optionalBoundedText(formData.get("imageLicense"), CONTENT_LIMITS.shortText, "Image license"),
-      fields: boundedText(formData.get("fields"), CONTENT_LIMITS.tagList, "Fields").split(",").map((item) => item.trim()).filter(Boolean),
+      fields: formData.has("fields") ? boundedText(formData.get("fields"), CONTENT_LIMITS.tagList, "Fields").split(",").map((item) => item.trim()).filter(Boolean) : undefined,
       status: statusForUpdate(entry.status, intent),
       submittedAt: entry.status === LibraryStatus.PUBLISHED ? entry.submittedAt : intent === "submit" ? new Date() : null,
       reviewedById: entry.status === LibraryStatus.PUBLISHED || intent === "draft" ? undefined : null,
@@ -362,6 +367,19 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
   redirect(`/library/mathematicians/${entry.slug}`);
 }
 
+export async function saveMathematicianFormAction(id: number | null, _state: { error: string }, formData: FormData) {
+  const user = await requireAdmin();
+  if (!canCreateLibraryEntry(user)) throw new Error("You cannot edit library entries.");
+  try {
+    if (id === null) await createMathematicianAction(formData);
+    else await updateMathematicianAction(id, formData);
+    return { error: "" };
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: error instanceof Error ? error.message : (formLanguage(formData) === "fr" ? "Enregistrement impossible." : "Unable to save.") };
+  }
+}
+
 export async function createLibraryReferenceAction(formData: FormData) {
   const user = await requireAdmin();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot create a library entry.");
@@ -369,8 +387,8 @@ export async function createLibraryReferenceAction(formData: FormData) {
 
   const canonicalTitle = requiredBoundedText(formData.get("canonicalTitle"), CONTENT_LIMITS.title, "Title");
   const displayTitle = boundedText(formData.get("displayTitle"), CONTENT_LIMITS.title, "Displayed title") || canonicalTitle;
-  requireReadableReferenceTitle(canonicalTitle);
-  requireReadableReferenceTitle(displayTitle);
+  requireReadableReferenceTitle(canonicalTitle, formLanguage(formData));
+  requireReadableReferenceTitle(displayTitle, formLanguage(formData));
   const authors = optionalBoundedText(formData.get("authors"), CONTENT_LIMITS.mediumText, "Authors");
   const year = parseOptionalInt(formData.get("year"), "Year", -5000, 3000);
   const url = optionalHttpsUrl(formData.get("url"), "Reference URL");
@@ -434,11 +452,13 @@ export async function createLibraryReferenceAction(formData: FormData) {
 export async function updateLibraryReferenceAction(id: number, formData: FormData) {
   const user = await requireAdmin();
   const entry = await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, canonicalTitle: true, mergedIntoId: true, createdById: true, status: true, submittedAt: true, updatedAt: true } });
-  if (!entry || !canEditLibraryDraft(user, entry)) throw new Error("You cannot edit this entry.");
+  if (!entry || !canEditLibraryReference(user, entry)) throw new Error("You cannot edit this entry.");
+  // Correcting a submitted, published or archived reference is not a review decision.
+  const preserveStatus = entry.status === LibraryStatus.PUBLISHED || entry.status === LibraryStatus.PENDING_REVIEW || entry.status === LibraryStatus.ARCHIVED;
   const canonicalTitle = requiredBoundedText(formData.get("canonicalTitle"), CONTENT_LIMITS.title, "Title");
   const displayTitle = boundedText(formData.get("displayTitle"), CONTENT_LIMITS.title, "Displayed title") || canonicalTitle;
-  requireReadableReferenceTitle(canonicalTitle);
-  requireReadableReferenceTitle(displayTitle);
+  requireReadableReferenceTitle(canonicalTitle, formLanguage(formData));
+  requireReadableReferenceTitle(displayTitle, formLanguage(formData));
   const authors = optionalBoundedText(formData.get("authors"), CONTENT_LIMITS.mediumText, "Authors");
   const year = parseOptionalInt(formData.get("year"), "Year", -5000, 3000);
   const url = optionalHttpsUrl(formData.get("url"), "Reference URL");
@@ -486,11 +506,11 @@ export async function updateLibraryReferenceAction(id: number, formData: FormDat
       imageCreditUrl: optionalHttpsUrl(formData.get("imageCreditUrl"), "Image credit URL"),
       imageLicense: optionalBoundedText(formData.get("imageLicense"), CONTENT_LIMITS.shortText, "Image license"),
       dedupeKey,
-      status: statusForUpdate(entry.status, intent),
-      submittedAt: entry.status === LibraryStatus.PUBLISHED ? entry.submittedAt : intent === "submit" ? new Date() : null,
-      reviewedById: entry.status === LibraryStatus.PUBLISHED || intent === "draft" ? undefined : null,
-      reviewedAt: entry.status === LibraryStatus.PUBLISHED || intent === "draft" ? undefined : null,
-      reviewNote: entry.status === LibraryStatus.PUBLISHED || intent === "draft" ? undefined : null,
+      status: preserveStatus ? entry.status : statusForUpdate(entry.status, intent),
+      submittedAt: preserveStatus ? entry.submittedAt : intent === "submit" ? new Date() : null,
+      reviewedById: preserveStatus || intent === "draft" ? undefined : null,
+      reviewedAt: preserveStatus || intent === "draft" ? undefined : null,
+      reviewNote: preserveStatus || intent === "draft" ? undefined : null,
       translations: {
         upsert: {
           where: { referenceId_language: { referenceId: id, language } },
@@ -502,7 +522,7 @@ export async function updateLibraryReferenceAction(id: number, formData: FormDat
   });
   });
   revalidateLibrary("reference", entry.slug);
-  if (intent === "submit" && entry.status !== LibraryStatus.PENDING_REVIEW && entry.status !== LibraryStatus.PUBLISHED) {
+  if (intent === "submit" && !preserveStatus) {
     await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "reference", slug: entry.slug, title: displayTitle });
   }
   redirect(`/library/references/${entry.slug}`);
@@ -624,7 +644,7 @@ export async function reviewLibraryEntryAction(entity: LibraryEntity, id: number
   const entry = entity === "mathematician"
     ? await prisma.mathematician.findUnique({ where: { id }, select: { id: true, slug: true, name: true, createdById: true, status: true, translations: { select: { displayName: true }, take: 1 } } }).then((value) => value && ({ ...value, title: value.translations[0]?.displayName ?? value.name }))
     : entity === "reference"
-      ? await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, canonicalTitle: true, createdById: true, status: true, translations: { select: { displayTitle: true }, take: 1 } } }).then((value) => value && ({ ...value, title: value.translations[0]?.displayTitle ?? value.canonicalTitle }))
+      ? await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, canonicalTitle: true, createdById: true, status: true, updatedAt: true, translations: { select: { displayTitle: true } } } }).then((value) => value && ({ ...value, title: value.translations[0]?.displayTitle ?? value.canonicalTitle }))
       : await prisma.historyMilestone.findUnique({ where: { id }, select: { id: true, slug: true, createdById: true, status: true, translations: { select: { title: true }, take: 1 } } }).then((value) => value && ({ ...value, title: value.translations[0]?.title ?? value.slug }));
   if (!entry) throw new Error("Entry not found.");
   if (decision === "archive" || decision === "restore") {
@@ -637,6 +657,13 @@ export async function reviewLibraryEntryAction(entity: LibraryEntity, id: number
   }
   if (decision === "archive" && entry.status === LibraryStatus.ARCHIVED) throw new Error("This entry is already archived.");
   if (decision === "restore" && entry.status !== LibraryStatus.ARCHIVED) throw new Error("Only archived entries can be restored.");
+
+  if (decision === "publish" && "canonicalTitle" in entry) {
+    requireReadableReferenceTitle(entry.canonicalTitle, formLanguage(formData));
+    for (const translation of entry.translations) {
+      if (translation.displayTitle) requireReadableReferenceTitle(translation.displayTitle, formLanguage(formData));
+    }
+  }
 
   const reviewNote = decision === "changes"
     ? requiredBoundedText(formData.get("reviewNote"), CONTENT_LIMITS.longNote, "Review note")
@@ -652,7 +679,7 @@ export async function reviewLibraryEntryAction(entity: LibraryEntity, id: number
   const updateResult = entity === "mathematician"
     ? await prisma.mathematician.updateMany({ where: { id, status: entry.status }, data })
     : entity === "reference"
-      ? await prisma.libraryReference.updateMany({ where: { id, status: entry.status }, data })
+      ? await prisma.libraryReference.updateMany({ where: { id, status: entry.status, ...("updatedAt" in entry ? { updatedAt: entry.updatedAt } : {}) }, data })
       : await prisma.historyMilestone.updateMany({ where: { id, status: entry.status }, data });
   if (updateResult.count !== 1) throw new Error("This entry was reviewed by someone else. Reload the page to see its current status.");
   if (decision === "archive") {

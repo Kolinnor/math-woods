@@ -30,7 +30,7 @@ export default async function LibraryHistoryPage({ searchParams }: { searchParam
   const entries = await prisma.historyMilestone.findMany({ where, include: { translations: true }, orderBy: [{ sortYear: "asc" }, { createdAt: "asc" }], skip: pagination.skip, take: pagination.take });
   const copy = libraryCopy[locale];
   return (
-    <ForestPageLayout title={copy.history} description={locale === "fr" ? "Une chronologie choisie des idées, notations et publications qui ont transformé les mathématiques." : "A selected timeline of ideas, notation, and publications that changed mathematics."} heroImage="/art/brook-in-the-forest.jpg" actions={user && isVerifiedContributor(user) ? <Link className="primary" href="/library/history/new"><Plus size={16} />{copy.add}</Link> : undefined}>
+    <ForestPageLayout title={copy.history} heroImage="/art/brook-in-the-forest.jpg" actions={user && isVerifiedContributor(user) ? <Link className="primary" href="/library/history/new"><Plus size={16} />{copy.add}</Link> : undefined}>
       <LibraryTabs active="history" locale={locale} />
       <form className="library-filter-bar"><input name="q" defaultValue={q} placeholder={locale === "fr" ? "Rechercher dans la chronologie" : "Search the timeline"} /><select name="era" defaultValue={era ?? ""}><option value="">{locale === "fr" ? "Toutes les périodes" : "All eras"}</option>{Object.values(HistoryEra).map((value) => <option value={value} key={value}>{historyEraLabel(value, locale)}</option>)}</select><button type="submit">{locale === "fr" ? "Rechercher" : "Search"}</button></form>
       {entries.length ? <ol className="library-timeline">{entries.map((entry) => {

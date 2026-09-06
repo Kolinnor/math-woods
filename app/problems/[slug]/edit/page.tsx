@@ -193,6 +193,7 @@ export default async function EditProblemPage({
                   name="bodyMarkdown"
                   initialValue={problem.bodyMarkdown}
                   draftKey={`problem:${problem.id}:statement`}
+                  confirmDraftSave
                   resetSignal={draftResetSignal}
                   sourceUpdatedAt={problem.updatedAt.getTime()}
                 />

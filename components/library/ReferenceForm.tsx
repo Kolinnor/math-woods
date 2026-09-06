@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useActionState } from "react";
-import { LibraryReferenceType } from "@prisma/client";
+import { LibraryReferenceType, type LibraryStatus } from "@prisma/client";
 import { ReferenceWorkPicker, ReferenceBibtexField } from "@/components/library/ReferenceBibliographyFields";
 import { LibraryFormActions } from "@/components/library/LibraryFormActions";
 import { LibraryReferenceIconField } from "@/components/library/LibraryReferenceIconField";
@@ -10,6 +10,8 @@ import { referenceTypeLabel } from "@/lib/library";
 
 type ReferenceFormValues = {
   id?: number;
+  slug?: string;
+  status?: LibraryStatus;
   canonicalTitle?: string;
   referenceType?: LibraryReferenceType;
   authors?: string | null;
@@ -42,16 +44,20 @@ type ReferenceFormValues = {
 
 export function ReferenceForm({ action, locale, contentLanguage = locale, baseUpdatedAt, values = {} }: { action: (state: { error: string }, data: FormData) => Promise<{ error: string }>; locale: "en" | "fr"; contentLanguage?: "en" | "fr"; baseUpdatedAt?: string; values?: ReferenceFormValues }) {
   const fr = locale === "fr";
+  const saveChanges = values.status === "PUBLISHED" || values.status === "PENDING_REVIEW" || values.status === "ARCHIVED";
   const [state, submit, pending] = useActionState(action, { error: "" });
   return (
     <form onSubmit={event => {
       event.preventDefault();
+      if (pending) return;
       // Dispatch explicitly: React form actions otherwise reset uncontrolled fields
       // even when the server returns a validation error. Success redirects away.
       const data = new FormData(event.currentTarget, (event.nativeEvent as SubmitEvent).submitter);
       startTransition(() => submit(data));
     }} className="panel library-entry-form library-reference-form">
       {state.error && <p role="alert" className="quality-banner">{state.error}</p>}
+      {values.id && <p className="muted">{fr ? "Vous modifiez la fiche du catalogue utilisée par les problèmes et concepts qui la citent. Leurs passages et notes restent propres à chaque citation." : "You are editing the catalogue entry used by the problems and concepts that cite it. Their passages and notes remain specific to each citation."}</p>}
+      {values.status === "PENDING_REVIEW" && <p className="muted">{fr ? "La référence restera en attente de relecture après l’enregistrement. Vous pourrez ensuite la valider depuis sa fiche." : "The reference will remain pending review after saving. You can then publish it from its entry page."}</p>}
       <input type="hidden" name="language" value={contentLanguage} />
       {baseUpdatedAt && <input type="hidden" name="baseUpdatedAt" value={baseUpdatedAt} />}
       <div className="library-form-grid">
@@ -92,7 +98,7 @@ export function ReferenceForm({ action, locale, contentLanguage = locale, baseUp
       <label className="library-editor-field"><span>{fr ? "Présentation" : "Description"}</span><MarkdownEditor name="descriptionMarkdown" initialValue={values.translation?.descriptionMarkdown ?? ""} minHeight="14rem" /></label>
       </div></details>
       <details className="library-form-section"><summary>{fr ? "Pictogramme et crédits" : "Pictogram and credits"}</summary><div><LibraryReferenceIconField locale={locale} title={values.canonicalTitle ?? ""} initialUrl={values.iconUrl} initialSize={values.iconSize} /><div className="library-form-grid"><label><span>{fr ? "Description du pictogramme" : "Pictogram description"}</span><input name="imageAlt" defaultValue={values.imageAlt ?? ""} /></label><label><span>{fr ? "Crédit du pictogramme" : "Pictogram credit"}</span><input name="imageCredit" defaultValue={values.imageCredit ?? ""} /></label><label><span>{fr ? "Lien du crédit" : "Credit URL"}</span><input name="imageCreditUrl" type="url" defaultValue={values.imageCreditUrl ?? ""} /></label><label><span>{fr ? "Licence" : "License"}</span><input name="imageLicense" defaultValue={values.imageLicense ?? ""} /></label></div></div></details>
-      <fieldset disabled={pending} style={{ border: 0, padding: 0 }}><LibraryFormActions locale={locale} /></fieldset>
+      <fieldset disabled={pending} style={{ border: 0, padding: 0 }}><LibraryFormActions locale={locale} saveChanges={saveChanges} cancelHref={values.slug ? `/library/references/${values.slug}` : "/library/references"} /></fieldset>
     </form>
   );
 }

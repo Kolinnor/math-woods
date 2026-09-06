@@ -215,6 +215,7 @@ export default async function EditConceptPage({
             name="bodyMarkdown"
             initialValue={concept.bodyMarkdown}
             draftKey={`concept:${concept.id}:body`}
+            confirmDraftSave
             resetSignal={draftResetSignal}
             sourceUpdatedAt={concept.updatedAt.getTime()}
           />

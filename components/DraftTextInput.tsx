@@ -2,19 +2,14 @@
 
 import type { InputHTMLAttributes } from "react";
 import { useEffect, useRef, useState } from "react";
+import { clearAcknowledgedEditorDrafts, markEditorDraftSubmission } from "@/lib/editor-draft-receipts";
 
 const DRAFT_PREFIX = "math-woods-text-field-draft";
 const DRAFT_SUBMIT_PREFIX = `${DRAFT_PREFIX}:submit`;
-const DRAFT_SUBMIT_TTL_MS = 10 * 60 * 1000;
 
 type StoredTextDraft = {
   value: string;
   updatedAt: number;
-};
-
-type StoredDraftSubmit = {
-  signal: string;
-  submittedAt: number;
 };
 
 type DraftTextInputProps = Omit<
@@ -46,7 +41,7 @@ function removeStoredValue(key: string) {
   }
 }
 
-function writeStoredValue(key: string, value: StoredTextDraft | StoredDraftSubmit) {
+function writeStoredValue(key: string, value: StoredTextDraft) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
@@ -62,27 +57,14 @@ export function DraftTextInput({
   ...inputProps
 }: DraftTextInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const resetSignalRef = useRef(String(resetSignal));
   const [value, setValue] = useState(initialValue);
   const storageKey = `${DRAFT_PREFIX}:${draftKey}`;
   const submitKey = `${DRAFT_SUBMIT_PREFIX}:${storageKey}`;
 
   useEffect(() => {
-    const currentSignal = String(resetSignal);
-    resetSignalRef.current = currentSignal;
-    const submit = readStoredValue<StoredDraftSubmit>(
-      submitKey,
-      (candidate): candidate is StoredDraftSubmit =>
-        typeof candidate.signal === "string" && typeof candidate.submittedAt === "number"
-    );
-    const freshSubmit = Boolean(submit && Date.now() - submit.submittedAt <= DRAFT_SUBMIT_TTL_MS);
-
-    if (submit && freshSubmit && submit.signal !== currentSignal) {
-      removeStoredValue(storageKey);
-      removeStoredValue(submitKey);
-    } else if (submit && !freshSubmit) {
-      removeStoredValue(submitKey);
-    }
+    clearAcknowledgedEditorDrafts();
+    // Old attempt markers are not proof of a successful save.
+    removeStoredValue(submitKey);
 
     const draft = readStoredValue<StoredTextDraft>(
       storageKey,
@@ -93,10 +75,7 @@ export function DraftTextInput({
 
     const form = inputRef.current?.form;
     const markSubmitted = () => {
-      writeStoredValue(submitKey, {
-        signal: resetSignalRef.current,
-        submittedAt: Date.now()
-      });
+      if (form && inputRef.current) markEditorDraftSubmission(form, storageKey, inputRef.current.value);
     };
     form?.addEventListener("submit", markSubmitted);
     return () => form?.removeEventListener("submit", markSubmitted);

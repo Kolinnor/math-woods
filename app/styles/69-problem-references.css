@@ -32,7 +32,12 @@
 .problem-citations-reading h2 { font-size: 1rem; margin-bottom: 8px; }
 .problem-citations-reading ol { padding-left: 22px; }
 .problem-citations-reading li { padding-block: 4px; white-space: pre-wrap; }
-.problem-citations-reading li p { margin: 4px 0; font-size: .9rem; }
+.problem-citations-details { margin-top: 8px; font-size: .9rem; }
+.problem-citations-details > summary { width: fit-content; color: var(--muted); cursor: pointer; }
+.problem-citation-note { margin-top: 12px; white-space: pre-wrap; }
+.problem-citation-note p { margin: 4px 0; }
+.problem-citations-export { margin-top: 12px; }
+.problem-citations-export > p { margin: 0 0 8px; }
 @media (max-width: 600px) {
   .problem-citation-card-heading { flex-direction: column; }
   .problem-citation-card-heading > :first-child { width: 100%; }

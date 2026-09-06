@@ -32,6 +32,31 @@ The Library homepage has a cross-catalogue search. Individual catalogues have th
 
 Readers receive the requested translation when it exists. A fallback translation is marked with its language code, including on Library links embedded in problem and concept pages. Editors choose the English or French translation explicitly; opening a missing translation starts with empty localized fields and cannot copy fallback text into the wrong language by accident.
 
+## Mathematician names
+
+The form exposes one **Name** in the selected content language. **Other names**
+is optional and collapsed, with one real alias, pseudonym or transliteration per
+line (20 names maximum, 160 characters each). Aliases are shared across languages;
+case, accents and typographic apostrophe variants need not be entered separately.
+Cards, page titles and selection lists use the requested language, then the usual
+translation fallback. Other names are collapsed on the detail page.
+
+Search matches aliases and translated names. Nonblocking suggestions show similar
+entries with dates and portraits; homonyms remain valid and are never merged
+automatically. The suggestion API retains the Library's admin/owner access check
+and entry visibility rules. The server ranks a compact index for this small
+catalogue; biographies are not loaded and the client receives at most five suggestions.
+
+Migration `20260906190000_mathematician_aliases` adds an empty array without changing
+existing names, translations or slugs. The legacy name remains a fallback and search
+term; editing the new single field only updates the selected translation. Historical
+differences between names are not automatically classified as aliases. Missing alias
+fields from older forms preserve the stored aliases. Errors preserve form inputs;
+concurrent changes retain the existing `updatedAt` protection.
+
+Validation: `npm run test:mathematician-names` covers search, aliases, localized edits,
+legacy forms and stale writes. Apply the migration before running the updated app.
+
 ## References
 
 Problem references default to free text with an optional URL. Choosing a catalogue
@@ -122,7 +147,35 @@ Migration `20260902170000_add_library`:
 
 The old URLs permanently redirect to their Library equivalents. The old database fields can be removed only in a later migration, after the migrated production data has been inspected.
 
+## Reference editing
+
+Reference editing is available from each editable catalogue row and beside the
+citation at the top of the detail panel. Admins and the owner can also correct
+pending references, which appear in their management catalogue. This permission
+does not change the mathematician or history workflows, nor open the Library to
+other accounts. Other people's private drafts remain private.
+
+Editing a pending, published or archived reference offers **Save changes** and
+**Cancel**. Saving preserves its status and review metadata, including for legacy
+forms that still submit the draft/review intents. Publication and restoration remain
+separate actions. `updatedAt` protects corrections against concurrent edits and
+reviews. The form explains that catalogue changes affect citations throughout the
+site; passages and notes belong to the individual citation.
+
+Validation: `tests/reference-editing.test.mjs` exercises permissions, the actual
+update action, status preservation and stale-write rejection with mocked DB/auth.
+
+## Catalogue title validation
+
+Catalogue titles are checked on proposal, creation, editing and publication.
+Complete BibTeX entries, isolated fields such as `author = {...}` and punctuation
+fragments such as `}` must be corrected before a record can be saved or published.
+Publication checks every translated title and refuses a concurrent edit. These
+checks do not validate the factual existence of a resource and do not restrict
+free citations on problems or concepts. Validation errors preserve proposal inputs.
+
 ## Deliberately deferred
+
 
 - Full revision history for Library entries. Stale-write protection and reviewer attribution exist now, but a later migration should preserve every published revision before the legacy fields are removed.
 - Edit proposals against already-published Library entries from ordinary members. For the first release, published records are edited by trusted contributors while all verified members can submit new records.

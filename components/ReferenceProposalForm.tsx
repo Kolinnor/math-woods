@@ -1,11 +1,16 @@
 "use client";
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 import { proposeLibraryReferenceAction } from "@/lib/actions/library-actions";
 
 export function ReferenceProposalForm({ text, url, locale }: { text: string; url: string | null; locale: "fr" | "en" }) {
   const [state, action, pending] = useActionState(proposeLibraryReferenceAction, { message: "", success: false });
   const fr = locale === "fr";
-  return <form action={action} className="problem-citation-editor">
+  return <form onSubmit={event => {
+    event.preventDefault();
+    // Keep the entered values when catalogue validation returns an error.
+    const data = new FormData(event.currentTarget);
+    startTransition(() => action(data));
+  }} className="problem-citation-editor">
     <input type="hidden" name="language" value={locale} />
     <label><span>{fr ? "Titre de l’ouvrage ou de la ressource (sans le passage cité)" : "Book or resource title (without the passage)"}</span><input name="title" required maxLength={160} defaultValue={text} /></label>
     <label><span>{fr ? "Auteur (facultatif)" : "Author (optional)"}</span><input name="authors" maxLength={500} /></label>

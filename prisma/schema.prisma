@@ -597,6 +597,7 @@ model Mathematician {
   id              Int                             @id @default(autoincrement())
   slug            String                          @unique
   name            String
+  aliases         String[]                        @default([])
   lifespan        String
   birthPlace      String
   portraitUrl     String?
