@@ -20,6 +20,6 @@ export async function GET(request: Request) {
   const where = { AND: [visibleLibraryEntryWhere(user), Number.isSafeInteger(exclude) && exclude > 0 ? { id: { not: exclude } } : {}] };
   const matches = await searchMathematicians(query, locale, where, true);
   return Response.json({ mathematicians: matches.slice(0, 5).map(person => ({
-    id: person.id, slug: person.slug, name: mathematicianName(person, locale), lifespan: person.lifespan, portraitUrl: person.portraitUrl
+    id: person.id, slug: person.slug, name: mathematicianName(person, locale), lifespan: person.lifespan, portraitUrl: person.portraitUrl, portraitCrop: person.portraitCrop
   })) }, { headers });
 }

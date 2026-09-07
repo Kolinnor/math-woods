@@ -399,6 +399,29 @@
 .library-detail-image { aspect-ratio: 4 / 5; }
 .library-portrait-placeholder { align-items: center; aspect-ratio: 4 / 5; background: var(--panel-muted); display: flex; font-family: var(--font-serif); font-size: 64px; justify-content: center; }
 .library-portrait-fields > div { display: grid; gap: 12px; }
+.library-portrait-editor { display: grid; gap: 12px; }
+.library-portrait-workspace { align-items: start; display: grid; gap: 16px; grid-template-columns: minmax(100px, 240px) minmax(0, 1fr); }
+.library-portrait-frame,
+.library-portrait-crop { aspect-ratio: 4 / 5; overflow: hidden; position: relative; width: 100%; }
+.library-portrait-crop { align-items: center; background: var(--panel-muted); outline: 1px solid var(--mw-border); display: flex; justify-content: center; touch-action: none; cursor: grab; }
+.library-portrait-crop:active { cursor: grabbing; }
+.library-portrait-crop:focus-visible { outline: 2px solid var(--mw-green); outline-offset: 3px; }
+.library-portrait-crop > span { padding: 12px; text-align: center; font-size: 13px; }
+.library-portrait-crop img { user-select: none; pointer-events: none; }
+.library-portrait-crop-controls { display: grid; gap: 8px; margin-top: 10px; }
+.library-portrait-crop-controls p { font-size: 12px; margin: 0; }
+.library-portrait-crop-controls input[type=range] { min-width: 0; padding: 0; width: 100%; }
+.library-portrait-crop-controls button { font-size: 12px; min-height: 32px; padding: 4px 8px; justify-self: start; }
+.library-portrait-details { min-width: 0; font-size: 13px; }
+.library-portrait-details > summary { cursor: pointer; color: var(--mw-secondary); font-size: 13px; }
+.library-portrait-details textarea { font-size: 13px; margin-top: 10px; min-width: 0; width: 100%; }
+.library-portrait-details-text { white-space: pre-wrap; }
+.library-card-image.library-mathematician-portrait { aspect-ratio: 4 / 5; }
+.library-name-suggestions .library-portrait-frame { width: 32px; flex-shrink: 0; }
+.library-name-suggestions .library-portrait-frame img { border-radius: 0; }
+@media (max-width: 520px) {
+  .library-portrait-workspace { grid-template-columns: minmax(90px, 42%) minmax(0, 1fr); gap: 10px; }
+}
 .library-portrait-source { bottom: 7px; display: flex; justify-content: flex-end; left: 7px; pointer-events: none; position: absolute; right: 7px; z-index: 3; }
 .library-portrait-source-trigger {
   align-items: center; background: rgb(255 255 255 / .92); border: 1px solid var(--mw-border); border-radius: 50%;
@@ -459,6 +482,21 @@
 .library-form-section > div { margin-top: 14px; }
 .library-link-selects { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .library-link-selects select { min-height: 120px; }
+.mathematician-related-editor { display: grid; gap: 24px; }
+.mathematician-related-section { display: grid; gap: 12px; min-width: 0; }
+.mathematician-related-section h3 { font-size: 16px; margin: 0; }
+.mathematician-related-items { display: grid; gap: 10px; }
+.mathematician-related-item { border: 1px solid var(--mw-border); border-radius: 8px; padding: 14px; min-width: 0; }
+.mathematician-related-item-heading { align-items: center; display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.mathematician-related-order { display: flex; gap: 6px; }
+.mathematician-related-order button { min-height: 32px; padding: 4px 8px; font-size: 13px; }
+.mathematician-related-item > a,
+.mathematician-related-item > details { font-size: 13px; margin-top: 10px; }
+.mathematician-related-item > details > summary { cursor: pointer; font-weight: 500; }
+.mathematician-related-item > details > :not(summary) { margin-top: 12px; }
+.mathematician-related-item .markdown-editor { min-width: 0; }
+.mathematician-related-editor .field-help { flex: 0 0 auto; color: var(--mw-green); border-color: var(--mw-green); }
+.mathematician-related-section > .library-form-actions button { font-size: 14px; }
 .library-editor-field { min-width: 0; }
 .library-form-actions,
 .library-review-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }

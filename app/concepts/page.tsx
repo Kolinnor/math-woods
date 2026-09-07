@@ -16,6 +16,7 @@ import {
   parseConceptExerciseCountMode
 } from "@/lib/concept-exercises";
 import { prisma } from "@/lib/db";
+import { CONCEPTS_PER_PAGE, conceptPagination, conceptPageHref } from "@/lib/concept-pagination";
 import {
   coarseDomainForCode,
   domainCodeAliases,
@@ -94,11 +95,14 @@ export default async function ConceptsPage({
     problemLinks?: string;
     sort?: string;
     status?: string;
+    page?: string;
+    viewLanguage?: string;
   }>;
 }) {
   const user = await getCurrentUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const preferredLanguage = await getPreferredContentLanguage();
+  const params = await searchParams;
   const {
     q = "",
     domain = "",
@@ -111,7 +115,7 @@ export default async function ConceptsPage({
     status = "",
     sort = "",
     problemLinks = ""
-  } = await searchParams;
+  } = params;
   const query = q.trim();
   const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
   const databaseSearchVariants = searchDatabaseVariants(query, morphologyVariants);
@@ -222,11 +226,15 @@ export default async function ConceptsPage({
 
   const conceptCandidateRows = await prisma.concept.findMany({
     where,
-    orderBy: { updatedAt: "desc" },
-    ...(sortValue === "updated" && !query ? { take: 75 } : {}),
-    include: {
-      aliases: true,
-      _count: { select: { practiceExercises: true, references: true, talkPosts: true } }
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    // Rank and group all matches before paging, without loading rendered bodies.
+    select: {
+      id: true, slug: true, title: true, language: true, updatedAt: true,
+      domainCode: true, status: true, kind: true, needsReviewAfterEdit: true,
+      translationGroupId: true, translatedFromConceptId: true,
+      bodyMarkdown: Boolean(query),
+      aliases: { select: { alias: true } },
+      _count: { select: { practiceExercises: true } }
     }
   });
   const conceptCandidates = selectContentTranslationsByGroup(
@@ -284,12 +292,11 @@ export default async function ConceptsPage({
             const rightCount = incomingLinkCountBySlug.get(right.slug) ?? 0;
             const leftCount = incomingLinkCountBySlug.get(left.slug) ?? 0;
             if (rightCount !== leftCount) return rightCount - leftCount;
-            return right.updatedAt.getTime() - left.updatedAt.getTime();
+            return right.updatedAt.getTime() - left.updatedAt.getTime() || right.id - left.id;
           })
-          .slice(0, 75)
       : conceptCandidates;
   const conceptOrder = new Map(sortedConcepts.map((concept, index) => [concept.id, index]));
-  const concepts = query
+  const matchingConcepts = query
     ? rankSearchMatches(
         sortedConcepts.map((concept) => ({
           item: concept,
@@ -303,8 +310,17 @@ export default async function ConceptsPage({
         preferredLanguage,
         morphologyVariants,
         (left, right) => (conceptOrder.get(left.item.id) ?? 0) - (conceptOrder.get(right.item.id) ?? 0)
-      ).slice(0, 75).map(({ item }) => item)
+      ).map(({ item }) => item)
     : sortedConcepts;
+  const pagination = conceptPagination(params.page, matchingConcepts.length);
+  const concepts = matchingConcepts.slice(pagination.skip, pagination.skip + CONCEPTS_PER_PAGE);
+  const paginationLinks = pagination.totalPages > 1 && (
+    <nav className="pagination" aria-label={t.concepts.paginationLabel}>
+      {pagination.page > 1 ? <Link prefetch={false} href={conceptPageHref(params, pagination.page - 1) as Route} aria-label={t.concepts.previousPage}>←</Link> : <span aria-disabled="true">←</span>}
+      <span className="pagination-status">{t.concepts.pageStatus(pagination.page, pagination.totalPages)}</span>
+      {pagination.page < pagination.totalPages ? <Link prefetch={false} href={conceptPageHref(params, pagination.page + 1) as Route} aria-label={t.concepts.nextPage}>→</Link> : <span aria-disabled="true">→</span>}
+    </nav>
+  );
 
   return (
     <ForestPageLayout
@@ -423,10 +439,11 @@ export default async function ConceptsPage({
           </LiveSearchForm>
         </aside>
 
-        <section className="concept-ledger" aria-label={t.concepts.title}>
+        <section id="concept-results" className="concept-ledger scroll-mt-24" aria-label={t.concepts.title}>
           <header className="concept-ledger-header">
-            <p className="result-summary" role="status">{t.concepts.conceptsShown(concepts.length)}</p>
+            <p className="result-summary" role="status">{t.concepts.resultsRange(pagination.from, pagination.to, matchingConcepts.length)}</p>
           </header>
+          {paginationLinks}
           <div className="concept-ledger-list">
             {concepts.map((concept) => (
               <Link
@@ -460,6 +477,7 @@ export default async function ConceptsPage({
             ))}
             {concepts.length === 0 && <p className="empty-state">{t.concepts.noMatches}</p>}
           </div>
+          {paginationLinks}
         </section>
 
         <aside className="concept-discovery-panel">

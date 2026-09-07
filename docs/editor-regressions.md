@@ -1,5 +1,33 @@
 # Markdown and LaTeX Editor Regression Log
 
+## 2026-09-07 - Mathematician links and translated drafts
+
+Moving a related item to another category remounts its Markdown editors. Capture
+their actual named form values before reclassification or reordering; React's
+initial-value snapshot does not contain subsequent CodeMirror edits. Keep stable
+item keys so optional in-text reference links survive manual ordering.
+
+Mathematician introduction, biography and contribution draft keys include both
+the person and content language. The pathname alone is shared by FR/EN and could
+restore a French draft into a new English translation.
+
+Guardrails: `node --experimental-strip-types tests/mathematician-related.browser.mjs`
+exercises real FR/EN editors, reclassification, preserved notes, empty bibliography
+drafts, search and isolation of translated local drafts. Related selections are
+saved per translation; old unclassified links and notes are migrated intact.
+
+## 2026-09-07 - Reference details without a title must not submit
+
+Production reported three rejected submissions with "A reference needs a title or text."
+The shared citation form allowed details without a title, although server validation
+requires one. Native form validation now explains the missing title in FR/EN and keeps
+the contributor on the form. Entirely empty references remain optional. Draft restoration
+also accepts a whitespace-only title so an incomplete draft can still be corrected.
+
+Guardrail: `node tests/citation-validation.browser.mjs` exercises the real problem and
+concept forms in both languages: empty rows, details-only submissions, whitespace,
+draft restoration, successful correction and removal. Keep server validation strict.
+
 ## 2026-09-06 - A conflict is not a successful draft submission
 
 Symptom: submitting a concept proposal after another edit redirected to the conflict

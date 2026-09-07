@@ -1149,6 +1149,11 @@ export const fr = {
     playlists: "Explorations"
   },
   concepts: {
+    paginationLabel: "Pagination des concepts",
+    previousPage: "Page précédente",
+    nextPage: "Page suivante",
+    pageStatus: (page: number, total: number) => `Page ${page} sur ${total}`,
+    resultsRange: (from: number, to: number, total: number) => total === 0 ? "Aucun concept trouvé" : `${from}–${to} sur ${total} concept${total > 1 ? "s" : ""}`,
     title: "Concepts",
     conceptsShown: (count: number) => `${count} concept${count > 1 ? "s" : ""} affiché${count > 1 ? "s" : ""}`,
     linkedGaps: (count: number) => `${count} manque${count > 1 ? "s" : ""} lié${count > 1 ? "s" : ""}`,
@@ -1759,6 +1764,11 @@ export const fr = {
     }
   },
   historyPage: {
+    recordedDifficulty: "Difficulté",
+    difficultyChanged: "Difficulté modifiée",
+    difficultyNotRecorded: "non enregistrée dans cette ancienne révision",
+    difficultyUnset: "non définie",
+    difficultyExplanation: "Difficulté enregistrée lors de cette révision. Les ajustements automatiques liés aux votes ne sont pas retracés ici.",
     problemTitle: "Historique du problème",
     conceptTitle: "Historique du concept",
     conceptDescription: "L’historique des révisions de cette page de concept.",

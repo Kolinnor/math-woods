@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import * as names from "../lib/mathematician-names.ts";
+import * as portraits from "../lib/portrait.ts";
+import * as related from "../lib/mathematician-related.ts";
 import * as limits from "../lib/content-limits.ts";
 const { mathematicianName, normalizeMathematicianName, parseMathematicianAliases, rankMathematicians } = names;
 
@@ -49,14 +51,15 @@ const form = extra => { const f = new FormData(); Object.entries({ name: "Euclid
 function harness() {
   const state = { id: 1, slug: "euclid", name: "Euclid", aliases: ["Euclides"], fields: ["Geometry"], status: "PUBLISHED", updatedAt: version, createdById: 2, translations: { fr: "Euclide", en: "Euclid" } };
   let writes = 0;
+  const relatedWrites = [];
   const tx = { mathematician: { update: async ({ where, data }) => {
     assert.equal(where.updatedAt.getTime(), state.updatedAt.getTime());
     writes++;
-    for (const key of ["name", "aliases", "fields"]) if (data[key] !== undefined) state[key] = data[key];
+    for (const key of ["name", "aliases", "fields", "portraitCrop", "portraitDetails"]) if (data[key] !== undefined) state[key] = data[key];
     assert.equal(data.slug, undefined);
     const upsert = data.translations.upsert;
     state.translations[upsert.where.mathematicianId_language.language] = upsert.update.displayName;
-  } }, mathematicianWork: { deleteMany: async () => {} }, mathematicianConcept: { deleteMany: async () => {} }, mathematicianProblem: { deleteMany: async () => {} } };
+  } }, mathematicianTranslation: { findUniqueOrThrow: async ({ where }) => ({ id: where.mathematicianId_language.language === "fr" ? 11 : 12 }) } };
   const redirects = [];
   const modules = {
     "@prisma/client": require("@prisma/client"),
@@ -66,14 +69,30 @@ function harness() {
     "@/lib/rate-limit": { assertRateLimit: async () => {} },
     "@/lib/content-limits": limits,
     "@/lib/mathematician-names": names,
+    "@/lib/portrait": portraits,
+    "@/lib/mathematician-related": related,
+    "@/lib/mathematician-related-db": { syncMathematicianRelated: async (transaction, translationId, rows) => { assert.equal(transaction, tx); relatedWrites.push({ translationId, rows }); } },
     "@/lib/markdown": { renderMarkdown: async text => text },
     "next/cache": { revalidatePath: () => {} },
     "next/navigation": { redirect: path => redirects.push(path), unstable_rethrow: () => {} }
   };
   const exports = {};
   vm.runInNewContext(compiled, { exports, require: name => modules[name] ?? {}, Error, Date, FormData });
-  return { state, actions: exports, redirects, writes: () => writes };
+  return { state, actions: exports, redirects, relatedWrites, writes: () => writes };
 }
+
+test("saving related items uses the edited translation inside the parent transaction", async () => {
+  const h = harness();
+  const row = { key: "source", category: "SOURCE" };
+  for (const language of ["fr", "en"]) {
+    await h.actions.updateMathematicianAction(1, form({ language, relatedItems: JSON.stringify([row]), "related-source-label": `Reference ${language}`, "related-source-note": "$u=v$" }));
+  }
+  assert.deepEqual(h.relatedWrites.map(w => w.translationId), [11, 12]);
+  assert.deepEqual(h.relatedWrites.map(w => w.rows[0].labelMarkdown), ["Reference fr", "Reference en"]);
+  assert.equal(h.redirects.at(-1), "/library/mathematicians/euclid?lang=en");
+  await h.actions.updateMathematicianAction(1, form({}));
+  assert.equal(h.relatedWrites.length, 2);
+});
 test("editing a French name preserves English, legacy fallback, domains and the URL", async () => {
   const h = harness();
   await h.actions.updateMathematicianAction(1, form({}));
@@ -82,7 +101,7 @@ test("editing a French name preserves English, legacy fallback, domains and the 
   assert.equal(h.state.name, "Euclid");
   assert.equal(h.state.slug, "euclid");
   assert.deepEqual(h.state.fields, ["Geometry"]);
-  assert.deepEqual(h.redirects, ["/library/mathematicians/euclid"]);
+  assert.deepEqual(h.redirects, ["/library/mathematicians/euclid?lang=fr"]);
 });
 test("old forms cannot accidentally erase aliases; stale edits are refused", async () => {
   const h = harness(); const legacy = form({ canonicalName: "Euclid", displayName: "Euclide" });
@@ -97,6 +116,19 @@ test("invalid aliases return a correctable error without any write", async () =>
   const result = await h.actions.saveMathematicianFormAction(1, { error: "" }, form({ aliases: "a".repeat(161) }));
   assert.match(result.error, /160 caractères/);
   assert.equal(h.writes(), 0);
+});
+
+test("portrait framing and unified details persist; invalid framing cannot write", async () => {
+  const h = harness();
+  const crop = { x: 30, y: 70, zoom: 1.5 };
+  await h.actions.updateMathematicianAction(1, form({ portraitCrop: JSON.stringify(crop), portraitDetails: "Collection — https://example.org/portrait\nCC BY 4.0" }));
+  assert.deepEqual(h.state.portraitCrop, crop);
+  assert.match(h.state.portraitDetails, /CC BY 4.0/);
+  await h.actions.updateMathematicianAction(1, form({}));
+  assert.deepEqual(h.state.portraitCrop, crop);
+  const before = h.writes();
+  await assert.rejects(h.actions.updateMathematicianAction(1, form({ portraitCrop: '{"x":0,"y":0,"zoom":9}' })), /Invalid portrait/);
+  assert.equal(h.writes(), before);
 });
 
 test("suggestions enforce access, visibility, exclusion and a bounded private response", async () => {

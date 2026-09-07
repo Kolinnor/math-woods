@@ -36,10 +36,9 @@ export default async function LibraryReferencesPage({ searchParams }: { searchPa
   const pagination = libraryPage(query.page, total, PAGE_SIZE);
   const entries = await prisma.libraryReference.findMany({
     where,
-    include: { translations: true, _count: { select: {
+    include: { translations: true, mathematicianRelatedItems: { where: { translation: { mathematician: { status: "PUBLISHED" } } }, select: { translation: { select: { mathematicianId: true } } } }, _count: { select: {
       problemLinks: { where: { problem: { listed: true, status: "PUBLISHED" } } },
       conceptLinks: { where: { concept: { canAppearInConceptBrowser: true } } },
-      mathematicianWorks: { where: { mathematician: { status: "PUBLISHED" } } },
       milestoneLinks: { where: { milestone: { status: "PUBLISHED" } } }
     } } },
     orderBy: { canonicalTitle: "asc" },
@@ -57,7 +56,7 @@ export default async function LibraryReferencesPage({ searchParams }: { searchPa
       </form>
       {entries.length ? <div className="library-reference-list">{entries.map((entry) => {
         const translation = localizedTranslation(entry.translations, locale);
-        const linkCount = entry._count.problemLinks + entry._count.conceptLinks + entry._count.mathematicianWorks + entry._count.milestoneLinks;
+        const linkCount = entry._count.problemLinks + entry._count.conceptLinks + new Set(entry.mathematicianRelatedItems.map(item => item.translation.mathematicianId)).size + entry._count.milestoneLinks;
         return <article key={entry.id} className="library-reference-row">
           {entry.iconUrl && <img src={entry.iconUrl} alt="" style={{ width: Math.min(entry.iconSize, 88), height: Math.min(entry.iconSize, 88) }} />}
           <div><div className="library-card-heading"><p className="library-kicker">{referenceTypeLabel(entry.referenceType, locale)}</p>{entry.status !== "PUBLISHED" && <LibraryStatusBadge status={entry.status} locale={locale} />}</div><h2><Link href={`/library/references/${entry.slug}`}>{translation?.displayTitle ?? entry.canonicalTitle}</Link>{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={locale} />}</h2><p className="library-citation">{formatLibraryReference(entry)}</p><p className="library-reference-usage">{locale === "fr" ? `${linkCount} lien${linkCount > 1 ? "s" : ""} dans Math Woods` : `${linkCount} link${linkCount === 1 ? "" : "s"} on Math Woods`}</p></div>

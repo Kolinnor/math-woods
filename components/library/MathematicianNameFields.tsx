@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FieldHelp } from "@/components/FieldHelp";
+import { PortraitImage } from "@/components/library/PortraitImage";
 
-type Suggestion = { id: number; slug: string; name: string; lifespan: string; portraitUrl: string | null };
+type Suggestion = { id: number; slug: string; name: string; lifespan: string; portraitUrl: string | null; portraitCrop?: unknown };
 
 export function MathematicianNameFields({ locale, language, initialName, aliases = [], excludeId }: {
   locale: "fr" | "en"; language: "fr" | "en"; initialName: string; aliases?: string[]; excludeId?: number;
@@ -37,15 +38,15 @@ export function MathematicianNameFields({ locale, language, initialName, aliases
     {suggestions.length > 0 && <aside className="library-name-suggestions" aria-label={fr ? "Fiches similaires" : "Similar entries"}>
       <p>{fr ? "Une fiche existe peut-être déjà :" : "An entry may already exist:"}</p>
       {suggestions.map(person => <Link key={person.id} href={`/library/mathematicians/${person.slug}`} target="_blank" rel="noreferrer">
-        {person.portraitUrl && <img src={person.portraitUrl} alt="" />}
+        {person.portraitUrl && <PortraitImage src={person.portraitUrl} alt="" crop={person.portraitCrop} />}
         <span><strong>{person.name}</strong>{person.lifespan && <small>{person.lifespan}</small>}</span>
       </Link>)}
     </aside>}
     <details className="library-form-section"><summary>{fr ? "Autres noms (facultatif)" : "Other names (optional)"}</summary>
-      <label><span>{fr ? "Un nom par ligne" : "One name per line"}</span><textarea name="aliases" rows={3} maxLength={4000} defaultValue={aliases.join("\n")} aria-describedby="mathematician-alias-help" /></label>
-      <p id="mathematician-alias-help" className="muted">{fr
-        ? "Ajoutez des variantes réellement utilisées : nom complet, pseudonyme, autre orthographe ou translittération. Elles permettent de retrouver cette fiche dans toutes les langues. Inutile de répéter les variantes de majuscules ou d’accents."
-        : "Add names actually used: full names, pseudonyms, other spellings or transliterations. They help find this entry in every language. There is no need to repeat differences in capitalization or accents."}</p>
+      <div className="library-name-label"><label htmlFor="mathematician-aliases">{fr ? "Un nom par ligne" : "One name per line"}</label><FieldHelp text={fr
+        ? "Ajoutez seulement des variantes qui sont utilisées dans la langue de cette page. Il n’est pas utile de mettre des traductions, ni d’écrire des variantes de majuscules ou d’accents."
+        : "Only add variants used in the language of this page. There is no need to add translations or variants that differ only in capitalization or accents."} /></div>
+      <textarea id="mathematician-aliases" name="aliases" rows={3} maxLength={4000} defaultValue={aliases.join("\n")} />
     </details>
   </div>;
 }

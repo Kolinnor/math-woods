@@ -1,4 +1,7 @@
 "use server";
+import { submittedPortraitCrop } from "@/lib/portrait";
+import { submittedMathematicianRelated } from "@/lib/mathematician-related";
+import { syncMathematicianRelated } from "@/lib/mathematician-related-db";
 
 import {
   HistoryEra,
@@ -234,6 +237,7 @@ export async function createMathematicianAction(formData: FormData) {
 
   const language = formLanguage(formData);
   const canonicalName = requiredBoundedText(formData.get("name") ?? formData.get("canonicalName"), CONTENT_LIMITS.title, language === "fr" ? "Nom" : "Name");
+  const relatedItems = submittedMathematicianRelated(formData);
   const displayName = formData.has("name") ? canonicalName : boundedText(formData.get("displayName"), CONTENT_LIMITS.title, "Name") || canonicalName;
   const aliases = parseMathematicianAliases(formData.get("aliases") ?? "", displayName, language);
   const lifespan = boundedText(formData.get("lifespan"), CONTENT_LIMITS.shortText, "Dates");
@@ -242,9 +246,6 @@ export async function createMathematicianAction(formData: FormData) {
   const biographyMarkdown = boundedText(formData.get("biographyMarkdown"), CONTENT_LIMITS.markdown, "Biography");
   const contributionsMarkdown = boundedText(formData.get("contributionsMarkdown"), CONTENT_LIMITS.markdown, "Contributions");
   const fields = boundedText(formData.get("fields"), CONTENT_LIMITS.tagList, "Fields").split(",").map((item) => item.trim()).filter(Boolean);
-  const referenceIds = parseIdList(formData, "referenceIds");
-  const conceptIds = parseIdList(formData, "conceptIds");
-  const problemIds = parseIdList(formData, "problemIds");
   const intent = saveIntent(formData);
   const slug = await uniqueSlug("mathematician", canonicalName);
   const [biographyHtml, contributionsHtml] = await Promise.all([
@@ -253,8 +254,7 @@ export async function createMathematicianAction(formData: FormData) {
   ]);
 
   const mathematician = await prisma.$transaction(async (tx) => {
-    await validateRelatedEntries(tx, { referenceIds, conceptIds, problemIds });
-    return tx.mathematician.create({
+    const created = await tx.mathematician.create({
       data: {
       slug,
       name: canonicalName,
@@ -262,6 +262,8 @@ export async function createMathematicianAction(formData: FormData) {
       lifespan,
       birthPlace,
       portraitUrl: optionalHttpsUrl(formData.get("imageUrl"), "Image URL"),
+      portraitCrop: submittedPortraitCrop(formData),
+      portraitDetails: formData.has("portraitDetails") ? boundedText(formData.get("portraitDetails"), CONTENT_LIMITS.longNote, "Portrait details") : undefined,
       imageAlt: optionalBoundedText(formData.get("imageAlt"), CONTENT_LIMITS.shortText, "Image description"),
       imageCredit: optionalBoundedText(formData.get("imageCredit"), CONTENT_LIMITS.shortText, "Image credit"),
       imageCreditUrl: optionalHttpsUrl(formData.get("imageCreditUrl"), "Image credit URL"),
@@ -272,18 +274,20 @@ export async function createMathematicianAction(formData: FormData) {
       createdById: user.id,
       translations: {
         create: { language, displayName, teaser, birthPlace, biographyMarkdown, biographyHtml, contributionsMarkdown, contributionsHtml }
-      },
-      works: { create: referenceIds.map((referenceId, position) => ({ referenceId, position })) },
-      conceptLinks: { create: conceptIds.map((conceptId, position) => ({ conceptId, position })) },
-      problemLinks: { create: problemIds.map((problemId, position) => ({ problemId, position })) }
+      }
       }
     });
+    if (relatedItems !== undefined) {
+      const translation = await tx.mathematicianTranslation.findUniqueOrThrow({ where: { mathematicianId_language: { mathematicianId: created.id, language } } });
+      await syncMathematicianRelated(tx, translation.id, relatedItems);
+    }
+    return created;
   });
   revalidateLibrary("mathematician", slug);
   if (intent === "submit") {
     await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "mathematician", slug, title: displayName });
   }
-  redirect(`/library/mathematicians/${mathematician.slug}`);
+  redirect(`/library/mathematicians/${mathematician.slug}?lang=${language}`);
 }
 
 export async function updateMathematicianAction(id: number, formData: FormData) {
@@ -294,20 +298,17 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
 
   const language = formLanguage(formData);
   const submittedName = requiredBoundedText(formData.get("name") ?? formData.get("canonicalName"), CONTENT_LIMITS.title, language === "fr" ? "Nom" : "Name");
+  const relatedItems = submittedMathematicianRelated(formData);
   const displayName = formData.has("name") ? submittedName : boundedText(formData.get("displayName"), CONTENT_LIMITS.title, "Name") || submittedName;
   const aliases = formData.has("aliases") ? parseMathematicianAliases(formData.get("aliases"), displayName, language) : undefined;
   const biographyMarkdown = boundedText(formData.get("biographyMarkdown"), CONTENT_LIMITS.markdown, "Biography");
   const contributionsMarkdown = boundedText(formData.get("contributionsMarkdown"), CONTENT_LIMITS.markdown, "Contributions");
   const [biographyHtml, contributionsHtml] = await Promise.all([renderMarkdown(biographyMarkdown), renderMarkdown(contributionsMarkdown)]);
   const intent = saveIntent(formData);
-  const referenceIds = parseIdList(formData, "referenceIds");
-  const conceptIds = parseIdList(formData, "conceptIds");
-  const problemIds = parseIdList(formData, "problemIds");
   const baseUpdatedAt = submittedBaseUpdatedAt(formData);
   if (entry.updatedAt.getTime() !== baseUpdatedAt.getTime()) throw new Error("This entry changed after you opened it. Reload the page before saving your work.");
 
   await prisma.$transaction(async (tx) => {
-    await validateRelatedEntries(tx, { referenceIds, conceptIds, problemIds });
     await tx.mathematician.update({
       where: { id, updatedAt: baseUpdatedAt },
       data: {
@@ -317,6 +318,8 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
       aliases,
       lifespan: boundedText(formData.get("lifespan"), CONTENT_LIMITS.shortText, "Dates"),
       portraitUrl: optionalHttpsUrl(formData.get("imageUrl"), "Image URL"),
+      portraitCrop: submittedPortraitCrop(formData),
+      portraitDetails: formData.has("portraitDetails") ? boundedText(formData.get("portraitDetails"), CONTENT_LIMITS.longNote, "Portrait details") : undefined,
       imageAlt: optionalBoundedText(formData.get("imageAlt"), CONTENT_LIMITS.shortText, "Image description"),
       imageCredit: optionalBoundedText(formData.get("imageCredit"), CONTENT_LIMITS.shortText, "Image credit"),
       imageCreditUrl: optionalHttpsUrl(formData.get("imageCreditUrl"), "Image credit URL"),
@@ -353,18 +356,16 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
       }
       }
     });
-    await tx.mathematicianWork.deleteMany({ where: { mathematicianId: id } });
-    await tx.mathematicianConcept.deleteMany({ where: { mathematicianId: id } });
-    await tx.mathematicianProblem.deleteMany({ where: { mathematicianId: id } });
-    if (referenceIds.length) await tx.mathematicianWork.createMany({ data: referenceIds.map((referenceId, position) => ({ mathematicianId: id, referenceId, position })) });
-    if (conceptIds.length) await tx.mathematicianConcept.createMany({ data: conceptIds.map((conceptId, position) => ({ mathematicianId: id, conceptId, position })) });
-    if (problemIds.length) await tx.mathematicianProblem.createMany({ data: problemIds.map((problemId, position) => ({ mathematicianId: id, problemId, position })) });
+    if (relatedItems !== undefined) {
+      const translation = await tx.mathematicianTranslation.findUniqueOrThrow({ where: { mathematicianId_language: { mathematicianId: id, language } } });
+      await syncMathematicianRelated(tx, translation.id, relatedItems);
+    }
   });
   revalidateLibrary("mathematician", entry.slug);
   if (intent === "submit" && entry.status !== LibraryStatus.PENDING_REVIEW && entry.status !== LibraryStatus.PUBLISHED) {
     await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "mathematician", slug: entry.slug, title: displayName });
   }
-  redirect(`/library/mathematicians/${entry.slug}`);
+  redirect(`/library/mathematicians/${entry.slug}?lang=${language}`);
 }
 
 export async function saveMathematicianFormAction(id: number | null, _state: { error: string }, formData: FormData) {

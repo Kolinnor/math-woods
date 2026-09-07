@@ -10,6 +10,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canRollbackProblem } from "@/lib/permissions";
 import { canEditProblem } from "@/lib/permissions";
 import { parseProblemRevisionSnapshot, formatProblemSnapshotFieldValue } from "@/lib/problem-revisions";
+import { recordedProblemDifficulty } from "@/lib/problem-history";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +34,8 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
   const [revisions, attributionTransfers] = await Promise.all([
     prisma.pageRevision.findMany({
       where: { pageType: "PROBLEM", pageId: problem.id },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 51, // Keep the predecessor of the last displayed revision for comparisons.
       include: { editedBy: true }
     }),
     prisma.problemAttributionTransfer.findMany({
@@ -86,8 +87,14 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
       )}
 
       <div className="grid gap-3">
-        {revisions.map((revision, index) => {
+        {revisions.slice(0, 50).map((revision, index) => {
           const previousRevision = revisions[index + 1];
+          const difficulty = recordedProblemDifficulty(revision.problemSnapshot);
+          const previousDifficulty = recordedProblemDifficulty(previousRevision?.problemSnapshot);
+          const difficultyChanged = difficulty !== undefined && previousDifficulty !== undefined && difficulty !== previousDifficulty;
+          const difficultyText = (value: number | null | undefined) => value === undefined
+            ? t.historyPage.difficultyNotRecorded
+            : value === null ? t.historyPage.difficultyUnset : String(value);
 
           return (
             <section key={revision.id} id={`revision-${revision.id}`} className="revision-card panel p-4 scroll-mt-24">
@@ -113,6 +120,11 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
                 )}
               </div>
               <p className="mt-3">{revision.editSummary || t.historyPage.noSummary}</p>
+              <p className={`mt-2 text-sm${difficultyChanged ? " font-semibold" : " muted"}`} title={t.historyPage.difficultyExplanation}>
+                {difficultyChanged ? t.historyPage.difficultyChanged : t.historyPage.recordedDifficulty}{": "}
+                {difficultyChanged && <>{difficultyText(previousDifficulty)} <span aria-label={t.historyPage.changedTo}>→</span>{" "}</>}
+                {difficultyText(difficulty)}
+              </p>
               <details className="mt-3"><summary>{interfaceLocale === "fr" ? "Références de cette révision" : "References in this revision"}</summary>
                 <pre className="whitespace-pre-wrap break-words">{citationHistoryText(revision.problemSnapshot)}</pre>
                 {previousRevision && <RevisionDiff afterMarkdown={citationHistoryText(revision.problemSnapshot)} beforeMarkdown={citationHistoryText(previousRevision.problemSnapshot)} beforeRevisionId={previousRevision.id} revisionId={revision.id} labels={t.historyPage} />}

@@ -601,6 +601,8 @@ model Mathematician {
   lifespan        String
   birthPlace      String
   portraitUrl     String?
+  portraitCrop    Json?
+  portraitDetails String?                         @db.Text
   contentMarkdown String                          @default("")
   contentHtml     String                          @default("")
   fields          String[]                        @default([])
@@ -644,6 +646,7 @@ model MathematicianTranslation {
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
   mathematician         Mathematician @relation(fields: [mathematicianId], references: [id], onDelete: Cascade)
+  relatedItems          MathematicianRelatedItem[]
 
   @@unique([mathematicianId, language])
   @@index([language, displayName])
@@ -661,6 +664,29 @@ model MathematicianWork {
 
   @@unique([mathematicianId, referenceId])
   @@index([referenceId])
+}
+
+model MathematicianRelatedItem {
+  id            Int @id @default(autoincrement())
+  translationId Int
+  key           String
+  category      String
+  labelMarkdown String @default("") @db.Text
+  noteMarkdown  String @default("") @db.Text
+  relation      String @default("")
+  position      Int @default(0)
+  referenceId   Int?
+  conceptId     Int?
+  problemId     Int?
+  translation   MathematicianTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+  reference     LibraryReference? @relation(fields: [referenceId], references: [id], onDelete: SetNull)
+  concept       Concept? @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+  problem       Problem? @relation(fields: [problemId], references: [id], onDelete: SetNull)
+
+  @@unique([translationId, key])
+  @@index([referenceId])
+  @@index([conceptId])
+  @@index([problemId])
 }
 
 model MathematicianConcept {
@@ -859,6 +885,7 @@ model Problem {
   knownSource              KnownProblemSource?             @relation(fields: [knownSourceId], references: [id], onDelete: SetNull)
   libraryReferences        ProblemLibraryReference[]
   mathematicianLinks       MathematicianProblem[]
+  mathematicianRelatedItems MathematicianRelatedItem[]
   thread                   DiscussionThread?
   attempts                 ProblemAttempt[]
   recommendationExposures  ProblemRecommendationExposure[]
@@ -988,6 +1015,7 @@ model LibraryReference {
   conceptLinks       ConceptLibraryReference[]
   milestoneLinks     HistoryMilestoneReference[]
   mathematicianWorks MathematicianWork[]
+  mathematicianRelatedItems MathematicianRelatedItem[]
   featuredIn         LibraryHomepageSelection[]
 
   @@index([status, referenceType, canonicalTitle])
@@ -1203,6 +1231,7 @@ model Concept {
   references                ConceptReference[]
   libraryReferences         ConceptLibraryReference[]
   mathematicianLinks        MathematicianConcept[]
+  mathematicianRelatedItems MathematicianRelatedItem[]
   practiceExercises         ConceptExercise[]
   talkPosts                 ConceptTalkPost[]
   circuitNodes              PlaylistNode[]

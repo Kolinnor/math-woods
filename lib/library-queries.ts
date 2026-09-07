@@ -28,7 +28,7 @@ export const libraryTranslationOrder = [{ language: "asc" as const }];
 // folding, without loading biographies or requiring a PostgreSQL extension.
 export async function searchMathematicians(query: string, locale: string, where: Prisma.MathematicianWhereInput = { status: LibraryStatus.PUBLISHED }, similar = false) {
   const people = await prisma.mathematician.findMany({ where, select: {
-    id: true, slug: true, name: true, aliases: true, lifespan: true, portraitUrl: true,
+    id: true, slug: true, name: true, aliases: true, lifespan: true, portraitUrl: true, portraitCrop: true,
     translations: { select: { language: true, displayName: true, teaser: true } }
   } });
   return rankMathematicians(people, query, locale, similar);

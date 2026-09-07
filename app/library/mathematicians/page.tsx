@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Plus } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { ImageCredit } from "@/components/library/ImageCredit";
+import { PortraitImage } from "@/components/library/PortraitImage";
+import { PortraitSource } from "@/components/library/PortraitSource";
 import { LibraryEmptyState } from "@/components/library/LibraryEmptyState";
 import { LibraryPagination } from "@/components/library/LibraryPagination";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
@@ -43,8 +45,8 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
         {entries.map((entry) => {
         const translation = localizedTranslation(entry.translations, locale);
         return <article className="library-card library-person-card" key={entry.id}>
-          {entry.portraitUrl && <div className="library-card-image"><img src={entry.portraitUrl} alt={entry.imageAlt ?? translation?.displayName ?? entry.name} /><ImageCredit credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} label={copy.imageCredit} /></div>}
-          <div className="library-card-body"><div className="library-card-heading"><h2><Link href={`/library/mathematicians/${entry.slug}`}>{translation?.displayName ?? entry.name}</Link>{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={locale} />}</h2>{entry.status !== "PUBLISHED" && <LibraryStatusBadge status={entry.status} locale={locale} />}</div><p className="library-card-meta">{entry.lifespan}</p>{translation?.teaser && <p>{translation.teaser}</p>}</div>
+          {entry.portraitUrl && <div className="library-card-image library-mathematician-portrait"><PortraitImage src={entry.portraitUrl} alt={entry.imageAlt ?? translation?.displayName ?? entry.name} crop={entry.portraitCrop} /><PortraitSource credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} details={entry.portraitDetails} locale={locale} /></div>}
+          <div className="library-card-body"><div className="library-card-heading"><h2><Link href={`/library/mathematicians/${entry.slug}`}>{translation?.displayName ?? entry.name}</Link>{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={locale} />}</h2>{entry.status !== "PUBLISHED" && <LibraryStatusBadge status={entry.status} locale={locale} />}</div><p className="library-card-meta">{entry.lifespan}</p>{translation?.teaser && <p><AsyncMarkdownInline markdown={translation.teaser} /></p>}</div>
         </article>;
       })}</div>}
       {!entries.length && <LibraryEmptyState>{copy.noEntries}</LibraryEmptyState>}

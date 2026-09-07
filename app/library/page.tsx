@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ArrowRight, Search, Settings2 } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { ImageCredit } from "@/components/library/ImageCredit";
+import { PortraitImage } from "@/components/library/PortraitImage";
+import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { PortraitSource } from "@/components/library/PortraitSource";
 import { LibraryEmptyState } from "@/components/library/LibraryEmptyState";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { updateLibraryHomepageAction } from "@/lib/actions/library-actions";
@@ -105,8 +107,8 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
           <p className="library-kicker">{copy.featuredMathematician}</p>
           {selectedMathematician && mathematicianTranslation ? (
             <div className="library-person-feature">
-              {selectedMathematician.portraitUrl && <div className="library-feature-image"><img src={selectedMathematician.portraitUrl} alt={selectedMathematician.imageAlt ?? mathematicianTranslation.displayName} /><ImageCredit credit={selectedMathematician.imageCredit} creditUrl={selectedMathematician.imageCreditUrl} license={selectedMathematician.imageLicense} label={copy.imageCredit} /></div>}
-              <div><h2><Link href={`/library/mathematicians/${selectedMathematician.slug}`}>{mathematicianTranslation.displayName}</Link><ContentLanguageFallback language={mathematicianTranslation.language} expectedLanguage={locale} /></h2><p>{selectedMathematician.lifespan}</p><p>{mathematicianTranslation.teaser}</p></div>
+              {selectedMathematician.portraitUrl && <div className="library-feature-image"><PortraitImage src={selectedMathematician.portraitUrl} alt={selectedMathematician.imageAlt ?? mathematicianTranslation.displayName} crop={selectedMathematician.portraitCrop} /><PortraitSource credit={selectedMathematician.imageCredit} creditUrl={selectedMathematician.imageCreditUrl} license={selectedMathematician.imageLicense} details={selectedMathematician.portraitDetails} locale={locale} /></div>}
+              <div><h2><Link href={`/library/mathematicians/${selectedMathematician.slug}`}>{mathematicianTranslation.displayName}</Link><ContentLanguageFallback language={mathematicianTranslation.language} expectedLanguage={locale} /></h2><p>{selectedMathematician.lifespan}</p><p><AsyncMarkdownInline markdown={mathematicianTranslation.teaser} /></p></div>
             </div>
           ) : <LibraryEmptyState>{copy.noEntries}</LibraryEmptyState>}
         </section>

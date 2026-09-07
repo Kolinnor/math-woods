@@ -49,7 +49,7 @@ export function ProblemCitationEditor({ initial, initialOriginal = false, draftK
       if (saved && Array.isArray(saved.citations) && Array.isArray(saved.base)) {
         if (typeof saved.token !== "string" || !/^[a-zA-Z0-9-]{1,100}$/.test(saved.token)) throw new Error("Invalid draft token.");
         // Empty draft rows are UI placeholders, not submitted citations.
-        parseProblemCitations(saved.citations.map((c: ProblemCitation) => ({ ...c, text: c.text || "draft", url: null })));
+        parseProblemCitations(saved.citations.map((c: ProblemCitation) => ({ ...c, text: typeof c.text === "string" && !c.text.trim() ? "draft" : c.text, url: null })));
         if (saved.citations.some((c: ProblemCitation) => c.url !== null && (typeof c.url !== "string" || c.url.length > 2000))) throw new Error("Invalid draft URL.");
         setCitations(initialRows(saved.citations, typeof saved.original === "boolean" ? saved.original : initialOriginal));
         setBase(parseProblemCitations(saved.base));
@@ -129,7 +129,9 @@ export function ProblemCitationEditor({ initial, initialOriginal = false, draftK
       <legend id={`${id}-citation-${c.citationKey}`}>{fr ? `Référence ${index + 1}` : `Reference ${index + 1}`}</legend>
       <div className="problem-citation-card-heading">
         {c.referenceId ? <strong>{c.text}</strong> : <label>
-          <textarea aria-labelledby={`${id}-citation-${c.citationKey}`} rows={2} maxLength={2000} value={c.text} placeholder={isConcept ? (fr ? "Ex. : auteur, titre du livre ou lien vers un article" : "E.g. author, book title or article link") : (fr ? "Ex. : Olympiades 2018, exercice 3" : "E.g. Olympiad 2018, problem 3")} onChange={(e) => update(c.citationKey, { text: e.target.value })} />
+          <textarea aria-labelledby={`${id}-citation-${c.citationKey}`} rows={2} maxLength={2000} value={c.text}
+            ref={(input) => { input?.setCustomValidity(meaningful([c]).length > 0 && !c.text.trim() ? (fr ? "Indiquez la référence à laquelle ces précisions se rapportent, ou retirez cette référence." : "Enter the reference these details belong to, or remove this reference.") : ""); }}
+            placeholder={isConcept ? (fr ? "Ex. : auteur, titre du livre ou lien vers un article" : "E.g. author, book title or article link") : (fr ? "Ex. : Olympiades 2018, exercice 3" : "E.g. Olympiad 2018, problem 3")} onChange={(e) => update(c.citationKey, { text: e.target.value })} />
         </label>}
         <button type="button" className="secondary" aria-label={fr ? `Retirer la référence ${index + 1}` : `Remove reference ${index + 1}`} onClick={() => change(citations.filter((item) => item.citationKey !== c.citationKey))}>{fr ? "Retirer" : "Remove"}</button>
       </div>
