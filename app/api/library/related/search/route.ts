@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
+import { matchingReferenceIds } from "@/lib/reference-search";
 
 export async function GET(request: Request) {
   const headers = { "Cache-Control": "private, no-store" };
@@ -17,7 +18,8 @@ export async function GET(request: Request) {
   const offset = Math.min(10000, Math.max(0, Number.parseInt(params.get("offset") ?? "0", 10) || 0));
   let matches: Array<{ id: number; title: string; href: string; language?: string }>;
   if (kind === "WORK" || kind === "SOURCE" || kind === "LEGACY") {
-    const rows = await prisma.libraryReference.findMany({ where: { status: "PUBLISHED", searchable: true, mergedIntoId: null, OR: [{ canonicalTitle: { contains: q, mode: "insensitive" } }, { authors: { contains: q, mode: "insensitive" } }, { aliases: { has: q } }, { translations: { some: { displayTitle: { contains: q, mode: "insensitive" } } } }] }, include: { translations: true }, orderBy: [{ canonicalTitle: "asc" }, { id: "asc" }], skip: offset, take: 11 });
+    const ids = await matchingReferenceIds(prisma, q);
+    const rows = await prisma.libraryReference.findMany({ where: { id: { in: ids }, status: "PUBLISHED", searchable: true, mergedIntoId: null }, include: { translations: true }, orderBy: [{ canonicalTitle: "asc" }, { id: "asc" }], skip: offset, take: 11 });
     matches = rows.map(r => ({ id: r.id, title: [r.authors, r.translations.find(t => t.language === language)?.displayTitle || r.canonicalTitle, [r.edition, r.year].filter(Boolean).join(", ")].filter(Boolean).join(" — "), href: `/library/references/${r.slug}` }));
   } else if (kind === "CONCEPT" || kind === "PROBLEM") {
     const where = { OR: [{ title: { contains: q, mode: "insensitive" as const } }, { slug: { contains: q, mode: "insensitive" as const } }] };

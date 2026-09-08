@@ -12,9 +12,10 @@ type ProblemSortControlProps = {
   options: readonly SortOption[];
   label?: string;
   ariaLabel?: string;
+  defaultValue?: string;
 };
 
-export function ProblemSortControl({ value, options, label = "Sort:", ariaLabel = "Sort problems" }: ProblemSortControlProps) {
+export function ProblemSortControl({ value, options, label = "Sort:", ariaLabel = "Sort problems", defaultValue = "newest" }: ProblemSortControlProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,7 +24,7 @@ export function ProblemSortControl({ value, options, label = "Sort:", ariaLabel 
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.delete("page");
 
-    if (nextValue === "newest") {
+    if (nextValue === defaultValue) {
       nextParams.delete("sort");
     } else {
       nextParams.set("sort", nextValue);

@@ -9,12 +9,12 @@ import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryLanguage } from "@/lib/library";
 import { mathematicianRelatedInclude, relatedItemViews } from "@/lib/mathematician-related-db";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
-import { canEditLibraryDraft } from "@/lib/permissions";
+import { canEditLibraryMathematician } from "@/lib/permissions";
 
 export default async function EditLibraryMathematicianPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ lang?: string }> }) {
   const { slug } = await params;
   const [user, locale, query, entry] = await Promise.all([requireAdmin(), getInterfaceLocale(), searchParams, prisma.mathematician.findUnique({ where: { slug }, include: { translations: { include: { relatedItems: { include: mathematicianRelatedInclude, orderBy: [{ position: "asc" }, { id: "asc" }] } } } } })]);
-  if (!entry || !canEditLibraryDraft(user, entry)) notFound();
+  if (!entry || !canEditLibraryMathematician(user, entry)) notFound();
   const contentLanguage = libraryLanguage(query.lang ?? locale);
   const translation = entry.translations.find((item) => item.language === contentLanguage) ?? null;
   const source = entry.translations.find(item => item.language !== contentLanguage);

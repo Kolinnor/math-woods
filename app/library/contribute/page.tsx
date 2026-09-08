@@ -20,26 +20,26 @@ export default async function LibraryContributePage() {
     ? { OR: [{ status: LibraryStatus.PENDING_REVIEW }, { createdById: user.id, status: { in: [LibraryStatus.NEEDS_WORK, LibraryStatus.DRAFT] } }] }
     : { createdById: user.id, status: { in: [LibraryStatus.PENDING_REVIEW, LibraryStatus.NEEDS_WORK, LibraryStatus.DRAFT] } };
   const [mathematicians, references, milestones] = await Promise.all([
-    prisma.mathematician.findMany({ where, include: { translations: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.mathematician.findMany({ where: reviewer ? { OR: [where, { status: LibraryStatus.PUBLISHED, needsReviewAfterEdit: true }] } : where, include: { translations: true }, orderBy: { updatedAt: "desc" } }),
     prisma.libraryReference.findMany({ where, include: { translations: true }, orderBy: { updatedAt: "desc" } }),
     prisma.historyMilestone.findMany({ where, include: { translations: true }, orderBy: { updatedAt: "desc" } })
   ]);
   const fr = locale === "fr";
   const entries = [
-    ...mathematicians.map((entry) => ({ key: `m-${entry.id}`, href: `/library/mathematicians/${entry.slug}`, title: localizedTranslation(entry.translations, locale)?.displayName ?? entry.name, status: entry.status, kind: fr ? "Mathématicien" : "Mathematician", updatedAt: entry.updatedAt })),
+    ...mathematicians.map((entry) => ({ key: `m-${entry.id}`, href: `/library/mathematicians/${entry.slug}`, title: localizedTranslation(entry.translations, locale)?.displayName ?? entry.name, status: entry.status, needsReviewAfterEdit: entry.needsReviewAfterEdit, kind: fr ? "Mathématicien" : "Mathematician", updatedAt: entry.updatedAt })),
     ...references.map((entry) => ({ key: `r-${entry.id}`, href: `/library/references/${entry.slug}`, title: localizedTranslation(entry.translations, locale)?.displayTitle ?? entry.canonicalTitle, status: entry.status, kind: fr ? "Référence" : "Reference", updatedAt: entry.updatedAt })),
     ...milestones.map((entry) => ({ key: `h-${entry.id}`, href: `/library/history/${entry.slug}`, title: localizedTranslation(entry.translations, locale)?.title ?? entry.slug, status: entry.status, kind: fr ? "Repère historique" : "Historical milestone", updatedAt: entry.updatedAt }))
   ].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-  const pendingEntries = entries.filter((entry) => entry.status === LibraryStatus.PENDING_REVIEW);
+  const pendingEntries = entries.filter((entry) => entry.status === LibraryStatus.PENDING_REVIEW || ("needsReviewAfterEdit" in entry && entry.needsReviewAfterEdit));
   const personalEntries = reviewer
-    ? entries.filter((entry) => entry.status !== LibraryStatus.PENDING_REVIEW)
+    ? entries.filter((entry) => !pendingEntries.includes(entry))
     : entries;
 
   const archivedEntries = admin ? await archivedLibraryEntries(locale) : [];
 
   function entryList(items: typeof entries, emptyLabel: string) {
     return items.length
-      ? items.map((entry) => <Link href={entry.href as never} key={entry.key}><span><small>{entry.kind}</small><strong>{entry.title}</strong></span><LibraryStatusBadge status={entry.status} locale={locale} /></Link>)
+      ? items.map((entry) => <Link href={entry.href as never} key={entry.key}><span><small>{entry.kind}</small><strong>{entry.title}</strong></span><LibraryStatusBadge status={"needsReviewAfterEdit" in entry && entry.needsReviewAfterEdit ? LibraryStatus.PENDING_REVIEW : entry.status} locale={locale} /></Link>)
       : <p className="muted">{emptyLabel}</p>;
   }
 

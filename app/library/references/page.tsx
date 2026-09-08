@@ -14,6 +14,7 @@ import { formatLibraryReference, libraryPage, referenceTypeLabel } from "@/lib/l
 import { libraryCopy } from "@/lib/library-copy";
 import { localizedTranslation, visibleLibraryEntryWhere } from "@/lib/library-queries";
 import { canEditLibraryReference, isVerifiedContributor } from "@/lib/permissions";
+import { matchingReferenceIds } from "@/lib/reference-search";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +23,15 @@ const PAGE_SIZE = 30;
 export default async function LibraryReferencesPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; page?: string }> }) {
   const [locale, user, query] = await Promise.all([getInterfaceLocale(), requireAdmin(), searchParams]);
   const type = Object.values(LibraryReferenceType).includes(query.type as LibraryReferenceType) ? query.type as LibraryReferenceType : undefined;
-  const q = query.q?.trim();
+  const q = query.q?.trim().slice(0, 160);
+  const matchingIds = q ? await matchingReferenceIds(prisma, q, { publishedOnly: false, includeDescriptions: true }) : null;
   const where: Prisma.LibraryReferenceWhereInput = {
       AND: [
         { searchable: true, mergedIntoId: null },
         // This management page requires an admin: include submissions to review.
         { OR: [visibleLibraryEntryWhere(user), { status: "PENDING_REVIEW" }] },
         type ? { referenceType: type } : {},
-        q ? { OR: [{ canonicalTitle: { contains: q, mode: "insensitive" } }, { authors: { contains: q, mode: "insensitive" } }, { publisher: { contains: q, mode: "insensitive" } }, { doi: { contains: q, mode: "insensitive" } }, { isbn: { contains: q, mode: "insensitive" } }, { citationKey: { contains: q, mode: "insensitive" } }, { url: { contains: q, mode: "insensitive" } }, { aliases: { has: q } }, { translations: { some: { OR: [{ displayTitle: { contains: q, mode: "insensitive" } }, { descriptionMarkdown: { contains: q, mode: "insensitive" } }] } } }] } : {}
+        matchingIds ? { id: { in: matchingIds } } : {}
       ]
     };
   const total = await prisma.libraryReference.count({ where });

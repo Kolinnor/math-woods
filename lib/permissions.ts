@@ -97,6 +97,18 @@ export function canEditLibraryReference(
     : canEditLibraryDraft(user, entry);
 }
 
+export function canEditLibraryMathematician(user: PermissionUser, entry: { createdById: number | null; status: LibraryStatus }) {
+  return hasAdminPrivileges(user.role) || canEditLibraryDraft(user, entry);
+}
+
+export function canViewLibraryMathematician(user: PermissionUser | null, entry: { createdById: number | null; status: LibraryStatus }) {
+  return Boolean(user && hasAdminPrivileges(user.role)) || canViewLibraryEntry(user, entry);
+}
+
+export function canReviewLibraryMathematician(user: PermissionUser, entry: { createdById: number | null; lastEditedById?: number | null }) {
+  return hasTrustedPrivileges(user.role) && entry.createdById !== user.id && entry.lastEditedById !== user.id;
+}
+
 export function canReviewLibraryEntry(
   user: PermissionUser,
   entry: { createdById: number | null }

@@ -1,5 +1,21 @@
 # Markdown and LaTeX Editor Regression Log
 
+## 2026-09-07 - Clicking a library editor opened the image picker
+
+Biography and contributions were wrapped in a `<label>`. Its implicit control
+was the editor's hidden file input, so the browser forwarded clicks in CodeMirror
+to that input and opened the native file chooser. Reference descriptions and
+historical stories had the same wrapper.
+
+Use a neutral `.library-editor-field` container with an explicit `ariaLabel` on
+the editor, preserving the heading style. Do not wrap a composite MarkdownEditor
+in a label: it contains multiple controls. The image toolbar button remains active.
+
+Guardrail: `tests/mathematician-related.browser.mjs` listens to real browser
+`filechooser` events in FR/EN. Clicking and typing in biography/contributions must
+open none; clicking the explicit image button must open exactly one. The test
+failed on the former wrapper before the fix.
+
 ## 2026-09-07 - Mathematician links and translated drafts
 
 Moving a related item to another category remounts its Markdown editors. Capture

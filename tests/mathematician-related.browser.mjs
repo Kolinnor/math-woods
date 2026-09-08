@@ -22,6 +22,8 @@ mkdirSync('runtime/related-tests', { recursive:true });
 try {
   for (const locale of ['fr','en']) {
     const context = await browser.newContext({viewport:{width:900,height:950}}), page = await context.newPage(), errors=[];
+    let fileChoosers = 0;
+    page.on('filechooser', () => { fileChoosers++; });
     page.on('pageerror', e=>errors.push(e.message));
     await page.route('http://localhost:3211/**', r=>r.fulfill({contentType:'text/html',body:'<div id="root"></div>'}));
     await page.route('**/api/library/related/search?*', r=>r.fulfill({json:{results:[{id:42,title:'Euclide — Éléments',titleHtml:'Euclide — Éléments',href:'/library/references/elements'}],more:false}}));
@@ -58,6 +60,15 @@ try {
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)); assert.deepEqual(errors,[]);
     await page.evaluate(locale=>window.mountForm(locale),locale);
     const bio=page.locator('.library-editor-field').first().locator('.cm-content'); await bio.click(); await page.keyboard.insertText('Draft '+locale);
+    assert.equal(fileChoosers, 0, 'Clicking the biography must not open the image picker');
+    const contributions=page.locator('.library-editor-field').nth(1);
+    await contributions.locator('.cm-content').click(); await page.keyboard.insertText('Contribution $u=v$');
+    assert.equal(fileChoosers, 0, 'Clicking contributions must not open the image picker');
+    await Promise.all([
+      page.waitForEvent('filechooser'),
+      contributions.locator('.markdown-editor-tool-button').first().click()
+    ]);
+    assert.equal(fileChoosers, 1, 'The explicit image button must still open the picker');
     await page.waitForFunction(locale=>JSON.parse(localStorage.getItem('math-woods-markdown-draft:mathematician:42:'+locale+':biography')||'null')?.value==='Draft '+locale,locale);
     await page.evaluate(locale=>window.mountForm(locale==='fr'?'en':'fr'),locale);
     await page.waitForFunction(()=>document.querySelector('[name=biographyMarkdown]')?.value==='');

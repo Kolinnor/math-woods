@@ -182,13 +182,15 @@
 .library-curation-panel form { margin-top: 16px; }
 
 .library-curation-panel label,
-.library-entry-form label {
+.library-entry-form label,
+.library-editor-field {
   display: grid;
   gap: 6px;
 }
 
 .library-curation-panel label > span,
-.library-entry-form label > span {
+.library-entry-form label > span,
+.library-editor-field > span {
   font-size: 14px;
   font-weight: 750;
 }
@@ -203,8 +205,34 @@
 .library-card-image { aspect-ratio: 16 / 10; }
 .library-card-body { padding: 17px; }
 
-.library-mathematician-grid { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
-.library-add-mathematician {
+.library-mathematician-grid { grid-template-columns: repeat(auto-fill, min(260px, 100%)); }
+.mathematician-browser .forest-page-workspace { max-width: 1400px; }
+.mathematician-browser .problems-workspace { grid-template-columns: 270px minmax(0, 1fr); }
+.mathematician-browser .problem-filter-form { grid-template-columns: minmax(0, 1fr); }
+.mathematician-browser .problems-ledger { min-width: 0; padding: 20px 0 20px 24px; }
+.mathematician-browser .problems-ledger-header { flex-wrap: wrap; gap: 12px; padding: 0 0 20px; }
+.mathematician-browser .problems-ledger-sort select { max-width: 100%; }
+.mathematician-period-filter { border: 0; min-width: 0; padding: 0; margin: 0; }
+.mathematician-period-filter legend { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.mathematician-period-filter small { color: var(--mw-secondary); font-size: 12px; }
+.mathematician-period-filter .problem-difficulty-slider-track::before { background: var(--mw-green); }
+.mathematician-period-filter input[type="range"]::-webkit-slider-thumb { border-color: var(--mw-green); }
+.mathematician-period-filter input[type="range"]::-moz-range-thumb { border-color: var(--mw-green); }
+.mathematician-year-inputs { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mathematician-year-inputs label { min-width: 0; display: grid; gap: 4px; font-size: 12px; }
+.mathematician-year-inputs input { width: 100%; min-width: 0; padding: 6px; }
+.mathematician-browser .problem-language-filter legend { font-size: 14px; }
+@media (max-width: 980px) {
+  .mathematician-browser .problems-workspace { grid-template-columns: minmax(0, 1fr); }
+  .mathematician-browser .problems-filter-panel { border-right: 0; border-bottom: 1px solid var(--mw-border); }
+  .mathematician-browser .problem-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mathematician-browser .problems-ledger { padding: 20px 0; }
+}
+@media (max-width: 540px) {
+  .mathematician-browser .problem-filter-form { grid-template-columns: minmax(0, 1fr); }
+}
+.library-add-mathematician,
+.library-add-history {
   align-items: center;
   background: var(--accent-soft);
   border: 2px dashed var(--mw-green);
@@ -218,9 +246,14 @@
   text-align: center;
   text-decoration: none;
 }
-.library-add-mathematician span { font-size: 20px; font-weight: 750; }
-.library-add-mathematician:hover { border-style: solid; text-decoration: none; }
-.library-add-mathematician:focus-visible { outline: 3px solid var(--mw-green); outline-offset: 4px; }
+.library-add-mathematician span,
+.library-add-history span { font-size: 20px; font-weight: 750; }
+.library-add-mathematician:hover,
+.library-add-history:hover { border-style: solid; text-decoration: none; }
+.library-add-mathematician:focus-visible,
+.library-add-history:focus-visible { outline: 3px solid var(--mw-green); outline-offset: 4px; }
+.library-add-history { border-radius: 8px; grid-column: 2; min-height: 190px; padding: 24px; }
+.library-timeline > .library-timeline-add-row::before { display: none; }
 
 .library-card-heading {
   align-items: flex-start;
@@ -434,6 +467,68 @@
 .library-portrait-source-content p + p { margin-top: 4px; }
 .library-detail-content { display: grid; gap: 26px; }
 .library-detail-content > section + section { border-top: 1px solid var(--mw-border); padding-top: 22px; }
+
+/* Mathematician reading pages: keep editorial content ahead of management. */
+.mathematician-page .forest-page-hero { min-height: 190px; }
+.mathematician-page .forest-page-hero-content { max-width: 1240px; padding: 30px 24px; }
+.mathematician-page .forest-page-hero h1 { font-size: clamp(2.5rem, 5vw, 3.7rem); line-height: 1.1; overflow-wrap: anywhere; }
+.mathematician-page .forest-page-workspace { max-width: 1240px; padding: 24px 24px 48px; }
+.mathematician-page .library-tabs { margin-bottom: 18px; }
+.mathematician-toolbar,
+.mathematician-toolbar-meta,
+.mathematician-languages { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; }
+.mathematician-toolbar { justify-content: space-between; margin-bottom: 28px; gap: 14px 24px; }
+.mathematician-toolbar-meta { gap: 14px; }
+.mathematician-back-link { align-items: center; display: inline-flex; gap: 8px; font-size: 14px; min-height: 40px; padding: 8px 12px; }
+.mathematician-back-link svg { flex-shrink: 0; }
+.mathematician-language { color: var(--mw-secondary); font-size: 13px; }
+.mathematician-languages { gap: 10px; font-size: 13px; }
+.mathematician-languages a { color: var(--mw-secondary); padding-block: 4px; }
+.mathematician-languages a[aria-current="page"] { color: var(--mw-green); font-weight: 750; text-decoration: underline; text-underline-offset: 5px; }
+.mathematician-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; align-items: start; gap: 32px; }
+.mathematician-article { min-width: 0; }
+.mathematician-stub-notice { margin: 0 0 24px; font-size: 14px; }
+.mathematician-reading-layout { align-items: start; display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 28px; }
+.mathematician-reading-layout-text-only { grid-template-columns: minmax(0, 1fr); }
+.mathematician-biographical-panel { display: grid; gap: 18px; min-width: 0; }
+.mathematician-portrait { background: var(--mw-surface); border: 1px solid var(--mw-border); border-radius: 8px; margin: 0; padding: 7px; position: relative; }
+.mathematician-portrait .library-portrait-frame { border-radius: 3px; }
+.mathematician-facts { display: grid; gap: 14px; margin: 0; }
+.mathematician-facts dt { color: var(--mw-secondary); font-size: 12px; margin-bottom: 3px; }
+.mathematician-facts dd { font-size: 14px; line-height: 1.5; margin: 0; overflow-wrap: anywhere; }
+.mathematician-biographical-panel .library-person-aliases { font-size: 13px; color: var(--mw-secondary); }
+.mathematician-biographical-panel .library-person-aliases ul { margin: 8px 0 0; padding-left: 18px; overflow-wrap: anywhere; }
+.mathematician-page .library-detail-content { min-width: 0; max-width: 72ch; gap: 28px; }
+.mathematician-page .library-detail-content h2 { font-family: var(--font-serif); font-size: clamp(1.4rem, 2.3vw, 1.75rem); line-height: 1.25; margin: 0 0 14px; }
+.mathematician-page .library-detail-content .prose-math { font-size: 16px; line-height: 1.8; }
+.mathematician-page .library-detail-content .prose-math > :first-child { margin-top: 0; }
+.mathematician-page .library-bibliography { margin: 0; padding-left: 22px; gap: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.mathematician-page .library-bibliography > li > a { color: var(--mw-green); text-decoration: underline; text-decoration-color: var(--mw-border); text-underline-offset: 4px; }
+.mathematician-page .library-bibliography details { margin-top: 4px; font-size: 13px; }
+.mathematician-attribution .library-attribution { margin: 0; font-size: 13px; line-height: 1.6; }
+.mathematician-management { color: var(--mw-secondary); font-size: 13px; }
+.mathematician-management .library-review-actions { border: 0; color: var(--ink); display: grid; grid-template-columns: minmax(0, 1fr); padding: 0; margin-top: 12px; align-items: start; gap: 16px; }
+.mathematician-management .library-review-feedback > summary { cursor: pointer; padding: 5px 0; }
+.mathematician-management .library-review-feedback-form { margin-top: 12px; }
+.mathematician-management .library-review-feedback-form { grid-template-columns: minmax(0, 1fr); max-width: 640px; }
+.mathematician-management .library-review-feedback-form textarea { font-family: inherit; font-size: 14px; min-height: 90px; padding: 8px; width: 100%; resize: vertical; }
+.mathematician-management .library-review-feedback-form button { justify-self: start; }
+.mathematician-management button { font-size: 13px; min-height: 36px; padding: 7px 12px; }
+@media (max-width: 1000px) {
+  .mathematician-detail-layout { grid-template-columns: minmax(0, 1fr); }
+  .mathematician-rail { border-top: 1px solid var(--mw-border); padding-top: 24px; }
+}
+@media (max-width: 640px) {
+  .mathematician-page .forest-page-hero { min-height: 150px; }
+  .mathematician-page .forest-page-hero-content { padding: 24px 18px; }
+  .mathematician-page .forest-page-workspace { padding: 18px 18px 40px; }
+  .mathematician-toolbar { margin-bottom: 22px; }
+  .mathematician-reading-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .mathematician-biographical-panel { grid-template-columns: minmax(110px, 140px) minmax(0, 1fr); gap: 14px 20px; align-items: start; }
+  .mathematician-biographical-panel .library-person-aliases { grid-column: 1 / -1; }
+  .mathematician-biographical-panel:not(:has(.mathematician-portrait)) { grid-template-columns: minmax(0, 1fr); }
+  .mathematician-page .library-detail-content { max-width: 100%; }
+}
 
 .library-related-links { display: flex; flex-wrap: wrap; gap: 8px 14px; }
 .library-related-links > a,

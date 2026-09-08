@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-function pageHref(pathname: string, query: Record<string, string | undefined>, page: number) {
+function pageHref(pathname: string, query: Record<string, string | string[] | undefined>, page: number) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
-    if (value) params.set(key, value);
+    for (const item of Array.isArray(value) ? value : [value]) if (item) params.append(key, item);
   }
   if (page > 1) params.set("page", String(page));
   const suffix = params.toString();
@@ -19,7 +19,7 @@ export function LibraryPagination({
   locale
 }: {
   pathname: string;
-  query: Record<string, string | undefined>;
+  query: Record<string, string | string[] | undefined>;
   page: number;
   totalPages: number;
   locale: "en" | "fr";

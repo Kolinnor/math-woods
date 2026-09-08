@@ -5,6 +5,7 @@ import { isVerifiedContributor } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { getInterfaceLocale } from "@/lib/i18n/server";
+import { referenceMatchSql } from "@/lib/reference-search";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -19,14 +20,7 @@ export async function GET(request: Request) {
   if (workId === null && query.length < 2) return NextResponse.json({ references: [], more: false });
   if (workId !== null && !await prisma.libraryReference.findFirst({ where: { id: workId, status: "PUBLISHED", searchable: true, mergedIntoId: null }, select: { id: true } })) return NextResponse.json({ references: [], more: false });
   const offset = Math.min(1000, Math.max(0, Number.parseInt(params.get("offset") ?? "0", 10) || 0));
-  const words = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\s+/).filter(Boolean);
-  const conditions = (workId ? [] : words).map((word) => Prisma.sql`strpos(
-    translate(lower(concat_ws(' ', r."canonicalTitle", r."authors", r."publisher", r."year"::text, r."doi", r."isbn", r."citationKey", r."url",
-      r.edition, r.volume, r.translator, r.journal, array_to_string(r."aliases", ' '), (SELECT string_agg(t."displayTitle", ' ') FROM "LibraryReferenceTranslation" t WHERE t."referenceId" = r.id),
-      (SELECT string_agg(concat_ws(' ', e."canonicalTitle", e.authors, e.publisher, e.year::text, e.edition, e.volume, e.translator, e.doi, e.isbn, e."citationKey", array_to_string(e.aliases, ' '),
-        (SELECT string_agg(et."displayTitle", ' ') FROM "LibraryReferenceTranslation" et WHERE et."referenceId" = e.id)), ' ')
-       FROM "LibraryReference" e WHERE e."workId" = r.id AND e.status = 'PUBLISHED' AND e.searchable AND e."mergedIntoId" IS NULL))),
-      'àáâäãåçèéêëìíîïñòóôöõùúûüýÿ', 'aaaaaaceeeeiiiinooooouuuuyy'), ${word}) > 0`);
+  const match = workId ? Prisma.sql`TRUE` : referenceMatchSql(query, { includeEditions: true });
   const locale = await getInterfaceLocale();
   const references = await prisma.$queryRaw<Array<{ id: number; title: string; authors: string | null; publisher: string | null; year: number | null; url: string | null; edition: string | null; volume: string | null; translator: string | null; editionCount: number }>>(Prisma.sql`
     SELECT r.id, COALESCE((SELECT NULLIF(t."displayTitle", '') FROM "LibraryReferenceTranslation" t WHERE t."referenceId" = r.id AND t.language = ${locale} LIMIT 1), r."canonicalTitle") AS title, r.authors, r.publisher, r.year, r.url, r.edition, r.volume, r.translator,
@@ -34,7 +28,7 @@ export async function GET(request: Request) {
     FROM "LibraryReference" r
     WHERE r.status = 'PUBLISHED' AND r.searchable AND r."mergedIntoId" IS NULL
       AND ${workId ? Prisma.sql`r."workId" = ${workId}` : worksOnly ? Prisma.sql`r."workId" IS NULL AND r."referenceType" = 'BOOK'` : Prisma.sql`(r."workId" IS NULL OR NOT EXISTS (SELECT 1 FROM "LibraryReference" p WHERE p.id = r."workId" AND p.status = 'PUBLISHED' AND p.searchable AND p."mergedIntoId" IS NULL))`}
-      AND ${conditions.length ? Prisma.join(conditions, " AND ") : Prisma.sql`TRUE`}
+      AND ${match}
     ORDER BY CASE WHEN lower(r."canonicalTitle") = lower(${query}) THEN 0 ELSE 1 END, r."canonicalTitle", r.id
     LIMIT 11 OFFSET ${offset}`);
   return NextResponse.json({ references: references.slice(0, 10), more: references.length > 10 }, { headers: { "Cache-Control": "private, no-store" } });

@@ -33,7 +33,7 @@ export function HistoryMilestoneForm({ action, locale, contentLanguage = locale,
         <label><span>{fr ? "Période" : "Era"}</span><select name="era" defaultValue={values.era ?? HistoryEra.MODERN}>{Object.values(HistoryEra).map((era) => <option value={era} key={era}>{historyEraLabel(era, locale)}</option>)}</select></label>
         <label><span>{fr ? "Nature du repère" : "Milestone type"}</span><select name="milestoneType" defaultValue={values.milestoneType ?? HistoryMilestoneType.DISCOVERY}>{Object.values(HistoryMilestoneType).map((type) => <option value={type} key={type}>{milestoneTypeLabel(type, locale)}</option>)}</select></label>
       </div>
-      <label className="library-editor-field"><span>{fr ? "Récit" : "Story"}</span><MarkdownEditor name="summaryMarkdown" initialValue={values.translation?.summaryMarkdown ?? ""} minHeight="18rem" /></label>
+      <div className="library-editor-field"><span>{fr ? "Récit" : "Story"}</span><MarkdownEditor name="summaryMarkdown" ariaLabel={fr ? "Récit" : "Story"} initialValue={values.translation?.summaryMarkdown ?? ""} minHeight="18rem" /></div>
       <details className="library-form-section"><summary>{fr ? "Éléments liés" : "Related entries"}</summary><div className="library-link-selects"><MultiSelect name="mathematicianIds" label={fr ? "Mathématiciens" : "Mathematicians"} options={options.mathematicians} selected={values.mathematicianIds} /><MultiSelect name="referenceIds" label={fr ? "Références" : "References"} options={options.references} selected={values.referenceIds} /><MultiSelect name="conceptIds" label="Concepts" options={options.concepts} selected={values.conceptIds} /></div></details>
       <LibraryImageFields locale={locale} values={values} />
       <LibraryFormActions locale={locale} />

@@ -5,6 +5,7 @@ import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { PortraitImage } from "@/components/library/PortraitImage";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { matchingReferenceIds } from "@/lib/reference-search";
 import { PortraitSource } from "@/components/library/PortraitSource";
 import { LibraryEmptyState } from "@/components/library/LibraryEmptyState";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
@@ -138,20 +139,16 @@ async function searchLibrary(q: string, locale: "en" | "fr") {
       take: 6
     }),
     searchMathematicians(q.slice(0, 160), locale).then(people => people.slice(0, 6)),
-    prisma.libraryReference.findMany({
+    matchingReferenceIds(prisma, q).then(ids => prisma.libraryReference.findMany({
       where: {
         status: LibraryStatus.PUBLISHED,
-        OR: [
-          { canonicalTitle: { contains: q, mode: "insensitive" } },
-          { authors: { contains: q, mode: "insensitive" } },
-          { publisher: { contains: q, mode: "insensitive" } },
-          { translations: { some: { displayTitle: { contains: q, mode: "insensitive" } } } }
-        ]
+        searchable: true, mergedIntoId: null,
+        id: { in: ids }
       },
       include: { translations: true },
       orderBy: { canonicalTitle: "asc" },
       take: 6
-    })
+    }))
   ]);
   return [
     ...milestones.map((entry) => { const translation = localizedTranslation(entry.translations, locale); return { href: `/library/history/${entry.slug}`, kind: locale === "fr" ? "Histoire" : "History", title: translation?.title ?? entry.slug, language: translation?.language ?? null }; }),

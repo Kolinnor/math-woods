@@ -25,11 +25,14 @@ import {
   canCreateLibraryEntry,
   canEditLibraryDraft,
   canEditLibraryReference,
+  canEditLibraryMathematician,
+  canReviewLibraryMathematician,
   canReviewLibraryEntry
 } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { displayNameForUser } from "@/lib/user-display";
+import { submittedMathematicianPeriod } from "@/lib/mathematician-browser";
 import { citationUrl } from "@/lib/problem-citations";
 import { readReferenceBibliography, validateReferenceWork } from "@/lib/reference-editions";
 import { requireReadableReferenceTitle } from "@/lib/reference-title";
@@ -241,6 +244,8 @@ export async function createMathematicianAction(formData: FormData) {
   const displayName = formData.has("name") ? canonicalName : boundedText(formData.get("displayName"), CONTENT_LIMITS.title, "Name") || canonicalName;
   const aliases = parseMathematicianAliases(formData.get("aliases") ?? "", displayName, language);
   const lifespan = boundedText(formData.get("lifespan"), CONTENT_LIMITS.shortText, "Dates");
+  const period = submittedMathematicianPeriod(formData, language);
+  const sortName = boundedText(formData.get("sortName"), CONTENT_LIMITS.title, "Sort name");
   const birthPlace = boundedText(formData.get("birthPlace"), CONTENT_LIMITS.shortText, "Birthplace");
   const teaser = boundedText(formData.get("teaser"), CONTENT_LIMITS.mediumText, "Introduction");
   const biographyMarkdown = boundedText(formData.get("biographyMarkdown"), CONTENT_LIMITS.markdown, "Biography");
@@ -260,9 +265,11 @@ export async function createMathematicianAction(formData: FormData) {
       name: canonicalName,
       aliases,
       lifespan,
+      ...period,
       birthPlace,
       portraitUrl: optionalHttpsUrl(formData.get("imageUrl"), "Image URL"),
       portraitCrop: submittedPortraitCrop(formData),
+      lastEditedById: user.id,
       portraitDetails: formData.has("portraitDetails") ? boundedText(formData.get("portraitDetails"), CONTENT_LIMITS.longNote, "Portrait details") : undefined,
       imageAlt: optionalBoundedText(formData.get("imageAlt"), CONTENT_LIMITS.shortText, "Image description"),
       imageCredit: optionalBoundedText(formData.get("imageCredit"), CONTENT_LIMITS.shortText, "Image credit"),
@@ -273,7 +280,7 @@ export async function createMathematicianAction(formData: FormData) {
       submittedAt: intent === "submit" ? new Date() : null,
       createdById: user.id,
       translations: {
-        create: { language, displayName, teaser, birthPlace, biographyMarkdown, biographyHtml, contributionsMarkdown, contributionsHtml }
+        create: { language, displayName, sortName, teaser, birthPlace, biographyMarkdown, biographyHtml, contributionsMarkdown, contributionsHtml }
       }
       }
     });
@@ -293,11 +300,13 @@ export async function createMathematicianAction(formData: FormData) {
 export async function updateMathematicianAction(id: number, formData: FormData) {
   const user = await requireAdmin();
   const entry = await prisma.mathematician.findUnique({ where: { id }, select: { id: true, slug: true, createdById: true, status: true, submittedAt: true, updatedAt: true } });
-  if (!entry || !canEditLibraryDraft(user, entry)) throw new Error("You cannot edit this entry.");
+  if (!entry || !canEditLibraryMathematician(user, entry)) throw new Error("You cannot edit this entry.");
   await assertRateLimit(`library-mathematician-edit:${user.id}`, 20, 60_000);
 
   const language = formLanguage(formData);
   const submittedName = requiredBoundedText(formData.get("name") ?? formData.get("canonicalName"), CONTENT_LIMITS.title, language === "fr" ? "Nom" : "Name");
+  const period = submittedMathematicianPeriod(formData, language);
+  const sortName = formData.has("sortName") ? boundedText(formData.get("sortName"), CONTENT_LIMITS.title, "Sort name") : undefined;
   const relatedItems = submittedMathematicianRelated(formData);
   const displayName = formData.has("name") ? submittedName : boundedText(formData.get("displayName"), CONTENT_LIMITS.title, "Name") || submittedName;
   const aliases = formData.has("aliases") ? parseMathematicianAliases(formData.get("aliases"), displayName, language) : undefined;
@@ -308,6 +317,8 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
   const baseUpdatedAt = submittedBaseUpdatedAt(formData);
   if (entry.updatedAt.getTime() !== baseUpdatedAt.getTime()) throw new Error("This entry changed after you opened it. Reload the page before saving your work.");
 
+  const preserveStatus = [LibraryStatus.PUBLISHED, LibraryStatus.PENDING_REVIEW, LibraryStatus.ARCHIVED].some(status => status === entry.status);
+
   await prisma.$transaction(async (tx) => {
     await tx.mathematician.update({
       where: { id, updatedAt: baseUpdatedAt },
@@ -315,6 +326,7 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
       // The single field edits this language only. Keep the original fallback
       // and slug; old forms can still submit their two explicit name fields.
       name: formData.has("name") ? undefined : submittedName,
+      ...period,
       aliases,
       lifespan: boundedText(formData.get("lifespan"), CONTENT_LIMITS.shortText, "Dates"),
       portraitUrl: optionalHttpsUrl(formData.get("imageUrl"), "Image URL"),
@@ -325,17 +337,20 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
       imageCreditUrl: optionalHttpsUrl(formData.get("imageCreditUrl"), "Image credit URL"),
       imageLicense: optionalBoundedText(formData.get("imageLicense"), CONTENT_LIMITS.shortText, "Image license"),
       fields: formData.has("fields") ? boundedText(formData.get("fields"), CONTENT_LIMITS.tagList, "Fields").split(",").map((item) => item.trim()).filter(Boolean) : undefined,
-      status: statusForUpdate(entry.status, intent),
-      submittedAt: entry.status === LibraryStatus.PUBLISHED ? entry.submittedAt : intent === "submit" ? new Date() : null,
-      reviewedById: entry.status === LibraryStatus.PUBLISHED || intent === "draft" ? undefined : null,
-      reviewedAt: entry.status === LibraryStatus.PUBLISHED || intent === "draft" ? undefined : null,
-      reviewNote: entry.status === LibraryStatus.PUBLISHED || intent === "draft" ? undefined : null,
+      status: preserveStatus ? entry.status : statusForUpdate(entry.status, intent),
+      submittedAt: preserveStatus ? entry.submittedAt : intent === "submit" ? new Date() : null,
+      lastEditedById: user.id,
+      needsReviewAfterEdit: entry.status === LibraryStatus.PUBLISHED,
+      reviewedById: null,
+      reviewedAt: null,
+      reviewNote: preserveStatus || intent === "draft" ? undefined : null,
       translations: {
         upsert: {
           where: { mathematicianId_language: { mathematicianId: id, language } },
           create: {
             language,
             displayName,
+            sortName,
             teaser: boundedText(formData.get("teaser"), CONTENT_LIMITS.mediumText, "Introduction"),
             birthPlace: boundedText(formData.get("birthPlace"), CONTENT_LIMITS.shortText, "Birthplace"),
             biographyMarkdown,
@@ -345,6 +360,7 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
           },
           update: {
             displayName,
+            sortName,
             teaser: boundedText(formData.get("teaser"), CONTENT_LIMITS.mediumText, "Introduction"),
             birthPlace: boundedText(formData.get("birthPlace"), CONTENT_LIMITS.shortText, "Birthplace"),
             biographyMarkdown,
@@ -362,7 +378,7 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
     }
   });
   revalidateLibrary("mathematician", entry.slug);
-  if (intent === "submit" && entry.status !== LibraryStatus.PENDING_REVIEW && entry.status !== LibraryStatus.PUBLISHED) {
+  if (intent === "submit" && !preserveStatus) {
     await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "mathematician", slug: entry.slug, title: displayName });
   }
   redirect(`/library/mathematicians/${entry.slug}?lang=${language}`);
@@ -643,17 +659,21 @@ export async function reviewLibraryEntryAction(entity: LibraryEntity, id: number
   const user = await requireAdmin();
   await assertRateLimit(`library-review:${user.id}`, 60, 60_000);
   const entry = entity === "mathematician"
-    ? await prisma.mathematician.findUnique({ where: { id }, select: { id: true, slug: true, name: true, createdById: true, status: true, translations: { select: { displayName: true }, take: 1 } } }).then((value) => value && ({ ...value, title: value.translations[0]?.displayName ?? value.name }))
+    ? await prisma.mathematician.findUnique({ where: { id }, select: { id: true, slug: true, name: true, createdById: true, lastEditedById: true, needsReviewAfterEdit: true, updatedAt: true, publishedAt: true, status: true, translations: { select: { displayName: true }, take: 1 } } }).then((value) => value && ({ ...value, title: value.translations[0]?.displayName ?? value.name }))
     : entity === "reference"
       ? await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, canonicalTitle: true, createdById: true, status: true, updatedAt: true, translations: { select: { displayTitle: true } } } }).then((value) => value && ({ ...value, title: value.translations[0]?.displayTitle ?? value.canonicalTitle }))
       : await prisma.historyMilestone.findUnique({ where: { id }, select: { id: true, slug: true, createdById: true, status: true, translations: { select: { title: true }, take: 1 } } }).then((value) => value && ({ ...value, title: value.translations[0]?.title ?? value.slug }));
   if (!entry) throw new Error("Entry not found.");
+  if (entity === "mathematician" && "updatedAt" in entry && submittedBaseUpdatedAt(formData).getTime() !== entry.updatedAt.getTime()) {
+    throw new Error("This entry changed after you opened it. Reload the page before reviewing it.");
+  }
   if (decision === "archive" || decision === "restore") {
     if (!canArchiveLibraryEntry(user)) throw new Error("Only admins can archive library entries.");
-  } else if (!canReviewLibraryEntry(user, entry)) {
+  } else if (!(entity === "mathematician" ? canReviewLibraryMathematician(user, entry) : canReviewLibraryEntry(user, entry))) {
     throw new Error("A second trusted contributor must review this entry.");
   }
-  if ((decision === "publish" || decision === "changes") && entry.status !== LibraryStatus.PENDING_REVIEW) {
+  const confirmingEdit = entity === "mathematician" && "needsReviewAfterEdit" in entry && entry.status === LibraryStatus.PUBLISHED && entry.needsReviewAfterEdit;
+  if ((decision === "publish" || decision === "changes") && entry.status !== LibraryStatus.PENDING_REVIEW && !(decision === "publish" && confirmingEdit)) {
     throw new Error("This entry is no longer awaiting review.");
   }
   if (decision === "archive" && entry.status === LibraryStatus.ARCHIVED) throw new Error("This entry is already archived.");
@@ -678,7 +698,7 @@ export async function reviewLibraryEntryAction(entity: LibraryEntity, id: number
         ? { status: LibraryStatus.ARCHIVED, reviewedById: user.id, reviewedAt, reviewNote: null }
         : { status: LibraryStatus.NEEDS_WORK, reviewedById: user.id, reviewedAt, reviewNote: null };
   const updateResult = entity === "mathematician"
-    ? await prisma.mathematician.updateMany({ where: { id, status: entry.status }, data })
+    ? await prisma.mathematician.updateMany({ where: { id, status: entry.status, ...("updatedAt" in entry ? { updatedAt: entry.updatedAt } : {}) }, data: { ...data, ...(decision === "publish" ? { needsReviewAfterEdit: false, ...(confirmingEdit && "publishedAt" in entry ? { publishedAt: entry.publishedAt } : {}) } : {}) } })
     : entity === "reference"
       ? await prisma.libraryReference.updateMany({ where: { id, status: entry.status, ...("updatedAt" in entry ? { updatedAt: entry.updatedAt } : {}) }, data })
       : await prisma.historyMilestone.updateMany({ where: { id, status: entry.status }, data });

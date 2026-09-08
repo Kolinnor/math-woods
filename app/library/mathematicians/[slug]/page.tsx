@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PortraitImage } from "@/components/library/PortraitImage";
-import { Pencil } from "lucide-react";
+import { ArrowLeft, Languages, Pencil } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { PortraitSource } from "@/components/library/PortraitSource";
@@ -20,10 +20,11 @@ import { mathematicianRelatedInclude, relatedItemViews } from "@/lib/mathematici
 import { libraryCopy } from "@/lib/library-copy";
 import { localizedTranslation } from "@/lib/library-queries";
 import { mathematicianName } from "@/lib/mathematician-names";
-import { canArchiveLibraryEntry, canEditLibraryDraft, canReviewLibraryEntry, canViewLibraryEntry } from "@/lib/permissions";
+import { isMathematicianStub, mathematiciansReturnHref } from "@/lib/mathematician-browser";
+import { canArchiveLibraryEntry, canEditLibraryMathematician, canReviewLibraryMathematician, canViewLibraryMathematician } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
-type PageProps = { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string }> };
+type PageProps = { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; returnTo?: string }> };
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   await requireAdmin();
@@ -49,33 +50,63 @@ export default async function LibraryMathematicianPage({ params, searchParams }:
       }
     })
   ]);
-  if (!entry || !canViewLibraryEntry(user, entry)) notFound();
+  if (!entry || !canViewLibraryMathematician(user, entry)) notFound();
   const query = await searchParams;
   const contentLanguage = query?.lang === "fr" || query?.lang === "en" ? query.lang : locale;
   const translation = localizedTranslation(entry.translations, contentLanguage);
+  const returnTo = mathematiciansReturnHref(query?.returnTo);
   const relatedItems = await relatedItemViews(translation?.relatedItems ?? [], translation?.language ?? contentLanguage);
   const copy = libraryCopy[locale];
-  const canEdit = Boolean(user && canEditLibraryDraft(user, entry));
+  const canEdit = Boolean(user && canEditLibraryMathematician(user, entry));
+  const canReview = Boolean(user && canReviewLibraryMathematician(user, entry));
+  const canArchive = Boolean(user && canArchiveLibraryEntry(user));
+  const birthPlace = translation?.birthPlace?.trim();
+  const hasBirthPlace = birthPlace && !/^(inconnu(?:e)?|unknown)$/i.test(birthPlace);
+  const hasIdentity = Boolean(entry.portraitUrl || entry.lifespan || hasBirthPlace || entry.aliases.length);
+  const isStub = isMathematicianStub(translation);
 
   return (
-    <ForestPageLayout title={<>{translation?.displayName ?? entry.name}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={contentLanguage} />}</>} description={translation?.teaser ? <AsyncMarkdownInline markdown={translation.teaser} /> : undefined} heroImage="/art/birch-grove.jpg" actions={canEdit ? <><Link href={`/library/mathematicians/${entry.slug}/edit?lang=${contentLanguage}`} className="primary"><Pencil size={16} />{copy.edit}</Link><Link href={`/library/mathematicians/${entry.slug}/edit?lang=${contentLanguage === "fr" ? "en" : "fr"}`} className="button secondary">{locale === "fr" ? "Traduire" : "Translate"}</Link></> : undefined}>
+    <ForestPageLayout className="mathematician-page" title={<>{translation?.displayName ?? entry.name}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={contentLanguage} />}</>} description={translation?.teaser ? <AsyncMarkdownInline markdown={translation.teaser} /> : undefined} heroImage="/art/birch-grove.jpg">
       <LibraryTabs active="mathematicians" locale={locale} />
-      <nav className="library-translation-editor" aria-label={locale === "fr" ? "Langue de la fiche" : "Entry language"}>{entry.translations.map(t => <Link key={t.language} href={`/library/mathematicians/${entry.slug}?lang=${t.language}`} aria-current={t.language === translation?.language ? "page" : undefined}>{t.language.toUpperCase()}</Link>)}</nav>
-      <div className="library-detail-heading"><LibraryStatusBadge status={entry.status} locale={locale} /><p>{entry.lifespan}{translation?.birthPlace ? ` · ${translation.birthPlace}` : ""}</p></div>
-      {entry.aliases.length > 0 && <details className="library-person-aliases"><summary>{locale === "fr" ? "Autres noms" : "Other names"}</summary><ul>{entry.aliases.map(alias => <li key={alias}>{alias}</li>)}</ul></details>}
-      <LibraryAttribution creator={entry.createdBy} reviewer={entry.reviewedBy} locale={locale} />
+      <div className="mathematician-toolbar">
+        <Link href={returnTo as never} className="button secondary mathematician-back-link"><ArrowLeft size={16} aria-hidden="true" />{locale === "fr" ? "Retour aux mathématiciens" : "Back to mathematicians"}</Link>
+        <div className="mathematician-toolbar-meta">
+          {entry.translations.length > 1 ? <nav className="mathematician-languages" aria-label={locale === "fr" ? "Langue de la fiche" : "Entry language"}>{entry.translations.map(t => <Link key={t.language} href={`/library/mathematicians/${entry.slug}?lang=${t.language}&returnTo=${encodeURIComponent(returnTo)}`} aria-current={t.language === translation?.language ? "page" : undefined}>{t.language === "fr" ? "Français" : t.language === "en" ? "English" : t.language.toUpperCase()}</Link>)}</nav> : translation && <span className="mathematician-language">{translation.language === "fr" ? "Français" : translation.language === "en" ? "English" : translation.language.toUpperCase()}</span>}
+          <LibraryStatusBadge status={entry.status} locale={locale} />
+        </div>
+      </div>
+      <div className="mathematician-detail-layout">
+      <article className="mathematician-article">
+      {isStub && <p className="quality-banner quality-stub mathematician-stub-notice"><strong>{locale === "fr" ? "Cet article est une ébauche." : "This article is a stub."}</strong>{" "}{locale === "fr" ? "Vous pouvez contribuer à le compléter." : "You can help expand it."}</p>}
+      {entry.status === "PUBLISHED" && entry.needsReviewAfterEdit && <p className="quality-banner quality-needs-work mathematician-stub-notice">{locale === "fr" ? "Cette fiche a été modifiée depuis sa dernière relecture. Une autre personne doit relire ces modifications." : "This entry has changed since its last review. Another person must review these changes."}</p>}
       <LibraryReviewNote status={entry.status} note={entry.reviewNote} locale={locale} />
-      <div className="library-detail-layout">
-        <aside className="library-portrait-panel">
-          {entry.portraitUrl ? <div className="library-detail-image"><PortraitImage src={entry.portraitUrl} alt={entry.imageAlt ?? translation?.displayName ?? entry.name} crop={entry.portraitCrop} /><PortraitSource credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} details={entry.portraitDetails} locale={locale} /></div> : <div className="library-portrait-placeholder">{entry.name.charAt(0)}</div>}
-        </aside>
+      <div className={`mathematician-reading-layout${hasIdentity ? "" : " mathematician-reading-layout-text-only"}`}>
+        {hasIdentity && <aside className="mathematician-biographical-panel" aria-label={locale === "fr" ? "Repères biographiques" : "Biographical information"}>
+          {entry.portraitUrl && <figure className="mathematician-portrait"><PortraitImage src={entry.portraitUrl} alt={entry.imageAlt ?? translation?.displayName ?? entry.name} crop={entry.portraitCrop} /><PortraitSource credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} details={entry.portraitDetails} locale={locale} /></figure>}
+          {(entry.lifespan || hasBirthPlace) && <dl className="mathematician-facts">
+            {entry.lifespan && <div><dt>Dates</dt><dd>{entry.lifespan}</dd></div>}
+            {hasBirthPlace && <div><dt>{locale === "fr" ? "Lieu de naissance" : "Birthplace"}</dt><dd>{birthPlace}</dd></div>}
+          </dl>}
+          {entry.aliases.length > 0 && <details className="library-person-aliases"><summary>{locale === "fr" ? "Autres noms" : "Other names"}</summary><ul>{entry.aliases.map(alias => <li key={alias}>{alias}</li>)}</ul></details>}
+        </aside>}
         <div className="library-detail-content">
           {translation?.biographyHtml && <section><h2>{locale === "fr" ? "Biographie" : "Biography"}</h2><div className="prose-math" dangerouslySetInnerHTML={{ __html: translation.biographyHtml }} /></section>}
           {translation?.contributionsHtml && <section><h2>Contributions</h2><div className="prose-math" dangerouslySetInnerHTML={{ __html: translation.contributionsHtml }} /></section>}
           <MathematicianRelatedList items={relatedItems} locale={locale} />
           {entry.milestoneLinks.length > 0 && <section><h2>{locale === "fr" ? "Repères historiques" : "Historical milestones"}</h2><div className="library-related-links">{entry.milestoneLinks.map(({ milestone }) => { const t = localizedTranslation(milestone.translations, locale); return <p key={milestone.id}><Link href={`/library/history/${milestone.slug}`}>{t?.title ?? milestone.slug}</Link>{t && <ContentLanguageFallback language={t.language} expectedLanguage={locale} />}</p>; })}</div></section>}
-          {user && <LibraryReviewActions entity="mathematician" id={entry.id} locale={locale} status={entry.status} canReview={canReviewLibraryEntry(user, entry)} canArchive={canArchiveLibraryEntry(user)} />}
         </div>
+      </div>
+      </article>
+      <aside className="concept-detail-rail mathematician-rail" aria-label={locale === "fr" ? "Actions et informations sur la fiche" : "Entry actions and information"}>
+        {canEdit && <nav className="problem-rail-actions" aria-label={locale === "fr" ? "Actions sur la fiche" : "Entry actions"}>
+          <Link href={`/library/mathematicians/${entry.slug}/edit?lang=${contentLanguage}`}><span className="problem-rail-action-label"><Pencil size={16} aria-hidden="true" /><span>{copy.edit}</span></span></Link>
+          <Link href={`/library/mathematicians/${entry.slug}/edit?lang=${contentLanguage === "fr" ? "en" : "fr"}`}><span className="problem-rail-action-label"><Languages size={16} aria-hidden="true" /><span>{locale === "fr" ? "Traduire" : "Translate"}</span></span></Link>
+        </nav>}
+        <div className="concept-rail-section mathematician-attribution">
+        <LibraryAttribution creator={entry.createdBy} reviewer={entry.reviewedBy} locale={locale} />
+        </div>
+        {(canArchive || (canReview && (entry.status === "PENDING_REVIEW" || entry.needsReviewAfterEdit))) && <section className="concept-rail-section mathematician-management"><h2>{locale === "fr" ? "Gestion de la fiche" : "Manage this entry"}</h2>{!canReview && (entry.status === "PENDING_REVIEW" || entry.needsReviewAfterEdit) && <p>{locale === "fr" ? "La relecture doit être effectuée par une autre personne que l’auteur ou le dernier contributeur." : "The reviewer must be someone other than the author or last editor."}</p>}<LibraryReviewActions entity="mathematician" id={entry.id} locale={locale} status={entry.status} canReview={canReview} canArchive={canArchive} needsReviewAfterEdit={entry.needsReviewAfterEdit} baseUpdatedAt={entry.updatedAt.toISOString()} compact /></section>}
+      </aside>
       </div>
     </ForestPageLayout>
   );

@@ -525,6 +525,7 @@ model User {
   explorationSessions             ExplorationSession[]
   mathematiciansCreated           Mathematician[]                 @relation("MathematicianCreatedBy")
   mathematiciansReviewed          Mathematician[]                 @relation("MathematicianReviewedBy")
+  mathematiciansLastEdited        Mathematician[]                 @relation("MathematicianLastEditedBy")
   libraryReferencesCreated        LibraryReference[]              @relation("LibraryReferenceCreatedBy")
   libraryReferencesReviewed       LibraryReference[]              @relation("LibraryReferenceReviewedBy")
   historyMilestonesCreated        HistoryMilestone[]              @relation("HistoryMilestoneCreatedBy")
@@ -603,6 +604,11 @@ model Mathematician {
   portraitUrl     String?
   portraitCrop    Json?
   portraitDetails String?                         @db.Text
+  periodStartYear Int?
+  periodEndYear   Int?
+  lastEditedById  Int?
+  needsReviewAfterEdit Boolean                     @default(false)
+  lastEditedBy    User?                           @relation("MathematicianLastEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
   contentMarkdown String                          @default("")
   contentHtml     String                          @default("")
   fields          String[]                        @default([])
@@ -637,6 +643,7 @@ model MathematicianTranslation {
   mathematicianId       Int
   language              String
   displayName           String
+  sortName              String        @default("")
   teaser                String        @default("")
   birthPlace            String        @default("")
   biographyMarkdown     String        @default("")

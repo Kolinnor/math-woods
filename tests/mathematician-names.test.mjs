@@ -7,6 +7,7 @@ import ts from "typescript";
 import * as names from "../lib/mathematician-names.ts";
 import * as portraits from "../lib/portrait.ts";
 import * as related from "../lib/mathematician-related.ts";
+import * as browser from "../lib/mathematician-browser.ts";
 import * as limits from "../lib/content-limits.ts";
 const { mathematicianName, normalizeMathematicianName, parseMathematicianAliases, rankMathematicians } = names;
 
@@ -65,10 +66,11 @@ function harness() {
     "@prisma/client": require("@prisma/client"),
     "@/lib/auth": { requireAdmin: async () => ({ id: 2 }) },
     "@/lib/db": { prisma: { mathematician: { findUnique: async () => state }, $transaction: async fn => fn(tx) } },
-    "@/lib/permissions": { canEditLibraryDraft: () => true, canCreateLibraryEntry: () => true },
+    "@/lib/permissions": { canEditLibraryMathematician: () => true, canCreateLibraryEntry: () => true },
     "@/lib/rate-limit": { assertRateLimit: async () => {} },
     "@/lib/content-limits": limits,
     "@/lib/mathematician-names": names,
+    "@/lib/mathematician-browser": browser,
     "@/lib/portrait": portraits,
     "@/lib/mathematician-related": related,
     "@/lib/mathematician-related-db": { syncMathematicianRelated: async (transaction, translationId, rows) => { assert.equal(transaction, tx); relatedWrites.push({ translationId, rows }); } },
