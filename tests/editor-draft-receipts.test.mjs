@@ -11,6 +11,12 @@ const compile = file => ts.transpileModule(readFileSync(new URL(file, import.met
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText;
 const client = compile("../lib/editor-draft-receipts.ts");
+const uuidClient = compile("../lib/browser-uuid.ts");
+function receiptContext(context) {
+  const uuid = {};
+  vm.runInNewContext(uuidClient, { ...context, exports: uuid });
+  return { ...context, require: name => { assert.equal(name, './browser-uuid.ts'); return uuid; } };
+}
 function browser() {
   const stored = new Map();
   const inputs = [];
@@ -21,7 +27,7 @@ function browser() {
   const exports = {};
   let sequence = 0;
   const localStorage = { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) };
-  vm.runInNewContext(client, { exports, localStorage, document, crypto: { randomUUID: () => `token-${++sequence}` } });
+  vm.runInNewContext(client, receiptContext({ exports, localStorage, document, crypto: { getRandomValues: bytes => { bytes.fill(++sequence); return bytes; } } }));
   const save = (key, value, extra = {}) => stored.set(key, JSON.stringify({ value, updatedAt: 1000, baseValue: "Old server content", ...extra }));
   const acknowledge = entries => { document.cookie = `mw-editor-saved=${encodeURIComponent(JSON.stringify(entries))}`; exports.clearAcknowledgedEditorDrafts(); };
   return { ...exports, stored, inputs, form, save, acknowledge };
@@ -61,7 +67,7 @@ test("invalid receipts cannot clear arbitrary local data and unavailable storage
   const b = browser(); b.save("session", "private");
   b.acknowledge([{ key: "session", token: "token-1" }]); assert.ok(b.stored.has("session"));
   const exports = {};
-  vm.runInNewContext(client, { exports, document: { get cookie() { throw Error("blocked"); } } });
+  vm.runInNewContext(client, receiptContext({ exports, document: { get cookie() { throw Error("blocked"); } } }));
   assert.doesNotThrow(() => exports.clearAcknowledgedEditorDrafts());
   assert.doesNotThrow(() => exports.markEditorDraftSubmission({}, key, "value"));
 });

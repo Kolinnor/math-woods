@@ -34,7 +34,7 @@ groups:
           summary: "Root filesystem usage has exceeded 85%"
 
       - alert: HttpErrorRateHigh
-        expr: sum(rate(caddy_http_requests_total{handler="subroute",code=~"5.."}[5m])) > 0.1
+        expr: sum(rate(caddy_http_response_duration_seconds_count{handler="subroute",code=~"5.."}[5m])) > 0.1
         for: 5m
         labels:
           severity: critical

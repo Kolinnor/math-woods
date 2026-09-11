@@ -14,7 +14,8 @@ async function unlockAchievement(userId: number, key: AchievementKey) {
   if (!achievement) return null;
 
   try {
-    const unlock = await prisma.achievementUnlock.create({
+    const [unlock] = await prisma.achievementUnlock.createManyAndReturn({
+      skipDuplicates: true,
       data: {
         userId,
         key: achievement.key,
@@ -22,6 +23,7 @@ async function unlockAchievement(userId: number, key: AchievementKey) {
         description: achievement.description
       }
     });
+    if (!unlock) return null;
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { profileSlug: true }

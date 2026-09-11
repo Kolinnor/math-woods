@@ -18,7 +18,6 @@ type ConceptPracticeQueueProps = {
     difficulty: number | null;
     difficultyTone: string;
     solved: boolean;
-    solvedCountLabel: string;
     blurbHtml: string;
   }>;
   expectedLanguage: string;
@@ -173,9 +172,6 @@ export function ConceptPracticeQueue({ exercises, labels, expectedLanguage }: Co
                     <Link href={`/problems/${exercise.slug}`} className="concept-practice-queue-open">
                       {labels.open}
                     </Link>
-                    <span>
-                      {difficultyLabel} {"\u00b7"} {exercise.solvedCountLabel}
-                    </span>
                   </div>
                 </div>
               )}

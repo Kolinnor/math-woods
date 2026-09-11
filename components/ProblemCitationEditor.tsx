@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
+import { browserUUID } from "@/lib/browser-uuid";
 import { LibraryReferenceRole } from "@prisma/client";
 import { citationAdditionalDetails, parseProblemCitations, MAX_PROBLEM_CITATIONS, type ProblemCitation } from "@/lib/problem-citations";
 import { FieldHelp } from "@/components/FieldHelp";
@@ -65,11 +66,11 @@ export function ProblemCitationEditor({ initial, initialOriginal = false, draftK
     setBase(current);
     setOriginal(initialOriginal);
     setOriginalBase(initialOriginal);
-    setToken(crypto.randomUUID());
+    setToken(browserUUID());
   }, [draftKey, initialJson, initialOriginal]);
 
   function change(next: ProblemCitation[], nextOriginal = original) {
-    const nextToken = crypto.randomUUID();
+    const nextToken = browserUUID();
     setCitations(next);
     setOriginal(nextOriginal);
     setToken(nextToken);
@@ -87,7 +88,7 @@ export function ProblemCitationEditor({ initial, initialOriginal = false, draftK
   function choose(result: Result) {
     const existing = citations.find((c) => c.referenceId === result.id);
     if (existing) { close(); focusPassage(existing.citationKey); return; }
-    const key = crypto.randomUUID();
+    const key = browserUUID();
     const editionDetails = [result.edition, result.volume ? `vol. ${result.volume}` : null, result.translator, result.publisher, result.year].filter(Boolean).join(", ");
     const title = [result.authors, result.title].filter(Boolean).join(" — ");
     const next = [...meaningful(citations), { ...blank(key), referenceId: result.id, text: `${title}${editionDetails ? ` (${editionDetails})` : ""}`, url: result.url }];
@@ -142,7 +143,7 @@ export function ProblemCitationEditor({ initial, initialOriginal = false, draftK
       </details>
     </fieldset>)}</div>
     <div className="problem-citation-buttons">
-      <button type="button" className="secondary" disabled={!token || citations.length >= MAX_PROBLEM_CITATIONS} onClick={() => change([...citations, blank(crypto.randomUUID())])}>{fr ? "+ Ajouter une référence" : "+ Add a reference"}</button>
+      <button type="button" className="secondary" disabled={!token || citations.length >= MAX_PROBLEM_CITATIONS} onClick={() => change([...citations, blank(browserUUID())])}>{fr ? "+ Ajouter une référence" : "+ Add a reference"}</button>
       <button type="button" className="secondary" ref={searchButton} disabled={!token || selected.length >= MAX_PROBLEM_CITATIONS} aria-haspopup="dialog" onClick={() => { setOpen(true); dialog.current?.showModal(); searchInput.current?.focus(); }}>{fr ? "Rechercher dans le catalogue" : "Search the catalogue"}</button>
       {(selected.length > 0 || original) && <button type="button" className="secondary" aria-expanded={preview} onClick={() => setPreview(!preview)}>{fr ? "Aperçu des références" : "Preview references"}</button>}
     </div>
@@ -154,7 +155,7 @@ export function ProblemCitationEditor({ initial, initialOriginal = false, draftK
       <div role="status" aria-live="polite">{loading ? (fr ? "Recherche…" : "Searching…") : error || (!work && query.trim().length < 2 ? (fr ? "Saisissez au moins deux caractères." : "Enter at least two characters.") : fr ? `${results.length} résultat(s)` : `${results.length} result(s)`)}</div>
       {!loading && <ul className="problem-reference-results">{results.map((r) => <li key={r.id}><div><strong>{r.title}</strong><p>{[r.authors, r.edition, r.volume ? `vol. ${r.volume}` : null, r.translator, r.publisher, r.year].filter(Boolean).join(" · ")}</p></div><div className="problem-citation-buttons"><button type="button" className="secondary" onClick={() => choose(r)}>{citations.some(c => c.referenceId === r.id) ? (fr ? "Déjà ajoutée" : "Already added") : (fr ? "Choisir" : "Choose")}</button>{!!r.editionCount && <button type="button" className="secondary" onClick={() => { setWork(r); setOffset(0); }}>{fr ? `Voir les éditions (${r.editionCount})` : `View editions (${r.editionCount})`}</button>}</div></li>)}</ul>}
       <div className="problem-citation-buttons">{offset > 0 && <button type="button" className="secondary" onClick={() => setOffset(Math.max(0, offset - 10))}>{fr ? "Précédents" : "Previous"}</button>}{more && !loading && <button type="button" className="secondary" onClick={() => setOffset(offset + 10)}>{fr ? "Suivants" : "Next"}</button>}</div>
-      <button type="button" className="secondary" onClick={() => { close(); const key = crypto.randomUUID(); change([...meaningful(citations), { ...blank(key), text: query }]); requestAnimationFrame(() => section.current?.querySelector<HTMLTextAreaElement>("fieldset:last-child textarea")?.focus()); }}>{fr ? "Utiliser un texte libre" : "Use a free reference"}</button>
+      <button type="button" className="secondary" onClick={() => { close(); const key = browserUUID(); change([...meaningful(citations), { ...blank(key), text: query }]); requestAnimationFrame(() => section.current?.querySelector<HTMLTextAreaElement>("fieldset:last-child textarea")?.focus()); }}>{fr ? "Utiliser un texte libre" : "Use a free reference"}</button>
     </dialog>
   </section>;
 }

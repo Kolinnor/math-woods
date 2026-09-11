@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { browserUUID } from "@/lib/browser-uuid";
 import { FieldHelp } from "@/components/FieldHelp";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { MarkdownInline } from "@/components/MarkdownInline";
@@ -30,7 +31,7 @@ export function MathematicianRelatedEditor({ initial = [], locale, language }: {
   function add(category: RelatedCategory, result?: Result) {
     const field = category === "CONCEPT" ? "conceptId" : category === "PROBLEM" ? "problemId" : "referenceId";
     if (result && items.some(item => item.category === category && item[field] === result.id)) return;
-    setItems([...captured(), { key: crypto.randomUUID(), category, labelMarkdown: result?.title ?? "", noteMarkdown: "", relation: "", referenceId: null, conceptId: null, problemId: null, ...(result ? { [field]: result.id, titleHtml: result.titleHtml, href: result.href } : {}) }]);
+    setItems([...captured(), { key: browserUUID(), category, labelMarkdown: result?.title ?? "", noteMarkdown: "", relation: "", referenceId: null, conceptId: null, problemId: null, ...(result ? { [field]: result.id, titleHtml: result.titleHtml, href: result.href } : {}) }]);
     if (result) close();
   }
   useEffect(() => {

@@ -351,13 +351,13 @@ export default async function NewProblemPage({
             />
           )}
 
-          <ProblemCitationEditor locale={interfaceLocale} initialOriginal={sourceProblem?.isOriginal ?? false} initial={parseProblemCitations(sourceProblem?.libraryReferences.filter((item) => revealSourceCitations || !item.spoiler) ?? [])} draftKey={`mw-citations:${user.id}:new:${draftSession}`} />
           <div className="problem-compose-actions">
             <button type="submit" disabled={Boolean(sourceProblem && !targetTranslationLanguage)}>
               {t.contentEditor.publish}
             </button>
             <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
             <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
+                <ProblemCitationEditor locale={interfaceLocale} initialOriginal={sourceProblem?.isOriginal ?? false} initial={parseProblemCitations(sourceProblem?.libraryReferences.filter((item) => revealSourceCitations || !item.spoiler) ?? [])} draftKey={`mw-citations:${user.id}:new:${draftSession}`} />
 
                 <ProblemClassificationFields
                   initialStyles={sourceProblem?.styles}

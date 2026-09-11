@@ -61,6 +61,7 @@ import {
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { ProblemCitations } from "@/components/ProblemCitations";
+import { withCitationImages } from "@/lib/citation-images";
 import { parseProblemCitations, visibleProblemCitations } from "@/lib/problem-citations";
 import { canRevealProblemCitations } from "@/lib/problem-citation-access";
 import { localizedTranslation } from "@/lib/library-queries";
@@ -1317,13 +1318,7 @@ export default async function ProblemPage({
             )}
           </div>
         </section>
-        <ProblemCitations citations={readableCitations} isOriginal={problem.isOriginal} locale={interfaceLocale} exportHref={`/problems/${problem.slug}/export`} />
-        {canProposeCurrentProblem && readableCitations.some((item) => item.referenceId === null) && <details className="zen-meta">
-          <summary>{interfaceLocale === "fr" ? "Proposer une ressource au catalogue (facultatif)" : "Propose a catalogue resource (optional)"}</summary>
-          <ul>{readableCitations.filter((item) => item.referenceId === null).map((item) => <li key={item.citationKey}>
-            <Link href={{ pathname: "/contributing/references", query: { problem: problem.slug, citation: item.citationKey } }}>{item.text}</Link>
-          </li>)}</ul>
-        </details>}
+        <ProblemCitations citations={withCitationImages(readableCitations, problem.libraryReferences)} isOriginal={problem.isOriginal} locale={interfaceLocale} exportHref={`/problems/${problem.slug}/export`} />
 
         {problem.showRelatedProblems && (
           <section className="zen-hide related-problems-section mt-8">

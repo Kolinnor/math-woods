@@ -129,7 +129,7 @@ const CHART_QUERIES: Array<Omit<ObservabilityChart, "points"> & { query: string 
     unit: "req/s",
     warningAt: 0.02,
     dangerAt: 0.1,
-    query: "sum(rate(caddy_http_requests_total{handler=\"subroute\",code=~\"5..\"}[5m]))"
+    query: "sum(rate(caddy_http_response_duration_seconds_count{handler=\"subroute\",code=~\"5..\"}[5m])) or (0 * sum(rate(caddy_http_response_duration_seconds_count{handler=\"subroute\"}[5m])))"
   }
 ];
 

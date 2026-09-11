@@ -3,6 +3,8 @@ title: "How to write a concept ?"
 description: "A guide to writing concept pages on Math Woods."
 ---
 
+This guide provides a general direction, but nothing prevents you from departing from it if doing so helps present a concept more clearly. What matters most is moving in the right direction.
+
 # _What is the purpose of a concept page?_
 
 A concept page is designed to help readers quickly understand and apply a concept encountered in a problem. It is a reference page, not a complete lesson or a textbook chapter.

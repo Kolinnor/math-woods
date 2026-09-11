@@ -1,0 +1,48 @@
+rule_files:
+  - ../deploy/prometheus/alerts.yml
+evaluation_interval: 15s
+fuzzy_compare: true
+tests:
+  - name: sustained 5xx responses trigger an alert using response codes
+    interval: 15s
+    input_series:
+      - series: 'caddy_http_requests_total{handler="subroute",host="mathwoods.org"}'
+        values: '0+30x40'
+      - series: 'caddy_http_response_duration_seconds_count{handler="subroute",host="mathwoods.org",code="200"}'
+        values: '0+15x40'
+      - series: 'caddy_http_response_duration_seconds_count{handler="subroute",host="mathwoods.org",code="500"}'
+        values: '0+15x40'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HttpErrorRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Math Woods is returning sustained 5xx responses
+    promql_expr_test:
+      - expr: 'sum(rate(caddy_http_response_duration_seconds_count{handler="subroute",code=~"5.."}[5m])) or (0 * sum(rate(caddy_http_response_duration_seconds_count{handler="subroute"}[5m])))'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+  - name: healthy traffic shows zero errors without requiring a 5xx series
+    interval: 15s
+    input_series:
+      - series: 'caddy_http_response_duration_seconds_count{handler="subroute",code="200"}'
+        values: '0+15x40'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HttpErrorRateHigh
+        exp_alerts: []
+    promql_expr_test:
+      - expr: 'sum(rate(caddy_http_response_duration_seconds_count{handler="subroute",code=~"5.."}[5m])) or (0 * sum(rate(caddy_http_response_duration_seconds_count{handler="subroute"}[5m])))'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+  - name: missing telemetry stays missing rather than claiming zero errors
+    promql_expr_test:
+      - expr: 'sum(rate(caddy_http_response_duration_seconds_count{handler="subroute",code=~"5.."}[5m])) or (0 * sum(rate(caddy_http_response_duration_seconds_count{handler="subroute"}[5m])))'
+        eval_time: 10m
+        exp_samples: []

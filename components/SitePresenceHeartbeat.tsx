@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { browserUUID } from "@/lib/browser-uuid";
 import { SITE_PRESENCE_HEARTBEAT_MS, isSitePresenceId } from "@/lib/site-presence-config";
 
 const PRESENCE_STORAGE_KEY = "math-woods-presence-id";
@@ -9,6 +10,7 @@ let ephemeralPresenceId: string | null = null;
 export function SitePresenceHeartbeat() {
   useEffect(() => {
     const presenceId = browserPresenceId();
+    if (!presenceId) return;
     const heartbeat = () => {
       void fetch("/api/presence", {
         method: "POST",
@@ -39,11 +41,16 @@ function browserPresenceId() {
     const existing = window.localStorage.getItem(PRESENCE_STORAGE_KEY);
     if (isSitePresenceId(existing)) return existing as string;
 
-    const created = crypto.randomUUID();
+    const created = browserUUID();
     window.localStorage.setItem(PRESENCE_STORAGE_KEY, created);
     return created;
   } catch {
-    ephemeralPresenceId ??= crypto.randomUUID();
-    return ephemeralPresenceId;
+    try {
+      ephemeralPresenceId ??= browserUUID();
+      return ephemeralPresenceId;
+    } catch {
+      // Optional presence tracking must never take down the page.
+      return null;
+    }
   }
 }

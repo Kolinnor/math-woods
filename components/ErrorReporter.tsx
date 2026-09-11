@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { isBrowserExtensionError, isOpaqueWindowScriptError } from "@/lib/client-error-filter";
 import { sanitizeReportPath } from "@/lib/security";
+import { clientErrorDetails, clientErrorEventStack } from "@/lib/client-error-diagnostics";
 
 type ErrorReportInput = {
   message: string;
@@ -13,20 +14,6 @@ type ErrorReportInput = {
 };
 
 const sentReports = new Set<string>();
-
-function errorMessage(reason: unknown) {
-  if (reason instanceof Error) return reason.message;
-  if (typeof reason === "string") return reason;
-  try {
-    return JSON.stringify(reason);
-  } catch {
-    return String(reason);
-  }
-}
-
-function errorStack(reason: unknown) {
-  return reason instanceof Error ? reason.stack : null;
-}
 
 function reportKey(report: ErrorReportInput) {
   return [report.source, report.path, report.message, report.digest, report.stack?.slice(0, 240)].join("|");
@@ -48,8 +35,10 @@ export function reportClientError(input: ErrorReportInput) {
   const payload = JSON.stringify(report);
 
   if (navigator.sendBeacon) {
-    const sent = navigator.sendBeacon("/api/error-reports", new Blob([payload], { type: "application/json" }));
-    if (sent) return;
+    try {
+      const sent = navigator.sendBeacon("/api/error-reports", new Blob([payload], { type: "application/json" }));
+      if (sent) return;
+    } catch { /* A blocked beacon should fall back to fetch, not report itself. */ }
   }
 
   void fetch("/api/error-reports", {
@@ -65,23 +54,24 @@ export function reportClientError(input: ErrorReportInput) {
 export function ErrorReporter() {
   useEffect(() => {
     function onError(event: ErrorEvent) {
+      const details = clientErrorDetails(event.error);
+      if (isOpaqueWindowScriptError({ message: event.message, stack: details.stack, source: "window.error" })) return;
       if (isBrowserExtensionError({
-        stack: event.error instanceof Error ? event.error.stack : null,
+        stack: details.stack,
         sourceUrl: event.filename
       })) {
         return;
       }
       reportClientError({
-        message: event.message || errorMessage(event.error),
-        stack: event.error instanceof Error ? event.error.stack : null,
+        message: event.message || details.message,
+        stack: clientErrorEventStack(details.stack, event.filename, event.lineno, event.colno),
         source: "window.error"
       });
     }
 
     function onUnhandledRejection(event: PromiseRejectionEvent) {
       reportClientError({
-        message: errorMessage(event.reason),
-        stack: errorStack(event.reason),
+        ...clientErrorDetails(event.reason),
         source: "unhandledrejection"
       });
     }

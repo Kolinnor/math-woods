@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 
 export function ProblemDetailsDisclosure({ children, label = "Add details" }: { children: ReactNode; label?: string }) {
   const [open, setOpen] = useState(false);
@@ -15,7 +16,11 @@ export function ProblemDetailsDisclosure({ children, label = "Add details" }: { 
       >
         {label}
       </button>
-      <div className="problem-compose-details-body problem-compose-card" hidden={!open}>
+      <div
+        className="problem-compose-details-body problem-compose-card"
+        hidden={!open}
+        onInvalidCapture={() => flushSync(() => setOpen(true))}
+      >
         {children}
       </div>
     </>

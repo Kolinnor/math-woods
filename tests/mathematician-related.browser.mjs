@@ -22,6 +22,7 @@ mkdirSync('runtime/related-tests', { recursive:true });
 try {
   for (const locale of ['fr','en']) {
     const context = await browser.newContext({viewport:{width:900,height:950}}), page = await context.newPage(), errors=[];
+    await context.addInitScript(()=>Object.defineProperty(Crypto.prototype,'randomUUID',{value:undefined,configurable:true}));
     let fileChoosers = 0;
     page.on('filechooser', () => { fileChoosers++; });
     page.on('pageerror', e=>errors.push(e.message));

@@ -1,3 +1,5 @@
+import { browserUUID } from "./browser-uuid.ts";
+
 export const EDITOR_DRAFT_COOKIE = "mw-editor-saved";
 export type EditorDraftReceipt = { key: string; token: string };
 
@@ -16,7 +18,7 @@ export function markEditorDraftSubmission(form: HTMLFormElement, key: string, va
     }
     const draft = JSON.parse(localStorage.getItem(key) ?? "null");
     if (!draft || draft.value !== value) return;
-    const receipt = parseEditorDraftReceipt({ key, token: crypto.randomUUID() });
+    const receipt = parseEditorDraftReceipt({ key, token: browserUUID() });
     if (!receipt) return;
     localStorage.setItem(key, JSON.stringify({ ...draft, token: receipt.token }));
     const input = document.createElement("input");

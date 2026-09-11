@@ -1,4 +1,4 @@
-import { Prisma, RecommendationEventType } from "@prisma/client";
+import { RecommendationEventType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -72,19 +72,16 @@ export async function POST(
   });
   if (updated.count > 0) return NextResponse.json({ ok: true });
 
-  try {
-    await prisma.problemRecommendationExposure.create({
-      data: {
-        userId: user.id,
-        problemId: problem.id,
-        translationGroupId: problem.translationGroupId,
-        firstOpenedAt: now,
-        lastOpenedAt: now
-      }
-    });
-  } catch (error) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
-  }
+  await prisma.problemRecommendationExposure.createMany({
+    skipDuplicates: true,
+    data: {
+      userId: user.id,
+      problemId: problem.id,
+      translationGroupId: problem.translationGroupId,
+      firstOpenedAt: now,
+      lastOpenedAt: now
+    }
+  });
 
   return NextResponse.json({ ok: true });
 }

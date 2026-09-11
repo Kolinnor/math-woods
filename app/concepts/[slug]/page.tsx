@@ -24,7 +24,6 @@ import { reportConceptAction } from "@/lib/actions/moderation-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { canPublishConceptEditForConcept } from "@/lib/concept-edit-access";
 import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
-import { distinctContentCountsByProblemGroup } from "@/lib/content-translation-counts";
 import { prisma } from "@/lib/db";
 import { translatedDomainLabel as translatedDomainOptionLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
@@ -58,6 +57,7 @@ import {
 } from "@/lib/translation-routing";
 import { cleanWikiLinkTarget, missingConceptHref } from "@/lib/wikilinks";
 import { ProblemCitations } from "@/components/ProblemCitations";
+import { withCitationImages } from "@/lib/citation-images";
 import { parseConceptCitations } from "@/lib/concept-citations";
 import { localizedTranslation } from "@/lib/library-queries";
 
@@ -272,9 +272,7 @@ export default async function ConceptPage({
     outgoingLinks,
     backlinks,
     practiceSolvedAttempts,
-    localizedPracticeProblems,
-    practiceProofs,
-    practiceHints
+    localizedPracticeProblems
   ] = await Promise.all([
     prisma.concept.findMany({
       where: {
@@ -326,18 +324,6 @@ export default async function ConceptPage({
             translatedFromProblemId: true
           }
         })
-      : [],
-    practiceTranslationGroupIds.length
-      ? prisma.problemProof.findMany({
-          where: { problem: { translationGroupId: { in: practiceTranslationGroupIds } } },
-          select: { translationGroupId: true, problem: { select: { translationGroupId: true } } }
-        })
-      : [],
-    practiceTranslationGroupIds.length
-      ? prisma.problemHint.findMany({
-          where: { problem: { translationGroupId: { in: practiceTranslationGroupIds } } },
-          select: { translationGroupId: true, problem: { select: { translationGroupId: true } } }
-        })
       : []
   ]);
   const localizedPracticeProblemByGroup = new Map(
@@ -356,8 +342,6 @@ export default async function ConceptPage({
     solvedUsers.add(attempt.userId);
     solvedUsersByPracticeGroup.set(groupId, solvedUsers);
   }
-  const solutionCountByPracticeGroup = distinctContentCountsByProblemGroup(practiceProofs);
-  const hintCountByPracticeGroup = distinctContentCountsByProblemGroup(practiceHints);
   const requestedLanguage = requestedTranslationLanguage(queryParams.viewLanguage);
   const targetViewLanguage = requestedLanguage ?? preferredLanguage;
   const selectedTranslation = selectContentTranslation(
@@ -411,8 +395,6 @@ export default async function ConceptPage({
         )
         .map(async ({ problem }) => {
           const solvedUsers = solvedUsersByPracticeGroup.get(problem.translationGroupId) ?? new Set<number>();
-          const solutionCount = solutionCountByPracticeGroup.get(problem.translationGroupId) ?? 0;
-          const hintCount = hintCountByPracticeGroup.get(problem.translationGroupId) ?? 0;
           const [titleHtml, blurbHtml] = await Promise.all([
             renderInlineMarkdown(problem.title),
             renderMarkdownForContentLanguage(problem.bodyMarkdown, problem.language)
@@ -423,7 +405,6 @@ export default async function ConceptPage({
             titleHtml,
             difficultyTone: problemDifficultyTone(problem.difficulty),
             solved: Boolean(user && solvedUsers.has(user.id)),
-            solvedCountLabel: `${t.problems.solutionsCount(solutionCount)} · ${t.problems.hintsCount(hintCount)}`,
             blurbHtml
           };
         })
@@ -702,7 +683,6 @@ export default async function ConceptPage({
               difficulty: exercise.difficulty,
               difficultyTone: exercise.difficultyTone,
               solved: exercise.solved,
-              solvedCountLabel: exercise.solvedCountLabel,
               blurbHtml: exercise.blurbHtml
             }))}
             labels={{
@@ -749,7 +729,7 @@ export default async function ConceptPage({
           </details>
         </div>
 
-        <ProblemCitations citations={parseConceptCitations(concept.libraryReferences)} locale={interfaceLocale} exportHref={`/concepts/${concept.slug}/export`} />
+        <ProblemCitations citations={withCitationImages(parseConceptCitations(concept.libraryReferences), concept.libraryReferences)} locale={interfaceLocale} exportHref={`/concepts/${concept.slug}/export`} />
         {user?.emailVerifiedAt && concept.libraryReferences.some(item => item.referenceId === null) && <details className="zen-meta">
           <summary>{interfaceLocale === "fr" ? "Proposer une ressource au catalogue (facultatif)" : "Propose a catalogue resource (optional)"}</summary>
           <ul>{concept.libraryReferences.filter(item => item.referenceId === null).map(item => <li key={item.citationKey}>

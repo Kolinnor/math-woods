@@ -32,12 +32,18 @@
 .problem-citations-reading h2 { font-size: 1rem; margin-bottom: 8px; }
 .problem-citations-reading ol { padding-left: 22px; }
 .problem-citations-reading li { padding-block: 4px; white-space: pre-wrap; }
+.problem-citation-title { display: flex; align-items: center; gap: 12px; }
+.problem-citation-title > span { min-width: 0; }
+.problem-citation-image { position: relative; flex: 0 0 auto; }
+.problem-citation-image img { display: block; object-fit: contain; max-width: 56px; max-height: 56px; border-radius: 4px; }
 .problem-citations-details { margin-top: 8px; font-size: .9rem; }
 .problem-citations-details > summary { width: fit-content; color: var(--muted); cursor: pointer; }
 .problem-citation-note { margin-top: 12px; white-space: pre-wrap; }
 .problem-citation-note p { margin: 4px 0; }
-.problem-citations-export { margin-top: 12px; }
-.problem-citations-export > p { margin: 0 0 8px; }
+.problem-citations-export { margin: 12px 0 0; color: var(--muted); font-size: .8rem; }
+.problem-citations-export a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.problem-citations-export a:hover { color: var(--text); }
+.problem-citations-export a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
 @media (max-width: 600px) {
   .problem-citation-card-heading { flex-direction: column; }
   .problem-citation-card-heading > :first-child { width: 100%; }

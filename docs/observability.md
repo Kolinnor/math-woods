@@ -8,6 +8,15 @@ Math Woods keeps a private, owner-only performance history so a report such as "
 - **node-exporter** measures host CPU, memory, filesystems, and network activity.
 - **cAdvisor** measures Docker container CPU and memory.
 - **Caddy metrics** provide aggregate HTTP request counts, response codes, and request-duration histograms.
+
+For 5xx counts, use `caddy_http_response_duration_seconds_count`, which carries
+the `code` label. `caddy_http_requests_total` does not carry response codes in
+the running Caddy version; filtering it on `code` silently produces no data.
+The dashboard displays zero only when response telemetry exists. Missing
+telemetry remains missing and is covered by the target-down alert.
+
+Regression test: `promtool test rules tests/observability-alerts.test.yml`
+covers sustained 5xx, healthy traffic without a 5xx series, and absent telemetry.
 - **Math Woods Web Vitals** provide browser LCP, INP, CLS, FCP, and TTFB grouped by normalized route and broad mobile/desktop category.
 - `/moderation/performance` queries Prometheus through the internal Docker network and is protected by `requireOwner()`.
 

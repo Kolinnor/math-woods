@@ -221,11 +221,11 @@ export default async function EditProblemPage({
               />
             </section>
 
-            <ProblemCitationEditor locale={interfaceLocale} initialOriginal={problem.isOriginal} initial={parseProblemCitations(problem.libraryReferences.filter((item) => revealCitations || !item.spoiler))} draftKey={`mw-citations:${user.id}:problem:${problem.id}`} />
             <div className="problem-compose-actions">
               <button type="submit">{publishesImmediately ? t.contentEditor.saveChanges : t.contentEditor.submitForReview}</button>
               <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
               <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
+                  <ProblemCitationEditor locale={interfaceLocale} initialOriginal={problem.isOriginal} initial={parseProblemCitations(problem.libraryReferences.filter((item) => revealCitations || !item.spoiler))} draftKey={`mw-citations:${user.id}:problem:${problem.id}`} />
 
                   <ProblemClassificationFields
                     initialStyles={problem.styles}

@@ -3,6 +3,8 @@ title: "Comment écrire un concept ?"
 description: "Un guide pour rédiger des pages de concepts sur Math Woods."
 ---
 
+Ce guide donne la direction générale, mais rien ne vous empêche de vous en écarter si cela permet de mieux présenter un concept. L'essentiel est d'aller dans la bonne direction.
+
 # _À quoi sert une page de concept ?_
 
 Une page de concept doit permettre de comprendre et d'utiliser rapidement une notion rencontrée dans un problème. C'est une page de référence, pas un cours complet ni un chapitre de manuel.

@@ -1,5 +1,21 @@
 # Markdown and LaTeX Editor Regression Log
 
+## 2026-09-08 - Older browsers need a UUID fallback
+
+Production reported `crypto.randomUUID is not a function` in Chrome 79. The
+global presence component crashed the page; citation editors and draft-save
+receipts also called the unsupported method directly.
+
+Use `browserUUID` for browser identifiers: native UUIDs when available, otherwise
+UUID v4 from `crypto.getRandomValues`, never weak random draft tokens. Presence is
+optional and stops if cryptography is entirely unavailable. Storage failures
+retain a stable in-memory presence ID instead of breaking the page.
+
+Guardrails: `tests/browser-compatibility.test.mjs`, the draft receipt tests, and
+`tests/client-runtime.browser.mjs` exercise missing UUID support and blocked
+storage. `tests/citation-validation.browser.mjs` disables native UUIDs while
+checking FR/EN problem and concept drafts. Server-side `node:crypto` is unchanged.
+
 ## 2026-09-07 - Clicking a library editor opened the image picker
 
 Biography and contributions were wrapped in a `<label>`. Its implicit control

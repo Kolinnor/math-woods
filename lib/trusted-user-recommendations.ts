@@ -26,7 +26,8 @@ export async function maybeCreateTrustedUserRecommendation(userId: number, reput
       });
       if (!candidate) return null;
 
-      const recommendation = await tx.trustedUserRecommendation.create({
+      const [recommendation] = await tx.trustedUserRecommendation.createManyAndReturn({
+        skipDuplicates: true,
         data: {
           userId: candidate.id,
           reputation,
@@ -34,6 +35,7 @@ export async function maybeCreateTrustedUserRecommendation(userId: number, reput
         },
         select: { id: true }
       });
+      if (!recommendation) return null;
       const notification = await tx.notification.create({
         data: {
           userId: owner.id,
