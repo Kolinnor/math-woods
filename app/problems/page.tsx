@@ -16,7 +16,6 @@ import { RecommendedProblemReader } from "@/components/RecommendedProblemReader"
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
-import { distinctContentCountsByProblemGroup } from "@/lib/content-translation-counts";
 import { prisma } from "@/lib/db";
 import { hasTrustedPrivileges } from "@/lib/permissions";
 import {
@@ -678,7 +677,7 @@ export default async function ProblemsPage({
     return problem ? [problem] : [];
   });
   const displayedTranslationGroupIds = problems.map((problem) => problem.translationGroupId);
-  const [groupAttempts, groupFavorites, groupProofs, groupHints] = displayedTranslationGroupIds.length
+  const [groupAttempts, groupFavorites] = displayedTranslationGroupIds.length
     ? await Promise.all([
         prisma.problemAttempt.findMany({
           where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
@@ -694,23 +693,9 @@ export default async function ProblemsPage({
             userId: true,
             problem: { select: { translationGroupId: true } }
           }
-        }),
-        prisma.problemProof.findMany({
-          where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
-          select: {
-            translationGroupId: true,
-            problem: { select: { translationGroupId: true } }
-          }
-        }),
-        prisma.problemHint.findMany({
-          where: { problem: { translationGroupId: { in: displayedTranslationGroupIds } } },
-          select: {
-            translationGroupId: true,
-            problem: { select: { translationGroupId: true } }
-          }
         })
       ])
-    : [[], [], [], []];
+    : [[], []];
   const solvedUsersByGroup = new Map<string, Set<number>>();
   const favoriteUsersByGroup = new Map<string, Set<number>>();
   const openedTranslationGroupIds = new Set<string>();
@@ -730,8 +715,6 @@ export default async function ProblemsPage({
     favoriteUsers.add(favorite.userId);
     favoriteUsersByGroup.set(groupId, favoriteUsers);
   }
-  const solutionCountByGroup = distinctContentCountsByProblemGroup(groupProofs);
-  const hintCountByGroup = distinctContentCountsByProblemGroup(groupHints);
   const paginationParams = {
     q: query,
     tag: tagSlug,
@@ -1018,8 +1001,6 @@ export default async function ProblemsPage({
               const isSolved = Boolean(user && groupSolvedUsers.has(user.id));
               const isOpened = !isSolved && openedTranslationGroupIds.has(problem.translationGroupId);
               const isUserFavorite = Boolean(!isOwnProblem && user && groupFavoriteUsers.has(user.id));
-              const groupSolutionCount = solutionCountByGroup.get(problem.translationGroupId) ?? 0;
-              const groupHintCount = hintCountByGroup.get(problem.translationGroupId) ?? 0;
               const externalFavoriteCount = [...groupFavoriteUsers].filter((userId) => userId !== problem.authorId).length;
               const revealSpoilerDomains = showSpoilerTags || isSolved;
               const visibleDomainCodes = problem.domains.length
@@ -1098,7 +1079,6 @@ export default async function ProblemsPage({
                       <h3>
                         <AsyncMarkdownInline markdown={problem.title} />
                         <ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} />
-                        {problem.canAppearOnFrontPage && <span className="problem-language-badge">{t.problems.featured}</span>}
                         {problem.isExercise && <span className="problem-language-badge">{t.problems.exerciseType}</span>}
                       </h3>
                       <span
@@ -1119,10 +1099,6 @@ export default async function ProblemsPage({
                           : t.problems.domainHidden}
                         {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""}
                       </span>
-                      <span aria-hidden="true">·</span>
-                      <span className="problem-ledger-solve-count">{t.problems.solutionsCount(groupSolutionCount)}</span>
-                      <span aria-hidden="true">·</span>
-                      <span className="problem-ledger-solve-count">{t.problems.hintsCount(groupHintCount)}</span>
                     </div>
                     </div>
                   </Link>

@@ -8,6 +8,8 @@ import { DailyTipCard } from "@/components/DailyTipCard";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { HomeContestCard } from "@/components/HomeContestCard";
 import { HomeEditorialSwitcher } from "@/components/HomeEditorialSwitcher";
+import { FieldHelp } from "@/components/FieldHelp";
+import { getHomePublicStats } from "@/lib/home-public-stats";
 import { maybeSendContestLifecycleNotifications } from "@/lib/actions/contest-actions";
 import { Difficulty } from "@/components/Difficulty";
 import { ProgressTicks } from "@/components/ProgressTicks";
@@ -16,10 +18,10 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { cappedAnnouncementCount, unreadAnnouncementCount } from "@/lib/announcements";
 import { getCurrentUser } from "@/lib/auth";
 import {
-  automaticDailyProblemGroup,
   dailyProblemDefaultImageUrl,
   dailyProblemDateKey
 } from "@/lib/daily-problem-schedule";
+import { getOrCreateDailyProblemSchedule } from "@/lib/automatic-daily-problem";
 import { loadDailyTip } from "@/lib/daily-tip";
 import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
@@ -121,10 +123,20 @@ const dashboardCopy = {
 
 const guestDashboardCopy = {
   en: {
-    recommendations: "Recommended problems"
+    recommendations: "Recommended problems",
+    statsLabel: "Explore Math Woods",
+    problems: (count: number) => count === 1 ? "problem to solve" : "problems to solve",
+    concepts: (count: number) => count === 1 ? "concept to explore" : "concepts to explore",
+    resolutions: (count: number) => count === 1 ? "problem solved" : "problems solved",
+    resolutionsHelp: "Problems solved by members, counted once per member and problem, across all languages."
   },
   fr: {
-    recommendations: "Problèmes recommandés"
+    recommendations: "Problèmes recommandés",
+    statsLabel: "Explorer Math Woods",
+    problems: (count: number) => count === 1 ? "problème à résoudre" : "problèmes à résoudre",
+    concepts: (count: number) => count === 1 ? "concept à explorer" : "concepts à explorer",
+    resolutions: (count: number) => count === 1 ? "résolution" : "résolutions",
+    resolutionsHelp: "Problèmes résolus par les membres, comptés une fois par membre et par problème, toutes langues confondues."
   }
 } as const;
 
@@ -207,76 +219,18 @@ export default async function HomePage({
     ? cappedAnnouncementCount(await unreadAnnouncementCount(user))
     : 0;
 
-  const dailyWhere = {
-    status: "PUBLISHED" as const,
-    listed: true,
-    isExercise: false,
-    canAppearOnFrontPage: true
-  };
   const todayDateKey = dailyProblemDateKey();
-  const scheduledDailyProblem = await prisma.dailyProblemSchedule.findUnique({
-    where: { dateKey: todayDateKey },
-    include: {
-      problem: {
-        select: {
-          translationGroupId: true,
-          status: true,
-          listed: true,
-          isExercise: true
-        }
-      }
-    }
-  });
+  const scheduledDailyProblem = await getOrCreateDailyProblemSchedule(todayDateKey);
   const scheduledDailyGroup =
     scheduledDailyProblem?.problem.status === "PUBLISHED"
     && scheduledDailyProblem.problem.listed
     && !scheduledDailyProblem.problem.isExercise
       ? scheduledDailyProblem.problem.translationGroupId
       : null;
-  const [dailyCandidates, previousDailyProblems] = scheduledDailyGroup
-    ? [[], []]
-    : await Promise.all([
-        prisma.problem.findMany({
-          where: { ...dailyWhere, translatedFromProblemId: null },
-          select: { translationGroupId: true }
-        }),
-        prisma.dailyProblemSchedule.findMany({
-          where: { dateKey: { lt: todayDateKey } },
-          select: { problem: { select: { translationGroupId: true } } }
-        })
-      ]);
-  const chosenDailyGroup = scheduledDailyGroup
-    ?? automaticDailyProblemGroup(
-      dailyCandidates,
-      todayDateKey,
-      previousDailyProblems.map((schedule) => schedule.problem.translationGroupId)
-    )
-    ?? null;
+  const chosenDailyGroup = scheduledDailyGroup;
   const dailyTranslations = chosenDailyGroup
     ? await prisma.problem.findMany({
         where: { translationGroupId: chosenDailyGroup, status: "PUBLISHED", listed: true },
-        include: { author: true }
-      })
-    : [];
-  const fallbackDailySource = dailyTranslations.length === 0
-    ? await prisma.problem.findFirst({
-        where: {
-          status: "PUBLISHED",
-          listed: true,
-          isExercise: false,
-          translatedFromProblemId: null
-        },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, translationGroupId: true }
-      })
-    : null;
-  const fallbackDailyTranslations = fallbackDailySource
-    ? await prisma.problem.findMany({
-        where: {
-          translationGroupId: fallbackDailySource.translationGroupId,
-          status: "PUBLISHED",
-          listed: true
-        },
         include: { author: true }
       })
     : [];
@@ -287,24 +241,7 @@ export default async function HomePage({
         isSource: problem.translatedFromProblemId === null
       })),
       preferredLanguage
-    ) ??
-    selectContentTranslation(
-      fallbackDailyTranslations.map((problem) => ({
-        ...problem,
-        isSource: problem.translatedFromProblemId === null
-      })),
-      preferredLanguage
     );
-  if (!scheduledDailyProblem && dailyProblem) {
-    const storedDailyProblem = dailyTranslations.find((problem) => problem.translatedFromProblemId === null)
-      ?? fallbackDailyTranslations.find((problem) => problem.translatedFromProblemId === null)
-      ?? dailyProblem;
-    await prisma.dailyProblemSchedule.upsert({
-      where: { dateKey: todayDateKey },
-      create: { dateKey: todayDateKey, problemId: storedDailyProblem.id },
-      update: {}
-    });
-  }
   const usesScheduledDailyProblem = Boolean(
     scheduledDailyGroup && dailyProblem?.translationGroupId === scheduledDailyGroup
   );
@@ -658,6 +595,8 @@ export default async function HomePage({
   );
 
   if (!user) {
+    const stats = await getHomePublicStats();
+    const number = new Intl.NumberFormat(locale);
     return (
       <div className="home-shell home-dashboard home-dashboard-guest">
         <section className="home-hero-forest home-hero-guest">
@@ -686,6 +625,21 @@ export default async function HomePage({
           >
             <cite>Morning in a Pine Forest</cite>, Ivan Shishkin · Wikimedia Commons
           </a>
+        </section>
+
+        <section className="home-public-stats" aria-label={guestCopy.statsLabel}>
+          <Link href="/problems" className="home-public-stat">
+            <strong>{number.format(stats.problems)}</strong>
+            <span>{guestCopy.problems(stats.problems)}</span>
+          </Link>
+          <Link href="/concepts" className="home-public-stat">
+            <strong>{number.format(stats.concepts)}</strong>
+            <span>{guestCopy.concepts(stats.concepts)}</span>
+          </Link>
+          <div className="home-public-stat">
+            <strong>{number.format(stats.resolutions)}</strong>
+            <span>{guestCopy.resolutions(stats.resolutions)} <FieldHelp text={guestCopy.resolutionsHelp} /></span>
+          </div>
         </section>
 
         <main className={`home-dashboard-grid${tourMode ? "" : " home-dashboard-grid-guest"}`}>

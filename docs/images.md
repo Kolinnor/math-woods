@@ -1,5 +1,15 @@
 # Image storage
 
+## Local development
+
+When running `next dev` on localhost without Object Storage configuration,
+`/api/images/upload` stores validated images in `runtime/development-images/`.
+The same authentication, verification, rate limit, size and image decoding checks apply.
+Files are served by `/api/images/local/[filename]`; that route is unavailable in
+production and for non-loopback request URLs. These ignored local files are not
+included in commits or deployment archives. Configure Object Storage when testing
+production builds or when images need to be available on the deployed site.
+
 Math Woods stores uploaded images outside the application server. The app issues a short-lived signed upload URL, then the browser uploads directly to an S3-compatible bucket such as Infomaniak Object Storage.
 
 ## Infomaniak setup

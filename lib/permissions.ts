@@ -81,6 +81,7 @@ export function canEditLibraryDraft(
   user: PermissionUser,
   entry: { createdById: number | null; status: LibraryStatus }
 ) {
+  if (hasAdminPrivileges(user.role)) return true;
   if (entry.status === LibraryStatus.PUBLISHED) return hasTrustedPrivileges(user.role);
   if (entry.status === LibraryStatus.ARCHIVED) return hasAdminPrivileges(user.role);
   return entry.createdById === user.id && (

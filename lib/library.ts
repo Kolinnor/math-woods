@@ -53,8 +53,8 @@ export function historyEraLabel(era: HistoryEra, locale: "en" | "fr") {
 
 export function milestoneTypeLabel(type: HistoryMilestoneType, locale: "en" | "fr") {
   const labels = {
-    en: { DISCOVERY: "Discovery", PUBLICATION: "Publication", NOTATION: "Notation", INSTITUTION: "Institution", BIOGRAPHICAL: "Biography", OTHER: "Milestone" },
-    fr: { DISCOVERY: "Découverte", PUBLICATION: "Publication", NOTATION: "Notation", INSTITUTION: "Institution", BIOGRAPHICAL: "Biographie", OTHER: "Repère" }
+    en: { PERIOD: "Historical period", DISCOVERY: "Discovery", PUBLICATION: "Publication", NOTATION: "Notation", INSTITUTION: "Institution", BIOGRAPHICAL: "Biography", OTHER: "Milestone" },
+    fr: { PERIOD: "Période historique", DISCOVERY: "Découverte", PUBLICATION: "Publication", NOTATION: "Notation", INSTITUTION: "Institution", BIOGRAPHICAL: "Biographie", OTHER: "Repère" }
   } as const;
   return labels[locale][type];
 }

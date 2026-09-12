@@ -31,7 +31,7 @@ export default async function LibraryHistoryPage({ searchParams }: { searchParam
   const copy = libraryCopy[locale];
   const canAdd = user && isVerifiedContributor(user);
   return (
-    <ForestPageLayout title={copy.history} heroImage="/art/brook-in-the-forest.jpg">
+    <ForestPageLayout className="library-history-page" title={copy.history} heroImage="/art/history-forest-ruins.avif" heroAlt={locale === "fr" ? "Ruines de pierre au milieu de collines boisées" : "Stone ruins among forested hills"}>
       <LibraryTabs active="history" locale={locale} />
       <form className="library-filter-bar"><input name="q" defaultValue={q} placeholder={locale === "fr" ? "Rechercher dans la chronologie" : "Search the timeline"} /><select name="era" defaultValue={era ?? ""}><option value="">{locale === "fr" ? "Toutes les périodes" : "All eras"}</option>{Object.values(HistoryEra).map((value) => <option value={value} key={value}>{historyEraLabel(value, locale)}</option>)}</select><button type="submit">{locale === "fr" ? "Rechercher" : "Search"}</button></form>
       {(canAdd || entries.length > 0) && <ol className="library-timeline">

@@ -1,5 +1,51 @@
 # Markdown and LaTeX Editor Regression Log
 
+## 2026-09-11 - Historical milestone publication preserves incomplete work
+
+An empty milestone description triggered an uncaught server error during publication.
+Descriptions are now optional for stubs, both on creation and edit. The milestone
+form uses the same explicit `useActionState` dispatch as references and mathematicians:
+validation errors stay in the form without resetting text, dates, images or credits.
+Successful submissions still redirect; authentication redirects are rethrown.
+Duplicate submission is disabled while saving or uploading. Browser regression checks
+exercise a failed save followed by retry with all field values preserved.
+
+## 2026-09-11 - Unified internal link search
+
+The editor searches concepts, problems and accessible Library entries together,
+with an optional type filter. Reuse concept/problem suggestion logic; the global
+problem search requests published, listed entries. Library suggestions require
+admin access while `/library` remains admin-only, and exclude unpublished entries,
+hidden references and merged records. Queries are bounded and parameterized;
+each translated Library object appears once in the preferred content language.
+
+Selecting a result defines its destination without overwriting the user's label.
+Concepts retain wiki links; problems and Library entries use fixed internal paths.
+Reopening a selected internal link preserves the target. Only the Concepts filter
+allows missing-concept links, after a successful search; errors never count as
+evidence that a page is missing. Cancel or Escape never submits the enclosing form.
+Aborted searches cannot replace newer results. The results list shows at most five
+rows, and changing the displayed text is behind a disclosure.
+
+Guardrails: `npm run test:editor-links` and `npm run test:editor-links:browser`.
+Set `MW_PGLITE_MODULE` to an isolated PGlite module path to execute the SQL test.
+Browser tests use real CodeMirror in FR/EN, Chromium/WebKit, with mocked search
+responses; cover all destinations, editing, keyboard, stale/error responses and
+small screens. The green-help regression below remains covered separately.
+
+## 2026-09-11 - Link menu help was clipped horizontally
+
+The green help icons anchored fixed-width tooltips to their own position. In the
+scrollable link menu, long help text extended beyond the right edge and caused
+horizontal scrolling. Anchor these tooltips to the full field label and constrain
+their border-box width to that label. Keep the menu's vertical scrolling and the
+shared help behavior outside the link menu unchanged.
+
+Guardrail: `node tests/link-help.browser.mjs` uses the actual help component,
+FR/EN text and link menu CSS in Chromium and WebKit at 320, 390 and 1280 px, with
+enlarged text. Both help texts must fit without horizontal scrolling on hover
+and keyboard focus. This test fails against the former styles.
+
 ## 2026-09-08 - Older browsers need a UUID fallback
 
 Production reported `crypto.randomUUID is not a function` in Chrome 79. The

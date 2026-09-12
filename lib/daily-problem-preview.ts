@@ -1,8 +1,8 @@
 import {
-  automaticDailyProblemGroup,
   dailyProblemDefaultImageUrl,
   isDailyProblemDateKey
 } from "@/lib/daily-problem-schedule";
+import { selectAutomaticDailyProblem } from "@/lib/automatic-daily-problem";
 import { prisma } from "@/lib/db";
 import { tipImageObjectPosition } from "@/lib/tip-images";
 import { selectContentTranslation } from "@/lib/translation-routing";
@@ -55,60 +55,17 @@ export async function loadDailyProblemPreview(
         ? scheduled.problem.translationGroupId
         : null;
 
-  const [candidates, previouslyFeatured] = scheduledGroup
-    ? [[], []]
-    : await Promise.all([
-        prisma.problem.findMany({
-          where: {
-            status: "PUBLISHED",
-            listed: true,
-            isExercise: false,
-            canAppearOnFrontPage: true,
-            translatedFromProblemId: null
-          },
-          select: { translationGroupId: true }
-        }),
-        prisma.dailyProblemSchedule.findMany({
-          where: { dateKey: { lt: dateKey } },
-          select: { problem: { select: { translationGroupId: true } } }
-        })
-      ]);
-  const chosenGroup = scheduledGroup
-    ?? automaticDailyProblemGroup(
-      candidates,
-      dateKey,
-      previouslyFeatured.map((entry) => entry.problem.translationGroupId)
-    );
+  const automatic = scheduledGroup || (!usesDraft && scheduled)
+    ? null : await selectAutomaticDailyProblem(dateKey);
+  const chosenGroup = scheduledGroup ?? automatic?.translationGroupId;
   const translations = chosenGroup
     ? await prisma.problem.findMany({
         where: { translationGroupId: chosenGroup, status: "PUBLISHED", listed: true },
         include: { author: true }
       })
     : [];
-  const fallbackSource = translations.length === 0
-    ? await prisma.problem.findFirst({
-        where: {
-          status: "PUBLISHED",
-          listed: true,
-          isExercise: false,
-          translatedFromProblemId: null
-        },
-        orderBy: { createdAt: "desc" },
-        select: { translationGroupId: true }
-      })
-    : null;
-  const fallbackTranslations = fallbackSource
-    ? await prisma.problem.findMany({
-        where: {
-          translationGroupId: fallbackSource.translationGroupId,
-          status: "PUBLISHED",
-          listed: true
-        },
-        include: { author: true }
-      })
-    : [];
   const problem = selectContentTranslation(
-    (translations.length ? translations : fallbackTranslations).map((candidate) => ({
+    translations.map((candidate) => ({
       ...candidate,
       isSource: candidate.translatedFromProblemId === null
     })),

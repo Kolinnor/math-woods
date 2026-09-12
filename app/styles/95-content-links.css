@@ -1,0 +1,64 @@
+/* Shared destination colours for reading links and the editor's link picker. */
+:root {
+  --link-problem: #a54d32;
+  --link-concept: #246b4b;
+  --link-mathematician: #795477;
+  --link-reference: #476986;
+  --link-history: #88651f;
+}
+
+:is(.prose-math, .markdown-inline) a[href^="/problems/"],
+a.markdown-problem-link,
+[data-link-type="problem"] {
+  --content-link-color: var(--link-problem);
+}
+
+:is(.prose-math, .markdown-inline) a[href^="/concepts/"],
+a.wiki-link,
+[data-link-type="concept"] {
+  --content-link-color: var(--link-concept);
+}
+
+:is(.prose-math, .markdown-inline) a[href^="/library/mathematicians/"],
+[data-link-type="mathematician"] {
+  --content-link-color: var(--link-mathematician);
+}
+
+:is(.prose-math, .markdown-inline) a[href^="/library/references/"],
+[data-link-type="reference"] {
+  --content-link-color: var(--link-reference);
+}
+
+:is(.prose-math, .markdown-inline) a[href^="/library/history/"],
+[data-link-type="history"] {
+  --content-link-color: var(--link-history);
+}
+
+:is(.prose-math, .markdown-inline) a:is(
+  [href^="/problems/"], [href^="/concepts/"], [href^="/library/mathematicians/"],
+  [href^="/library/references/"], [href^="/library/history/"]
+):not(.missing),
+a:is(.wiki-link, .markdown-problem-link):not(.missing) {
+  color: var(--content-link-color);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+:is(.prose-math, .markdown-inline) a:is(
+  [href^="/problems/"], [href^="/concepts/"], [href^="/library/mathematicians/"],
+  [href^="/library/references/"], [href^="/library/history/"]
+):not(.missing):is(:hover, :focus-visible),
+a:is(.wiki-link, .markdown-problem-link):not(.missing):is(:hover, :focus-visible) {
+  color: var(--content-link-color);
+  text-decoration-thickness: 2px;
+}
+
+.markdown-link-menu-results button[data-link-type] .markdown-link-result-icon,
+.markdown-link-menu-selected[data-link-type] > :first-child,
+.markdown-link-menu-selected[data-link-type] > small {
+  color: var(--content-link-color);
+}
+
+.markdown-editor .cm-md-problem-link { color: var(--link-problem); }
+.markdown-editor .cm-md-wikilink { color: var(--link-concept); }

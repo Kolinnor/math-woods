@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { developmentImageStorageEnabled, writeDevelopmentImage } from "@/lib/development-image-storage";
 import {
   buildImageObjectKey,
   createPresignedImageUpload,
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       { status: 503 }
     );
   }
-  if (!config) {
+  if (!config && !developmentImageStorageEnabled(request.url)) {
     return NextResponse.json({ ok: false, error: "Image storage is not configured." }, { status: 503 });
   }
 
@@ -78,6 +79,11 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "The server could not process this image.";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });
+  }
+
+  if (!config) {
+    const storedImage = await writeDevelopmentImage(processedImage.body, processedImage.contentType);
+    return NextResponse.json({ ok: true, image: storedImage });
   }
 
   const key = buildImageObjectKey({

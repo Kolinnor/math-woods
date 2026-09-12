@@ -14,7 +14,7 @@ test("only admins and owners can correct pending references; other entry permiss
       const user = { id: 2, role, emailVerifiedAt: new Date() };
       const pending = { createdById, status: "PENDING_REVIEW" };
       assert.equal(permissions.canEditLibraryReference(user, pending), ["ADMIN", "OWNER"].includes(role));
-      assert.equal(permissions.canEditLibraryDraft(user, pending), false);
+      assert.equal(permissions.canEditLibraryDraft(user, pending), ["ADMIN", "OWNER"].includes(role));
       for (const status of ["DRAFT", "NEEDS_WORK", "PUBLISHED", "ARCHIVED"]) {
         const entry = { createdById, status };
         assert.equal(permissions.canEditLibraryReference(user, entry), permissions.canEditLibraryDraft(user, entry));
@@ -29,7 +29,7 @@ const compiled = ts.transpileModule(readFileSync(new URL("../lib/actions/library
 }).outputText;
 const version = new Date("2026-09-06T12:00:00Z");
 function harness(status, race = false) {
-  const entry = { id: 1, slug: "elements", canonicalTitle: "Elements", createdById: 1, status, updatedAt: version, submittedAt: version };
+  const entry = { id: 1, slug: "elements", canonicalTitle: "Elements", createdById: 1, status, updatedAt: version, submittedAt: version, publishedAt: version };
   const writes = [];
   const redirects = [];
   const unexpected = () => { throw new Error("Unexpected notification or publication"); };
@@ -66,19 +66,21 @@ const form = (intent, timestamp = version.toISOString()) => {
   return data;
 };
 
-test("corrections preserve pending, published and archived states, review metadata and URLs", async () => {
+test("corrections keep publication and archives, reset review and preserve URLs and publication dates", async () => {
   for (const status of ["PENDING_REVIEW", "PUBLISHED", "ARCHIVED"]) {
-    // Legacy submit/draft buttons must not bypass the separate review workflow.
+    // Legacy submit/draft buttons must not hide an already submitted entry.
     for (const intent of ["save", "submit", "draft"]) {
       const h = harness(status);
       await h.action(1, form(intent));
       assert.equal(h.writes.length, 1);
       const data = h.writes[0];
-      assert.equal(data.status, status);
+      assert.equal(data.status, status === "PENDING_REVIEW" ? "PUBLISHED" : status);
       assert.equal(data.submittedAt, h.entry.submittedAt);
-      for (const key of ["reviewedById", "reviewedAt", "reviewNote", "slug", "publishedAt"]) assert.equal(data[key], undefined);
+      for (const key of ["reviewedById", "reviewedAt"]) assert.equal(data[key], null);
+      for (const key of ["reviewNote", "slug"]) assert.equal(data[key], undefined);
+      assert.equal(data.publishedAt, status === "ARCHIVED" ? undefined : version);
       assert.equal(data.translations.upsert.update.displayTitle, "Éléments");
-      assert.deepEqual(h.redirects, ["/library/references/elements"]);
+      assert.deepEqual(h.redirects, ["/library/references/elements?lang=fr"]);
     }
   }
 });

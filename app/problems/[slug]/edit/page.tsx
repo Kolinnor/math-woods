@@ -38,8 +38,7 @@ import {
   canDeleteProblem,
   canEditProblem,
   canSetProblemQualityStatus,
-  canTransferProblemAttribution,
-  canUseAdminTools
+  canTransferProblemAttribution
 } from "@/lib/permissions";
 import { canPublishProblemEditForProblem } from "@/lib/problem-edit-access";
 import { renderInlineMarkdown } from "@/lib/markdown";
@@ -91,7 +90,6 @@ export default async function EditProblemPage({
   if (!problem) notFound();
   const canEditArchivedProblem = canEditProblem(user, problem);
   const canDeleteCurrentProblem = canDeleteProblem(user, problem);
-  const canManageFrontPageEligibility = canUseAdminTools(user);
   const canTransferAttribution = canTransferProblemAttribution(user);
   const publishesImmediately = await canPublishProblemEditForProblem(user, problem);
   const canManageProblemHints = publishesImmediately;
@@ -251,14 +249,6 @@ export default async function EditProblemPage({
                         showRelatedProblemsHelp: t.contentEditor.showRelatedProblemsHelp
                       }}
                     />
-                    {canManageFrontPageEligibility && (
-                      <label className="checkbox-field">
-                        <input name="canAppearOnFrontPage" type="checkbox" defaultChecked={problem.canAppearOnFrontPage} />
-                        <span>
-                          <strong>{t.contentEditor.featureProblem}</strong>
-                        </span>
-                      </label>
-                    )}
                     {canSetCurrentQualityStatus && (
                       <label className="grid gap-2">
                         <span className="field-label-with-help text-sm font-medium">

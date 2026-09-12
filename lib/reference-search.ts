@@ -8,7 +8,7 @@ export function referenceSearchWords(query: string) {
 
 // PostgreSQL's built-in Unicode normalization avoids requiring an unaccent
 // extension. User input is always a bound parameter, never a SQL identifier.
-function foldedSql(value: Prisma.Sql) {
+export function foldedSql(value: Prisma.Sql) {
   const marks = "[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]";
   return Prisma.sql`regexp_replace(
     replace(replace(replace(regexp_replace(lower(normalize(${value}, NFKD)), ${marks}, '', 'g'), 'œ', 'oe'), 'æ', 'ae'), 'ß', 'ss'),

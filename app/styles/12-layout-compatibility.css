@@ -2514,7 +2514,9 @@ textarea {
   color: var(--ink);
   content: attr(data-tooltip);
   font-size: 0.78rem;
+  font-style: normal;
   font-weight: 500;
+  letter-spacing: normal;
   left: 0;
   line-height: 1.45;
   max-width: calc(100vw - 2rem);
@@ -2523,6 +2525,7 @@ textarea {
   pointer-events: none;
   position: absolute;
   text-align: left;
+  text-transform: none;
   top: calc(100% + 0.45rem);
   transform: translateY(-0.2rem);
   transition: opacity 120ms ease, transform 120ms ease;

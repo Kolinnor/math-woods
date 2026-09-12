@@ -17,8 +17,8 @@ import {
   WidgetType
 } from "@codemirror/view";
 import katex from "katex";
-import { ChevronDown, ImageIcon, Link2, Loader2, Orbit } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
+import { BookOpen, ChevronDown, Clock, FileText, ImageIcon, Link2, Loader2, Orbit, Shapes, UserRound } from "lucide-react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type WheelEvent } from "react";
 import { FieldHelp } from "@/components/FieldHelp";
 import { MarkdownInline } from "@/components/MarkdownInline";
 import { useMarkdownEditorLabels } from "@/components/markdown/MarkdownEditorLabelsContext";
@@ -87,7 +87,8 @@ import { DEFAULT_MARKDOWN_FOLD_TITLE, markdownFoldBlock } from "@/lib/markdown-f
 import { overlapsRanges } from "@/lib/markdown-ranges";
 import { ensureSlug } from "@/lib/slug";
 import { JSXGRAPH_MARKDOWN_TEMPLATE } from "@/lib/jsxgraph";
-import { cleanWikiLinkLabel, cleanWikiLinkTarget, problemLinkMarkup, wikiLinkMarkup } from "@/lib/wikilinks";
+import { cleanWikiLinkTarget, wikiLinkMarkup } from "@/lib/wikilinks";
+import { EDITOR_LINK_TYPES, editorLinkMarkup, parseEditorLink, type EditorLinkSuggestion, type EditorLinkType } from "@/lib/editor-links";
 import { wikiLinkDeleteChange } from "@/lib/wiki-link-deletion";
 import { clearAcknowledgedEditorDrafts, markEditorDraftSubmission } from "@/lib/editor-draft-receipts";
 
@@ -244,31 +245,8 @@ function appendToolbarIcon(button: HTMLButtonElement, icon: MarkdownImageToolbar
   button.appendChild(svg);
 }
 
-type LinkTargetType = "concept" | "problem";
-
-type LinkSuggestion = {
-  targetType: LinkTargetType;
-  title: string;
-  titleHtml: string;
-  slug: string;
-  aliases: string[];
-  meta?: string;
-};
-
-type ConceptSuggestionResponse = Omit<LinkSuggestion, "targetType">;
-
-type ProblemSuggestionResponse = {
-  title: string;
-  titleHtml: string;
-  slug: string;
-  domainLabel: string;
-  difficulty: number | null;
-};
-
-function linkTargetForSuggestion(suggestion: LinkSuggestion) {
-  if (suggestion.targetType === "problem") return suggestion.title;
-  return ensureSlug(suggestion.title, "") === suggestion.slug ? suggestion.title : suggestion.slug;
-}
+type LinkTargetType = "all" | EditorLinkType;
+type LinkSuggestion = EditorLinkSuggestion;
 
 type ImageUploadResponse = {
   ok: boolean;
@@ -406,26 +384,6 @@ function formatDraftTime(timestamp: number) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(timestamp));
-}
-
-function parseSelectedWikiLink(value: string) {
-  const match = value.match(/^\[\[([^\]\n]+)\]\]$/);
-  if (!match) return null;
-
-  const [target, label] = match[1].split("|", 2);
-  return {
-    target: cleanWikiLinkTarget(target),
-    label: cleanWikiLinkLabel(label ?? target)
-  };
-}
-
-function parseSelectedProblemLink(value: string) {
-  const match = value.match(/^\[([^\]\n]+)\]\(\/problems\/([a-z0-9-]+)\)$/i);
-  if (!match) return null;
-  return {
-    label: cleanWikiLinkLabel(match[1]),
-    slug: ensureSlug(match[2], "")
-  };
 }
 
 function nearestLinkMenuScroller(target: EventTarget | null, menu: HTMLElement) {
@@ -1535,6 +1493,7 @@ export function MarkdownEditor({
   const markdownShortcutCompartmentRef = useRef(new Compartment());
   const latexShortcutCompartmentRef = useRef(new Compartment());
   const linkMenuRef = useRef<HTMLDivElement | null>(null);
+  const linkResultsId = useId();
   const linkTargetInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState(initialValue);
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
@@ -1542,13 +1501,16 @@ export function MarkdownEditor({
   const [linkMenu, setLinkMenu] = useState<LinkMenuState | null>(null);
   const openLinkMenuRef = useRef<((x: number, y: number) => void) | null>(null);
   const [linkMenuPosition, setLinkMenuPosition] = useState<LinkMenuPosition | null>(null);
-  const [linkTargetType, setLinkTargetType] = useState<LinkTargetType>("concept");
+  const [linkTargetType, setLinkTargetType] = useState<LinkTargetType>("all");
   const [linkTarget, setLinkTarget] = useState("");
   const [linkText, setLinkText] = useState("");
   const [linkSuggestions, setLinkSuggestions] = useState<LinkSuggestion[]>([]);
   const [linkSuggestionsLoading, setLinkSuggestionsLoading] = useState(false);
-  const [selectedLinkSuggestionQuery, setSelectedLinkSuggestionQuery] = useState<string | null>(null);
-  const [selectedProblemSlug, setSelectedProblemSlug] = useState<string | null>(null);
+  const [selectedLink, setSelectedLink] = useState<LinkSuggestion | null>(null);
+  const [availableLinkTypes, setAvailableLinkTypes] = useState<readonly string[]>(["concept", "problem"]);
+  const [linkSearchError, setLinkSearchError] = useState(false);
+  const [completedLinkSearch, setCompletedLinkSearch] = useState<string | null>(null);
+  const [activeLinkResult, setActiveLinkResult] = useState(0);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageUploadMessage, setImageUploadMessage] = useState<string | null>(null);
 
@@ -1845,8 +1807,7 @@ export function MarkdownEditor({
     setValue(initialValue);
     setLinkMenu(null);
     setLinkSuggestions([]);
-    setSelectedLinkSuggestionQuery(null);
-    setSelectedProblemSlug(null);
+    setSelectedLink(null);
 
     const view = viewRef.current;
     if (!view) return;
@@ -1865,60 +1826,30 @@ export function MarkdownEditor({
     if (!linkMenu) {
       setLinkSuggestions([]);
       setLinkSuggestionsLoading(false);
-      setSelectedLinkSuggestionQuery(null);
       return;
     }
-
     const query = linkTarget.trim();
-    if (!query) {
-      setLinkSuggestions([]);
-      setLinkSuggestionsLoading(false);
-      return;
-    }
-    if (selectedLinkSuggestionQuery === query) {
-      setLinkSuggestions([]);
-      setLinkSuggestionsLoading(false);
-      return;
-    }
-
     const controller = new AbortController();
-    setLinkSuggestionsLoading(true);
+    setLinkSuggestions([]);
+    setCompletedLinkSearch(null);
+    setLinkSearchError(false);
+    setActiveLinkResult(0);
+    setLinkSuggestionsLoading(query.length >= 2 && !selectedLink);
     const timeout = window.setTimeout(() => {
-      const endpoint = linkTargetType === "concept" ? "/api/concepts/suggest" : "/api/problems/suggest";
-      fetch(`${endpoint}?q=${encodeURIComponent(query)}`, {
+      // Even an empty search returns the types the current user can access.
+      fetch(`/api/links/suggest?q=${encodeURIComponent(selectedLink ? "" : query)}&type=${linkTargetType}`, {
         signal: controller.signal
       })
-        .then((response) => (response.ok ? response.json() : {}))
-        .then((data: { concepts?: ConceptSuggestionResponse[]; problems?: ProblemSuggestionResponse[] }) => {
-          if (linkTargetType === "concept") {
-            setLinkSuggestions(
-              Array.isArray(data.concepts)
-                ? data.concepts.map((suggestion) => ({ ...suggestion, targetType: "concept" as const }))
-                : []
-            );
-            return;
-          }
-
-          setLinkSuggestions(
-            Array.isArray(data.problems)
-              ? data.problems.map((suggestion) => ({
-                  aliases: [],
-                  meta: [
-                    suggestion.domainLabel,
-                    suggestion.difficulty === null ? null : `${labels.difficulty} ${suggestion.difficulty}/100`
-                  ]
-                    .filter(Boolean)
-                    .join(" / "),
-                  slug: suggestion.slug,
-                  targetType: "problem" as const,
-                  title: suggestion.title,
-                  titleHtml: suggestion.titleHtml
-                }))
-              : []
-          );
+        .then((response) => { if (!response.ok) throw new Error("Link search failed"); return response.json(); })
+        .then((data: { results: LinkSuggestion[]; availableTypes: string[] }) => {
+          if (controller.signal.aborted) return;
+          setAvailableLinkTypes(data.availableTypes);
+          setLinkSuggestions(selectedLink ? [] : data.results);
+          setCompletedLinkSearch(`${linkTargetType}:${query}`);
         })
-        .catch((error) => {
-          if (error instanceof DOMException && error.name === "AbortError") return;
+        .catch(() => {
+          if (controller.signal.aborted) return;
+          setLinkSearchError(true);
           setLinkSuggestions([]);
         })
         .finally(() => {
@@ -1930,7 +1861,7 @@ export function MarkdownEditor({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [labels.difficulty, linkMenu, linkTarget, linkTargetType, selectedLinkSuggestionQuery]);
+  }, [linkMenu, linkTarget, linkTargetType, selectedLink]);
 
   function discardDraft() {
     const key = draftKeyRef.current;
@@ -1971,17 +1902,16 @@ export function MarkdownEditor({
 
     const selection = view.state.selection.main;
     const selectedText = view.state.doc.sliceString(selection.from, selection.to).trim();
-    const selectedLink = selectedText ? parseSelectedWikiLink(selectedText) : null;
-    const selectedProblemLink = selectedText ? parseSelectedProblemLink(selectedText) : null;
+    const existingLink = parseEditorLink(selectedText);
 
     view.focus();
     schedulePreviewFocus(view, true);
-    setLinkTargetType(selectedProblemLink ? "problem" : "concept");
-    setSelectedProblemSlug(selectedProblemLink?.slug ?? null);
-    setLinkTarget(
-      selectedProblemLink?.slug ?? selectedLink?.target ?? (selectedText ? cleanWikiLinkTarget(selectedText) : "")
-    );
-    setLinkText(selectedProblemLink?.label ?? selectedLink?.label ?? selectedText);
+    setLinkTargetType("all");
+    setSelectedLink(existingLink ? { targetType: existingLink.targetType, slug: ensureSlug(existingLink.target, ""), title: existingLink.target, titleHtml: "", aliases: [] } : null);
+    setLinkTarget(existingLink?.target ?? (selectedText ? cleanWikiLinkTarget(selectedText) : ""));
+    setLinkText(existingLink?.label ?? selectedText);
+    setLinkSearchError(false);
+    setLinkSuggestions([]);
     setLinkMenu({ x, y, from: selection.from, to: selection.to, selectedText });
   };
   openLinkMenuRef.current = openLinkMenuAt;
@@ -1989,8 +1919,7 @@ export function MarkdownEditor({
   function closeLinkMenu() {
     setLinkMenu(null);
     setLinkSuggestions([]);
-    setSelectedLinkSuggestionQuery(null);
-    setSelectedProblemSlug(null);
+    setSelectedLink(null);
     viewRef.current?.focus();
   }
 
@@ -1999,19 +1928,16 @@ export function MarkdownEditor({
     setLinkTargetType(targetType);
     setLinkSuggestions([]);
     setLinkSuggestionsLoading(false);
-    setSelectedLinkSuggestionQuery(null);
-    setSelectedProblemSlug(null);
+    setSelectedLink(null);
+    setLinkSearchError(false);
     window.requestAnimationFrame(() => linkTargetInputRef.current?.focus());
   }
 
   function selectLinkSuggestion(suggestion: LinkSuggestion) {
-    const target = linkTargetForSuggestion(suggestion);
-    setLinkTarget(target);
-    setLinkText((currentText) => currentText.trim() ? currentText : suggestion.title);
+    setLinkTarget(suggestion.title);
     setLinkSuggestions([]);
     setLinkSuggestionsLoading(false);
-    setSelectedLinkSuggestionQuery(target);
-    setSelectedProblemSlug(suggestion.targetType === "problem" ? suggestion.slug : null);
+    setSelectedLink(suggestion);
     linkTargetInputRef.current?.focus();
   }
 
@@ -2019,22 +1945,9 @@ export function MarkdownEditor({
     const view = viewRef.current;
     if (!view || !linkMenu) return;
 
-    const problemSlug =
-      linkTargetType === "problem"
-        ? selectedProblemSlug ??
-          linkSuggestions.find((suggestion) => {
-            const target = cleanWikiLinkTarget(linkTarget).toLowerCase();
-            return suggestion.targetType === "problem" &&
-              (suggestion.title.toLowerCase() === target || suggestion.slug.toLowerCase() === target)
-              ? suggestion.slug
-              : false;
-          })?.slug
-        : null;
-    const insert =
-      linkTargetType === "problem"
-        ? problemLinkMarkup(problemSlug ?? "", linkText || linkMenu.selectedText)
-        : wikiLinkMarkup(linkTarget, linkText || linkMenu.selectedText);
-    if (!insert || (linkTargetType === "problem" && !problemSlug)) return;
+    const insert = selectedLink ? editorLinkMarkup(selectedLink, linkText)
+      : canLinkMissingConcept ? wikiLinkMarkup(linkTarget, linkText) : "";
+    if (!insert) return;
     view.dispatch({
       changes: {
         from: linkMenu.from,
@@ -2047,8 +1960,7 @@ export function MarkdownEditor({
     });
     setLinkMenu(null);
     setLinkSuggestions([]);
-    setSelectedLinkSuggestionQuery(null);
-    setSelectedProblemSlug(null);
+    setSelectedLink(null);
     view.focus();
   }
 
@@ -2154,20 +2066,17 @@ export function MarkdownEditor({
   }
 
   const cleanLinkTarget = cleanWikiLinkTarget(linkTarget);
-  const exactLinkSuggestion = linkSuggestions.find((suggestion) => {
-    const target = cleanLinkTarget.toLowerCase();
-    const aliases = suggestion.aliases.map((alias) => alias.toLowerCase());
-    return suggestion.title.toLowerCase() === target || suggestion.slug.toLowerCase() === target || aliases.includes(target);
-  });
-  const hasExactSuggestion = Boolean(
-    exactLinkSuggestion ||
-      selectedLinkSuggestionQuery === cleanLinkTarget ||
-      (linkTargetType === "problem" && selectedProblemSlug)
-  );
-  const canApplyLink = Boolean(
-    cleanLinkTarget &&
-      (linkTargetType === "concept" || selectedProblemSlug || exactLinkSuggestion?.targetType === "problem")
-  );
+  const hasExactSuggestion = linkSuggestions.some(suggestion =>
+    [suggestion.title, suggestion.slug, ...suggestion.aliases].some(value => value.toLocaleLowerCase() === cleanLinkTarget.toLocaleLowerCase()));
+  const canLinkMissingConcept = linkTargetType === "concept" && cleanLinkTarget.length >= 2 &&
+    completedLinkSearch === `${linkTargetType}:${linkTarget.trim()}` &&
+    !selectedLink && !linkSuggestionsLoading && !linkSearchError && !hasExactSuggestion;
+  const canApplyLink = Boolean(selectedLink || canLinkMissingConcept);
+  const linkTypeLabels = {
+    all: labels.linkTypeAll, concept: labels.linkTypeConcept, problem: labels.linkTypeProblem,
+    mathematician: labels.linkTypeMathematician, history: labels.linkTypeHistory, reference: labels.linkTypeReference
+  };
+  const linkTypeIcons = { concept: <Shapes size={16} />, problem: <FileText size={16} />, mathematician: <UserRound size={16} />, history: <Clock size={16} />, reference: <BookOpen size={16} /> };
 
   return (
     <div className={titleMode ? "markdown-editor markdown-editor-title" : "markdown-editor"}>
@@ -2274,120 +2183,102 @@ export function MarkdownEditor({
         <div
           ref={linkMenuRef}
           className="markdown-link-menu"
+          role="dialog"
+          aria-label={labels.addLink}
           style={{ left: linkMenuPosition?.left ?? linkMenu.x, top: linkMenuPosition?.top ?? linkMenu.y }}
           onMouseDown={(event) => event.stopPropagation()}
           onWheel={handleLinkMenuWheel}
           onTouchMove={(event) => event.stopPropagation()}
+          onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeLinkMenu(); } }}
         >
           <div className="markdown-link-menu-title">
             <span className="markdown-link-menu-icon" aria-hidden="true" />
             <strong>{labels.addLink}</strong>
           </div>
-          <div className="markdown-link-menu-type" role="group" aria-label={labels.linkTypeAriaLabel}>
-            <button
-              type="button"
-              className={linkTargetType === "concept" ? "active" : undefined}
-              aria-pressed={linkTargetType === "concept"}
-              onClick={() => changeLinkTargetType("concept")}
-            >
-              {labels.linkTypeConcept}
-            </button>
-            <button
-              type="button"
-              className={linkTargetType === "problem" ? "active" : undefined}
-              aria-pressed={linkTargetType === "problem"}
-              onClick={() => changeLinkTargetType("problem")}
-            >
-              {labels.linkTypeProblem}
-            </button>
-          </div>
-          <p className="markdown-link-menu-syntax">
-            {linkTargetType === "concept" ? labels.conceptLinkSyntaxHelp : labels.problemLinkSyntaxHelp}
-          </p>
-          <label>
-            <span className="field-label-with-help">
-              {labels.textShown}
-              <FieldHelp text={labels.textShownHelp} />
-            </span>
-            <input
-              value={linkText}
-              onChange={(event) => setLinkText(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && canApplyLink) {
-                  event.preventDefault();
-                  applyLinkMenu();
-                }
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  closeLinkMenu();
-                }
-              }}
-              placeholder={labels.textShownPlaceholder}
-            />
+          <label className="markdown-link-menu-filter">
+            <span>{labels.linkTypeAriaLabel}</span>
+            <select value={linkTargetType} onChange={event => changeLinkTargetType(event.target.value as LinkTargetType)}>
+              <option value="all">{labels.linkTypeAll}</option>
+              {EDITOR_LINK_TYPES.filter(type => availableLinkTypes.includes(type)).map(type =>
+                <option key={type} value={type}>{linkTypeLabels[type]}</option>)}
+            </select>
           </label>
           <label>
             <span className="field-label-with-help">
-              {labels.linksTo}
-              <FieldHelp text={labels.linksToHelp} />
+              {labels.linkSearch}
+              <FieldHelp text={labels.linkSearchHelp} />
             </span>
             <input
               ref={linkTargetInputRef}
               value={linkTarget}
-              onChange={(event) => {
-                setSelectedLinkSuggestionQuery(null);
-                setSelectedProblemSlug(null);
+              autoComplete="off"
+              maxLength={80}
+              onChange={event => {
+                setSelectedLink(null);
+                setLinkSuggestions([]);
+                setLinkSearchError(false);
+                setLinkSuggestionsLoading(event.target.value.trim().length >= 2);
                 setLinkTarget(event.target.value);
               }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
+              onKeyDown={event => {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                   event.preventDefault();
-                  applyLinkMenu();
-                }
-                if (event.key === "Escape") {
+                  const next = Math.max(0, Math.min(linkSuggestions.length - 1, activeLinkResult + (event.key === "ArrowDown" ? 1 : -1)));
+                  setActiveLinkResult(next);
+                  linkMenuRef.current?.querySelectorAll(".markdown-link-menu-results button")[next]?.scrollIntoView({ block: "nearest" });
+                } else if (event.key === "Enter") {
                   event.preventDefault();
-                  closeLinkMenu();
+                  if (!selectedLink && linkSuggestions.length) selectLinkSuggestion(linkSuggestions[activeLinkResult] ?? linkSuggestions[0]);
+                  else if (canApplyLink) applyLinkMenu();
                 }
               }}
-              placeholder={linkTargetType === "concept" ? labels.conceptTargetPlaceholder : labels.problemTargetPlaceholder}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={linkSuggestions.length > 0}
+              aria-controls={linkResultsId}
+              aria-activedescendant={linkSuggestions.length ? `${linkResultsId}-${activeLinkResult}` : undefined}
+              placeholder={labels.linkSearchPlaceholder}
             />
           </label>
-          <div className="markdown-link-menu-results">
-            {linkSuggestionsLoading && (
-              <p>{linkTargetType === "concept" ? labels.searchingConcepts : labels.searchingProblems}</p>
-            )}
-            {!linkSuggestionsLoading &&
-              linkSuggestions.map((suggestion) => (
-                <button
-                  key={`${suggestion.targetType}:${suggestion.slug}`}
-                  type="button"
-                  onClick={() => selectLinkSuggestion(suggestion)}
-                >
+          {selectedLink ? <div className="markdown-link-menu-selected" role="status" data-link-type={selectedLink.targetType}>
+            <span aria-hidden="true">✓</span>
+            <span>{selectedLink.titleHtml ? <MarkdownInline html={selectedLink.titleHtml} /> : selectedLink.title}</span>
+            <small>{linkTypeLabels[selectedLink.targetType]}</small>
+          </div> : <>
+            <div role="status" className="markdown-link-menu-status">
+              {linkSearchError ? labels.linkSearchError : linkSuggestionsLoading ? labels.linkSearching :
+                cleanLinkTarget.length < 2 ? labels.linkSearchMinimum : !linkSuggestions.length ? labels.linkNoResults : null}
+            </div>
+            <div id={linkResultsId} className="markdown-link-menu-results" role="listbox" aria-label={labels.linkSearch}>
+              {linkSuggestions.map((suggestion, index) => (
+                <button key={`${suggestion.targetType}:${suggestion.slug}`} id={`${linkResultsId}-${index}`} type="button"
+                  data-link-type={suggestion.targetType}
+                  role="option" aria-selected={index === activeLinkResult}
+                  onFocus={() => setActiveLinkResult(index)}
+                  onClick={() => selectLinkSuggestion(suggestion)}>
+                  <span className="markdown-link-result-icon" aria-hidden="true">{linkTypeIcons[suggestion.targetType]}</span>
                   <strong><MarkdownInline html={suggestion.titleHtml} /></strong>
-                  {suggestion.aliases.length > 0 && <span>{suggestion.aliases.slice(0, 3).join(", ")}</span>}
-                  {suggestion.meta && <span>{suggestion.meta}</span>}
+                  <small>{linkTypeLabels[suggestion.targetType]}{suggestion.meta ? ` · ${suggestion.meta}` : ""}</small>
                 </button>
               ))}
-            {linkTargetType === "concept" && cleanLinkTarget && !hasExactSuggestion && (
-              <div className="markdown-link-menu-new">
-                <span>{labels.newConceptLink.replace("{target}", () => cleanLinkTarget)}</span>
-                <a href={`/concepts/new?title=${encodeURIComponent(cleanLinkTarget)}`} target="_blank" rel="noreferrer">
-                  {labels.createPage}
-                </a>
-              </div>
-            )}
-            {linkTargetType === "problem" &&
-              cleanLinkTarget &&
-              !linkSuggestionsLoading &&
-              linkSuggestions.length === 0 &&
-              !selectedProblemSlug && <p>{labels.noMatchingProblems}</p>}
-          </div>
+            </div>
+            {linkSuggestions.length >= 20 && <small>{labels.linkRefineSearch}</small>}
+            {canLinkMissingConcept && <div className="markdown-link-menu-new">
+              <span>{labels.newConceptLink.replace("{target}", () => cleanLinkTarget)}</span>
+              <a href={`/concepts/new?title=${encodeURIComponent(cleanLinkTarget)}`} target="_blank" rel="noreferrer">{labels.createPage}</a>
+            </div>}
+          </>}
+          <details className="markdown-link-menu-text">
+            <summary>{labels.linkEditText}</summary>
+            <label>
+              <span className="field-label-with-help">{labels.textShown}<FieldHelp text={labels.textShownHelp} /></span>
+              <input value={linkText} onChange={event => setLinkText(event.target.value)} placeholder={labels.textShownPlaceholder}
+                onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (canApplyLink) applyLinkMenu(); } }} />
+            </label>
+          </details>
           <div className="markdown-link-menu-actions">
-            <button type="button" className="secondary" onClick={closeLinkMenu}>
-              {labels.cancel}
-            </button>
-            <button type="button" onClick={applyLinkMenu} disabled={!canApplyLink}>
-              {labels.addLink}
-            </button>
+            <button type="button" className="secondary" onClick={closeLinkMenu}>{labels.cancel}</button>
+            <button type="button" onClick={applyLinkMenu} disabled={!canApplyLink}>{labels.addLink}</button>
           </div>
         </div>
       )}

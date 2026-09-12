@@ -486,11 +486,12 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
       };
     }
     case NotificationType.LIBRARY_ENTRY_PUBLISHED: {
-      const actor = notificationActor(notification, " published your library ");
+      const reviewed = notification.title === "Library entry reviewed";
+      const actor = notificationActor(notification, reviewed ? " reviewed your library " : " published your library ");
       const entryTitle = firstQuoted(notification.body);
       return {
-        title: "Votre fiche de la bibliothèque a été publiée",
-        body: `${actor} a publié votre ${localizedLibraryKind(notification.body)}${entryTitle ? ` « ${entryTitle} »` : ""}.`
+        title: reviewed ? "Votre fiche de la bibliothèque a été relue" : "Votre fiche de la bibliothèque a été publiée",
+        body: `${actor} a ${reviewed ? "relu" : "publié"} votre ${localizedLibraryKind(notification.body)}${entryTitle ? ` « ${entryTitle} »` : ""}.`
       };
     }
     case NotificationType.LIBRARY_ENTRY_CHANGES_REQUESTED: {

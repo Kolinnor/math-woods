@@ -98,6 +98,7 @@ enum HistoryEra {
 }
 
 enum HistoryMilestoneType {
+  PERIOD
   DISCOVERY
   PUBLICATION
   NOTATION
@@ -1265,6 +1266,7 @@ model HistoryMilestone {
   id             Int                             @id @default(autoincrement())
   slug           String                          @unique
   sortYear       Int
+  endYear        Int?
   era            HistoryEra
   milestoneType  HistoryMilestoneType            @default(OTHER)
   status         LibraryStatus                   @default(DRAFT)

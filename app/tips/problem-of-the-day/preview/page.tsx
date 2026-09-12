@@ -61,7 +61,19 @@ export default async function DailyProblemPreviewPage({
         }
       : undefined
   );
-  if (!preview) notFound();
+  if (!preview) return (
+    <ForestPageLayout
+      title={locale === "fr" ? "Aperçu du problème du jour" : "Problem of the day preview"}
+      heroImage="/art/oak-grove.jpg"
+      heroAlt="Ivan Shishkin, Oak Grove"
+      workspaceClassName="forest-page-workspace-narrow"
+      actions={<DailyScheduleBackButton href="/tips/problem-of-the-day" />}
+    >
+      <p>{locale === "fr"
+        ? "Aucun problème disponible pour ce choix. Vous pouvez en sélectionner un manuellement dans le planning."
+        : "No problem is available for this selection. You can choose one manually in the schedule."}</p>
+    </ForestPageLayout>
+  );
   const dateLabel = new Intl.DateTimeFormat(locale, {
     weekday: "long",
     month: "long",

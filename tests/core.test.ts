@@ -4537,7 +4537,7 @@ const exhaustedDailyProblemChoice = automaticDailyProblemGroup(
   "2026-08-03",
   ["first", "second"]
 );
-assert.ok(exhaustedDailyProblemChoice === "first" || exhaustedDailyProblemChoice === "second");
+assert.equal(exhaustedDailyProblemChoice, null);
 assert.equal(
   automaticDailyProblemGroup(
     [{ translationGroupId: "first" }, { translationGroupId: "second" }],
@@ -5070,7 +5070,7 @@ assert.ok(libraryActionBodies.length > 0);
 for (const body of libraryActionBodies) {
   if (body.startsWith("proposeLibraryReferenceAction(")) {
     assert.match(body, /requireVerifiedUser\(\)/);
-    assert.match(body, /status: LibraryStatus.PENDING_REVIEW/);
+    assert.match(body, /status: LibraryStatus.PUBLISHED/);
   } else assert.match(body, /\{\s*const user = await requireAdmin\(\);/);
 }
 assert.doesNotMatch(libraryActionsSource, /requireUser\(|Role\.MODERATOR/);

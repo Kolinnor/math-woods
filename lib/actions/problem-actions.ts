@@ -1214,9 +1214,8 @@ export async function updateProblemAction(
   const listed = formData.get("listed") === "on";
   const isExercise = formData.get("isExercise") === "on";
   const showRelatedProblems = formData.get("showRelatedProblems") === "on";
-  const canAppearOnFrontPage = canUseAdminTools(user)
-    ? formData.get("canAppearOnFrontPage") === "on"
-    : previous.canAppearOnFrontPage;
+  // Legacy metadata is preserved in revision history; homepage selection is now automatic.
+  const canAppearOnFrontPage = previous.canAppearOnFrontPage;
   const verificationMode = publishesImmediately
     ? parseProblemVerificationMode(formData.get("verificationMode"))
     : previous.verificationMode;

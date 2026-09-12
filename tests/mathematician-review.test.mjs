@@ -81,18 +81,18 @@ test('admins can view and edit all mathematician states but cannot review their 
   assert.equal(permissions.canViewLibraryMathematician(null, { createdById: 1, status: 'DRAFT' }), false);
 });
 
-test('editing preserves publication/pending/archive status and requires a fresh independent review', async () => {
+test('editing keeps entries published or archived and makes old pending entries visible without self-review', async () => {
   for (const status of ['PENDING_REVIEW', 'PUBLISHED', 'ARCHIVED']) for (const intent of ['save', 'submit', 'draft']) {
     const h = harness(status);
     await h.actions.updateMathematicianAction(1, form(intent));
     assert.equal(h.writes.length, 1);
     const data = h.writes[0];
-    assert.equal(data.status, status);
+    assert.equal(data.status, status === 'PENDING_REVIEW' ? 'PUBLISHED' : status);
     assert.equal(data.lastEditedById, 2);
-    assert.equal(data.needsReviewAfterEdit, status === 'PUBLISHED');
+    assert.equal(data.needsReviewAfterEdit, status !== 'ARCHIVED');
     assert.equal(data.reviewedById, null);
     assert.equal(data.reviewedAt, null);
-    assert.equal(data.publishedAt, undefined);
+    assert.equal(data.publishedAt, status === 'ARCHIVED' ? undefined : version);
     assert.equal(data.submittedAt, version);
   }
 });

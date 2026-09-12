@@ -14,7 +14,7 @@ import {
   upcomingDailyProblemDateKeys
 } from "@/lib/daily-problem-schedule";
 import { translatedDomainLabel } from "@/lib/domains";
-import { getTranslations } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { renderInlineMarkdown } from "@/lib/markdown";
 
@@ -41,7 +41,10 @@ export default async function ProblemOfTheDaySchedulePage({
   const user = await getCurrentUser();
   if (!user || !canUseAdminTools(user)) notFound();
 
-  const [{ saved }, t] = await Promise.all([searchParams, getTranslations()]);
+  const [{ saved }, t, locale] = await Promise.all([searchParams, getTranslations(), getInterfaceLocale()]);
+  const automaticExplanation = locale === "fr"
+    ? "Laissez un jour vide pour choisir automatiquement un problème relu, de difficulté 20 à 50, jamais présenté ni déjà programmé. Priorité à 4 likes ou plus ; sinon le seuil descend progressivement jusqu’à 0. Les exercices, conjectures et problèmes à relire après modification sont exclus. Le choix est conservé pour la journée, avec une image automatique."
+    : "Leave a day empty to automatically choose a reviewed problem of difficulty 20–50, never featured or already scheduled. Priority goes to 4 or more likes; otherwise the threshold drops progressively to 0. Exercises, conjectures and problems awaiting review after an edit are excluded. The choice is kept for the day, with automatic artwork.";
   const dateKeys = upcomingDailyProblemDateKeys();
   const schedules = await prisma.dailyProblemSchedule.findMany({
     where: { dateKey: { in: dateKeys } },
@@ -75,8 +78,7 @@ export default async function ProblemOfTheDaySchedulePage({
       <div className="daily-problem-schedule-intro">
         <CalendarDays size={21} aria-hidden="true" />
         <p>
-          Each choice applies to that calendar date only. Leave a day empty to randomly feature a problem
-          that has not been problem of the day before, with automatic Shishkin artwork.
+          {automaticExplanation}
         </p>
       </div>
 
@@ -126,7 +128,7 @@ export default async function ProblemOfTheDaySchedulePage({
                     maxProblems={1}
                     searchParams="exercise=0"
                     labels={{
-                      empty: "No problem selected. A recent problem will be chosen automatically.",
+                      empty: locale === "fr" ? "Choix automatique selon les critères ci-dessus." : "Automatic selection using the criteria above.",
                       maximumSelected: "Remove the current problem to choose another",
                       search: "Choose a problem",
                       searchPlaceholder: "Search by title or slug"

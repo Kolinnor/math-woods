@@ -57,7 +57,6 @@ export function ReferenceForm({ action, locale, contentLanguage = locale, baseUp
     }} className="panel library-entry-form library-reference-form">
       {state.error && <p role="alert" className="quality-banner">{state.error}</p>}
       {values.id && <p className="muted">{fr ? "Vous modifiez la fiche du catalogue utilisée par les problèmes et concepts qui la citent. Leurs passages et notes restent propres à chaque citation." : "You are editing the catalogue entry used by the problems and concepts that cite it. Their passages and notes remain specific to each citation."}</p>}
-      {values.status === "PENDING_REVIEW" && <p className="muted">{fr ? "La référence restera en attente de relecture après l’enregistrement. Vous pourrez ensuite la valider depuis sa fiche." : "The reference will remain pending review after saving. You can then publish it from its entry page."}</p>}
       <input type="hidden" name="language" value={contentLanguage} />
       {baseUpdatedAt && <input type="hidden" name="baseUpdatedAt" value={baseUpdatedAt} />}
       <div className="library-form-grid">

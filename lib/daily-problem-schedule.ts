@@ -80,9 +80,12 @@ export function automaticDailyProblemGroup(
   const groups = [...new Set(candidates.map((candidate) => candidate.translationGroupId))].sort();
   const previouslyFeatured = new Set(previouslyFeaturedGroupIds);
   const unusedGroups = groups.filter((groupId) => !previouslyFeatured.has(groupId));
-  const pool = unusedGroups.length ? unusedGroups : groups;
+  return unusedGroups[dailyProblemRandomIndex(unusedGroups.length, dateKey)] ?? null;
+}
 
-  return pool[dailyProblemRandomIndex(pool.length, dateKey)] ?? null;
+export function dailyProblemLikePool<T extends { likes: number }>(candidates: T[]): T[] {
+  const threshold = Math.min(4, candidates.reduce((maximum, { likes }) => Math.max(maximum, likes), 0));
+  return candidates.filter(({ likes }) => likes >= threshold);
 }
 
 export function dailyProblemDefaultImageUrl(dateKey: string) {

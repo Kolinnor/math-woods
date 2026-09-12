@@ -67,7 +67,7 @@ test("publishing checks the canonical title and every translation, including old
     { ...pendingEntry, canonicalTitle: "}" },
     { ...pendingEntry, translations: [{ displayTitle: "Éléments" }, { displayTitle: "author = {Euclid}," }] }
   ]) {
-    await assert.rejects(actionsFor(entry).reviewLibraryEntryAction("reference", 1, "publish", form({ language: "fr" })), /Indiquez le titre/);
+    await assert.rejects(actionsFor(entry).reviewLibraryEntryAction("reference", 1, "publish", form({ language: "fr", baseUpdatedAt: pendingEntry.updatedAt.toISOString() })), /Indiquez le titre/);
   }
 });
 
@@ -79,6 +79,6 @@ test("publication refuses a concurrent change after title validation", async () 
     checked = true;
     return { count: 0 };
   });
-  await assert.rejects(actions.reviewLibraryEntryAction("reference", 1, "publish", form({ language: "en" })), /Reload/);
+  await assert.rejects(actions.reviewLibraryEntryAction("reference", 1, "publish", form({ language: "en", baseUpdatedAt: pendingEntry.updatedAt.toISOString() })), /Reload/);
   assert.ok(checked);
 });
