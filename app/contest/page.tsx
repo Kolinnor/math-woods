@@ -91,6 +91,7 @@ const copy = {
 
 const contestPageInclude = {
   submissions: {
+    where: { problem: { status: "PUBLISHED" } },
     orderBy: { submittedAt: "asc" },
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true } },

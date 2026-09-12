@@ -1959,6 +1959,11 @@ export async function deleteProblemAction(problemId: number) {
     }
 
     const activeIds = activeTranslations.map((translation) => translation.id);
+    // Deleting a problem archives its entire translation family, so withdraw the entry too.
+    // Run even for an already archived family to repair older lingering submissions.
+    await tx.problemContestSubmission.deleteMany({
+      where: { translationGroupId: problem.translationGroupId }
+    });
     if (activeIds.length === 0) return;
 
     await tx.problem.updateMany({
@@ -1998,6 +2003,9 @@ export async function deleteProblemAction(problemId: number) {
   for (const slug of archivedSlugs) {
     revalidatePath(`/problems/${slug}`);
   }
+  revalidatePath("/contest");
+  revalidatePath("/contest/edit");
+  revalidatePath("/users");
   if (archivedSlugs.length > 0) {
     await notifyAdminsOfProblemDeletion({
       actorId: user.id,

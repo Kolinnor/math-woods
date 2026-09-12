@@ -15,6 +15,7 @@ import {
 } from "@/lib/problem-contests";
 import { assertRateLimit, isRateLimitError } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
+import { acquireTransactionLock } from "@/lib/transaction-lock";
 
 async function availableContestSlug(title: string, startDateKey: string, ignoredId?: number) {
   const base = ensureSlug(`${startDateKey}-${title}`, `contest-${startDateKey}`);
@@ -115,6 +116,10 @@ export async function submitContestProblemAction(formData: FormData) {
   if (!Number.isInteger(contestId) || !Number.isInteger(problemId)) throw new Error("Invalid contest submission.");
 
   await prisma.$transaction(async (tx) => {
+    const candidate = await tx.problem.findUnique({ where: { id: problemId }, select: { translationGroupId: true } });
+    if (!candidate) throw new Error("Problem not found.");
+    // Share the deletion lock, then check eligibility again after any concurrent archive.
+    await acquireTransactionLock(tx, `problem-edit:${candidate.translationGroupId}`);
     const contest = await tx.problemContest.findUnique({ where: { id: contestId } });
     if (!contest || !contestIsOpen(contest)) throw new Error("This contest is not accepting submissions.");
     const problem = await tx.problem.findFirst({
@@ -159,7 +164,7 @@ export async function publishContestResultsAction(formData: FormData) {
   const result = await prisma.$transaction(async (tx) => {
     const contest = await tx.problemContest.findUnique({
       where: { id: contestId },
-      include: { submissions: { select: { id: true, userId: true, placement: true } } }
+      include: { submissions: { where: { problem: { status: "PUBLISHED" } }, select: { id: true, userId: true, placement: true } } }
     });
     if (!contest) throw new Error("Contest not found.");
     const submissionIds = new Set(contest.submissions.map(({ id }) => id));
@@ -251,7 +256,7 @@ export async function maybeSendContestLifecycleNotifications(contestId: number) 
   const recipients = await prisma.user.findMany({
     where: {
       deletedAt: null,
-      contestSubmissions: { some: { contestId } },
+      contestSubmissions: { some: { contestId, problem: { status: "PUBLISHED" } } },
       notificationPreferences: { none: { type: NotificationType.CONTEST_UPDATE, enabled: false } }
     },
     select: { id: true }

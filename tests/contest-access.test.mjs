@@ -36,6 +36,7 @@ function load(file, role, overrides = {}) {
     '@/lib/rate-limit': { assertRateLimit: async () => {}, isRateLimitError: error => error?.name === 'RateLimitError' },
     '@/lib/slug': { ensureSlug: () => 'test' },
     '@/lib/tip-images': tipImages,
+    '@/lib/transaction-lock': { acquireTransactionLock: async () => {} },
     ...overrides
   };
   const exports = {};
@@ -156,6 +157,7 @@ test('problem notice follows the translation family and hides drafts, withdrawal
   const db = { problemContestSubmission: { findFirst: async ({ where }) => {
     assert.equal(where.translationGroupId, 'shared-by-en-and-fr');
     assert.equal(where.contest.publishedAt.not, null);
+    assert.equal(where.problem.status, 'PUBLISHED');
     return entry?.contest.publishedAt ? entry : null;
   } } };
   const { ProblemContestNotice } = load('components/ProblemContestNotice.tsx', null, {
@@ -188,10 +190,14 @@ test('a problem link can open a published contest older than the recent list, ne
   let publicResult = historic;
   const visited = [];
   const db = { problemContest: {
-    findMany: async () => [],
-    findFirst: async ({ where }) => {
+    findMany: async ({ include }) => {
+      assert.equal(include.submissions.where.problem.status, 'PUBLISHED');
+      return [];
+    },
+    findFirst: async ({ where, include }) => {
       assert.equal(where.startDateKey, '2025-01-04');
       assert.equal(where.publishedAt.not, null);
+      assert.equal(include.submissions.where.problem.status, 'PUBLISHED');
       return publicResult;
     }
   } };
@@ -205,4 +211,99 @@ test('a problem link can open a published contest older than the recent list, ne
   publicResult = null;
   await page({ searchParams: Promise.resolve({ week: '2025-01-04' }) });
   assert.deepEqual(visited, [7]);
+});
+
+test('archiving any translation withdraws its family atomically, including previously archived families', async () => {
+  for (const alreadyArchived of [false, true]) {
+    for (const failArchive of alreadyArchived ? [false] : [false, true]) {
+      let rows = [
+        { id: 10, slug: 'source', translationGroupId: 'family', authorId: 1, translatedFromProblemId: null, version: 1, status: alreadyArchived ? 'ARCHIVED' : 'PUBLISHED' },
+        { id: 11, slug: 'translation', translationGroupId: 'family', authorId: 2, translatedFromProblemId: 10, version: 1, status: alreadyArchived ? 'ARCHIVED' : 'PUBLISHED' }
+      ];
+      let entries = [{ id: 1, translationGroupId: 'family' }, { id: 2, translationGroupId: 'other-family' }];
+      const invalidated = [];
+      const locks = [];
+      const tx = {
+        problem: {
+          findMany: async () => rows.filter(row => row.status !== 'ARCHIVED'),
+          findUnique: async ({ where }) => rows.find(row => row.id === where.id),
+          updateMany: async ({ where }) => { rows = rows.map(row => where.id.in.includes(row.id) ? { ...row, status: 'ARCHIVED', version: row.version + 1 } : row); }
+        },
+        problemContestSubmission: { deleteMany: async ({ where }) => {
+          assert.deepEqual(locks, ['problem-edit:family']);
+          entries = entries.filter(entry => entry.translationGroupId !== where.translationGroupId);
+        } },
+        internalLink: { deleteMany: async () => { if (failArchive) throw new Error('Simulated archive failure'); } },
+        pageRevision: { findFirst: async () => ({ problemSnapshot: {} }), create: async () => {} }
+      };
+      const db = {
+        problem: { findUnique: async () => rows[1], findMany: async () => rows },
+        $transaction: async callback => {
+          const savedRows = structuredClone(rows), savedEntries = structuredClone(entries);
+          try { return await callback(tx); } catch (error) { rows = savedRows; entries = savedEntries; throw error; }
+        }
+      };
+      const actions = load('lib/actions/problem-actions.ts', 'OWNER', {
+        '@/lib/db': { prisma: db },
+        '@/lib/transaction-lock': { acquireTransactionLock: async (_tx, key) => locks.push(key) },
+        '@/lib/problem-revisions': { buildProblemRevisionSnapshot: () => ({}), problemRevisionSnapshotJson: value => value },
+        '@/lib/notifications': { notifyAdminsOfProblemDeletion: async () => {} },
+        '@/lib/user-display': { displayNameForUser: () => 'Owner' },
+        'next/cache': { revalidatePath: path => invalidated.push(path) }
+      });
+      if (failArchive) {
+        await assert.rejects(actions.deleteProblemAction(11), /Simulated archive failure/);
+        assert.equal(entries.length, 2);
+        assert.ok(rows.every(row => row.status === 'PUBLISHED'));
+      } else {
+        await actions.deleteProblemAction(11);
+        assert.deepEqual(entries, [{ id: 2, translationGroupId: 'other-family' }]);
+        assert.ok(rows.every(row => row.status === 'ARCHIVED'));
+        assert.ok(invalidated.includes('/contest'));
+        assert.ok(invalidated.includes('/contest/edit'));
+      }
+    }
+  }
+});
+
+test('a concurrent archive cannot be followed by a stale contest submission', async () => {
+  let status = 'PUBLISHED';
+  let written = false;
+  let locked = false;
+  const db = {
+    problem: {
+      findUnique: async () => ({ translationGroupId: 'family' }),
+      findFirst: async ({ where }) => {
+        assert.ok(locked);
+        assert.equal(where.status, 'PUBLISHED');
+        return status === 'PUBLISHED' ? { id: 10, translationGroupId: 'family' } : null;
+      }
+    },
+    problemContest: { findUnique: async () => ({ startDateKey: '2026-09-12', endDateKey: '2026-09-18' }) },
+    problemContestSubmission: { upsert: async () => { written = true; } }
+  };
+  db.$transaction = async cb => cb(db);
+  const actions = load('lib/actions/contest-actions.ts', 'OWNER', {
+    '@/lib/db': { prisma: db },
+    '@/lib/problem-contests': { ...contests, contestIsOpen: () => true },
+    '@/lib/transaction-lock': { acquireTransactionLock: async (_tx, key) => {
+      assert.equal(key, 'problem-edit:family');
+      status = 'ARCHIVED'; // A deletion completes while this submission waits for its lock.
+      locked = true;
+    } }
+  });
+  const form = new FormData(); form.set('contestId', '3'); form.set('problemId', '10');
+  await assert.rejects(actions.submitContestProblemAction(form), /Choose an original problem/);
+  assert.equal(written, false);
+});
+
+test('an archived entry cannot be selected as winner through a stale results form', async () => {
+  const db = { problemContest: { findUnique: async ({ include }) => {
+    assert.equal(include.submissions.where.problem.status, 'PUBLISHED');
+    return { submissions: [{ id: 2, userId: 2, placement: null }] };
+  } } };
+  db.$transaction = async cb => cb(db);
+  const actions = load('lib/actions/contest-actions.ts', 'OWNER', { '@/lib/db': { prisma: db } });
+  const form = new FormData(); form.set('contestId', '3'); form.set('winnerSubmissionId', '1');
+  await assert.rejects(actions.publishContestResultsAction(form), /does not belong to this contest/);
 });

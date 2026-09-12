@@ -46,6 +46,7 @@ export default async function EditContestPage({
       orderBy: { startDateKey: "desc" },
       include: {
         submissions: {
+          where: { problem: { status: "PUBLISHED" } },
           orderBy: { submittedAt: "asc" },
           include: {
             user: { select: { username: true, displayName: true, avatarUrl: true, avatarBackground: true } },

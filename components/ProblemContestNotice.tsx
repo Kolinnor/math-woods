@@ -9,7 +9,7 @@ export async function ProblemContestNotice({ translationGroupId, locale }: {
 }) {
   // The entry belongs to the whole problem, including its translations.
   const entry = await prisma.problemContestSubmission.findFirst({
-    where: { translationGroupId, contest: { publishedAt: { not: null } } },
+    where: { translationGroupId, problem: { status: "PUBLISHED" }, contest: { publishedAt: { not: null } } },
     orderBy: [{ contest: { startDateKey: "desc" } }, { id: "desc" }],
     select: {
       placement: true,
