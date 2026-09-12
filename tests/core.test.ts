@@ -3466,6 +3466,28 @@ assert.equal(processedContentImage.contentType, "image/png");
 assert.equal(processedContentImage.width, 2560);
 assert.equal(processedContentImage.height, 1024);
 
+// Exercise native AVIF/WebP decoding and resizing after image-library security updates.
+for (const format of ["avif", "webp"] as const) {
+  const source = await sharp({
+    create: { width: 2700, height: 135, channels: 3, background: "#f8f6ef" }
+  }).toFormat(format).toBuffer();
+  const processed = await processContentImage(
+    new File([Uint8Array.from(source)], `image.${format}`, { type: `image/${format}` })
+  );
+  assert.equal(processed.contentType, `image/${format}`);
+  assert.equal(processed.width, 2560);
+  assert.equal(processed.height, 128);
+  const decoded = await sharp(processed.body).raw().toBuffer({ resolveWithObject: true });
+  assert.equal(decoded.info.width, 2560);
+  assert.equal(decoded.info.height, 128);
+  await assert.rejects(processContentImage(
+    new File([Uint8Array.from(source)], "disguised.png", { type: "image/png" })
+  ), /Only AVIF, JPEG, PNG, and WebP/);
+}
+await assert.rejects(processContentImage(
+  new File(["invalid image"], "broken.avif", { type: "image/avif" })
+));
+
 const testImageStorageConfig: ImageStorageConfig = {
   endpoint: new URL("https://s3.example.test"),
   region: "dc-test",
