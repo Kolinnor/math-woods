@@ -11,6 +11,7 @@ import { historyEraLabel, milestoneTypeLabel } from "@/lib/library";
 type Option = { id: number; label: string };
 type Values = {
   status?: string;
+  slug?: string;
   sortYear?: number;
   endYear?: number | null;
   era?: HistoryEra;
@@ -55,8 +56,8 @@ export function HistoryMilestoneForm({ action, locale, contentLanguage = locale,
       </div>
       <div className="library-editor-field"><span>{storyLabel}</span><MarkdownEditor name="summaryMarkdown" ariaLabel={storyLabel} initialValue={values.translation?.summaryMarkdown ?? ""} minHeight="18rem" /></div>
       <details className="library-form-section"><summary>{fr ? "Éléments liés" : "Related entries"}</summary><div className="library-link-selects"><MultiSelect name="mathematicianIds" label={fr ? "Mathématiciens" : "Mathematicians"} options={options.mathematicians} selected={values.mathematicianIds} /><MultiSelect name="referenceIds" label={fr ? "Références" : "References"} options={options.references} selected={values.referenceIds} /><MultiSelect name="conceptIds" label="Concepts" options={options.concepts} selected={values.conceptIds} /></div></details>
-      <LibraryImageFields locale={locale} values={values} landscape onUploadingChange={setImageUploading} />
-      <LibraryFormActions locale={locale} disabled={pending || imageUploading} saveChanges={["PUBLISHED", "PENDING_REVIEW", "ARCHIVED"].includes(values.status ?? "")} />
+      <details className="library-form-section"><summary>{fr ? "Image et crédits (facultatif)" : "Image and credits (optional)"}</summary><div><LibraryImageFields locale={locale} values={values} landscape onUploadingChange={setImageUploading} /></div></details>
+      <LibraryFormActions locale={locale} cancelHref={values.slug ? `/library/history/${values.slug}?lang=${contentLanguage}` : "/library/history"} disabled={pending || imageUploading} saveChanges={["PUBLISHED", "PENDING_REVIEW", "ARCHIVED"].includes(values.status ?? "")} />
     </form>
   );
 }

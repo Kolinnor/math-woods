@@ -8,6 +8,7 @@ import { DailyTipCard } from "@/components/DailyTipCard";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { HomeContestCard } from "@/components/HomeContestCard";
 import { HomeEditorialSwitcher } from "@/components/HomeEditorialSwitcher";
+import { shouldPrioritizeHomeContest } from "@/lib/home-contest-priority";
 import { FieldHelp } from "@/components/FieldHelp";
 import { getHomePublicStats } from "@/lib/home-public-stats";
 import { maybeSendContestLifecycleNotifications } from "@/lib/actions/contest-actions";
@@ -61,6 +62,7 @@ const dashboardCopy = {
     problemOfDay: "Problem of the day",
     weeklyContest: "Weekly contest",
     contestDeadline: "Deadline",
+    contestStarts: "Opens",
     contestPoints: "reputation points",
     contestAction: "Enter the contest",
     contestUpcoming: "See the upcoming contest",
@@ -92,6 +94,7 @@ const dashboardCopy = {
     problemOfDay: "Problème du jour",
     weeklyContest: "Concours de la semaine",
     contestDeadline: "Date limite",
+    contestStarts: "Ouvre le",
     contestPoints: "points de réputation",
     contestAction: "Participer au concours",
     contestUpcoming: "Voir le prochain concours",
@@ -561,17 +564,18 @@ export default async function HomePage({
       <HomeContestCard
         contest={{
           title: contestText.title,
-          summary: contestText.summary,
           imageUrl: featuredContest.imageUrl || DEFAULT_CONTEST_IMAGE_URL,
           imagePositionX: featuredContest.imagePositionX,
           imagePositionY: featuredContest.imagePositionY,
           deadline: contestDateLabel(featuredContest.endDateKey, locale, { weekday: "long" }),
+          starts: contestDateLabel(featuredContest.startDateKey, locale, { weekday: "long" }),
           rewardPoints: featuredContest.rewardPoints,
           isOpen: contestIsOpen(featuredContest)
         }}
         labels={{
           heading: copy.weeklyContest,
           deadline: copy.contestDeadline,
+          starts: copy.contestStarts,
           points: copy.contestPoints,
           action: copy.contestAction,
           upcoming: copy.contestUpcoming
@@ -579,6 +583,14 @@ export default async function HomePage({
       />
     );
   })() : null;
+  const editorialPreferenceKey = `${user?.id ?? "guest"}:${featuredContest?.id ?? "none"}`;
+  const editorialOptions = {
+    preferenceKey: editorialPreferenceKey,
+    prioritizeContest: featuredContest ? shouldPrioritizeHomeContest(featuredContest) : false,
+    hideContestLabel: locale === "fr" ? "Masquer ce concours" : "Hide this contest",
+    showContestLabel: locale === "fr" ? "Réafficher le concours" : "Show the contest again",
+    sectionLabel: locale === "fr" ? "À la une" : "Featured"
+  };
   const prioritiesCard = (
     <section className="home-priorities">
       <div className="home-priorities-tape" aria-hidden="true" />
@@ -645,6 +657,8 @@ export default async function HomePage({
         <main className={`home-dashboard-grid${tourMode ? "" : " home-dashboard-grid-guest"}`}>
           <div className="home-dashboard-main">
             <HomeEditorialSwitcher
+              key={editorialPreferenceKey}
+              {...editorialOptions}
               problem={dailyProblemCard}
               contest={contestCard}
               problemLabel={copy.problemOfDay}
@@ -770,6 +784,8 @@ export default async function HomePage({
       <main className="home-dashboard-grid">
         <div className="home-dashboard-main">
           <HomeEditorialSwitcher
+            key={editorialPreferenceKey}
+            {...editorialOptions}
             problem={dailyProblemCard && (
               dailyProblemIsSolved && !dailyProblemIsOwn ? (
                 <RevealSolvedDailyProblem label={copy.showSolvedProblemOfDay}>

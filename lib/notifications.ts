@@ -2,6 +2,7 @@ import { NotificationType, Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { problemEditNotificationRecipientIds } from "@/lib/problem-edit-notifications";
+import { isRetiredLibraryNotification } from "@/lib/notification-policy";
 
 const OWNER_NOTIFICATION_USERNAME = "ancient-tree";
 
@@ -30,6 +31,7 @@ type OwnerActivityNotificationInput = {
 };
 
 export async function createNotification(input: NotificationInput) {
+  if (isRetiredLibraryNotification(input.type)) return null;
   if (input.actorId && input.actorId === input.userId) return null;
 
   const preference = await prisma.notificationPreference.findUnique({

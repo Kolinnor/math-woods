@@ -43,8 +43,8 @@
 }
 
 .contest-feature-image {
-  aspect-ratio: 4 / 3;
-  min-height: 22rem;
+  aspect-ratio: 3 / 2;
+  min-height: 18rem;
 }
 
 .contest-feature-image img {
@@ -75,12 +75,6 @@
   font-size: clamp(1.8rem, 3vw, 3rem);
   line-height: 1.1;
   margin: 0.4rem 0 0.8rem;
-}
-
-.contest-title-row p:last-child {
-  color: var(--mw-secondary);
-  font-size: 1.05rem;
-  line-height: 1.55;
 }
 
 .contest-meta-grid {
@@ -397,6 +391,13 @@
   margin-bottom: 0.65rem;
 }
 
+.home-editorial-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 20px; margin-bottom: 10px; }
+.home-editorial-toolbar .home-editorial-tabs { flex-wrap: wrap; margin-bottom: 0; }
+.home-editorial-toolbar .home-editorial-tabs button { min-height: 44px; }
+.home-editorial-visibility { background: transparent; border: 0; box-shadow: none; padding: 8px 0; min-height: 44px; color: var(--mw-secondary); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.home-editorial-visibility:hover { color: var(--mw-text); background: transparent; }
+.home-editorial-toolbar button:focus-visible { outline: 2px solid var(--mw-green); outline-offset: 4px; }
+
 .home-editorial-tabs button {
   background: transparent;
   border: 0;
@@ -430,6 +431,7 @@
 }
 
 .home-contest-card > div:first-child {
+  align-self: center;
   padding: 22px 26px;
 }
 
@@ -438,11 +440,6 @@
   font-size: 28px;
   line-height: 1.18;
   margin: 8px 0 10px;
-}
-
-.home-contest-card p:not(.mw-kicker) {
-  color: var(--mw-secondary);
-  line-height: 1.45;
 }
 
 .home-contest-meta {
@@ -543,4 +540,3 @@
     white-space: normal;
   }
 }
-

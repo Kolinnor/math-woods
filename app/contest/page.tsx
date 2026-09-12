@@ -18,7 +18,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
-import { canUseAdminTools } from "@/lib/permissions";
+import { canUseOwnerTools } from "@/lib/permissions";
 import {
   contestCreationWindow,
   contestDateLabel,
@@ -69,21 +69,21 @@ const copy = {
     reward: "Récompense",
     points: "points de réputation",
     create: "Créer un problème pour ce concours",
-    submit: "Proposer un problème",
-    replace: "Remplacer ma proposition",
+    submit: "Soumettre un problème",
+    replace: "Remplacer mon problème",
     withdraw: "Retirer",
-    submission: "Votre proposition",
-    entries: "Propositions",
-    noEntries: "Aucune proposition pour le moment.",
+    submission: "Votre participation",
+    entries: "Participations",
+    noEntries: "Aucune participation pour le moment.",
     criteria: "Critères de sélection",
     rules: "Règles",
     archive: "Concours précédents",
     winner: "Gagnant",
     honorable: "Mention honorable",
-    submitted: "Votre problème a bien été proposé au concours.",
+    submitted: "Votre problème a bien été soumis au concours.",
     signIn: "Se connecter pour participer",
-    upcoming: "Les propositions ouvrent samedi.",
-    judging: "Les propositions sont closes. Les admins choisissent le gagnant.",
+    upcoming: "Vous pourrez participer dès samedi.",
+    judging: "Les participations sont closes. Les admins choisissent le gagnant.",
     closed: "Résultats annoncés"
   }
 } as const;
@@ -113,7 +113,7 @@ export default async function ContestPage({
     })
   ]);
   const t = copy[locale];
-  const canEdit = Boolean(user && canUseAdminTools(user));
+  const canEdit = Boolean(user && canUseOwnerTools(user));
   const previewId = Number(params.preview);
   const previewContest = canEdit && Number.isSafeInteger(previewId) && previewId > 0
     ? await prisma.problemContest.findUnique({
@@ -224,7 +224,6 @@ export default async function ContestPage({
             <div>
               <p className="mw-kicker">{phase === "open" ? (locale === "fr" ? "Concours ouvert" : "Contest open") : t[phase === "upcoming" ? "upcoming" : phase === "judging" ? "judging" : "closed"]}</p>
               <h2>{localized.title}</h2>
-              <p>{localized.summary}</p>
             </div>
             <Trophy size={42} aria-hidden="true" />
           </div>

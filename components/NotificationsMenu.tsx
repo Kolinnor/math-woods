@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { localizeNotification } from "@/lib/notification-copy";
+import { RETIRED_LIBRARY_NOTIFICATION_TYPES } from "@/lib/notification-policy";
 import { cleanupNotificationsForUser, notificationOpenHref } from "@/lib/notification-lifecycle";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 import {
@@ -25,8 +26,8 @@ export async function NotificationsMenu({ userId }: { userId: number }) {
   ]);
   await cleanupNotificationsForUser(userId);
   const hiddenNotificationTypes = EXPLORATIONS_ENABLED
-    ? [NotificationType.CHAT_MESSAGE]
-    : [NotificationType.CHAT_MESSAGE, NotificationType.EXPLORATION_PUBLISHED];
+    ? [NotificationType.CHAT_MESSAGE, ...RETIRED_LIBRARY_NOTIFICATION_TYPES]
+    : [NotificationType.CHAT_MESSAGE, NotificationType.EXPLORATION_PUBLISHED, ...RETIRED_LIBRARY_NOTIFICATION_TYPES];
   const [unreadNotifications, unreadCount] = await Promise.all([
     prisma.notification.findMany({
       where: { userId, readAt: null, dismissedFromMenuAt: null, type: { notIn: hiddenNotificationTypes } },

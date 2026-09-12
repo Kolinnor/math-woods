@@ -45,8 +45,8 @@ export function referenceRoleLabel(role: LibraryReferenceRole, locale: "en" | "f
 
 export function historyEraLabel(era: HistoryEra, locale: "en" | "fr") {
   const labels = {
-    en: { ANCIENT: "Ancient", MEDIEVAL: "Medieval", EARLY_MODERN: "Early modern", MODERN: "Modern", CONTEMPORARY: "Contemporary" },
-    fr: { ANCIENT: "Antiquité", MEDIEVAL: "Moyen Âge", EARLY_MODERN: "Époque moderne", MODERN: "XIXe et XXe siècles", CONTEMPORARY: "Contemporain" }
+    en: { ANCIENT: "Antiquity (before 500)", MEDIEVAL: "Middle Ages (500–1499)", EARLY_MODERN: "16th–18th centuries", MODERN: "1800–1949", CONTEMPORARY: "Since 1950" },
+    fr: { ANCIENT: "Antiquité (avant 500)", MEDIEVAL: "Moyen Âge (500–1499)", EARLY_MODERN: "XVIe–XVIIIe siècles", MODERN: "1800–1949", CONTEMPORARY: "Depuis 1950" }
   } as const;
   return labels[locale][era];
 }

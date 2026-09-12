@@ -7,7 +7,7 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { dailyProblemDateKey, isDailyProblemDateKey } from "@/lib/daily-problem-schedule";
-import { canUseAdminTools } from "@/lib/permissions";
+import { canUseOwnerTools } from "@/lib/permissions";
 import { createNotification } from "@/lib/notifications";
 import {
   contestCreationWindow,
@@ -49,7 +49,7 @@ async function contestNotificationRecipients(excludedUserId?: number) {
 
 export async function saveContestAction(formData: FormData) {
   const user = await requireVerifiedUser();
-  if (!canUseAdminTools(user)) throw new Error("Only admins can edit contests.");
+  if (!canUseOwnerTools(user)) throw new Error("Only the site owner can edit contests.");
   await assertRateLimit(`contest:save:${user.id}`, 20, 60_000);
 
   const contestId = Number(formData.get("contestId"));
@@ -65,8 +65,6 @@ export async function saveContestAction(formData: FormData) {
     endDateKey: contestEndDateKey(startDateKey),
     titleEn,
     titleFr,
-    summaryEn: requiredBoundedText(formData.get("summaryEn"), CONTENT_LIMITS.mediumText, "English summary"),
-    summaryFr: requiredBoundedText(formData.get("summaryFr"), CONTENT_LIMITS.mediumText, "French summary"),
     bodyEn: boundedText(formData.get("bodyEn"), CONTENT_LIMITS.markdown, "English description"),
     bodyFr: boundedText(formData.get("bodyFr"), CONTENT_LIMITS.markdown, "French description"),
     rulesEn: boundedText(formData.get("rulesEn"), CONTENT_LIMITS.longNote, "English rules"),
@@ -95,7 +93,8 @@ export async function saveContestAction(formData: FormData) {
           data: { ...data, slug, publishedAt: publish ? existing?.publishedAt ?? new Date() : null }
         })
       : await tx.problemContest.create({
-          data: { ...data, slug, createdById: user.id, publishedAt: publish ? new Date() : null }
+          // Legacy database columns are no longer used by the contest interface.
+          data: { ...data, summaryEn: "", summaryFr: "", slug, createdById: user.id, publishedAt: publish ? new Date() : null }
         });
   });
 
@@ -149,7 +148,7 @@ export async function withdrawContestSubmissionAction(formData: FormData) {
 
 export async function publishContestResultsAction(formData: FormData) {
   const user = await requireVerifiedUser();
-  if (!canUseAdminTools(user)) throw new Error("Only admins can publish contest results.");
+  if (!canUseOwnerTools(user)) throw new Error("Only the site owner can publish contest results.");
   const contestId = Number(formData.get("contestId"));
   const winnerId = Number(formData.get("winnerSubmissionId"));
   const honorableIds = new Set(formData.getAll("honorableSubmissionIds").map(Number).filter(Number.isInteger));

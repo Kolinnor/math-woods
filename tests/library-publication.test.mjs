@@ -20,7 +20,7 @@ function harness(entity, overrides={}) {
   const writes=[];
   const entry={id:1,slug:'example',name:'Example',canonicalTitle:'Example',status:'PUBLISHED',createdById:1,lastEditedById:1,needsReviewAfterEdit:true,reviewedAt:null,publishedAt:version,updatedAt:version,translations:[{title:'Example',displayTitle:'Example',displayName:'Example'}],...overrides};
   const model={findFirst:async()=>null,findUnique:async()=>entry,create:async({data})=>{writes.push(data);return entry;},updateMany:async({where,data})=>{assert.equal(where.updatedAt,version);writes.push(data);return {count:1};}};
-  const db={mathematician:model,libraryReference:model,historyMilestone:model,user:{findMany:async()=>[]},notification:{updateMany:async()=>{}},$transaction:async cb=>cb(db)};
+  const db={mathematician:model,libraryReference:model,historyMilestone:model,user:{findMany:async()=>{throw new Error('Library actions must not look up notification recipients');}},notification:{updateMany:async()=>{throw new Error('Library actions must not manage notifications');}},$transaction:async cb=>cb(db)};
   const modules={
     '@prisma/client':require('@prisma/client'),'@/lib/db':{prisma:db},
     '@/lib/auth':{requireAdmin:async()=>({id:2,role:'ADMIN',emailVerifiedAt:version}),requireVerifiedUser:async()=>({id:2,role:'USER',emailVerifiedAt:version})},
@@ -29,7 +29,7 @@ function harness(entity, overrides={}) {
     '@/lib/library':{normalizeReferenceDedupeKey:()=> 'example'},'@/lib/problem-citations':{citationUrl:()=>null},
     '@/lib/unique-slug':{uniqueSlug:async()=>entry.slug},'@/lib/rate-limit':{assertRateLimit:async()=>{}},
     '@/lib/markdown':{renderMarkdown:async text=>text},'@/lib/user-display':{displayNameForUser:()=> 'Editor'},
-    '@/lib/notifications':{createNotification:async()=>{}},'next/cache':{revalidatePath:()=>{}},'next/navigation':{redirect:()=>{},unstable_rethrow:()=>{}}
+    '@/lib/notifications':{createNotification:async()=>{throw new Error('Library actions must not send notifications');}},'next/cache':{revalidatePath:()=>{}},'next/navigation':{redirect:()=>{},unstable_rethrow:()=>{}}
   };
   const exports={};vm.runInNewContext(compiled,{exports,require:name=>modules[name]??{},FormData,Date,URL,Error});
   const form=new FormData();Object.entries({name:'Euclide',title:'Mathématiques hellénistiques',canonicalTitle:'Éléments',referenceType:'BOOK',language:'fr',intent:'submit',era:'ANCIENT',milestoneType:'PERIOD',sortYear:'-323',endYear:'-31',yearLabel:'323–31 av. J.-C.',summaryMarkdown:'Texte',imageUrl:'https://example.com/image.webp',imageCredit:'Auteur',imageCreditUrl:'https://example.com/source',imageLicense:'CC BY',baseUpdatedAt:version.toISOString()}).forEach(([k,v])=>form.set(k,v));
@@ -73,6 +73,15 @@ test('reviewing an already visible reference or milestone preserves its publicat
     await assert.rejects(reviewed.actions.reviewLibraryEntryAction(entity,1,'publish',reviewed.form),/no longer awaiting/);
   }
 });
+test('library review decisions do not notify reviewers or creators',async()=>{
+  for(const entity of ['mathematician','reference','milestone']) for(const decision of ['publish','changes']) {
+    const h=harness(entity,{status:'PENDING_REVIEW'});
+    h.form.set('reviewNote','Préciser les sources.');
+    await h.actions.reviewLibraryEntryAction(entity,1,decision,h.form);
+    assert.equal(h.writes[0].status,decision==='publish'?'PUBLISHED':'NEEDS_WORK');
+  }
+});
+
 test('migration publishes only submitted entries and preserves all content and existing publication dates',{skip:!process.env.MW_PGLITE_MODULE},async()=>{
   const {PGlite}=await import(pathToFileURL(process.env.MW_PGLITE_MODULE).href),db=new PGlite();
   try {

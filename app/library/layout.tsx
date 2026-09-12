@@ -6,5 +6,5 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function LibraryLayout({ children }: { children: ReactNode }) {
   await requireAdmin();
-  return children;
+  return <div className="library-root">{children}</div>;
 }

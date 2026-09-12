@@ -273,7 +273,7 @@ export default async function NewProblemPage({
             {contest && (
               <p className="quality-banner text-sm">
                 {interfaceLocale === "fr"
-                  ? "Ce problème sera proposé au concours hebdomadaire après sa publication."
+                  ? "Ce problème sera soumis au concours hebdomadaire après sa publication."
                   : "This problem will be entered in the weekly contest after publication."}
               </p>
             )}
@@ -284,6 +284,13 @@ export default async function NewProblemPage({
               required
               placeholder={sourceProblem ? t.contentEditor.translationTitlePlaceholder(sourceProblem.title) : undefined}
             />
+            {contest && (
+              <p className="muted text-sm">
+                {interfaceLocale === "fr"
+                  ? "Le titre du problème devrait être différent de celui du concours."
+                  : "The problem title should be different from the contest title."}
+              </p>
+            )}
 
             <div className="grid gap-2">
               <span className="text-sm font-medium">{t.contentEditor.statement}</span>

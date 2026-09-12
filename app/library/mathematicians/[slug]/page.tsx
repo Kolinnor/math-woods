@@ -2,15 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PortraitImage } from "@/components/library/PortraitImage";
-import { ArrowLeft } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { PortraitSource } from "@/components/library/PortraitSource";
 import { LibraryAttribution } from "@/components/library/LibraryAttribution";
 import { LibraryReviewActions } from "@/components/library/LibraryReviewActions";
-import { LibraryEntryRail } from "@/components/library/LibraryEntryNavigation";
+import { LibraryEntryRail, LibraryEntryToolbar } from "@/components/library/LibraryEntryNavigation";
 import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
-import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -65,15 +63,9 @@ export default async function LibraryMathematicianPage({ params, searchParams }:
   const isStub = isMathematicianStub(translation);
 
   return (
-    <ForestPageLayout className="mathematician-page" title={<>{translation?.displayName ?? entry.name}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={contentLanguage} />}</>} description={translation?.teaser ? <AsyncMarkdownInline markdown={translation.teaser} /> : undefined} heroImage="/art/birch-grove.jpg">
+    <ForestPageLayout titleBelowHero className="mathematician-page" title={<>{translation?.displayName ?? entry.name}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={contentLanguage} />}</>} description={translation?.teaser ? <AsyncMarkdownInline markdown={translation.teaser} /> : undefined} heroImage="/art/birch-grove.jpg">
       <LibraryTabs active="mathematicians" locale={locale} />
-      <div className="mathematician-toolbar">
-        <Link href={returnTo as never} className="button secondary mathematician-back-link"><ArrowLeft size={16} aria-hidden="true" />{locale === "fr" ? "Retour aux mathématiciens" : "Back to mathematicians"}</Link>
-        <div className="mathematician-toolbar-meta">
-          {entry.translations.length > 1 ? <nav className="mathematician-languages" aria-label={locale === "fr" ? "Langue de la fiche" : "Entry language"}>{entry.translations.map(t => <Link key={t.language} href={`/library/mathematicians/${entry.slug}?lang=${t.language}&returnTo=${encodeURIComponent(returnTo)}`} aria-current={t.language === translation?.language ? "page" : undefined}>{t.language === "fr" ? "Français" : t.language === "en" ? "English" : t.language.toUpperCase()}</Link>)}</nav> : translation && <span className="mathematician-language">{translation.language === "fr" ? "Français" : translation.language === "en" ? "English" : translation.language.toUpperCase()}</span>}
-          <LibraryStatusBadge status={entry.status} locale={locale} reviewed={!entry.needsReviewAfterEdit} />
-        </div>
-      </div>
+      <LibraryEntryToolbar locale={locale} backHref={returnTo} backLabel={locale === "fr" ? "Retour aux mathématiciens" : "Back to mathematicians"} href={`/library/mathematicians/${entry.slug}`} languages={entry.translations.map(t => t.language)} activeLanguage={translation?.language ?? contentLanguage} status={entry.status} reviewed={!entry.needsReviewAfterEdit} />
       <div className="mathematician-detail-layout">
       <article className="mathematician-article">
       {isStub && <p className="quality-banner quality-stub mathematician-stub-notice"><strong>{locale === "fr" ? "Cet article est une ébauche." : "This article is a stub."}</strong>{" "}{locale === "fr" ? "Vous pouvez contribuer à le compléter." : "You can help expand it."}</p>}

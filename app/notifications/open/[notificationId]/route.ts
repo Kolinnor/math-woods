@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { RETIRED_LIBRARY_NOTIFICATION_TYPES } from "@/lib/notification-policy";
 import { markNotificationRead, safeNotificationHref } from "@/lib/notification-lifecycle";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ notificationId: string }> }) {
@@ -11,7 +12,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ not
   if (!Number.isInteger(id)) redirect("/notifications");
 
   const notification = await prisma.notification.findFirst({
-    where: { id, userId: user.id },
+    where: { id, userId: user.id, type: { notIn: RETIRED_LIBRARY_NOTIFICATION_TYPES } },
     select: { id: true, href: true }
   });
 

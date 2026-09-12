@@ -88,8 +88,6 @@ export function contestCreationWindow(contest: { startDateKey: string; endDateKe
 export function localizedContestText<T extends {
   titleEn: string;
   titleFr: string;
-  summaryEn: string;
-  summaryFr: string;
   bodyEn: string;
   bodyFr: string;
   rulesEn: string;
@@ -100,14 +98,12 @@ export function localizedContestText<T extends {
   return locale === "fr"
     ? {
         title: contest.titleFr,
-        summary: contest.summaryFr,
         body: contest.bodyFr,
         rules: contest.rulesFr,
         criteria: contest.criteriaFr
       }
     : {
         title: contest.titleEn,
-        summary: contest.summaryEn,
         body: contest.bodyEn,
         rules: contest.rulesEn,
         criteria: contest.criteriaEn

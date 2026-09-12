@@ -11,7 +11,7 @@ import { publishContestResultsAction, saveContestAction } from "@/lib/actions/co
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
-import { canUseAdminTools } from "@/lib/permissions";
+import { canUseOwnerTools } from "@/lib/permissions";
 import {
   DEFAULT_CONTEST_IMAGE_URL,
   DEFAULT_CONTEST_REWARD,
@@ -28,7 +28,7 @@ const defaultCriteria = {
 
 const defaultRules = {
   en: "One entry per person. You may edit your problem until Friday at 23:59, Paris time. Admins select one winner and may also award honorable mentions. Translations of the same problem count as one entry.",
-  fr: "Une proposition par personne. Vous pouvez modifier votre problème jusqu'au vendredi à 23 h 59, heure de Paris. Les admins choisissent un seul gagnant et peuvent aussi attribuer des mentions honorables. Les traductions d'un même problème comptent comme une seule proposition."
+  fr: "Un seul problème par personne. Vous pouvez modifier votre problème jusqu'au vendredi à 23 h 59, heure de Paris. Les admins choisissent un seul gagnant et peuvent aussi attribuer des mentions honorables. Les traductions d'un même problème comptent comme une seule participation."
 };
 
 export default async function EditContestPage({
@@ -53,7 +53,7 @@ export default async function EditContestPage({
       }
     })
   ]);
-  if (!user || !canUseAdminTools(user)) notFound();
+  if (!user || !canUseOwnerTools(user)) notFound();
   const requestedId = Number(params.id);
   const selected = params.new === "1"
     ? null
@@ -122,16 +122,14 @@ export default async function EditContestPage({
           <fieldset>
             <legend>English</legend>
             <label><span>Title</span><input name="titleEn" defaultValue={selected?.titleEn ?? ""} required /></label>
-            <label><span>Short summary</span><textarea name="summaryEn" defaultValue={selected?.summaryEn ?? ""} required /></label>
-            <label><span>Full description</span><textarea name="bodyEn" defaultValue={selected?.bodyEn ?? ""} /></label>
+            <label><span>Description</span><textarea name="bodyEn" defaultValue={selected?.bodyEn ?? ""} /></label>
             <label><span>Judging criteria</span><textarea name="criteriaEn" defaultValue={selected?.criteriaEn ?? defaultCriteria.en} /></label>
             <label><span>Rules</span><textarea name="rulesEn" defaultValue={selected?.rulesEn ?? defaultRules.en} /></label>
           </fieldset>
           <fieldset>
             <legend>Français</legend>
             <label><span>Titre</span><input name="titleFr" defaultValue={selected?.titleFr ?? ""} required /></label>
-            <label><span>Résumé court</span><textarea name="summaryFr" defaultValue={selected?.summaryFr ?? ""} required /></label>
-            <label><span>Description complète</span><textarea name="bodyFr" defaultValue={selected?.bodyFr ?? ""} /></label>
+            <label><span>Description</span><textarea name="bodyFr" defaultValue={selected?.bodyFr ?? ""} /></label>
             <label><span>Critères de sélection</span><textarea name="criteriaFr" defaultValue={selected?.criteriaFr ?? defaultCriteria.fr} /></label>
             <label><span>Règles</span><textarea name="rulesFr" defaultValue={selected?.rulesFr ?? defaultRules.fr} /></label>
           </fieldset>

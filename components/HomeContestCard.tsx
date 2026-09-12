@@ -8,17 +8,18 @@ export function HomeContestCard({
 }: {
   contest: {
     title: string;
-    summary: string;
     imageUrl: string;
     imagePositionX: number;
     imagePositionY: number;
     deadline: string;
+    starts: string;
     rewardPoints: number;
     isOpen: boolean;
   };
   labels: {
     heading: string;
     deadline: string;
+    starts: string;
     points: string;
     action: string;
     upcoming: string;
@@ -29,9 +30,8 @@ export function HomeContestCard({
       <div>
         <p className="mw-kicker">{labels.heading}</p>
         <h2>{contest.title}</h2>
-        <p>{contest.summary}</p>
         <div className="home-contest-meta">
-          <span><CalendarDays size={17} /> {labels.deadline} {contest.deadline}</span>
+          <span><CalendarDays size={17} /> {contest.isOpen ? labels.deadline : labels.starts} {contest.isOpen ? contest.deadline : contest.starts}</span>
           <span><Award size={17} /> {contest.rewardPoints} {labels.points}</span>
         </div>
         <span className="mw-primary-button">{contest.isOpen ? labels.action : labels.upcoming}</span>

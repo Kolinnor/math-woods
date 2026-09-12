@@ -7,9 +7,7 @@ import {
   HistoryEra,
   LibraryReferenceType,
   LibraryStatus,
-  NotificationType,
-  Prisma,
-  Role
+  Prisma
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
@@ -18,7 +16,6 @@ import { CONTENT_LIMITS, boundedText, optionalBoundedText, requiredBoundedText }
 import { prisma } from "@/lib/db";
 import { normalizeReferenceDedupeKey } from "@/lib/library";
 import { renderMarkdown } from "@/lib/markdown";
-import { createNotification } from "@/lib/notifications";
 import {
   canArchiveLibraryEntry,
   canCreateLibraryEntry,
@@ -30,7 +27,6 @@ import {
 } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { uniqueSlug } from "@/lib/unique-slug";
-import { displayNameForUser } from "@/lib/user-display";
 import { submittedMathematicianPeriod } from "@/lib/mathematician-browser";
 import { submittedHistoryPeriod } from "@/lib/history-period";
 import { citationUrl } from "@/lib/problem-citations";
@@ -58,7 +54,6 @@ export async function proposeLibraryReferenceAction(_state: { message: string; s
       status: LibraryStatus.PUBLISHED, createdById: user.id, submittedAt: new Date(), publishedAt: new Date(),
       translations: { create: { language: fr ? "fr" : "en", displayTitle: title, descriptionMarkdown: "", descriptionHtml: "" } }
     } });
-    await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "reference", slug, title });
     revalidateLibrary("reference", slug);
     return { success: true, message: fr ? "Référence publiée dans le catalogue. Votre problème et sa référence restent inchangés." : "Reference published in the catalogue. Your problem and its reference are unchanged." };
   } catch (error) { return { success: false, message: error instanceof Error ? error.message : (fr ? "Envoi impossible." : "Unable to submit.") }; }
@@ -159,81 +154,6 @@ function revalidateLibrary(entity: LibraryEntity, slug?: string) {
   }
 }
 
-function libraryEntityKind(entity: LibraryEntity) {
-  if (entity === "mathematician") return "mathematician";
-  if (entity === "reference") return "reference";
-  return "historical milestone";
-}
-
-function libraryEntityHref(entity: LibraryEntity, slug: string, edit = false) {
-  const segment = entity === "milestone" ? "history" : entity === "reference" ? "references" : "mathematicians";
-  return `/library/${segment}/${slug}${edit ? "/edit" : ""}`;
-}
-
-async function notifyLibraryReviewers({
-  actorId,
-  actorName,
-  entity,
-  slug,
-  title
-}: {
-  actorId: number;
-  actorName: string;
-  entity: LibraryEntity;
-  slug: string;
-  title: string;
-}) {
-  const reviewers = await prisma.user.findMany({
-    where: {
-      id: { not: actorId },
-      role: { in: [Role.ADMIN, Role.OWNER] },
-      deletedAt: null
-    },
-    select: { id: true }
-  });
-  return Promise.all(reviewers.map(({ id: userId }) => createNotification({
-    userId,
-    actorId,
-    type: NotificationType.LIBRARY_ENTRY_SUBMITTED,
-    title: "Library entry awaiting review",
-    body: `${actorName} submitted a library ${libraryEntityKind(entity)}: "${title}".`,
-    href: libraryEntityHref(entity, slug)
-  })));
-}
-
-async function notifyLibraryCreator({
-  creatorId,
-  actorId,
-  actorName,
-  entity,
-  slug,
-  title,
-  decision,
-  reviewNote
-}: {
-  creatorId: number | null;
-  actorId: number;
-  actorName: string;
-  entity: LibraryEntity;
-  slug: string;
-  title: string;
-  decision: "publish" | "changes";
-  reviewNote: string | null;
-}) {
-  if (!creatorId || creatorId === actorId) return null;
-  const published = decision === "publish";
-  return createNotification({
-    userId: creatorId,
-    actorId,
-    type: published ? NotificationType.LIBRARY_ENTRY_PUBLISHED : NotificationType.LIBRARY_ENTRY_CHANGES_REQUESTED,
-    title: published ? "Library entry reviewed" : "Changes requested on your library entry",
-    body: published
-      ? `${actorName} reviewed your library ${libraryEntityKind(entity)}: "${title}".`
-      : `${actorName} requested changes to your library ${libraryEntityKind(entity)}: "${title}". Feedback: ${reviewNote}`,
-    href: libraryEntityHref(entity, slug, !published)
-  });
-}
-
 export async function createMathematicianAction(formData: FormData) {
   const user = await requireAdmin();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot create a library entry.");
@@ -294,9 +214,6 @@ export async function createMathematicianAction(formData: FormData) {
     return created;
   });
   revalidateLibrary("mathematician", slug);
-  if (intent === "submit") {
-    await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "mathematician", slug, title: displayName });
-  }
   redirect(`/library/mathematicians/${mathematician.slug}?lang=${language}`);
 }
 
@@ -382,9 +299,6 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
     }
   });
   revalidateLibrary("mathematician", entry.slug);
-  if (intent === "submit" && !preserveStatus) {
-    await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "mathematician", slug: entry.slug, title: displayName });
-  }
   redirect(`/library/mathematicians/${entry.slug}?lang=${language}`);
 }
 
@@ -465,9 +379,6 @@ export async function createLibraryReferenceAction(formData: FormData) {
   });
   });
   revalidateLibrary("reference", slug);
-  if (intent === "submit") {
-    await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "reference", slug, title: displayTitle });
-  }
   redirect(`/library/references/${reference.slug}?lang=${language}`);
 }
 
@@ -545,9 +456,6 @@ export async function updateLibraryReferenceAction(id: number, formData: FormDat
   });
   });
   revalidateLibrary("reference", entry.slug);
-  if (intent === "submit" && !preserveStatus) {
-    await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "reference", slug: entry.slug, title: displayTitle });
-  }
   redirect(`/library/references/${entry.slug}?lang=${language}`);
 }
 
@@ -600,9 +508,6 @@ export async function createHistoryMilestoneAction(formData: FormData) {
     });
   });
   revalidateLibrary("milestone", slug);
-  if (intent === "submit") {
-    await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "milestone", slug, title });
-  }
   redirect(`/library/history/${milestone.slug}?lang=${language}`);
 }
 
@@ -655,9 +560,6 @@ export async function updateHistoryMilestoneAction(id: number, formData: FormDat
     if (conceptIds.length) await tx.historyMilestoneConcept.createMany({ data: conceptIds.map((conceptId, position) => ({ milestoneId: id, conceptId, position })) });
   });
   revalidateLibrary("milestone", entry.slug);
-  if (intent === "submit" && entry.status !== LibraryStatus.PENDING_REVIEW && entry.status !== LibraryStatus.PUBLISHED) {
-    await notifyLibraryReviewers({ actorId: user.id, actorName: displayNameForUser(user), entity: "milestone", slug: entry.slug, title });
-  }
   redirect(`/library/history/${entry.slug}?lang=${language}`);
 }
 
@@ -727,27 +629,7 @@ export async function reviewLibraryEntryAction(entity: LibraryEntity, id: number
     else if (entity === "reference") await prisma.libraryHomepageSelection.updateMany({ where: { referenceId: id }, data: { referenceId: null } });
     else await prisma.libraryHomepageSelection.updateMany({ where: { milestoneId: id }, data: { milestoneId: null } });
   }
-  await prisma.notification.updateMany({
-    where: {
-      type: NotificationType.LIBRARY_ENTRY_SUBMITTED,
-      href: libraryEntityHref(entity, entry.slug),
-      readAt: null
-    },
-    data: { readAt: reviewedAt }
-  });
   revalidateLibrary(entity, entry.slug);
-  if (decision === "publish" || decision === "changes") {
-    await notifyLibraryCreator({
-      creatorId: entry.createdById,
-      actorId: user.id,
-      actorName: displayNameForUser(user),
-      entity,
-      slug: entry.slug,
-      title: entry.title,
-      decision,
-      reviewNote
-    });
-  }
 }
 
 export async function updateLibraryHomepageAction(formData: FormData) {

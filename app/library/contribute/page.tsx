@@ -44,12 +44,12 @@ export default async function LibraryContributePage() {
   }
 
   return (
-    <ForestPageLayout title={fr ? "Contribuer à la bibliothèque" : "Contribute to the library"} description={fr ? "Publiez une fiche ou relisez les contributions déjà en ligne." : "Publish an entry or review contributions already online."} heroImage="/art/birch-grove.jpg">
+    <ForestPageLayout className="library-editor-page" titleBelowHero title={fr ? "Contribuer à la bibliothèque" : "Contribute to the library"} description={fr ? "Publiez une fiche ou relisez les contributions déjà en ligne." : "Publish an entry or review contributions already online."} heroImage="/art/birch-grove.jpg">
       <LibraryTabs locale={locale} />
       <div className="library-contribution-actions">
-        <Link href="/library/mathematicians/new"><UsersRound size={20} /><span>{fr ? "Proposer un mathématicien" : "Suggest a mathematician"}</span><Plus size={16} /></Link>
-        <Link href="/library/history/new"><Clock3 size={20} /><span>{fr ? "Proposer un repère" : "Suggest a milestone"}</span><Plus size={16} /></Link>
-        <Link href="/library/references/new"><BookOpen size={20} /><span>{fr ? "Proposer une référence" : "Suggest a reference"}</span><Plus size={16} /></Link>
+        <Link href="/library/mathematicians/new"><UsersRound size={20} /><span>{fr ? "Ajouter un mathématicien" : "Add a mathematician"}</span><Plus size={16} /></Link>
+        <Link href="/library/history/new"><Clock3 size={20} /><span>{fr ? "Ajouter un repère" : "Add a milestone"}</span><Plus size={16} /></Link>
+        <Link href="/library/references/new"><BookOpen size={20} /><span>{fr ? "Ajouter une référence" : "Add a reference"}</span><Plus size={16} /></Link>
       </div>
       {reviewer && <section className="library-review-queue"><h2>{fr ? "À relire" : "Review queue"}</h2>{entryList(pendingEntries, fr ? "Aucune fiche en attente de relecture." : "No entries are awaiting review.")}</section>}
       <section className="library-review-queue"><h2>{reviewer ? (fr ? "Mes brouillons" : "My drafts") : (fr ? "Mes fiches" : "My entries")}</h2>{entryList(personalEntries, fr ? "Aucune fiche à reprendre." : "No entries to resume.")}</section>

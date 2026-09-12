@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { LibraryEditorBack } from "@/components/library/LibraryEditorBack";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { MathematicianForm } from "@/components/library/MathematicianForm";
 import { LibraryTranslationEditorNav } from "@/components/library/LibraryTranslationEditorNav";
@@ -19,8 +20,8 @@ export default async function EditLibraryMathematicianPage({ params, searchParam
   const translation = entry.translations.find((item) => item.language === contentLanguage) ?? null;
   const source = entry.translations.find(item => item.language !== contentLanguage);
   const relatedItems = await relatedItemViews(translation?.relatedItems ?? [], contentLanguage);
-  return <ForestPageLayout title={locale === "fr" ? "Modifier le mathématicien" : "Edit mathematician"} meta={<p>{translation?.displayName ?? entry.name}</p>} heroImage="/art/birch-grove.jpg">
-    <LibraryTranslationEditorNav baseHref={`/library/mathematicians/${entry.slug}/edit`} locale={locale} activeLanguage={contentLanguage} existingLanguages={entry.translations.map((item) => item.language)} />
+  return <ForestPageLayout className="library-editor-page" titleBelowHero title={locale === "fr" ? "Modifier le mathématicien" : "Edit mathematician"} meta={<p>{translation?.displayName ?? entry.name}</p>} heroImage="/art/birch-grove.jpg">
+    <LibraryEditorBack href={`/library/mathematicians/${entry.slug}?lang=${contentLanguage}`} locale={locale} /><LibraryTranslationEditorNav baseHref={`/library/mathematicians/${entry.slug}/edit`} locale={locale} activeLanguage={contentLanguage} existingLanguages={entry.translations.map((item) => item.language)} />
     {source && <details className="panel p-4 mb-4"><summary>{locale === "fr" ? `Consulter la version ${source.language.toUpperCase()} pour traduire` : `Read the ${source.language.toUpperCase()} version while translating`}</summary><MarkdownBlock html={source.biographyHtml} /><MarkdownBlock html={source.contributionsHtml} /></details>}
     <MathematicianForm key={contentLanguage} action={saveMathematicianFormAction.bind(null, entry.id)} locale={locale} contentLanguage={contentLanguage} baseUpdatedAt={entry.updatedAt.toISOString()} values={{ ...entry, translation, relatedItems }} />
   </ForestPageLayout>;

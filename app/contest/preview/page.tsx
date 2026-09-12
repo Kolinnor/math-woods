@@ -7,7 +7,7 @@ import { HomeContestCard } from "@/components/HomeContestCard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
-import { canUseAdminTools } from "@/lib/permissions";
+import { canUseOwnerTools } from "@/lib/permissions";
 import {
   contestDateLabel,
   contestIsOpen,
@@ -27,7 +27,7 @@ export default async function ContestHomepagePreview({
     getInterfaceLocale(),
     searchParams
   ]);
-  if (!user || !canUseAdminTools(user) || params.view !== "home") notFound();
+  if (!user || !canUseOwnerTools(user) || params.view !== "home") notFound();
 
   const contestId = Number(params.contest);
   if (!Number.isSafeInteger(contestId) || contestId <= 0) notFound();
@@ -55,17 +55,18 @@ export default async function ContestHomepagePreview({
         <HomeContestCard
           contest={{
             title: text.title,
-            summary: text.summary,
             imageUrl: contest.imageUrl || DEFAULT_CONTEST_IMAGE_URL,
             imagePositionX: contest.imagePositionX,
             imagePositionY: contest.imagePositionY,
             deadline: contestDateLabel(contest.endDateKey, locale, { weekday: "long" }),
+            starts: contestDateLabel(contest.startDateKey, locale, { weekday: "long" }),
             rewardPoints: contest.rewardPoints,
             isOpen: contestIsOpen(projectedContest)
           }}
           labels={{
             heading: locale === "fr" ? "Concours de la semaine" : "Weekly contest",
             deadline: locale === "fr" ? "Date limite" : "Deadline",
+            starts: locale === "fr" ? "Ouvre le" : "Opens",
             points: locale === "fr" ? "points de réputation" : "reputation points",
             action: locale === "fr" ? "Participer au concours" : "Enter the contest",
             upcoming: locale === "fr" ? "Voir le prochain concours" : "See the upcoming contest"

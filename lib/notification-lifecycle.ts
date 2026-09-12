@@ -5,6 +5,7 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { RETIRED_LIBRARY_NOTIFICATION_TYPES } from "@/lib/notification-policy";
 
 const READ_NOTIFICATION_RETENTION_DAYS = 14;
 const ANY_NOTIFICATION_RETENTION_DAYS = 120;
@@ -87,6 +88,7 @@ export async function cleanupNotificationsForUser(userId: number) {
         { siteImprovementReview: { is: { status: SiteImprovementCompletionReviewStatus.PENDING } } }
       ],
       OR: [
+        { type: { in: RETIRED_LIBRARY_NOTIFICATION_TYPES } },
         { readAt: { lt: readBefore } },
         { createdAt: { lt: anyBefore } }
       ]

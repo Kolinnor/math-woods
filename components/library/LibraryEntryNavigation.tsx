@@ -3,6 +3,7 @@ import type { LibraryStatus } from "@prisma/client";
 import Link from "next/link";
 import { ArrowLeft, Languages, Pencil } from "lucide-react";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
+import { FieldHelp } from "@/components/FieldHelp";
 
 export function LibraryEntryRail({ locale, editHref, translateHref, attribution, management, className = "" }: {
   locale: "fr" | "en";
@@ -37,9 +38,10 @@ export function LibraryEntryToolbar({ locale, backHref, backLabel, href, languag
     <Link href={backHref as never} className="button secondary library-detail-back-link"><ArrowLeft size={16} aria-hidden="true" />{backLabel}</Link>
     <div className="library-detail-toolbar-meta">
       {languages.length > 1 ? <nav className="library-detail-languages" aria-label={locale === "fr" ? "Langue de la fiche" : "Entry language"}>
-        {languages.map(language => <Link key={language} href={`${href}?lang=${encodeURIComponent(language)}` as never} aria-current={language === activeLanguage ? "page" : undefined}>{languageName(language)}</Link>)}
+        {languages.map(language => <Link key={language} href={`${href}?lang=${encodeURIComponent(language)}&returnTo=${encodeURIComponent(backHref)}` as never} aria-current={language === activeLanguage ? "page" : undefined}>{languageName(language)}</Link>)}
       </nav> : <span className="library-detail-language">{languageName(activeLanguage)}</span>}
       <LibraryStatusBadge status={status} locale={locale} reviewed={reviewed} />
+      <FieldHelp text={locale === "fr" ? "La relecture concerne le contenu présent. Une fiche relue peut encore être une ébauche à compléter. La publication et la relecture sont distinctes." : "Review concerns the existing content. A reviewed entry can still be a stub to expand. Publication and review are separate."} />
     </div>
   </div>;
 }

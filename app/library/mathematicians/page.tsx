@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
-import { LiveSearchForm } from "@/components/LiveSearchForm";
+import { LibraryCatalogueForm } from "@/components/library/LibraryCatalogueForm";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { FieldHelp } from "@/components/FieldHelp";
 import { PortraitImage } from "@/components/library/PortraitImage";
@@ -61,12 +61,11 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
     { value: "added", label: fr ? "Dernières fiches ajoutées" : "Recently added entries" },
     { value: "updated", label: fr ? "Dernières fiches modifiées" : "Recently updated entries" }
   ];
-  return <ForestPageLayout className="mathematician-browser" title={copy.mathematicians} heroImage="/art/birch-grove.jpg">
+  return <ForestPageLayout className="library-catalogue-page mathematician-browser" title={copy.mathematicians} description={fr ? "Les personnes et les idées qui ont façonné les mathématiques." : "The people and ideas that shaped mathematics."} heroImage="/art/birch-grove.jpg" actions={canAdd && <Link className="button primary" href="/library/mathematicians/new"><Plus size={16} aria-hidden="true" />{copy.addMathematician}</Link>}>
     <LibraryTabs active="mathematicians" locale={locale} />
-    <div className="problems-workspace">
-      <aside className="problems-filter-panel" aria-label={fr ? "Filtres des mathématiciens" : "Mathematician filters"}>
-        <LiveSearchForm key={locale} className="problem-filter-form" resetLabel={fr ? "Réinitialiser les filtres" : "Reset filters"} updatingLabel={fr ? "Actualisation des résultats" : "Updating results"}>
-          <label className="problem-filter-search"><span>{fr ? "Rechercher un mathématicien" : "Search for a mathematician"}</span><input name="q" defaultValue={filters.q} /></label>
+    <div className="library-catalogue-workspace">
+      <aside aria-label={fr ? "Filtres des mathématiciens" : "Mathematician filters"}>
+        <LibraryCatalogueForm key={locale} locale={locale} pathname="/library/mathematicians" query={filters.q} searchLabel={fr ? "Rechercher un mathématicien" : "Search mathematicians"} activeCount={Number(Boolean(filters.period)) + Number(filters.review) + Number(filters.stub) + Number(filters.languages.length !== 1 || filters.languages[0] !== locale)}>
           <MathematicianPeriodFilter locale={locale} currentYear={currentYear} initialEra={filters.era} initialPeriod={filters.period} />
           <div className="problem-filter-section"><fieldset className="problem-language-filter"><legend>{fr ? "Langues" : "Languages"}</legend>
             <input type="hidden" name="languagesSet" value="1" />
@@ -76,25 +75,23 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
             <label><input type="checkbox" name="review" value="1" defaultChecked={filters.review} /><span>{fr ? "À relire" : "Awaiting review"}</span></label>
             <label><input type="checkbox" name="stub" value="1" defaultChecked={filters.stub} /><span>{fr ? "Ébauches" : "Stubs"}</span></label>
           </fieldset></div>
-          {filters.sort !== "alphabetical" && <input type="hidden" name="sort" value={filters.sort} />}
-          <noscript><button type="submit">{fr ? "Rechercher" : "Search"}</button></noscript>
-        </LiveSearchForm>
+        </LibraryCatalogueForm>
       </aside>
-      <section className="problems-ledger" aria-label={copy.mathematicians}>
-        <div className="problems-ledger-header"><p className="result-summary" role="status">{fr ? `${matches.length} fiche${matches.length === 1 ? "" : "s"}` : `${matches.length} ${matches.length === 1 ? "entry" : "entries"}`}</p>
+      <section className="library-catalogue-results" aria-label={copy.mathematicians}>
+        <div className="library-results-header"><p className="result-summary" role="status">{fr ? `${matches.length} fiche${matches.length === 1 ? "" : "s"}` : `${matches.length} ${matches.length === 1 ? "entry" : "entries"}`}</p>
           <ProblemSortControl value={filters.sort} defaultValue="alphabetical" options={sortOptions} label={fr ? "Trier :" : "Sort:"} ariaLabel={fr ? "Trier les mathématiciens" : "Sort mathematicians"} />
         </div>
-        {(canAdd || selected.length > 0) && <div className="library-card-grid library-mathematician-grid">
-          {canAdd && <Link className="library-card library-add-mathematician" href="/library/mathematicians/new"><Plus size={72} strokeWidth={1.5} aria-hidden="true" /><span>{copy.addMathematician}</span></Link>}
+        {selected.length > 0 && <div className="library-card-grid library-mathematician-grid">
           {selected.map(match => {
             const entry = rowById.get(match.person.id);
             const translation = entry?.translations.find(t => t.language === match.translation.language);
             if (!entry || !translation) return null;
+            const href = `/library/mathematicians/${entry.slug}?lang=${translation.language}&returnTo=${encodeURIComponent(returnTo)}`;
             return <article className="library-card library-person-card" key={entry.id}>
-              {entry.portraitUrl && <div className="library-card-image library-mathematician-portrait"><PortraitImage src={entry.portraitUrl} alt={entry.imageAlt ?? translation.displayName} crop={entry.portraitCrop} /><PortraitSource credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} details={entry.portraitDetails} locale={locale} /></div>}
-              <div className="library-card-body"><div className="library-card-heading"><h2><Link href={`/library/mathematicians/${entry.slug}?lang=${translation.language}&returnTo=${encodeURIComponent(returnTo)}`}>{translation.displayName}</Link><ContentLanguageFallback language={translation.language} expectedLanguage={locale} /></h2>
+              <div className="library-card-image library-mathematician-portrait"><Link href={href as never} tabIndex={-1} aria-hidden="true">{entry.portraitUrl ? <PortraitImage src={entry.portraitUrl} alt="" crop={entry.portraitCrop} /> : <span className="library-person-initial">{translation.displayName.slice(0, 1)}</span>}</Link>{entry.portraitUrl && <PortraitSource credit={entry.imageCredit} creditUrl={entry.imageCreditUrl} license={entry.imageLicense} details={entry.portraitDetails} locale={locale} />}</div>
+              <div className="library-card-body"><div className="library-card-heading"><h2><Link href={href as never}>{translation.displayName}</Link><ContentLanguageFallback language={translation.language} expectedLanguage={locale} /></h2>
                 {(entry.status !== "PUBLISHED" || entry.needsReviewAfterEdit) && <LibraryStatusBadge status={entry.needsReviewAfterEdit && entry.status === "PUBLISHED" ? "PENDING_REVIEW" : entry.status} locale={locale} />}
-              </div><p className="library-card-meta">{entry.lifespan}</p>{translation.teaser && <p><AsyncMarkdownInline markdown={translation.teaser} /></p>}</div>
+              </div><p className="library-card-meta">{entry.lifespan}</p>{translation.teaser && <p className="library-excerpt"><AsyncMarkdownInline markdown={translation.teaser} /></p>}</div>
             </article>;
           })}
         </div>}

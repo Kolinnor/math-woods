@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { LibraryEditorBack } from "@/components/library/LibraryEditorBack";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ReferenceForm } from "@/components/library/ReferenceForm";
 import { LibraryTranslationEditorNav } from "@/components/library/LibraryTranslationEditorNav";
@@ -18,5 +19,5 @@ export default async function EditLibraryReferencePage({ params, searchParams }:
   try { formEntry = upgradeLegacyBibliography(entry); } catch { /* Preserve malformed original BibTeX for correction. */ }
   const contentLanguage = libraryLanguage(query.lang ?? locale);
   const translation = entry.translations.find((item) => item.language === contentLanguage) ?? null;
-  return <ForestPageLayout title={locale === "fr" ? "Modifier la référence" : "Edit reference"} meta={<p>{entry.canonicalTitle}</p>} heroImage="/art/oak-grove.jpg"><LibraryTranslationEditorNav baseHref={`/library/references/${entry.slug}/edit`} locale={locale} activeLanguage={contentLanguage} existingLanguages={entry.translations.map((item) => item.language)} /><ReferenceForm action={saveLibraryReferenceFormAction.bind(null, entry.id)} locale={locale} contentLanguage={contentLanguage} baseUpdatedAt={entry.updatedAt.toISOString()} values={{ ...formEntry, translation }} /></ForestPageLayout>;
+  return <ForestPageLayout className="library-editor-page" titleBelowHero title={locale === "fr" ? "Modifier la référence" : "Edit reference"} meta={<p>{entry.canonicalTitle}</p>} heroImage="/art/oak-grove.jpg"><LibraryEditorBack href={`/library/references/${entry.slug}?lang=${contentLanguage}`} locale={locale} /><LibraryTranslationEditorNav baseHref={`/library/references/${entry.slug}/edit`} locale={locale} activeLanguage={contentLanguage} existingLanguages={entry.translations.map((item) => item.language)} /><ReferenceForm action={saveLibraryReferenceFormAction.bind(null, entry.id)} locale={locale} contentLanguage={contentLanguage} baseUpdatedAt={entry.updatedAt.toISOString()} values={{ ...formEntry, translation }} /></ForestPageLayout>;
 }

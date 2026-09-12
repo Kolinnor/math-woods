@@ -8,8 +8,8 @@ export const browserValue = (value: string | string[] | undefined) => Array.isAr
 const values = (value: string | string[] | undefined) => Array.isArray(value) ? value : value ? [value] : [];
 export function historyPresets(currentYear: number) {
   return [
-    { value: "ancient", from: MIN_HISTORY_YEAR, to: 499, fr: "Antiquité", en: "Antiquity" },
-    { value: "medieval", from: 500, to: 1499, fr: "Moyen Âge", en: "Middle Ages" },
+    { value: "ancient", from: MIN_HISTORY_YEAR, to: 499, fr: "Antiquité (avant 500)", en: "Antiquity (before 500)" },
+    { value: "medieval", from: 500, to: 1499, fr: "Moyen Âge (500–1499)", en: "Middle Ages (500–1499)" },
     { value: "early-modern", from: 1500, to: 1799, fr: "XVIe–XVIIIe siècles", en: "16th–18th centuries" },
     { value: "modern", from: 1800, to: 1949, fr: "1800–1949", en: "1800–1949" },
     { value: "contemporary", from: 1950, to: currentYear, fr: "Depuis 1950", en: "Since 1950" }

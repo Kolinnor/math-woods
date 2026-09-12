@@ -21,7 +21,7 @@ export function LibraryAttribution({
   if (!creator && !reviewer) return null;
   return (
     <p className="library-attribution">
-      {creator && <>{locale === "fr" ? "Proposé par" : "Suggested by"} <Link href={`/profile/${creator.profileSlug}`}><UserName user={creator} /></Link></>}
+      {creator && <>{locale === "fr" ? "Créé par" : "Created by"} <Link href={`/profile/${creator.profileSlug}`}><UserName user={creator} /></Link></>}
       {creator && reviewer && <span aria-hidden="true"> · </span>}
       {reviewer && <>{locale === "fr" ? "Relu par" : "Reviewed by"} <Link href={`/profile/${reviewer.profileSlug}`}><UserName user={reviewer} /></Link></>}
     </p>

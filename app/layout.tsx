@@ -53,12 +53,9 @@ import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { resendEmailVerificationAction } from "@/lib/actions/account-actions";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
-import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
-import { prisma } from "@/lib/db";
 import { dictionaryForContentLanguage } from "@/lib/i18n/server";
 import { CONTENT_LANGUAGE_COOKIE, parseActiveContentLanguage } from "@/lib/languages";
 import { canUseAdminTools, canUseModerationTools } from "@/lib/permissions";
-import { CONTEST_TIME_ZONE } from "@/lib/problem-contests";
 import { displayNameForUser } from "@/lib/user-display";
 
 export const metadata: Metadata = {
@@ -203,30 +200,8 @@ function validBackgroundTone(value: string | undefined) {
   return value === "sage" || value === "amber" || value === "blue" || value === "rose" ? value : undefined;
 }
 
-async function getActiveContest(today: string) {
-  if (!process.env.DATABASE_URL) return null;
-
-  try {
-    return await prisma.problemContest.findFirst({
-      where: {
-        publishedAt: { not: null },
-        startDateKey: { lte: today },
-        endDateKey: { gte: today }
-      },
-      select: { id: true }
-    });
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") return null;
-    throw error;
-  }
-}
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const today = dailyProblemDateKey(new Date(), CONTEST_TIME_ZONE);
-  const [user, activeContest] = await Promise.all([
-    getCurrentUser(),
-    getActiveContest(today)
-  ]);
+  const user = await getCurrentUser();
   const cookieStore = await cookies();
   const initialBackground = validBackground(cookieStore.get("math-woods-background")?.value) ?? "green";
   const initialBackgroundTone = validBackgroundTone(cookieStore.get("math-woods-background-tone")?.value) ?? "sage";
@@ -272,9 +247,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/problems" data-tour-target="nav-problems">{t.nav.problems}</Link>
               <Link href="/concepts" data-tour-target="nav-concepts">{t.nav.concepts}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
-              <Link href={usersRoute}>{t.nav.users}</Link>
-              {activeContest && <Link href="/contest">{t.nav.contest}</Link>}
               {user && canUseAdminTools(user) && <Link href={libraryRoute}>{t.nav.library}</Link>}
+              <Link href={usersRoute}>{t.nav.users}</Link>
+              <Link href="/contest">{t.nav.contest}</Link>
             </div>
             <div className="nav-tools">
               {!user && (
@@ -296,9 +271,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <Link href="/problems" data-tour-target="nav-problems">{t.nav.problems}</Link>
                     <Link href="/concepts" data-tour-target="nav-concepts">{t.nav.concepts}</Link>
                     {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
-                    <Link href={usersRoute}>{t.nav.users}</Link>
-                    {activeContest && <Link href="/contest">{t.nav.contest}</Link>}
                     {user && canUseAdminTools(user) && <Link href={libraryRoute}>{t.nav.library}</Link>}
+                    <Link href={usersRoute}>{t.nav.users}</Link>
+                    <Link href="/contest">{t.nav.contest}</Link>
                   </div>
                   <div className="nav-menu-divider nav-menu-primary-divider" />
                   <Link href="/recent-changes">{t.nav.recentChanges}</Link>
@@ -350,15 +325,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <AchievementToast userId={user.id} />
           </div>
         )}
+        <main className="site-main site-content-width mx-auto px-4 py-8">
+          <MarkdownEditorLabelsProvider labels={t.markdownEditor}>{children}</MarkdownEditorLabelsProvider>
+        </main>
         {user && (
           <div className="floating-friends-menu">
             <NotificationsMenu userId={user.id} />
             <FriendsMenu user={user} />
           </div>
         )}
-        <main className="site-main site-content-width mx-auto px-4 py-8">
-          <MarkdownEditorLabelsProvider labels={t.markdownEditor}>{children}</MarkdownEditorLabelsProvider>
-        </main>
         <Suspense fallback={null}>
           <MathWoodsTourOverlay initialLocale={initialLanguage === "fr" ? "fr" : "en"} />
         </Suspense>
