@@ -1,4 +1,9 @@
 /* Weekly problem-design contest */
+.contest-page .forest-page-hero h1 {
+  font-size: clamp(1.85rem, 4vw, 3.3rem);
+  line-height: 1.1;
+}
+
 .contest-tabs {
   align-items: center;
   border-bottom: 1px solid var(--mw-border);

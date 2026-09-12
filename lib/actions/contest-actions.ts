@@ -2,22 +2,19 @@
 
 import { ContestPlacement, NotificationType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
-import { boundedText, CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { ContestFormError, parseContestForm, type ContestFormState } from "@/lib/contest-form";
 import { prisma } from "@/lib/db";
-import { dailyProblemDateKey, isDailyProblemDateKey } from "@/lib/daily-problem-schedule";
+import { dailyProblemDateKey } from "@/lib/daily-problem-schedule";
 import { canUseOwnerTools } from "@/lib/permissions";
 import { createNotification } from "@/lib/notifications";
 import {
   contestCreationWindow,
-  contestEndDateKey,
-  contestIsOpen,
-  isSaturdayDateKey
+  contestIsOpen
 } from "@/lib/problem-contests";
-import { assertRateLimit } from "@/lib/rate-limit";
+import { assertRateLimit, isRateLimitError } from "@/lib/rate-limit";
 import { ensureSlug } from "@/lib/slug";
-import { normalizeTipImagePosition, normalizeTipImageUrl } from "@/lib/tip-images";
 
 async function availableContestSlug(title: string, startDateKey: string, ignoredId?: number) {
   const base = ensureSlug(`${startDateKey}-${title}`, `contest-${startDateKey}`);
@@ -47,35 +44,15 @@ async function contestNotificationRecipients(excludedUserId?: number) {
   });
 }
 
-export async function saveContestAction(formData: FormData) {
+export async function saveContestAction(formData: FormData, locale: "fr" | "en" = "en") {
   const user = await requireVerifiedUser();
   if (!canUseOwnerTools(user)) throw new Error("Only the site owner can edit contests.");
   await assertRateLimit(`contest:save:${user.id}`, 20, 60_000);
 
   const contestId = Number(formData.get("contestId"));
   const editingId = Number.isInteger(contestId) && contestId > 0 ? contestId : undefined;
-  const startDateKey = String(formData.get("startDateKey") ?? "");
-  if (!isDailyProblemDateKey(startDateKey) || !isSaturdayDateKey(startDateKey)) {
-    throw new Error("A contest must begin on a Saturday.");
-  }
-  const titleEn = requiredBoundedText(formData.get("titleEn"), CONTENT_LIMITS.title, "English title");
-  const titleFr = requiredBoundedText(formData.get("titleFr"), CONTENT_LIMITS.title, "French title");
-  const data = {
-    startDateKey,
-    endDateKey: contestEndDateKey(startDateKey),
-    titleEn,
-    titleFr,
-    bodyEn: boundedText(formData.get("bodyEn"), CONTENT_LIMITS.markdown, "English description"),
-    bodyFr: boundedText(formData.get("bodyFr"), CONTENT_LIMITS.markdown, "French description"),
-    rulesEn: boundedText(formData.get("rulesEn"), CONTENT_LIMITS.longNote, "English rules"),
-    rulesFr: boundedText(formData.get("rulesFr"), CONTENT_LIMITS.longNote, "French rules"),
-    criteriaEn: boundedText(formData.get("criteriaEn"), CONTENT_LIMITS.longNote, "English criteria"),
-    criteriaFr: boundedText(formData.get("criteriaFr"), CONTENT_LIMITS.longNote, "French criteria"),
-    imageUrl: normalizeTipImageUrl(formData.get("imageUrl")),
-    imagePositionX: normalizeTipImagePosition(formData.get("imagePositionX")),
-    imagePositionY: normalizeTipImagePosition(formData.get("imagePositionY")),
-    rewardPoints: Math.max(0, Math.min(10_000, Math.floor(Number(formData.get("rewardPoints")) || 300)))
-  };
+  const data = parseContestForm(formData, locale);
+  const { titleEn, startDateKey } = data;
   const publish = formData.get("published") === "on";
   const slug = await availableContestSlug(titleEn, startDateKey, editingId);
 
@@ -86,7 +63,7 @@ export async function saveContestAction(formData: FormData) {
           select: { publishedAt: true, launchNotificationSentAt: true }
         })
       : null;
-    if (editingId && !existing) throw new Error("Contest not found.");
+    if (editingId && !existing) throw new ContestFormError(locale === "fr" ? "Ce concours n’existe plus. Rechargez la page." : "This contest no longer exists. Reload the page.");
     return editingId
       ? await tx.problemContest.update({
           where: { id: editingId },
@@ -96,6 +73,15 @@ export async function saveContestAction(formData: FormData) {
           // Legacy database columns are no longer used by the contest interface.
           data: { ...data, summaryEn: "", summaryFr: "", slug, createdById: user.id, publishedAt: publish ? new Date() : null }
         });
+  }).catch((error: unknown) => {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2002"
+      && "meta" in error && Array.isArray((error.meta as { target?: unknown })?.target)
+      && (error.meta as { target: string[] }).target.includes("startDateKey")) {
+      throw new ContestFormError(locale === "fr"
+        ? "Un concours existe déjà pour ce samedi. Modifiez-le ou choisissez une autre semaine."
+        : "A contest already exists for this Saturday. Edit it or choose another week.");
+    }
+    throw error;
   });
 
   await maybeSendContestLifecycleNotifications(saved.id);
@@ -104,6 +90,21 @@ export async function saveContestAction(formData: FormData) {
   revalidatePath("/contest");
   revalidatePath("/contest/edit");
   redirect(`/contest/edit?id=${saved.id}&saved=1`);
+}
+
+export async function saveContestFormAction(locale: "fr" | "en", _previous: ContestFormState, formData: FormData): Promise<ContestFormState> {
+  try {
+    await saveContestAction(formData, locale);
+    return { error: "" };
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof ContestFormError) return { error: error.message };
+    if (isRateLimitError(error)) return { error: locale === "fr" ? "Trop de tentatives. Patientez une minute avant de réessayer." : "Too many attempts. Wait a minute before trying again." };
+    console.error("Contest save failed", error);
+    return { error: locale === "fr"
+      ? "L’enregistrement n’a pas pu être confirmé. Votre saisie est conservée ; vérifiez l’état du concours avant de réessayer."
+      : "The save could not be confirmed. Your input has been kept; check the contest status before trying again." };
+  }
 }
 
 export async function submitContestProblemAction(formData: FormData) {

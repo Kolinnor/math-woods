@@ -422,6 +422,33 @@ body:has(.problem-detail-shell) .site-main {
 .problem-title-meta .translation-menu {
   margin-top: 0;
 }
+.problem-contest-notice {
+  align-items: baseline;
+  color: var(--mw-secondary);
+  display: flex;
+  font-size: 13.5px;
+  gap: 7px;
+  line-height: 1.5;
+  margin: 10px 0 0;
+}
+.problem-contest-notice > svg {
+  align-self: flex-start;
+  color: var(--mw-green);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.problem-contest-notice > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.problem-contest-notice a {
+  color: var(--mw-green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.problem-contest-notice a:hover {
+  color: var(--mw-text);
+}
 .problem-solved-banner {
   align-items: center;
   animation: mwSolvedIn .45s ease both;

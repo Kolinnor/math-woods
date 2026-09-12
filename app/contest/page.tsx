@@ -1,4 +1,5 @@
 import { Award, CalendarDays, Medal, Plus, Trophy } from "lucide-react";
+import type { Prisma } from "@prisma/client";
 import type { Route } from "next";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -88,6 +89,16 @@ const copy = {
   }
 } as const;
 
+const contestPageInclude = {
+  submissions: {
+    orderBy: { submittedAt: "asc" },
+    include: {
+      user: { select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true } },
+      problem: { select: { id: true, slug: true, title: true, language: true, difficulty: true, translationGroupId: true } }
+    }
+  }
+} satisfies Prisma.ProblemContestInclude;
+
 export default async function ContestPage({
   searchParams
 }: {
@@ -101,15 +112,7 @@ export default async function ContestPage({
       where: { publishedAt: { not: null } },
       orderBy: { startDateKey: "desc" },
       take: 24,
-      include: {
-        submissions: {
-          orderBy: { submittedAt: "asc" },
-          include: {
-            user: { select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true } },
-            problem: { select: { id: true, slug: true, title: true, language: true, difficulty: true, translationGroupId: true } }
-          }
-        }
-      }
+      include: contestPageInclude
     })
   ]);
   const t = copy[locale];
@@ -118,21 +121,20 @@ export default async function ContestPage({
   const previewContest = canEdit && Number.isSafeInteger(previewId) && previewId > 0
     ? await prisma.problemContest.findUnique({
         where: { id: previewId },
-        include: {
-          submissions: {
-            orderBy: { submittedAt: "asc" },
-            include: {
-              user: { select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true } },
-              problem: { select: { id: true, slug: true, title: true, language: true, difficulty: true, translationGroupId: true } }
-            }
-          }
-        }
+        include: contestPageInclude
       })
     : null;
   const contests = previewContest
     ? [previewContest, ...publishedContests.filter((contest) => contest.id !== previewContest.id)]
     : publishedContests;
-  const requestedContest = params.week ? contests.find((contest) => contest.startDateKey === params.week) : null;
+  // Links from problems must keep working after the contest leaves the recent list.
+  const requestedContest = params.week
+    ? contests.find((contest) => contest.startDateKey === params.week)
+      ?? await prisma.problemContest.findFirst({
+        where: { startDateKey: params.week, publishedAt: { not: null } },
+        include: contestPageInclude
+      })
+    : null;
   const featured = previewContest
     ?? requestedContest
     ?? contests.find((contest) => contestPhase(contest) === "open")
@@ -144,7 +146,7 @@ export default async function ContestPage({
 
   if (!featured) {
     return (
-      <ForestPageLayout title={t.pageTitle} heroImage="/art/pine-forest.jpg" heroAlt="Ivan Shishkin, Pine Forest">
+      <ForestPageLayout className="contest-page" title={t.pageTitle} heroImage="/art/pine-forest.jpg" heroAlt="Ivan Shishkin, Pine Forest">
         <ContestTabs active="contest" canEdit={canEdit} locale={locale} />
         <div className="contest-empty-state"><Trophy size={34} aria-hidden="true" /><p>{t.empty}</p></div>
       </ForestPageLayout>
@@ -199,8 +201,8 @@ export default async function ContestPage({
 
   return (
     <ForestPageLayout
+      className="contest-page"
       title={t.pageTitle}
-      eyebrow={locale === "fr" ? "Chaque semaine, un nouveau thème" : "A new theme every week"}
       heroImage="/art/pine-forest.jpg"
       heroAlt="Ivan Shishkin, Pine Forest"
       actions={isPreview

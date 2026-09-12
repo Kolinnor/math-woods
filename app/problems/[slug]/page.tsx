@@ -15,6 +15,7 @@ import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { ParticleBurstZone } from "@/components/ParticleBurstZone";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
+import { ProblemContestNotice } from "@/components/ProblemContestNotice";
 import { ProblemHints } from "@/components/ProblemHints";
 import { ProblemReactions } from "@/components/ProblemReactions";
 import { ProblemRecommendationExposure } from "@/components/ProblemRecommendationExposure";
@@ -997,6 +998,7 @@ export default async function ProblemPage({
               createHref={addTranslationHref}
             />
           </div>
+          <ProblemContestNotice translationGroupId={problem.translationGroupId} locale={interfaceLocale} />
         </header>
         {(isOwnProblem ? showOwnerProblemBanner : attempt?.status === "SOLVED") && (
           <section className={`problem-solved-banner${isOwnProblem ? " problem-solved-banner-owner" : ""}`} role="status">

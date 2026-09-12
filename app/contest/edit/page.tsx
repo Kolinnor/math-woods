@@ -1,13 +1,15 @@
-import { CalendarDays, Eye, House, Save, Trophy } from "lucide-react";
+import { CalendarDays, Eye, House, Trophy } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContestTabs } from "@/components/ContestTabs";
+import { ContestForm } from "@/components/ContestForm";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { TipImageField } from "@/components/TipImageField";
 import { UserAvatar } from "@/components/UserAvatar";
-import { publishContestResultsAction, saveContestAction } from "@/lib/actions/contest-actions";
+import { publishContestResultsAction } from "@/lib/actions/contest-actions";
+import { CONTENT_LIMITS } from "@/lib/content-limits";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
@@ -107,7 +109,7 @@ export default async function EditContestPage({
       {params.saved && <p className="quality-banner">{locale === "fr" ? "Concours enregistré." : "Contest saved."}</p>}
       {params.results && <p className="quality-banner quality-reviewed">{locale === "fr" ? "Résultats publiés." : "Results published."}</p>}
 
-      <form action={saveContestAction} className="contest-admin-form">
+      <ContestForm key={selected?.id ?? "new"} locale={locale}>
         {selected && <input type="hidden" name="contestId" value={selected.id} />}
         <section>
           <div className="contest-admin-section-title"><CalendarDays size={19} /><h2>{locale === "fr" ? "Semaine et publication" : "Week and publication"}</h2></div>
@@ -121,17 +123,17 @@ export default async function EditContestPage({
         <section className="contest-language-columns">
           <fieldset>
             <legend>English</legend>
-            <label><span>Title</span><input name="titleEn" defaultValue={selected?.titleEn ?? ""} required /></label>
-            <label><span>Description</span><textarea name="bodyEn" defaultValue={selected?.bodyEn ?? ""} /></label>
-            <label><span>Judging criteria</span><textarea name="criteriaEn" defaultValue={selected?.criteriaEn ?? defaultCriteria.en} /></label>
-            <label><span>Rules</span><textarea name="rulesEn" defaultValue={selected?.rulesEn ?? defaultRules.en} /></label>
+            <label><span>Title (required, {CONTENT_LIMITS.title} characters max.)</span><input name="titleEn" maxLength={CONTENT_LIMITS.title} defaultValue={selected?.titleEn ?? ""} required /></label>
+            <label><span>Description</span><textarea name="bodyEn" maxLength={CONTENT_LIMITS.markdown} defaultValue={selected?.bodyEn ?? ""} /></label>
+            <label><span>Judging criteria</span><textarea name="criteriaEn" maxLength={CONTENT_LIMITS.longNote} defaultValue={selected?.criteriaEn ?? defaultCriteria.en} /></label>
+            <label><span>Rules</span><textarea name="rulesEn" maxLength={CONTENT_LIMITS.longNote} defaultValue={selected?.rulesEn ?? defaultRules.en} /></label>
           </fieldset>
           <fieldset>
             <legend>Français</legend>
-            <label><span>Titre</span><input name="titleFr" defaultValue={selected?.titleFr ?? ""} required /></label>
-            <label><span>Description</span><textarea name="bodyFr" defaultValue={selected?.bodyFr ?? ""} /></label>
-            <label><span>Critères de sélection</span><textarea name="criteriaFr" defaultValue={selected?.criteriaFr ?? defaultCriteria.fr} /></label>
-            <label><span>Règles</span><textarea name="rulesFr" defaultValue={selected?.rulesFr ?? defaultRules.fr} /></label>
+            <label><span>Titre (obligatoire, {CONTENT_LIMITS.title} caractères max.)</span><input name="titleFr" maxLength={CONTENT_LIMITS.title} defaultValue={selected?.titleFr ?? ""} required /></label>
+            <label><span>Description</span><textarea name="bodyFr" maxLength={CONTENT_LIMITS.markdown} defaultValue={selected?.bodyFr ?? ""} /></label>
+            <label><span>Critères de sélection</span><textarea name="criteriaFr" maxLength={CONTENT_LIMITS.longNote} defaultValue={selected?.criteriaFr ?? defaultCriteria.fr} /></label>
+            <label><span>Règles</span><textarea name="rulesFr" maxLength={CONTENT_LIMITS.longNote} defaultValue={selected?.rulesFr ?? defaultRules.fr} /></label>
           </fieldset>
         </section>
 
@@ -147,8 +149,7 @@ export default async function EditContestPage({
           />
         </section>
 
-        <button type="submit"><Save size={17} /> {locale === "fr" ? "Enregistrer" : "Save contest"}</button>
-      </form>
+      </ContestForm>
 
       {selected && selected.submissions.length > 0 && (
         <form action={publishContestResultsAction} className="contest-results-form">
