@@ -16,7 +16,7 @@ export type JsxGraphAnimationConfig = {
   autoplay: boolean;
 };
 
-export type JsxGraphConfig = {
+export type JsxGraphBoardConfig = {
   boundingBox: [number, number, number, number];
   axis: boolean;
   grid: boolean;
@@ -26,11 +26,17 @@ export type JsxGraphConfig = {
   animation: JsxGraphAnimationConfig | null;
 };
 
+export type JsxGraphHtmlConfig = { html: string };
+export type JsxGraphConfig = JsxGraphBoardConfig | JsxGraphHtmlConfig;
+
 export type JsxGraphParseResult =
   | { ok: true; config: JsxGraphConfig }
   | { ok: false; error: string };
 
 const MAX_SOURCE_LENGTH = 50_000;
+const MAX_HTML_LENGTH = 200_000;
+// JSON escaping can expand each HTML character to six characters.
+const MAX_SERIALIZED_LENGTH = MAX_HTML_LENGTH * 6 + 100;
 const MAX_ELEMENTS = 120;
 const MAX_VALUE_DEPTH = 8;
 const MAX_STRING_LENGTH = 2_000;
@@ -270,12 +276,30 @@ function parseAnimation(value: unknown, elements: JsxGraphElementConfig[]): JsxG
   };
 }
 
+function parseHtmlFigure(html: unknown): JsxGraphParseResult {
+  if (typeof html !== "string" || !html.trim()) return { ok: false, error: "The HTML figure must contain code." };
+  if (html.length > MAX_HTML_LENGTH) return { ok: false, error: "The HTML figure is too large (maximum 200,000 characters)." };
+  return { ok: true, config: { html } };
+}
+
 export function parseJsxGraphConfig(source: string): JsxGraphParseResult {
-  if (source.length > MAX_SOURCE_LENGTH) return { ok: false, error: "This graph configuration is too large." };
+  if (source.length > MAX_SERIALIZED_LENGTH) return { ok: false, error: "This graph configuration is too large." };
+
+  // Tolerate the extra braces sometimes left around an HTML paste in a JSON starter.
+  const trimmed = source.trim();
+  const html = trimmed.startsWith("{") && trimmed.endsWith("}") ? trimmed.slice(1, -1).trim() : trimmed;
+  if (/^<(?:!doctype\s+html\b|!--|[a-z][a-z0-9-]*(?=[\s/>]))/i.test(html)) {
+    return parseHtmlFigure(html);
+  }
 
   try {
     const raw = JSON.parse(source) as unknown;
-    if (!isRecord(raw)) throw new Error("The JSXGraph block must contain one JSON object.");
+    if (!isRecord(raw)) throw new Error("Use a JSON graph or paste an HTML figure with its script tags.");
+    if ("html" in raw) {
+      if (Object.keys(raw).some((key) => key !== "html")) throw new Error("An HTML figure only accepts the html field.");
+      return parseHtmlFigure(raw.html);
+    }
+    if (source.length > MAX_SOURCE_LENGTH) throw new Error("This graph configuration is too large.");
     if (!Array.isArray(raw.elements) || raw.elements.length === 0) {
       throw new Error("elements must contain at least one JSXGraph element.");
     }
@@ -310,6 +334,7 @@ export function encodeJsxGraphConfig(config: JsxGraphConfig) {
 }
 
 export function decodeJsxGraphConfig(encoded: string): JsxGraphParseResult {
+  if (encoded.length > MAX_SERIALIZED_LENGTH * 3) return { ok: false, error: "This graph configuration is too large." };
   try {
     return parseJsxGraphConfig(decodeURIComponent(encoded));
   } catch {

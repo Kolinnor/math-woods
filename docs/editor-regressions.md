@@ -749,3 +749,24 @@ Guardrail:
   board after disposal.
 - A stalled module load must leave the loading state after a finite delay and expose an error instead of spinning
   forever.
+
+## 2026-09-13 - Paste complete HTML figures in JSXGraph fences
+
+Symptom: pasting an HTML/JavaScript figure into a JSXGraph fence failed with a JSON property-name error.
+The renderer assumed every fence contained declarative JSON.
+
+Accept full HTML documents and fragments in the existing fence. Preserve scripts, callbacks, controls and source
+ordering in an opaque-origin sandboxed iframe; no figure-specific preset or code belongs in the renderer.
+Legacy JSON boards retain their validation and rendering. Tolerate a matching pair of outer JSON-starter braces.
+
+Guardrails: HTML stays encoded through Markdown sanitization and runs only in an allow-scripts frame. A trusted CSP
+precedes authored markup. Keep same-origin access, site API requests, forms, popups and top navigation blocked.
+Only bounded resize, readiness and error messages from the frame's own window can affect its holder.
+Editing, refresh, unmount, multiple figures with identical IDs, runtime errors and themes are covered by the browser
+suite in Chromium and WebKit, using the actual MathWoods response headers.
+
+Validation: `npm run test:core` and `npm run test:jsxgraph:browser`.
+
+Keep one mount observer per component lifetime: resetting the effect on every html prop change can dispose
+a holder just mounted by the old observer and leave it stuck loading. Effect cleanup must release holder markers
+as well as pending mounts for React StrictMode's setup/cleanup/setup cycle. The browser suite exercises both paths.

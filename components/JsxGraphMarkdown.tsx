@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { decodeJsxGraphConfig, type JsxGraphConfig } from "@/lib/jsxgraph";
+import { decodeJsxGraphConfig, type JsxGraphBoardConfig } from "@/lib/jsxgraph";
 
 type BoardLike = {
   create: (type: string, parents: unknown[], attributes?: Record<string, unknown>) => unknown;
@@ -34,7 +34,7 @@ function isAnimatable(value: unknown): value is AnimatableElement {
   return typeof candidate.startAnimation === "function" && typeof candidate.stopAnimation === "function";
 }
 
-function graphHeight(config: JsxGraphConfig, width: number) {
+function graphHeight(config: JsxGraphBoardConfig, width: number) {
   if (width <= 0) return config.height;
   return Math.min(config.height, Math.max(220, Math.round(width * 0.78)));
 }
@@ -53,7 +53,7 @@ function showGraphError(holder: HTMLElement, message: string) {
   holder.append(title, detail);
 }
 
-function animationControl(board: BoardLike, config: JsxGraphConfig, holder: HTMLElement) {
+function animationControl(board: BoardLike, config: JsxGraphBoardConfig, holder: HTMLElement) {
   const animation = config.animation;
   if (!animation) return () => undefined;
 
@@ -94,7 +94,7 @@ function animationControl(board: BoardLike, config: JsxGraphConfig, holder: HTML
 
 async function mountBoard(
   holder: HTMLElement,
-  config: JsxGraphConfig,
+  config: JsxGraphBoardConfig,
   isCancelled: () => boolean
 ): Promise<MountedBoard | null> {
   // JSXGraph's package exports omit the browser bundle and its matching declaration path.
@@ -182,7 +182,7 @@ export function JsxGraphMarkdown({ html }: { html: string }) {
 
     let disposed = false;
     let scanFrame = 0;
-    const mounted = new Map<HTMLElement, MountedBoard>();
+    const mounted = new Map<HTMLElement, { dispose: () => void }>();
     const pending = new Map<HTMLElement, PendingMount>();
 
     const mountHolder = async (holder: HTMLElement) => {
@@ -207,11 +207,10 @@ export function JsxGraphMarkdown({ html }: { html: string }) {
       pending.set(holder, mount);
 
       try {
-        const graph = await mountBoard(
-          holder,
-          parsed.config,
-          () => disposed || mount.cancelled || !root.contains(holder)
-        );
+        const isCancelled = () => disposed || mount.cancelled || !root.contains(holder);
+        const graph = "html" in parsed.config
+          ? await (await import("./jsxgraph-html")).mountHtmlFigure(holder, parsed.config.html, isCancelled, (message) => showGraphError(holder, message))
+          : await mountBoard(holder, parsed.config, isCancelled);
         if (!graph) return;
         if (disposed || mount.cancelled || !root.contains(holder)) {
           graph.dispose();
@@ -263,15 +262,27 @@ export function JsxGraphMarkdown({ html }: { html: string }) {
       disposed = true;
       observer.disconnect();
       window.cancelAnimationFrame(scanFrame);
-      for (const mount of pending.values()) {
+      // StrictMode can restart this effect without replacing the DOM. Release
+      // our holder markers as well as the graphs so the next setup can mount them.
+      const releaseHolder = (holder: HTMLElement) => {
+        holder.removeAttribute("data-jsxgraph-state");
+        holder.removeAttribute("aria-busy");
+      };
+      for (const [holder, mount] of pending) {
         mount.cancelled = true;
         window.clearTimeout(mount.timeoutId);
+        releaseHolder(holder);
       }
       pending.clear();
-      for (const graph of mounted.values()) graph.dispose();
+      for (const [holder, graph] of mounted) {
+        graph.dispose();
+        releaseHolder(holder);
+      }
       mounted.clear();
     };
-  }, [html]);
+    // The observer handles HTML replacements. Restarting after each prop change
+    // races with the old observer, which may already have mounted the new holder.
+  }, []);
 
   return <div ref={rootRef} className="prose-math max-w-none" dangerouslySetInnerHTML={{ __html: html }} />;
 }
