@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound } from "next/navigation";
 import { QualityStatus } from "@prisma/client";
 import Link from "next/link";
@@ -56,6 +57,7 @@ export default async function EditProblemPage({
   const user = await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
+  await redirectHistoricalContentSlug("problem", slug);
   const attributionTransferred = (await searchParams).attribution === "transferred";
   const problem = await prisma.problem.findUnique({
     where: { slug },

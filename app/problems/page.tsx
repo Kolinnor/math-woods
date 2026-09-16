@@ -1,6 +1,8 @@
 import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { RememberProblemContentTypes } from "@/components/RememberProblemContentTypes";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
@@ -39,7 +41,8 @@ import { PROBLEM_STYLE_OPTIONS, parseProblemStyle, problemStyleLabel } from "@/l
 import { renderInlineMarkdown } from "@/lib/markdown";
 import {
   defaultProblemContentTypesForMathLevel,
-  isDefaultProblemContentType,
+  problemContentTypesCookieName,
+  rememberedProblemContentTypes,
   parseProblemContentTypes,
   problemContentTypeWhere
 } from "@/lib/problem-content-types";
@@ -346,7 +349,11 @@ export default async function ProblemsPage({
   const preferredLanguage = await getPreferredContentLanguage();
   const showSpoilerTags = includeSpoilerTags === "1" || includeSpoilerTags === "on";
   const showAllProblems = showAll === "1" || showAll === "on";
-  const defaultContentTypeValues = defaultProblemContentTypesForMathLevel(user?.mathLevel);
+  const contentTypesCookieName = problemContentTypesCookieName(user?.id);
+  const defaultContentTypeValues = rememberedProblemContentTypes(
+    (await cookies()).get(contentTypesCookieName)?.value,
+    defaultProblemContentTypesForMathLevel(user?.mathLevel)
+  );
   const contentTypeValues = parseProblemContentTypes(contentType, defaultContentTypeValues);
   const contentTypeWhere = problemContentTypeWhere(contentTypeValues);
   const showsProblems = contentTypeValues.includes("problem");
@@ -735,7 +742,7 @@ export default async function ProblemsPage({
     filterOp: advancedFilters.map((filter) => filter.op),
     filterValue: advancedFilters.map((filter) => filter.value),
     includeSpoilerTags: showSpoilerTags ? "1" : undefined,
-    contentType: isDefaultProblemContentType(contentTypeValues, defaultContentTypeValues) ? undefined : contentTypeValues,
+    contentType: contentTypeValues,
     showAll: showAllProblems ? "1" : undefined
   };
   const progressPercent = progressTotal ? Math.round((progressSolved / progressTotal) * 100) : 0;
@@ -849,7 +856,7 @@ export default async function ProblemsPage({
         <aside className="problems-filter-panel">
           <LiveSearchForm
             className="problem-filter-form"
-            persistKey="problems"
+            persistKey={`problems:${user?.id ?? "guest"}`}
             resetLabel={t.problems.resetFilters}
           >
             <label className="problem-filter-search">
@@ -863,7 +870,7 @@ export default async function ProblemsPage({
             {domainValue && <input type="hidden" name="domain" value={domainValue} />}
             {styleValue && <input type="hidden" name="style" value={styleValue} />}
 
-            <div className="problem-filter-section">
+            <RememberProblemContentTypes cookieName={contentTypesCookieName} selected={contentTypeValues}>
               <fieldset className="problem-language-filter">
                 <legend className="problem-content-filter-legend">
                   {t.problems.contentTypes}
@@ -888,7 +895,7 @@ export default async function ProblemsPage({
                   <span>{t.problems.exerciseType}</span>
                 </label>
               </fieldset>
-            </div>
+            </RememberProblemContentTypes>
 
             <div className="problem-filter-section">
               <p>{t.problems.difficulty}</p>

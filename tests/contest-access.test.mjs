@@ -10,6 +10,8 @@ import * as schedule from '../lib/daily-problem-schedule.ts';
 import * as contests from '../lib/problem-contests.ts';
 import * as contestForm from '../lib/contest-form.ts';
 import * as tipImages from '../lib/tip-images.ts';
+import * as notificationPolicy from '../lib/notification-policy.ts';
+import { localizeNotification } from '../lib/notification-copy.ts';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const require = createRequire(import.meta.url);
@@ -306,4 +308,104 @@ test('an archived entry cannot be selected as winner through a stale results for
   const actions = load('lib/actions/contest-actions.ts', 'OWNER', { '@/lib/db': { prisma: db } });
   const form = new FormData(); form.set('contestId', '3'); form.set('winnerSubmissionId', '1');
   await assert.rejects(actions.publishContestResultsAction(form), /does not belong to this contest/);
+});
+
+function resultsFixture() {
+  const notifications = [];
+  const mutedUsers = new Set();
+  const contest = { startDateKey: '2026-09-12', resultsPublishedAt: null };
+  const submissions = [
+    { id: 10, userId: 2, placement: null, status: 'PUBLISHED' },
+    { id: 11, userId: 3, placement: null, status: 'PUBLISHED' },
+    { id: 12, userId: 4, placement: null, status: 'PUBLISHED' },
+    { id: 13, userId: 5, placement: null, status: 'PUBLISHED' },
+    { id: 14, userId: 6, placement: null, status: 'ARCHIVED' },
+    { id: 15, userId: 1, placement: null, status: 'PUBLISHED' }
+  ];
+  let locked = false;
+  const db = {
+    problemContest: {
+      findUnique: async ({ include }) => {
+        assert.ok(locked, 'Publication must lock before reading the previous results');
+        assert.equal(include.submissions.where.problem.status, 'PUBLISHED');
+        return { ...contest, submissions: submissions.filter(s => s.status === 'PUBLISHED').map(s => ({ ...s })) };
+      },
+      update: async ({ data }) => Object.assign(contest, data)
+    },
+    problemContestSubmission: {
+      updateMany: async ({ where, data }) => {
+        for (const submission of submissions) {
+          if (!where.id || where.id.in.includes(submission.id)) Object.assign(submission, data);
+        }
+      },
+      update: async ({ where, data }) => Object.assign(submissions.find(s => s.id === where.id), data)
+    },
+    notificationPreference: { findUnique: async ({ where }) => {
+      assert.equal(where.userId_type.type, 'CONTEST_UPDATE');
+      return mutedUsers.has(where.userId_type.userId) ? { enabled: false } : null;
+    } },
+    notification: { create: async ({ data }) => { notifications.push(data); return data; } }
+  };
+  db.$transaction = async callback => {
+    locked = false;
+    return callback(db);
+  };
+  const actualNotifications = load('lib/notifications.ts', 'OWNER', {
+    '@/lib/db': { prisma: db }, '@/lib/notification-policy': notificationPolicy
+  });
+  const actions = load('lib/actions/contest-actions.ts', 'OWNER', {
+    '@/lib/db': { prisma: db }, '@/lib/notifications': actualNotifications,
+    '@/lib/transaction-lock': { acquireTransactionLock: async (_tx, key) => {
+      assert.equal(key, 'contest-results:3'); locked = true;
+    } }
+  });
+  const publish = async (winnerId = 10, honorableIds = [11]) => {
+    const form = new FormData();
+    form.set('contestId', '3'); form.set('winnerSubmissionId', String(winnerId));
+    for (const id of honorableIds) form.append('honorableSubmissionIds', String(id));
+    await actions.publishContestResultsAction(form);
+  };
+  return { notifications, mutedUsers, publish };
+}
+
+test('first result publication notifies every active participant once with the correct award and contest link', async () => {
+  const f = resultsFixture();
+  await f.publish();
+  assert.deepEqual(f.notifications.map(n => n.userId), [2, 3, 4, 5]);
+  assert.deepEqual(f.notifications.map(n => n.title), [
+    'You won the weekly contest', 'Your problem received an honorable mention',
+    'The results of your contest are available', 'The results of your contest are available'
+  ]);
+  assert.ok(f.notifications.every(n => n.href === '/contest?week=2026-09-12' && n.type === 'CONTEST_UPDATE'));
+  assert.equal(new Set(f.notifications.map(n => n.userId)).size, f.notifications.length);
+});
+
+test('contest result notifications respect disabled preferences', async () => {
+  const f = resultsFixture();
+  f.mutedUsers.add(2); // Award messages obey the same preference as the general result announcement.
+  f.mutedUsers.add(5);
+  await f.publish();
+  assert.deepEqual(f.notifications.map(n => n.userId), [3, 4]);
+});
+
+test('saving identical results is silent and subsequent new awards only notify their recipients', async () => {
+  const f = resultsFixture();
+  await f.publish();
+  f.notifications.length = 0;
+  await f.publish();
+  assert.deepEqual(f.notifications, []);
+  await f.publish(12, [10, 11]);
+  assert.deepEqual(f.notifications.map(n => [n.userId, n.title]), [
+    [2, 'Your problem received an honorable mention'], [4, 'You won the weekly contest']
+  ]);
+});
+
+test('general result announcement is available in French and English', async () => {
+  const f = resultsFixture();
+  await f.publish();
+  const notification = f.notifications.find(n => n.userId === 4);
+  assert.equal(localizeNotification(notification, 'en').title, 'The results of your contest are available');
+  const fr = localizeNotification(notification, 'fr');
+  assert.equal(fr.title, 'Les résultats de votre concours sont disponibles');
+  assert.match(fr.body, /auquel vous avez participé/);
 });

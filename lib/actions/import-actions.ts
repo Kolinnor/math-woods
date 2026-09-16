@@ -23,7 +23,7 @@ import { MAX_PROBLEM_DIFFICULTY, MIN_PROBLEM_DIFFICULTY } from "@/lib/problems";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { syncProblemSpoilerTags, syncProblemTags } from "@/lib/tags";
 import { parseProblemStyles } from "@/lib/problem-styles";
-import { uniqueSlug } from "@/lib/unique-slug";
+import { availableContentSlug } from "@/lib/content-slug";
 
 async function renderMarkdownContent(markdown: string) {
   const { renderMarkdown } = await import("@/lib/markdown");
@@ -48,10 +48,10 @@ export async function importMarkdownAction(formData: FormData) {
   const language = requireActiveContentLanguage(getStringAttribute(parsed.attributes, "language") ?? "en");
 
   if (importType === "concept") {
-    const slug = await uniqueSlug("concept", safeTitle);
     const domainCode = parseDomainCode(getStringAttribute(parsed.attributes, "domain") ?? null);
     const concept = await prisma.$transaction(async (tx) => {
       await assertDailyContentCreationQuota(tx, user);
+      const slug = await availableContentSlug(tx, "concept", safeTitle);
       const created = await tx.concept.create({
         data: {
           slug,
@@ -90,7 +90,6 @@ export async function importMarkdownAction(formData: FormData) {
     redirect(`/concepts/${concept.slug}`);
   }
 
-  const slug = await uniqueSlug("problem", safeTitle);
   const tags = getStringArrayAttribute(parsed.attributes, "tags");
   const spoilerTags = getStringArrayAttribute(parsed.attributes, "spoilerTags");
   const styles = parseProblemStyles(getStringArrayAttribute(parsed.attributes, "styles"));
@@ -110,6 +109,7 @@ export async function importMarkdownAction(formData: FormData) {
       : null;
   const problem = await prisma.$transaction(async (tx) => {
     await assertDailyContentCreationQuota(tx, user);
+    const slug = await availableContentSlug(tx, "problem", safeTitle);
     const created = await tx.problem.create({
       data: {
         slug,

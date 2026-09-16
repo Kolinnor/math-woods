@@ -1,8 +1,10 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { TargetType } from "@prisma/client";
 import { ArrowLeft, Flag, Lightbulb, MessageCircle, MessageSquarePlus, Pencil, Send, ThumbsUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { DiscussionFollowControl } from "@/components/DiscussionFollowControl";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { HiddenHint } from "@/components/HiddenHint";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
@@ -77,6 +79,7 @@ const discussionCopy = {
 
 export default async function ProblemDiscussionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  await redirectHistoricalContentSlug("problem", slug);
   const [t, interfaceLocale, user, timeZone] = await Promise.all([
     getTranslations(),
     getInterfaceLocale(),
@@ -157,6 +160,8 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
         </p>
       )}
 
+      {user && <DiscussionFollowControl target={{ kind: "problem", id: problem.id }} userId={user.id} isAuthor={user.id === problem.authorId} locale={interfaceLocale} />}
+
       <section className="discussion-thread" aria-label={t.problemDetail.discussions}>
         {posts.map((post) => {
           const canManagePost = Boolean(user && canEditDiscussionPost(user, post));
@@ -164,7 +169,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
           const isHint = post.type === "HINT";
 
           return (
-            <article key={post.id} className={`discussion-post${post.type === "HINT" ? " discussion-post-hint" : ""}`}>
+            <article id={`post-${post.id}`} key={post.id} className={`discussion-post${post.type === "HINT" ? " discussion-post-hint" : ""}`}>
               <header className="discussion-post-header">
                 <div className="discussion-post-author">
                   <Link href={`/profile/${post.author.profileSlug}`}>

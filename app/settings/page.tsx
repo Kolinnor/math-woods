@@ -60,6 +60,11 @@ function isDeletedUser(user: ManagedUser) {
 
 const notificationOptions = [
   {
+    type: NotificationType.SITE_IMPROVEMENT_REMINDER,
+    title: "Daily site improvement reminder",
+    description: "At 6 pm Paris time, the number of unfinished site improvements."
+  },
+  {
     type: NotificationType.PROBLEM_ATTEMPTED,
     title: "Someone started working on your problem",
     description: "When another user starts working on one of your problems."
@@ -91,8 +96,8 @@ const notificationOptions = [
   },
   {
     type: NotificationType.DISCUSSION_POSTED,
-    title: "Someone posted in your problem discussion",
-    description: "When another user posts a comment, hint, solution, generalization, or correction."
+    title: "New messages in discussions you follow",
+    description: "You automatically follow discussions you participate in. Unfollow any discussion from its page."
   },
   {
     type: NotificationType.ACHIEVEMENT_UNLOCKED,
@@ -813,7 +818,8 @@ export default async function SettingsPage({
           </div>
 
           <form action={updateNotificationPreferencesAction} className="grid gap-3">
-            {notificationOptions.map((option) => {
+            {notificationOptions.filter(option => option.type !== NotificationType.SITE_IMPROVEMENT_REMINDER
+              || (canUseOwnerTools(user) && user.username.toLowerCase() === "ancient-tree")).map((option) => {
               const enabled = notificationPreferenceMap.get(option.type)
                 ?? notificationPreferenceDefault(option.type, user.role);
 

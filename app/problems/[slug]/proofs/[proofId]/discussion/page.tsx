@@ -1,8 +1,10 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { ProblemVerificationMode, ReportStatus, TargetType } from "@prisma/client";
 import { ArrowLeft, Flag, MessageCircle, MessageSquarePlus, Pencil, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { DiscussionFollowControl } from "@/components/DiscussionFollowControl";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -78,6 +80,7 @@ export default async function SolutionDiscussionPage({
   searchParams?: Promise<{ report?: string }>;
 }) {
   const { slug, proofId: proofIdParam } = await params;
+  await redirectHistoricalContentSlug("problem", slug);
   const query = searchParams ? await searchParams : {};
   const proofId = Number(proofIdParam);
   if (!Number.isInteger(proofId) || proofId <= 0) notFound();
@@ -202,6 +205,8 @@ export default async function SolutionDiscussionPage({
         </p>
       )}
       {user && !canContribute && <p className="discussion-sign-in">{copy.verify}</p>}
+
+      {user && <DiscussionFollowControl target={{ kind: "proof", id: proof.id }} userId={user.id} isAuthor={isOwnProof} locale={interfaceLocale} />}
 
       <section className="discussion-thread solution-comment-thread" aria-label={t.problemDetail.discussions}>
         {proof.comments.map((comment) => {

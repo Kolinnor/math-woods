@@ -224,7 +224,7 @@ export default async function SearchPage({
                   {translatedDomainLabel(concept.domainCode, t.home.domainLabels)} / {t.concepts.statuses[concept.status]}
                 </div>
                 {concept.aliases.length > 0 && (
-                  <div className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</div>
+                  <div className="muted mt-1 text-xs"><AsyncMarkdownInline markdown={concept.aliases.map((alias) => alias.alias).join(", ")} /></div>
                 )}
               </Link>
             ))}

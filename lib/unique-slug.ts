@@ -25,7 +25,8 @@ export async function uniqueSlug(model: SlugModel, title: string, preferredSuffi
 
 async function findBySlug(model: SlugModel, slug: string) {
   if (model === "problem") {
-    return prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    return await prisma.problem.findUnique({ where: { slug }, select: { id: true } })
+      ?? await prisma.problemRedirect.findUnique({ where: { sourceSlug: slug }, select: { id: true } });
   }
   if (model === "concept") {
     const [concept, alias, redirect] = await Promise.all([

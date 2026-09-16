@@ -469,7 +469,7 @@ export default async function ConceptsPage({
                     <span>{t.concepts.exerciseCountLabel}: {concept._count.practiceExercises}</span>
                   </p>
                   {concept.aliases.length > 0 && (
-                    <p className="concept-ledger-aliases">{concept.aliases.map((alias) => alias.alias).join(", ")}</p>
+                    <p className="concept-ledger-aliases"><AsyncMarkdownInline markdown={concept.aliases.map((alias) => alias.alias).join(", ")} /></p>
                   )}
                 </div>
                 <span className="concept-ledger-updated">{t.common.updated} {concept.updatedAt.toLocaleDateString(interfaceLocale)}</span>

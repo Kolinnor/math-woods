@@ -1431,6 +1431,7 @@ export const en = {
     linkNoResults: "No matching pages.",
     linkRefineSearch: "Refine your search or choose a type to see other results.",
     linkEditText: "Edit displayed text",
+    linkUseCurrentTitle: "Use the current title as link text",
     linkTypeConcept: "Concept",
     linkTypeProblem: "Problem",
     conceptLinkSyntaxHelp:
@@ -1517,7 +1518,7 @@ export const en = {
     allProblemLanguagesExist: "All supported languages already exist for this problem.",
     allConceptLanguagesExist: "All supported languages already exist for this concept.",
     aliases: "Aliases",
-    aliasesHelp: "Alternative names for this concept. Enter one alias per line; commas are also accepted. Example: cyclic group, monogenic group.",
+    aliasesHelp: "Alternative names for this concept. Enter one alias per line; commas outside formulas are also accepted. LaTeX inside $…$ is supported, for example: $L^p$ space, interval $[a,b]$.",
     references: "References",
     linkedExercises: "Linked exercises",
     linkedExercisesTranslationHelp: "Exercises are full problem pages. Translate any of them in a separate tab; their translated version will remain linked to this concept automatically.",

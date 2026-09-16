@@ -373,6 +373,7 @@ enum NotificationType {
   TRUSTED_USER_CANDIDATE
   TRUSTED_USER_PROMOTED
   SITE_IMPROVEMENT_COMPLETED
+  SITE_IMPROVEMENT_REMINDER
   ANNOUNCEMENT_COMMENTED
   LIBRARY_ENTRY_SUBMITTED
   LIBRARY_ENTRY_PUBLISHED
@@ -491,6 +492,7 @@ model User {
   notifications                   Notification[]                  @relation("NotificationRecipient")
   notificationsSent               Notification[]                  @relation("NotificationActor")
   notificationPreferences         NotificationPreference[]
+  discussionFollows               DiscussionFollow[]
   siteAnnouncementsCreated        SiteAnnouncement[]              @relation("SiteAnnouncementCreator")
   siteAnnouncementRecipients      SiteAnnouncementRecipient[]
   announcementsCreated            Announcement[]                  @relation("AnnouncementAuthor")
@@ -851,6 +853,7 @@ model ChatMessageReaction {
 }
 
 model Problem {
+  slugRedirects            ProblemRedirect[]
   id                       Int                             @id @default(autoincrement())
   version                  Int                             @default(1)
   slug                     String                          @unique
@@ -895,6 +898,7 @@ model Problem {
   mathematicianLinks       MathematicianProblem[]
   mathematicianRelatedItems MathematicianRelatedItem[]
   thread                   DiscussionThread?
+  discussionFollows        DiscussionFollow[]
   attempts                 ProblemAttempt[]
   recommendationExposures  ProblemRecommendationExposure[]
   recommendationEvents     RecommendationEvent[]
@@ -1242,6 +1246,7 @@ model Concept {
   mathematicianRelatedItems MathematicianRelatedItem[]
   practiceExercises         ConceptExercise[]
   talkPosts                 ConceptTalkPost[]
+  discussionFollows         DiscussionFollow[]
   circuitNodes              PlaylistNode[]
   explorationBlocks         ExplorationBlock[]
   quoteLinks                QuoteConcept[]
@@ -1432,6 +1437,7 @@ model ConceptMergeProposal {
 }
 
 model ConceptRedirect {
+  isRename                 Boolean  @default(false)
   id                       Int      @id @default(autoincrement())
   sourceSlug               String   @unique
   sourceConceptId          Int
@@ -1446,6 +1452,16 @@ model ConceptRedirect {
 
   @@index([targetConceptId, createdAt])
   @@index([sourceConceptId])
+}
+
+model ProblemRedirect {
+  id              Int      @id @default(autoincrement())
+  sourceSlug      String   @unique
+  targetProblemId Int
+  createdAt       DateTime @default(now())
+  targetProblem   Problem  @relation(fields: [targetProblemId], references: [id], onDelete: Cascade)
+
+  @@index([targetProblemId])
 }
 
 model ConceptMergeContributor {
@@ -1694,6 +1710,7 @@ model ProblemProof {
   derivedTranslations   ProblemProof[] @relation("ProblemProofTranslationSource")
   translatedBy          User?          @relation("ProblemProofTranslator", fields: [translatedById], references: [id], onDelete: SetNull)
   comments              ProofComment[]
+  discussionFollows     DiscussionFollow[]
   hint                  ProblemHint?
 
   @@unique([translationGroupId, problemId])
@@ -1780,6 +1797,27 @@ model ProblemRelation {
   @@unique([groupId, targetProblemId])
   @@index([groupId, position])
   @@index([targetProblemId])
+}
+
+// Without an explicit preference, authors and participants follow automatically.
+model DiscussionFollow {
+  id        Int           @id @default(autoincrement())
+  userId    Int
+  problemId Int?
+  proofId   Int?
+  conceptId Int?
+  following Boolean
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem   Problem?      @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  proof     ProblemProof? @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  concept   Concept?      @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+  @@unique([userId, proofId])
+  @@unique([userId, conceptId])
+  @@index([problemId])
+  @@index([proofId])
+  @@index([conceptId])
 }
 
 model DiscussionThread {

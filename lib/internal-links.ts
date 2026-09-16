@@ -32,6 +32,7 @@ export async function syncInternalLinks(
   sourceLanguage?: string
 ) {
   const links = extractWikiLinks(markdown);
+  const resolvedKeys = new Set<string>();
 
   await tx.internalLink.deleteMany({
     where: { sourceType, sourceId }
@@ -68,6 +69,10 @@ export async function syncInternalLinks(
           })
         : null;
     const targetSlug = translatedConcept?.slug ?? matchedConcept?.slug ?? link.targetSlug;
+    // Aliases, redirects and translations can collapse distinct source links onto one row.
+    const resolvedKey = JSON.stringify([targetSlug, link.label]);
+    if (resolvedKeys.has(resolvedKey)) continue;
+    resolvedKeys.add(resolvedKey);
 
     await tx.internalLink.create({
       data: {

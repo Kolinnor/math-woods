@@ -4,6 +4,17 @@ export const PROBLEM_CONTENT_TYPES = ["problem", "exercise"] as const;
 
 export type ProblemContentType = (typeof PROBLEM_CONTENT_TYPES)[number];
 
+export function problemContentTypesCookieName(userId?: number) {
+  return `math-woods-problem-types-${userId ?? "guest"}`;
+}
+
+export function rememberedProblemContentTypes(
+  cookie: string | undefined,
+  defaultTypes: readonly ProblemContentType[]
+): ProblemContentType[] {
+  return parseProblemContentTypes(cookie?.split("."), defaultTypes);
+}
+
 const PRE_UNIVERSITY_MATH_LEVELS = new Set<UserMathLevel>([
   UserMathLevel.BEGINNER_PRE_UNIVERSITY,
   UserMathLevel.EARLY_UNDERGRAD

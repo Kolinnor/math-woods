@@ -1837,13 +1837,22 @@ export function MarkdownEditor({
     setLinkSuggestionsLoading(query.length >= 2 && !selectedLink);
     const timeout = window.setTimeout(() => {
       // Even an empty search returns the types the current user can access.
-      fetch(`/api/links/suggest?q=${encodeURIComponent(selectedLink ? "" : query)}&type=${linkTargetType}`, {
-        signal: controller.signal
+      const resolveSelected = selectedLink && (selectedLink.targetType === "concept" || selectedLink.targetType === "problem");
+      const searchParams = new URLSearchParams({ q: selectedLink ? "" : query, type: resolveSelected ? selectedLink.targetType : linkTargetType });
+      if (resolveSelected) searchParams.set("target", selectedLink.slug);
+      fetch(`/api/links/suggest?${searchParams}`, {
+        signal: controller.signal,
+        cache: "no-store"
       })
         .then((response) => { if (!response.ok) throw new Error("Link search failed"); return response.json(); })
-        .then((data: { results: LinkSuggestion[]; availableTypes: string[] }) => {
+        .then((data: { results: LinkSuggestion[]; availableTypes: string[]; resolvedTarget?: LinkSuggestion | null }) => {
           if (controller.signal.aborted) return;
           setAvailableLinkTypes(data.availableTypes);
+          const resolved = data.resolvedTarget;
+          if (selectedLink && resolved && (selectedLink.slug !== resolved.slug || selectedLink.title !== resolved.title || selectedLink.titleHtml !== resolved.titleHtml)) {
+            setSelectedLink(resolved);
+            setLinkTarget(resolved.title);
+          }
           setLinkSuggestions(selectedLink ? [] : data.results);
           setCompletedLinkSearch(`${linkTargetType}:${query}`);
         })
@@ -2276,6 +2285,11 @@ export function MarkdownEditor({
                 onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (canApplyLink) applyLinkMenu(); } }} />
             </label>
           </details>
+          {selectedLink && selectedLink.titleHtml && linkText !== selectedLink.title && (
+            <button type="button" className="secondary" onClick={() => setLinkText(selectedLink.title)}>
+              {labels.linkUseCurrentTitle}
+            </button>
+          )}
           <div className="markdown-link-menu-actions">
             <button type="button" className="secondary" onClick={closeLinkMenu}>{labels.cancel}</button>
             <button type="button" onClick={applyLinkMenu} disabled={!canApplyLink}>{labels.addLink}</button>

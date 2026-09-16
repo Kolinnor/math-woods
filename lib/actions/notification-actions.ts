@@ -34,6 +34,7 @@ const configurableNotificationTypes = [
   NotificationType.CONCEPT_EDITED,
   NotificationType.CONTRIBUTION_REQUEST_CLAIMED,
   NotificationType.CONTRIBUTION_REQUEST_REMINDER,
+  NotificationType.SITE_IMPROVEMENT_REMINDER,
   NotificationType.FRIEND_REQUEST,
   NotificationType.CHAT_MESSAGE,
   NotificationType.PROBLEM_CHALLENGE,

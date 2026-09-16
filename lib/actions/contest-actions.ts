@@ -162,6 +162,7 @@ export async function publishContestResultsAction(formData: FormData) {
   honorableIds.delete(winnerId);
 
   const result = await prisma.$transaction(async (tx) => {
+    await acquireTransactionLock(tx, `contest-results:${contestId}`);
     const contest = await tx.problemContest.findUnique({
       where: { id: contestId },
       include: { submissions: { where: { problem: { status: "PUBLISHED" } }, select: { id: true, userId: true, placement: true } } }
@@ -180,25 +181,31 @@ export async function publishContestResultsAction(formData: FormData) {
       });
     }
     await tx.problemContest.update({ where: { id: contestId }, data: { resultsPublishedAt: new Date() } });
-    return contest.submissions.filter((submission) => {
+    const recipients = contest.submissions.filter((submission) => {
       const nextPlacement = submission.id === winnerId
         ? ContestPlacement.WINNER
         : honorableIds.has(submission.id)
           ? ContestPlacement.HONORABLE_MENTION
           : null;
-      return nextPlacement !== null && (contest.resultsPublishedAt === null || submission.placement !== nextPlacement);
+      // Announce the first publication to everyone; later saves only announce new awards.
+      return contest.resultsPublishedAt === null || (nextPlacement !== null && submission.placement !== nextPlacement);
     });
+    return { recipients, startDateKey: contest.startDateKey };
   });
 
-  if (result.length) {
-    await Promise.all(result.map((submission) =>
+  if (result.recipients.length) {
+    await Promise.all(result.recipients.map((submission) =>
       createNotification({
         userId: submission.userId,
         actorId: user.id,
         type: NotificationType.CONTEST_UPDATE,
-        title: submission.id === winnerId ? "You won the weekly contest" : "Your problem received an honorable mention",
-        body: submission.id === winnerId ? "Your problem earned the weekly contest prize." : "The admins highlighted your contest entry.",
-        href: "/contest"
+        title: submission.id === winnerId ? "You won the weekly contest"
+          : honorableIds.has(submission.id) ? "Your problem received an honorable mention"
+          : "The results of your contest are available",
+        body: submission.id === winnerId ? "Your problem earned the weekly contest prize."
+          : honorableIds.has(submission.id) ? "The admins highlighted your contest entry."
+          : "The results of the contest you entered have been published. Discover the winning problems.",
+        href: `/contest?week=${result.startDateKey}`
       })
     ));
   }

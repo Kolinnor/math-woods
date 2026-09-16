@@ -11,6 +11,7 @@ import { rankSearchMatches } from "@/lib/search-ranking";
 import { foldedSql, referenceMatchSql, referenceSearchWords } from "@/lib/reference-search";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { EDITOR_LINK_TYPES, type EditorLinkSuggestion } from "@/lib/editor-links";
+import { resolveEditorLinkTarget } from "@/lib/editor-link-target";
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store" };
@@ -22,10 +23,15 @@ export async function GET(request: Request) {
   const availableTypes = user && canUseAdminTools(user) ? [...EDITOR_LINK_TYPES] : ["concept", "problem"];
   const params = new URL(request.url).searchParams;
   const q = (params.get("q") ?? "").trim().slice(0, 80), type = params.get("type") ?? "all";
+  const target = (params.get("target") ?? "").trim().slice(0, 160);
   if (type !== "all" && !EDITOR_LINK_TYPES.includes(type as typeof EDITOR_LINK_TYPES[number])) return Response.json({ error: "Invalid type" }, { status: 400, headers });
-  if (q.length < 2 || (type !== "all" && !availableTypes.includes(type))) return Response.json({ results: [], availableTypes }, { headers });
+  if ((!target && q.length < 2) || (type !== "all" && !availableTypes.includes(type))) return Response.json({ results: [], availableTypes }, { headers });
   try { await assertRateLimit(`editor-links:${user?.id ?? clientAddressFromHeaders(request.headers)}`, 90, 60_000); }
   catch { return Response.json({ error: "Too many searches" }, { status: 429, headers }); }
+  if (target) {
+    if (type !== "concept" && type !== "problem") return Response.json({ error: "Invalid target type" }, { status: 400, headers });
+    return Response.json({ results: [], availableTypes, resolvedTarget: await resolveEditorLinkTarget(type, target) }, { headers });
+  }
   const language = await getPreferredContentLanguage();
   const wants = (kind: string) => availableTypes.includes(kind) && (type === "all" || type === kind);
   const libraryQuery = q.replace(/^(?:(?:le|la|les|un|une|des|the|a|an)\s+|l['’])/i, "").trim() || q;

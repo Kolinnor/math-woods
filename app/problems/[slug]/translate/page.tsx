@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound, redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { parseProblemTranslationTaskKey } from "@/lib/contribution-tasks";
@@ -18,6 +19,7 @@ export default async function TranslateProblemPage({
     searchParams,
     getPreferredContentLanguage()
   ]);
+  await redirectHistoricalContentSlug("problem", slug);
   const problem = await prisma.problem.findUnique({
     where: { slug },
     select: { slug: true, status: true }

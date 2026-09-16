@@ -167,6 +167,19 @@ A reasonable cron setup is:
 27 3 * * * cd /opt/math-woods && SKIP_LOCAL_BACKUP=1 sh deploy/sync-backups-offsite.sh >/var/log/math-woods-offsite-backup.log 2>&1
 ```
 
+The site-improvement reminder for `ancient-tree` is installed automatically by `deploy/deploy.sh`
+after the application health check. Its systemd timer runs at **18:00 Europe/Paris** with daylight-saving
+adjustments and calls a dedicated POST endpoint authenticated by `CRON_SECRET`. The reminder counts
+every non-completed improvement (including long-term items), also sends a zero count, and links to
+`/contributing/tasks/site-improvements`. A unique notification key prevents duplicate deliveries per Paris date.
+Retries after 18:00 can catch up that evening; calls before 18:00 are ignored. Only the active `OWNER`
+account named `ancient-tree` receives it, unless disabled in notification settings.
+
+Check the schedule with `systemctl list-timers math-woods-site-improvement-reminder.timer`
+and delivery logs with `journalctl -u math-woods-site-improvement-reminder.service`.
+To reinstall manually after a successful app deployment, run `sh deploy/install-site-improvement-reminder.sh`
+from `/opt/math-woods`. Do not also schedule this reminder in cron.
+
 Contribution request reminders are sent by the app through a protected cron endpoint. Add `CRON_SECRET` to
 `.env.production`, then run the reminder script once per morning:
 

@@ -5,12 +5,13 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { getTranslations } from "@/lib/i18n/server";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
-import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
+import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
+const headers = { "Cache-Control": "private, no-store" };
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -20,13 +21,14 @@ export async function GET(request: Request) {
   const exerciseFilter = url.searchParams.get("exercise");
 
   if (query.length < 2) {
-    return NextResponse.json({ problems: [] });
+    return NextResponse.json({ problems: [] }, { headers });
   }
 
   const language = await getPreferredContentLanguage();
   const user = await getCurrentUser();
   const t = await getTranslations();
   const morphologyVariants = searchMorphologyVariants(query, language);
+  const databaseVariants = searchDatabaseVariants(query, morphologyVariants);
   const commonWhere = {
     status: listedOnly ? "PUBLISHED" as const : { not: "ARCHIVED" as const },
     listed: listedOnly ? true : undefined,
@@ -62,7 +64,7 @@ export async function GET(request: Request) {
     where: {
       ...commonWhere,
       language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-      OR: morphologyVariants.flatMap((variant) => [
+      OR: databaseVariants.flatMap((variant) => [
         { title: { contains: variant, mode: "insensitive" as const } },
         { slug: { contains: variant, mode: "insensitive" as const } }
       ])
@@ -98,5 +100,5 @@ export async function GET(request: Request) {
       listed: problem.listed,
       language: problem.language
     })))
-  });
+  }, { headers });
 }

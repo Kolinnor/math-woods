@@ -1,4 +1,5 @@
 import { NotificationType } from "@prisma/client";
+import { siteImprovementReminderCopy } from "./site-improvement-reminder-copy.ts";
 import { localizeAchievementNotification } from "./achievement-copy.ts";
 import type { InterfaceLocale } from "./i18n/types.ts";
 import {
@@ -360,6 +361,24 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
     case NotificationType.SOLUTION_REPORTED:
       return localizedSolutionReport(notification);
     case NotificationType.DISCUSSION_POSTED: {
+      if (notification.title === "New message in a concept discussion you follow") {
+        const actor = notificationActor(notification, " posted in the discussion of ");
+        return {
+          title: "Nouveau message dans une discussion de concept suivie",
+          body: problemTitle
+            ? `${actor} a publié un message dans la discussion du concept « ${problemTitle} ».`
+            : `${actor} a publié un message dans une discussion de concept que vous suivez.`
+        };
+      }
+      if (notification.title === "New message in a solution discussion you follow") {
+        const actor = notificationActor(notification, " posted in the discussion of ");
+        return {
+          title: "Nouveau message dans une discussion de solution suivie",
+          body: problemTitle
+            ? `${actor} a publié un message dans la discussion d’une solution à « ${problemTitle} ».`
+            : `${actor} a publié un message dans une discussion de solution que vous suivez.`
+        };
+      }
       if (notification.title === "New message about your solution") {
         const actor = notificationActor(notification, " commented on your solution to ");
         return {
@@ -374,7 +393,7 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
         title: "Nouveau message de discussion",
         body: problemTitle
           ? `${actor} a publié un message dans la discussion de « ${problemTitle} ».`
-          : `${actor} a publié un message dans la discussion de votre problème.`
+          : `${actor} a publié un message dans une discussion que vous suivez.`
       };
     }
     case NotificationType.ACHIEVEMENT_UNLOCKED:
@@ -567,6 +586,12 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
           : "Vous pouvez aider à améliorer Math Woods en relisant ce concept."
       };
     case NotificationType.CONTEST_UPDATE:
+      if (notification.title === "The results of your contest are available") {
+        return {
+          title: "Les résultats de votre concours sont disponibles",
+          body: "Les résultats du concours auquel vous avez participé sont publiés. Découvrez les problèmes récompensés."
+        };
+      }
       if (notification.title === "You won the weekly contest") {
         return { title: "Vous avez remporté le concours hebdomadaire", body: "Votre problème a remporté le prix du concours hebdomadaire." };
       }
@@ -592,6 +617,11 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
       return {
         title: "Vous êtes désormais un utilisateur de confiance",
         body: "Vous avez maintenant accès aux outils de contribution et de modération réservés aux utilisateurs de confiance."
+      };
+    case NotificationType.SITE_IMPROVEMENT_REMINDER:
+      return {
+        title: "Rappel des améliorations du site",
+        body: "Consultez la liste des améliorations du site restant à faire."
       };
     case NotificationType.SITE_IMPROVEMENT_COMPLETED: {
       const improvementTitle = notification.siteImprovementReview?.improvement.title ?? problemTitle;
@@ -632,6 +662,11 @@ export function localizeNotification(
 
   if (notification.type === NotificationType.ACHIEVEMENT_UNLOCKED) {
     return localizeAchievementNotification(notification, locale);
+  }
+
+  if (notification.type === NotificationType.SITE_IMPROVEMENT_REMINDER) {
+    const count = Number.parseInt(notification.title, 10);
+    if (Number.isFinite(count) && count >= 0) return siteImprovementReminderCopy(count, locale);
   }
 
   if (notification.type === NotificationType.SITE_IMPROVEMENT_COMPLETED) {

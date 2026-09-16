@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RevisionDiff } from "@/components/RevisionDiff";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function ProblemHistoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const [user, t, interfaceLocale] = await Promise.all([requireUser(), getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
+  await redirectHistoricalContentSlug("problem", slug);
   const problem = await prisma.problem.findUnique({ where: { slug }, include: { libraryReferences: true } });
 
   if (!problem) notFound();

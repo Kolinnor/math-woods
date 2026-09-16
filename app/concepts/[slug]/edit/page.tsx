@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound, redirect } from "next/navigation";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -37,6 +38,7 @@ export default async function EditConceptPage({
   const user = await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
+  await redirectHistoricalContentSlug("concept", slug);
   const query = searchParams ? await searchParams : {};
   const concept = await prisma.concept.findUnique({
     where: { slug },

@@ -1,3 +1,4 @@
+import { acquireTransactionLock } from "@/lib/transaction-lock";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { parseAliases } from "@/lib/concept-aliases";
@@ -27,6 +28,7 @@ export async function syncConceptAliases(
   aliases: ReturnType<typeof parseAliases>,
   tx: Prisma.TransactionClient = prisma
 ) {
+  await acquireTransactionLock(tx, "content-slugs:concept");
   const concept = await tx.concept.findUnique({
     where: { id: conceptId },
     select: { slug: true }

@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { ConceptMergeStatus } from "@prisma/client";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -30,6 +31,7 @@ export default async function ConceptMergePage({
     searchParams ?? Promise.resolve({}),
     getInterfaceLocale()
   ]);
+  await redirectHistoricalContentSlug("concept", slug);
   const queryParams = rawQueryParams as MergeSearchParams;
   const copy = locale === "fr" ? {
     eyebrow: "Concepts liés",

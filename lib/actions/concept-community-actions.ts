@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
+import { notifyDiscussionFollowers } from "@/lib/discussion-follows";
+import { displayNameForUser } from "@/lib/user-display";
 import { canEditConceptTalkPost } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 
@@ -17,7 +19,9 @@ export async function createConceptTalkPostAction(conceptId: number, conceptSlug
   await assertRateLimit(`concept-talk:${user.id}`, 8, 60_000);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Discussion message");
 
-  await prisma.conceptTalkPost.create({
+  const concept = await prisma.concept.findFirst({ where: { id: conceptId, slug: conceptSlug }, select: { title: true } });
+  if (!concept) throw new Error("Concept not found.");
+  const post = await prisma.conceptTalkPost.create({
     data: {
       conceptId,
       authorId: user.id,
@@ -26,6 +30,14 @@ export async function createConceptTalkPostAction(conceptId: number, conceptSlug
     }
   });
 
+  await notifyDiscussionFollowers({
+    target: { kind: "concept", id: conceptId },
+    authorIds: [],
+    actorId: user.id,
+    actorName: displayNameForUser(user),
+    contentTitle: concept.title,
+    href: `/concepts/${conceptSlug}/talk#post-${post.id}`
+  });
   revalidatePath(`/concepts/${conceptSlug}/talk`);
   revalidatePath(`/concepts/${conceptSlug}`);
 }

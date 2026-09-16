@@ -1,5 +1,7 @@
 "use server";
 
+import { notifyDiscussionFollowers } from "@/lib/discussion-follows";
+
 import type { Route } from "next";
 import {
   AttemptStatus,
@@ -124,7 +126,7 @@ import {
   SameTranslationTitleError
 } from "@/lib/translation-title-guard";
 import { latestProblemTextRevisionIdFromRevisions } from "@/lib/translation-text-revisions";
-import { uniqueSlug } from "@/lib/unique-slug";
+import { availableContentSlug, renamedContentSlug } from "@/lib/content-slug";
 import { displayNameForUser } from "@/lib/user-display";
 import {
   parseSelectedTranslationIds,
@@ -632,7 +634,6 @@ export async function createProblemAction(formData: FormData) {
     assertTranslationTitleChanged(translationSourceIdentity.title, title, allowSameTranslationTitle);
   }
 
-  const slug = await uniqueSlug("problem", title, translationGroupId ? language : undefined);
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const problem = await prisma.$transaction(async (tx) => {
@@ -696,6 +697,7 @@ export async function createProblemAction(formData: FormData) {
           select: { id: true, markdown: true, problemSnapshot: true }
         }))
       : null;
+    const slug = await availableContentSlug(tx, "problem", title, undefined, translationGroupId ? language : undefined);
     const created = await tx.problem.create({
       data: {
         slug,
@@ -1452,10 +1454,12 @@ export async function updateProblemAction(
           : current.qualityStatus !== QualityStatus.REVIEWED
             ? { reviewedById: user.id }
             : {};
+      const slug = await renamedContentSlug(tx, "problem", current, resolvedSnapshot.title, approvedProposal?.proposerId ?? user.id);
       const updateResult = await tx.problem.updateMany({
         where: { id: problemId, version: current.version },
         data: {
           ...reviewedByUpdate,
+          slug,
           title: resolvedSnapshot.title,
           language: resolvedSnapshot.language,
           bodyMarkdown: resolvedSnapshot.bodyMarkdown,
@@ -1623,6 +1627,7 @@ export async function updateProblemAction(
         revisionId: revision.id,
         changedFields,
         siblingSlugs,
+        previousSlug: current.slug,
         previousTitle: current.title,
         approvedProposal
       };
@@ -1644,6 +1649,7 @@ export async function updateProblemAction(
   }
 
   revalidatePath("/");
+  revalidatePath(`/problems/${problem.previousSlug}`, "layout");
   revalidatePath(`/problems/${problem.updated.slug}`);
   revalidatePath(`/problems/${problem.updated.slug}/history`);
   for (const siblingSlug of problem.siblingSlugs) {
@@ -2178,9 +2184,11 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
       current.qualityStatus === QualityStatus.REVIEWED && hasReviewSensitiveChanges
         ? QualityStatus.UNREVIEWED
         : current.qualityStatus;
+    const slug = await renamedContentSlug(tx, "problem", current, snapshot?.title ?? current.title, user.id);
     const updateResult = await tx.problem.updateMany({
       where: { id: problemId, version: expectedVersion },
       data: {
+        slug,
         ...(qualityStatus !== current.qualityStatus ? { reviewedById: null } : {}),
         ...(snapshot
           ? {
@@ -2308,9 +2316,10 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
       });
     }
 
-    return { restored, siblingSlugs };
+    return { restored, siblingSlugs, previousSlug: current.slug };
   });
 
+  revalidatePath(`/problems/${problem.previousSlug}`, "layout");
   revalidatePath(`/problems/${problem.restored.slug}`);
   revalidatePath(`/problems/${problem.restored.slug}/edit`);
   revalidatePath(`/problems/${problem.restored.slug}/history`);
@@ -2906,7 +2915,7 @@ export async function createDiscussionPostAction(
       create: { problemId },
       select: { id: true }
     }));
-  await prisma.discussionPost.create({
+  const post = await prisma.discussionPost.create({
     data: {
       threadId: thread.id,
       authorId: user.id,
@@ -2922,13 +2931,13 @@ export async function createDiscussionPostAction(
   if (type === PostType.HINT) {
     await checkHintAchievements(user.id);
   }
-  await notifyProblemAuthor({
-    problemId,
+  await notifyDiscussionFollowers({
+    target: { kind: "problem", id: problemId },
+    authorIds: [problem.authorId],
     actorId: user.id,
-    type: NotificationType.DISCUSSION_POSTED,
-    title: "New discussion message",
-    body: `${displayNameForUser(user)} posted in the discussion of "${problem.title}".`,
-    href: `/problems/${problem.slug}/discussion`
+    actorName: displayNameForUser(user),
+    contentTitle: problem.title,
+    href: `/problems/${problem.slug}/discussion#post-${post.id}`
   });
   redirect(returnToDiscussion ? (`/problems/${problem.slug}/discussion` as Route) : `/problems/${problem.slug}`);
 }

@@ -23,11 +23,17 @@ for(const [engineName,engine] of [['chromium',chromium],['webkit',webkit]]) {
  try {
   for(const locale of ['fr','en']) {
    const page=await browser.newPage({viewport:{width:1024,height:850}}), errors=[];let allowLibrary=true;
+   const currentTitles=new Map();
    page.on('pageerror',e=>errors.push(e.message));
    await page.route('http://localhost:3213/**',r=>r.fulfill({contentType:'text/html',body:'<div id="root"></div>'}));
    await page.route('**/api/editor-preferences',r=>r.fulfill({json:{}}));
    await page.route('**/api/links/suggest?*',async r=>{
     const p=new URL(r.request().url()).searchParams,q=p.get('q'),type=p.get('type');
+    if(p.has('target')) {
+     const row=results.find(row=>row.targetType===type&&(row.slug===p.get('target')||`${row.slug}-renomme`===p.get('target')));
+     const title=row&&(currentTitles.get(row.slug)??row.title);
+     return r.fulfill({json:{availableTypes:types,results:[],resolvedTarget:row?{...row,slug:currentTitles.has(row.slug)?`${row.slug}-renomme`:row.slug,title,titleHtml:title}:null}});
+    }
     if(q==='failure')return r.fulfill({status:500,json:{error:'test'}});
     if(q==='slow')await new Promise(resolve=>setTimeout(resolve,450));
     const rows=q==='many'?Array.from({length:20},(_,i)=>({...results[0],slug:'many-'+i,title:'Euclide '+i,titleHtml:'Euclide '+i})) : results;
@@ -50,6 +56,22 @@ for(const [engineName,engine] of [['chromium',chromium],['webkit',webkit]]) {
     const current=await page.locator('[name=body]').inputValue();await open(current);
     await dialog.locator('.markdown-link-menu-text summary').click();await dialog.locator('.markdown-link-menu-text input').fill('Autre texte');await add().click();
     assert.equal(await page.locator('[name=body]').inputValue(),type==='concept'?`[[euclide-${i}|Autre texte]]`:`[Autre texte](${paths[type]}euclide-${i})`);
+   }
+   // Renaming changes the URL. Reopening must fetch the current title/slug, preserve
+   // custom prose and offer an explicit way to update the visible link label.
+   for(const [index,type] of [[0,'concept'],[1,'problem']]) {
+    const slug=`euclide-${index}`, title=`Titre actualisé ${index}`;
+    currentTitles.set(slug,title);
+    const markup=type==='concept'?`[[${slug}|mon texte personnalisé]]`:`[mon texte personnalisé](/problems/${slug})`;
+    await open(markup);
+    await dialog.locator('.markdown-link-menu-selected').filter({hasText:title}).waitFor();
+    assert.equal(await search.inputValue(),title);
+    assert.equal(await dialog.locator('.markdown-link-menu-text input').inputValue(),'mon texte personnalisé');
+    await add().click();assert.equal(await page.locator('[name=body]').inputValue(),markup.replace(slug,`${slug}-renomme`));
+    await open(markup);
+    const updateTitle=dialog.getByRole('button',{name:locale==='fr'?'Utiliser le titre actuel comme texte du lien':'Use the current title as link text',exact:true});
+    await updateTitle.click();await add().click();
+    assert.equal(await page.locator('[name=body]').inputValue(),type==='concept'?`[[${slug}-renomme|${title}]]`:`[${title}](/problems/${slug}-renomme)`);
    }
    await open('les Éléments');await search.fill('missing');await page.waitForTimeout(230);assert.equal(await dialog.getByRole('link').count(),0);assert.equal(await add().isDisabled(),true);
    await filter.selectOption('concept');await dialog.getByRole('link').waitFor();await add().click();assert.equal(await page.locator('[name=body]').inputValue(),'[[missing|les Éléments]]');

@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
@@ -23,6 +24,7 @@ export default async function EditProofPage({
   const user = await requireVerifiedUser();
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const { slug, proofId } = await params;
+  await redirectHistoricalContentSlug("problem", slug);
   const id = Number(proofId);
   if (!Number.isInteger(id)) notFound();
 

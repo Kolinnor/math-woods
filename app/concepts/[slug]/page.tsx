@@ -1,7 +1,10 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import type { Metadata, Route } from "next";
 import { ConceptStatus, MathDomain } from "@prisma/client";
 import { Flag, GitMerge, History, MessageCircle, Pencil, Plus, Users } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ActionFeedbackForm } from "@/components/ActionFeedbackForm";
+import { conceptStatusAllowsReview } from "@/lib/form-feedback";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ConceptShareLauncher } from "@/components/ConceptShareLauncher";
@@ -17,7 +20,7 @@ import { UserName } from "@/components/UserName";
 import {
   downgradeConceptStatusAction,
   dismissConceptTranslationStaleNoticeAction,
-  markConceptReviewedAction,
+  markConceptReviewedFormAction,
   markConceptUsableAction
 } from "@/lib/actions/concept-actions";
 import { reportConceptAction } from "@/lib/actions/moderation-actions";
@@ -85,6 +88,7 @@ function uniqueLinksByTargetSlug<T extends { targetSlug: string }>(links: T[]) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
+  await redirectHistoricalContentSlug("concept", slug);
   let concept = await prisma.concept.findUnique({
     where: { slug },
     select: {
@@ -144,6 +148,7 @@ export default async function ConceptPage({
   searchParams?: Promise<{ viewLanguage?: string; missingTitle?: string; editProposal?: string }>;
 }) {
   const { slug } = await params;
+  await redirectHistoricalContentSlug("concept", slug);
   const queryParams = searchParams ? await searchParams : {};
   const user = await getCurrentUser();
   const t = await getTranslations();
@@ -562,7 +567,7 @@ export default async function ConceptPage({
               </div>
             )}
             {concept.aliases.length > 0 && (
-              <p className="muted mt-1 text-sm">{t.conceptDetail.alsoKnownAs} {concept.aliases.map((alias) => alias.alias).join(", ")}</p>
+              <p className="muted mt-1 text-sm">{t.conceptDetail.alsoKnownAs} <AsyncMarkdownInline markdown={concept.aliases.map((alias) => alias.alias).join(", ")} /></p>
             )}
           </div>
         )}
@@ -592,12 +597,12 @@ export default async function ConceptPage({
           <div className="quality-banner quality-needs-work mb-4">
             <strong>{t.conceptDetail.editedSinceReview}.</strong>{" "}
             {t.conceptDetail.editedSinceReviewNotice}
-            {user && canReviewConcept(user, concept) ? (
-              <form action={markConceptReviewedAction.bind(null, concept.id)} className="mt-2">
+            {user && conceptStatusAllowsReview(concept.status) && canReviewConcept(user, concept) ? (
+              <ActionFeedbackForm action={markConceptReviewedFormAction.bind(null, concept.id, interfaceLocale)} className="mt-2">
                 <button type="submit" className="secondary">
                   {t.conceptDetail.confirmReview}
                 </button>
-              </form>
+              </ActionFeedbackForm>
             ) : user && concept.createdById === user.id ? (
               <p className="concept-review-requirement mt-2">{t.conceptDetail.reviewRequiresAnotherUser}</p>
             ) : null}
@@ -626,11 +631,11 @@ export default async function ConceptPage({
             <strong>{t.concepts.statuses.USABLE}.</strong>{" "}
             {t.conceptDetail.usableNotice}
             {user && canReviewConcept(user, concept) ? (
-              <form action={markConceptReviewedAction.bind(null, concept.id)} className="mt-2">
+              <ActionFeedbackForm action={markConceptReviewedFormAction.bind(null, concept.id, interfaceLocale)} className="mt-2">
                 <button type="submit" className="secondary">
                   {t.conceptDetail.markReviewed}
                 </button>
-              </form>
+              </ActionFeedbackForm>
             ) : user && concept.createdById === user.id ? (
               <p className="concept-review-requirement mt-2">{t.conceptDetail.reviewRequiresAnotherUser}</p>
             ) : null}

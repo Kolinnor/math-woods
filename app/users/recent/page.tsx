@@ -43,8 +43,7 @@ export default async function RecentUsersPage() {
   await markNotificationsReadForHref(
     user.id,
     USER_REGISTRATION_SUMMARY_HREF,
-    NotificationType.USER_REGISTERED,
-    { revalidate: true }
+    NotificationType.USER_REGISTERED
   );
   const dateFormatter = new Intl.DateTimeFormat(interfaceLocale === "fr" ? "fr-FR" : "en-GB", {
     dateStyle: "medium",

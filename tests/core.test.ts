@@ -140,6 +140,8 @@ import {
 } from "../lib/recommendations.ts";
 import {
   defaultProblemContentTypesForMathLevel,
+  problemContentTypesCookieName,
+  rememberedProblemContentTypes,
   isDefaultProblemContentType,
   parseProblemContentTypes,
   problemContentTypeWhere
@@ -1073,6 +1075,23 @@ assert.deepEqual(parseAliases("Cyclic group, monogenic group\nGenerated group"),
 assert.deepEqual(parseAliases("Cyclic group\ncyclic-group\n  Cyclic group  "), [
   { aliasSlug: "cyclic-group", alias: "Cyclic group" }
 ]);
+assert.deepEqual(parseAliases("intervalle $[a,b]$, espace $L^p$\nAutre nom"), [
+  { aliasSlug: "intervalle-a-b", alias: "intervalle $[a,b]$" },
+  { aliasSlug: "espace-l-p", alias: "espace $L^p$" },
+  { aliasSlug: "autre-nom", alias: "Autre nom" }
+]);
+const mathAliases = [String.raw`$\{a,b\}$`, String.raw`\(f(x,y)\)`, String.raw`\[g(x,y)\]`, "$$h(x,\ny)$$"];
+assert.deepEqual(parseAliases(mathAliases.join(", ")).map(({ alias }) => alias), mathAliases);
+assert.deepEqual(parseAliases(mathAliases.join("\n")).map(({ alias }) => alias), mathAliases);
+assert.deepEqual(parseAliases(String.raw`Prix \$5, ensemble $\{a,b\}$`).map(({ alias }) => alias), [String.raw`Prix \$5`, String.raw`ensemble $\{a,b\}$`]);
+assert.deepEqual(parseAliases("formule $incomplète, autre nom").map(({ alias }) => alias), ["formule $incomplète", "autre nom"]);
+assert.deepEqual(parseAliases("intervalle $[a,b]$, intervalle $[a,b]$"), [{ aliasSlug: "intervalle-a-b", alias: "intervalle $[a,b]$" }]);
+const renderedMathAliases = await renderInlineMarkdown(parseAliases(String.raw`espace $\mathbb{R}^n$, intervalle $[a,b]$`).map(({ alias }) => alias).join(", "));
+assert.match(renderedMathAliases, /class="katex"/);
+assert.doesNotMatch(renderedMathAliases, /katex-error/);
+assert.doesNotMatch(renderedMathAliases, /\$\[a,b\]\$/);
+const renderedUnsafeAlias = await renderInlineMarkdown(String.raw`$x^2$ <script>alert(1)</script><img src="x" onerror="alert(1)">`);
+assert.doesNotMatch(renderedUnsafeAlias, /<script|onerror=/i);
 assert.deepEqual(parseProblemContentTypes(undefined), ["problem"]);
 assert.deepEqual(parseProblemContentTypes(["exercise"]), ["exercise"]);
 assert.deepEqual(parseProblemContentTypes(["exercise", "problem", "unknown"]), ["problem", "exercise"]);
@@ -1087,6 +1106,13 @@ assert.deepEqual(
 assert.deepEqual(problemContentTypeWhere(["problem"]), { isExercise: false });
 assert.deepEqual(problemContentTypeWhere(["exercise"]), { isExercise: true });
 assert.equal(problemContentTypeWhere(["problem", "exercise"]), null);
+assert.deepEqual(rememberedProblemContentTypes("problem.exercise", ["problem"]), ["problem", "exercise"]);
+assert.deepEqual(rememberedProblemContentTypes("exercise", ["problem"]), ["exercise"]);
+assert.deepEqual(rememberedProblemContentTypes(undefined, ["problem", "exercise"]), ["problem", "exercise"]);
+assert.deepEqual(rememberedProblemContentTypes("invalid", ["problem"]), ["problem"]);
+assert.deepEqual(parseProblemContentTypes("problem", rememberedProblemContentTypes("exercise", ["problem"])), ["problem"]);
+assert.notEqual(problemContentTypesCookieName(1), problemContentTypesCookieName(2));
+assert.notEqual(problemContentTypesCookieName(), problemContentTypesCookieName(1));
 assert.equal(isDefaultProblemContentType(["problem"]), true);
 assert.equal(isDefaultProblemContentType(["problem", "exercise"], ["problem", "exercise"]), true);
 assert.equal(isDefaultProblemContentType(["problem"], ["problem", "exercise"]), false);

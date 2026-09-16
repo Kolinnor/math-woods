@@ -38,6 +38,7 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T app \
     node -e "fetch('http://127.0.0.1:3000/api/health').then(async r => { console.log(r.status, await r.text()); if (!r.ok) process.exit(1); })"; then
     docker builder prune -af --filter "until=168h"
+    sh deploy/install-site-improvement-reminder.sh
     echo "Deploy complete."
     exit 0
   fi

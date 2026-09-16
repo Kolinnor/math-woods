@@ -21,6 +21,7 @@ import {
   type ConceptSnapshotSource
 } from "@/lib/concept-revisions";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
+import { conceptStatusAllowsReview, ContentValidationError, type FormFeedbackState } from "@/lib/form-feedback";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { contentParticipantIds } from "@/lib/content-participants";
 import { CREATION_SUBMISSION_FIELD, creationSubmissionKey } from "@/lib/creation-submission";
@@ -72,7 +73,7 @@ import {
   SameTranslationTitleError
 } from "@/lib/translation-title-guard";
 import { latestConceptTextRevisionIdFromRevisions } from "@/lib/translation-text-revisions";
-import { uniqueSlug } from "@/lib/unique-slug";
+import { availableContentSlug, renamedContentSlug } from "@/lib/content-slug";
 import { displayNameForUser } from "@/lib/user-display";
 
 async function renderMarkdownContent(markdown: string) {
@@ -189,7 +190,6 @@ export async function createConceptAction(formData: FormData) {
     assertTranslationTitleChanged(translationSourceIdentity.title, title, allowSameTranslationTitle);
   }
 
-  const slug = await uniqueSlug("concept", title, translationGroupId ? language : undefined);
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
   const creationResult = await prisma.$transaction(async (tx) => {
@@ -259,6 +259,7 @@ export async function createConceptAction(formData: FormData) {
         }))
       : null;
 
+    const slug = await availableContentSlug(tx, "concept", title, undefined, translationGroupId ? language : undefined);
     const created = await tx.concept.create({
       data: {
         slug,
@@ -628,9 +629,11 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
           }))
         : null;
 
+    const slug = await renamedContentSlug(tx, "concept", currentSnapshotSource, title, effectiveEditorId);
     const updated = await tx.concept.update({
       where: { id: conceptId },
       data: {
+        slug,
         title,
         language,
         bodyMarkdown,
@@ -771,6 +774,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   }
 
   await refreshLinksForConcept(concept.updated.slug);
+  revalidatePath(`/concepts/${existingConcept.slug}`, "layout");
   revalidatePath("/concepts");
   revalidatePath(`/concepts/${concept.updated.slug}`);
   revalidatePath(`/concepts/${concept.updated.slug}/edit`);
@@ -905,12 +909,8 @@ export async function markConceptReviewedAction(conceptId: number) {
     ) {
       return current;
     }
-    if (
-      current.status !== ConceptStatus.USABLE &&
-      current.status !== ConceptStatus.REVIEWED &&
-      current.status !== ConceptStatus.EXCELLENT
-    ) {
-      throw new Error("A concept must be marked usable before it can be reviewed.");
+    if (!conceptStatusAllowsReview(current.status)) {
+      throw new ContentValidationError("concept-not-usable");
     }
     if (!canReviewConcept(user, current)) {
       throw new Error("You cannot review this concept.");
@@ -947,6 +947,25 @@ export async function markConceptReviewedAction(conceptId: number) {
   revalidatePath(`/concepts/${concept.slug}`);
   revalidatePath(`/concepts/${concept.slug}/edit`);
   revalidatePath(`/concepts/${concept.slug}/history`);
+}
+
+export async function markConceptReviewedFormAction(
+  conceptId: number, locale: "fr" | "en", _state: FormFeedbackState, _formData: FormData
+): Promise<FormFeedbackState> {
+  try {
+    await markConceptReviewedAction(conceptId);
+    return { error: "" };
+  } catch (error) {
+    if (error instanceof ContentValidationError && error.reason === "concept-not-usable") {
+      return { error: locale === "fr"
+        ? "Ce concept doit d’abord être marqué comme utilisable avant d’être validé. Actualisez la page pour voir son statut actuel."
+        : "This concept must first be marked usable before it can be reviewed. Refresh the page to see its current status." };
+    }
+    if (isRateLimitError(error)) return { error: locale === "fr"
+      ? "Vous effectuez trop de validations. Patientez un instant puis réessayez."
+      : "You are reviewing too quickly. Wait a moment and try again." };
+    throw error;
+  }
 }
 
 export async function markConceptUsableAction(conceptId: number) {

@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound } from "next/navigation";
 import { frontmatter, markdownResponse } from "@/lib/export-markdown";
 import { prisma } from "@/lib/db";
@@ -8,6 +9,7 @@ import { pageBibliographyResponse } from "@/lib/page-bibliography";
 
 export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  await redirectHistoricalContentSlug("concept", slug, request.url);
   const concept = await prisma.concept.findUnique({
     where: { slug },
     include: {

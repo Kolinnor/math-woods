@@ -123,7 +123,7 @@ export default async function QuotePage({ params }: { params: Promise<{ slug: st
                 <Link key={concept.id} href={(conceptLinkBySlug.get(concept.slug)?.href ?? `/concepts/${concept.slug}`) as never} className="panel block p-4">
                   <div className="font-medium"><AsyncMarkdownInline markdown={conceptTitleBySlug.get(concept.slug) ?? concept.title} /><ContentLanguageFallback language={conceptLinkBySlug.get(concept.slug)?.language ?? concept.language} expectedLanguage={quote.language} /></div>
                   {concept.aliases.length > 0 && (
-                    <div className="muted mt-1 text-xs">{concept.aliases.map((alias) => alias.alias).join(", ")}</div>
+                    <div className="muted mt-1 text-xs"><AsyncMarkdownInline markdown={concept.aliases.map((alias) => alias.alias).join(", ")} /></div>
                   )}
                 </Link>
               ))}

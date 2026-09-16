@@ -1,5 +1,7 @@
 "use server";
 
+import { notifyDiscussionFollowers } from "@/lib/discussion-follows";
+
 import type { Route } from "next";
 import { NotificationType, SourceType, TargetType, VoteType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -7,6 +9,7 @@ import { redirect } from "next/navigation";
 import { checkHintAchievements, checkProofAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
+import { ContentValidationError, type FormFeedbackState } from "@/lib/form-feedback";
 import { prisma } from "@/lib/db";
 import {
   assertTranslationWikiLinksPreserved,
@@ -15,7 +18,7 @@ import {
 } from "@/lib/internal-links";
 import { createNotification, notifyProblemAuthor } from "@/lib/notifications";
 import { canDeleteSolution, canEditProofComment, canEditSolution } from "@/lib/permissions";
-import { assertRateLimit } from "@/lib/rate-limit";
+import { assertRateLimit, isRateLimitError } from "@/lib/rate-limit";
 import { contentLanguageViewHref } from "@/lib/translation-routing";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
 import { displayNameForUser } from "@/lib/user-display";
@@ -29,7 +32,9 @@ async function renderMarkdownContent(markdown: string) {
 export async function createProofAction(problemId: number, problemSlug: string, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof:${user.id}`, 6, 60_000);
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Solution");
+  const bodyMarkdown = String(formData.get("bodyMarkdown") ?? "").trim();
+  if (!bodyMarkdown) throw new ContentValidationError("empty-solution");
+  if (bodyMarkdown.length > CONTENT_LIMITS.markdown) throw new ContentValidationError("long-solution");
   const language = requireActiveContentLanguage(formData.get("language"));
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
@@ -64,6 +69,25 @@ export async function createProofAction(problemId: number, problemSlug: string, 
     href: `/problems/${problemSlug}`
   });
   redirect(contentLanguageViewHref("/problems", problemSlug, problem.language) as Route);
+}
+
+export async function createProofFormAction(
+  problemId: number, problemSlug: string, locale: "fr" | "en", _state: FormFeedbackState, formData: FormData
+): Promise<FormFeedbackState> {
+  try {
+    await createProofAction(problemId, problemSlug, formData);
+    return { error: "" };
+  } catch (error) {
+    if (error instanceof ContentValidationError) {
+      return { error: error.reason === "empty-solution"
+        ? (locale === "fr" ? "Écrivez votre solution avant de la publier." : "Write your solution before publishing it.")
+        : (locale === "fr" ? "La solution ne doit pas dépasser 60 000 caractères. Votre saisie est conservée." : "The solution must not exceed 60,000 characters. Your text has been preserved.") };
+    }
+    if (isRateLimitError(error)) return { error: locale === "fr"
+      ? "Vous publiez trop rapidement. Patientez un instant puis réessayez ; votre saisie est conservée."
+      : "You are posting too quickly. Wait a moment and try again; your text has been preserved." };
+    throw error; // Keep authentication and successful-publication redirects intact.
+  }
 }
 
 export async function translateProofAction(
@@ -376,21 +400,14 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
   });
 
   const discussionHref = `/problems/${problemSlug}/proofs/${proofId}/discussion`;
-  const recipientIds = [...new Set([proof.authorId, proof.translatedById])].filter(
-    (recipientId): recipientId is number => recipientId !== null && recipientId !== user.id
-  );
-  await Promise.all(
-    recipientIds.map((userId) =>
-      createNotification({
-        userId,
-        actorId: user.id,
-        type: NotificationType.DISCUSSION_POSTED,
-        title: "New message about your solution",
-        body: `${displayNameForUser(user)} commented on your solution to "${proof.problem.title}".`,
-        href: `${discussionHref}#comment-${comment.id}`
-      })
-    )
-  );
+  await notifyDiscussionFollowers({
+    target: { kind: "proof", id: proofId },
+    authorIds: [proof.authorId, proof.translatedById].filter((id): id is number => id !== null),
+    actorId: user.id,
+    actorName: displayNameForUser(user),
+    contentTitle: proof.problem.title,
+    href: `${discussionHref}#comment-${comment.id}`
+  });
 
   revalidatePath(`/problems/${problemSlug}`);
   revalidatePath(discussionHref);

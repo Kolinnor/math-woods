@@ -54,6 +54,7 @@ test('PostgreSQL global search respects access, translations, accents, publicati
       '@/lib/db': { prisma: { $queryRaw: async sql => { dbCalls++; return (await db.query(sql.text,sql.values)).rows; } } },
       '@/lib/server-language': { getPreferredContentLanguage: async () => language }, '@/lib/rate-limit': { assertRateLimit: async () => { if(rateLimited) throw Error('limit'); } },
       '@/lib/request-security': { clientAddressFromHeaders: () => 'test' }, '@/lib/search-ranking': ranking, '@/lib/reference-search': search,
+      '@/lib/editor-link-target': { resolveEditorLinkTarget: async () => null },
       '@/lib/markdown': { renderInlineMarkdown }, '@/lib/editor-links': links,
       '@/app/api/concepts/suggest/route': { GET: async () => Response.json({ concepts: [{ slug:'euclide', title:'Euclide',titleHtml:'Euclide',aliases:[] }] }) },
       '@/app/api/problems/suggest/route': { GET: async request => { assert.equal(new URL(request.url).searchParams.get('listed'),'1'); return Response.json({problems:[]}); } }

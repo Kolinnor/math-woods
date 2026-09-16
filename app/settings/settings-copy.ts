@@ -240,6 +240,11 @@ const frenchSettingsText: Record<string, string> = {
   "Solution issue reports": "Signalements concernant les solutions",
   "When someone reports a potential issue on your solution or your own report is reviewed.":
     "Lorsqu'une personne signale un problème potentiel dans votre solution ou que votre propre signalement est examiné.",
+  "Daily site improvement reminder": "Rappel quotidien des améliorations du site",
+  "At 6 pm Paris time, the number of unfinished site improvements.": "À 18 h, heure de Paris, le nombre d’améliorations du site restant à faire.",
+  "New messages in discussions you follow": "Nouveaux messages dans les discussions suivies",
+  "You automatically follow discussions you participate in. Unfollow any discussion from its page.":
+    "Vous suivez automatiquement les discussions auxquelles vous participez. Vous pouvez arrêter de suivre une discussion depuis sa page.",
   "Someone posted in your problem discussion": "Quelqu'un a publié dans la discussion de votre problème",
   "When another user posts a comment, hint, solution, generalization, or correction.":
     "Lorsqu'un autre utilisateur publie un commentaire, un indice, une solution, une généralisation ou une correction.",

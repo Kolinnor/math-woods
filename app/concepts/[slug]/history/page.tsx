@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
@@ -71,6 +72,7 @@ export default async function ConceptHistoryPage({
 }) {
   const [user, t, interfaceLocale] = await Promise.all([getCurrentUser(), getTranslations(), getInterfaceLocale()]);
   const { slug } = await params;
+  await redirectHistoricalContentSlug("concept", slug);
   const concept = await prisma.concept.findUnique({ where: { slug } });
 
   if (!concept) {
@@ -84,7 +86,7 @@ export default async function ConceptHistoryPage({
   }
 
   const mergedSources = await prisma.conceptRedirect.findMany({
-    where: { targetConceptId: concept.id },
+    where: { targetConceptId: concept.id, isRename: false },
     orderBy: { createdAt: "desc" }
   });
   const requestedMergedSource = Number((await searchParams)?.mergedSource);
@@ -187,13 +189,13 @@ export default async function ConceptHistoryPage({
               <div className="revision-field-diff mt-3" key={field}>
                 <strong>{t.historyPage.fields[field]}</strong>
                 <del>
-                  {field === "title" || field === "practiceExercises"
+                  {field === "title" || field === "practiceExercises" || field === "aliases"
                     ? <AsyncMarkdownInline markdown={conceptSnapshotValue(previousSnapshot, field, t)} />
                     : conceptSnapshotValue(previousSnapshot, field, t)}
                 </del>
                 <span aria-hidden="true">{t.historyPage.changedTo}</span>
                 <ins>
-                  {field === "title" || field === "practiceExercises"
+                  {field === "title" || field === "practiceExercises" || field === "aliases"
                     ? <AsyncMarkdownInline markdown={conceptSnapshotValue(snapshot, field, t)} />
                     : conceptSnapshotValue(snapshot, field, t)}
                 </ins>

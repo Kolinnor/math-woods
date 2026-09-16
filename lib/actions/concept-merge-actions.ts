@@ -17,6 +17,7 @@ import { CONTENT_LIMITS, boundedText, requiredBoundedText } from "@/lib/content-
 import { prisma } from "@/lib/db";
 import { refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { assertRateLimit } from "@/lib/rate-limit";
+import { renamedContentSlug } from "@/lib/content-slug";
 import { ensureSlug } from "@/lib/slug";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
 import { parseConceptCitations } from "@/lib/concept-citations";
@@ -382,6 +383,7 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
       });
       return null;
     }
+    await acquireTransactionLock(tx, "content-slugs:concept");
     const survivor = first.id === survivorConceptId ? first : second;
     const duplicate = survivor.id === first.id ? second : first;
 
@@ -436,6 +438,14 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
         editSummary: `Concept merged into ${survivor.title}`
       }
     });
+    // Keep explicit opt-outs when discussions merge, including conflicting preferences.
+    await tx.$executeRaw`
+      INSERT INTO "DiscussionFollow" ("userId", "conceptId", "following")
+      SELECT "userId", ${survivor.id}, "following"
+      FROM "DiscussionFollow" WHERE "conceptId" = ${duplicate.id}
+      ON CONFLICT ("userId", "conceptId") DO UPDATE
+      SET "following" = "DiscussionFollow"."following" AND EXCLUDED."following"
+    `;
     await Promise.all([
       tx.conceptTalkPost.updateMany({ where: { conceptId: duplicate.id }, data: { conceptId: survivor.id } }),
       tx.playlistNode.updateMany({ where: { conceptId: duplicate.id }, data: { conceptId: survivor.id } }),
@@ -509,9 +519,11 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
       where: { targetSlug: duplicate.slug },
       data: { targetSlug: survivor.slug, targetType: TargetType.CONCEPT, exists: true }
     });
+    const survivorSlug = await renamedContentSlug(tx, "concept", survivor, title, admin.id);
     await tx.concept.update({
       where: { id: survivor.id },
       data: {
+        slug: survivorSlug,
         title,
         bodyMarkdown,
         bodyHtml,
@@ -597,7 +609,7 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
         resultConceptId: survivor.id
       }
     });
-    return { survivorSlug: survivor.slug, duplicateSlug: duplicate.slug };
+    return { survivorSlug, duplicateSlug: duplicate.slug };
   });
 
   revalidatePath("/");

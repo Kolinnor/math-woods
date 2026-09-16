@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
-import { rankSearchMatches, searchMorphologyVariants } from "@/lib/search-ranking";
+import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { ensureSlug } from "@/lib/slug";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 
 export const dynamic = "force-dynamic";
+const headers = { "Cache-Control": "private, no-store" };
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -15,11 +16,12 @@ export async function GET(request: Request) {
   const includeAllLanguages = url.searchParams.get("all") === "1";
 
   if (query.length < 2) {
-    return NextResponse.json({ concepts: [] });
+    return NextResponse.json({ concepts: [] }, { headers });
   }
 
   const language = await getPreferredContentLanguage();
   const morphologyVariants = searchMorphologyVariants(query, language);
+  const databaseVariants = searchDatabaseVariants(query, morphologyVariants);
   const morphologySlugs = [...new Set(morphologyVariants.map((variant) => ensureSlug(variant, "")).filter(Boolean))];
   const conceptSelect = {
     title: true,
@@ -34,9 +36,9 @@ export async function GET(request: Request) {
       where: {
         language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
-          { title: { in: morphologyVariants, mode: "insensitive" } },
+          { title: { in: databaseVariants, mode: "insensitive" } },
           { slug: { in: morphologySlugs, mode: "insensitive" } },
-          { aliases: { some: { alias: { in: morphologyVariants, mode: "insensitive" } } } }
+          { aliases: { some: { alias: { in: databaseVariants, mode: "insensitive" } } } }
         ]
       },
       select: conceptSelect,
@@ -77,5 +79,5 @@ export async function GET(request: Request) {
       language: concept.language,
       aliases: concept.aliases
     })))
-  });
+  }, { headers });
 }

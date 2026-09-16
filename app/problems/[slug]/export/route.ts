@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { ProblemVerificationMode } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -12,6 +13,7 @@ import { pageBibliographyResponse } from "@/lib/page-bibliography";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  await redirectHistoricalContentSlug("problem", slug, _request.url);
   const user = await getCurrentUser();
   const problem = await prisma.problem.findUnique({
     where: { slug },

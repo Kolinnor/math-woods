@@ -24,8 +24,8 @@ export async function resolveProblemLinksForLanguage(
 
   const targetLanguage = parseContentLanguage(language);
   const problems = await prisma.problem.findMany({
-    where: { AND: [{ slug: { in: uniqueSlugs } }, where] },
-    select: { slug: true, translationGroupId: true }
+    where: { AND: [{ OR: [{ slug: { in: uniqueSlugs } }, { slugRedirects: { some: { sourceSlug: { in: uniqueSlugs } } } }] }, where] },
+    select: { slug: true, translationGroupId: true, slugRedirects: { where: { sourceSlug: { in: uniqueSlugs } }, select: { sourceSlug: true } } }
   });
   if (problems.length === 0) {
     return new Map<string, { href: string; slug: string; language: string; title: string; difficulty: number | null }>();
@@ -59,13 +59,13 @@ export async function resolveProblemLinksForLanguage(
 
   return new Map(problems.flatMap((problem) => {
     const translation = translationByGroup.get(problem.translationGroupId);
-    return translation ? [[problem.slug, {
+    return translation ? [problem.slug, ...(problem.slugRedirects ?? []).map(row => row.sourceSlug)].map(slug => [slug, {
       href: `/problems/${translation.slug}`,
       slug: translation.slug,
       language: translation.language,
       title: translation.title,
       difficulty: translation.difficulty
-    }] as const] : [];
+    }] as const) : [];
   }));
 }
 
@@ -172,6 +172,7 @@ export async function renderMarkdownCollectionForContentLanguage(
       OR: [
         { slug: { in: targetSlugs } },
         { aliases: { some: { aliasSlug: { in: targetSlugs } } } },
+        { mergeRedirects: { some: { sourceSlug: { in: targetSlugs } } } },
         ...targetTitles.map((title) => ({ title: { equals: title, mode: "insensitive" as const } }))
       ]
     },
@@ -184,7 +185,8 @@ export async function renderMarkdownCollectionForContentLanguage(
       aliases: {
         where: { aliasSlug: { in: targetSlugs } },
         select: { aliasSlug: true }
-      }
+      },
+      mergeRedirects: { where: { sourceSlug: { in: targetSlugs } }, select: { sourceSlug: true } }
     }
   });
 
@@ -207,6 +209,9 @@ export async function renderMarkdownCollectionForContentLanguage(
     }
     for (const alias of concept.aliases) {
       addConceptCandidate(alias.aliasSlug, candidate);
+    }
+    for (const historical of concept.mergeRedirects ?? []) {
+      addConceptCandidate(historical.sourceSlug, candidate);
     }
     for (const link of links) {
       if (concept.title.toLowerCase() === link.target.trim().toLowerCase()) {
@@ -280,6 +285,7 @@ export async function prepareMarkdownCollectionForTranslation(
       OR: [
         { slug: { in: targetSlugs } },
         { aliases: { some: { aliasSlug: { in: targetSlugs } } } },
+        { mergeRedirects: { some: { sourceSlug: { in: targetSlugs } } } },
         ...targetTitles.map((title) => ({ title: { equals: title, mode: "insensitive" as const } }))
       ]
     },
@@ -292,7 +298,8 @@ export async function prepareMarkdownCollectionForTranslation(
       aliases: {
         where: { aliasSlug: { in: targetSlugs } },
         select: { aliasSlug: true }
-      }
+      },
+      mergeRedirects: { where: { sourceSlug: { in: targetSlugs } }, select: { sourceSlug: true } }
     }
   });
   const groups = [...new Set(concepts.map((concept) => concept.translationGroupId))];
@@ -323,6 +330,7 @@ export async function prepareMarkdownCollectionForTranslation(
       (concept) =>
         concept.slug === link.targetSlug ||
         concept.aliases.some((alias) => alias.aliasSlug === link.targetSlug) ||
+        (concept.mergeRedirects ?? []).some((historical) => historical.sourceSlug === link.targetSlug) ||
         concept.title.toLowerCase() === link.target.trim().toLowerCase()
     );
     const matched = selectContentTranslation(

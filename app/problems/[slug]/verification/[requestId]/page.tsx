@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ConfirmSubmitButton } from "@/app/settings/ConfirmSubmitButton";
@@ -29,6 +30,7 @@ export default async function ProblemVerificationPage({
   params: Promise<{ slug: string; requestId: string }>;
 }) {
   const { slug, requestId } = await params;
+  await redirectHistoricalContentSlug("problem", slug);
   const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const user = await getCurrentUser();
   const numericRequestId = Number.parseInt(requestId, 10);

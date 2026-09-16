@@ -1436,6 +1436,7 @@ export const fr = {
     linkNoResults: "Aucune page correspondante.",
     linkRefineSearch: "Affinez la recherche ou choisissez un type pour voir d’autres résultats.",
     linkEditText: "Modifier le texte affiché",
+    linkUseCurrentTitle: "Utiliser le titre actuel comme texte du lien",
     linkTypeConcept: "Concept",
     linkTypeProblem: "Problème",
     conceptLinkSyntaxHelp:
@@ -1522,7 +1523,7 @@ export const fr = {
     allProblemLanguagesExist: "Toutes les langues prises en charge existent déjà pour ce problème.",
     allConceptLanguagesExist: "Toutes les langues prises en charge existent déjà pour ce concept.",
     aliases: "Alias",
-    aliasesHelp: "Noms alternatifs du concept. Saisissez un alias par ligne ; les virgules sont également acceptées. Exemple : groupe cyclique, groupe monogène.",
+    aliasesHelp: "Noms alternatifs du concept. Saisissez un alias par ligne ; les virgules hors des formules sont également acceptées. Le LaTeX entre $…$ est pris en charge, par exemple : espace $L^p$, intervalle $[a,b]$.",
     references: "Références",
     linkedExercises: "Exercices liés",
     linkedExercisesTranslationHelp: "Les exercices sont des pages de problèmes complètes. Traduisez-les dans un onglet séparé ; leur version traduite restera automatiquement liée à ce concept.",

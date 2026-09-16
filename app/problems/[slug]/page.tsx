@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 ﻿import { ProblemVerificationMode } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -5,6 +6,7 @@ import { FriendshipStatus, QualityStatus, ReportStatus, TargetType } from "@pris
 import { Check, Flag, Heart, History, Languages, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ActionFeedbackForm } from "@/components/ActionFeedbackForm";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
@@ -36,7 +38,7 @@ import {
   unmarkProblemSolvedAction
 } from "@/lib/actions/problem-actions";
 import {
-  createProofAction,
+  createProofFormAction,
   translateProofAction,
   voteProofAction
 } from "@/lib/actions/proof-actions";
@@ -110,6 +112,7 @@ function titleFromConceptSlug(slug: string) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
+  await redirectHistoricalContentSlug("problem", slug);
   const problem = await prisma.problem.findUnique({
     where: { slug },
     select: {
@@ -298,6 +301,7 @@ export default async function ProblemPage({
   }>;
 }) {
   const { slug } = await params;
+  await redirectHistoricalContentSlug("problem", slug);
   const queryParams = searchParams ? await searchParams : {};
   const tourMode = queryParams.tour === "1";
   const user = await getCurrentUser();
@@ -1656,7 +1660,7 @@ export default async function ProblemPage({
             ) : (
               <details id="write-solution" className="add-proof">
                 <summary>{proofs.length === 0 ? t.problemDetail.firstSolution : t.problemDetail.addAnotherSolution}</summary>
-                <form action={createProofAction.bind(null, problem.id, problem.slug)} className="grid gap-3 pt-3">
+                <ActionFeedbackForm action={createProofFormAction.bind(null, problem.id, problem.slug, interfaceLocale)} className="grid gap-3 pt-3">
                   <LanguageField
                     defaultValue={problem.language}
                     label={interfaceLocale === "fr" ? "Langue de la solution" : "Solution language"}
@@ -1672,7 +1676,7 @@ export default async function ProblemPage({
                     <button type="submit">{t.problemDetail.publishSolution}</button>
                     <ContentPreviewButton contentType="solution" locale={interfaceLocale} />
                   </div>
-                </form>
+                </ActionFeedbackForm>
               </details>
             )
           )}

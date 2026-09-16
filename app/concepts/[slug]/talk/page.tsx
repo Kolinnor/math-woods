@@ -1,7 +1,9 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { ArrowLeft, MessageCircle, MessageSquarePlus, Pencil, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { DiscussionFollowControl } from "@/components/DiscussionFollowControl";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -54,6 +56,7 @@ const talkCopy = {
 
 export default async function ConceptTalkPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  await redirectHistoricalContentSlug("concept", slug);
   const [t, interfaceLocale, user, timeZone] = await Promise.all([
     getTranslations(),
     getInterfaceLocale(),
@@ -110,12 +113,14 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
         </p>
       )}
 
+      {user && <DiscussionFollowControl target={{ kind: "concept", id: concept.id }} userId={user.id} isAuthor={false} locale={interfaceLocale} />}
+
       <section className="discussion-thread" aria-label={copy.discussion}>
         {concept.talkPosts.map((post) => {
           const canManagePost = Boolean(user && canEditConceptTalkPost(user, post));
 
           return (
-            <article key={post.id} className="discussion-post">
+            <article id={`post-${post.id}`} key={post.id} className="discussion-post">
               <header className="discussion-post-header">
                 <div className="discussion-post-author">
                   <Link href={`/profile/${post.author.profileSlug}`}>

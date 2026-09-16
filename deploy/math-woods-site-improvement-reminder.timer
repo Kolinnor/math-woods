@@ -1,0 +1,11 @@
+[Unit]
+Description=Remind Ancient Tree about unfinished improvements at 18:00 Paris time
+
+[Timer]
+OnCalendar=*-*-* 18:00:00 Europe/Paris
+AccuracySec=1s
+Persistent=true
+Unit=math-woods-site-improvement-reminder.service
+
+[Install]
+WantedBy=timers.target

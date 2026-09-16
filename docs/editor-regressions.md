@@ -1,5 +1,56 @@
 # Markdown and LaTeX Editor Regression Log
 
+## 2026-09-16 - Link menu refreshes renamed destinations
+
+Reopening a selected concept/problem link built its displayed destination from the
+stored slug and never fetched current metadata. Resolve that exact destination on
+each opening, without search ranking or language grouping changing the target.
+Concept aliases and merged/renamed-page redirects resolve to the canonical page. Problem
+lookups retain the editor search's published/listed restriction.
+
+Keep custom link prose intact and offer an explicit "Use the current title as link
+text" button. Resolution must not replace ongoing typing or another selection;
+requests are abortable and never cached. Search keeps the raw accented query as
+well as normalized variants, so renamed accented problem titles remain discoverable.
+
+Guardrails: editor-link target unit tests and the Chromium/WebKit editor-link browser
+suite cover renaming, canonical resolution, stable page identity and preserved labels.
+
+Title edits now change concept/problem slugs in the same transaction and reserve
+every previous URL as a redirect to the page ID. Returning to an earlier title is
+supported; redirects must remain temporary to avoid cached redirect loops. Preserve
+subpaths and query parameters, resolve historical wiki links as existing concepts,
+and keep rename redirects out of the merged-concept history selector. Creation,
+imports, aliases and renaming share a namespace lock to prevent URL reassignment.
+
+## 2026-09-16 - Resolved wiki links and inline submission errors
+
+Concept creation could fail with a duplicate InternalLink constraint when aliases,
+redirects or translations converged on the same target and label. Deduplicate after
+resolving the destination, retaining links with different labels and missing targets.
+The source Markdown is unchanged.
+
+Empty or overlong new solutions now return a localized inline validation message.
+The form dispatches manually so rejection preserves the editor and language selection;
+pending submissions disable the controls. Authentication and successful-save redirects
+still propagate. Concept review also explains stale, non-usable statuses inline, and
+the review button is hidden for statuses that cannot be reviewed.
+
+Guardrail: `tests/recent-error-regressions.test.mjs` covers link collisions, form validation,
+review eligibility and redirects; the browser check exercises failed submissions and retry.
+
+## 2026-09-13 - Concept aliases support LaTeX
+
+Aliases were rendered as raw text, and the comma-separated parser split formulas
+such as `$[a,b]$` into separate aliases. Reuse the shared LaTeX range scanner when
+splitting aliases, preserving formula punctuation and display-math newlines.
+Keep the existing slug generation and ordinary comma/newline separators.
+Concept details, lists, search, linked quote concepts and history use the sanitized
+inline Markdown renderer for aliases. The field help documents `$…$` syntax.
+
+Guardrail: `tests/core.test.ts` covers mixed prose/math aliases, supported delimiters,
+escaped dollars, multiline display formulas, round trips and sanitized rendering.
+
 ## 2026-09-11 - Historical milestone publication preserves incomplete work
 
 An empty milestone description triggered an uncaught server error during publication.

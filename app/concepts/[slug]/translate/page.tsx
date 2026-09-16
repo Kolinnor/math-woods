@@ -1,3 +1,4 @@
+import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound, redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -17,6 +18,7 @@ export default async function TranslateConceptPage({
     searchParams,
     getPreferredContentLanguage()
   ]);
+  await redirectHistoricalContentSlug("concept", slug);
   const language = parseActiveContentLanguage(queryParams.language ?? queryParams.to ?? preferredLanguage);
   const concept = await prisma.concept.findUnique({
     where: { slug },
