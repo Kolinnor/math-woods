@@ -58,10 +58,36 @@ export default async function SearchPage({
             OR: databaseSearchVariants.flatMap((variant) => [
               { title: { contains: variant, mode: "insensitive" as const } },
               { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
-              { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
+              { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } },
+              {
+                references: {
+                  some: {
+                    OR: [
+                      { title: { contains: variant, mode: "insensitive" as const } },
+                      { note: { contains: variant, mode: "insensitive" as const } }
+                    ]
+                  }
+                }
+              },
+              {
+                libraryReferences: {
+                  some: {
+                    OR: [
+                      { text: { contains: variant, mode: "insensitive" as const } },
+                      { note: { contains: variant, mode: "insensitive" as const } },
+                      { reference: { canonicalTitle: { contains: variant, mode: "insensitive" as const } } },
+                      { reference: { authors: { contains: variant, mode: "insensitive" as const } } }
+                    ]
+                  }
+                }
+              }
             ])
           },
-          include: { aliases: true },
+          include: {
+            aliases: true,
+            references: true,
+            libraryReferences: { include: { reference: true } }
+          },
           take: 100
         }),
         prisma.problem.findMany({
@@ -73,8 +99,26 @@ export default async function SearchPage({
             OR: databaseSearchVariants.flatMap((variant) => [
               { title: { contains: variant, mode: "insensitive" as const } },
               { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
-              { origin: { contains: variant, mode: "insensitive" as const } }
+              { origin: { contains: variant, mode: "insensitive" as const } },
+              { originChapter: { contains: variant, mode: "insensitive" as const } },
+              { originNote: { contains: variant, mode: "insensitive" as const } },
+              {
+                libraryReferences: {
+                  some: {
+                    spoiler: false,
+                    OR: [
+                      { text: { contains: variant, mode: "insensitive" as const } },
+                      { note: { contains: variant, mode: "insensitive" as const } },
+                      { reference: { canonicalTitle: { contains: variant, mode: "insensitive" as const } } },
+                      { reference: { authors: { contains: variant, mode: "insensitive" as const } } }
+                    ]
+                  }
+                }
+              }
             ])
+          },
+          include: {
+            libraryReferences: { where: { spoiler: false }, include: { reference: true } }
           },
           take: 100
         }),
@@ -118,7 +162,16 @@ export default async function SearchPage({
           slug: concept.slug,
           aliases: concept.aliases.map(({ alias }) => alias),
           language: concept.language,
-          searchText: [concept.bodyMarkdown]
+          searchText: [
+            concept.bodyMarkdown,
+            ...concept.references.flatMap((reference) => [reference.title, reference.note]),
+            ...concept.libraryReferences.flatMap((citation) => [
+              citation.text,
+              citation.note,
+              citation.reference?.canonicalTitle,
+              citation.reference?.authors
+            ])
+          ]
         })),
         query,
         preferredLanguage,
@@ -132,7 +185,18 @@ export default async function SearchPage({
           title: problem.title,
           slug: problem.slug,
           language: problem.language,
-          searchText: [problem.bodyMarkdown, problem.origin]
+          searchText: [
+            problem.bodyMarkdown,
+            problem.origin,
+            problem.originChapter,
+            problem.originNote,
+            ...problem.libraryReferences.flatMap((citation) => [
+              citation.text,
+              citation.note,
+              citation.reference?.canonicalTitle,
+              citation.reference?.authors
+            ])
+          ]
         })),
         query,
         preferredLanguage,
