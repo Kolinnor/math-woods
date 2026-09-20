@@ -3,5 +3,8 @@ export const MATH_WOODS_KATEX_MACROS: Record<string, string> = {
   "\\N": "\\mathbb{N}",
   "\\Q": "\\mathbb{Q}",
   "\\R": "\\mathbb{R}",
-  "\\Z": "\\mathbb{Z}"
+  "\\Z": "\\mathbb{Z}",
+  "\\Re": "\\operatorname{Re}",
+  "\\Im": "\\operatorname{Im}",
+  "\\diff": "\\,\\mathrm{d}"
 };
