@@ -585,6 +585,22 @@ export const fr = {
     notSet: "Non défini",
     reputation: "réputation"
   },
+  contestAchievements: {
+    winnerBadgeLabel: "Gagnant",
+    honorableBadgeLabel: "Mention honorable",
+    winnerTooltip: (wins: number, honorableMentions: number) =>
+      `A gagné ${wins} concours${
+        honorableMentions > 0
+          ? ` et obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"}`
+          : ""
+      } lors des Concours.`,
+    honorableTooltip: (honorableMentions: number) =>
+      `A obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"} lors des Concours.`,
+    recordTitle: "Palmarès",
+    noRecord: "Aucun résultat de concours pour le moment.",
+    winsCount: (count: number) => `${count} concours gagné${count === 1 ? "" : "s"}`,
+    honorableMentionsCount: (count: number) => `${count} mention${count === 1 ? "" : "s"} honorable${count === 1 ? "" : "s"}`
+  },
   footer: {
     legal:
       "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire.",

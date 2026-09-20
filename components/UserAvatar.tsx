@@ -1,3 +1,4 @@
+import { ContestAchievementBadge } from "@/components/ContestAchievementBadge";
 import { displayNameForUser } from "@/lib/user-display";
 import {
   avatarBackgroundOption,
@@ -13,13 +14,20 @@ type AvatarUser = {
   username: string;
 };
 
+export type AvatarAchievement = {
+  wins: number;
+  honorableMentions: number;
+  tooltip: string;
+};
+
 type UserAvatarProps = {
+  achievement?: AvatarAchievement;
   className?: string;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   user: AvatarUser;
 };
 
-export function UserAvatar({ className, size = "md", user }: UserAvatarProps) {
+export function UserAvatar({ achievement, className, size = "md", user }: UserAvatarProps) {
   const savedDefaultPreset = avatarPresetFromUrl(user.avatarUrl);
   const defaultPreset = savedDefaultPreset ?? defaultAvatarPresetForUsername(user.username);
   const uploadedAvatarUrl = user.avatarUrl && !savedDefaultPreset ? user.avatarUrl : null;
@@ -32,8 +40,9 @@ export function UserAvatar({ className, size = "md", user }: UserAvatarProps) {
   ]
     .filter(Boolean)
     .join(" ");
+  const hasBadge = Boolean(achievement && (achievement.wins > 0 || achievement.honorableMentions > 0));
 
-  return (
+  const avatar = (
     <span
       className={classes}
       title={displayNameForUser(user)}
@@ -49,6 +58,19 @@ export function UserAvatar({ className, size = "md", user }: UserAvatarProps) {
           loading={size === "xl" ? "eager" : "lazy"}
         />
       )}
+    </span>
+  );
+
+  if (!hasBadge) return avatar;
+
+  return (
+    <span className="user-avatar-badge-wrap">
+      {avatar}
+      <ContestAchievementBadge
+        wins={achievement!.wins}
+        honorableMentions={achievement!.honorableMentions}
+        tooltip={achievement!.tooltip}
+      />
     </span>
   );
 }

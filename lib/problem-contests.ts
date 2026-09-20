@@ -85,6 +85,38 @@ export function contestCreationWindow(contest: { startDateKey: string; endDateKe
   };
 }
 
+export type ContestAchievementStats = { wins: number; honorableMentions: number };
+
+export function contestAchievementStatsByUser(
+  submissions: readonly { userId: number; placement: "WINNER" | "HONORABLE_MENTION" | null }[]
+) {
+  const statsByUser = new Map<number, ContestAchievementStats>();
+  for (const submission of submissions) {
+    if (!submission.placement) continue;
+    const stats = statsByUser.get(submission.userId) ?? { wins: 0, honorableMentions: 0 };
+    if (submission.placement === "WINNER") stats.wins += 1;
+    else stats.honorableMentions += 1;
+    statsByUser.set(submission.userId, stats);
+  }
+  return statsByUser;
+}
+
+export type AvatarAchievementLabels = {
+  winnerTooltip: (wins: number, honorableMentions: number) => string;
+  honorableTooltip: (honorableMentions: number) => string;
+};
+
+export function avatarAchievementFromStats(stats: ContestAchievementStats | undefined, labels: AvatarAchievementLabels) {
+  const wins = stats?.wins ?? 0;
+  const honorableMentions = stats?.honorableMentions ?? 0;
+  if (wins <= 0 && honorableMentions <= 0) return undefined;
+  return {
+    wins,
+    honorableMentions,
+    tooltip: wins > 0 ? labels.winnerTooltip(wins, honorableMentions) : labels.honorableTooltip(honorableMentions)
+  };
+}
+
 export function localizedContestText<T extends {
   titleEn: string;
   titleFr: string;

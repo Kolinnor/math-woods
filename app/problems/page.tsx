@@ -47,6 +47,7 @@ import {
   problemContentTypeWhere
 } from "@/lib/problem-content-types";
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
+import { avatarAchievementFromStats, contestAchievementStatsByUser } from "@/lib/problem-contests";
 import { buildProgressMap } from "@/lib/progress";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { combineSearchFilters } from "@/lib/search-filters";
@@ -683,6 +684,14 @@ export default async function ProblemsPage({
     const problem = problemById.get(problemId);
     return problem ? [problem] : [];
   });
+  const pageAuthorIds = [...new Set(problems.map((problem) => problem.authorId))];
+  const authorContestSubmissions = pageAuthorIds.length
+    ? await prisma.problemContestSubmission.findMany({
+        where: { userId: { in: pageAuthorIds }, placement: { not: null } },
+        select: { userId: true, placement: true }
+      })
+    : [];
+  const contestAchievementsByAuthor = contestAchievementStatsByUser(authorContestSubmissions);
   const displayedTranslationGroupIds = problems.map((problem) => problem.translationGroupId);
   const [groupAttempts, groupFavorites] = displayedTranslationGroupIds.length
     ? await Promise.all([
@@ -1021,6 +1030,10 @@ export default async function ProblemsPage({
               const tone = problemDifficultyTone(difficulty);
               const authorName = displayNameForUser(problem.author);
               const problemHref = `/problems/${problem.slug}`;
+              const authorAchievement = avatarAchievementFromStats(
+                contestAchievementsByAuthor.get(problem.authorId),
+                t.contestAchievements
+              );
 
               return (
                 <ProblemLedgerInteractiveRow
@@ -1035,12 +1048,12 @@ export default async function ProblemsPage({
                         {t.common.by} {authorName}
                       </Link>
                       <Link
-                        href={`/profile/${problem.author.profileSlug}`}
+                        href={`/profile/${problem.author.profileSlug}${authorAchievement ? "#palmares" : ""}`}
                         className="problem-ledger-author-avatar"
                         title={authorName}
                         aria-label={authorName}
                       >
-                        <UserAvatar user={problem.author} size="xs" />
+                        <UserAvatar user={problem.author} size="sm" achievement={authorAchievement} />
                       </Link>
                     </div>
                   )}

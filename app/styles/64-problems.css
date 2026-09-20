@@ -23,7 +23,7 @@ body:has(.problem-detail-shell) {
 }
 .problem-solver-avatar-link + .problem-solver-avatar-link,
 .problem-solver-avatar-link + .problem-solver-more {
-  margin-left: -8px;
+  margin-left: -10px;
 }
 .problem-solver-avatars .user-avatar {
   border: 2px solid var(--mw-surface);
@@ -564,10 +564,10 @@ body:has(.problem-detail-shell) .site-main {
   display: flex;
   font-size: 10px;
   font-weight: 800;
-  height: 28px;
+  height: 38px;
   justify-content: center;
   list-style: none;
-  min-width: 28px;
+  min-width: 38px;
   padding: 0 4px;
 }
 .problem-solver-more > summary::-webkit-details-marker {
@@ -2949,10 +2949,6 @@ button.problem-favorite-count:disabled {
 .problem-ledger-author-avatar {
   align-items: center;
   display: inline-flex;
-}
-.problem-ledger-author-avatar .user-avatar-xs {
-  height: 1.15rem;
-  width: 1.15rem;
 }
 @media (max-width: 1100px) {
   .problem-ledger-author {

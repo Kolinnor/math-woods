@@ -49,6 +49,7 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { contentLanguageLabel } from "@/lib/languages";
 import { LanguageField } from "@/components/LanguageField";
 import { formatProblemSolvedDate, problemSolvedAt } from "@/lib/problem-solved-date";
+import { avatarAchievementFromStats, contestAchievementStatsByUser } from "@/lib/problem-contests";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { markdownExcerpt } from "@/lib/metadata-text";
 import { renderInlineMarkdown } from "@/lib/markdown";
@@ -626,6 +627,27 @@ export default async function ProblemPage({
   const hiddenSolverNameCount = prioritizedGroupSolvers.length - namedSolvers.length;
   const desktopSolverAvatarCount = Math.min(prioritizedGroupSolvers.length, DESKTOP_SOLVER_AVATAR_LIMIT);
   const mobileSolverAvatarCount = Math.min(prioritizedGroupSolvers.length, MOBILE_SOLVER_AVATAR_LIMIT);
+  const achievementUserIds = [
+    ...new Set([
+      problem.authorId,
+      ...(problem.reviewedBy ? [problem.reviewedBy.id] : []),
+      ...prioritizedGroupSolvers.map(({ user: solver }) => solver.id)
+    ])
+  ];
+  const contestSubmissionsForPage = achievementUserIds.length
+    ? await prisma.problemContestSubmission.findMany({
+        where: { userId: { in: achievementUserIds }, placement: { not: null } },
+        select: { userId: true, placement: true }
+      })
+    : [];
+  const contestAchievementsByUser = contestAchievementStatsByUser(contestSubmissionsForPage);
+  const authorAchievement = avatarAchievementFromStats(
+    contestAchievementsByUser.get(problem.authorId),
+    t.contestAchievements
+  );
+  const reviewerAchievement = problem.reviewedBy
+    ? avatarAchievementFromStats(contestAchievementsByUser.get(problem.reviewedBy.id), t.contestAchievements)
+    : undefined;
   const attempt =
     attemptsInTranslationGroup.find((translationAttempt) => translationAttempt.status === "SOLVED") ??
     attemptsInTranslationGroup[0] ??
@@ -653,11 +675,15 @@ export default async function ProblemPage({
         {prioritizedGroupSolvers.slice(0, DESKTOP_SOLVER_AVATAR_LIMIT).map(({ user: solver }, index) => (
           <Link
             key={solver.id}
-            href={`/profile/${solver.profileSlug}`}
+            href={`/profile/${solver.profileSlug}${contestAchievementsByUser.has(solver.id) ? "#palmares" : ""}`}
             className={`problem-solver-avatar-link${index >= MOBILE_SOLVER_AVATAR_LIMIT ? " problem-solver-avatar-desktop-only" : ""}`}
             aria-label={displayNameForUser(solver)}
           >
-            <UserAvatar user={solver} size="sm" />
+            <UserAvatar
+              user={solver}
+              size="md"
+              achievement={avatarAchievementFromStats(contestAchievementsByUser.get(solver.id), t.contestAchievements)}
+            />
           </Link>
         ))}
         {prioritizedGroupSolvers.length > MOBILE_SOLVER_AVATAR_LIMIT && (
@@ -683,10 +709,14 @@ export default async function ProblemPage({
                 {prioritizedGroupSolvers.map(({ user: solver }) => (
                   <Link
                     key={solver.id}
-                    href={`/profile/${solver.profileSlug}`}
+                    href={`/profile/${solver.profileSlug}${contestAchievementsByUser.has(solver.id) ? "#palmares" : ""}`}
                     data-close-details
                   >
-                    <UserAvatar user={solver} size="sm" />
+                    <UserAvatar
+                      user={solver}
+                      size="md"
+                      achievement={avatarAchievementFromStats(contestAchievementsByUser.get(solver.id), t.contestAchievements)}
+                    />
                     <span>{displayNameForUser(solver)}</span>
                   </Link>
                 ))}
@@ -958,8 +988,14 @@ export default async function ProblemPage({
           </p>
           <h1 id="problem-title"><AsyncMarkdownInline markdown={problem.title} /></h1>
           <div className="problem-title-meta">
-            <Link href={`/profile/${problem.author.profileSlug}`}>
-              {t.problemDetail.by} <UserName user={problem.author} className="problem-author-name" />
+            <Link href={`/profile/${problem.author.profileSlug}${authorAchievement ? "#palmares" : ""}`}>
+              {t.problemDetail.by}{" "}
+              <UserName
+                user={problem.author}
+                className="problem-author-name"
+                avatarSize="sm"
+                achievement={authorAchievement}
+              />
             </Link>
             {translationCreator?.editedBy && translationCreator.editedBy.id !== problem.authorId && (
               <>
@@ -982,10 +1018,10 @@ export default async function ProblemPage({
                     {t.quality.REVIEWED}
                   </summary>
                   <span className="problem-reviewed-meta-popover">
-                    <UserAvatar user={problem.reviewedBy} size="sm" />
+                    <UserAvatar user={problem.reviewedBy} size="md" achievement={reviewerAchievement} />
                     <span>
                       {t.problemDetail.reviewedByCredit}{" "}
-                      <Link href={`/profile/${problem.reviewedBy.profileSlug}`}>
+                      <Link href={`/profile/${problem.reviewedBy.profileSlug}${reviewerAchievement ? "#palmares" : ""}`}>
                         {displayNameForUser(problem.reviewedBy)}
                       </Link>
                     </span>

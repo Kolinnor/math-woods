@@ -18,9 +18,11 @@ import {
 } from "@/lib/actions/contest-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getInterfaceLocale } from "@/lib/i18n/server";
+import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canUseOwnerTools } from "@/lib/permissions";
 import {
+  avatarAchievementFromStats,
+  contestAchievementStatsByUser,
   contestCreationWindow,
   contestDateLabel,
   contestPhase,
@@ -199,6 +201,15 @@ export default async function ContestPage({
     titleHtml: await renderInlineMarkdown(problem.title)
   })));
   const archive = contests.filter((contest) => contest.id !== featured.id && contest.resultsPublishedAt).slice(0, 6);
+  const submitterIds = [...new Set(featured.submissions.map((submission) => submission.userId))];
+  const submitterContestSubmissions = submitterIds.length
+    ? await prisma.problemContestSubmission.findMany({
+        where: { userId: { in: submitterIds }, placement: { not: null } },
+        select: { userId: true, placement: true }
+      })
+    : [];
+  const achievementsBySubmitter = contestAchievementStatsByUser(submitterContestSubmissions);
+  const dictionary = await getTranslations();
 
   return (
     <ForestPageLayout
@@ -288,7 +299,14 @@ export default async function ContestPage({
                 <Link key={submission.id} href={`/problems/${problem.slug}`} className="contest-entry">
                   <Difficulty value={problem.difficulty} compact />
                   <span className="contest-entry-title"><strong><AsyncMarkdownInline markdown={problem.title} /><ContentLanguageFallback language={problem.language} expectedLanguage={locale} /></strong><small>{displayNameForUser(submission.user)}</small></span>
-                  <UserAvatar user={submission.user} size="sm" />
+                  <UserAvatar
+                    user={submission.user}
+                    size="md"
+                    achievement={avatarAchievementFromStats(
+                      achievementsBySubmitter.get(submission.userId),
+                      dictionary.contestAchievements
+                    )}
+                  />
                   {submission.placement === "WINNER" && <span className="contest-placement winner"><Trophy size={15} /> {t.winner}</span>}
                   {submission.placement === "HONORABLE_MENTION" && <span className="contest-placement"><Medal size={15} /> {t.honorable}</span>}
                 </Link>
