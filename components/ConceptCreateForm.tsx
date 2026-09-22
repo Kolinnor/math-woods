@@ -1,8 +1,7 @@
 "use client";
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { useActionState, useEffect, useRef } from "react";
-import { useFormStatus } from "react-dom";
+import { createContext, startTransition, useActionState, useContext, useEffect, useRef } from "react";
 import {
   createConceptFormAction,
   type ConceptCreateActionState
@@ -11,8 +10,10 @@ import { TRANSLATION_LINK_OVERRIDE_FIELD } from "@/lib/translation-link-warning"
 import { SAME_TRANSLATION_TITLE_OVERRIDE_FIELD } from "@/lib/translation-title-guard";
 
 const initialState: ConceptCreateActionState = { error: null };
+const ConceptPendingContext = createContext(false);
 
 type ConceptCreateFormLabels = {
+  aliasConflictHeading: string;
   duplicateTitleHeading: string;
   duplicateTitleWarning: string;
   keepSameTranslationTitle: string;
@@ -32,10 +33,12 @@ export function ConceptCreateForm({
   children: ReactNode;
   labels: ConceptCreateFormLabels;
 }) {
-  const [state, formAction] = useActionState(createConceptFormAction, initialState);
+  const [state, formAction, pending] = useActionState(createConceptFormAction, initialState);
   const errorRef = useRef<HTMLDivElement | null>(null);
   const requiresConfirmation = state.errorKind === "same-translation-title" || state.errorKind === "translation-links";
-  const errorHeading = state.errorKind === "duplicate-title"
+  const errorHeading = state.errorKind === "alias-conflict"
+    ? labels.aliasConflictHeading
+    : state.errorKind === "duplicate-title"
     ? labels.duplicateTitleHeading
     : state.errorKind === "same-translation-title"
       ? labels.sameTranslationTitleHeading
@@ -60,7 +63,17 @@ export function ConceptCreateForm({
   }, [state.error]);
 
   return (
-    <form action={formAction} className="panel grid gap-4 p-5">
+    <ConceptPendingContext.Provider value={pending}>
+    <form className="panel grid gap-4 p-5" aria-busy={pending} onSubmit={(event) => {
+      event.preventDefault();
+      if (pending) return;
+      // Manual dispatch keeps uncontrolled fields and editor drafts after rejection.
+      const data = new FormData(event.currentTarget);
+      const submitter = (event.nativeEvent as SubmitEvent).submitter;
+      if (submitter instanceof HTMLButtonElement && submitter.name) data.set(submitter.name, submitter.value);
+      startTransition(() => formAction(data));
+    }}>
+      <fieldset disabled={pending} className="contents">
       {state.sameTranslationTitleConfirmed && (
         <input type="hidden" name={SAME_TRANSLATION_TITLE_OVERRIDE_FIELD} value="confirm" />
       )}
@@ -89,7 +102,9 @@ export function ConceptCreateForm({
         </div>
       )}
       {children}
+      </fieldset>
     </form>
+    </ConceptPendingContext.Provider>
   );
 }
 
@@ -101,7 +116,7 @@ export function ConceptSubmitButton({
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
   pendingLabel: string;
 }) {
-  const { pending } = useFormStatus();
+  const pending = useContext(ConceptPendingContext);
 
   return (
     <button type="submit" disabled={disabled || pending} {...props}>

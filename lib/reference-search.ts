@@ -1,9 +1,10 @@
 import { Prisma } from "@prisma/client";
 
-export function referenceSearchWords(query: string) {
-  return [...new Set(query.slice(0, 160).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
+export function referenceSearchWords(query: string, deduplicate = true) {
+  const words = query.slice(0, 160).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
     .replace(/œ/g, "oe").replace(/æ/g, "ae").replace(/ß/g, "ss")
-    .replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/).filter(Boolean))];
+    .replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/).filter(Boolean);
+  return deduplicate ? [...new Set(words)] : words;
 }
 
 // PostgreSQL's built-in Unicode normalization avoids requiring an unaccent

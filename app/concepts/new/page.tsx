@@ -115,6 +115,7 @@ export default async function NewConceptPage({
       <div className="translation-compose-main">
         <ConceptCreateForm
           labels={{
+            aliasConflictHeading: t.contentEditor.aliasConflictHeading,
             duplicateTitleHeading: t.contentEditor.duplicateConceptTitleHeading,
             duplicateTitleWarning: t.contentEditor.duplicateConceptTitleWarning,
             keepSameTranslationTitle: t.contentEditor.keepSameTranslationTitle,

@@ -2,6 +2,7 @@ import { acquireTransactionLock } from "@/lib/transaction-lock";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { parseAliases } from "@/lib/concept-aliases";
+import { ConceptAliasConflictError } from "@/lib/form-feedback";
 
 export { parseAliases } from "@/lib/concept-aliases";
 
@@ -43,7 +44,7 @@ export async function syncConceptAliases(
   });
 
   if (canonicalConflict) {
-    throw new Error(`An alias conflicts with the existing concept "${canonicalConflict.title}".`);
+    throw new ConceptAliasConflictError(canonicalConflict.title);
   }
   const redirectConflict = await tx.conceptRedirect.findFirst({
     where: {
@@ -53,7 +54,7 @@ export async function syncConceptAliases(
     select: { sourceTitle: true }
   });
   if (redirectConflict) {
-    throw new Error(`An alias conflicts with the merged concept "${redirectConflict.sourceTitle}".`);
+    throw new ConceptAliasConflictError(redirectConflict.sourceTitle);
   }
   const aliasConflict = await tx.conceptAlias.findFirst({
     where: {
@@ -66,9 +67,7 @@ export async function syncConceptAliases(
     }
   });
   if (aliasConflict) {
-    throw new Error(
-      `The alias "${aliasConflict.alias}" is already used by the concept "${aliasConflict.concept.title}".`
-    );
+    throw new ConceptAliasConflictError(aliasConflict.concept.title);
   }
 
   await tx.conceptAlias.deleteMany({ where: { conceptId } });

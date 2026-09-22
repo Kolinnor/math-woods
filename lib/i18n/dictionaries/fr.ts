@@ -585,6 +585,22 @@ export const fr = {
     notSet: "Non défini",
     reputation: "réputation"
   },
+  contestAchievements: {
+    winnerBadgeLabel: "Gagnant",
+    honorableBadgeLabel: "Mention honorable",
+    winnerTooltip: (wins: number, honorableMentions: number) =>
+      `A gagné ${wins} concours${
+        honorableMentions > 0
+          ? ` et obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"}`
+          : ""
+      } lors des Concours.`,
+    honorableTooltip: (honorableMentions: number) =>
+      `A obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"} lors des Concours.`,
+    recordTitle: "Palmarès",
+    noRecord: "Aucun résultat de concours pour le moment.",
+    winsCount: (count: number) => `${count} concours gagné${count === 1 ? "" : "s"}`,
+    honorableMentionsCount: (count: number) => `${count} mention${count === 1 ? "" : "s"} honorable${count === 1 ? "" : "s"}`
+  },
   footer: {
     legal:
       "© 2026 Math Woods. Code : AGPL-3.0-or-later. Contenu pédagogique : CC BY-NC-SA 4.0 sauf mention contraire.",
@@ -819,6 +835,8 @@ export const fr = {
     requestProblemPlaceholder:
       "Décrivez le type de problème souhaité : notion, théorème, technique, exemples ou niveau de difficulté.",
     searchProblems: "Rechercher des problèmes",
+    matchingReference: "Référence",
+    linkedExerciseConcept: "Lié à",
     randomProblem: "Problème au hasard",
     resetFilters: "Réinitialiser les filtres",
     difficulty: "Difficulté",
@@ -1240,7 +1258,7 @@ export const fr = {
       conceptsWithoutReferences: { title: "Concepts sans références", description: "Ajoutez une source fiable pour la définition ou le résultat." },
       unreviewedProblems: { title: "Problèmes non relus", description: "Lisez attentivement l'énoncé et marquez-le comme relu lorsqu'il est prêt." },
       needsWorkProblems: { title: "Problèmes à retravailler", description: "Clarifiez ou corrigez un problème qui a été signalé." },
-      exercisesWithoutConcepts: { title: "Exercices sans concept", description: "Rattachez chaque exercice à au moins un concept afin qu'il apparaisse au bon endroit." },
+      exercisesWithoutConcepts: { title: "Exercices sans concept", description: "Rattachez chaque exercice à au moins un concept afin qu'il apparaisse au bon endroit.", help: "Chaque traduction est vérifiée séparément. Un exercice peut donc être signalé ici alors qu'une autre version est déjà rattachée à un concept. À l'ouverture, le site affiche la version dans votre langue si elle existe : vérifiez les autres traductions avant d'ajouter un rattachement." },
       problemsMissingFr: { title: "Problèmes sans version « Français »", description: "Traduisez un problème qui n'a pas encore de version « Français »." },
       problemsMissingEn: { title: "Problèmes sans version « English »", description: "Traduisez un problème qui n'a pas encore de version « English »." },
       conceptsMissingFr: { title: "Concepts sans version « Français »", description: "Traduisez un concept qui n'a pas encore de version « Français »." },
@@ -1458,6 +1476,7 @@ export const fr = {
     difficulty: "difficulté"
   },
   contentEditor: {
+    aliasConflictHeading: "Alias déjà utilisé",
     language: "Langue",
     translation: "Traduction",
     accompanyingContent: "Contenus associés",

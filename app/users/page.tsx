@@ -5,8 +5,10 @@ import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
 import { formatCompactNumber } from "@/lib/compact-number";
+import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
 import { countOnlineUsers } from "@/lib/online-users";
+import { avatarAchievementFromStats, contestAchievementStatsByUser, publicContestAchievementWhere } from "@/lib/problem-contests";
 import { normalizeSearchText } from "@/lib/search-ranking";
 import { getReputationLeaderboard, type UserReputationSummary } from "@/lib/user-reputation";
 import { displayNameForUser } from "@/lib/user-display";
@@ -116,6 +118,14 @@ export default async function UsersPage({
   const currentPage = Math.min(requestedPage, totalPages);
   const firstUserIndex = (currentPage - 1) * USERS_PER_PAGE;
   const visibleUsers = users.slice(firstUserIndex, firstUserIndex + USERS_PER_PAGE);
+  const visibleUserIds = visibleUsers.map((user) => user.userId);
+  const visibleUserContestSubmissions = visibleUserIds.length
+    ? await prisma.problemContestSubmission.findMany({
+        where: { userId: { in: visibleUserIds }, ...publicContestAchievementWhere() },
+        select: { userId: true, placement: true }
+      })
+    : [];
+  const achievementsByUserId = contestAchievementStatsByUser(visibleUserContestSubmissions);
 
   return (
     <ForestPageLayout
@@ -176,15 +186,17 @@ export default async function UsersPage({
         )}
 
         <div className="users-list">
-          {visibleUsers.map((user, index) => (
+          {visibleUsers.map((user, index) => {
+            const achievement = avatarAchievementFromStats(achievementsByUserId.get(user.userId), t.contestAchievements);
+            return (
             <Link
               id={`user-${user.userId}`}
               key={user.userId}
-              href={`/profile/${user.profileSlug}`}
+              href={`/profile/${user.profileSlug}${achievement ? "#palmares" : ""}`}
               className={`users-row${user.userId === currentUser?.id ? " is-current-user" : ""}`}
             >
               <span className="users-rank">#{rankByUserId.get(user.userId) ?? firstUserIndex + index + 1}</span>
-              <UserAvatar user={user} size="md" />
+              <UserAvatar user={user} size="lg" achievement={achievement} />
               <span className="users-main">
                 <strong>
                   {displayNameForUser(user)}
@@ -223,7 +235,8 @@ export default async function UsersPage({
                 <small>{t.users.stats.solved}</small>
               </span>
             </Link>
-          ))}
+            );
+          })}
           {visibleUsers.length === 0 && (
             <p className="empty-state">{searchQuery ? t.users.noMatches : t.users.noUsers}</p>
           )}

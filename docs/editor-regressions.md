@@ -1,5 +1,29 @@
 # Markdown and LaTeX Editor Regression Log
 
+## 2026-09-22 - Shared real/imaginary-part and differential macros (PR #22)
+
+The shared KaTeX macro table now renders `\Re` and `\Im` as upright operators,
+and provides `\diff` as a thin space followed by an upright d. Both editor previews
+and published Markdown use this table. Core rendering checks cover the operator
+upright glyphs and differential spacing; source LaTeX remains unchanged.
+
+## 2026-09-22 - Concept alias conflicts preserve the form
+
+A concept alias matching another concept title, alias or historical URL threw an
+unhandled error (production report 283, conflicting concept Sphere). Use a typed
+alias conflict and return localized feedback from the creation and editing forms.
+Keep the namespace checks and transaction rollback; unexpected failures and
+authentication/success redirects still propagate.
+
+Creation now dispatches the action manually so a rejected submission does not
+reset uncontrolled fields. Preserve confirmation-button values and disable the
+form while saving. Editing uses the existing ActionFeedbackForm for the same
+preservation and pending behavior.
+
+Guardrails: recent-error regression tests cover all three namespace conflicts and
+localized action feedback; the form-feedback browser suite covers preserved input,
+confirmation buttons, pending submissions and retry in Chromium and WebKit.
+
 ## 2026-09-16 - Link menu refreshes renamed destinations
 
 Reopening a selected concept/problem link built its displayed destination from the

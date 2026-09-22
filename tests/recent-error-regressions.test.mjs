@@ -9,6 +9,9 @@ import * as feedback from '../lib/form-feedback.ts';
 import * as limits from '../lib/content-limits.ts';
 import * as permissions from '../lib/permissions.ts';
 import * as languages from '../lib/languages.ts';
+import * as aliases from '../lib/concept-aliases.ts';
+import * as titleGuard from '../lib/translation-title-guard.ts';
+import * as contests from '../lib/problem-contests.ts';
 
 const require = createRequire(import.meta.url);
 const redirectError = new Error('NEXT_REDIRECT');
@@ -17,6 +20,7 @@ function load(file, overrides = {}) {
     '@prisma/client': require('@prisma/client'), 'react/jsx-runtime': require('react/jsx-runtime'),
     '@/lib/wikilinks': wikilinks, '@/lib/form-feedback': feedback,
     '@/lib/content-limits': limits, '@/lib/permissions': permissions, '@/lib/languages': languages,
+    '@/lib/problem-contests': contests,
     '@/lib/auth': { requireVerifiedUser: async () => ({ id: 1, role: 'OWNER' }), requireModerator: async () => ({ id: 1 }) },
     '@/lib/rate-limit': { assertRateLimit: async () => {}, isRateLimitError: e => e?.name === 'RateLimitError' },
     '@/lib/transaction-lock': { acquireTransactionLock: async () => {} },
@@ -116,4 +120,59 @@ test('recent users page marks notifications read without revalidating during ren
   });
   await page();
   assert.equal(marked, true);
+});
+
+test('alias namespace conflicts are recoverable validation errors and never replace existing aliases', async () => {
+  for (const conflict of ['canonical', 'redirect', 'alias']) {
+    let writes = 0;
+    const db = {
+      concept: { findUnique: async () => ({ slug: 'new-concept' }), findFirst: async () => conflict === 'canonical' ? { title: 'Sphere' } : null },
+      conceptRedirect: { findFirst: async () => conflict === 'redirect' ? { sourceTitle: 'Sphere' } : null },
+      conceptAlias: {
+        findFirst: async () => conflict === 'alias' ? { alias: 'sphere', concept: { title: 'Sphere' } } : null,
+        deleteMany: async () => { writes++; }, createMany: async () => { writes++; }
+      }
+    };
+    const { syncConceptAliases } = load('lib/concept-metadata.ts', { '@/lib/db': { prisma: db }, '@/lib/concept-aliases': aliases });
+    await assert.rejects(syncConceptAliases(7, aliases.parseAliases('sphere'), db), error => {
+      assert.ok(error instanceof feedback.ConceptAliasConflictError);
+      assert.equal(error.conceptTitle, 'Sphere');
+      return true;
+    });
+    assert.equal(writes, 0);
+  }
+});
+
+test('concept creation and editing explain alias conflicts in both languages while preserving redirects and unexpected failures', async () => {
+  for (const locale of ['fr', 'en']) {
+    let failure = new feedback.ConceptAliasConflictError('Sphere');
+    const db = { $transaction: async () => { throw failure; }, concept: { findUnique: async () => { throw failure; } } };
+    const actions = load('lib/actions/concept-actions.ts', {
+      '@/lib/db': { prisma: db }, '@/lib/auth': { requireVerifiedUser: async () => ({ id: 1, role: 'OWNER', conceptGuideAcknowledgedAt: new Date() }) },
+      '@/lib/i18n/server': { getInterfaceLocale: async () => locale },
+      '@/lib/creation-submission': { creationSubmissionKey: () => null },
+      '@/lib/concept-kinds': { parseConceptKind: () => 'DEFINITION' },
+      '@/lib/domains': { parseDomainCode: () => 'GEOMETRY', coarseDomainForCode: () => 'GEOMETRY' },
+      '@/lib/concept-metadata': { ...aliases, parseReferences: () => [] },
+      '@/lib/concept-citations': { submittedConceptCitations: () => null },
+      '@/lib/translation-link-warning': { translationLinkOverrideRequested: () => false },
+      '@/lib/translation-title-guard': titleGuard,
+      '@/lib/internal-links': { TranslationWikiLinksPreservedError: class extends Error {} },
+      '@/lib/slug': { ensureSlug: value => value }, '@/lib/markdown': { renderMarkdown: async value => value }
+    });
+    const data = new FormData(); data.set('title', 'A new concept'); data.set('aliases', 'Sphere'); data.set('language', 'fr'); data.set('bodyMarkdown', 'Keep my $x^2$ draft.');
+    const created = await actions.createConceptFormAction({ error: null }, data);
+    assert.equal(created.errorKind, 'alias-conflict');
+    const edited = await actions.updateConceptFormAction(7, locale, { error: '' }, data);
+    for (const result of [created, edited]) {
+      assert.match(result.error, /Sphere/);
+      assert.match(result.error, locale === 'fr' ? /Retirez ou modifiez/ : /Remove or change/);
+    }
+    assert.equal(data.get('aliases'), 'Sphere'); assert.equal(data.get('bodyMarkdown'), 'Keep my $x^2$ draft.');
+    for (const error of [redirectError, new Error('Database unavailable')]) {
+      failure = error;
+      await assert.rejects(actions.createConceptFormAction({ error: null }, data), e => e === error);
+      await assert.rejects(actions.updateConceptFormAction(7, locale, { error: '' }, data), e => e === error);
+    }
+  }
 });

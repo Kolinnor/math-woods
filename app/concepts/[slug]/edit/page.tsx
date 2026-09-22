@@ -15,7 +15,8 @@ import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { OrderedProblemPicker, type TipPickerProblem } from "@/components/TipProblemPicker";
 import { ProblemDomainPicker } from "@/components/ProblemDomainPicker";
 import { TranslationReferencePanel } from "@/components/TranslationReferencePanel";
-import { deleteConceptAction, updateConceptAction } from "@/lib/actions/concept-actions";
+import { deleteConceptAction, updateConceptFormAction } from "@/lib/actions/concept-actions";
+import { ActionFeedbackForm } from "@/components/ActionFeedbackForm";
 import { requireVerifiedUser } from "@/lib/auth";
 import { canPublishConceptEditForConcept } from "@/lib/concept-edit-access";
 import { MAX_CONCEPT_EXERCISES } from "@/lib/concept-exercises";
@@ -147,7 +148,7 @@ export default async function EditConceptPage({
           {t.contentEditor.conceptProposalConflict}
         </section>
       )}
-      <form action={updateConceptAction.bind(null, concept.id)} className="panel grid gap-4 p-5">
+      <ActionFeedbackForm action={updateConceptFormAction.bind(null, concept.id, interfaceLocale)} className="panel grid gap-4 p-5">
         {!publishesImmediately && (
           <input type="hidden" name="baseUpdatedAt" value={concept.updatedAt.toISOString()} />
         )}
@@ -279,7 +280,7 @@ export default async function EditConceptPage({
           </button>
           <ContentPreviewButton contentType="concept" locale={interfaceLocale} />
         </div>
-      </form>
+      </ActionFeedbackForm>
 
       {canDeleteCurrentConcept && (
         <section className="danger-zone mt-6">

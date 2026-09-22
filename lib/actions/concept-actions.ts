@@ -21,7 +21,8 @@ import {
   type ConceptSnapshotSource
 } from "@/lib/concept-revisions";
 import { boundedText, CONTENT_LIMITS, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
-import { conceptStatusAllowsReview, ContentValidationError, type FormFeedbackState } from "@/lib/form-feedback";
+import { ConceptAliasConflictError, conceptAliasConflictMessage, conceptStatusAllowsReview, ContentValidationError, type FormFeedbackState } from "@/lib/form-feedback";
+import { getInterfaceLocale } from "@/lib/i18n/server";
 import { assertDailyContentCreationQuota } from "@/lib/content-creation-quota";
 import { contentParticipantIds } from "@/lib/content-participants";
 import { CREATION_SUBMISSION_FIELD, creationSubmissionKey } from "@/lib/creation-submission";
@@ -351,7 +352,7 @@ export async function createConceptAction(formData: FormData) {
 
 export type ConceptCreateActionState = {
   error: string | null;
-  errorKind?: "duplicate-title" | "rate-limit" | "translation-links" | "same-translation-title";
+  errorKind?: "duplicate-title" | "rate-limit" | "translation-links" | "same-translation-title" | "alias-conflict";
   sameTranslationTitleConfirmed?: boolean;
 };
 
@@ -363,6 +364,13 @@ export async function createConceptFormAction(
     await createConceptAction(formData);
     return { error: null };
   } catch (error) {
+    if (error instanceof ConceptAliasConflictError) {
+      return {
+        error: conceptAliasConflictMessage(error, await getInterfaceLocale()),
+        errorKind: "alias-conflict",
+        sameTranslationTitleConfirmed: sameTranslationTitleOverrideRequested(formData)
+      };
+    }
     if (error instanceof DuplicateConceptTitleError) {
       return { error: error.message, errorKind: "duplicate-title" };
     }
@@ -379,6 +387,18 @@ export async function createConceptFormAction(
     if (isRateLimitError(error)) {
       return { error: error.message, errorKind: "rate-limit" };
     }
+    throw error;
+  }
+}
+
+export async function updateConceptFormAction(
+  conceptId: number, locale: "fr" | "en", _state: FormFeedbackState, formData: FormData
+): Promise<FormFeedbackState> {
+  try {
+    await updateConceptAction(conceptId, formData);
+    return { error: "" };
+  } catch (error) {
+    if (error instanceof ConceptAliasConflictError) return { error: conceptAliasConflictMessage(error, locale) };
     throw error;
   }
 }

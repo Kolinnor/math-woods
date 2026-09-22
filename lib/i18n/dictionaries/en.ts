@@ -582,6 +582,22 @@ export const en = {
     notSet: "Not set",
     reputation: "reputation"
   },
+  contestAchievements: {
+    winnerBadgeLabel: "Winner",
+    honorableBadgeLabel: "Honorable mention",
+    winnerTooltip: (wins: number, honorableMentions: number) =>
+      `Won ${wins} contest${wins === 1 ? "" : "s"}${
+        honorableMentions > 0
+          ? ` and received ${honorableMentions} honorable mention${honorableMentions === 1 ? "" : "s"}`
+          : ""
+      } in the weekly Contests.`,
+    honorableTooltip: (honorableMentions: number) =>
+      `Received ${honorableMentions} honorable mention${honorableMentions === 1 ? "" : "s"} in the weekly Contests.`,
+    recordTitle: "Contest record",
+    noRecord: "No contest results yet.",
+    winsCount: (count: number) => `${count} contest win${count === 1 ? "" : "s"}`,
+    honorableMentionsCount: (count: number) => `${count} honorable mention${count === 1 ? "" : "s"}`
+  },
   footer: {
     legal:
       "© 2026 Math Woods. Code: AGPL-3.0-or-later. Educational content: CC BY-NC-SA 4.0 unless otherwise stated.",
@@ -815,6 +831,8 @@ export const en = {
     requestProblemPlaceholder:
       "Describe the kind of problem you would like: the notion, theorem, technique, examples, or difficulty range you have in mind.",
     searchProblems: "Search problems",
+    matchingReference: "Reference",
+    linkedExerciseConcept: "Related to",
     randomProblem: "Random problem",
     resetFilters: "Reset filters",
     difficulty: "Difficulty",
@@ -1235,7 +1253,7 @@ export const en = {
       conceptsWithoutReferences: { title: "Concepts without references", description: "Add a reliable source for the definition or result." },
       unreviewedProblems: { title: "Unreviewed problems", description: "Read the statement carefully and mark it as reviewed when it is ready." },
       needsWorkProblems: { title: "Problems needing work", description: "Clarify or correct a problem that has been flagged." },
-      exercisesWithoutConcepts: { title: "Exercises without a concept", description: "Link each exercise to at least one concept so that it appears in the right place." },
+      exercisesWithoutConcepts: { title: "Exercises without a concept", description: "Link each exercise to at least one concept so that it appears in the right place.", help: "Each translation is checked separately. An exercise may appear here even though another version is already linked to a concept. When you open it, the site displays the version in your language if available: check the other translations before adding a link." },
       problemsMissingFr: { title: "Problems without a Français version", description: "Translate a problem that has no Français version yet." },
       problemsMissingEn: { title: "Problems without an English version", description: "Translate a problem that has no English version yet." },
       conceptsMissingFr: { title: "Concepts without a Français version", description: "Translate a concept that has no Français version yet." },
@@ -1453,6 +1471,7 @@ export const en = {
     difficulty: "difficulty"
   },
   contentEditor: {
+    aliasConflictHeading: "Alias already in use",
     language: "Language",
     translation: "Translation",
     accompanyingContent: "Accompanying content",

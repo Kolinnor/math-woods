@@ -36,6 +36,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { matchingProblemReferences, type ProblemReferenceMatch } from "@/lib/problem-reference-search";
 import { selectProblemBrowserTranslation } from "@/lib/problem-browser-translations";
 import { PROBLEM_STYLE_OPTIONS, parseProblemStyle, problemStyleLabel } from "@/lib/problem-styles";
 import { renderInlineMarkdown } from "@/lib/markdown";
@@ -47,11 +48,13 @@ import {
   problemContentTypeWhere
 } from "@/lib/problem-content-types";
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
+import { avatarAchievementFromStats, contestAchievementStatsByUser, publicContestAchievementWhere } from "@/lib/problem-contests";
 import { buildProgressMap } from "@/lib/progress";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { combineSearchFilters } from "@/lib/search-filters";
 import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
 import { ensureSlug } from "@/lib/slug";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -240,20 +243,19 @@ function tagWhere(value: string, includeSpoilerTags: boolean): Prisma.ProblemWhe
   return includeSpoilerTags ? { OR: [publicWhere, spoilerWhere] } : publicWhere;
 }
 
-function advancedFilterWhere(filter: ProblemFilterRow, includeSpoilerTags: boolean): Prisma.ProblemWhereInput | null {
+function advancedFilterWhere(filter: ProblemFilterRow, includeSpoilerTags: boolean, referenceIds: number[] = []): Prisma.ProblemWhereInput | null {
   const value = filter.value.trim();
   if (!value) return null;
 
   if (filter.field === "text") {
     const title = textWhere("title", filter.op, value);
     const body = textWhere("bodyMarkdown", filter.op, value);
-    const origin = textWhere("origin", filter.op, value);
-    return { OR: [title, body, origin] };
+    return { OR: [title, body, { id: { in: referenceIds } }] };
   }
 
   if (filter.field === "title") return textWhere("title", filter.op, value);
   if (filter.field === "body") return textWhere("bodyMarkdown", filter.op, value);
-  if (filter.field === "origin") return textWhere("origin", filter.op, value);
+  if (filter.field === "origin") return { id: { in: referenceIds } };
 
   if (filter.field === "tag") {
     return tagWhere(value, includeSpoilerTags);
@@ -444,9 +446,21 @@ export default async function ProblemsPage({
     : "newest";
   const advancedLogic = filterLogic === "OR" ? "OR" : "AND";
   const advancedFilters = parseAdvancedFilters(filterField, filterOp, filterValue);
+  const referenceSearches = new Map<string, Promise<ProblemReferenceMatch[]>>();
+  const referenceMatches = (text: string, exact = false) => {
+    const key = JSON.stringify([text.trim(), exact]);
+    if (!referenceSearches.has(key)) referenceSearches.set(key, matchingProblemReferences(prisma, text, user, exact));
+    return referenceSearches.get(key)!;
+  };
+  const [queryReferenceMatches, advancedReferenceMatches] = await Promise.all([
+    referenceMatches(query),
+    Promise.all(advancedFilters.map(filter => filter.field === "origin" || filter.field === "text"
+      ? referenceMatches(filter.value, filter.op === "is") : Promise.resolve([])))
+  ]);
   const advancedClauses = advancedFilters
-    .map((filter) => advancedFilterWhere(filter, showSpoilerTags))
+    .map((filter, index) => advancedFilterWhere(filter, showSpoilerTags, advancedReferenceMatches[index].map(row => row.id)))
     .filter((filter): filter is Prisma.ProblemWhereInput => Boolean(filter));
+  const queryReferenceLabelById = new Map(queryReferenceMatches.map(row => [row.id, row.label]));
   const isTrustedViewer = user ? hasTrustedPrivileges(user.role) : false;
   const hasExplicitStatusFilter = Boolean(qualityValue) || advancedFilters.some((filter) => filter.field === "status");
   const qualityWhereClause: Prisma.ProblemWhereInput | undefined = qualityValue
@@ -473,7 +487,6 @@ export default async function ProblemsPage({
       queryClauses.push(
         { title: { contains: variant, mode: "insensitive" } },
         { bodyMarkdown: { contains: variant, mode: "insensitive" } },
-        { origin: { contains: variant, mode: "insensitive" } },
         { tags: { some: { tag: { name: { contains: variant, mode: "insensitive" } } } } }
       );
     }
@@ -488,6 +501,7 @@ export default async function ProblemsPage({
       }
     }
   }
+  if (queryReferenceMatches.length) queryClauses.push({ id: { in: queryReferenceMatches.map(row => row.id) } });
   const baseWhereClauses: Prisma.ProblemWhereInput[] = [
     { status: "PUBLISHED" },
     { listed: true },
@@ -646,7 +660,7 @@ export default async function ProblemsPage({
           language: problem.language,
           searchText: [
             problem.bodyMarkdown,
-            problem.origin,
+            queryReferenceLabelById.get(problem.id),
             ...problem.styles.map((problemStyle) => problemStyleLabel(problemStyle, interfaceLocale)),
             ...problem.tags.map(({ tag }) => tag.name),
             ...(showSpoilerTags ? problem.spoilerTags.map(({ tag }) => tag.name) : [])
@@ -662,6 +676,13 @@ export default async function ProblemsPage({
     const selected = selectedCandidateByGroup.get(translationGroupId);
     return selected ? [selected] : [];
   });
+  const referenceLabelByGroup = new Map<string, string>();
+  const matchingCandidateIds = new Set(problemCandidateKeys.map(problem => problem.id));
+  for (const match of [...queryReferenceMatches, ...advancedReferenceMatches.flat()]) {
+    if (matchingCandidateIds.has(match.id) && !referenceLabelByGroup.has(match.translationGroupId)) {
+      referenceLabelByGroup.set(match.translationGroupId, match.label);
+    }
+  }
   const totalProblems = dedupedProblems.length;
   const totalPages = showAllProblems ? 1 : Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
   const currentPage = showAllProblems ? 1 : Math.min(requestedPage, totalPages);
@@ -684,6 +705,35 @@ export default async function ProblemsPage({
     return problem ? [problem] : [];
   });
   const displayedTranslationGroupIds = problems.map((problem) => problem.translationGroupId);
+  const pageAuthorIds = [...new Set(problems.map(problem => problem.authorId))];
+  const authorContestSubmissions = pageAuthorIds.length
+    ? await prisma.problemContestSubmission.findMany({
+        where: { userId: { in: pageAuthorIds }, ...publicContestAchievementWhere() },
+        select: { userId: true, placement: true }
+      })
+    : [];
+  const contestAchievementsByAuthor = contestAchievementStatsByUser(authorContestSubmissions);
+  const exerciseGroupIds = problems.filter(problem => problem.isExercise).map(problem => problem.translationGroupId);
+  const exerciseConceptLinks = exerciseGroupIds.length
+    ? await prisma.conceptExercise.findMany({
+        where: {
+          problem: { translationGroupId: { in: exerciseGroupIds } },
+          concept: { status: { not: "MISSING" }, language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) } }
+        },
+        select: {
+          problem: { select: { translationGroupId: true } },
+          concept: { select: { id: true, title: true, language: true, translationGroupId: true } }
+        },
+        orderBy: { conceptId: "asc" }
+      })
+    : [];
+  const exerciseConceptsByGroup = new Map(exerciseGroupIds.map(groupId => [
+    groupId,
+    selectContentTranslationsByGroup(
+      exerciseConceptLinks.filter(link => link.problem.translationGroupId === groupId).map(link => link.concept),
+      preferredLanguage
+    )
+  ]));
   const [groupAttempts, groupFavorites] = displayedTranslationGroupIds.length
     ? await Promise.all([
         prisma.problemAttempt.findMany({
@@ -1021,6 +1071,7 @@ export default async function ProblemsPage({
               const tone = problemDifficultyTone(difficulty);
               const authorName = displayNameForUser(problem.author);
               const problemHref = `/problems/${problem.slug}`;
+              const authorAchievement = avatarAchievementFromStats(contestAchievementsByAuthor.get(problem.authorId), t.contestAchievements);
 
               return (
                 <ProblemLedgerInteractiveRow
@@ -1035,12 +1086,12 @@ export default async function ProblemsPage({
                         {t.common.by} {authorName}
                       </Link>
                       <Link
-                        href={`/profile/${problem.author.profileSlug}`}
+                        href={`/profile/${problem.author.profileSlug}${authorAchievement ? "#palmares" : ""}`}
                         className="problem-ledger-author-avatar"
                         title={authorName}
                         aria-label={authorName}
                       >
-                        <UserAvatar user={problem.author} size="xs" />
+                        <UserAvatar user={problem.author} size={authorAchievement ? "sm" : "xs"} achievement={authorAchievement} />
                       </Link>
                     </div>
                   )}
@@ -1107,6 +1158,22 @@ export default async function ProblemsPage({
                         {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""}
                       </span>
                     </div>
+                    {problem.isExercise && Boolean(exerciseConceptsByGroup.get(problem.translationGroupId)?.length) && (
+                      <p className="muted mt-1 text-xs break-words">
+                        {t.problems.linkedExerciseConcept}{" "}
+                        {exerciseConceptsByGroup.get(problem.translationGroupId)!.map((concept, index) => (
+                          <span key={concept.id}>
+                            {index > 0 && " · "}
+                            <AsyncMarkdownInline markdown={concept.title} />
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                    {referenceLabelByGroup.has(problem.translationGroupId) && (
+                      <p className="muted mt-1 text-xs break-words">
+                        {t.problems.matchingReference}: {referenceLabelByGroup.get(problem.translationGroupId)}
+                      </p>
+                    )}
                     </div>
                   </Link>
                 </ProblemLedgerInteractiveRow>

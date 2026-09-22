@@ -1,6 +1,7 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ConceptStatus, FriendshipStatus } from "@prisma/client";
-import { ExternalLink, Handshake } from "lucide-react";
+import { ExternalLink, Handshake, Medal, Trophy } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AddFriendDialog } from "@/components/AddFriendDialog";
@@ -21,6 +22,12 @@ import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { problemLinkClass } from "@/lib/problem-link";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
+import {
+  avatarAchievementFromStats,
+  publicContestAchievementWhere,
+  contestAchievementStatsByUser,
+  contestDateLabel
+} from "@/lib/problem-contests";
 import { hasTrustedPrivileges } from "@/lib/permissions";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
@@ -88,7 +95,8 @@ export default async function ProfilePage({
     reputation,
     friendship,
     conceptRows,
-    solutionRows
+    solutionRows,
+    contestSubmissions
   ] = await Promise.all([
     prisma.problem.findMany({
       where: { authorId: user.id, status: "PUBLISHED" },
@@ -183,6 +191,11 @@ export default async function ProfilePage({
         }
       },
       orderBy: { createdAt: "desc" }
+    }),
+    prisma.problemContestSubmission.findMany({
+      where: { userId: user.id, ...publicContestAchievementWhere() },
+      include: { contest: { select: { startDateKey: true, titleFr: true, titleEn: true } } },
+      orderBy: { contest: { startDateKey: "desc" } }
     })
   ]);
 
@@ -252,6 +265,11 @@ export default async function ProfilePage({
   const currentUserSolvedIds = new Set(currentUserSolved.map((attempt) => attempt.problemId));
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
   const achievements = achievementsForLocale(interfaceLocale);
+  const contestStats = contestAchievementStatsByUser(contestSubmissions).get(user.id) ?? {
+    wins: 0,
+    honorableMentions: 0
+  };
+  const heroAchievement = avatarAchievementFromStats(contestStats, t.contestAchievements);
   const contributionDateLabel = (date: Date) => date.toLocaleDateString(interfaceLocale, {
     day: "numeric",
     month: "long",
@@ -309,7 +327,7 @@ export default async function ProfilePage({
     <ForestPageLayout
       title={
         <span className="profile-hero-title">
-          <UserAvatar user={user} size="xl" className="profile-hero-avatar" />
+          <UserAvatar user={user} size="xl" className="profile-hero-avatar" achievement={heroAchievement} />
           <span>{displayNameForUser(user)}</span>
         </span>
       }
@@ -534,6 +552,41 @@ export default async function ProfilePage({
             </div>
           </div>
         </section>
+
+        {contestSubmissions.length > 0 && (
+          <section className="panel p-5" id="palmares">
+            <h2 className="mb-3 font-semibold">{t.contestAchievements.recordTitle}</h2>
+            <div className="grid gap-2 text-sm">
+              {contestStats.wins > 0 && (
+                <div className="flex justify-between gap-3">
+                  <span>{t.contestAchievements.winnerBadgeLabel}</span>
+                  <span>{contestStats.wins}</span>
+                </div>
+              )}
+              {contestStats.honorableMentions > 0 && (
+                <div className="flex justify-between gap-3">
+                  <span>{t.contestAchievements.honorableBadgeLabel}</span>
+                  <span>{contestStats.honorableMentions}</span>
+                </div>
+              )}
+            </div>
+            <div className="profile-contest-record-list">
+              {contestSubmissions.map((submission) => {
+                const contestTitle = interfaceLocale === "fr" ? submission.contest.titleFr : submission.contest.titleEn;
+                return (
+                  <Link key={submission.id} href={`/contest?week=${submission.contest.startDateKey}` as Route}
+                    title={submission.placement === "WINNER" ? t.contestAchievements.winnerBadgeLabel : t.contestAchievements.honorableBadgeLabel}>
+                    {submission.placement === "WINNER"
+                      ? <Trophy size={14} aria-hidden="true" />
+                      : <Medal size={14} aria-hidden="true" />}
+                    <span>{contestDateLabel(submission.contest.startDateKey, interfaceLocale)}</span>
+                    <strong>{contestTitle}</strong>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="panel p-5">
           <h2 className="mb-3 font-semibold">{t.profile.recentEdits}</h2>

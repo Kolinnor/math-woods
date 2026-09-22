@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BookOpen, BookOpenText, Languages, ListChecks } from "lucide-react";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { ContributionTasksTabs } from "@/components/ContributionTasksTabs";
+import { FieldHelp } from "@/components/FieldHelp";
 import { getCurrentUser } from "@/lib/auth";
 import {
   hasExamplesSection,
@@ -22,6 +23,7 @@ type Task = {
   key: ContributionTaskKey;
   title: string;
   description: string;
+  help?: string;
   remaining: number;
   total: number;
 };
@@ -34,7 +36,9 @@ function TaskCard({ task, buttonLabel, completeLabel }: { task: Task; buttonLabe
     <article className={`contribution-task-card${task.remaining === 0 ? " contribution-task-complete" : ""}`}>
       <header>
         <div>
-          <h3>{task.title}</h3>
+          <h3 className="contribution-task-title">
+            {task.title}{task.help && <> <FieldHelp text={task.help} /></>}
+          </h3>
           <p>{task.description}</p>
         </div>
         <strong className="contribution-task-count">
@@ -111,7 +115,7 @@ export default async function ContributionTasksPage() {
   const problemTasks: Task[] = [
     { key: "unreviewed-problems", title: copy.tasks.unreviewedProblems.title, description: copy.tasks.unreviewedProblems.description, remaining: problems.filter((problem) => problem.qualityStatus === QualityStatus.UNREVIEWED).length, total: problemTotal },
     { key: "needs-work-problems", title: copy.tasks.needsWorkProblems.title, description: copy.tasks.needsWorkProblems.description, remaining: problems.filter((problem) => problem.qualityStatus === QualityStatus.NEEDS_WORK).length, total: problemTotal },
-    { key: "exercises-without-concepts", title: copy.tasks.exercisesWithoutConcepts.title, description: copy.tasks.exercisesWithoutConcepts.description, remaining: problems.filter((problem) => problem.isExercise && problem._count.conceptExerciseLinks === 0).length, total: exerciseTotal }
+    { key: "exercises-without-concepts", title: copy.tasks.exercisesWithoutConcepts.title, description: copy.tasks.exercisesWithoutConcepts.description, help: copy.tasks.exercisesWithoutConcepts.help, remaining: problems.filter((problem) => problem.isExercise && problem._count.conceptExerciseLinks === 0).length, total: exerciseTotal }
   ];
   const translationTasks: Task[] = [
     { key: "problems-missing-fr", title: copy.tasks.problemsMissingFr.title, description: copy.tasks.problemsMissingFr.description, remaining: problemsMissingFr.length, total: problemGroupTotal },

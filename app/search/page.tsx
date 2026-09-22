@@ -10,6 +10,8 @@ import { EXPLORATIONS_ENABLED } from "@/lib/feature-flags";
 import { getTranslations } from "@/lib/i18n/server";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { problemLinkClass } from "@/lib/problem-link";
+import { matchingProblemReferences } from "@/lib/problem-reference-search";
+import { matchingConceptReferences } from "@/lib/concept-reference-search";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -50,16 +52,23 @@ export default async function SearchPage({
   const preferredLanguage = await getPreferredContentLanguage();
   const morphologyVariants = searchMorphologyVariants(query, preferredLanguage);
   const databaseSearchVariants = searchDatabaseVariants(query, morphologyVariants);
+  const [referenceMatches, conceptReferenceMatches] = await Promise.all([
+    matchingProblemReferences(prisma, query, user),
+    matchingConceptReferences(prisma, query)
+  ]);
+  const conceptReferenceLabelById = new Map(conceptReferenceMatches.map(row => [row.id, row.label]));
+  const referenceLabelById = new Map(referenceMatches.map(row => [row.id, row.label]));
+  const referenceLabelByGroup = new Map(referenceMatches.map(row => [row.translationGroupId, row.label]));
   const [conceptRows, problemRows, explorationRows, quotes] = query
     ? await Promise.all([
         prisma.concept.findMany({
           where: {
             language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-            OR: databaseSearchVariants.flatMap((variant) => [
+            OR: [...databaseSearchVariants.flatMap((variant) => [
               { title: { contains: variant, mode: "insensitive" as const } },
               { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
               { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
-            ])
+            ]), { id: { in: conceptReferenceMatches.map(row => row.id) } }]
           },
           include: { aliases: true },
           take: 100
@@ -70,11 +79,13 @@ export default async function SearchPage({
             listed: true,
             language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
             ...visibleProblemWhere(user),
-            OR: databaseSearchVariants.flatMap((variant) => [
-              { title: { contains: variant, mode: "insensitive" as const } },
-              { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
-              { origin: { contains: variant, mode: "insensitive" as const } }
-            ])
+            OR: [
+              ...databaseSearchVariants.flatMap((variant) => [
+                { title: { contains: variant, mode: "insensitive" as const } },
+                { bodyMarkdown: { contains: variant, mode: "insensitive" as const } }
+              ]),
+              { id: { in: referenceMatches.map(row => row.id) } }
+            ]
           },
           take: 100
         }),
@@ -118,7 +129,7 @@ export default async function SearchPage({
           slug: concept.slug,
           aliases: concept.aliases.map(({ alias }) => alias),
           language: concept.language,
-          searchText: [concept.bodyMarkdown]
+          searchText: [concept.bodyMarkdown, conceptReferenceLabelById.get(concept.id)]
         })),
         query,
         preferredLanguage,
@@ -132,7 +143,7 @@ export default async function SearchPage({
           title: problem.title,
           slug: problem.slug,
           language: problem.language,
-          searchText: [problem.bodyMarkdown, problem.origin]
+          searchText: [problem.bodyMarkdown, referenceLabelById.get(problem.id)]
         })),
         query,
         preferredLanguage,
@@ -245,6 +256,11 @@ export default async function SearchPage({
                   <ContentLanguageFallback language={problem.language} expectedLanguage={preferredLanguage} />
                 </div>
                 <div className="muted mt-1 text-xs">{translatedDomainLabel(problem.domain, t.home.domainLabels)}</div>
+                {referenceLabelByGroup.has(problem.translationGroupId) && (
+                  <p className="muted mt-1 text-xs break-words">
+                    {t.problems.matchingReference}: {referenceLabelByGroup.get(problem.translationGroupId)}
+                  </p>
+                )}
               </Link>
             ))}
           </div>

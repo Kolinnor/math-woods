@@ -228,6 +228,18 @@
   margin: 0.25rem 0 0;
 }
 
+.contribution-task-title { position: relative; }
+.contribution-task-title .field-help {
+  position: static;
+  color: var(--mw-green);
+  border-color: var(--mw-green);
+  vertical-align: middle;
+}
+.contribution-task-title .field-help::after {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
 .contribution-task-count {
   color: var(--request-action);
   flex: none;

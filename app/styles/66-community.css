@@ -61,6 +61,41 @@
   width: 5rem;
 }
 
+.user-avatar-badge-wrap {
+  display: inline-flex;
+  flex: 0 0 auto;
+  position: relative;
+  vertical-align: middle;
+}
+
+.avatar-achievement-badge {
+  align-items: center;
+  background: #e6e9ec;
+  border: 1px solid #b7c0c8;
+  border-radius: 999px;
+  display: inline-flex;
+  height: 0.95rem;
+  justify-content: center;
+  position: absolute;
+  right: -0.2rem;
+  top: -0.2rem;
+  width: 0.95rem;
+  z-index: 1;
+}
+
+.avatar-achievement-badge svg {
+  color: #566068;
+}
+
+.avatar-achievement-badge-winner {
+  background: #fff1bd;
+  border-color: #d8bd78;
+}
+
+.avatar-achievement-badge-winner svg {
+  color: #704500;
+}
+
 .user-name-with-avatar {
   align-items: center;
   display: inline-flex;
@@ -786,6 +821,38 @@
 
 .mathematician-profile-collaboration {
   font-size: 0.78rem;
+}
+
+.profile-contest-record-list {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.75rem;
+}
+
+.profile-contest-record-list a {
+  align-items: center;
+  border-top: 1px solid var(--mw-border);
+  color: inherit;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  text-decoration: none;
+}
+
+.profile-contest-record-list a:hover {
+  color: var(--link);
+}
+
+.profile-contest-record-list a span {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.profile-contest-record-list a strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 760px) {

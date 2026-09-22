@@ -13,8 +13,44 @@ import * as tipImages from '../lib/tip-images.ts';
 import * as notificationPolicy from '../lib/notification-policy.ts';
 import { localizeNotification } from '../lib/notification-copy.ts';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { fr } from '../lib/i18n/dictionaries/fr.ts';
+import { en } from '../lib/i18n/dictionaries/en.ts';
 
 const require = createRequire(import.meta.url);
+
+test('contest awards require official public results and a visible submission on every badge surface', () => {
+  const where = contests.publicContestAchievementWhere();
+  const matches = (row, filter) => Object.entries(filter).every(([key,value]) =>
+    value && typeof value === 'object' ? ('not' in value ? row[key] !== value.not : matches(row[key],value)) : row[key] === value);
+  const publicAward={placement:'WINNER',contest:{publishedAt:new Date(),resultsPublishedAt:new Date()},problem:{status:'PUBLISHED',listed:true}};
+  assert.equal(matches(publicAward,where),true);
+  for(const row of [
+    {...publicAward,placement:null},
+    {...publicAward,contest:{...publicAward.contest,publishedAt:null}},
+    {...publicAward,contest:{...publicAward.contest,resultsPublishedAt:null}},
+    {...publicAward,problem:{status:'ARCHIVED',listed:true}},
+    {...publicAward,problem:{status:'PUBLISHED',listed:false}}
+  ]) assert.equal(matches(row,where),false);
+  for(const file of ['app/contest/page.tsx','app/friends/page.tsx','app/problems/page.tsx','app/problems/[slug]/page.tsx','app/profile/[username]/page.tsx','app/users/page.tsx','app/users/recent/page.tsx']) {
+    const source=readFileSync(file,'utf8');
+    assert.match(source,/problemContestSubmission\.findMany\(\{\s*where: \{[^\n]*\.\.\.publicContestAchievementWhere\(\)/,file);
+  }
+});
+
+test('award badges distinguish winners from mentions and expose localized accessible descriptions', () => {
+  const {ContestAchievementBadge}=load('components/ContestAchievementBadge.tsx',null,{'lucide-react':require('lucide-react')});
+  for(const dictionary of [fr,en]){
+    const winner=contests.avatarAchievementFromStats({wins:2,honorableMentions:1},dictionary.contestAchievements);
+    const mention=contests.avatarAchievementFromStats({wins:0,honorableMentions:1},dictionary.contestAchievements);
+    const winnerHtml=renderToStaticMarkup(ContestAchievementBadge(winner));
+    const mentionHtml=renderToStaticMarkup(ContestAchievementBadge(mention));
+    assert.match(winnerHtml,/avatar-achievement-badge-winner/);assert.match(winnerHtml,/role="img"/);assert.match(winnerHtml,/aria-label=/);
+    assert.doesNotMatch(mentionHtml,/avatar-achievement-badge-winner/);
+    assert.ok(winner.tooltip.includes('2'));assert.ok(mention.tooltip.includes('1'));
+    assert.equal(contests.avatarAchievementFromStats(undefined,dictionary.contestAchievements),undefined);
+    assert.equal(ContestAchievementBadge({wins:0,honorableMentions:0,tooltip:''}),null);
+  }
+});
 function load(file, role, overrides = {}) {
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX
@@ -32,7 +68,7 @@ function load(file, role, overrides = {}) {
     '@/lib/contest-form': contestForm,
     '@/lib/daily-problem-schedule': schedule,
     '@/lib/problem-contests': contests,
-    '@/lib/i18n/server': { getInterfaceLocale: async () => 'fr' },
+    '@/lib/i18n/server': { getInterfaceLocale: async () => 'fr', getTranslations: async () => fr },
     'next/navigation': { notFound: () => { throw new Error('Not found'); }, redirect() {}, unstable_rethrow() {} },
     'next/cache': { revalidatePath() {} },
     '@/lib/rate-limit': { assertRateLimit: async () => {}, isRateLimitError: error => error?.name === 'RateLimitError' },

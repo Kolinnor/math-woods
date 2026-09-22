@@ -218,6 +218,7 @@ import {
 } from "../lib/daily-problem-schedule.ts";
 import { selectDailyTipForDate } from "../lib/daily-tip-schedule.ts";
 import {
+  contestAchievementStatsByUser,
   contestCreationWindow,
   contestEndDateKey,
   contestIsOpen,
@@ -2255,6 +2256,10 @@ assert.equal(MATH_WOODS_KATEX_MACROS["\\C"], "\\mathbb{C}");
 const renderedLatexMacro = await renderMarkdown(String.raw`$\C + \R + \Z$`);
 assert.match(renderedLatexMacro, /mathbb/);
 assert.doesNotMatch(renderedLatexMacro, /katex-error/);
+const renderedOperatorMacros = await renderMarkdown(String.raw`$\Re z + \Im z + \int f(x)\diff x$`);
+assert.doesNotMatch(renderedOperatorMacros, /katex-error/);
+for (const operator of ["Re", "Im", "d"]) assert.ok(renderedOperatorMacros.includes(`<span class="mord mathrm">${operator}</span>`));
+assert.ok(renderedOperatorMacros.includes('<span class="mspace" style="margin-right:0.1667em"></span><span class="mord mathrm">d</span>'));
 
 const malformedLatexSource = String.raw`Before $\begin{\\}$ after`;
 const renderedMalformedLatex = await renderMarkdown(malformedLatexSource);
@@ -4615,6 +4620,17 @@ assert.equal(contestIsOpen(contestFixture, "2026-08-18"), true);
 const summerContestWindow = contestCreationWindow(contestFixture);
 assert.equal(summerContestWindow.gte.toISOString(), "2026-08-14T22:00:00.000Z");
 assert.equal(summerContestWindow.lt.toISOString(), "2026-08-21T22:00:00.000Z");
+
+const contestAchievementStats = contestAchievementStatsByUser([
+  { userId: 1, placement: "WINNER" },
+  { userId: 1, placement: "HONORABLE_MENTION" },
+  { userId: 2, placement: "HONORABLE_MENTION" },
+  { userId: 2, placement: "HONORABLE_MENTION" },
+  { userId: 3, placement: null }
+]);
+assert.deepEqual(contestAchievementStats.get(1), { wins: 1, honorableMentions: 1 });
+assert.deepEqual(contestAchievementStats.get(2), { wins: 0, honorableMentions: 2 });
+assert.equal(contestAchievementStats.has(3), false);
 assert.ok(DEFAULT_DAILY_PROBLEM_IMAGE_URLS.includes(dailyProblemDefaultImageUrl("2026-08-03")));
 
 const scheduledDailyTipCandidates = [

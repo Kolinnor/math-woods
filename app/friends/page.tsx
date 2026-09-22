@@ -13,6 +13,7 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
 import { markNotificationsReadForHref } from "@/lib/notification-lifecycle";
+import { avatarAchievementFromStats, contestAchievementStatsByUser, publicContestAchievementWhere } from "@/lib/problem-contests";
 import { PROBLEM_DOMAIN_HERO_ART } from "@/lib/problem-hero-art";
 import { displayNameForUser } from "@/lib/user-display";
 
@@ -108,6 +109,23 @@ export default async function FriendsPage() {
   const onlineIds = new Set(onlineSessions.map((session) => session.userId));
   const onlineFriends = friends.filter((friendship) => onlineIds.has(otherFriend(friendship, user.id).id));
 
+  const pageUserIds = [
+    ...new Set([
+      ...friends.map((friendship) => otherFriend(friendship, user.id).id),
+      ...incomingRequests.map((request) => request.requester.id),
+      ...outgoingRequests.map((request) => request.addressee.id),
+      ...recentChats.map((chat) => (chat.userAId === user.id ? chat.userB.id : chat.userA.id))
+    ])
+  ];
+  const pageContestSubmissions = pageUserIds.length
+    ? await prisma.problemContestSubmission.findMany({
+        where: { userId: { in: pageUserIds }, ...publicContestAchievementWhere() },
+        select: { userId: true, placement: true }
+      })
+    : [];
+  const achievementsByUserId = contestAchievementStatsByUser(pageContestSubmissions);
+  const achievementFor = (userId: number) => avatarAchievementFromStats(achievementsByUserId.get(userId), t.contestAchievements);
+
   return (
     <ForestPageLayout
       title={t.social.friends}
@@ -137,13 +155,14 @@ export default async function FriendsPage() {
           <div className="friend-list">
             {onlineFriends.map((friendship) => {
               const friend = otherFriend(friendship, user.id);
+              const achievement = achievementFor(friend.id);
               return (
                 <div key={friend.id} className="friend-row">
                   <span className="friend-avatar-status">
-                    <UserAvatar user={friend} size="md" />
+                    <UserAvatar user={friend} size="lg" achievement={achievement} />
                     <i className="friend-online-dot" aria-hidden="true" />
                   </span>
-                  <Link href={`/profile/${friend.profileSlug}`}>{displayNameForUser(friend)}</Link>
+                  <Link href={`/profile/${friend.profileSlug}${achievement ? "#palmares" : ""}`}>{displayNameForUser(friend)}</Link>
                   <Link href={`/chat/${friend.username}` as never} className="button secondary">
                     {t.social.chat}
                   </Link>
@@ -157,10 +176,12 @@ export default async function FriendsPage() {
         <section className="panel p-5">
           <h2 className="mb-3 font-semibold">{t.social.friendRequests}</h2>
           <div className="friend-list">
-            {incomingRequests.map((request) => (
+            {incomingRequests.map((request) => {
+              const achievement = achievementFor(request.requester.id);
+              return (
               <div key={request.id} className="friend-row">
-                <UserAvatar user={request.requester} size="md" />
-                <Link href={`/profile/${request.requester.profileSlug}`}>{displayNameForUser(request.requester)}</Link>
+                <UserAvatar user={request.requester} size="lg" achievement={achievement} />
+                <Link href={`/profile/${request.requester.profileSlug}${achievement ? "#palmares" : ""}`}>{displayNameForUser(request.requester)}</Link>
                 <form action={acceptFriendRequestAction.bind(null, request.id)}>
                   <button type="submit">{t.social.accept}</button>
                 </form>
@@ -170,17 +191,20 @@ export default async function FriendsPage() {
                   </button>
                 </form>
               </div>
-            ))}
+              );
+            })}
             {incomingRequests.length === 0 && <p className="muted">{t.social.noPendingRequests}</p>}
           </div>
           {outgoingRequests.length > 0 && (
             <div className="mt-5">
               <h3 className="mb-2 text-sm font-semibold">{t.social.sentRequests}</h3>
               <div className="friend-list">
-                {outgoingRequests.map((request) => (
+                {outgoingRequests.map((request) => {
+                  const achievement = achievementFor(request.addressee.id);
+                  return (
                   <div key={request.id} className="friend-row">
-                    <UserAvatar user={request.addressee} size="md" />
-                    <Link href={`/profile/${request.addressee.profileSlug}`}>{displayNameForUser(request.addressee)}</Link>
+                    <UserAvatar user={request.addressee} size="lg" achievement={achievement} />
+                    <Link href={`/profile/${request.addressee.profileSlug}${achievement ? "#palmares" : ""}`}>{displayNameForUser(request.addressee)}</Link>
                     <span className="muted text-sm">{t.social.pending}</span>
                     <form action={cancelFriendRequestAction.bind(null, request.id)}>
                       <button type="submit" className="secondary">
@@ -188,7 +212,8 @@ export default async function FriendsPage() {
                       </button>
                     </form>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -200,13 +225,14 @@ export default async function FriendsPage() {
             {friends.map((friendship) => {
               const friend = otherFriend(friendship, user.id);
               const online = onlineIds.has(friend.id);
+              const achievement = achievementFor(friend.id);
               return (
                 <div key={friend.id} className="friend-row">
                   <span className="friend-avatar-status">
-                    <UserAvatar user={friend} size="md" />
+                    <UserAvatar user={friend} size="lg" achievement={achievement} />
                     <i className={online ? "friend-online-dot" : "friend-offline-dot"} aria-hidden="true" />
                   </span>
-                  <Link href={`/profile/${friend.profileSlug}`}>{displayNameForUser(friend)}</Link>
+                  <Link href={`/profile/${friend.profileSlug}${achievement ? "#palmares" : ""}`}>{displayNameForUser(friend)}</Link>
                   <Link href={`/chat/${friend.username}` as never} className="button secondary">
                     {t.social.chat}
                   </Link>
@@ -232,7 +258,7 @@ export default async function FriendsPage() {
               const visibleLatest = latest && (!clearedAt || latest.createdAt > clearedAt) ? latest : null;
               return (
                 <Link key={chat.id} href={`/chat/${friend.username}` as never} className="chat-preview-row">
-                  <UserAvatar user={friend} size="md" />
+                  <UserAvatar user={friend} size="lg" achievement={achievementFor(friend.id)} />
                   <span className="chat-preview-copy">
                     <strong>{displayNameForUser(friend)}</strong>
                     <span>
