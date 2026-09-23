@@ -9,7 +9,9 @@ disclose a citation subsequently marked as a spoiler.
 
 `matchingProblemReferences` searches in PostgreSQL and returns one matching citation
 per problem. Its IDs join the existing query **before** filtering, translation
-grouping and pagination. The result line uses only an authorized matching citation.
+grouping and pagination. The problem browser searches citations without displaying
+a reference line beneath problem titles. Global search still displays an authorized
+matching citation alongside its results.
 All words may occur in different fields of the same citation, in any order; they
 must not be assembled from unrelated citations. Accents and punctuation are folded.
 Numeric tokens match whole words (24 does not match 241). Roman numeral equivalents
@@ -24,4 +26,5 @@ metadata is never joined. Public citation text remains searchable independently.
 Regression coverage: `npm run test:bibliography`. To execute PostgreSQL-backed
 cases as well, set `MW_PGLITE_MODULE` to a local installation's
 `@electric-sql/pglite/dist/index.js`. Page tests verify pagination, language grouping,
-the reference line and existing filters using the actual page functions.
+the absence of reference lines in the problem browser, global-search reference lines
+and existing filters using the actual page functions.

@@ -676,13 +676,6 @@ export default async function ProblemsPage({
     const selected = selectedCandidateByGroup.get(translationGroupId);
     return selected ? [selected] : [];
   });
-  const referenceLabelByGroup = new Map<string, string>();
-  const matchingCandidateIds = new Set(problemCandidateKeys.map(problem => problem.id));
-  for (const match of [...queryReferenceMatches, ...advancedReferenceMatches.flat()]) {
-    if (matchingCandidateIds.has(match.id) && !referenceLabelByGroup.has(match.translationGroupId)) {
-      referenceLabelByGroup.set(match.translationGroupId, match.label);
-    }
-  }
   const totalProblems = dedupedProblems.length;
   const totalPages = showAllProblems ? 1 : Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
   const currentPage = showAllProblems ? 1 : Math.min(requestedPage, totalPages);
@@ -1167,11 +1160,6 @@ export default async function ProblemsPage({
                             <AsyncMarkdownInline markdown={concept.title} />
                           </span>
                         ))}
-                      </p>
-                    )}
-                    {referenceLabelByGroup.has(problem.translationGroupId) && (
-                      <p className="muted mt-1 text-xs break-words">
-                        {t.problems.matchingReference}: {referenceLabelByGroup.get(problem.translationGroupId)}
                       </p>
                     )}
                     </div>

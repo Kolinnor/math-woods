@@ -1797,6 +1797,9 @@ export const fr = {
     }
   },
   historyPage: {
+    titleNotRecorded: "non enregistré dans cette ancienne révision",
+    previousTitleNotRecorded: "titre précédent non enregistré",
+    noStatementChanges: "Aucune modification de l’énoncé",
     recordedDifficulty: "Difficulté",
     difficultyChanged: "Difficulté modifiée",
     difficultyNotRecorded: "non enregistrée dans cette ancienne révision",

@@ -69,11 +69,11 @@ async function render(file,query) {
  return {elements,calls,referenceCalls,ids:elements.filter(node=>node.props.problemId).map(node=>node.props.problemId)};
 }
 
-test('actual problem list applies reference matches before translation grouping and pagination, keeping the reference line',async()=>{
+test('actual problem list searches references before grouping and pagination without displaying a reference line',async()=>{
  const pages=await Promise.all([1,2,3].map(page=>render('app/problems/page.tsx',{q:'Euclide Livre 1 Proposition 24',page:String(page)})));
  assert.deepEqual(pages.map(page=>page.ids.length),[14,14,3]);assert.equal(new Set(pages.flatMap(page=>page.ids)).size,31);
  assert.ok(pages.every(page=>page.ids.every(id=>id%2===1)));
- assert.equal(pages[0].elements.filter(node=>node.type==='p'&&node.props.children?.[0]==='Référence').length,14);
+ assert.ok(pages.every(page=>!page.elements.some(node=>node.type==='p'&&node.props.children?.[0]==='Référence')));
  const next=pages[0].elements.find(node=>typeof node.props.href==='string'&&node.props.href.includes('page=2'));
  assert.ok(next);assert.equal(new URL(next.props.href,'https://example.test').searchParams.get('q'),'Euclide Livre 1 Proposition 24');
  const blocked=await render('app/problems/page.tsx',{q:'Euclide',quality:'NEEDS_WORK'});assert.equal(blocked.ids.length,0,'existing status filters still apply');
@@ -83,6 +83,7 @@ test('advanced Origin and Text filters use citation lookup with the existing exa
  for(const field of ['origin','text']){
   const page=await render('app/problems/page.tsx',{filterField:field,filterOp:'is',filterValue:'Euclide'});
   assert.equal(page.ids.length,14);assert.ok(page.referenceCalls.some(call=>call.q==='Euclide'&&call.exact));
+  assert.ok(!page.elements.some(node=>node.type==='p'&&node.props.children?.[0]==='Référence'));
  }
  const none=await render('app/problems/page.tsx',{filterField:'origin',filterOp:'contains',filterValue:'inconnu'});assert.equal(none.ids.length,0);
 });

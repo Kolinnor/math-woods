@@ -1792,6 +1792,9 @@ export const en = {
     }
   },
   historyPage: {
+    titleNotRecorded: "not recorded in this older revision",
+    previousTitleNotRecorded: "previous title not recorded",
+    noStatementChanges: "No changes to the problem statement",
     recordedDifficulty: "Difficulty",
     difficultyChanged: "Difficulty changed",
     difficultyNotRecorded: "not recorded in this older revision",

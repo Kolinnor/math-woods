@@ -234,7 +234,8 @@ async function renderMarkdownContent(
       "none",
       "img",
       "svg",
-      "path"
+      "path",
+      "line"
     ]),
     allowedAttributes: {
       a: ["href", "class", "rel", "target"],
@@ -247,8 +248,9 @@ async function renderMarkdownContent(
       sup: ["aria-label", "class", "lang", "title"],
       math: ["xmlns", "display"],
       annotation: ["encoding"],
-      svg: ["xmlns", "width", "height", "viewBox", "viewbox", "preserveAspectRatio", "preserveaspectratio"],
+      svg: ["xmlns", "width", "height", "viewBox", "viewbox", "preserveAspectRatio", "preserveaspectratio", "style"],
       path: ["d"],
+      line: ["x1", "y1", "x2", "y2", "stroke-width"],
       "*": ["aria-hidden"]
     },
     transformTags: {
@@ -296,7 +298,13 @@ async function renderMarkdownContent(
       return !/^https?:\/\//i.test(frame.attribs.src ?? "");
     },
     allowedStyles: {
+      // KaTeX's vector accent needs this inline width to override its SVG CSS.
+      // Cancellation strokes use <line>; neither needs executable SVG features.
+      svg: {
+        width: [/^\d+(\.\d+)?(em|ex|px|rem|%)$/]
+      },
       span: {
+        color: [/^(?:#[\da-f]{3,8}|[a-z]+|rgba?\([\d\s.,%]+\))$/i],
         "border-bottom-width": [/^-?\d+(\.\d+)?(em|ex|px|rem|%)$/],
         "border-left-width": [/^-?\d+(\.\d+)?(em|ex|px|rem|%)$/],
         "border-right-width": [/^-?\d+(\.\d+)?(em|ex|px|rem|%)$/],

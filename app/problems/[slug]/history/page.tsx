@@ -11,7 +11,7 @@ import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { canRollbackProblem } from "@/lib/permissions";
 import { canEditProblem } from "@/lib/permissions";
 import { parseProblemRevisionSnapshot, formatProblemSnapshotFieldValue } from "@/lib/problem-revisions";
-import { recordedProblemDifficulty } from "@/lib/problem-history";
+import { recordedProblemDifficulty, recordedProblemTitle } from "@/lib/problem-history";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +91,9 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
       <div className="grid gap-3">
         {revisions.slice(0, 50).map((revision, index) => {
           const previousRevision = revisions[index + 1];
+          const title = recordedProblemTitle(revision.problemSnapshot);
+          const previousTitle = recordedProblemTitle(previousRevision?.problemSnapshot);
+          const titleChanged = title !== undefined && previousTitle !== undefined && title !== previousTitle;
           const difficulty = recordedProblemDifficulty(revision.problemSnapshot);
           const previousDifficulty = recordedProblemDifficulty(previousRevision?.problemSnapshot);
           const difficultyChanged = difficulty !== undefined && previousDifficulty !== undefined && difficulty !== previousDifficulty;
@@ -122,6 +125,14 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
                 )}
               </div>
               <p className="mt-3">{revision.editSummary || t.historyPage.noSummary}</p>
+              <p className={`mt-2 text-sm${titleChanged ? " font-semibold" : " muted"}`}>
+                {titleChanged ? t.historyPage.titleChanged : t.historyPage.recordedTitle}{": "}
+                {titleChanged && <><AsyncMarkdownInline markdown={previousTitle} /> <span aria-label={t.historyPage.changedTo}>→</span>{" "}</>}
+                {title === undefined ? t.historyPage.titleNotRecorded : <AsyncMarkdownInline markdown={title} />}
+                {title !== undefined && previousRevision && previousTitle === undefined && (
+                  <span className="muted">{` (${t.historyPage.previousTitleNotRecorded})`}</span>
+                )}
+              </p>
               <p className={`mt-2 text-sm${difficultyChanged ? " font-semibold" : " muted"}`} title={t.historyPage.difficultyExplanation}>
                 {difficultyChanged ? t.historyPage.difficultyChanged : t.historyPage.recordedDifficulty}{": "}
                 {difficultyChanged && <>{difficultyText(previousDifficulty)} <span aria-label={t.historyPage.changedTo}>→</span>{" "}</>}
@@ -138,7 +149,7 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
                   beforeRevisionId={previousRevision.id}
                   defaultOpen={index === 0}
                   revisionId={revision.id}
-                  labels={t.historyPage}
+                  labels={{ ...t.historyPage, noTextChanges: t.historyPage.noStatementChanges }}
                 />
               ) : (
                 <pre className="revision-preview mt-3 max-h-48 overflow-auto rounded p-3 text-xs">{revision.markdown}</pre>

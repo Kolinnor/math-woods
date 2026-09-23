@@ -1,5 +1,47 @@
 # Markdown and LaTeX Editor Regression Log
 
+This file records editor bugs that have already happened in Math Woods. Read it before touching
+`components/markdown/MarkdownEditor.tsx`, `lib/latex-ranges.ts`, `lib/markdown.ts`, or the editor CSS in
+`app/globals.css`.
+
+The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
+
+Entries are ordered newest first; add new dated entries above the older ones.
+
+## Previous editor regressions to preserve
+
+These are known behavioral fixes that should not be broken when changing live preview logic:
+
+- Markdown live preview should update while typing, not only after the editor loses focus.
+- Inline math delimited by single dollars, such as `$x^2$`, should render live when the cursor is outside that range.
+- Display math delimited by double dollars, such as `$$x^2$$`, should render live when it is a standalone display range.
+- Display math delimited by double dollars should render as centered display math even when it appears after other text
+  on the same line.
+- Pressing Backspace or Delete next to a rendered math range must delete one delimiter character, not the whole math
+  block and not a character inside the math content.
+- Pressing Backspace at the start of a line that begins with rendered math, for example before `$salut$ $$salut$$`,
+  should delete the previous newline like normal text editing, not create or preserve a phantom extra line.
+- Pressing Left, Right, Up, or Down next to a rendered math range should enter the math source, not skip over the whole
+  range.
+- Markdown headings and bullet points should preview in the editor, but their markup must remain editable when the
+  cursor enters the relevant range.
+- Right-clicking selected text should open the concept-link menu without losing the selected text.
+
+## 2026-09-23 - Preserve KaTeX SVG strokes and vector width (issues #23, #24)
+
+Cancellation lines disappeared from previews and published pages because the HTML
+sanitizer removed SVG line elements. Vector accents kept their path but lost the
+inline width that overrides KaTeX's width:100% rule; both Chromium and WebKit
+measured a zero-width arrow. Formula colors were also stripped.
+
+Allow only the SVG line coordinates/stroke width, a numeric SVG width style and
+plain CSS colors needed for these formulas. Keep executable SVG, external resource
+references, event handlers and other styles disallowed. Do not change editor input.
+
+Guardrails: tests/latex-svg.test.mjs checks cancellation variants, vectors, colors
+and unsafe markup. npm run test:issue-rendering:browser compares rendered SVG
+geometry and stroke colors against direct KaTeX in Chromium and WebKit.
+
 ## 2026-09-22 - Shared real/imaginary-part and differential macros (PR #22)
 
 The shared KaTeX macro table now renders `\Re` and `\Im` as upright operators,
@@ -74,6 +116,27 @@ inline Markdown renderer for aliases. The field help documents `$…$` syntax.
 
 Guardrail: `tests/core.test.ts` covers mixed prose/math aliases, supported delimiters,
 escaped dollars, multiline display formulas, round trips and sanitized rendering.
+
+## 2026-09-13 - Paste complete HTML figures in JSXGraph fences
+
+Symptom: pasting an HTML/JavaScript figure into a JSXGraph fence failed with a JSON property-name error.
+The renderer assumed every fence contained declarative JSON.
+
+Accept full HTML documents and fragments in the existing fence. Preserve scripts, callbacks, controls and source
+ordering in an opaque-origin sandboxed iframe; no figure-specific preset or code belongs in the renderer.
+Legacy JSON boards retain their validation and rendering. Tolerate a matching pair of outer JSON-starter braces.
+
+Guardrails: HTML stays encoded through Markdown sanitization and runs only in an allow-scripts frame. A trusted CSP
+precedes authored markup. Keep same-origin access, site API requests, forms, popups and top navigation blocked.
+Only bounded resize, readiness and error messages from the frame's own window can affect its holder.
+Editing, refresh, unmount, multiple figures with identical IDs, runtime errors and themes are covered by the browser
+suite in Chromium and WebKit, using the actual MathWoods response headers.
+
+Validation: `npm run test:core` and `npm run test:jsxgraph:browser`.
+
+Keep one mount observer per component lifetime: resetting the effect on every html prop change can dispose
+a holder just mounted by the old observer and leave it stuck loading. Effect cleanup must release holder markers
+as well as pending mounts for React StrictMode's setup/cleanup/setup cycle. The browser suite exercises both paths.
 
 ## 2026-09-11 - Historical milestone publication preserves incomplete work
 
@@ -205,12 +268,6 @@ Guardrails:
 Validation: receipt unit tests and a browser regression using the actual CodeMirror
 editor cover a conflict reload, summary restoration, success and edits after submit.
 
-This file records editor bugs that have already happened in Math Woods. Read it before touching
-`components/markdown/MarkdownEditor.tsx`, `lib/latex-ranges.ts`, `lib/markdown.ts`, or the editor CSS in
-`app/globals.css`.
-
-The goal is not ceremony. The goal is to stop a new fix from quietly undoing an older fix.
-
 ## 2026-09-01 - Image uploads must not create empty paragraphs
 
 Symptom:
@@ -237,6 +294,28 @@ Expected behavior:
   still used for saving, undo/redo, copy/paste, search, and rendered output.
 - Ordinary Markdown, LaTeX, headings, and non-JSXGraph code blocks do not receive this dedicated fold control.
 - Incomplete JSXGraph fences remain fully visible and editable.
+
+## 2026-08-13 - JSXGraph must recover after an unchanged Server Component refresh
+
+Symptom:
+
+- An interactive graph could occasionally remain on `Loading interactive graph...` after an unrelated action on the
+  same page, notably marking a problem as solved.
+
+Root cause:
+
+- The action refreshed the Server Component tree without changing the rendered Markdown string.
+- React could consequently restore a fresh JSXGraph placeholder while the client effect, keyed only by that unchanged
+  string, had no reason to run again.
+
+Guardrail:
+
+- Observe the rendered Markdown subtree and initialize every new JSXGraph placeholder exactly once, including a
+  placeholder reintroduced by a Server Component refresh.
+- Dispose boards and pending mounts when their holder leaves the subtree. Resize callbacks must also stop touching a
+  board after disposal.
+- A stalled module load must leave the loading state after a finite delay and expose an error instead of spinning
+  forever.
 
 ## 2026-08-12 - Heading markers must remain visible and editable
 
@@ -293,6 +372,28 @@ Expected behavior:
 - Keep the setting in Math Woods image URL metadata and remove that metadata from the URL sent to the browser.
 - Existing Markdown images and the older `#mw-width-N` syntax must remain valid and borderless by default.
 
+## 2026-08-04 - Collapsible sections remain ordinary editor source
+
+Syntax:
+
+```md
+:::fold Section title
+Markdown, wiki links and LaTeX remain available here.
+:::
+```
+
+Guardrail:
+
+- The shared Fold toolbar inserts the source block and selects its placeholder title. If text is selected, preserve it
+  as the body of the new section.
+- Keep the complete block visible and editable in CodeMirror. Do not replace it with a widget or hide its body in the
+  live editor; collapsing happens only in rendered Markdown through native `details` and `summary` elements.
+- A fold marker inside a fenced code block stays literal. An unclosed fold also stays literal rather than swallowing the
+  rest of the document.
+- Fold bodies use the normal Markdown, wiki-link, image and KaTeX rendering pipeline. Inline-only Markdown rendering
+  must not interpret fold blocks.
+- Nested fold blocks are intentionally unsupported in this first version.
+
 ## 2026-08-02 - Exercise question markers must match the rendered page
 
 Symptom:
@@ -342,6 +443,133 @@ Guardrail:
 - Tests must verify that `Ctrl+number` selects the heading level and that `Shift+4` remains available for `$`.
 - Users may still configure a different explicit shortcut in settings.
 
+## 2026-07-27 - Multi-line display selections must remove the active preview before deletion
+
+Symptom:
+
+- Selecting everything inside a multi-line `$$...$$` range, while leaving both delimiters in place, then pressing
+  Backspace could leave the old KaTeX preview squeezed into a one-character-wide column.
+- The Markdown deletion itself was correct: the document became `$$$$`. The corruption was a stale editor layout,
+  not saved text.
+
+Root cause:
+
+- An active display-math range intentionally showed raw source plus a secondary KaTeX widget anchored at the closing
+  delimiter.
+- That secondary widget remained mounted while the multi-line selection was deleted. CodeMirror could measure it
+  against the collapsed post-deletion line before removing it.
+
+Guardrail:
+
+- While a non-empty selection crosses a line break inside a LaTeX range, keep only the raw highlighted source and do
+  not mount the secondary active display preview.
+- Keep the active preview for cursor-only edits and single-line selections.
+- Preserve the existing one-state global preview suppression after transactions that remove line breaks.
+
+## 2026-07-23 - Inline KaTeX should share the surrounding text scale
+
+Symptom:
+
+- Inline variables in rendered content appeared raised and oversized beside ordinary prose, especially lowercase
+  symbols such as `$d$` after text set in Spectral.
+
+Root cause:
+
+- KaTeX's bundled stylesheet applies `font-size: 1.21em` to every `.katex` root. Compact editor and title contexts
+  already overrode that enlargement, but full rendered Markdown did not, so its math was 21% larger than its prose.
+
+Guardrail:
+
+- Keep the global `.katex` root at `font-size: 1em` so inline and display formulas inherit the scale of their context.
+- Do not compensate with a global `vertical-align` nudge; that can misalign fractions, subscripts, display math, and
+  live editor widgets. Let KaTeX's own struts handle the baseline after the font sizes match.
+
+## 2026-07-23 - Link targets must keep concepts and problems distinct
+
+Expected behavior:
+
+- The editor link menu defaults to concepts and can switch explicitly to existing problems.
+- Concept links keep the `[[target|label]]` syntax used by concept backlinks, aliases, missing-page links, and
+  translation routing.
+- Problem links use an internal Markdown link, `[label](/problems/slug)`, so a concept and a problem may share a slug
+  without resolving to the wrong content type.
+- Concept links remain blue. Problem links use the site's orange-red accent in rendered Markdown and on their visible
+  label in the live editor, while keeping ordinary Markdown-link editing behavior.
+- Problem mode must resolve an existing suggestion before enabling insertion. It must not offer the concept-specific
+  missing-page creation flow.
+
+Guardrail:
+
+- Do not make every wiki-link target infer its type from the slug. That would be ambiguous and would change existing
+  concept-link semantics.
+- Switching the menu type must not remount CodeMirror or alter the selected source range before the user confirms.
+
+## 2026-07-20 - Rendered display math must not add a blank line after itself
+
+Symptom:
+
+- Markdown with three consecutive source lines (`text`, `$$...$$`, `text`) rendered a large empty vertical gap
+  between the displayed equation and the following text, even though the source contained no blank line.
+
+Root cause:
+
+- With `breaks: true`, Marked emitted a `<br />` after the protected display-math token.
+- KaTeX already renders `.katex-display` as a block, so that trailing break created an additional empty line and its
+  default display margin made the gap more noticeable.
+
+Guardrail:
+
+- Remove only the generated `<br />` immediately following a display-math token before restoring its KaTeX HTML.
+- Keep inline math and explicit Markdown paragraph breaks unchanged.
+- Keep rendered `.prose-math .katex-display` margins compact; do not change CodeMirror display decorations for this
+  viewer-only issue.
+
+## 2026-07-20 - Backspace at a rendered wiki-link boundary must delete one bracket
+
+Symptom:
+
+- Pressing Backspace immediately after a rendered `[[target|label]]` preview did nothing, making the link appear
+  undeletable from its right edge.
+
+Root cause:
+
+- The complete wiki-link source was hidden behind a CodeMirror replacement widget.
+- Boundary-aware deletion existed for rendered LaTeX ranges, but not for rendered wiki-links.
+
+Guardrail:
+
+- Backspace immediately after a rendered wiki-link must delete only its final `]`.
+- Delete immediately before a rendered wiki-link must delete only its first `[`. Selections and ordinary cursor
+  positions must keep CodeMirror's native deletion behavior.
+- Wiki-link-like text inside Markdown code spans or fences must not receive this special handling.
+
+## 2026-07-19 - KaTeX should follow compact text sizing
+
+Symptom:
+
+- Markdown and live LaTeX could stay visually large inside compact UI, even when the surrounding text used a smaller
+  font size.
+
+Root cause:
+
+- The shared rendered Markdown wrapper used an absolute `rem` size, so it ignored its container's local text scale.
+- KaTeX's default `1.21em` size also enlarged live previews relative to CodeMirror's source text.
+
+Guardrail:
+
+- Keep rendered Markdown font sizing relative to its container (`em` or `inherit`) so its KaTeX scales with compact UI.
+- Keep live KaTeX previews at the editor line's inherited font size. Do not restore KaTeX's default enlargement inside
+  CodeMirror.
+
+## 2026-07-19 - JSXGraph fences stay source-editable
+
+Guardrail:
+
+- The shared Graph toolbar inserts a fenced `jsxgraph` JSON block at the selection with clean surrounding line breaks.
+- Keep JSXGraph fences as ordinary source in CodeMirror. Do not turn them into block decorations or normalize their
+  internal lines; the interactive board is mounted only in rendered Markdown.
+- LaTeX detection must continue to ignore fenced code, including JSXGraph expression strings.
+
 ## 2026-07-18 - Autosave responses must not remount an active editor
 
 Symptom:
@@ -361,6 +589,168 @@ Guardrail:
 - Switching to another block should mount a new field normally; an autosave response for the current block must not
   replace its active CodeMirror instance.
 - Do not solve this by changing LaTeX preview decorations or Markdown parsing.
+
+## 2026-07-17 - Temporary LaTeX suppression should resume automatically
+
+Symptom:
+
+- After some edits near display math, every live LaTeX preview could remain visible as raw highlighted source until the
+  user clicked elsewhere in the editor.
+
+Root cause:
+
+- The multi-line deletion guard correctly suppressed all replacement previews for the dangerous post-deletion state,
+  but it relied on a later edit, selection, or focus transaction to rebuild them.
+
+Guardrail:
+
+- Keep the global one-state suppression when a transaction removes a newline; it protects CodeMirror from stale
+  one-character-wide line measurements.
+- Schedule a dedicated, non-history transaction after the guarded layout has had time to settle so previews return
+  automatically. Do not make restoration depend on a user click or unrelated edit.
+- Continue deriving live-preview decorations from a `StateField`; the scheduling plugin must only request restoration,
+  not own or mutate decorations directly.
+
+## 2026-07-17 - Inline dollar autoclose must not be parsed as a display range
+
+Symptom:
+
+- Pressing `$` once to open inline math could unexpectedly move surrounding text onto new lines.
+- The issue only appeared when non-whitespace text followed the cursor and another `$$` delimiter existed later in the
+  document, which made it difficult to reproduce consistently.
+
+Root cause:
+
+- Inline dollar autoclose temporarily inserts `$$` with the cursor between the two characters.
+- Before the user typed the inline formula, the display parser could pair that temporary `$$` with a later display
+  delimiter across multiple lines. The display-line normalizer then treated the false range as genuine and rewrote the
+  document with line breaks.
+
+Guardrail:
+
+- Mark the transaction that creates a fresh inline autoclose pair and skip display-line normalization for that
+  transaction only.
+- Do not disable normalization for the second `$` that promotes the pair toward `$$$$`/`$$...$$`, selected-text inline
+  wrapping, ordinary edits inside a completed display range, or display-math keyboard shortcuts.
+- Keep the parser and normalizer behavior for genuine `$$...$$` ranges unchanged.
+
+## 2026-07-17 - Standalone display previews should remain vertically compact
+
+Symptom:
+
+- Consecutive source lines containing standalone `$$...$$` ranges appeared separated by large blank vertical areas in
+  the live editor, even though the Markdown contained no blank logical lines.
+
+Root cause:
+
+- Display previews intentionally remained inline CodeMirror replacement decorations to avoid earlier block-measurement
+  failures, but their root `<span>` was changed to `display: block` in CSS.
+- CodeMirror places inline widget buffers before and after non-editable replacement widgets. Turning only the widget
+  into a CSS block split those buffers and the widget across anonymous line boxes; explicit widget margin and padding
+  increased the resulting height further.
+
+Guardrail:
+
+- Keep the root element of a non-block CodeMirror display widget inline-level (`inline-block`). Do not simulate a block
+  by setting that root to `display: block`.
+- Center an inactive standalone display preview with a line decoration on its existing CodeMirror source line. Do not
+  apply that centering to mixed-content lines or while the range is being edited as raw source.
+- Do not reintroduce `block: true` CodeMirror decorations or a full-width inline widget. Keep vertical margin at zero
+  and use only compact padding so consecutive display lines remain close without touching.
+- Do not put `overflow-x: auto` on the shrink-to-fit display widget itself: some browsers expose a tiny native
+  scrollbar under short formulas. Let the editor scroller handle genuinely oversized content.
+
+## 2026-07-03 - Multi-line deletion near LaTeX should suppress all previews briefly
+
+Symptom:
+
+- Selecting multiple visual/logical lines near inline LaTeX such as `$P'$`, then deleting the selection, could recreate
+  the one-character-per-line layout collapse below the edit.
+- The issue was easier to trigger in longer editor content than in short isolated snippets.
+
+Root cause:
+
+- The existing newline-deletion guard only suppressed LaTeX replacement previews on the cursor's joined line.
+- During a multi-line deletion, CodeMirror can still measure nearby lower LaTeX replacement widgets while the document
+  height and line wrapping are being recomputed.
+
+Guardrail:
+
+- When a transaction removes a newline, temporarily render all LaTeX ranges as raw source/highlighted tokens instead of
+  replacement previews, not only ranges on the cursor line.
+- This suppression should last only for that post-deletion editor state; previews may return on the next ordinary
+  edit/focus transaction.
+
+## 2026-07-02 - MarkdownEditor must not be wrapped in a label
+
+Symptom:
+
+- Clicking anywhere inside the Markdown editor, or even moving over the editor area in some browser states, behaved as
+  though the toolbar Image button had been clicked.
+- This made concept/problem definitions impossible to edit because the browser kept activating the hidden file input.
+
+Root cause:
+
+- Several forms wrapped `<MarkdownEditor />` or `<LazyMarkdownEditor />` in a `<label>`.
+- After image uploads were added, the editor contained a hidden `<input type="file">`; a label activates labelable
+  controls inside it, so the whole editor area became a file-upload trigger.
+
+Guardrail:
+
+- Do not wrap `MarkdownEditor` or `LazyMarkdownEditor` in `<label>`. Use a neutral wrapper such as
+  `<div className="grid gap-2">` plus a visual `<span className="text-sm font-medium">...</span>`.
+- If the editor needs an accessible label in the future, pass an explicit prop and use `aria-labelledby`/`aria-label`
+  on the editor host rather than an enclosing HTML label.
+
+## 2026-06-30 - Markdown display math should render on its own centered line
+
+Symptom:
+
+- In rendered Markdown, text like `Before $$x^2$$ after` could keep the display equation inside the same paragraph
+  flow even though double-dollar math is meant to read as a centered display equation.
+- A previous fix only centered KaTeX display text with CSS; it did not force mixed-line `$$...$$` ranges onto their own
+  rendered line.
+
+Guardrail:
+
+- Server-side Markdown rendering may split display math tokens onto standalone Markdown lines before `marked` parses the
+  document.
+- Do not apply that block splitting to `renderInlineMarkdown`, because problem titles and compact labels still need an
+  inline-safe representation.
+- Do not use this server-rendering rule as a reason to turn mixed-line `$$...$$` live-editor previews into CodeMirror
+  block decorations; non-standalone display ranges in the editor must keep the shrink-to-fit inline-display fallback.
+
+## 2026-06-30 - Mixed-line `$$...$$` should become standalone in the editor
+
+Symptom:
+
+- The rendered Markdown path split `Before $$x^2$$ after` correctly, but the live editor still only showed a fully
+  centered block when the double-dollar range was already alone on its source line.
+
+Guardrail:
+
+- When a complete display math range is typed or pasted on a mixed line, normalize the Markdown source so the display
+  range becomes its own line, for example `Before $$x^2$$ after` becomes `Before`, `$$x^2$$`, `after`.
+- This lets the standalone display preview use the same source-line shape as rendered Markdown without adding blank
+  lines or relying on CodeMirror `block: true` decorations.
+- Do not make mixed-line display previews use a CodeMirror block decoration before the source has been normalized.
+
+## 2026-06-30 - Avoid block decorations for display math in the editor
+
+Symptom:
+
+- Deleting near a rendered `$$...$$` block could make the next paragraph collapse into a one-character-wide column.
+- A temporary attempt to force blank lines around display math avoided some adjacency cases but introduced a new bug:
+  after typing `$$0=0$$`, moving to the next line, and typing a character, the character appeared on the third line.
+
+Guardrail:
+
+- The editor-side display math normalizer may put mixed-line `$$...$$` ranges on their own source line, but it must not
+  add physical blank lines around display math.
+- This normalization must happen in a CodeMirror transaction filter, before the editor renders/measures the dangerous
+  intermediate state; doing it later from an update listener can leave stale one-character-wide measurements behind.
+- Display math previews should be visually block-like through the widget's CSS, but they must not use CodeMirror
+  `block: true` replacement decorations.
 
 ## 2026-06-28 - Display LaTeX preview must not use plugin-provided block decorations
 
@@ -472,376 +862,3 @@ Guardrail:
   logical line contains math.
 - Once the cursor is inside the source range, native character-by-character cursor movement should take over.
 - Do not solve this by removing replacement widgets or by making LaTeX previews permanently editable text.
-
-## Previous editor regressions to preserve
-
-These are known behavioral fixes that should not be broken when changing live preview logic:
-
-- Markdown live preview should update while typing, not only after the editor loses focus.
-- Inline math delimited by single dollars, such as `$x^2$`, should render live when the cursor is outside that range.
-- Display math delimited by double dollars, such as `$$x^2$$`, should render live when it is a standalone display range.
-- Display math delimited by double dollars should render as centered display math even when it appears after other text
-  on the same line.
-- Pressing Backspace or Delete next to a rendered math range must delete one delimiter character, not the whole math
-  block and not a character inside the math content.
-- Pressing Backspace at the start of a line that begins with rendered math, for example before `$salut$ $$salut$$`,
-  should delete the previous newline like normal text editing, not create or preserve a phantom extra line.
-- Pressing Left, Right, Up, or Down next to a rendered math range should enter the math source, not skip over the whole
-  range.
-- Markdown headings and bullet points should preview in the editor, but their markup must remain editable when the
-  cursor enters the relevant range.
-- Right-clicking selected text should open the concept-link menu without losing the selected text.
-
-## 2026-07-02 - MarkdownEditor must not be wrapped in a label
-
-Symptom:
-
-- Clicking anywhere inside the Markdown editor, or even moving over the editor area in some browser states, behaved as
-  though the toolbar Image button had been clicked.
-- This made concept/problem definitions impossible to edit because the browser kept activating the hidden file input.
-
-Root cause:
-
-- Several forms wrapped `<MarkdownEditor />` or `<LazyMarkdownEditor />` in a `<label>`.
-- After image uploads were added, the editor contained a hidden `<input type="file">`; a label activates labelable
-  controls inside it, so the whole editor area became a file-upload trigger.
-
-Guardrail:
-
-- Do not wrap `MarkdownEditor` or `LazyMarkdownEditor` in `<label>`. Use a neutral wrapper such as
-  `<div className="grid gap-2">` plus a visual `<span className="text-sm font-medium">...</span>`.
-- If the editor needs an accessible label in the future, pass an explicit prop and use `aria-labelledby`/`aria-label`
-  on the editor host rather than an enclosing HTML label.
-
-## 2026-06-30 - Markdown display math should render on its own centered line
-
-Symptom:
-
-- In rendered Markdown, text like `Before $$x^2$$ after` could keep the display equation inside the same paragraph
-  flow even though double-dollar math is meant to read as a centered display equation.
-- A previous fix only centered KaTeX display text with CSS; it did not force mixed-line `$$...$$` ranges onto their own
-  rendered line.
-
-Guardrail:
-
-- Server-side Markdown rendering may split display math tokens onto standalone Markdown lines before `marked` parses the
-  document.
-- Do not apply that block splitting to `renderInlineMarkdown`, because problem titles and compact labels still need an
-  inline-safe representation.
-- Do not use this server-rendering rule as a reason to turn mixed-line `$$...$$` live-editor previews into CodeMirror
-  block decorations; non-standalone display ranges in the editor must keep the shrink-to-fit inline-display fallback.
-
-## 2026-06-30 - Mixed-line `$$...$$` should become standalone in the editor
-
-Symptom:
-
-- The rendered Markdown path split `Before $$x^2$$ after` correctly, but the live editor still only showed a fully
-  centered block when the double-dollar range was already alone on its source line.
-
-Guardrail:
-
-- When a complete display math range is typed or pasted on a mixed line, normalize the Markdown source so the display
-  range becomes its own line, for example `Before $$x^2$$ after` becomes `Before`, `$$x^2$$`, `after`.
-- This lets the standalone display preview use the same source-line shape as rendered Markdown without adding blank
-  lines or relying on CodeMirror `block: true` decorations.
-- Do not make mixed-line display previews use a CodeMirror block decoration before the source has been normalized.
-
-## 2026-06-30 - Avoid block decorations for display math in the editor
-
-Symptom:
-
-- Deleting near a rendered `$$...$$` block could make the next paragraph collapse into a one-character-wide column.
-- A temporary attempt to force blank lines around display math avoided some adjacency cases but introduced a new bug:
-  after typing `$$0=0$$`, moving to the next line, and typing a character, the character appeared on the third line.
-
-Guardrail:
-
-- The editor-side display math normalizer may put mixed-line `$$...$$` ranges on their own source line, but it must not
-  add physical blank lines around display math.
-- This normalization must happen in a CodeMirror transaction filter, before the editor renders/measures the dangerous
-  intermediate state; doing it later from an update listener can leave stale one-character-wide measurements behind.
-- Display math previews should be visually block-like through the widget's CSS, but they must not use CodeMirror
-  `block: true` replacement decorations.
-
-## 2026-07-03 - Multi-line deletion near LaTeX should suppress all previews briefly
-
-Symptom:
-
-- Selecting multiple visual/logical lines near inline LaTeX such as `$P'$`, then deleting the selection, could recreate
-  the one-character-per-line layout collapse below the edit.
-- The issue was easier to trigger in longer editor content than in short isolated snippets.
-
-Root cause:
-
-- The existing newline-deletion guard only suppressed LaTeX replacement previews on the cursor's joined line.
-- During a multi-line deletion, CodeMirror can still measure nearby lower LaTeX replacement widgets while the document
-  height and line wrapping are being recomputed.
-
-Guardrail:
-
-- When a transaction removes a newline, temporarily render all LaTeX ranges as raw source/highlighted tokens instead of
-  replacement previews, not only ranges on the cursor line.
-- This suppression should last only for that post-deletion editor state; previews may return on the next ordinary
-  edit/focus transaction.
-
-## 2026-07-17 - Temporary LaTeX suppression should resume automatically
-
-Symptom:
-
-- After some edits near display math, every live LaTeX preview could remain visible as raw highlighted source until the
-  user clicked elsewhere in the editor.
-
-Root cause:
-
-- The multi-line deletion guard correctly suppressed all replacement previews for the dangerous post-deletion state,
-  but it relied on a later edit, selection, or focus transaction to rebuild them.
-
-Guardrail:
-
-- Keep the global one-state suppression when a transaction removes a newline; it protects CodeMirror from stale
-  one-character-wide line measurements.
-- Schedule a dedicated, non-history transaction after the guarded layout has had time to settle so previews return
-  automatically. Do not make restoration depend on a user click or unrelated edit.
-- Continue deriving live-preview decorations from a `StateField`; the scheduling plugin must only request restoration,
-  not own or mutate decorations directly.
-
-## 2026-07-17 - Inline dollar autoclose must not be parsed as a display range
-
-Symptom:
-
-- Pressing `$` once to open inline math could unexpectedly move surrounding text onto new lines.
-- The issue only appeared when non-whitespace text followed the cursor and another `$$` delimiter existed later in the
-  document, which made it difficult to reproduce consistently.
-
-Root cause:
-
-- Inline dollar autoclose temporarily inserts `$$` with the cursor between the two characters.
-- Before the user typed the inline formula, the display parser could pair that temporary `$$` with a later display
-  delimiter across multiple lines. The display-line normalizer then treated the false range as genuine and rewrote the
-  document with line breaks.
-
-Guardrail:
-
-- Mark the transaction that creates a fresh inline autoclose pair and skip display-line normalization for that
-  transaction only.
-- Do not disable normalization for the second `$` that promotes the pair toward `$$$$`/`$$...$$`, selected-text inline
-  wrapping, ordinary edits inside a completed display range, or display-math keyboard shortcuts.
-- Keep the parser and normalizer behavior for genuine `$$...$$` ranges unchanged.
-
-## 2026-07-17 - Standalone display previews should remain vertically compact
-
-Symptom:
-
-- Consecutive source lines containing standalone `$$...$$` ranges appeared separated by large blank vertical areas in
-  the live editor, even though the Markdown contained no blank logical lines.
-
-Root cause:
-
-- Display previews intentionally remained inline CodeMirror replacement decorations to avoid earlier block-measurement
-  failures, but their root `<span>` was changed to `display: block` in CSS.
-- CodeMirror places inline widget buffers before and after non-editable replacement widgets. Turning only the widget
-  into a CSS block split those buffers and the widget across anonymous line boxes; explicit widget margin and padding
-  increased the resulting height further.
-
-Guardrail:
-
-- Keep the root element of a non-block CodeMirror display widget inline-level (`inline-block`). Do not simulate a block
-  by setting that root to `display: block`.
-- Center an inactive standalone display preview with a line decoration on its existing CodeMirror source line. Do not
-  apply that centering to mixed-content lines or while the range is being edited as raw source.
-- Do not reintroduce `block: true` CodeMirror decorations or a full-width inline widget. Keep vertical margin at zero
-  and use only compact padding so consecutive display lines remain close without touching.
-- Do not put `overflow-x: auto` on the shrink-to-fit display widget itself: some browsers expose a tiny native
-  scrollbar under short formulas. Let the editor scroller handle genuinely oversized content.
-
-## 2026-07-19 - KaTeX should follow compact text sizing
-
-Symptom:
-
-- Markdown and live LaTeX could stay visually large inside compact UI, even when the surrounding text used a smaller
-  font size.
-
-Root cause:
-
-- The shared rendered Markdown wrapper used an absolute `rem` size, so it ignored its container's local text scale.
-- KaTeX's default `1.21em` size also enlarged live previews relative to CodeMirror's source text.
-
-Guardrail:
-
-- Keep rendered Markdown font sizing relative to its container (`em` or `inherit`) so its KaTeX scales with compact UI.
-- Keep live KaTeX previews at the editor line's inherited font size. Do not restore KaTeX's default enlargement inside
-  CodeMirror.
-
-## 2026-07-23 - Inline KaTeX should share the surrounding text scale
-
-Symptom:
-
-- Inline variables in rendered content appeared raised and oversized beside ordinary prose, especially lowercase
-  symbols such as `$d$` after text set in Spectral.
-
-Root cause:
-
-- KaTeX's bundled stylesheet applies `font-size: 1.21em` to every `.katex` root. Compact editor and title contexts
-  already overrode that enlargement, but full rendered Markdown did not, so its math was 21% larger than its prose.
-
-Guardrail:
-
-- Keep the global `.katex` root at `font-size: 1em` so inline and display formulas inherit the scale of their context.
-- Do not compensate with a global `vertical-align` nudge; that can misalign fractions, subscripts, display math, and
-  live editor widgets. Let KaTeX's own struts handle the baseline after the font sizes match.
-
-## 2026-07-23 - Link targets must keep concepts and problems distinct
-
-Expected behavior:
-
-- The editor link menu defaults to concepts and can switch explicitly to existing problems.
-- Concept links keep the `[[target|label]]` syntax used by concept backlinks, aliases, missing-page links, and
-  translation routing.
-- Problem links use an internal Markdown link, `[label](/problems/slug)`, so a concept and a problem may share a slug
-  without resolving to the wrong content type.
-- Concept links remain blue. Problem links use the site's orange-red accent in rendered Markdown and on their visible
-  label in the live editor, while keeping ordinary Markdown-link editing behavior.
-- Problem mode must resolve an existing suggestion before enabling insertion. It must not offer the concept-specific
-  missing-page creation flow.
-
-Guardrail:
-
-- Do not make every wiki-link target infer its type from the slug. That would be ambiguous and would change existing
-  concept-link semantics.
-- Switching the menu type must not remount CodeMirror or alter the selected source range before the user confirms.
-
-## 2026-07-19 - JSXGraph fences stay source-editable
-
-Guardrail:
-
-- The shared Graph toolbar inserts a fenced `jsxgraph` JSON block at the selection with clean surrounding line breaks.
-- Keep JSXGraph fences as ordinary source in CodeMirror. Do not turn them into block decorations or normalize their
-  internal lines; the interactive board is mounted only in rendered Markdown.
-- LaTeX detection must continue to ignore fenced code, including JSXGraph expression strings.
-
-## 2026-07-20 - Rendered display math must not add a blank line after itself
-
-Symptom:
-
-- Markdown with three consecutive source lines (`text`, `$$...$$`, `text`) rendered a large empty vertical gap
-  between the displayed equation and the following text, even though the source contained no blank line.
-
-Root cause:
-
-- With `breaks: true`, Marked emitted a `<br />` after the protected display-math token.
-- KaTeX already renders `.katex-display` as a block, so that trailing break created an additional empty line and its
-  default display margin made the gap more noticeable.
-
-Guardrail:
-
-- Remove only the generated `<br />` immediately following a display-math token before restoring its KaTeX HTML.
-- Keep inline math and explicit Markdown paragraph breaks unchanged.
-- Keep rendered `.prose-math .katex-display` margins compact; do not change CodeMirror display decorations for this
-  viewer-only issue.
-
-## 2026-07-20 - Backspace at a rendered wiki-link boundary must delete one bracket
-
-Symptom:
-
-- Pressing Backspace immediately after a rendered `[[target|label]]` preview did nothing, making the link appear
-  undeletable from its right edge.
-
-Root cause:
-
-- The complete wiki-link source was hidden behind a CodeMirror replacement widget.
-- Boundary-aware deletion existed for rendered LaTeX ranges, but not for rendered wiki-links.
-
-Guardrail:
-
-- Backspace immediately after a rendered wiki-link must delete only its final `]`.
-- Delete immediately before a rendered wiki-link must delete only its first `[`. Selections and ordinary cursor
-  positions must keep CodeMirror's native deletion behavior.
-- Wiki-link-like text inside Markdown code spans or fences must not receive this special handling.
-
-## 2026-07-27 - Multi-line display selections must remove the active preview before deletion
-
-Symptom:
-
-- Selecting everything inside a multi-line `$$...$$` range, while leaving both delimiters in place, then pressing
-  Backspace could leave the old KaTeX preview squeezed into a one-character-wide column.
-- The Markdown deletion itself was correct: the document became `$$$$`. The corruption was a stale editor layout,
-  not saved text.
-
-Root cause:
-
-- An active display-math range intentionally showed raw source plus a secondary KaTeX widget anchored at the closing
-  delimiter.
-- That secondary widget remained mounted while the multi-line selection was deleted. CodeMirror could measure it
-  against the collapsed post-deletion line before removing it.
-
-Guardrail:
-
-- While a non-empty selection crosses a line break inside a LaTeX range, keep only the raw highlighted source and do
-  not mount the secondary active display preview.
-- Keep the active preview for cursor-only edits and single-line selections.
-- Preserve the existing one-state global preview suppression after transactions that remove line breaks.
-
-## 2026-08-04 - Collapsible sections remain ordinary editor source
-
-Syntax:
-
-```md
-:::fold Section title
-Markdown, wiki links and LaTeX remain available here.
-:::
-```
-
-Guardrail:
-
-- The shared Fold toolbar inserts the source block and selects its placeholder title. If text is selected, preserve it
-  as the body of the new section.
-- Keep the complete block visible and editable in CodeMirror. Do not replace it with a widget or hide its body in the
-  live editor; collapsing happens only in rendered Markdown through native `details` and `summary` elements.
-- A fold marker inside a fenced code block stays literal. An unclosed fold also stays literal rather than swallowing the
-  rest of the document.
-- Fold bodies use the normal Markdown, wiki-link, image and KaTeX rendering pipeline. Inline-only Markdown rendering
-  must not interpret fold blocks.
-- Nested fold blocks are intentionally unsupported in this first version.
-
-## 2026-08-13 - JSXGraph must recover after an unchanged Server Component refresh
-
-Symptom:
-
-- An interactive graph could occasionally remain on `Loading interactive graph...` after an unrelated action on the
-  same page, notably marking a problem as solved.
-
-Root cause:
-
-- The action refreshed the Server Component tree without changing the rendered Markdown string.
-- React could consequently restore a fresh JSXGraph placeholder while the client effect, keyed only by that unchanged
-  string, had no reason to run again.
-
-Guardrail:
-
-- Observe the rendered Markdown subtree and initialize every new JSXGraph placeholder exactly once, including a
-  placeholder reintroduced by a Server Component refresh.
-- Dispose boards and pending mounts when their holder leaves the subtree. Resize callbacks must also stop touching a
-  board after disposal.
-- A stalled module load must leave the loading state after a finite delay and expose an error instead of spinning
-  forever.
-
-## 2026-09-13 - Paste complete HTML figures in JSXGraph fences
-
-Symptom: pasting an HTML/JavaScript figure into a JSXGraph fence failed with a JSON property-name error.
-The renderer assumed every fence contained declarative JSON.
-
-Accept full HTML documents and fragments in the existing fence. Preserve scripts, callbacks, controls and source
-ordering in an opaque-origin sandboxed iframe; no figure-specific preset or code belongs in the renderer.
-Legacy JSON boards retain their validation and rendering. Tolerate a matching pair of outer JSON-starter braces.
-
-Guardrails: HTML stays encoded through Markdown sanitization and runs only in an allow-scripts frame. A trusted CSP
-precedes authored markup. Keep same-origin access, site API requests, forms, popups and top navigation blocked.
-Only bounded resize, readiness and error messages from the frame's own window can affect its holder.
-Editing, refresh, unmount, multiple figures with identical IDs, runtime errors and themes are covered by the browser
-suite in Chromium and WebKit, using the actual MathWoods response headers.
-
-Validation: `npm run test:core` and `npm run test:jsxgraph:browser`.
-
-Keep one mount observer per component lifetime: resetting the effect on every html prop change can dispose
-a holder just mounted by the old observer and leave it stuck loading. Effect cleanup must release holder markers
-as well as pending mounts for React StrictMode's setup/cleanup/setup cycle. The browser suite exercises both paths.
