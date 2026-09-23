@@ -146,6 +146,16 @@ export default async function SolutionDiscussionPage({
   });
   if (!canViewSolution) notFound();
 
+  // Summaries may reveal the solution: keep them behind the same visibility guard.
+  const edits = await prisma.pageRevision.findMany({
+    where: { pageType: "PROOF", pageId: proof.id },
+    select: { id: true, createdAt: true, editSummary: true, editedBy: {
+      select: { username: true, displayName: true }
+    } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 50
+  });
+
   const isOwnProof = user?.id === proof.authorId || user?.id === proof.translatedById;
   const canContribute = Boolean(user && isVerifiedContributor(user));
   const canReport = Boolean(canContribute && !isOwnProof);
@@ -198,6 +208,19 @@ export default async function SolutionDiscussionPage({
           <MarkdownBlock html={renderedSolution[0] ?? proof.bodyHtml} />
         </div>
       </article>
+
+      {edits.length > 0 && <details id="solution-edit-history" className="panel my-4 p-4">
+        <summary className="cursor-pointer text-sm">{interfaceLocale === "fr" ? "Modifications de la solution" : "Solution edit history"}</summary>
+        <p className="muted mt-2 text-xs">{interfaceLocale === "fr" ? "Les 50 dernières modifications enregistrées." : "The latest 50 recorded edits."}</p>
+        <ol className="mt-3 grid gap-3 text-sm">
+          {edits.map((edit) => <li key={edit.id}>
+            <p className="muted"><time dateTime={edit.createdAt.toISOString()}>{dateFormatter.format(edit.createdAt)}</time>
+              {edit.editedBy && <>{" · "}<UserName user={edit.editedBy} /></>}
+            </p>
+            <p className="whitespace-pre-wrap break-words">{edit.editSummary || (interfaceLocale === "fr" ? "Modification sans résumé." : "Edit without a summary.")}</p>
+          </li>)}
+        </ol>
+      </details>}
 
       {!user && (
         <p className="discussion-sign-in">

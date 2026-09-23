@@ -17,6 +17,7 @@ export default async function RecentChangesPage() {
     getInterfaceLocale()
   ]);
   const revisions = await prisma.pageRevision.findMany({
+    where: { pageType: { in: ["CONCEPT", "PROBLEM"] } },
     include: { editedBy: true },
     orderBy: { createdAt: "desc" },
     take: 75

@@ -23,6 +23,10 @@ for (const engine of [chromium, webkit]) {
   const browser = await engine.launch({ headless: true });
   try {
     const page = await browser.newPage();
+    await page.setContent(`<style>${css}</style><div class="prose-math">${await renderMarkdown('Left | Center | Right | Default\n:--- | :---: | ---: | ---\na | b | c | d')}</div>`);
+    for (const tag of ['th', 'td']) {
+      assert.deepEqual(await page.locator(tag).evaluateAll(cells => cells.map(cell => getComputedStyle(cell).textAlign)), ['left', 'center', 'right', 'left']);
+    }
     // Identical styling for live KaTeX and the sanitized preview/published output.
     for (const formula of ['\\vec{u}', '\\overrightarrow{u}', '\\cancel{n\\times d}', '\\bcancel{x}', '\\xcancel{x}', '{\\color{red}\\cancel{\\color{black}n\\times d}}']) {
       await page.setContent(`<style>${css}</style><div id="direct" class="prose-math">${katex.renderToString(formula)}</div><div id="final" class="prose-math">${await renderMarkdown(`$${formula}$`)}</div>`);

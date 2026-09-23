@@ -1,4 +1,6 @@
 "use server";
+import { EditSummaryValidationError, editSummaryValidationMessage, parseEditSummary } from "@/lib/form-feedback";
+import { getInterfaceLocale } from "@/lib/i18n/server";
 
 import { notifyDiscussionFollowers } from "@/lib/discussion-follows";
 
@@ -139,6 +141,7 @@ import { acquireTransactionLock } from "@/lib/transaction-lock";
 
 export type ProblemEditActionState =
   | { status: "idle" }
+  | { status: "invalid"; error: string }
   | {
       status: "conflict";
       currentVersion: number;
@@ -1147,6 +1150,15 @@ export async function updateProblemAction(
 ): Promise<ProblemEditActionState> {
   const user = await requireVerifiedUser();
   await assertRateLimit(`problem:update:${user.id}`, 20, 60_000);
+  let editSummary: string;
+  try {
+    editSummary = parseEditSummary(formData.get("editSummary")) || "Problem edited";
+  } catch (error) {
+    if (error instanceof EditSummaryValidationError) {
+      return { status: "invalid", error: editSummaryValidationMessage(await getInterfaceLocale()) };
+    }
+    throw error;
+  }
   const baseVersion = Number(formData.get("baseVersion"));
   if (!Number.isInteger(baseVersion) || baseVersion < 1) throw new Error("Invalid problem version.");
   const acceptedConflictVersion = Number(formData.get("acceptedConflictVersion"));
@@ -1242,7 +1254,6 @@ export async function updateProblemAction(
       : requestedQualityStatus;
   const styles = parseProblemStyles(formData.getAll("styles"));
   const isConjecture = formData.get("isConjecture") === "on";
-  const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary") || "Problem edited";
   const markTranslationFresh = formData.get("markTranslationFresh") === "on";
   const relatedProblemGroups = boundedText(
     formData.get("relatedProblemGroups"),

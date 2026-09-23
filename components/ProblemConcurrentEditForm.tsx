@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import type { ProblemEditActionState } from "@/lib/actions/problem-actions";
 import { dictionaryForLocale } from "@/lib/i18n/dictionary";
 import type { InterfaceLocale } from "@/lib/i18n/types";
@@ -26,11 +26,13 @@ export function ProblemConcurrentEditForm({
   locale = "en"
 }: ProblemConcurrentEditFormProps) {
   const t = dictionaryForLocale(locale);
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, pending] = useActionState(action, initialState);
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
   const [acceptedConflictVersion, setAcceptedConflictVersion] = useState<number | null>(null);
   const conflictRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    if (state.status === "invalid") errorRef.current?.focus();
     if (state.status !== "conflict") return;
     const conflict = conflictRef.current;
     if (!conflict) return;
@@ -58,7 +60,15 @@ export function ProblemConcurrentEditForm({
   }
 
   return (
-    <form action={formAction} className="problem-compose-form">
+    <form className="problem-compose-form" onSubmit={(event) => {
+      event.preventDefault();
+      if (pending) return;
+      const submitter = (event.nativeEvent as SubmitEvent).submitter;
+      const data = new FormData(event.currentTarget, submitter);
+      startTransition(() => formAction(data));
+    }}>
+      <fieldset disabled={pending} className="contents" aria-busy={pending}>
+      {state.status === "invalid" && <p ref={errorRef} role="alert" tabIndex={-1} className="quality-banner">{state.error}</p>}
       <input type="hidden" name="baseVersion" value={baseVersion} />
       {acceptedConflictVersion !== null && (
         <input type="hidden" name="acceptedConflictVersion" value={acceptedConflictVersion} />
@@ -112,6 +122,7 @@ export function ProblemConcurrentEditForm({
         </section>
       )}
       {children}
+      </fieldset>
     </form>
   );
 }

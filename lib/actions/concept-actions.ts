@@ -1,4 +1,5 @@
 "use server";
+import { EditSummaryValidationError, editSummaryValidationMessage, parseEditSummary } from "@/lib/form-feedback";
 
 import type { Route } from "next";
 import { ConceptStatus, NotificationType, SourceType, TargetType } from "@prisma/client";
@@ -398,6 +399,7 @@ export async function updateConceptFormAction(
     await updateConceptAction(conceptId, formData);
     return { error: "" };
   } catch (error) {
+    if (error instanceof EditSummaryValidationError) return { error: editSummaryValidationMessage(locale) };
     if (error instanceof ConceptAliasConflictError) return { error: conceptAliasConflictMessage(error, locale) };
     throw error;
   }
@@ -405,6 +407,7 @@ export async function updateConceptFormAction(
 
 export async function updateConceptAction(conceptId: number, formData: FormData) {
   const user = await requireVerifiedUser();
+  const editSummary = parseEditSummary(formData.get("editSummary"));
   const approvedProposalId = Number(formData.get("approvedProposalId"));
   const existingConcept = await prisma.concept.findUnique({
     where: { id: conceptId },
@@ -445,7 +448,6 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   if (typeof rawCitationBase === "string" && rawCitationBase.length > 300000) throw new Error("Invalid reference baseline.");
   const citationBase = typeof rawCitationBase === "string" ? parseConceptCitations(JSON.parse(rawCitationBase)) : undefined;
   const exerciseIds = parseConceptExerciseIds(formData.getAll("exerciseIds"));
-  const editSummary = boundedText(formData.get("editSummary"), CONTENT_LIMITS.shortText, "Edit summary");
   const markTranslationFresh = publishesImmediately && formData.get("markTranslationFresh") === "on";
   const canAppearInConceptBrowser = publishesImmediately && canUseAdminTools(user) && !(approvedProposalId > 0)
     ? formData.get("canAppearInConceptBrowser") === "on"

@@ -115,7 +115,7 @@ export default async function ProfilePage({
         })
       : Promise.resolve([]),
     prisma.pageRevision.findMany({
-      where: { editedById: user.id },
+      where: { editedById: user.id, pageType: { in: ["CONCEPT", "PROBLEM"] } },
       orderBy: { createdAt: "desc" },
       take: 10
     }),

@@ -6719,3 +6719,6 @@ body:has(.problems-page-shell),
 body:has(.forest-page-shell) {
   background: #e8e2d3;
 }
+.prose-math :is(th, td)[align="left"] { text-align: left; }
+.prose-math :is(th, td)[align="center"] { text-align: center; }
+.prose-math :is(th, td)[align="right"] { text-align: right; }

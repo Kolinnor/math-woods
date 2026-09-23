@@ -14,9 +14,15 @@ writeFileSync(path.join(dir, 'loader.cjs'), `const ts=require(${JSON.stringify(r
 writeFileSync(path.join(dir, 'entry.js'), `
 import React from 'react'; import {createRoot} from 'react-dom/client';
 import {ActionFeedbackForm} from '@/components/ActionFeedbackForm';
+import {EditSummaryInput} from '@/components/EditSummaryInput';
+import {ProblemConcurrentEditForm} from '@/components/ProblemConcurrentEditForm';
 import {ConceptCreateForm,ConceptSubmitButton} from '@/components/ConceptCreateForm';
 import {fr} from '@/lib/i18n/dictionaries/fr'; import {en} from '@/lib/i18n/dictionaries/en';
 const root=createRoot(document.getElementById('root')); let sequence=0;
+window.mountEdits=(locale,kind)=>{window.calls=[];window.finish=null;root.render(React.createElement(kind==='problem'?ProblemConcurrentEditForm:ActionFeedbackForm,{
+ key:++sequence,locale,baseVersion:3,latestHref:'/latest',historyHref:'/history',action:async(_state,data)=>{window.calls.push(Object.fromEntries(data));return new Promise(resolve=>window.finish=resolve);}
+},React.createElement('input',{name:'title',defaultValue:'Initial title'}),React.createElement('textarea',{name:'bodyMarkdown',defaultValue:'Initial draft'}),
+React.createElement(EditSummaryInput,{locale,draftKey:'summary-test',resetSignal:0}),React.createElement('button',{type:'submit'},'Save')));};
 window.mount=(locale)=>{window.calls=[];window.finish=null;root.render(React.createElement(ActionFeedbackForm,{
  key:++sequence,action:async(_state,data)=>{window.calls.push(Object.fromEntries(data));return new Promise(resolve=>window.finish=resolve);}
 },React.createElement('textarea',{name:'bodyMarkdown',defaultValue:''}),
@@ -45,7 +51,48 @@ for (const browserType of [chromium, webkit]) {
       await page.route('http://localhost:3212/**', route => route.fulfill({ contentType: 'text/html', body: '<div id="root"></div>' }));
       await page.goto('http://localhost:3212/');
       await page.addScriptTag({ path: path.join(dir, 'bundle.js') });
+      for (const kind of ['problem', 'concept-or-solution']) {
+        await page.evaluate(({locale,kind}) => {
+          localStorage.setItem('math-woods-text-field-draft:summary-test',JSON.stringify({value:'x'.repeat(241),updatedAt:Date.now()}));
+          window.mountEdits(locale,kind);
+        },{locale,kind});
+        const summary=page.locator('input[name=editSummary]');
+        await page.waitForFunction(()=>document.querySelector('[name=editSummary]')?.value.length===241);
+        assert.equal(await summary.inputValue(),'x'.repeat(241),'restored overlong drafts must not be truncated');
+        await page.getByRole('button',{name:'Save',exact:true}).click();
+        assert.equal(await page.evaluate(()=>window.calls.length),0,'native validation blocks excess length');
+        assert.equal(await summary.getAttribute('aria-invalid'),'true');
+        await summary.fill('x'.repeat(240));
+        assert.match(await page.locator('small').textContent(),/240\/240/);
+        assert.equal(await page.locator('small').evaluate(el=>getComputedStyle(el).color),'rgb(180, 35, 24)');
+        await page.locator('input[name=title]').fill('Keep the new title');
+        await page.locator('textarea').fill('Keep the new draft');
+        await page.getByRole('button',{name:'Save',exact:true}).click();
+        await page.waitForFunction(()=>window.finish && document.querySelector('fieldset').disabled);
+        assert.equal(await page.evaluate(()=>window.calls[0].editSummary.length),240);
+        await page.evaluate(kind=>window.finish(kind==='problem'?{status:'invalid',error:'Shorten the summary'}:{error:'Shorten the summary'}),kind);
+        await page.waitForFunction(()=>document.activeElement===document.querySelector('[role=alert]') && !document.querySelector('fieldset').disabled);
+        assert.equal(await page.locator('input[name=title]').inputValue(),'Keep the new title');
+        assert.equal(await page.locator('textarea').inputValue(),'Keep the new draft');
+        assert.equal(await summary.inputValue(),'x'.repeat(240));
+        await summary.fill('Corrected a sign');
+        await page.getByRole('button',{name:'Save',exact:true}).click();
+        await page.waitForFunction(()=>window.calls.length===2 && window.finish);
+        if(kind==='problem') {
+          await page.evaluate(()=>window.finish({status:'conflict',currentVersion:4,editorName:null,editedAt:null,conflictingFields:['title']}));
+          await page.locator('.problem-edit-conflict').waitFor();
+          assert.equal(await page.locator('input[name=title]').inputValue(),'Keep the new title');
+          assert.equal(await page.locator('textarea').inputValue(),'Keep the new draft');
+          assert.equal(await summary.inputValue(),'Corrected a sign');
+        } else {
+          await page.evaluate(()=>window.finish({error:''}));
+        }
+        await page.waitForFunction(()=>!document.querySelector('fieldset').disabled);
+        assert.deepEqual(errors,[]);
+        console.log(`PASS ${browserType.name()} ${locale} ${kind}: restored drafts, counter, limit, preserved form, retry`);
+      }
       await page.evaluate(locale => window.mount(locale), locale);
+      await page.locator('select').waitFor();
       const text = page.locator('textarea');
       const language = page.locator('select');
       const button = page.getByRole('button');

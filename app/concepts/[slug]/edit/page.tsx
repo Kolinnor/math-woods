@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ConceptContributorGuideLink } from "@/components/ConceptContributorGuideLink";
-import { DraftTextInput } from "@/components/DraftTextInput";
+import { EditSummaryInput } from "@/components/EditSummaryInput";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
@@ -267,8 +267,8 @@ export default async function EditConceptPage({
         )}
         <label className="grid gap-2">
           <span className="text-sm font-medium">{t.contentEditor.editSummary}</span>
-          <DraftTextInput
-            name="editSummary"
+          <EditSummaryInput
+            locale={interfaceLocale}
             draftKey={`concept:${concept.id}:edit-summary`}
             resetSignal={draftResetSignal}
             placeholder={t.contentEditor.editSummaryPlaceholder}

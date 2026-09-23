@@ -6,7 +6,7 @@ export type EditorDraftReceipt = { key: string; token: string };
 export function parseEditorDraftReceipt(value: unknown): EditorDraftReceipt | null {
   if (!value || typeof value !== "object") return null;
   const { key, token } = value as Partial<EditorDraftReceipt>;
-  return typeof key === "string" && key.length <= 160 && /^math-woods-(?:markdown|text-field)-draft:(?:concept|problem):\d+:[a-z-]{1,50}$/.test(key)
+  return typeof key === "string" && key.length <= 160 && /^math-woods-(?:markdown|text-field)-draft:(?:concept|problem|proof):\d+:[a-z-]{1,50}$/.test(key)
     && typeof token === "string" && /^[a-zA-Z0-9-]{1,100}$/.test(token) ? { key, token } : null;
 }
 

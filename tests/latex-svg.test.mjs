@@ -2,6 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderMarkdown, renderInlineMarkdown } from '../lib/markdown.ts';
 
+test('Markdown tables preserve explicit column alignment without allowing arbitrary attributes', async () => {
+  const html = await renderMarkdown('Gauche | Centre | Droite | Défaut\n:--- | :---: | ---: | ---\na | b | c | d');
+  for (const tag of ['th', 'td']) for (const alignment of ['left', 'center', 'right']) {
+    assert.match(html, new RegExp(`<${tag} align="${alignment}">`));
+  }
+  assert.match(html, /<th>Défaut<\/th>/);
+  const unsafe = await renderMarkdown('<table><tr><th align="evil" onclick="alert(1)">A</th><td align="center" style="position:fixed" onmouseover="alert(1)">B</td></tr></table>');
+  assert.match(unsafe, /<td align="center">B/);
+  assert.doesNotMatch(unsafe, /evil|onclick|onmouseover|style=/);
+});
+
 test('cancellation strokes, vector widths and formula colors survive both Markdown renderers', async () => {
   for (const render of [renderMarkdown, renderInlineMarkdown]) {
     for (const [command, strokes] of [['cancel', 1], ['bcancel', 1], ['xcancel', 2]]) {

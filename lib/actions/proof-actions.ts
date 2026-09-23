@@ -9,7 +9,8 @@ import { redirect } from "next/navigation";
 import { checkHintAchievements, checkProofAchievements } from "@/lib/achievements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
-import { ContentValidationError, type FormFeedbackState } from "@/lib/form-feedback";
+import { acknowledgeCitationDraft } from "@/lib/citation-draft-receipt";
+import { ContentValidationError, EditSummaryValidationError, editSummaryValidationMessage, parseEditSummary, type FormFeedbackState } from "@/lib/form-feedback";
 import { prisma } from "@/lib/db";
 import {
   assertTranslationWikiLinksPreserved,
@@ -279,7 +280,10 @@ export async function saveSolutionHintAction(
 export async function updateProofAction(proofId: number, problemSlug: string, formData: FormData) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof:update:${user.id}`, 20, 60_000);
-  const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Solution");
+  const bodyMarkdown = String(formData.get("bodyMarkdown") ?? "").trim();
+  if (!bodyMarkdown) throw new ContentValidationError("empty-solution");
+  if (bodyMarkdown.length > CONTENT_LIMITS.markdown) throw new ContentValidationError("long-solution");
+  const editSummary = parseEditSummary(formData.get("editSummary"));
 
   const proof = await prisma.problemProof.findUnique({
     where: { id: proofId },
@@ -295,15 +299,46 @@ export async function updateProofAction(proofId: number, problemSlug: string, fo
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   await prisma.$transaction(async (tx) => {
+    await acquireTransactionLock(tx, `proof-edit:${proofId}`);
+    const current = await tx.problemProof.findUnique({ where: { id: proofId } });
+    if (!current || !canEditSolution(user, current)) throw new Error("You cannot edit this solution.");
+    if (current.bodyMarkdown === bodyMarkdown && current.language === language) return;
     await tx.problemProof.update({
       where: { id: proofId },
       data: { bodyMarkdown, bodyHtml, language }
     });
+    await tx.pageRevision.create({ data: {
+      pageType: SourceType.PROOF,
+      pageId: proofId,
+      markdown: bodyMarkdown,
+      editedById: user.id,
+      editSummary: editSummary || null
+    } });
     await syncInternalLinks(SourceType.PROOF, proofId, bodyMarkdown, tx, language);
   });
 
   revalidatePath(`/problems/${problemSlug}`);
+  revalidatePath(`/problems/${problemSlug}/proofs/${proofId}/discussion`);
+  await acknowledgeCitationDraft(formData);
   redirect(contentLanguageViewHref("/problems", problemSlug, proof.problem.language) as Route);
+}
+
+export async function updateProofFormAction(
+  proofId: number, problemSlug: string, locale: "fr" | "en", _state: FormFeedbackState, formData: FormData
+): Promise<FormFeedbackState> {
+  try {
+    await updateProofAction(proofId, problemSlug, formData);
+    return { error: "" };
+  } catch (error) {
+    if (error instanceof EditSummaryValidationError) return { error: editSummaryValidationMessage(locale) };
+    if (error instanceof ContentValidationError) return { error: error.reason === "empty-solution"
+      ? (locale === "fr" ? "La solution ne peut pas être vide. Votre saisie est conservée." : "The solution cannot be empty. Your input has been preserved.")
+      : (locale === "fr" ? "La solution ne doit pas dépasser 60 000 caractères. Votre saisie est conservée." : "The solution must not exceed 60,000 characters. Your input has been preserved.") };
+    if (isRateLimitError(error)) return { error: locale === "fr"
+      ? "Patientez un instant puis réessayez ; votre saisie est conservée."
+      : "Wait a moment and try again; your input has been preserved." };
+    throw error;
+  }
 }
 
 export async function deleteProofAction(proofId: number, problemSlug: string) {
@@ -323,6 +358,7 @@ export async function deleteProofAction(proofId: number, problemSlug: string) {
 
   await prisma.$transaction([
     prisma.vote.deleteMany({ where: { targetType: TargetType.PROOF, targetId: proofId } }),
+    prisma.pageRevision.deleteMany({ where: { pageType: SourceType.PROOF, pageId: proofId } }),
     prisma.internalLink.deleteMany({ where: { sourceType: SourceType.PROOF, sourceId: proofId } }),
     prisma.problemProof.delete({ where: { id: proofId } })
   ]);

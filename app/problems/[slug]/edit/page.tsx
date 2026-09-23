@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DeleteProblemButton } from "@/components/DeleteProblemButton";
-import { DraftTextInput } from "@/components/DraftTextInput";
+import { EditSummaryInput } from "@/components/EditSummaryInput";
 import { FieldHelp } from "@/components/FieldHelp";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LanguageField } from "@/components/LanguageField";
@@ -293,8 +293,8 @@ export default async function EditProblemPage({
                         {t.contentEditor.editSummary}
                         <FieldHelp text={t.contentEditor.editSummaryHelp} />
                       </span>
-                      <DraftTextInput
-                        name="editSummary"
+                      <EditSummaryInput
+                        locale={interfaceLocale}
                         draftKey={`problem:${problem.id}:edit-summary`}
                         resetSignal={draftResetSignal}
                         placeholder={t.contentEditor.problemEditSummaryPlaceholder}

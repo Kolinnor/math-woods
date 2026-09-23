@@ -238,6 +238,8 @@ async function renderMarkdownContent(
       "line"
     ]),
     allowedAttributes: {
+      th: [{ name: "align", values: ["left", "center", "right"] }],
+      td: [{ name: "align", values: ["left", "center", "right"] }],
       a: ["href", "class", "rel", "target"],
       code: ["class"],
       details: ["class"],

@@ -27,6 +27,28 @@ These are known behavioral fixes that should not be broken when changing live pr
   cursor enters the relevant range.
 - Right-clicking selected text should open the concept-link menu without losing the selected text.
 
+## 2026-09-23 - Edit summaries and Markdown table alignment
+
+Concept/problem summaries were limited to 240 characters only on the server,
+turning long explanations into unhandled errors. Share a counter and typed server
+validation across concept, problem and solution edits. Keep oversized pasted or
+restored drafts intact, block submission with an explicit error, and preserve all
+fields on server rejection or concurrent-edit conflicts. Only a successful save
+acknowledges the submitted draft; solution summaries use the same receipt guard.
+
+Solution edits now record optional justifications in PROOF revisions, in the same
+transaction as the content. Display them only on the solution discussion page
+after its visibility checks. Exclude PROOF revisions from generic recent-changes
+and profile lists: summaries may reveal solutions, and IDs overlap across types.
+
+Markdown table alignment was lost because sanitization stripped the parser's
+align attributes and CSS forced left alignment. Permit only left/center/right on
+th/td and let those explicit values override the default; keep unsafe attributes
+and arbitrary cell styles disallowed.
+
+Guardrails: recent-error-regressions, editor-draft-receipts and latex-svg tests;
+form-feedback.browser and issue-rendering.browser check Chromium and WebKit.
+
 ## 2026-09-23 - Preserve KaTeX SVG strokes and vector width (issues #23, #24)
 
 Cancellation lines disappeared from previews and published pages because the HTML

@@ -1,7 +1,7 @@
 "use client";
 
 import type { InputHTMLAttributes } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { clearAcknowledgedEditorDrafts, markEditorDraftSubmission } from "@/lib/editor-draft-receipts";
 
 const DRAFT_PREFIX = "math-woods-text-field-draft";
@@ -20,6 +20,8 @@ type DraftTextInputProps = Omit<
   initialValue?: string;
   name: string;
   resetSignal: string | number;
+  characterLimit?: number;
+  limitMessage?: string;
 };
 
 function readStoredValue<T>(key: string, validate: (value: Partial<T>) => value is T): T | null {
@@ -54,10 +56,18 @@ export function DraftTextInput({
   initialValue = "",
   name,
   resetSignal,
+  characterLimit,
+  limitMessage,
   ...inputProps
 }: DraftTextInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const counterId = useId();
   const [value, setValue] = useState(initialValue);
+  const characterCount = value.trim().length;
+  const tooLong = characterLimit !== undefined && characterCount > characterLimit;
+  useEffect(() => {
+    inputRef.current?.setCustomValidity(tooLong ? limitMessage ?? `Maximum: ${characterLimit}` : "");
+  }, [tooLong, limitMessage, characterLimit]);
   const storageKey = `${DRAFT_PREFIX}:${draftKey}`;
   const submitKey = `${DRAFT_SUBMIT_PREFIX}:${storageKey}`;
 
@@ -82,11 +92,14 @@ export function DraftTextInput({
   }, [initialValue, resetSignal, storageKey, submitKey]);
 
   return (
+    <>
     <input
       {...inputProps}
       ref={inputRef}
       name={name}
       value={value}
+      aria-invalid={tooLong || undefined}
+      aria-describedby={[inputProps["aria-describedby"], characterLimit !== undefined ? counterId : undefined].filter(Boolean).join(" ") || undefined}
       onChange={(event) => {
         const nextValue = event.target.value;
         setValue(nextValue);
@@ -97,5 +110,13 @@ export function DraftTextInput({
         }
       }}
     />
+    {characterLimit !== undefined && (
+      <small id={counterId} className="block text-right text-xs" aria-live="polite"
+        style={{ color: characterCount >= characterLimit ? "#b42318" : characterCount >= characterLimit * 0.9 ? "#936000" : "var(--muted)" }}>
+        {characterCount}/{characterLimit}
+        {tooLong && <span className="block">{limitMessage}</span>}
+      </small>
+    )}
+    </>
   );
 }

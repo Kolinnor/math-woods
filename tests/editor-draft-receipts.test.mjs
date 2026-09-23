@@ -7,6 +7,17 @@ import * as receipts from "../lib/editor-draft-receipts.ts";
 
 const key = "math-woods-markdown-draft:concept:42:body";
 const summaryKey = "math-woods-text-field-draft:concept:42:edit-summary";
+
+test('solution summaries are cleared only after the submitted draft is acknowledged', () => {
+  const proofSummary = 'math-woods-text-field-draft:proof:8:edit-summary';
+  const b = browser(); b.save(proofSummary, 'Fixed a sign');
+  b.markEditorDraftSubmission(b.form, proofSummary, 'Fixed a sign');
+  assert.equal(b.inputs.length, 1);
+  b.clearAcknowledgedEditorDrafts();
+  assert.ok(b.stored.has(proofSummary));
+  b.acknowledge(b.inputs.map(input => JSON.parse(input.value)));
+  assert.equal(b.stored.has(proofSummary), false);
+});
 const compile = file => ts.transpileModule(readFileSync(new URL(file, import.meta.url), "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText;

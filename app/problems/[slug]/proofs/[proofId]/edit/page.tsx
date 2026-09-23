@@ -5,7 +5,9 @@ import { ContentPreviewButton } from "@/components/ContentPreviewButton";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { UserName } from "@/components/UserName";
-import { deleteProofAction, updateProofAction } from "@/lib/actions/proof-actions";
+import { deleteProofAction, updateProofFormAction } from "@/lib/actions/proof-actions";
+import { ActionFeedbackForm } from "@/components/ActionFeedbackForm";
+import { EditSummaryInput } from "@/components/EditSummaryInput";
 import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTranslations } from "@/lib/i18n/server";
@@ -58,12 +60,18 @@ export default async function EditProofPage({
         </Link>
       </div>
 
-      <form action={updateProofAction.bind(null, proof.id, proof.problem.slug)} className="panel grid gap-4 p-5">
+      <ActionFeedbackForm action={updateProofFormAction.bind(null, proof.id, proof.problem.slug, interfaceLocale)} className="panel grid gap-4 p-5">
         <LanguageField defaultValue={proof.language} label={interfaceLocale === "fr" ? "Langue de la solution" : "Solution language"} />
         <div className="grid gap-2">
           <span className="text-sm font-medium">{t.problemDetail.solution}</span>
           <MarkdownEditor name="bodyMarkdown" initialValue={proof.bodyMarkdown} minHeight="18rem" />
         </div>
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">{interfaceLocale === "fr" ? "Résumé de la modification (facultatif)" : "Edit summary (optional)"}</span>
+          <EditSummaryInput locale={interfaceLocale} draftKey={`proof:${proof.id}:edit-summary`}
+            resetSignal={proof.updatedAt.toISOString()} placeholder={interfaceLocale === "fr" ? "Expliquez brièvement ce qui a changé…" : "Briefly explain what changed…"} />
+          <small className="muted">{interfaceLocale === "fr" ? "Visible dans l’historique des modifications, sur la page de discussion de la solution." : "Shown in the edit history on the solution’s discussion page."}</small>
+        </label>
         <div className="flex flex-wrap gap-2">
           <button type="submit">{t.problemDetail.saveSolution}</button>
           <ContentPreviewButton contentType="solution" locale={interfaceLocale} />
@@ -71,7 +79,7 @@ export default async function EditProofPage({
             {t.problemDetail.cancel}
           </Link>
         </div>
-      </form>
+      </ActionFeedbackForm>
 
       <section className="danger-zone mt-6">
         <div>
