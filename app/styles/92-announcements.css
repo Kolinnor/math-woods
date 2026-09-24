@@ -129,3 +129,53 @@
     width: 100%;
   }
 }
+.announcement-poll {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border, #d7cfbd);
+  border-radius: 12px;
+  background: rgba(84, 113, 70, .04);
+}
+
+.announcement-poll-heading,
+.announcement-poll-result-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .35rem 1rem;
+}
+
+.announcement-poll-heading h3 { margin: 0 0 .4rem; font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+.announcement-poll-settings:not([hidden]) { display: grid; gap: .75rem; margin-top: .75rem; }
+.announcement-poll-toggle,
+.announcement-poll-choice { display: flex; align-items: flex-start; gap: .65rem; cursor: pointer; }
+.announcement-poll-toggle input,
+.announcement-poll-choice input {
+  appearance: auto;
+  -webkit-appearance: auto;
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  min-width: 1rem;
+  margin: .2rem 0 0;
+  padding: 0;
+  accent-color: #466849;
+}
+.announcement-poll-choices { display: grid; gap: .6rem; border: 0; margin: 0; padding: 0; min-width: 0; }
+.announcement-poll-choice { padding: .7rem; border: 1px solid var(--border, #d7cfbd); border-radius: 8px; }
+.announcement-poll-choice:has(input:checked) { border-color: #466849; background: rgba(84, 113, 70, .08); }
+.announcement-poll-choice span,
+.announcement-poll-result-label > span:first-child { overflow-wrap: anywhere; min-width: 0; }
+.announcement-poll-ballot { display: grid; gap: .75rem; margin-top: .85rem; }
+.announcement-poll-ballot > fieldset.contents { display: contents; }
+.announcement-poll-ballot button { justify-self: start; }
+.announcement-poll-results { display: grid; gap: .85rem; list-style: none; padding: 0; margin: 1rem 0 .6rem; }
+.announcement-poll-count { font-size: .8rem; white-space: nowrap; }
+.announcement-poll-selected { font-size: .8rem; color: #365c3d; }
+.announcement-poll-track { height: .4rem; margin-top: .4rem; overflow: hidden; border-radius: 1rem; background: rgba(84, 113, 70, .13); }
+.announcement-poll-track > span { display: block; height: 100%; background: #64845b; border-radius: inherit; }
+.announcement-poll-change { margin-top: .8rem; }
+.announcement-poll-change summary { cursor: pointer; font-size: .85rem; }
+.announcement-poll-manage { margin-top: 1rem; border-top: 1px solid var(--border, #d7cfbd); padding-top: .8rem; }
+.announcement-poll-manage button { font-size: .8rem; }

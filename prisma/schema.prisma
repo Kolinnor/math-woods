@@ -498,6 +498,7 @@ model User {
   announcementsCreated            Announcement[]                  @relation("AnnouncementAuthor")
   announcementLikes               AnnouncementLike[]
   announcementComments            AnnouncementComment[]
+  announcementPollVotes           AnnouncementPollVote[]
   conceptMergeProposalsCreated    ConceptMergeProposal[]          @relation("ConceptMergeProposer")
   conceptMergeProposalsReviewed   ConceptMergeProposal[]          @relation("ConceptMergeReviewer")
   conceptMergeCredits             ConceptMergeContributor[]
@@ -2633,8 +2634,39 @@ model Announcement {
   createdBy    User?                  @relation("AnnouncementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
   likes        AnnouncementLike[]
   comments     AnnouncementComment[]
+  pollQuestion String?
+  pollClosedAt DateTime?
+  pollOptions  AnnouncementPollOption[]
+  pollVotes    AnnouncementPollVote[]
 
   @@index([createdAt])
+}
+
+model AnnouncementPollOption {
+  id             Int                    @id @default(autoincrement())
+  announcementId Int
+  label          String
+  position       Int
+  announcement   Announcement           @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  votes          AnnouncementPollVote[]
+
+  @@unique([announcementId, id])
+  @@unique([announcementId, position])
+}
+
+model AnnouncementPollVote {
+  announcementId Int
+  userId         Int
+  optionId       Int
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  announcement   Announcement          @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option         AnnouncementPollOption @relation(fields: [announcementId, optionId], references: [announcementId, id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@index([announcementId, optionId])
+  @@index([userId])
 }
 
 model AnnouncementLike {

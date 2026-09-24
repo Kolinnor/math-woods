@@ -1,6 +1,9 @@
 import { MessageCircle, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { AnnouncementLikeButton } from "@/components/AnnouncementLikeButton";
+import { AnnouncementPoll } from "@/components/AnnouncementPoll";
+import { AnnouncementPollFields } from "@/components/AnnouncementPollFields";
+import { ActionFeedbackForm } from "@/components/ActionFeedbackForm";
 import { AnnouncementSeenMarker } from "@/components/AnnouncementSeenMarker";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DeleteAnnouncementButton } from "@/components/DeleteAnnouncementButton";
@@ -9,7 +12,7 @@ import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { UserName } from "@/components/UserName";
 import {
-  createAnnouncementAction,
+  createAnnouncementFormAction,
   createAnnouncementCommentAction,
   deleteAnnouncementCommentAction
 } from "@/lib/actions/announcement-actions";
@@ -17,7 +20,7 @@ import { announcementUnreadSince } from "@/lib/announcements";
 import { requireVerifiedUser } from "@/lib/auth";
 import { formatUserDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
-import { getTranslations } from "@/lib/i18n/server";
+import { getTranslations, getInterfaceLocale } from "@/lib/i18n/server";
 import { canUseAdminTools } from "@/lib/permissions";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
@@ -29,10 +32,11 @@ export default async function AnnouncementsPage({
   searchParams: Promise<{ announcementPosted?: string }>;
 }) {
   const user = await requireVerifiedUser();
-  const [t, timeZone, { announcementPosted }] = await Promise.all([
+  const [t, timeZone, { announcementPosted }, locale] = await Promise.all([
     getTranslations(),
     getRequestTimeZone(),
-    searchParams
+    searchParams,
+    getInterfaceLocale()
   ]);
   const labels = t.announcementsPage;
   const canManageAnnouncements = canUseAdminTools(user);
@@ -45,6 +49,8 @@ export default async function AnnouncementsPage({
         select: { id: true, username: true, displayName: true, avatarUrl: true, avatarBackground: true }
       },
       likes: { where: { userId: user.id }, select: { userId: true } },
+      pollOptions: { orderBy: { position: "asc" }, select: { id: true, label: true, _count: { select: { votes: true } } } },
+      pollVotes: { where: { userId: user.id }, select: { optionId: true } },
       comments: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -76,7 +82,7 @@ export default async function AnnouncementsPage({
             {announcementPosted && (
               <p className="panel mb-3 p-3" role="status">{labels.posted}</p>
             )}
-            <form action={createAnnouncementAction} className="panel grid gap-4 p-4">
+            <ActionFeedbackForm action={createAnnouncementFormAction.bind(null, locale)} className="panel grid gap-4 p-4">
               <label className="grid gap-1.5 font-medium">
                 {labels.titleLabel}
                 <input name="title" required maxLength={160} />
@@ -85,8 +91,9 @@ export default async function AnnouncementsPage({
                 {labels.messageLabel}
                 <textarea name="bodyMarkdown" required maxLength={4000} rows={6} />
               </label>
+              <AnnouncementPollFields locale={locale} />
               <button type="submit" className="justify-self-start">{labels.addAnnouncement}</button>
-            </form>
+            </ActionFeedbackForm>
           </>
         ) : undefined
       }
@@ -122,6 +129,11 @@ export default async function AnnouncementsPage({
               <div className="mt-2">
                 <MarkdownBlock html={announcement.bodyHtml} />
               </div>
+              {announcement.pollQuestion && <AnnouncementPoll
+                announcementId={announcement.id} question={announcement.pollQuestion} closed={Boolean(announcement.pollClosedAt)}
+                options={announcement.pollOptions.map(option => ({ id: option.id, label: option.label, votes: option._count.votes }))}
+                selectedOptionId={announcement.pollVotes[0]?.optionId ?? null} canManage={canManageAnnouncements} locale={locale}
+              />}
               <div className="announcement-card-footer">
                 <AnnouncementLikeButton
                   announcementId={announcement.id}

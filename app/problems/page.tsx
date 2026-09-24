@@ -1058,7 +1058,6 @@ export default async function ProblemsPage({
                     .filter((item) => revealSpoilerDomains || !item.spoiler)
                     .map((item) => item.mscCode)
                 : [problem.domain];
-              const hiddenDomainCount = revealSpoilerDomains ? 0 : problem.domains.filter((item) => item.spoiler).length;
               const difficulty = problem.difficulty ?? null;
               const difficultyLevel = problemDifficultyBars(difficulty);
               const tone = problemDifficultyTone(difficulty);
@@ -1148,7 +1147,6 @@ export default async function ProblemsPage({
                         {visibleDomainCodes.length
                           ? visibleDomainCodes.map((code) => translatedDomainLabel(code, t)).join(" · ")
                           : t.problems.domainHidden}
-                        {hiddenDomainCount > 0 && visibleDomainCodes.length > 0 ? ` · ${t.problems.spoilerDomainHidden}` : ""}
                       </span>
                     </div>
                     {problem.isExercise && Boolean(exerciseConceptsByGroup.get(problem.translationGroupId)?.length) && (
