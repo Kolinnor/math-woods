@@ -99,6 +99,7 @@ enum HistoryEra {
 
 enum HistoryMilestoneType {
   PERIOD
+  EVENT
   DISCOVERY
   PUBLICATION
   NOTATION
@@ -612,6 +613,8 @@ model Mathematician {
   periodEndYear   Int?
   lastEditedById  Int?
   needsReviewAfterEdit Boolean                     @default(false)
+  /// Shown first on the timeline of the library home page.
+  featuredOnTimeline Boolean                      @default(false)
   lastEditedBy    User?                           @relation("MathematicianLastEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
   contentMarkdown String                          @default("")
   contentHtml     String                          @default("")
@@ -1275,6 +1278,8 @@ model HistoryMilestone {
   endYear        Int?
   era            HistoryEra
   milestoneType  HistoryMilestoneType            @default(OTHER)
+  /// Shown first on the timeline of the library home page.
+  featuredOnTimeline Boolean                     @default(false)
   status         LibraryStatus                   @default(DRAFT)
   imageUrl       String?
   imageAlt       String?
@@ -1349,6 +1354,21 @@ model HistoryMilestoneMathematician {
 
   @@id([milestoneId, mathematicianId])
   @@index([mathematicianId])
+}
+
+/// Eras of the library, editable by administrators. Each era starts at `startYear` and ends
+/// where the next one starts, so that every year belongs to exactly one era.
+model LibraryEra {
+  id            Int      @id @default(autoincrement())
+  slug          String   @unique
+  startYear     Int      @unique
+  color         String   @default("#6d6555")
+  nameFr        String
+  nameEn        String
+  descriptionFr String   @default("")
+  descriptionEn String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model LibraryHomepageSelection {

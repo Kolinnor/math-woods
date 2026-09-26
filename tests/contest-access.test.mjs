@@ -51,6 +51,23 @@ test('award badges distinguish winners from mentions and expose localized access
     assert.equal(ContestAchievementBadge({wins:0,honorableMentions:0,tooltip:''}),null);
   }
 });
+test('winner tooltips name each won contest in the interface language, excluding honorable-only contests', () => {
+  const geometry = { titleFr: 'Géométrie', titleEn: 'Geometry' };
+  const algebra = { titleFr: 'Algèbre', titleEn: 'Algebra' };
+  const stats = contests.contestAchievementStatsByUser([
+    { userId: 1, placement: 'WINNER', contest: geometry },
+    { userId: 1, placement: 'WINNER', contest: algebra },
+    { userId: 1, placement: 'HONORABLE_MENTION', contest: { titleFr: 'Autre', titleEn: 'Other' } },
+    { userId: 1, placement: null, contest: { titleFr: 'Sans prix', titleEn: 'No award' } }
+  ]).get(1);
+  assert.equal(contests.avatarAchievementFromStats(stats, fr.contestAchievements).tooltip,
+    'A gagné le concours « Géométrie ».\nA gagné le concours « Algèbre ».\nA obtenu 1 mention honorable.');
+  assert.equal(contests.avatarAchievementFromStats(stats, en.contestAchievements).tooltip,
+    'Won the “Geometry” contest.\nWon the “Algebra” contest.\nReceived 1 honorable mention.');
+  const single = contests.contestAchievementStatsByUser([{ userId: 1, placement: 'WINNER', contest: geometry }]).get(1);
+  assert.equal(contests.avatarAchievementFromStats(single, fr.contestAchievements).tooltip, 'A gagné le concours « Géométrie ».');
+});
+
 function load(file, role, overrides = {}) {
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX

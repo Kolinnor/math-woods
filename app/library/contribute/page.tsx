@@ -37,23 +37,31 @@ export default async function LibraryContributePage() {
 
   const archivedEntries = admin ? await archivedLibraryEntries(locale) : [];
 
+  const dateFormat = new Intl.DateTimeFormat(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const kindIcon = (key: string) => key.startsWith("m-") ? <UsersRound size={16} aria-hidden="true" /> : key.startsWith("r-") ? <BookOpen size={16} aria-hidden="true" /> : <Clock3 size={16} aria-hidden="true" />;
   function entryList(items: Array<Omit<(typeof entries)[number], "needsReviewAfterEdit"> & { needsReviewAfterEdit?: boolean }>, emptyLabel: string) {
     return items.length
-      ? items.map((entry) => <Link href={entry.href as never} key={entry.key}><span><small>{entry.kind}</small><strong>{entry.title}</strong></span><LibraryStatusBadge status={"needsReviewAfterEdit" in entry && entry.needsReviewAfterEdit ? LibraryStatus.PENDING_REVIEW : entry.status} locale={locale} /></Link>)
-      : <p className="muted">{emptyLabel}</p>;
+      ? <ol className="library-link-list library-queue-list">{items.map((entry) => <li key={entry.key} className="library-link-item" data-kind={entry.key.slice(0, 1)}>
+        <span className="library-type-icon" data-kind={entry.key.startsWith("h-") ? "history" : entry.key.startsWith("m-") ? "concept" : undefined}>{kindIcon(entry.key)}</span>
+        <div><Link className="library-link-title" href={entry.href as never}>{entry.title}</Link><small className="library-link-meta">{entry.kind} · {dateFormat.format(entry.updatedAt)}</small></div>
+        <LibraryStatusBadge status={"needsReviewAfterEdit" in entry && entry.needsReviewAfterEdit ? LibraryStatus.PENDING_REVIEW : entry.status} locale={locale} />
+      </li>)}</ol>
+      : <p className="library-queue-empty">{emptyLabel}</p>;
   }
 
   return (
-    <ForestPageLayout className="library-editor-page" titleBelowHero title={fr ? "Contribuer à la bibliothèque" : "Contribute to the library"} description={fr ? "Publiez une fiche ou relisez les contributions déjà en ligne." : "Publish an entry or review contributions already online."} heroImage="/art/birch-grove.jpg">
-      <LibraryTabs locale={locale} />
+    <ForestPageLayout className="library-contribute-page" title={fr ? "Contribuer à la bibliothèque" : "Contribute to the library"} description={fr ? "Publiez une fiche ou relisez les contributions déjà en ligne." : "Publish an entry or review contributions already online."} heroImage="/art/birch-grove.jpg">
+      <LibraryTabs active="contribute" locale={locale} />
       <div className="library-contribution-actions">
-        <Link href="/library/mathematicians/new"><UsersRound size={20} /><span>{fr ? "Ajouter un mathématicien" : "Add a mathematician"}</span><Plus size={16} /></Link>
-        <Link href="/library/history/new"><Clock3 size={20} /><span>{fr ? "Ajouter un repère" : "Add a milestone"}</span><Plus size={16} /></Link>
-        <Link href="/library/references/new"><BookOpen size={20} /><span>{fr ? "Ajouter une référence" : "Add a reference"}</span><Plus size={16} /></Link>
+        <Link href="/library/mathematicians/new" data-room="people"><span className="library-room-icon"><UsersRound size={20} aria-hidden="true" /></span><span><strong>{fr ? "Un mathématicien" : "A mathematician"}</strong><small>{fr ? "Une vie, des œuvres, un héritage." : "A life, works and a legacy."}</small></span><Plus size={18} aria-hidden="true" /></Link>
+        <Link href="/library/history/new" data-room="history"><span className="library-room-icon"><Clock3 size={20} aria-hidden="true" /></span><span><strong>{fr ? "Un repère historique" : "A historical milestone"}</strong><small>{fr ? "Une date, une découverte, une publication." : "A date, a discovery, a publication."}</small></span><Plus size={18} aria-hidden="true" /></Link>
+        <Link href="/library/references/new" data-room="references"><span className="library-room-icon"><BookOpen size={20} aria-hidden="true" /></span><span><strong>{fr ? "Une référence" : "A reference"}</strong><small>{fr ? "Un livre, un article, une ressource." : "A book, an article, a resource."}</small></span><Plus size={18} aria-hidden="true" /></Link>
       </div>
-      {reviewer && <section className="library-review-queue"><h2>{fr ? "À relire" : "Review queue"}</h2>{entryList(pendingEntries, fr ? "Aucune fiche en attente de relecture." : "No entries are awaiting review.")}</section>}
-      <section className="library-review-queue"><h2>{reviewer ? (fr ? "Mes brouillons" : "My drafts") : (fr ? "Mes fiches" : "My entries")}</h2>{entryList(personalEntries, fr ? "Aucune fiche à reprendre." : "No entries to resume.")}</section>
-      {admin && archivedEntries.length > 0 && <details className="library-review-queue library-archive-list"><summary>{fr ? "Fiches archivées" : "Archived entries"}</summary>{entryList(archivedEntries, "")}</details>}
+      <div className="library-queues">
+        {reviewer && <section className="library-review-queue"><h2>{fr ? "À relire" : "Review queue"}<span className="library-entry-section-count">{pendingEntries.length}</span></h2>{entryList(pendingEntries, fr ? "Aucune fiche en attente de relecture." : "No entries are awaiting review.")}</section>}
+        <section className="library-review-queue"><h2>{reviewer ? (fr ? "Mes brouillons" : "My drafts") : (fr ? "Mes fiches" : "My entries")}<span className="library-entry-section-count">{personalEntries.length}</span></h2>{entryList(personalEntries, fr ? "Aucune fiche à reprendre." : "No entries to resume.")}</section>
+      </div>
+      {admin && archivedEntries.length > 0 && <details className="library-archive-list"><summary>{fr ? "Fiches archivées" : "Archived entries"}<span className="library-entry-section-count">{archivedEntries.length}</span></summary>{entryList(archivedEntries, "")}</details>}
     </ForestPageLayout>
   );
 }

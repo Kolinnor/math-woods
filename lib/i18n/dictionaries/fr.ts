@@ -588,12 +588,11 @@ export const fr = {
   contestAchievements: {
     winnerBadgeLabel: "Gagnant",
     honorableBadgeLabel: "Mention honorable",
-    winnerTooltip: (wins: number, honorableMentions: number) =>
-      `A gagné ${wins} concours${
-        honorableMentions > 0
-          ? ` et obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"}`
-          : ""
-      } lors des Concours.`,
+    winnerTooltip: (wins: number, honorableMentions: number, contests: readonly { titleFr: string; titleEn: string }[] = []) =>
+      [
+        ...(contests.length ? contests.map(contest => `A gagné le concours « ${contest.titleFr || contest.titleEn} ».`) : [`A gagné ${wins} concours.`]),
+        ...(honorableMentions > 0 ? [`A obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"}.`] : [])
+      ].join("\n"),
     honorableTooltip: (honorableMentions: number) =>
       `A obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"} lors des Concours.`,
     recordTitle: "Palmarès",
@@ -1236,6 +1235,48 @@ export const fr = {
       PLAYLIST: "Exploration",
       PROOF: "Solution"
     }
+  },
+  conceptMap: {
+    adminOnlyNotice: "Accessible seulement aux admins",
+    viewSwitchLabel: "Affichage des concepts",
+    viewMap: "Carte",
+    viewList: "Liste",
+    regionLabel: "Carte interactive des concepts et de leurs liens",
+    summary: "{concepts} concepts · {links} liens",
+    filteredSummary: "{visible} concepts affichés sur {concepts}",
+    loading: "Chargement des concepts…",
+    loadError: "La carte n’a pas pu être chargée.",
+    retry: "Réessayer",
+    webglUnavailable: "Ce navigateur ne peut pas afficher la carte interactive. La vue Liste reste disponible.",
+    openList: "Ouvrir la vue Liste",
+    searchLabel: "Trouver un concept sur la carte",
+    searchPlaceholder: "Trouver un concept…",
+    searchNoResults: "Aucun concept ne correspond à cette recherche.",
+    searchMatches: "{count} concept(s) correspondant(s) mis en évidence",
+    clearSearch: "Effacer la recherche",
+    zoomIn: "Zoomer",
+    zoomOut: "Dézoomer",
+    resetView: "Voir toute la carte",
+    enterFullscreen: "Plein écran",
+    exitFullscreen: "Quitter le plein écran",
+    domains: "Domaines",
+    toggleDomains: "Filtrer par domaine",
+    allDomains: "Tout afficher",
+    noDomains: "Tout masquer",
+    onlyDomain: "Seulement ce domaine",
+    selectionHint: "Sélectionnez un concept pour mettre en évidence les concepts qu’il cite et ceux qui le citent. Un double-clic ouvre sa page.",
+    openConcept: "Ouvrir la page",
+    closeSelection: "Effacer la sélection",
+    cites: "Cite",
+    citedBy: "Cité par",
+    noLinks: "Aucune citation pour l’instant.",
+    linkCount: "{count} concept(s) lié(s)",
+    showOnMap: "Afficher {title} sur la carte",
+    keyboardHelp: "Clavier : flèches pour se déplacer, + et − pour zoomer, 0 pour voir toute la carte, Échap pour désélectionner, Entrée pour ouvrir la page sélectionnée. Le champ de recherche donne accès à tous les concepts.",
+    openConceptNamed: "Ouvrir la page « {title} »",
+    onlyDomainNamed: "Afficher seulement {domain}",
+    roleDescription: "carte",
+    announceSelection: "{title} : cite {cites}, cité par {citedBy}."
   },
   contributionTasks: {
     title: "Ce qu'il reste à faire",

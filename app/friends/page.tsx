@@ -120,7 +120,8 @@ export default async function FriendsPage() {
   const pageContestSubmissions = pageUserIds.length
     ? await prisma.problemContestSubmission.findMany({
         where: { userId: { in: pageUserIds }, ...publicContestAchievementWhere() },
-        select: { userId: true, placement: true }
+        select: { userId: true, placement: true, contest: { select: { titleFr: true, titleEn: true } } },
+        orderBy: { contest: { startDateKey: "desc" } }
       })
     : [];
   const achievementsByUserId = contestAchievementStatsByUser(pageContestSubmissions);

@@ -73,8 +73,9 @@ development. Their environment variables are documented in [`.env.example`](./.e
 ## Development
 
 The application is built with Next.js 15, React 19, TypeScript, Prisma, and PostgreSQL. CodeMirror powers the
-Markdown/LaTeX editor, KaTeX renders mathematics, JSXGraph supports interactive figures, and React Flow powers the
-exploration canvas. Production runs in Docker with Caddy, Valkey, and automated PostgreSQL backups.
+Markdown/LaTeX editor, KaTeX renders mathematics, JSXGraph supports interactive figures, React Flow powers the
+exploration canvas, and Sigma.js with Graphology draws the concept map (see [`docs/concept-map.md`](./docs/concept-map.md)).
+Production runs in Docker with Caddy, Valkey, and automated PostgreSQL backups.
 
 Before opening a pull request, run the same checks used for substantial local changes:
 

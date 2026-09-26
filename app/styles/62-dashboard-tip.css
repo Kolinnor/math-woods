@@ -1,7 +1,7 @@
-/* Keep the dashboard tip compact regardless of the amount of authored text. */
+/* Let authored titles and advice determine the height; never crop them to fit the image. */
 .home-dashboard .home-tip-card {
   grid-template-columns: 232px minmax(0, 1fr);
-  height: 232px;
+  height: auto;
   min-height: 232px;
 }
 
@@ -20,26 +20,21 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 18px 22px;
 }
 
 .home-dashboard .home-tip-copy h2 {
-  display: -webkit-box;
+  flex: 0 0 auto;
   font-size: 1.45rem;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
 }
 
 .home-dashboard .home-tip-copy > .prose-math {
-  display: -webkit-box;
+  flex: 0 0 auto;
   font-size: 0.92rem;
   line-height: 1.4;
   margin-top: 0.55rem;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
 }
 
 .home-dashboard .home-tip-copy > .prose-math > :first-child {
@@ -52,7 +47,13 @@
 
 .home-dashboard .home-tip-practice {
   flex: 0 0 auto;
-  margin-top: auto;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.85rem;
+}
+
+.home-dashboard .home-tip-practice-meta {
+  flex-wrap: wrap;
 }
 
 @media (max-width: 760px) {
@@ -81,7 +82,6 @@
 
   .home-dashboard .home-tip-copy > .prose-math {
     font-size: 0.82rem;
-    -webkit-line-clamp: 2;
   }
 }
 

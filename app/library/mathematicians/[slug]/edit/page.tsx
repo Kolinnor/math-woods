@@ -10,7 +10,9 @@ import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryLanguage } from "@/lib/library";
 import { mathematicianRelatedInclude, relatedItemViews } from "@/lib/mathematician-related-db";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
-import { canEditLibraryMathematician } from "@/lib/permissions";
+import { canArchiveLibraryEntry, canEditLibraryMathematician, canReviewLibraryMathematician, hasTrustedPrivileges } from "@/lib/permissions";
+import { LibraryTimelineToggle } from "@/components/library/LibraryTimelineToggle";
+import { LibraryReviewActions } from "@/components/library/LibraryReviewActions";
 
 export default async function EditLibraryMathematicianPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ lang?: string }> }) {
   const { slug } = await params;
@@ -21,7 +23,12 @@ export default async function EditLibraryMathematicianPage({ params, searchParam
   const source = entry.translations.find(item => item.language !== contentLanguage);
   const relatedItems = await relatedItemViews(translation?.relatedItems ?? [], contentLanguage);
   return <ForestPageLayout className="library-editor-page" titleBelowHero title={locale === "fr" ? "Modifier le mathématicien" : "Edit mathematician"} meta={<p>{translation?.displayName ?? entry.name}</p>} heroImage="/art/birch-grove.jpg">
-    <LibraryEditorBack href={`/library/mathematicians/${entry.slug}?lang=${contentLanguage}`} locale={locale} /><LibraryTranslationEditorNav baseHref={`/library/mathematicians/${entry.slug}/edit`} locale={locale} activeLanguage={contentLanguage} existingLanguages={entry.translations.map((item) => item.language)} />
+    <div className="library-editor-toolbar">
+      <LibraryEditorBack href={`/library/mathematicians/${entry.slug}?lang=${contentLanguage}`} locale={locale} />
+      {hasTrustedPrivileges(user.role) && entry.status === "PUBLISHED" && <LibraryTimelineToggle entity="mathematician" id={entry.id} featured={entry.featuredOnTimeline} locale={locale} />}
+      <LibraryReviewActions entity="mathematician" id={entry.id} locale={locale} status={entry.status} canReview={canReviewLibraryMathematician(user, entry)} canArchive={canArchiveLibraryEntry(user)} needsReviewAfterEdit={entry.needsReviewAfterEdit} baseUpdatedAt={entry.updatedAt.toISOString()} compact />
+    </div>
+    <LibraryTranslationEditorNav baseHref={`/library/mathematicians/${entry.slug}/edit`} locale={locale} activeLanguage={contentLanguage} existingLanguages={entry.translations.map((item) => item.language)} />
     {source && <details className="panel p-4 mb-4"><summary>{locale === "fr" ? `Consulter la version ${source.language.toUpperCase()} pour traduire` : `Read the ${source.language.toUpperCase()} version while translating`}</summary><MarkdownBlock html={source.biographyHtml} /><MarkdownBlock html={source.contributionsHtml} /></details>}
     <MathematicianForm key={contentLanguage} action={saveMathematicianFormAction.bind(null, entry.id)} locale={locale} contentLanguage={contentLanguage} baseUpdatedAt={entry.updatedAt.toISOString()} values={{ ...entry, translation, relatedItems }} />
   </ForestPageLayout>;

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { BookOpen, Clock3, LibraryBig, UsersRound } from "lucide-react";
+import { LibraryNavTrack } from "@/components/library/LibraryNavTrack";
 import { libraryCopy } from "@/lib/library-copy";
 
-type LibrarySection = "overview" | "history" | "mathematicians" | "references";
+type LibrarySection = "overview" | "history" | "mathematicians" | "references" | "contribute";
 
+/** The sections of the library, as a segmented control (same family as the Map/List switch). */
 export function LibraryTabs({ active, locale }: { active?: LibrarySection; locale: "en" | "fr" }) {
   const copy = libraryCopy[locale];
   const tabs = [
@@ -14,13 +16,15 @@ export function LibraryTabs({ active, locale }: { active?: LibrarySection; local
   ] as const;
 
   return (
-    <nav className="library-tabs" aria-label={copy.title}>
-      {tabs.map(({ key, href, label, icon: Icon }) => (
-        <Link key={key} href={href as never} aria-current={active === key ? "page" : undefined}>
-          <Icon size={17} aria-hidden="true" />
-          <span>{label}</span>
-        </Link>
-      ))}
+    <nav className="library-nav" aria-label={copy.title}>
+      <LibraryNavTrack>
+        {tabs.map(({ key, href, label, icon: Icon }) => (
+          <Link key={key} href={href as never} className="library-nav-link" data-section={key} aria-current={active === key ? "page" : undefined}>
+            <Icon size={16} aria-hidden="true" />
+            <span>{label}</span>
+          </Link>
+        ))}
+      </LibraryNavTrack>
     </nav>
   );
 }

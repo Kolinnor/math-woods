@@ -85,7 +85,8 @@ export function contestCreationWindow(contest: { startDateKey: string; endDateKe
   };
 }
 
-export type ContestAchievementStats = { wins: number; honorableMentions: number };
+type WonContest = { titleFr: string; titleEn: string };
+export type ContestAchievementStats = { wins: number; honorableMentions: number; wonContests?: WonContest[] };
 
 // Placements may be prepared before results are announced. Never expose those
 // through badges or profiles, including for owners viewing their own profile.
@@ -98,13 +99,16 @@ export function publicContestAchievementWhere() {
 }
 
 export function contestAchievementStatsByUser(
-  submissions: readonly { userId: number; placement: "WINNER" | "HONORABLE_MENTION" | null }[]
+  submissions: readonly { userId: number; placement: "WINNER" | "HONORABLE_MENTION" | null; contest?: WonContest }[]
 ) {
   const statsByUser = new Map<number, ContestAchievementStats>();
   for (const submission of submissions) {
     if (!submission.placement) continue;
     const stats = statsByUser.get(submission.userId) ?? { wins: 0, honorableMentions: 0 };
-    if (submission.placement === "WINNER") stats.wins += 1;
+    if (submission.placement === "WINNER") {
+      stats.wins += 1;
+      if (submission.contest) (stats.wonContests ??= []).push(submission.contest);
+    }
     else stats.honorableMentions += 1;
     statsByUser.set(submission.userId, stats);
   }
@@ -112,7 +116,7 @@ export function contestAchievementStatsByUser(
 }
 
 export type AvatarAchievementLabels = {
-  winnerTooltip: (wins: number, honorableMentions: number) => string;
+  winnerTooltip: (wins: number, honorableMentions: number, contests?: readonly WonContest[]) => string;
   honorableTooltip: (honorableMentions: number) => string;
 };
 
@@ -123,7 +127,7 @@ export function avatarAchievementFromStats(stats: ContestAchievementStats | unde
   return {
     wins,
     honorableMentions,
-    tooltip: wins > 0 ? labels.winnerTooltip(wins, honorableMentions) : labels.honorableTooltip(honorableMentions)
+    tooltip: wins > 0 ? labels.winnerTooltip(wins, honorableMentions, stats?.wonContests) : labels.honorableTooltip(honorableMentions)
   };
 }
 

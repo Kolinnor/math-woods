@@ -22,3 +22,12 @@ export function submittedHistoryPeriod(formData: FormData) {
   }
   return { milestoneType, sortYear, endYear };
 }
+
+/** Legacy HistoryEra value kept in HistoryMilestone.era, deduced from the year (the library eras are editable). */
+export function legacyHistoryEra(year: number) {
+  if (year < 500) return "ANCIENT" as const;
+  if (year < 1500) return "MEDIEVAL" as const;
+  if (year < 1800) return "EARLY_MODERN" as const;
+  if (year < 1950) return "MODERN" as const;
+  return "CONTEMPORARY" as const;
+}

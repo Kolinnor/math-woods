@@ -24,10 +24,12 @@ function yearNumber(value: unknown, currentYear: number) {
   const year = Number(raw);
   return year !== 0 && year >= MIN_HISTORY_YEAR && year <= currentYear ? year : null;
 }
-export function parseMathematicianFilters(query: BrowserQuery, locale: "fr" | "en", currentYear: number) {
+export type HistoryPreset = { value: string; from: number; to: number; fr: string; en: string };
+/** `presets` are the eras of the library (the fixed historical periods by default). */
+export function parseMathematicianFilters(query: BrowserQuery, locale: "fr" | "en", currentYear: number, presets: HistoryPreset[] = historyPresets(currentYear)) {
   const explicitLanguages = query.languagesSet !== undefined || query.language !== undefined;
   const languages = explicitLanguages ? [...new Set(values(query.language).filter(v => v === "fr" || v === "en"))] : [locale];
-  const era = historyPresets(currentYear).find(preset => preset.value === browserValue(query.era));
+  const era = presets.find(preset => preset.value === browserValue(query.era));
   const from = yearNumber(browserValue(query.from), currentYear), to = yearNumber(browserValue(query.to), currentYear);
   const period = era ? { from: era.from, to: era.to } : from !== null || to !== null
     ? { from: Math.min(from ?? MIN_HISTORY_YEAR, to ?? currentYear), to: Math.max(from ?? MIN_HISTORY_YEAR, to ?? currentYear) } : null;

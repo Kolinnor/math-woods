@@ -6,7 +6,7 @@ import { FieldHelp } from "@/components/FieldHelp";
 import { LibraryFormActions } from "@/components/library/LibraryFormActions";
 import { LibraryImageFields } from "@/components/library/LibraryImageFields";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
-import { historyEraLabel, milestoneTypeLabel } from "@/lib/library";
+import { milestoneTypeLabel } from "@/lib/library";
 
 type Option = { id: number; label: string };
 type Values = {
@@ -52,7 +52,7 @@ export function HistoryMilestoneForm({ action, locale, contentLanguage = locale,
         <label><span className="field-label-with-help">{isPeriod ? (fr ? "Dates affichées" : "Displayed dates") : (fr ? "Date affichée" : "Displayed date")} <FieldHelp text={fr ? "Écrivez les dates comme vous souhaitez les afficher, par exemple « 323–31 av. J.-C. », « vers 300 av. J.-C. » ou « IIIᵉ siècle av. J.-C. ». Les limites d’une période peuvent être approximatives." : "Write the dates as you want them displayed, for example ‘323–31 BCE’, ‘c. 300 BCE’ or ‘3rd century BCE’. The boundaries of a period may be approximate."} /></span><input name="yearLabel" required defaultValue={values.translation?.yearLabel ?? ""} placeholder={isPeriod ? (fr ? "323–31 av. J.-C." : "323–31 BCE") : (fr ? "vers 300 av. J.-C." : "c. 300 BCE")} /></label>
         <label><span className="field-label-with-help">{isPeriod ? (fr ? "Année de début" : "Start year") : (fr ? "Année de tri" : "Sorting year")} <FieldHelp text={fr ? "Cette année sert à placer le repère dans la chronologie. Utilisez un nombre négatif avant J.-C. : −323 pour 323 av. J.-C. Une estimation suffit si la date exacte est inconnue." : "This year positions the entry in the timeline. Use a negative number for BCE: −323 for 323 BCE. An estimate is enough if the exact date is unknown."} /></span><input name="sortYear" type="number" min="-5000" max="3000" required value={startYear} onChange={(event) => setStartYear(event.target.value)} /></label>
         <label hidden={!isPeriod} style={!isPeriod ? { display: "none" } : undefined}><span>{fr ? "Année de fin (facultative)" : "End year (optional)"}</span><input name="endYear" type="number" min={startYear || -5000} max="3000" disabled={!isPeriod} defaultValue={values.endYear ?? ""} /></label>
-        <label><span>{fr ? "Grande époque" : "Historical era"}</span><select name="era" defaultValue={values.era ?? HistoryEra.MODERN}>{Object.values(HistoryEra).map((era) => <option value={era} key={era}>{historyEraLabel(era, locale)}</option>)}</select></label>
+
       </div>
       <div className="library-editor-field"><span>{storyLabel}</span><MarkdownEditor name="summaryMarkdown" ariaLabel={storyLabel} initialValue={values.translation?.summaryMarkdown ?? ""} minHeight="18rem" /></div>
       <details className="library-form-section"><summary>{fr ? "Éléments liés" : "Related entries"}</summary><div className="library-link-selects"><MultiSelect name="mathematicianIds" label={fr ? "Mathématiciens" : "Mathematicians"} options={options.mathematicians} selected={values.mathematicianIds} /><MultiSelect name="referenceIds" label={fr ? "Références" : "References"} options={options.references} selected={values.referenceIds} /><MultiSelect name="conceptIds" label="Concepts" options={options.concepts} selected={values.conceptIds} /></div></details>

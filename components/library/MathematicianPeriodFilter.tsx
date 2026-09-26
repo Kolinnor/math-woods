@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
-import { MIN_HISTORY_YEAR, historyPresets, historyYearLabel } from "@/lib/mathematician-browser";
+import { MIN_HISTORY_YEAR, historyPresets, historyYearLabel, type HistoryPreset } from "@/lib/mathematician-browser";
 
-export function MathematicianPeriodFilter({ locale, currentYear, initialEra, initialPeriod }: {
+export function MathematicianPeriodFilter({ locale, currentYear, initialEra, initialPeriod, presets: eraPresets }: {
   locale: "fr" | "en"; currentYear: number; initialEra: string; initialPeriod: { from: number; to: number } | null;
+  /** The eras of the library; the fixed historical periods by default. */
+  presets?: HistoryPreset[];
 }) {
   const fr = locale === "fr";
   const [from, setFrom] = useState(initialPeriod?.from ?? MIN_HISTORY_YEAR);
@@ -18,7 +20,7 @@ export function MathematicianPeriodFilter({ locale, currentYear, initialEra, ini
     setTo(initialPeriod?.to ?? currentYear);
     setMode(initialEra || (initialPeriod ? "custom" : ""));
   }, [initialEra, initialPeriod?.from, initialPeriod?.to, currentYear]);
-  const presets = historyPresets(currentYear);
+  const presets = eraPresets ?? historyPresets(currentYear);
   const position = (year: number) => `${100 * (year - MIN_HISTORY_YEAR) / (currentYear - MIN_HISTORY_YEAR)}%`;
   const style = { "--difficulty-min": position(from), "--difficulty-max": position(to) } as CSSProperties;
   const clamp = (year: number, previous = 1) => {

@@ -1,8 +1,12 @@
 import { ConceptKind, ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import type { Metadata } from "next";
 import type { Route } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { preload } from "react-dom";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ConceptBrowserViewSwitch } from "@/components/ConceptBrowserViewSwitch";
+import { ConceptMap } from "@/components/ConceptMap";
 import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { ContributionRequestDialog } from "@/components/ContributionRequestDialog";
@@ -10,6 +14,12 @@ import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { createContributionRequestAction } from "@/lib/actions/contribution-request-actions";
 import { getCurrentUser } from "@/lib/auth";
+import {
+  CONCEPT_BROWSER_VIEW_COOKIE,
+  conceptBrowserViewHref,
+  conceptMapDataHref,
+  resolveConceptBrowserView
+} from "@/lib/concept-browser-view";
 import {
   MAX_CONCEPT_EXERCISES,
   parseConceptExerciseCount,
@@ -96,13 +106,71 @@ export default async function ConceptsPage({
     sort?: string;
     status?: string;
     page?: string;
+    view?: string;
     viewLanguage?: string;
   }>;
 }) {
-  const user = await getCurrentUser();
-  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
+  const [t, interfaceLocale, user] = await Promise.all([getTranslations(), getInterfaceLocale(), getCurrentUser()]);
   const preferredLanguage = await getPreferredContentLanguage();
   const params = await searchParams;
+  const canViewMap = Boolean(user && canUseAdminTools(user));
+  const view = canViewMap ? resolveConceptBrowserView(params.view, (await cookies()).get(CONCEPT_BROWSER_VIEW_COOKIE)?.value) : "list";
+  const heroActions = (
+    <>
+      <Link href="/concepts/random" prefetch={false} className="button secondary concept-browser-action-button">
+        {t.concepts.random}
+      </Link>
+      <Link href="/concepts/new" className="button concept-browser-action-button">
+        {t.concepts.new}
+      </Link>
+      <ContributionRequestDialog
+        action={createContributionRequestAction.bind(null, "CONCEPT", "/concepts")}
+        buttonClassName="concept-browser-action-button"
+        buttonLabel={t.concepts.requestConcept}
+        closeLabel={t.contributingPage.closeRequestDialog}
+        title={t.concepts.requestConcept}
+        description={t.concepts.requestConceptDescription}
+        placeholder={t.concepts.requestConceptPlaceholder}
+        submitLabel={t.contributingPage.sendRequest}
+      />
+    </>
+  );
+  const viewSwitch = canViewMap && (
+    <div className="concept-browser-toolbar">
+      <ConceptBrowserViewSwitch
+        view={view}
+        labels={{ group: t.conceptMap.viewSwitchLabel, map: t.conceptMap.viewMap, list: t.conceptMap.viewList }}
+      />
+    </div>
+  );
+
+  if (view === "map") {
+    // The map loads its graph from /api/concepts/map: no list query runs for this view. The
+    // browser starts downloading the most important concepts while it parses the page.
+    preload(conceptMapDataHref(preferredLanguage, 1), { as: "fetch", crossOrigin: "anonymous" });
+    return (
+      <ForestPageLayout
+        className="concepts-page-shell concepts-map-shell"
+        title={t.concepts.title}
+        heroImage="/art/birch-grove.jpg"
+        heroAlt="Ivan Shishkin, Birch Grove"
+        actions={heroActions}
+        workspaceClassName="concept-browser-workspace"
+      >
+        {viewSwitch}
+        <p className="concept-map-admin-notice">{t.conceptMap.adminOnlyNotice}</p>
+        <ConceptMap
+          language={preferredLanguage}
+          copy={t.conceptMap}
+          domainLabels={Object.fromEntries(PROBLEM_DOMAINS.map((item) => [item.value, translatedDomainLabel(item.value, t)]))}
+          kindLabels={t.concepts.kinds}
+          statusLabels={t.concepts.statuses}
+          listHref={conceptBrowserViewHref("list")}
+        />
+      </ForestPageLayout>
+    );
+  }
+
   const {
     q = "",
     domain = "",
@@ -328,28 +396,10 @@ export default async function ConceptsPage({
       title={t.concepts.title}
       heroImage="/art/birch-grove.jpg"
       heroAlt="Ivan Shishkin, Birch Grove"
-      actions={
-        <>
-          <Link href="/concepts/random" prefetch={false} className="button secondary concept-browser-action-button">
-            {t.concepts.random}
-          </Link>
-          <Link href="/concepts/new" className="button concept-browser-action-button">
-            {t.concepts.new}
-          </Link>
-          <ContributionRequestDialog
-            action={createContributionRequestAction.bind(null, "CONCEPT", "/concepts")}
-            buttonClassName="concept-browser-action-button"
-            buttonLabel={t.concepts.requestConcept}
-            closeLabel={t.contributingPage.closeRequestDialog}
-            title={t.concepts.requestConcept}
-            description={t.concepts.requestConceptDescription}
-            placeholder={t.concepts.requestConceptPlaceholder}
-            submitLabel={t.contributingPage.sendRequest}
-          />
-        </>
-      }
+      actions={heroActions}
       workspaceClassName="concept-browser-workspace"
     >
+      {viewSwitch}
       <div className="concept-browser-layout">
         <aside className="concept-filter-panel">
           <LiveSearchForm className="concept-filter-form" persistKey="concepts">

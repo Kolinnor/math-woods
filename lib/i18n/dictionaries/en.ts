@@ -585,12 +585,11 @@ export const en = {
   contestAchievements: {
     winnerBadgeLabel: "Winner",
     honorableBadgeLabel: "Honorable mention",
-    winnerTooltip: (wins: number, honorableMentions: number) =>
-      `Won ${wins} contest${wins === 1 ? "" : "s"}${
-        honorableMentions > 0
-          ? ` and received ${honorableMentions} honorable mention${honorableMentions === 1 ? "" : "s"}`
-          : ""
-      } in the weekly Contests.`,
+    winnerTooltip: (wins: number, honorableMentions: number, contests: readonly { titleFr: string; titleEn: string }[] = []) =>
+      [
+        ...(contests.length ? contests.map(contest => `Won the “${contest.titleEn || contest.titleFr}” contest.`) : [`Won ${wins} contest${wins === 1 ? "" : "s"}.`]),
+        ...(honorableMentions > 0 ? [`Received ${honorableMentions} honorable mention${honorableMentions === 1 ? "" : "s"}.`] : [])
+      ].join("\n"),
     honorableTooltip: (honorableMentions: number) =>
       `Received ${honorableMentions} honorable mention${honorableMentions === 1 ? "" : "s"} in the weekly Contests.`,
     recordTitle: "Contest record",
@@ -1231,6 +1230,48 @@ export const en = {
       PLAYLIST: "Exploration",
       PROOF: "Solution"
     }
+  },
+  conceptMap: {
+    adminOnlyNotice: "Accessible to admins only",
+    viewSwitchLabel: "Concept display",
+    viewMap: "Map",
+    viewList: "List",
+    regionLabel: "Interactive map of concepts and their links",
+    summary: "{concepts} concepts · {links} links",
+    filteredSummary: "{visible} of {concepts} concepts shown",
+    loading: "Loading the concepts…",
+    loadError: "The map could not be loaded.",
+    retry: "Try again",
+    webglUnavailable: "This browser cannot display the interactive map. The list view remains available.",
+    openList: "Open the list view",
+    searchLabel: "Find a concept on the map",
+    searchPlaceholder: "Find a concept…",
+    searchNoResults: "No concept matches this search.",
+    searchMatches: "{count} matching concept(s) highlighted",
+    clearSearch: "Clear the search",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    resetView: "Show the whole map",
+    enterFullscreen: "Full screen",
+    exitFullscreen: "Exit full screen",
+    domains: "Domains",
+    toggleDomains: "Filter by domain",
+    allDomains: "Show all",
+    noDomains: "Hide all",
+    onlyDomain: "Only this domain",
+    selectionHint: "Select a concept to highlight the concepts it cites and those that cite it. Double-click opens its page.",
+    openConcept: "Open the page",
+    closeSelection: "Clear the selection",
+    cites: "Cites",
+    citedBy: "Cited by",
+    noLinks: "No citation yet.",
+    linkCount: "{count} linked concept(s)",
+    showOnMap: "Show {title} on the map",
+    keyboardHelp: "Keyboard: arrow keys pan, + and − zoom, 0 shows the whole map, Escape clears the selection, Enter opens the selected page. The search field gives access to every concept.",
+    openConceptNamed: "Open the page of {title}",
+    onlyDomainNamed: "Show only {domain}",
+    roleDescription: "map",
+    announceSelection: "{title}: cites {cites}, cited by {citedBy}."
   },
   contributionTasks: {
     title: "What remains to be done",

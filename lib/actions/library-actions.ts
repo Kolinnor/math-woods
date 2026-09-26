@@ -28,13 +28,20 @@ import {
 import { assertRateLimit } from "@/lib/rate-limit";
 import { uniqueSlug } from "@/lib/unique-slug";
 import { submittedMathematicianPeriod } from "@/lib/mathematician-browser";
-import { submittedHistoryPeriod } from "@/lib/history-period";
+import { legacyHistoryEra, submittedHistoryPeriod } from "@/lib/history-period";
 import { citationUrl } from "@/lib/problem-citations";
 import { readReferenceBibliography, validateReferenceWork } from "@/lib/reference-editions";
 import { requireReadableReferenceTitle } from "@/lib/reference-title";
 import { parseMathematicianAliases } from "@/lib/mathematician-names";
 
 type LibraryEntity = "mathematician" | "reference" | "milestone";
+
+
+/** The legacy era column follows the year; the eras shown in the library are editable (LibraryEra). */
+function submittedHistoryEra(formData: FormData) {
+  if (formData.get("era")) return enumValue(formData.get("era"), Object.values(HistoryEra), "Era");
+  return legacyHistoryEra(submittedHistoryPeriod(formData).sortYear);
+}
 
 export async function proposeLibraryReferenceAction(_state: { message: string; success: boolean }, formData: FormData) {
   const user = await requireVerifiedUser();
@@ -490,7 +497,7 @@ export async function createHistoryMilestoneAction(formData: FormData) {
       data: {
       slug,
       ...submittedHistoryPeriod(formData),
-      era: enumValue(formData.get("era"), Object.values(HistoryEra), "Era"),
+      era: submittedHistoryEra(formData),
       status: statusForSave(intent),
       submittedAt: intent === "submit" ? new Date() : null,
       publishedAt: intent === "submit" ? new Date() : null,
@@ -531,7 +538,7 @@ export async function updateHistoryMilestoneAction(id: number, formData: FormDat
       where: { id, updatedAt: baseUpdatedAt },
       data: {
         ...submittedHistoryPeriod(formData),
-        era: enumValue(formData.get("era"), Object.values(HistoryEra), "Era"),
+        era: submittedHistoryEra(formData),
         status: statusForUpdate(entry.status, intent),
         publishedAt: statusForUpdate(entry.status, intent) === LibraryStatus.PUBLISHED ? entry.publishedAt ?? new Date() : undefined,
         submittedAt: entry.status === LibraryStatus.PUBLISHED ? entry.submittedAt : intent === "submit" ? new Date() : null,

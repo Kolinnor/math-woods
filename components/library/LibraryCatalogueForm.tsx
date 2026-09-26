@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { LiveSearchForm } from "@/components/LiveSearchForm";
 import { LibraryFilters } from "@/components/library/LibraryFilters";
 
-export function LibraryCatalogueForm({ locale, pathname, query, searchLabel, children, activeCount = 0 }: {
+export function LibraryCatalogueForm({ locale, query, searchLabel, children, activeCount = 0 }: {
   locale: "fr" | "en";
   pathname: string;
   query?: string;
@@ -10,11 +10,10 @@ export function LibraryCatalogueForm({ locale, pathname, query, searchLabel, chi
   children: ReactNode;
   activeCount?: number;
 }) {
-  return <LiveSearchForm className="library-catalogue-form" updatingLabel={locale === "fr" ? "Actualisation des résultats" : "Updating results"}>
+  return <LiveSearchForm className="library-catalogue-form" resetLabel={locale === "fr" ? "Réinitialiser les filtres" : "Reset filters"} updatingLabel={locale === "fr" ? "Actualisation des résultats" : "Updating results"}>
     <label className="library-catalogue-search"><span>{searchLabel}</span><input type="search" name="q" defaultValue={query} placeholder={locale === "fr" ? "Nom, titre, mot-clé…" : "Name, title, keyword…"} /></label>
     <LibraryFilters locale={locale} activeCount={activeCount}>
       {children}
-      <a className="library-reset" href={pathname}>{locale === "fr" ? "Réinitialiser les filtres" : "Reset filters"}</a>
     </LibraryFilters>
     <noscript><button type="submit">{locale === "fr" ? "Rechercher" : "Search"}</button></noscript>
   </LiveSearchForm>;

@@ -18,7 +18,8 @@ const mocks={
   'next/link':{default:({href,children,...props})=>React.createElement('a',{href,...props},children)},
   'next/navigation':{notFound:()=>{throw new Error('Not found');}},
   '@/lib/auth':{requireAdmin:async()=>({id:2,role:'OWNER'})},
-  '@/lib/db':{prisma:{mathematician:{findUnique:async()=>entry},historyMilestone:{findUnique:async()=>entry},libraryReference:{findUnique:async()=>entry}}},
+  // Neighbouring entries (contemporaries, timeline) are not part of these fixtures.
+  '@/lib/db':{prisma:{mathematician:{findUnique:async()=>entry,findMany:async()=>[]},historyMilestone:{findUnique:async()=>entry,findMany:async()=>[]},libraryReference:{findUnique:async()=>entry},libraryEra:{findMany:async()=>[]}}},
   '@/lib/i18n/server':{getInterfaceLocale:async()=>locale},
   '@/lib/library':library, '@/lib/library-copy':{libraryCopy}, '@/lib/permissions':permissions, '@/lib/mathematician-names':names,
   '@/lib/library-queries':{localizedTranslation:(rows,language)=>rows.find(r=>r.language===language)??rows[0]},
@@ -49,6 +50,7 @@ async function resolveNodes(node) {
   return React.cloneElement(node,props);
 }
 const pageModule=load('@/app/library/mathematicians/[slug]/page');
+const reviewActions=load('@/components/library/LibraryReviewActions');
 const person={username:'editor',profileSlug:'editor',displayName:'Ancient Tree',avatarUrl:null,avatarBackground:null};
 function fixture(kind,language) {
   const complete=kind==='complete', empty=kind==='empty';
@@ -82,7 +84,6 @@ try {
     await page.goto('http://localhost:3212/');
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal scrolling');
     assert.equal(await page.getByRole('heading',{level:1,name:'Emmy Noether'}).count(),1);
-    const management=page.locator('.library-detail-management');
     assert.equal(await page.locator('.mathematician-rail').getByRole('link',{name:language==='fr'?'Modifier':'Edit',exact:true}).count(),1);
     assert.equal(await page.locator('.mathematician-stub-notice').count(),kind==='complete'?0:1);
     if(kind==='own')assert.equal(await page.getByRole('button',{name:language==='fr'?'Publier':'Publish',exact:true}).count(),0);
@@ -94,6 +95,12 @@ try {
     if(kind==='empty')assert.equal(await page.locator('.mathematician-biographical-panel').count(),0);
     else { const portrait=await page.locator('.mathematician-portrait').boundingBox();assert.ok(portrait.width<=201&&portrait.width>=(width>640?170:110)); }
     await page.screenshot({path:`runtime/mathematician-page/${language}-${kind}-${width}.png`,fullPage:true});
+    assert.equal(await page.locator('.library-management').count(),0,'Entry management lives in the editor');
+    // The same management panel, as the editor shows it next to its "Back" link.
+    const user={id:2,role:'OWNER'};
+    const managementHtml=renderToStaticMarkup(await resolveNodes(React.createElement(reviewActions.LibraryReviewActions,{entity:'mathematician',id:entry.id,locale:language,status:entry.status,canReview:permissions.canReviewLibraryMathematician(user,entry),canArchive:permissions.canArchiveLibraryEntry(user),needsReviewAfterEdit:entry.needsReviewAfterEdit,baseUpdatedAt:entry.updatedAt.toISOString(),compact:true})));
+    await page.setContent(`<!doctype html><html lang="${language}"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style><body><div class="library-root"><main class="library-editor-page" style="padding:16px"><div class="library-editor-toolbar"><a class="library-editor-back" href="#">Retour</a>${managementHtml}</div></main></div></body></html>`);
+    const management=page.locator('.library-editor-toolbar');
     assert.equal(await management.locator('.library-management').getAttribute('open'),null);
     assert.equal(await page.getByRole('button',{name:language==='fr'?'Archiver':'Archive',exact:true}).isVisible(),false);
     const toggle=management.locator('.library-management > summary');
@@ -138,11 +145,9 @@ try {
     assert.equal(await page.locator('.forest-page-hero-actions').count(),0);
     assert.equal(await page.locator('.library-detail-back-link').getAttribute('href'),`/library/${type}`);
     assert.equal(await page.locator('.library-detail-languages [aria-current=page]').getAttribute('href'),`/library/${type}/example?lang=${contentLanguage}`);
-    assert.equal(await rail.locator('.library-management').getAttribute('open'),null);
+    assert.equal(await page.locator('.library-management').count(),0,'Entry management lives in the editor');
     const a=await article.boundingBox(),r=await rail.boundingBox();
     assert.ok(width>1000?r.x>=a.x+a.width:r.y>=a.y+a.height,'Same responsive rail layout for every entry');
-    await rail.locator('.library-management > summary').click();
-    assert.ok(await rail.getByRole('button',{name:language==='fr'?'Confirmer la relecture':'Confirm review',exact:true}).isVisible());
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.screenshot({path:`runtime/mathematician-page/${type}-${language}-${width}.png`,fullPage:true});
     await page.close();console.log('PASS shared entry navigation',type,language,width);

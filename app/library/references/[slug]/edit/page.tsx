@@ -8,7 +8,8 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryLanguage } from "@/lib/library";
-import { canEditLibraryReference } from "@/lib/permissions";
+import { canArchiveLibraryEntry, canEditLibraryReference, canReviewLibraryEntry } from "@/lib/permissions";
+import { LibraryReviewActions } from "@/components/library/LibraryReviewActions";
 import { upgradeLegacyBibliography } from "@/lib/reference-bibtex";
 
 export default async function EditLibraryReferencePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ lang?: string }> }) {
@@ -19,5 +20,5 @@ export default async function EditLibraryReferencePage({ params, searchParams }:
   try { formEntry = upgradeLegacyBibliography(entry); } catch { /* Preserve malformed original BibTeX for correction. */ }
   const contentLanguage = libraryLanguage(query.lang ?? locale);
   const translation = entry.translations.find((item) => item.language === contentLanguage) ?? null;
-  return <ForestPageLayout className="library-editor-page" titleBelowHero title={locale === "fr" ? "Modifier la référence" : "Edit reference"} meta={<p>{entry.canonicalTitle}</p>} heroImage="/art/oak-grove.jpg"><LibraryEditorBack href={`/library/references/${entry.slug}?lang=${contentLanguage}`} locale={locale} /><LibraryTranslationEditorNav baseHref={`/library/references/${entry.slug}/edit`} locale={locale} activeLanguage={contentLanguage} existingLanguages={entry.translations.map((item) => item.language)} /><ReferenceForm action={saveLibraryReferenceFormAction.bind(null, entry.id)} locale={locale} contentLanguage={contentLanguage} baseUpdatedAt={entry.updatedAt.toISOString()} values={{ ...formEntry, translation }} /></ForestPageLayout>;
+  return <ForestPageLayout className="library-editor-page" titleBelowHero title={locale === "fr" ? "Modifier la référence" : "Edit reference"} meta={<p>{entry.canonicalTitle}</p>} heroImage="/art/oak-grove.jpg"><div className="library-editor-toolbar"><LibraryEditorBack href={`/library/references/${entry.slug}?lang=${contentLanguage}`} locale={locale} /><LibraryReviewActions entity="reference" id={entry.id} locale={locale} status={entry.status} needsReviewAfterEdit={!entry.reviewedAt} baseUpdatedAt={entry.updatedAt.toISOString()} canReview={canReviewLibraryEntry(user, entry)} canArchive={canArchiveLibraryEntry(user)} compact /></div><LibraryTranslationEditorNav baseHref={`/library/references/${entry.slug}/edit`} locale={locale} activeLanguage={contentLanguage} existingLanguages={entry.translations.map((item) => item.language)} /><ReferenceForm action={saveLibraryReferenceFormAction.bind(null, entry.id)} locale={locale} contentLanguage={contentLanguage} baseUpdatedAt={entry.updatedAt.toISOString()} values={{ ...formEntry, translation }} /></ForestPageLayout>;
 }
