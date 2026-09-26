@@ -280,6 +280,58 @@ try {
   assert.deepEqual(errors, []);
   await context.close();
 
+  // Real wheel events at different pixel densities, including ergonomic mouse drivers
+  // that report line/page units or emit bursts for one notch. Read the camera through
+  // the existing navigation persistence, without adding test hooks to the component.
+  for (const deviceScaleFactor of [1, 2]) for (const reducedMotion of ['no-preference', 'reduce']) {
+    context = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor, reducedMotion });
+    page = await context.newPage();
+    await page.goto(`${base}/concepts`);
+    await page.locator('.concept-map-stage[data-ready="true"]').waitFor();
+    const cameraState = () => page.evaluate(() => {
+      window.dispatchEvent(new Event('pagehide'));
+      return JSON.parse(sessionStorage.getItem('math-woods:concept-map:camera'));
+    });
+    const reset = async () => {
+      await page.getByRole('button', { name: en.conceptMap.resetView }).click();
+      await page.waitForTimeout(400);
+      const state = await cameraState();
+      assert.ok(Math.abs(state.x - 0.5) < 0.001 && Math.abs(state.y - 0.5) < 0.001 && Math.abs(state.ratio - 1) < 0.001, 'reset recovers the overview');
+    };
+    const wheel = async (deltaY, deltaMode = 0, burst = 1) => {
+      await page.locator('canvas.sigma-mouse').evaluate((canvas, args) => {
+        const box = canvas.getBoundingClientRect();
+        for (let i = 0; i < args.burst; i++) canvas.dispatchEvent(new WheelEvent('wheel', {
+          bubbles: true, cancelable: true, clientX: box.left + box.width * 0.85,
+          clientY: box.top + box.height * 0.75, deltaY: args.deltaY, deltaMode: args.deltaMode
+        }));
+      }, { deltaY, deltaMode, burst });
+      await page.waitForTimeout(200);
+      return cameraState();
+    };
+    for (const [delta, unit, burst] of [[-120,0,1],[-100000,0,1],[-3,1,1],[-1,2,1],[-120,0,100],[120,0,100]]) {
+      await reset();
+      const state = await wheel(delta, unit, burst);
+      assert.ok(state.ratio >= 1 / 1.151 && state.ratio <= 1.151, `bounded notch/burst: ${JSON.stringify({delta,unit,burst,state,deviceScaleFactor,reducedMotion})}`);
+      assert.ok(delta < 0 ? state.ratio < 1 : state.ratio > 1, 'wheel direction is respected');
+      assert.ok(Math.abs(state.x - 0.5) < 0.2 && Math.abs(state.y - 0.5) < 0.2, 'off-centre wheel does not throw the graph away');
+    }
+    await reset();
+    assert.ok((await wheel(-1)).ratio > 0.99, 'tiny high-resolution event makes a tiny zoom');
+    await reset();
+    await page.evaluate(() => {
+      const key = 'math-woods:concept-map:camera', state = JSON.parse(sessionStorage.getItem(key));
+      sessionStorage.setItem(key, JSON.stringify({...state, x: 10000, y: -10000}));
+    });
+    await page.reload();
+    await page.locator('.concept-map-stage[data-ready="true"]').waitFor();
+    await page.waitForTimeout(400);
+    const restored = await cameraState();
+    assert.ok(Math.abs(restored.x - 0.5) < 1 && Math.abs(restored.y - 0.5) < 1, 'an old lost view is constrained back to the graph');
+    await reset();
+    await context.close();
+  }
+
   // The French map only holds French pages.
   requests.length = 0;
   context = await browser.newContext({ viewport: { width: 1280, height: 900 } });

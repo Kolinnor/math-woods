@@ -23,6 +23,19 @@ spells out what a concept cites and what cites it.
 
 Resolution lives in `lib/concept-browser-view.ts`; the switch is `components/ConceptBrowserViewSwitch.tsx`.
 
+## Wheel navigation
+
+Wheel input is normalized for pixel, line and page deltas. A single event changes the camera ratio
+by at most a factor of 1.15; small high-resolution events have proportionally less effect. Events
+in the same direction within 80 ms are ignored, including with reduced motion enabled. This replaces
+Sigma's default fixed 1.7 factor per event. Zoom remains anchored under the cursor, and camera pan
+boundaries keep the graph in reach. The reset control visibly says **Voir toute la carte** / **Show
+the whole map**; the keyboard shortcut `0` also resets the view.
+
+Browser regressions cover very large deltas, line/page units, bursts, tiny deltas, device pixel ratios
+1 and 2, reduced motion, and recovery of an off-screen camera saved by an older version. These are
+simulated wheel events, not a validation on a particular physical mouse.
+
 ## Which concepts and links are shown
 
 Built by `lib/concept-map.ts` from `Concept`, `ConceptAlias`, `ConceptRedirect` and `InternalLink`.

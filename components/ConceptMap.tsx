@@ -700,8 +700,9 @@ export function ConceptMap({
               <button type="button" className="concept-map-control" onClick={() => rendererRef.current?.zoomOut()} aria-label={copy.zoomOut} title={copy.zoomOut}>
                 <Minus aria-hidden="true" size={18} />
               </button>
-              <button type="button" className="concept-map-control" onClick={() => rendererRef.current?.reset()} aria-label={copy.resetView} title={copy.resetView}>
+              <button type="button" className="concept-map-control concept-map-reset" onClick={() => rendererRef.current?.reset()} aria-label={copy.resetView} title={copy.resetView}>
                 <Scan aria-hidden="true" size={17} />
+                <span>{copy.resetView}</span>
               </button>
               {canFullscreen && (
                 <button

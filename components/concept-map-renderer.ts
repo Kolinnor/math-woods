@@ -212,7 +212,43 @@ export function createConceptMapRenderer(
 
   const renderer = new Sigma(graph, container, settings);
   const camera = renderer.getCamera();
+  // Sigma frames the graph in [0, 1]. Keep a little room around it for focusing
+  // edge nodes (and the mobile detail sheet), without allowing unbounded drift.
+  // Clamping the whole viewport to the graph would prevent centering those nodes.
+  camera.clean = (next) => ({
+    ...next,
+    x: Math.max(-0.25, Math.min(1.25, next.x)),
+    y: Math.max(-0.25, Math.min(1.25, next.y))
+  });
   state.level = conceptMapLevelForRatio(camera.ratio);
+
+  // Sigma's default wheel zoom is a fixed 1.7x jump, even for a tiny high-resolution
+  // wheel event. Respect delta units, cap a notch, and ignore same-direction bursts.
+  // Unlike animation duration, this rate limit also applies with reduced motion.
+  let lastWheelTime = -Infinity;
+  let lastWheelDirection = 0;
+  renderer.getMouseCaptor().on("wheel", (event) => {
+    event.preventSigmaDefault();
+    // Sigma 3 spreads the mouse coordinates into a separate wheel object, while
+    // preventSigmaDefault still closes over the original. Mark the emitted object
+    // too, otherwise Sigma applies its default zoom after ours.
+    event.sigmaDefaultPrevented = true;
+    const wheel = event.original as WheelEvent;
+    const delta = wheel.deltaY * (wheel.deltaMode === 1 ? 16 : wheel.deltaMode === 2 ? container.clientHeight : 1);
+    if (!Number.isFinite(delta) || delta === 0) return;
+    const now = performance.now();
+    const direction = Math.sign(delta);
+    if (direction === lastWheelDirection && now - lastWheelTime < 80) return;
+    lastWheelTime = now;
+    lastWheelDirection = direction;
+    const factor = Math.exp(Math.max(-1, Math.min(1, delta / 100)) * Math.log(1.15));
+    const ratio = camera.getBoundedRatio(camera.ratio * factor);
+    if (ratio === camera.ratio) return;
+    camera.animate(renderer.getViewportZoomedState(event, ratio), {
+      duration: options.reducedMotion ? 0 : 120,
+      easing: "quadraticOut"
+    });
+  });
 
   function drawCollectedLabels() {
     const context = renderer.getCanvases().labels.getContext("2d");
