@@ -20,6 +20,17 @@ covers sustained 5xx, healthy traffic without a 5xx series, and absent telemetry
 - **Math Woods Web Vitals** provide browser LCP, INP, CLS, FCP, and TTFB grouped by normalized route and broad mobile/desktop category.
 - `/moderation/performance` queries Prometheus through the internal Docker network and is protected by `requireOwner()`.
 
+Historical queries have bounded timeouts adapted to the selected range: 4 seconds for 24h,
+10 seconds for 7d, and 15 seconds for 30d. Each query also sends Prometheus a server-side
+timeout one second shorter. Live alerts and collector status keep their 4-second timeout.
+The monthly LCP query was measured at about 6 seconds on September 26, 2026; the former
+fixed 4-second timeout caused the whole page to report that monitoring was unavailable.
+
+Each chart and section now fails independently. A partial failure keeps successful results
+visible with a notice, and unavailable alerts are never presented as "no active alert".
+Successful empty results mean no data for that period, not a disabled monitoring feature.
+Regression coverage: `node --experimental-strip-types --test tests/observability-dashboard.test.mjs`.
+
 Prometheus, node-exporter, and cAdvisor only use Docker `expose`; they publish no host port. Caddy rejects public requests to `/api/internal/metrics` before they reach Next.js.
 
 ## Privacy and cardinality

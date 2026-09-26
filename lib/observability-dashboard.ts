@@ -42,6 +42,7 @@ export type WebVitalQuality = {
 
 export type ObservabilityDashboard = {
   available: boolean;
+  unavailableSections: string[];
   message?: string;
   charts: ObservabilityChart[];
   alerts: ObservabilityAlert[];
@@ -70,10 +71,10 @@ type PrometheusQueryData<T> = {
   result: T[];
 };
 
-const RANGE_CONFIG: Record<ObservabilityRange, { seconds: number; step: number }> = {
-  "24h": { seconds: 24 * 60 * 60, step: 5 * 60 },
-  "7d": { seconds: 7 * 24 * 60 * 60, step: 30 * 60 },
-  "30d": { seconds: 30 * 24 * 60 * 60, step: 2 * 60 * 60 }
+const RANGE_CONFIG: Record<ObservabilityRange, { seconds: number; step: number; timeoutMs: number }> = {
+  "24h": { seconds: 24 * 60 * 60, step: 5 * 60, timeoutMs: 4_000 },
+  "7d": { seconds: 7 * 24 * 60 * 60, step: 30 * 60, timeoutMs: 10_000 },
+  "30d": { seconds: 30 * 24 * 60 * 60, step: 2 * 60 * 60, timeoutMs: 15_000 }
 };
 
 const CHART_QUERIES: Array<Omit<ObservabilityChart, "points"> & { query: string }> = [
@@ -143,7 +144,7 @@ function prometheusBaseUrl() {
   return process.env.OBSERVABILITY_PROMETHEUS_URL?.trim().replace(/\/$/, "") ?? "";
 }
 
-async function prometheusFetch<T>(path: string, params: Record<string, string>) {
+async function prometheusFetch<T>(path: string, params: Record<string, string>, timeoutMs = 4_000) {
   const baseUrl = prometheusBaseUrl();
   if (!baseUrl) throw new Error("Performance history is not configured in this environment.");
   const url = new URL(path, `${baseUrl}/`);
@@ -151,7 +152,7 @@ async function prometheusFetch<T>(path: string, params: Record<string, string>) 
 
   const response = await fetch(url, {
     cache: "no-store",
-    signal: AbortSignal.timeout(4_000)
+    signal: AbortSignal.timeout(timeoutMs)
   });
   if (!response.ok) throw new Error(`Prometheus returned ${response.status}.`);
   const payload = await response.json() as PrometheusEnvelope<T>;
@@ -168,8 +169,10 @@ async function queryRange(query: string, range: ObservabilityRange) {
       query,
       start: String(end - config.seconds),
       end: String(end),
-      step: String(config.step)
-    }
+      step: String(config.step),
+      timeout: `${(config.timeoutMs - 1_000) / 1_000}s`
+    },
+    config.timeoutMs
   );
   return (data.result[0]?.values ?? []).flatMap(([timestamp, rawValue]) => {
     const value = Number(rawValue);
@@ -177,10 +180,11 @@ async function queryRange(query: string, range: ObservabilityRange) {
   });
 }
 
-async function queryVector(query: string) {
+async function queryVector(query: string, timeoutMs = 4_000) {
   const data = await prometheusFetch<PrometheusQueryData<PrometheusVectorResult>>(
     "/api/v1/query",
-    { query }
+    { query, timeout: `${(timeoutMs - 1_000) / 1_000}s` },
+    timeoutMs
   );
   return data.result;
 }
@@ -211,7 +215,8 @@ async function loadTargets() {
 async function loadSlowRoutes(range: ObservabilityRange) {
   const window = range;
   const results = await queryVector(
-    `1000 * topk(8, histogram_quantile(0.75, sum by (le, route, device) (increase(math_woods_web_vital_duration_seconds_bucket{name="LCP"}[${window}]))))`
+    `1000 * topk(8, histogram_quantile(0.75, sum by (le, route, device) (increase(math_woods_web_vital_duration_seconds_bucket{name="LCP"}[${window}]))))`,
+    RANGE_CONFIG[range].timeoutMs
   );
   return results.flatMap((result) => {
     const lcpMs = Number(result.value[1]);
@@ -227,7 +232,8 @@ async function loadSlowRoutes(range: ObservabilityRange) {
 async function loadWebVitalQuality(range: ObservabilityRange) {
   const totalQuery = `sum by (name, device) (increase(math_woods_web_vital_reports_total[${range}]))`;
   const poorQuery = `sum by (name, device) (increase(math_woods_web_vital_reports_total{rating="poor"}[${range}]))`;
-  const [totals, poor] = await Promise.all([queryVector(totalQuery), queryVector(poorQuery)]);
+  const timeoutMs = RANGE_CONFIG[range].timeoutMs;
+  const [totals, poor] = await Promise.all([queryVector(totalQuery, timeoutMs), queryVector(poorQuery, timeoutMs)]);
   const poorByKey = new Map(poor.map((item) => [
     `${item.metric.name}:${item.metric.device}`,
     Number(item.value[1])
@@ -243,34 +249,36 @@ async function loadWebVitalQuality(range: ObservabilityRange) {
 }
 
 export async function loadObservabilityDashboard(range: ObservabilityRange): Promise<ObservabilityDashboard> {
-  try {
-    const [chartPoints, alerts, targets, slowRoutes, webVitalQuality] = await Promise.all([
-      Promise.all(CHART_QUERIES.map((chart) => queryRange(chart.query, range))),
-      loadAlerts(),
-      loadTargets(),
-      loadSlowRoutes(range),
-      loadWebVitalQuality(range)
-    ]);
-    return {
-      available: true,
-      charts: CHART_QUERIES.map(({ query: _query, ...chart }, index) => ({
-        ...chart,
-        points: chartPoints[index] ?? []
-      })),
-      alerts,
-      targets,
-      slowRoutes,
-      webVitalQuality
-    };
-  } catch (error) {
-    return {
-      available: false,
-      message: error instanceof Error ? error.message : "Performance history is unavailable.",
-      charts: [],
-      alerts: [],
-      targets: [],
-      slowRoutes: [],
-      webVitalQuality: []
-    };
+  const unavailableSections: string[] = [];
+  let message: string | undefined;
+  // A slow query must not hide unrelated charts or turn unknown alerts into "no alerts".
+  async function section<T>(key: string, load: () => Promise<T[]>) {
+    try {
+      return await load();
+    } catch (error) {
+      unavailableSections.push(key);
+      message ??= error instanceof Error ? error.message : "Performance history is unavailable.";
+      return [];
+    }
   }
+  const [chartPoints, alerts, targets, slowRoutes, webVitalQuality] = await Promise.all([
+    Promise.all(CHART_QUERIES.map((chart) => section(chart.key, () => queryRange(chart.query, range)))),
+    section("alerts", loadAlerts),
+    section("targets", loadTargets),
+    section("slowRoutes", () => loadSlowRoutes(range)),
+    section("webVitalQuality", () => loadWebVitalQuality(range))
+  ]);
+  return {
+    available: unavailableSections.length < CHART_QUERIES.length + 4,
+    unavailableSections,
+    message,
+    charts: CHART_QUERIES.map(({ query: _query, ...chart }, index) => ({
+      ...chart,
+      points: chartPoints[index] ?? []
+    })),
+    alerts,
+    targets,
+    slowRoutes,
+    webVitalQuality
+  };
 }

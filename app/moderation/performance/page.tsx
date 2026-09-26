@@ -24,9 +24,11 @@ const copy = {
     targets: "Collectors",
     browserQuality: "Browser quality",
     slowRoutes: "Slowest LCP routes",
-    noBrowserData: "Browser measurements will appear after visitors load the new version.",
+    noBrowserData: "No browser measurements are available for this period.",
     noData: "No data yet",
-    unavailable: "Monitoring is not available yet",
+    unavailable: "Monitoring is currently unavailable",
+    partial: "Some measurements could not be loaded. Available results are shown below; try again shortly.",
+    sectionUnavailable: "These measurements could not be loaded. Try again shortly.",
     reports: "reports",
     poor: "poor",
     privacy: "Routes are grouped and measurements contain no account identifier, full content slug, or persistent IP address."
@@ -42,9 +44,11 @@ const copy = {
     targets: "Collecteurs",
     browserQuality: "Qualité côté navigateur",
     slowRoutes: "Pages au LCP le plus lent",
-    noBrowserData: "Les mesures des navigateurs apparaîtront après les premières visites sur la nouvelle version.",
+    noBrowserData: "Aucune mesure de navigateur disponible pour cette période.",
     noData: "Pas encore de données",
-    unavailable: "Le suivi n’est pas encore disponible",
+    unavailable: "Le suivi est temporairement indisponible",
+    partial: "Certaines mesures n’ont pas pu être chargées. Les résultats disponibles sont affichés ci-dessous ; réessayez dans un instant.",
+    sectionUnavailable: "Ces mesures n’ont pas pu être chargées. Réessayez dans un instant.",
     reports: "mesures",
     poor: "mauvaises",
     privacy: "Les pages sont regroupées et les mesures ne contiennent aucun identifiant de compte, slug complet ou adresse IP persistante."
@@ -97,10 +101,13 @@ export default async function PerformancePage({
         </section>
       ) : (
         <>
+          {dashboard.unavailableSections.length > 0 && (
+            <p className="observability-unavailable" role="status">{t.partial}</p>
+          )}
           <section className="observability-status-band">
             <div>
               <h2><AlertTriangle size={19} aria-hidden="true" /> {t.activeAlerts}</h2>
-              {dashboard.alerts.length === 0 ? (
+              {dashboard.unavailableSections.includes("alerts") ? <p>{t.sectionUnavailable}</p> : dashboard.alerts.length === 0 ? (
                 <p className="observability-ok"><CheckCircle2 size={17} aria-hidden="true" /> {t.noAlerts}</p>
               ) : (
                 <div className="observability-alerts">
@@ -115,6 +122,7 @@ export default async function PerformancePage({
             <div>
               <h2><Server size={19} aria-hidden="true" /> {t.targets}</h2>
               <div className="observability-targets">
+                {dashboard.unavailableSections.includes("targets") && <p>{t.sectionUnavailable}</p>}
                 {dashboard.targets.map((target) => (
                   <span key={target.job} className={target.up ? "up" : "down"}>
                     <i aria-hidden="true" />{target.job}
@@ -126,7 +134,7 @@ export default async function PerformancePage({
 
           <section className="observability-grid" aria-label={t.description}>
             {dashboard.charts.map((chart) => (
-              <ObservabilityChart key={chart.key} chart={chart} noDataLabel={t.noData} />
+              <ObservabilityChart key={chart.key} chart={chart} noDataLabel={dashboard.unavailableSections.includes(chart.key) ? t.sectionUnavailable : t.noData} />
             ))}
           </section>
 
@@ -154,7 +162,7 @@ export default async function PerformancePage({
                   </tbody>
                 </table>
               </div>
-            ) : <p className="observability-no-browser-data">{t.noBrowserData}</p>}
+            ) : <p className="observability-no-browser-data">{dashboard.unavailableSections.includes("webVitalQuality") ? t.sectionUnavailable : t.noBrowserData}</p>}
 
             <h3>{t.slowRoutes}</h3>
             {dashboard.slowRoutes.length > 0 ? (
@@ -167,7 +175,7 @@ export default async function PerformancePage({
                   </div>
                 ))}
               </div>
-            ) : <p className="observability-no-browser-data">{t.noBrowserData}</p>}
+            ) : <p className="observability-no-browser-data">{dashboard.unavailableSections.includes("slowRoutes") ? t.sectionUnavailable : t.noBrowserData}</p>}
           </section>
         </>
       )}
