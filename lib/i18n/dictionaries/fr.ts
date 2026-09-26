@@ -1237,7 +1237,6 @@ export const fr = {
     }
   },
   conceptMap: {
-    adminOnlyNotice: "Accessible seulement aux admins",
     viewSwitchLabel: "Affichage des concepts",
     viewMap: "Carte",
     viewList: "Liste",

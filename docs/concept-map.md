@@ -1,9 +1,8 @@
 # Concept map
 
-For admins and the owner, `/concepts` opens on an interactive map of the concept pages and their
-citations, inspired by Obsidian's graph view. The notice above it reads **Accessible seulement aux
-admins** (English: **Accessible to admins only**). Everyone else keeps the classic **List** view,
-with no Map/List switch. An explicit map URL or a remembered map cookie cannot bypass this rule.
+For everyone, including visitors without an account, `/concepts` opens on an interactive map of
+the concept pages and their citations, inspired by Obsidian's graph view. The Map/List switch
+lets each reader choose the classic **List** view. There is no restricted-access notice.
 
 A line on the map means that one page *cites* the other (`[[…]]` in its text), not necessarily that
 it is a prerequisite. The map shows no legend: colors are the domain colors, and the side panel
@@ -14,7 +13,7 @@ spells out what a concept cites and what cites it.
 - `?view=map` or `?view=list` chooses the view explicitly (shareable links, works without JavaScript).
 - Otherwise the `math-woods-concepts-view` cookie (one year) remembers the last choice made with the
   Map/List switch; opening an explicit `?view=` link does not change it.
-- Without either, the map is shown to admins/owner; other readers always see the list.
+- Without either, the map is shown to everyone.
 - Going back to the list restores the filters LiveSearchForm remembered for the tab
   (`math-woods:filters:concepts`), except the page number.
 - The map view runs none of the list queries. The page renders the map frame (search, buttons,
@@ -45,8 +44,8 @@ Built by `lib/concept-map.ts` from `Concept`, `ConceptAlias`, `ConceptRedirect` 
   reader's language is not on that map. Links open the page with `?viewLanguage=` of the map.
 - **Visibility.** Pages with status `MISSING` and pages in a non-active language are never shown, as
   in the sitemap, the random concept and the public statistics. `canAppearInConceptBrowser` only
-  means "featured" and does not hide a concept. The graph data is shared internally across admins,
-  but its API checks the session and admin/owner role before every response, including `304`.
+  means "featured" and does not hide a concept. The graph data is public and independent of the
+  visitor's session. Administrative editing and list filters retain their own permission checks.
 - **Links.** Only `InternalLink` rows whose source is a concept page of that language
   (`sourceType = CONCEPT`). Problems, solutions and explorations are not part of this map.
 - **Target resolution** mirrors what a reader reaches by following the link on `/concepts/[slug]`:
@@ -148,8 +147,8 @@ Next steps if the map grows well beyond 50,000 concepts, not implemented yet:
 `$\mathbb{Z}/n\mathbb{Z}$` becomes `ℤ/nℤ`, `$L^p$` becomes `Lᵖ`); the side panel shows the real
 rendering.
 
-Access: `401` for visitors, `403` for non-admin accounts. Headers: `ETag` (304 on `If-None-Match`
-after authorization), `Cache-Control: private, no-store`, `Vary: Cookie, Accept-Encoding`.
+Access: public, without authentication. Headers: `ETag` (304 on `If-None-Match`),
+`Cache-Control: public, max-age=30`, `Vary: Accept-Encoding`.
 The in-process server cache is retained. Next does not compress this response itself; Caddy's `encode zstd gzip`
 does in production.
 

@@ -1232,7 +1232,6 @@ export const en = {
     }
   },
   conceptMap: {
-    adminOnlyNotice: "Accessible to admins only",
     viewSwitchLabel: "Concept display",
     viewMap: "Map",
     viewList: "List",

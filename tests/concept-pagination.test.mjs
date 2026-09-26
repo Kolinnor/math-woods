@@ -89,8 +89,8 @@ test('actual page handles zero matches and a requested page beyond the last resu
   assert.equal(empty.elements.filter(e=>e.type==='nav').length,0);
 });
 
-test('admins default to the map with a restricted-access notice; list remains available',async()=>{
-  const map=await page({},rows,undefined,'ADMIN');
+test('visitors default to the public map without a restricted-access notice; list remains available',async()=>{
+  const map=await page({},rows,undefined,null);
   assert.equal(map.calls.length,0);
   assert.equal(map.ids.length,0);
   assert.equal(JSON.stringify(map.preloads),JSON.stringify([{href:'/api/concepts/map?lang=fr&tier=1',options:{as:'fetch',crossOrigin:'anonymous'}}]),'the map data is requested with the page');
@@ -99,7 +99,7 @@ test('admins default to the map with a restricted-access notice; list remains av
   assert.equal(mapElement.props.language,'fr');
   assert.equal(mapElement.props.listHref,'/concepts?view=list');
   assert.equal(map.elements.find(e=>e.props.view)?.props.view,'map');
-  assert.ok(map.elements.some(e=>e.props.children===fr.conceptMap.adminOnlyNotice));
+  assert.ok(!map.elements.some(e=>e.props.className==='concept-map-admin-notice'));
   const remembered=await page({},rows,'list','ADMIN');
   assert.equal(remembered.ids.length,75);
   assert.equal(remembered.preloads.length,0);
@@ -108,12 +108,14 @@ test('admins default to the map with a restricted-access notice; list remains av
   assert.equal(explicit.calls.length,0);
 });
 
-test('visitors, members and moderators always get the list, even with a map URL or cookie',async()=>{
-  for(const role of [null,'USER','MODERATOR']) for(const query of [{},{view:'map'},{view:'list'}]) {
-    const result=await page(query,rows,'map',role);
-    assert.equal(result.ids.length,75);
-    assert.equal(result.preloads.length,0);
-    assert.ok(!result.elements.some(e=>e.props.copy&&e.props.listHref));
-    assert.ok(!result.elements.some(e=>e.props.view));
+test('every role can choose map or list and the remembered choice is preserved',async()=>{
+  for(const role of [null,'USER','MODERATOR','ADMIN','OWNER']) for(const cookie of [undefined,'map','list']) for(const query of [{},{view:'map'},{view:'list'}]) {
+    const result=await page(query,rows,cookie,role);
+    const expected=query.view??cookie??'map';
+    assert.equal(result.ids.length,expected==='list'?75:0);
+    assert.equal(result.preloads.length,expected==='map'?1:0);
+    assert.equal(Boolean(result.elements.some(e=>e.props.copy&&e.props.listHref)),expected==='map');
+    assert.equal(result.elements.find(e=>e.props.view)?.props.view,expected);
+    assert.ok(!result.elements.some(e=>e.props.className==='concept-map-admin-notice'));
   }
 });

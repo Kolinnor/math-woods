@@ -110,11 +110,10 @@ export default async function ConceptsPage({
     viewLanguage?: string;
   }>;
 }) {
-  const [t, interfaceLocale, user] = await Promise.all([getTranslations(), getInterfaceLocale(), getCurrentUser()]);
+  const [t, interfaceLocale] = await Promise.all([getTranslations(), getInterfaceLocale()]);
   const preferredLanguage = await getPreferredContentLanguage();
   const params = await searchParams;
-  const canViewMap = Boolean(user && canUseAdminTools(user));
-  const view = canViewMap ? resolveConceptBrowserView(params.view, (await cookies()).get(CONCEPT_BROWSER_VIEW_COOKIE)?.value) : "list";
+  const view = resolveConceptBrowserView(params.view, (await cookies()).get(CONCEPT_BROWSER_VIEW_COOKIE)?.value);
   const heroActions = (
     <>
       <Link href="/concepts/random" prefetch={false} className="button secondary concept-browser-action-button">
@@ -135,7 +134,7 @@ export default async function ConceptsPage({
       />
     </>
   );
-  const viewSwitch = canViewMap && (
+  const viewSwitch = (
     <div className="concept-browser-toolbar">
       <ConceptBrowserViewSwitch
         view={view}
@@ -158,7 +157,6 @@ export default async function ConceptsPage({
         workspaceClassName="concept-browser-workspace"
       >
         {viewSwitch}
-        <p className="concept-map-admin-notice">{t.conceptMap.adminOnlyNotice}</p>
         <ConceptMap
           language={preferredLanguage}
           copy={t.conceptMap}
@@ -198,6 +196,7 @@ export default async function ConceptsPage({
   const sortValue = parseConceptSort(sort);
   const exerciseCountValue = parseConceptExerciseCount(exerciseCount || minExercises);
   const exerciseCountModeValue = parseConceptExerciseCountMode(exerciseCountMode);
+  const user = await getCurrentUser();
   const canFilterByProblemLinks = Boolean(user && canUseAdminTools(user));
   const problemLinkFilter = canFilterByProblemLinks ? parseProblemLinkFilter(problemLinks) : "all";
   const domainValue = domain ? parseDomainCode(domain) : undefined;

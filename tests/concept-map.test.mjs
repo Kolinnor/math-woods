@@ -8,39 +8,37 @@ import * as layoutModule from '../lib/concept-map-layout.ts';
 import * as text from '../lib/concept-map-text.ts';
 import * as view from '../lib/concept-browser-view.ts';
 import * as languages from '../lib/languages.ts';
-import * as permissions from '../lib/permissions.ts';
 
-test('map API authorizes every request before reading data or returning an ETag response', async () => {
+test('map API is public, independent of the session, with language/tier parsing and ETag revalidation', async () => {
   const source = ts.transpileModule(readFileSync(new URL('../app/api/concepts/map/route.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText;
-  let user = null, reads = 0;
+  const reads = [];
   const context = { exports: {}, URL, Response, require: name => ({
-    '@/lib/auth': { getCurrentUser: async () => user },
-    '@/lib/permissions': permissions,
+    '@/lib/auth': { getCurrentUser: async () => { throw new Error('Public graph must not query the session'); } },
     '@/lib/languages': languages,
-    '@/lib/concept-map-data': { CONCEPT_MAP_MAX_TIER: 10, getConceptMapResponse: async () => {
-      reads++; return { body: '{"nodes":[]}', etag: '"fixture"', provisional: false };
+    '@/lib/concept-map-data': { CONCEPT_MAP_MAX_TIER: 10, getConceptMapResponse: async (language, tier) => {
+      reads.push({language,tier}); return { body: '{"nodes":[]}', etag: '"fixture"', provisional: false };
     } }
   })[name] };
   vm.runInNewContext(source, context);
-  const request = etag => new Request('http://localhost/api/concepts/map?lang=fr&tier=2', {
-    headers: etag ? { 'If-None-Match': '"fixture"' } : {}
-  });
-  for(const role of [null, 'USER', 'MODERATOR', 'ADMIN', 'OWNER']) {
-    user = role ? { id: 1, role } : null;
-    const allowed = role === 'ADMIN' || role === 'OWNER';
-    for(const etag of [false,true]) {
-      const before = reads;
-      const response = await context.exports.GET(request(etag));
-      assert.equal(response.status, allowed ? (etag ? 304 : 200) : role ? 403 : 401);
-      assert.equal(reads - before, allowed ? 1 : 0);
-      assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
-      assert.match(response.headers.get('Vary'), /Cookie/);
+  for(const cookie of ['', 'math_woods_session=expired-or-present']) {
+    for(const etag of ['', '"fixture"', 'W/"fixture"', '"old", "fixture"']) {
+      const response = await context.exports.GET(new Request('http://localhost/api/concepts/map?lang=fr&tier=2', {
+        headers: {'Cookie':cookie,'If-None-Match':etag}
+      }));
+      assert.equal(response.status, etag ? 304 : 200);
+      assert.equal(response.headers.get('Cache-Control'), 'public, max-age=30');
+      assert.equal(response.headers.get('Vary'), 'Accept-Encoding');
+      assert.equal(response.headers.get('Content-Language'),'fr');
+      assert.equal(await response.text(), etag ? '' : '{"nodes":[]}');
+      assert.deepEqual(reads.at(-1),{language:'fr',tier:2});
     }
   }
-  user = null;
-  assert.equal((await context.exports.GET(request(true))).status,401,'logging out cannot reuse the admin ETag');
+  for(const [params,language,tier] of [['lang=en&tier=999','en',10],['lang=fr&tier=-2','fr',1],['lang=unknown&tier=no','en',1]]) {
+    assert.equal((await context.exports.GET(new Request(`http://localhost/api/concepts/map?${params}`))).status,200);
+    assert.deepEqual(reads.at(-1),{language,tier});
+  }
 });
 
 const { buildConceptMapGraph, buildConceptMapPayload, conceptMapLevels, conceptMapStructureSignature, prepareConceptMap } = conceptMap;
