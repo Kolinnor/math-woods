@@ -42,6 +42,7 @@ import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import {
   selectContentTranslation,
+  selectExactContentTranslation,
   selectContentTranslationsByGroup
 } from "@/lib/translation-routing";
 import { selectTipProblemTranslations } from "@/lib/tip-problem-translations";
@@ -237,14 +238,7 @@ export default async function HomePage({
         include: { author: true }
       })
     : [];
-  const dailyProblem =
-    selectContentTranslation(
-      dailyTranslations.map((problem) => ({
-        ...problem,
-        isSource: problem.translatedFromProblemId === null
-      })),
-      preferredLanguage
-    );
+  const dailyProblem = selectExactContentTranslation(dailyTranslations, preferredLanguage);
   const usesScheduledDailyProblem = Boolean(
     scheduledDailyGroup && dailyProblem?.translationGroupId === scheduledDailyGroup
   );

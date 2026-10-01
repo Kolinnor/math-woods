@@ -3,6 +3,7 @@ import {
   clearOAuthCookie,
   finishOAuthCallback,
   OAuthAccountDeactivatedError,
+  OAuthAttemptExpiredError,
   oauthAppUrl,
   parseOAuthProvider
 } from "@/lib/oauth";
@@ -19,7 +20,9 @@ export async function GET(
   } catch (error) {
     console.error("OAuth callback failed", provider, error);
     await clearOAuthCookie();
-    const reason = error instanceof OAuthAccountDeactivatedError ? "deactivated" : "failed";
+    const reason = error instanceof OAuthAccountDeactivatedError
+      ? "deactivated"
+      : error instanceof OAuthAttemptExpiredError ? "expired" : "failed";
     return NextResponse.redirect(oauthAppUrl(`/login?oauthError=${reason}`));
   }
 }

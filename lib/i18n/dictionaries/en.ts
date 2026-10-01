@@ -92,6 +92,7 @@ export const en = {
       invalidAccount: "The account information could not be accepted. Please check the form and try again.",
       oauthUnavailable: "This sign-in provider is not available right now.",
       oauthDeactivated: "This external account is linked to a deactivated Math Woods account. Reactivate that account before signing in again.",
+      oauthExpired: "This sign-in attempt has expired or is no longer available. Click your provider’s button again to restart. If this keeps happening, check that your browser allows cookies for Math Woods.",
       oauthFailed: "The external sign-in could not be completed. Please try again.",
       oauthUnknownProvider: "Unknown sign-in provider.",
       tooManyPasswordResets: "Too many requests. Please wait a moment and try again."

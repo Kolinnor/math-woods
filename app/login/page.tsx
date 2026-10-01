@@ -18,6 +18,7 @@ function oauthErrorMessage(reason: string | undefined, t: Awaited<ReturnType<typ
   if (reason === "deactivated") {
     return t.auth.errors.oauthDeactivated;
   }
+  if (reason === "expired") return t.auth.errors.oauthExpired;
   if (reason === "failed") return t.auth.errors.oauthFailed;
   if (reason === "provider") return t.auth.errors.oauthUnknownProvider;
   return null;

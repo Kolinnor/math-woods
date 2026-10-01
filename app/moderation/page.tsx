@@ -21,6 +21,7 @@ import {
 import { requireModerator } from "@/lib/auth";
 import { formatUserDateTime } from "@/lib/date-format";
 import { prisma } from "@/lib/db";
+import { isMetaCrawlerErrorReport } from "@/lib/client-error-filter";
 import { qualityLabel } from "@/lib/quality";
 import { canUseAdminTools, canUseOwnerTools } from "@/lib/permissions";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
@@ -332,7 +333,11 @@ export default async function ModerationPage({ searchParams }: ModerationPagePro
                     {errorReport.source} / {formatUserDateTime(errorReport.createdAt, timeZone)}
                   </div>
                   <p className="muted text-sm">
-                    {errorReport.user ? <>reported while signed in as <UserName user={errorReport.user} /></> : "anonymous user"}
+                    {errorReport.user
+                      ? <>reported while signed in as <UserName user={errorReport.user} /></>
+                      : isMetaCrawlerErrorReport(errorReport)
+                        ? "Crawler (identifies as Meta/Facebook)"
+                        : "anonymous user"}
                   </p>
                 </div>
                 <Link href={errorReport.path as never} className="underline">

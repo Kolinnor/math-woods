@@ -2,7 +2,7 @@ import { NotificationType, Role } from "@prisma/client";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { isBrowserExtensionError, isOpaqueWindowScriptError } from "@/lib/client-error-filter";
+import { isBrowserExtensionError, isMetaCrawlerResourceError, isOpaqueWindowScriptError } from "@/lib/client-error-filter";
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -79,6 +79,11 @@ export async function POST(request: Request) {
       userId: currentUser?.id ?? null
     }
   });
+
+  // Keep crawler transport errors for diagnosis; other errors still notify owners.
+  if (isMetaCrawlerResourceError({ userAgent, userId: currentUser?.id, message })) {
+    return NextResponse.json({ ok: true });
+  }
 
   const owners = await prisma.user.findMany({
     where: { role: Role.OWNER },

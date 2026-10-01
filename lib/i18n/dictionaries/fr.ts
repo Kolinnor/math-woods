@@ -94,6 +94,7 @@ export const fr = {
       invalidAccount: "Les informations du compte n'ont pas pu être acceptées. Veuillez vérifier le formulaire, puis réessayer.",
       oauthUnavailable: "Ce service de connexion n’est pas disponible pour le moment.",
       oauthDeactivated: "Ce compte externe est lié à un compte Math Woods désactivé. Réactivez ce compte avant de vous reconnecter.",
+      oauthExpired: "Cette tentative de connexion a expiré ou n’est plus disponible. Cliquez à nouveau sur le bouton de votre fournisseur pour recommencer. Si cela se reproduit, vérifiez que votre navigateur autorise les cookies pour Math Woods.",
       oauthFailed: "La connexion externe n’a pas pu aboutir. Veuillez réessayer.",
       oauthUnknownProvider: "Service de connexion inconnu.",
       tooManyPasswordResets: "Trop de tentatives. Veuillez patienter un instant, puis réessayer."

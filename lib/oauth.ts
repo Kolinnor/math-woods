@@ -330,6 +330,13 @@ async function finishGithubCallback(
   };
 }
 
+export class OAuthAttemptExpiredError extends Error {
+  constructor() {
+    super("OAuth attempt expired.");
+    this.name = "OAuthAttemptExpiredError";
+  }
+}
+
 export class OAuthAccountDeactivatedError extends Error {
   constructor() {
     super("This external identity belongs to a deactivated Math Woods account.");
@@ -340,7 +347,7 @@ export class OAuthAccountDeactivatedError extends Error {
 export async function finishOAuthCallback(providerKey: OAuthProviderKey, currentUrl: URL) {
   const provider = configuredProvider(providerKey);
   const attempt = await attemptFromCookie(provider.provider);
-  if (!attempt) throw new Error("OAuth attempt expired.");
+  if (!attempt) throw new OAuthAttemptExpiredError();
   if (attempt.providerAccountId) return "/login/complete";
 
   const {

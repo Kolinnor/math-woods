@@ -1,3 +1,14 @@
+// User-agent identification only affects notifications, never access or report storage.
+export function isMetaCrawlerErrorReport(input: { userAgent?: string | null; userId?: number | null }) {
+  return input.userId == null
+    && /(?:^|[\s;(])(?:meta-externalagent|meta-externalfetcher|facebookexternalhit|facebot)(?:[\s/;)]|$)/i.test(input.userAgent ?? "");
+}
+
+export function isMetaCrawlerResourceError(input: { userAgent?: string | null; userId?: number | null; message: string }) {
+  return isMetaCrawlerErrorReport(input)
+    && /^(?:Loading chunk \d+ failed\.|network error$|Load failed$|Failed to fetch$)/i.test(input.message.trim());
+}
+
 const SCRIPT_URL_PATTERN = /\b(?:https?|chrome-extension|moz-extension|safari-extension):\/\/[^\s)]+/i;
 const BROWSER_EXTENSION_URL_PATTERN = /^(?:chrome-extension|moz-extension|safari-extension):\/\//i;
 
