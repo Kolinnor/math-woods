@@ -13,6 +13,7 @@ import * as aliases from '../lib/concept-aliases.ts';
 import * as titleGuard from '../lib/translation-title-guard.ts';
 import * as contests from '../lib/problem-contests.ts';
 import * as solutionVisibility from '../lib/problem-solution-visibility.ts';
+import * as quality from '../lib/quality.ts';
 
 const require = createRequire(import.meta.url);
 const redirectError = new Error('NEXT_REDIRECT');
@@ -38,6 +39,82 @@ function load(file, overrides = {}) {
   vm.runInNewContext(code, { exports, require: n => modules[n] ?? {}, Date, FormData });
   return exports;
 }
+
+test('problem and exercise edits preserve reviews; explicit downgrades and rollback keep their meaning', async () => {
+  // Observe the real action's database write, stopping before unrelated notifications.
+  const writeReached = new Error('write inspected');
+  for (const isExercise of [false, true]) {
+    for (const status of ['REVIEWED', 'UNREVIEWED', 'NEEDS_WORK']) {
+      const current = {
+        id: 7, authorId: 2, title: 'Old title', bodyMarkdown: 'Old statement', slug: 'old-title', language: 'fr',
+        translationGroupId: 'g', version: 3, status: 'PUBLISHED', qualityStatus: status,
+        reviewedById: status === 'REVIEWED' ? 9 : null, needsReviewAfterEdit: status === 'UNREVIEWED',
+        difficulty: null, origin: 'Unknown', tags: [], spoilerTags: [], domains: [], styles: [], isExercise,
+        translatedFromRevisionId: null, translatedFromProblemId: null
+      };
+      let written;
+      const db = {
+        problem: {
+          findUnique: async () => current,
+          updateMany: async ({ data }) => { written = { ...current, ...data }; throw writeReached; }
+        },
+        problemEditProposal: { findFirst: async () => ({ id: 4, proposerId: 3 }) },
+        pageRevision: { findFirst: async () => ({ markdown: 'Historical statement', problemSnapshot: {
+          ...current, title: 'Historical title', bodyMarkdown: 'Historical statement', qualityStatus: 'UNREVIEWED'
+        } }) }
+      };
+      db.$transaction = callback => callback(db);
+      const actions = load('lib/actions/problem-actions.ts', {
+        '@/lib/db': { prisma: db }, '@/lib/quality': quality,
+        '@/lib/problem-edit-access': { canPublishProblemEditForProblem: async () => true },
+        '@/lib/problem-citations': { submittedProblemCitations: () => undefined },
+        '@/lib/problem-citation-access': { canRevealProblemCitations: async () => true },
+        '@/lib/problem-domains': { parseProblemDomains: () => [] },
+        '@/lib/problems': { parseProblemDifficulty: () => null },
+        '@/lib/problem-styles': { parseProblemStyles: () => [] },
+        '@/lib/problem-relations': { parseProblemRelationGroups: () => [] },
+        '@/lib/problem-verification': { parseProblemVerificationMode: () => 'NONE' },
+        '@/lib/markdown': { renderMarkdown: async text => text },
+        '@/lib/content-slug': { renamedContentSlug: async () => 'new-title' },
+        '@/lib/problem-revisions': {
+          buildProblemRevisionSnapshot: problem => ({ ...problem, schemaVersion: 1 }),
+          changedProblemSnapshotFields: (before, after) => ['title', 'bodyMarkdown'].filter(key => before[key] !== after[key]),
+          parseProblemRevisionSnapshot: snapshot => snapshot
+        }
+      });
+      const data = new FormData();
+      data.set('baseVersion', '3'); data.set('language', 'fr');
+      if (isExercise) data.set('isExercise', 'on');
+      for (const field of ['title', 'bodyMarkdown']) {
+        data.set('title', current.title); data.set('bodyMarkdown', current.bodyMarkdown);
+        data.set(field, `Corrected ${field}`);
+        await assert.rejects(actions.updateProblemAction(7, { status: 'idle' }, data), error => error === writeReached);
+        assert.equal(written[field], `Corrected ${field}`);
+        assert.equal(written.qualityStatus, status);
+        assert.equal(written.reviewedById, current.reviewedById);
+        assert.equal(written.needsReviewAfterEdit, current.needsReviewAfterEdit);
+      }
+      data.set('approvedProposalId', '4');
+      await assert.rejects(actions.updateProblemAction(7, { status: 'idle' }, data), error => error === writeReached);
+      assert.equal(written.qualityStatus, status, 'accepting an edit proposal preserves the review');
+      data.delete('approvedProposalId');
+      if (status === 'REVIEWED') {
+        data.set('qualityStatus', 'UNREVIEWED');
+        await assert.rejects(actions.updateProblemAction(7, { status: 'idle' }, data), error => error === writeReached);
+        assert.equal(written.qualityStatus, 'UNREVIEWED'); assert.equal(written.reviewedById, null);
+      } else {
+        data.set('qualityStatus', 'REVIEWED');
+        await assert.rejects(actions.updateProblemAction(7, { status: 'idle' }, data), error => error === writeReached);
+        assert.equal(written.qualityStatus, status, 'ordinary editing cannot grant a review');
+      }
+      await assert.rejects(actions.rollbackProblemRevisionAction(7, 1, 3), error => error === writeReached);
+      assert.equal(written.title, 'Historical title');
+      assert.equal(written.qualityStatus, status);
+      assert.equal(written.reviewedById, current.reviewedById);
+      assert.equal(written.needsReviewAfterEdit, current.needsReviewAfterEdit);
+    }
+  }
+});
 
 test('edit summaries accept 240 trimmed characters and reject excess inline for all three editors', async () => {
   assert.equal(feedback.parseEditSummary('  ' + 'x'.repeat(240) + '  '), 'x'.repeat(240));

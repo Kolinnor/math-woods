@@ -93,10 +93,6 @@ import { parseProblemDifficulty } from "@/lib/problems";
 import { recalculateProblemDifficulty } from "@/lib/problem-difficulty-votes";
 import { canonicalProblemHintPositions } from "@/lib/problem-hints";
 import { parseProblemStyles } from "@/lib/problem-styles";
-import {
-  hasProblemReviewSensitiveChanges,
-  needsReviewAfterProblemEdit
-} from "@/lib/problem-review-state";
 import { parseContributorQualityStatus } from "@/lib/quality";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { recordRecommendationOutcomeIfRelevant } from "@/lib/recommendation-events";
@@ -1424,18 +1420,7 @@ export async function updateProblemAction(
       resolvedSnapshot.status = current.status;
       resolvedSnapshot.translatedFromRevisionId = current.translatedFromRevisionId;
       const changedSnapshotFields = changedProblemSnapshotFields(currentSnapshot, resolvedSnapshot);
-      const hasReviewSensitiveChanges = hasProblemReviewSensitiveChanges(changedSnapshotFields);
-      if (
-        current.qualityStatus === QualityStatus.REVIEWED &&
-        hasReviewSensitiveChanges
-      ) {
-        resolvedSnapshot.qualityStatus = QualityStatus.UNREVIEWED;
-      }
-      const needsReviewAfterEdit = needsReviewAfterProblemEdit({
-        alreadyNeedsReview: current.needsReviewAfterEdit,
-        currentStatus: current.qualityStatus,
-        hasReviewSensitiveChanges
-      });
+      // Content edits preserve review status unless it was explicitly changed.
       if (resolvedSnapshot.language !== current.language) {
         const existingTranslation = await tx.problem.findFirst({
           where: {
@@ -1493,7 +1478,6 @@ export async function updateProblemAction(
           showRelatedProblems: resolvedSnapshot.showRelatedProblems,
           canAppearOnFrontPage: resolvedSnapshot.canAppearOnFrontPage,
           qualityStatus: resolvedSnapshot.qualityStatus,
-          needsReviewAfterEdit,
           verificationMode: resolvedSnapshot.verificationMode,
           verificationPrompt: resolvedSnapshot.verificationPrompt,
           verificationAnswer: resolvedSnapshot.verificationAnswer,
@@ -2187,20 +2171,11 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
 
     const snapshot = parseProblemRevisionSnapshot(revision.problemSnapshot);
     const markdown = snapshot?.bodyMarkdown ?? revision.markdown;
-    const hasReviewSensitiveChanges = hasProblemReviewSensitiveChanges([
-      ...(snapshot && snapshot.title !== current.title ? ["title"] : []),
-      ...(markdown !== current.bodyMarkdown ? ["bodyMarkdown"] : [])
-    ]);
-    const qualityStatus =
-      current.qualityStatus === QualityStatus.REVIEWED && hasReviewSensitiveChanges
-        ? QualityStatus.UNREVIEWED
-        : current.qualityStatus;
     const slug = await renamedContentSlug(tx, "problem", current, snapshot?.title ?? current.title, user.id);
     const updateResult = await tx.problem.updateMany({
       where: { id: problemId, version: expectedVersion },
       data: {
         slug,
-        ...(qualityStatus !== current.qualityStatus ? { reviewedById: null } : {}),
         ...(snapshot
           ? {
               title: snapshot.title,
@@ -2220,7 +2195,8 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
               showRelatedProblems: snapshot.showRelatedProblems,
               canAppearOnFrontPage: snapshot.canAppearOnFrontPage,
               status: snapshot.status,
-              qualityStatus,
+              // Restore content without restoring or invalidating past reviews.
+              qualityStatus: current.qualityStatus,
               verificationMode: snapshot.verificationMode,
               verificationPrompt: snapshot.verificationPrompt,
               verificationAnswer: snapshot.verificationAnswer,
@@ -2229,11 +2205,6 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
           : {}),
         bodyMarkdown: markdown,
         bodyHtml: await renderMarkdownContent(markdown),
-        needsReviewAfterEdit: needsReviewAfterProblemEdit({
-          alreadyNeedsReview: current.needsReviewAfterEdit,
-          currentStatus: current.qualityStatus,
-          hasReviewSensitiveChanges
-        }),
         version: { increment: 1 }
       }
     });

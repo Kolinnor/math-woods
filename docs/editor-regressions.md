@@ -27,6 +27,23 @@ These are known behavioral fixes that should not be broken when changing live pr
   cursor enters the relevant range.
 - Right-clicking selected text should open the concept-link menu without losing the selected text.
 
+## 2026-10-06 - Problem titles in existing solution links
+
+Renaming a problem updated its URL and editor lookup, but existing solution links
+kept the old literal Markdown label. At display time, resolve published/listed
+problem links (including historical URLs) in a batch and replace a label only if
+it matches a recorded title. Read distinct titles from problem revision snapshots;
+never guess a missing historical title from a slug or replace custom prose.
+
+Keep authored Markdown and revision history untouched. Preserve destinations,
+query strings, fragments, code examples, external links and solution-specific
+links. Render replacement titles through the sanitized inline LaTeX renderer.
+No persistent cache: later renames are visible on the next page load.
+
+Guardrails: content-slugs tests exercise existing solutions, repeated renames,
+custom labels, access restrictions, folds, wiki links, reference-style links,
+LaTeX and HTML sanitization through the shared content renderer.
+
 ## 2026-09-23 - Edit summaries and Markdown table alignment
 
 Concept/problem summaries were limited to 240 characters only on the server,

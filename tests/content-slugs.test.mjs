@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { Prisma } from '@prisma/client';
+import { Parser } from 'htmlparser2';
 import * as slug from '../lib/slug.ts';
 import * as languages from '../lib/languages.ts';
 import * as translations from '../lib/translation-routing.ts';
@@ -17,6 +19,19 @@ function load(file, modules) {
     return modules[name];
   }});
   return exports;
+}
+function currentProblemTitles(db) {
+  return load('lib/current-problem-link-titles.ts', {
+    '@prisma/client': { Prisma }, 'htmlparser2': { Parser }, '@/lib/db': { prisma: db },
+    '@/lib/markdown': { renderInlineMarkdown }, '@/lib/wikilinks': wiki
+  });
+}
+function translatedMarkdown(db) {
+  return load('lib/translated-markdown.ts', {
+    '@/lib/db': { prisma: db }, '@/lib/languages': languages, '@/lib/markdown': { renderMarkdown },
+    '@/lib/translation-routing': translations, '@/lib/wikilinks': wiki,
+    '@/lib/current-problem-link-titles': currentProblemTitles(db)
+  });
 }
 function matches(row, where) {
   return Object.entries(where).every(([key, value]) => key === 'OR' ? value.some(w => matches(row, w))
@@ -119,8 +134,89 @@ test('old wiki links render as existing concepts and use their current canonical
     }
     return [{ title: 'Test modifié', slug: 'test-modifie', language: 'fr', translationGroupId: 'g', translatedFromConceptId: null }];
   } } };
-  const helper = load('lib/translated-markdown.ts', { '@/lib/db': { prisma: db }, '@/lib/languages': languages, '@/lib/markdown': { renderMarkdown }, '@/lib/translation-routing': translations, '@/lib/wikilinks': wiki });
+  const helper = translatedMarkdown(db);
   const html = await helper.renderMarkdownForContentLanguage('[[test|mon explication]]', 'fr');
   assert.match(html, /href="\/concepts\/test-modifie"/); assert.match(html, /mon explication/); assert.doesNotMatch(html, /wiki-missing/);
   assert.match(await helper.prepareMarkdownForTranslation('[[test|Test]]', 'fr'), /Test modifié/);
+});
+
+test('existing solutions follow successive problem renames without changing source or custom prose', async () => {
+  const problem = { id: 7, slug: 'nouveau', title: 'Nouveau titre $x^2$', slugRedirects: [{ sourceSlug: 'ancien' }] };
+  let lookups = 0, histories = 0;
+  const db = {
+    problem: { findMany: async ({ where }) => {
+      lookups++;
+      assert.equal(where.status, 'PUBLISHED'); assert.equal(where.listed, true);
+      assert.deepEqual(Array.from(where.OR[0].slug.in), lookups === 1 ? ['ancien', 'nouveau'] : ['ancien']);
+      return [problem];
+    } },
+    $queryRaw: async query => {
+      histories++;
+      assert.match(query.sql, /SELECT DISTINCT/);
+      assert.match(query.sql, /"pageType" = 'PROBLEM'/);
+      assert.deepEqual(Array.from(query.values), [7]);
+      return [{ pageId: 7, title: 'Ancien titre $x$' }, { pageId: 7, title: 'Titre intermédiaire' }];
+    }
+  };
+  const source = '[Ancien titre $x$](/problems/ancien?viewLanguage=fr#solutions) et [ce résultat](/problems/ancien)';
+  const helper = translatedMarkdown(db);
+  const [first, second] = await helper.renderMarkdownCollectionForContentLanguage([
+    source, '[Titre intermédiaire](https://mathwoods.org/problems/nouveau)'
+  ], 'fr');
+  const current = await renderInlineMarkdown(problem.title);
+  assert.ok(first.includes(current)); assert.ok(second.includes(current));
+  assert.match(first, /href="\/problems\/ancien\?viewLanguage=fr#solutions"/);
+  assert.match(first, />ce résultat<\/a>/);
+  assert.doesNotMatch(first, /Ancien titre/);
+  assert.equal(lookups, 1); assert.equal(histories, 1);
+  problem.title = 'Encore renommé';
+  assert.match(await helper.renderMarkdownForContentLanguage(source, 'fr'), />Encore renommé<\/a>/);
+  assert.match(source, /Ancien titre/);
+});
+
+test('external links, solution subpaths, code and unknown historical labels stay untouched', async () => {
+  const db = { problem: { findMany: async () => { throw Error('No database lookup expected'); } } };
+  const helper = translatedMarkdown(db);
+  const source = '[Ancien](https://example.org/problems/ancien) [Ancien](/problems/ancien/proofs/1/discussion)\n\n`[Ancien](/problems/ancien)`\n\n```md\n[Ancien](/problems/ancien)\n```';
+  assert.equal(await helper.renderMarkdownForContentLanguage(source, 'fr'), await renderMarkdown(source));
+
+  const dbWithProblem = {
+    problem: { findMany: async () => [{ id: 7, slug: 'ancien', title: 'Nouveau', slugRedirects: [] }] },
+    $queryRaw: async () => []
+  };
+  const custom = '[un ancien titre non attesté](/problems/ancien)';
+  assert.equal(await translatedMarkdown(dbWithProblem).renderMarkdownForContentLanguage(custom, 'fr'), await renderMarkdown(custom));
+});
+
+test('missing, deleted, draft and unlisted problems do not expose new titles', async () => {
+  const db = {
+    problem: { findMany: async ({ where }) => {
+      assert.equal(where.status, 'PUBLISHED'); assert.equal(where.listed, true); return [];
+    } },
+    $queryRaw: async () => { throw Error('No history lookup for inaccessible problems'); }
+  };
+  const source = '[Ancien](/problems/ancien)';
+  assert.equal(await translatedMarkdown(db).renderMarkdownForContentLanguage(source, 'fr'), await renderMarkdown(source));
+});
+
+test('renamed links inside folds and beside wiki links retain sanitized math and HTML', async () => {
+  const db = {
+    concept: { findMany: async () => [] },
+    problem: { findMany: async () => [{ id: 7, slug: 'nouveau', title: 'Nouveau $x$ <script>alert(1)</script>', slugRedirects: [{ sourceSlug: 'ancien' }] }] },
+    $queryRaw: async () => [{ pageId: 7, title: 'Ancien' }]
+  };
+  const result = await translatedMarkdown(db).renderMarkdownForContentLanguage('[[absent|concept]]\n\n:::fold Explication\n[Ancien](/problems/ancien)\n:::', 'fr');
+  assert.match(result, /markdown-fold/); assert.match(result, /wiki-link missing/);
+  assert.match(result, /Nouveau/); assert.match(result, /katex/); assert.doesNotMatch(result, /<script|alert\(1\)/);
+});
+
+test('editor-normalized LaTeX labels and reference-style links also update', async () => {
+  const title = 'Intervalle $[a,b]$';
+  const db = {
+    problem: { findMany: async () => [{ id: 7, slug: 'ancien', title: 'Nouveau $[a,b]$', slugRedirects: [] }] },
+    $queryRaw: async () => [{ pageId: 7, title }]
+  };
+  const source = `[${wiki.cleanWikiLinkLabel(title)}][resultat]\n\n[resultat]: /problems/ancien`;
+  const html = await translatedMarkdown(db).renderMarkdownForContentLanguage(source, 'fr');
+  assert.match(html, /Nouveau/); assert.match(html, /katex/); assert.doesNotMatch(html, /Intervalle/);
 });

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { refreshProblemLinkTitles } from "@/lib/current-problem-link-titles";
 import type { Prisma } from "@prisma/client";
 import { parseContentLanguage } from "@/lib/languages";
 import { renderMarkdown } from "@/lib/markdown";
@@ -164,7 +165,7 @@ export async function renderMarkdownCollectionForContentLanguage(
   const targetTitles = [...new Set(links.map((link) => link.target.trim()).filter(Boolean))];
 
   if (targetSlugs.length === 0) {
-    return Promise.all(markdowns.map((markdown) => renderMarkdown(markdown)));
+    return refreshProblemLinkTitles(await Promise.all(markdowns.map((markdown) => renderMarkdown(markdown))));
   }
 
   const concepts = await prisma.concept.findMany({
@@ -246,7 +247,7 @@ export async function renderMarkdownCollectionForContentLanguage(
   );
   const missingSlugs = new Set(targetSlugs.filter((slug) => !conceptByLookupSlug.has(slug)));
 
-  return Promise.all(
+  return refreshProblemLinkTitles(await Promise.all(
     markdowns.map((markdown) =>
       renderMarkdown(markdown, missingSlugs, true, (link) => {
         const concept = conceptByLookupSlug.get(link.targetSlug);
@@ -260,7 +261,7 @@ export async function renderMarkdownCollectionForContentLanguage(
         };
       })
     )
-  );
+  ));
 }
 
 export async function renderMarkdownForContentLanguage(markdown: string, language: string) {

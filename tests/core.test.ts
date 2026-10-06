@@ -128,10 +128,6 @@ import {
   translationBodyFieldName
 } from "../lib/translation-companions.ts";
 import {
-  hasProblemReviewSensitiveChanges,
-  needsReviewAfterProblemEdit
-} from "../lib/problem-review-state.ts";
-import {
   buildRecommendationProfile,
   composeProblemRecommendations,
   excludedRecommendationGroupIds,
@@ -4759,34 +4755,6 @@ assert.equal(
 );
 assert.equal(normalizedObservabilityRoute("/untrusted-arbitrary-value"), "/other");
 
-assert.equal(
-  needsReviewAfterProblemEdit({
-    alreadyNeedsReview: false,
-    currentStatus: QualityStatus.REVIEWED,
-    hasReviewSensitiveChanges: true
-  }),
-  true
-);
-assert.equal(
-  needsReviewAfterProblemEdit({
-    alreadyNeedsReview: false,
-    currentStatus: QualityStatus.REVIEWED,
-    hasReviewSensitiveChanges: false
-  }),
-  false
-);
-assert.equal(
-  needsReviewAfterProblemEdit({
-    alreadyNeedsReview: true,
-    currentStatus: QualityStatus.UNREVIEWED,
-    hasReviewSensitiveChanges: false
-  }),
-  true
-);
-
-assert.equal(hasProblemReviewSensitiveChanges(["title"]), true);
-assert.equal(hasProblemReviewSensitiveChanges(["bodyMarkdown"]), true);
-assert.equal(hasProblemReviewSensitiveChanges(["difficulty"]), false);
 const historicalSolvedAt = new Date("2026-07-14T08:30:00.000Z");
 assert.equal(
   problemSolvedAt([
@@ -4885,19 +4853,6 @@ assert.equal(normalizeProblemOrigin("Inconnue"), "Unknown");
 assert.equal(normalizeProblemOrigin("  Euclid, Elements  "), "Euclid, Elements");
 assert.equal(localizedProblemOrigin("Unknown", "Inconnue"), "Inconnue");
 assert.equal(localizedProblemOrigin("Euler's correspondence", "Inconnue"), "Euler's correspondence");
-assert.equal(
-  hasProblemReviewSensitiveChanges([
-    "domains",
-    "tags",
-    "listed",
-    "isExercise",
-    "showRelatedProblems",
-    "canAppearOnFrontPage",
-    "origin",
-    "verificationMode"
-  ]),
-  false
-);
 
 assert.deepEqual(
   problemTranslationSharedChanges([
