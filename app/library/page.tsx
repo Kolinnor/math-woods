@@ -2,7 +2,7 @@ import { LibraryStatus } from "@prisma/client";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Clock3, Search, Settings2, UsersRound } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { matchingReferenceIds } from "@/lib/reference-search";
 import { PortraitSource } from "@/components/library/PortraitSource";
@@ -76,10 +76,8 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     return period ? libraryEraOfPeriod(eras, period.from, period.to) : null;
   };
 
-  // The timeline: a selection of periods, events and lives in every era, and the size of each era.
+  // The timeline: a selection of periods, events and lives in every era.
   const frise = selectFriseOverview(candidates, eras);
-  const totalPeople = candidates.people.length;
-  const totalMilestones = candidates.milestones.length;
 
   const dateFormat = new Intl.DateTimeFormat(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "short" });
   const recent = [
@@ -108,8 +106,17 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   ) : null;
 
   return (
-    <ForestPageLayout className="library-home" title={copy.title} description={copy.description} heroImage="/art/birch-grove.jpg" heroAlt={fr ? "Un bois de bouleaux ensoleillé" : "A sunlit birch grove"}>
+    <LibraryPageLayout locale={locale} className="library-home" title={copy.title} description={copy.description}>
       <LibraryTabs active="overview" locale={locale} />
+
+      {isAdmin && <div className="library-home-management">
+        <details className="library-curation-panel library-management-menu">
+          <summary><Settings2 size={15} aria-hidden="true" />{fr ? "Gestion" : "Manage"}</summary>
+          <div className="library-management-links">
+            <Link href="/library/eras">{fr ? "Modifier les époques" : "Edit the eras"}</Link>
+          </div>
+        </details>
+      </div>}
 
       <form className="library-global-search" role="search">
         <Search size={19} aria-hidden="true" />
@@ -131,22 +138,28 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
       {!q && <>
         <section className="library-home-section library-frise-section">
           <div className="library-section-heading">
-            <div><h2>{fr ? "La frise des mathématiques" : "The timeline of mathematics"}</h2>
-              <p>{fr ? `Une sélection parmi ${libraryPlural(totalMilestones, "repère", "repères")} et ${libraryPlural(totalPeople, "mathématicien", "mathématiciens")}, époque par époque.` : `A selection from ${libraryPlural(totalMilestones, "milestone", "milestones")} and ${libraryPlural(totalPeople, "mathematician", "mathematicians")}, era by era.`}</p></div>
+            <div className="library-frise-heading">
+              <h2>{fr ? "La frise des mathématiques" : "The timeline of mathematics"}</h2>
+              <details className="library-frise-help">
+                <summary aria-label={fr ? "Comment lire la frise" : "How to read the timeline"}>?</summary>
+                <div className="library-frise-help-content">
+                  <ul className="library-frise-legend" aria-label={fr ? "Légende" : "Legend"}>
+                    <li><span data-mark="event" aria-hidden="true" />{fr ? "Événement, découverte, publication" : "Event, discovery, publication"}</li>
+                    <li><span data-mark="period" aria-hidden="true" />{fr ? "Période" : "Period"}</li>
+                    <li><span data-mark="life" aria-hidden="true" />{fr ? "Vie d’un mathématicien" : "A mathematician’s life"}</li>
+                  </ul>
+                  <p>{fr
+                    ? "Chaque époque occupe la même largeur : l’échelle du temps change donc d’une colonne à l’autre. Une fiche peut traverser plusieurs époques."
+                    : "Each era has the same width, so the time scale changes between columns. An entry may span several eras."}</p>
+                </div>
+              </details>
+            </div>
             <div className="library-section-actions">
-              {isAdmin && <Link className="library-quiet-link" href="/library/eras"><Settings2 size={15} aria-hidden="true" />{fr ? "Modifier les époques" : "Edit the eras"}</Link>}
               <Link className="library-more-link" href="/library/history">{fr ? "Parcourir l’histoire" : "Browse the history"}<ArrowRight size={15} aria-hidden="true" /></Link>
             </div>
           </div>
-          <LibraryFrise locale={locale} eras={eras} milestones={frise.milestones} people={frise.people} totals={frise.totals} />
-          <ul className="library-frise-legend" aria-label={fr ? "Légende" : "Legend"}>
-            <li><span data-mark="event" aria-hidden="true" />{fr ? "Événement, découverte, publication" : "Event, discovery, publication"}</li>
-            <li><span data-mark="period" aria-hidden="true" />{fr ? "Période" : "Period"}</li>
-            <li><span data-mark="life" aria-hidden="true" />{fr ? "Vie d’un mathématicien" : "A mathematician’s life"}</li>
-          </ul>
-          <p className="library-era-zoom-note">{fr
-            ? "Chaque époque occupe la même largeur : l’échelle du temps change donc d’une colonne à l’autre. Une fiche peut traverser plusieurs époques et être comptée dans chacune."
-            : "Each era has the same width, so the time scale changes between columns. An entry may span several eras and be counted in each."}</p>
+          <LibraryFrise locale={locale} eras={eras} milestones={frise.milestones} people={frise.people} />
+          <p className="library-era-zoom-note">{fr ? "Époques à largeur égale" : "Equal-width eras"}</p>
         </section>
 
         <section className="library-home-section">
@@ -206,7 +219,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
           </li>)}</ol>
         </section>}
       </>}
-    </ForestPageLayout>
+    </LibraryPageLayout>
   );
 }
 

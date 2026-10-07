@@ -115,17 +115,18 @@ test('overview and zoom totals match history filters, without duplicating select
   }
 });
 
-test('a life spanning two eras is counted in both and opens a bilingual catalogue', () => {
+test('a life spanning two eras stays visible without the overview counters', () => {
   const gauss = { ...life(0), slug: 'gauss', from: 1777, to: 1855 };
   const overview = selectFriseOverview({ people: [gauss], milestones: [] }, eras);
   const person = { id: 1, name: 'Gauss', aliases: [], lifespan: '1777–1855', status: 'PUBLISHED', needsReviewAfterEdit: false,
     createdAt: new Date(), updatedAt: new Date(), translations: [{ language: 'en', displayName: 'Gauss', teaser: '', biographyHtml: '', contributionsHtml: '' }] };
   const html = render({ locale: 'fr', eras, ...overview });
+  assert.doesNotMatch(html, /library-frise-totals/);
+  assert.match(html, /href="\/library\/mathematicians\/gauss"/);
   for (const era of [enlightenment, modern]) {
     assert.equal(overview.totals[era.slug].people, 1);
-    const href = html.match(new RegExp(`href="([^"]*mathematicians\\?era=${era.slug}[^\"]*)"`))[1].replaceAll('&amp;', '&');
-    const query = new URL(href, 'https://example.test').searchParams;
-    const filters = parseMathematicianFilters({ era: query.get('era'), language: query.getAll('language') }, 'fr', 2026, libraryEraPresets(eras, MIN_HISTORY_YEAR));
+    assert.ok(html.includes(`href="/library/history?era=${era.slug}"`));
+    const filters = parseMathematicianFilters({ era: era.slug, language: ['fr', 'en'] }, 'fr', 2026, libraryEraPresets(eras, MIN_HISTORY_YEAR));
     assert.equal(filterMathematicians([person], filters, 'fr', 2026).length, 1);
   }
 });

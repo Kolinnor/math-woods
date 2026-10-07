@@ -43,8 +43,7 @@
 .library-root .library-home .forest-page-hero h1 { font-size: clamp(2.4rem, 5vw, 3.6rem); }
 .library-root .library-home .forest-page-hero-description { font-size: 16px; }
 
-.library-root .library-history-page .forest-page-hero > img,
-.library-root .library-history-detail-page .forest-page-hero > img { object-position: 60% 72%; }
+.library-root .forest-page-hero > img { object-position: 60% 72%; }
 
 /* Compact hero and title strip of entries and editors, as on concept pages. */
 .library-root .forest-page-hero-compact { height: 150px; min-height: 150px; }
@@ -1691,6 +1690,46 @@ a.library-link-title:hover { color: var(--mw-green); text-decoration-color: var(
 .library-curation-panel summary:hover,
 .library-curation-panel[open] summary { color: var(--mw-green); }
 
+.library-home-management { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.library-management-links,
+.library-frise-help-content {
+  background: var(--mw-reading-surface);
+  border: 1px solid var(--mw-border);
+  border-radius: 10px;
+  box-shadow: var(--lib-card-shadow);
+  padding: 14px;
+  position: absolute;
+  top: calc(100% + 8px);
+  z-index: 10;
+}
+.library-management-links { right: 0; width: max-content; }
+.library-management-links a { color: var(--mw-green); font-size: 13px; }
+.library-section-heading > .library-frise-heading { align-items: center; display: flex; gap: 10px; position: relative; }
+.library-frise-help { flex: 0 0 auto; }
+.library-frise-help summary {
+  align-items: center;
+  border: 1px solid var(--mw-border-strong);
+  border-radius: 50%;
+  color: var(--mw-secondary);
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  height: 24px;
+  justify-content: center;
+  list-style: none;
+  width: 24px;
+}
+.library-frise-help summary::-webkit-details-marker { display: none; }
+.library-frise-help summary:hover,
+.library-frise-help[open] summary { color: var(--mw-green); border-color: var(--mw-green); }
+.library-frise-help summary:focus-visible,
+.library-management-menu summary:focus-visible { outline: 2px solid var(--mw-green); outline-offset: 3px; }
+.library-frise-help-content { left: 0; max-width: calc(100vw - 48px); width: 360px; }
+.library-frise-help-content .library-frise-legend { display: grid; gap: 10px; margin: 0 0 12px; }
+.library-frise-help-content .library-frise-legend span { flex-shrink: 0; }
+.library-frise-help-content p { font-size: 13px; line-height: 1.5; }
+
 /* Vertical timeline: era headings with a description, events as filled dots. */
 .library-timeline-era p { color: var(--mw-secondary); flex-basis: 100%; font-size: 14px; line-height: 1.5; margin: 2px 0 0; max-width: 70ch; }
 .library-timeline-item[data-type="event"]::before { background: var(--era-ink, var(--lib-history)); }
@@ -1772,22 +1811,6 @@ a.library-link-title:hover { color: var(--mw-green); text-decoration-color: var(
 .library-era-delete summary:hover { color: #9b2c1f; }
 .library-era-delete { margin: 0 18px 18px; }
 .library-era-delete p { color: var(--mw-secondary); font-size: 13px; margin: 8px 0; }
-
-/* Size of each era under the timeline, with links to the catalogues. */
-.library-frise-totals {
-  border-top: 1px solid var(--mw-border);
-  display: grid;
-  grid-template-columns: repeat(var(--eras), minmax(0, 1fr));
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-  position: relative;
-}
-
-.library-frise-totals li { display: grid; gap: 2px; padding: 9px 12px 0; }
-.library-frise-totals a { color: var(--era-ink); font-size: 12px; font-weight: 700; text-decoration: none; width: fit-content; }
-.library-frise-totals a + a { color: var(--mw-secondary); font-weight: 600; }
-.library-frise-totals a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* Year axis of a single era. */
 .library-frise-axis { border-top: 4px solid var(--era-ink); height: 30px; position: relative; }

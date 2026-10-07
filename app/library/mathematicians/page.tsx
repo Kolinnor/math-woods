@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { LibraryCatalogueForm } from "@/components/library/LibraryCatalogueForm";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { FieldHelp } from "@/components/FieldHelp";
@@ -74,7 +74,7 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
     { value: "added", label: fr ? "Dernières fiches ajoutées" : "Recently added entries" },
     { value: "updated", label: fr ? "Dernières fiches modifiées" : "Recently updated entries" }
   ];
-  return <ForestPageLayout className="library-catalogue-page mathematician-browser" title={copy.mathematicians} description={fr ? "Les personnes et les idées qui ont façonné les mathématiques." : "The people and ideas that shaped mathematics."} heroImage="/art/birch-grove.jpg" actions={canAdd && <Link className="button primary" href="/library/mathematicians/new"><Plus size={16} aria-hidden="true" />{copy.addMathematician}</Link>}>
+  return <LibraryPageLayout locale={locale} className="library-catalogue-page mathematician-browser" title={copy.mathematicians} description={fr ? "Les personnes et les idées qui ont façonné les mathématiques." : "The people and ideas that shaped mathematics."} actions={canAdd && <Link className="button primary" href="/library/mathematicians/new"><Plus size={16} aria-hidden="true" />{copy.addMathematician}</Link>}>
     <LibraryTabs active="mathematicians" locale={locale} />
     <div className="library-catalogue-workspace">
       <aside className="library-catalogue-aside" aria-label={fr ? "Filtres des mathématiciens" : "Mathematician filters"}>
@@ -125,5 +125,5 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
         <LibraryPagination pathname="/library/mathematicians" query={activeQuery} page={pagination.page} totalPages={pagination.totalPages} locale={locale} />
       </section>
     </div>
-  </ForestPageLayout>;
+  </LibraryPageLayout>;
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { ActionFeedbackForm } from "@/components/ActionFeedbackForm";
 import { LibraryEditorBack } from "@/components/library/LibraryEditorBack";
 import { createDefaultLibraryErasAction, deleteLibraryEraAction, saveLibraryEraAction } from "@/lib/actions/library-era-actions";
@@ -45,9 +45,9 @@ export default async function LibraryErasPage({ searchParams }: { searchParams: 
   const eras = resolveLibraryEras(rows.length ? rows : DEFAULT_LIBRARY_ERAS, new Date().getFullYear());
   const lastYear = eras.at(-1)?.startYear ?? 1900;
 
-  return <ForestPageLayout className="library-editor-page library-eras-page" titleBelowHero title={fr ? "Époques de la bibliothèque" : "Library eras"}
+  return <LibraryPageLayout locale={locale} className="library-editor-page library-eras-page" titleBelowHero title={fr ? "Époques de la bibliothèque" : "Library eras"}
     description={fr ? "Chaque époque commence à l’année indiquée et se termine quand la suivante commence. Elles organisent la frise, les filtres et les couleurs de la bibliothèque." : "Each era starts in the given year and ends when the next one starts. They organise the timeline, the filters and the colours of the library."}
-    heroImage="/art/history-forest-ruins.avif">
+  >
     <LibraryEditorBack href="/library/history" locale={locale} />
     {query.saved && <p className="library-era-message" role="status">{query.saved}</p>}
     {query.error && <p className="library-era-message" data-kind="error" role="alert">{query.error}</p>}
@@ -95,5 +95,5 @@ export default async function LibraryErasPage({ searchParams }: { searchParams: 
         </ActionFeedbackForm>
       </li>
     </ol>}
-  </ForestPageLayout>;
+  </LibraryPageLayout>;
 }

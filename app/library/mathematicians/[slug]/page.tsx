@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Clock3, UsersRound } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { PortraitSource } from "@/components/library/PortraitSource";
 import { LibraryAttribution } from "@/components/library/LibraryAttribution";
 import { LibraryBreadcrumb, LibraryEntryRail, LibraryEntryToolbar } from "@/components/library/LibraryEntryNavigation";
@@ -88,13 +88,12 @@ export default async function LibraryMathematicianPage({ params, searchParams }:
   const milestones = [...entry.milestoneLinks].sort((a, b) => a.milestone.sortYear - b.milestone.sortYear);
 
   return (
-    <ForestPageLayout
+    <LibraryPageLayout locale={locale}
       titleBelowHero
       className="library-entry-page mathematician-page"
       eyebrow={<LibraryBreadcrumb locale={locale} section="mathematicians" backHref={returnTo} />}
       title={<>{displayName}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={contentLanguage} />}</>}
       description={translation?.teaser ? <AsyncMarkdownInline markdown={translation.teaser} /> : undefined}
-      heroImage="/art/birch-grove.jpg"
       meta={<LibraryEntryToolbar locale={locale} backHref={returnTo} href={`/library/mathematicians/${entry.slug}`} languages={entry.translations.map(t => t.language)} activeLanguage={translation?.language ?? contentLanguage} status={entry.status} reviewed={!entry.needsReviewAfterEdit} />}
     >
       <div className="library-detail-layout mathematician-detail-layout">
@@ -149,6 +148,6 @@ export default async function LibraryMathematicianPage({ params, searchParams }:
           </section>}
         </LibraryEntryRail>
       </div>
-    </ForestPageLayout>
+    </LibraryPageLayout>
   );
 }

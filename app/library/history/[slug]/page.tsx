@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, BookOpen, Clock3, Sigma, UsersRound } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { ImageCredit } from "@/components/library/ImageCredit";
 import { LibraryAttribution } from "@/components/library/LibraryAttribution";
 import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
@@ -57,7 +57,7 @@ export default async function HistoryMilestonePage({ params, searchParams }: { p
   const title = (row: { slug: string; translations: { language: string; title: string; yearLabel: string }[] }) => localizedTranslation(row.translations, locale) ?? { title: row.slug, yearLabel: "" };
 
   return (
-    <ForestPageLayout
+    <LibraryPageLayout locale={locale}
       titleBelowHero
       className="library-entry-page history-entry-page"
       eyebrow={<LibraryBreadcrumb locale={locale} section="history" backHref={returnTo} />}
@@ -67,8 +67,6 @@ export default async function HistoryMilestonePage({ params, searchParams }: { p
         <span className="library-dateline-type"><LibraryMilestoneTypeIcon type={entry.milestoneType} size={15} />{milestoneTypeLabel(entry.milestoneType, locale)}</span>
         {era && <Link href={`/library/history?era=${era.slug}` as never}>{era.name[locale]}</Link>}
       </span>}
-      heroImage="/art/history-forest-ruins.avif"
-      heroAlt={fr ? "Ruines de pierre au milieu de collines boisées" : "Stone ruins among forested hills"}
       meta={<LibraryEntryToolbar locale={locale} backHref={returnTo} href={`/library/history/${entry.slug}`} languages={entry.translations.map(t => t.language)} activeLanguage={translation.language} status={entry.status} reviewed={Boolean(entry.reviewedAt)} />}
     >
       <div className="library-detail-layout history-detail-layout">
@@ -147,6 +145,6 @@ export default async function HistoryMilestonePage({ params, searchParams }: { p
           </section>}
         </LibraryEntryRail>
       </div>
-    </ForestPageLayout>
+    </LibraryPageLayout>
   );
 }

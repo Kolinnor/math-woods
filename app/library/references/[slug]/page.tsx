@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { BookCopy, Clock3, Code2, ExternalLink, Puzzle, Sigma, TreePine, UsersRound } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { ImageCredit } from "@/components/library/ImageCredit";
 import { LibraryAttribution } from "@/components/library/LibraryAttribution";
 import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
@@ -77,13 +77,12 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
   const siteLinks = entry.problemLinks.length + entry.conceptLinks.length;
 
   return (
-    <ForestPageLayout
+    <LibraryPageLayout locale={locale}
       titleBelowHero
       className="library-entry-page reference-entry-page"
       eyebrow={<LibraryBreadcrumb locale={locale} section="references" backHref={returnTo} />}
       title={<>{translation?.displayTitle ?? entry.canonicalTitle}{translation && <ContentLanguageFallback language={translation.language} expectedLanguage={contentLanguage} />}</>}
       description={byline || undefined}
-      heroImage="/art/oak-grove.jpg"
       meta={<LibraryEntryToolbar locale={locale} backHref={returnTo} href={`/library/references/${entry.slug}`} languages={entry.translations.map(t => t.language)} activeLanguage={editLanguage} status={entry.status} reviewed={Boolean(entry.reviewedAt)} />}
     >
       <div className="library-detail-layout reference-detail-layout">
@@ -168,6 +167,6 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
           attribution={(entry.createdBy || entry.reviewedBy) && <LibraryAttribution creator={entry.createdBy} reviewer={entry.reviewedBy} locale={locale} />}
         />
       </div>
-    </ForestPageLayout>
+    </LibraryPageLayout>
   );
 }

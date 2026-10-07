@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { ImageCredit } from "@/components/library/ImageCredit";
 import { LibraryEmptyState } from "@/components/library/LibraryEmptyState";
 import { LibraryEraStrip } from "@/components/library/LibraryEraStrip";
@@ -79,7 +79,7 @@ export default async function LibraryHistoryPage({ searchParams }: { searchParam
   const grouped = sort !== "updated" && !selectedEra;
   const Title = grouped ? "h3" : "h2";
 
-  return <ForestPageLayout className="library-catalogue-page library-history-page" title={copy.history} description={fr ? "Découvertes, idées et rencontres à travers les siècles." : "Discoveries, ideas and encounters across the centuries."} heroImage="/art/history-forest-ruins.avif" heroAlt={fr ? "Ruines de pierre au milieu de collines boisées" : "Stone ruins among forested hills"} actions={isVerifiedContributor(user) && <Link className="button primary" href="/library/history/new"><Plus size={16} aria-hidden="true" />{fr ? "Ajouter un repère" : "Add a milestone"}</Link>}>
+  return <LibraryPageLayout locale={locale} className="library-catalogue-page library-history-page" title={copy.history} description={fr ? "Découvertes, idées et rencontres à travers les siècles." : "Discoveries, ideas and encounters across the centuries."} actions={isVerifiedContributor(user) && <Link className="button primary" href="/library/history/new"><Plus size={16} aria-hidden="true" />{fr ? "Ajouter un repère" : "Add a milestone"}</Link>}>
     <LibraryTabs active="history" locale={locale} />
     <div className="library-catalogue-workspace">
       <aside className="library-catalogue-aside" aria-label={fr ? "Filtres de l’histoire" : "History filters"}>
@@ -137,5 +137,5 @@ export default async function LibraryHistoryPage({ searchParams }: { searchParam
         <LibraryPagination pathname="/library/history" query={activeQuery} page={pagination.page} totalPages={pagination.totalPages} locale={locale} />
       </section>
     </div>
-  </ForestPageLayout>;
+  </LibraryPageLayout>;
 }

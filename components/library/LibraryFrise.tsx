@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { libraryDateLabel, libraryEraOfPeriod, libraryEraRange, libraryEraStyle, libraryYearLabel, type LibraryEraView } from "@/lib/library-display";
 
-import type { FriseMilestone, FrisePerson, FriseTotals } from "@/lib/library-frise";
+import type { FriseMilestone, FrisePerson } from "@/lib/library-frise";
 
 /** Where an item sits, in % of the timeline width, and how its label is shown. */
 type LabelMode = "inside" | "after" | null;
@@ -88,13 +88,11 @@ function axisYears(era: LibraryEraView) {
   return years;
 }
 
-export function LibraryFrise({ locale, eras, milestones, people, totals, lanes: laneLimits = LANES }: {
+export function LibraryFrise({ locale, eras, milestones, people, lanes: laneLimits = LANES }: {
   locale: "fr" | "en";
   eras: LibraryEraView[];
   milestones: FriseMilestone[];
   people: FrisePerson[];
-  /** Size of each era, shown under the columns with links to the catalogues. */
-  totals?: FriseTotals;
   lanes?: Lanes;
 }) {
   const x = scale(eras);
@@ -146,13 +144,6 @@ export function LibraryFrise({ locale, eras, milestones, people, totals, lanes: 
         </Link>)}
       </div>}
 
-      {totals && <ol className="library-frise-totals">{eras.map(era => {
-        const total = totals[era.slug] ?? { people: 0, milestones: 0 };
-        return <li key={era.slug} style={libraryEraStyle(era)}>
-          <Link href={`/library/mathematicians?era=${era.slug}&languagesSet=1&language=fr&language=en` as never}>{fr ? `${total.people} mathématicien${total.people === 1 ? "" : "s"}` : `${total.people} mathematician${total.people === 1 ? "" : "s"}`}</Link>
-          <Link href={`/library/history?era=${era.slug}` as never}>{fr ? `${total.milestones} repère${total.milestones === 1 ? "" : "s"}` : `${total.milestones} milestone${total.milestones === 1 ? "" : "s"}`}</Link>
-        </li>;
-      })}</ol>}
     </div>
   </div>;
 }

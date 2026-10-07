@@ -1,7 +1,7 @@
 import { LibraryStatus } from "@prisma/client";
 import Link from "next/link";
 import { BookOpen, Clock3, Plus, UsersRound } from "lucide-react";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { requireAdmin } from "@/lib/auth";
@@ -50,7 +50,7 @@ export default async function LibraryContributePage() {
   }
 
   return (
-    <ForestPageLayout className="library-contribute-page" title={fr ? "Contribuer à la bibliothèque" : "Contribute to the library"} description={fr ? "Publiez une fiche ou relisez les contributions déjà en ligne." : "Publish an entry or review contributions already online."} heroImage="/art/birch-grove.jpg">
+    <LibraryPageLayout locale={locale} className="library-contribute-page" title={fr ? "Contribuer à la bibliothèque" : "Contribute to the library"} description={fr ? "Publiez une fiche ou relisez les contributions déjà en ligne." : "Publish an entry or review contributions already online."}>
       <LibraryTabs active="contribute" locale={locale} />
       <div className="library-contribution-actions">
         <Link href="/library/mathematicians/new" data-room="people"><span className="library-room-icon"><UsersRound size={20} aria-hidden="true" /></span><span><strong>{fr ? "Un mathématicien" : "A mathematician"}</strong><small>{fr ? "Une vie, des œuvres, un héritage." : "A life, works and a legacy."}</small></span><Plus size={18} aria-hidden="true" /></Link>
@@ -62,7 +62,7 @@ export default async function LibraryContributePage() {
         <section className="library-review-queue"><h2>{reviewer ? (fr ? "Mes brouillons" : "My drafts") : (fr ? "Mes fiches" : "My entries")}<span className="library-entry-section-count">{personalEntries.length}</span></h2>{entryList(personalEntries, fr ? "Aucune fiche à reprendre." : "No entries to resume.")}</section>
       </div>
       {admin && archivedEntries.length > 0 && <details className="library-archive-list"><summary>{fr ? "Fiches archivées" : "Archived entries"}<span className="library-entry-section-count">{archivedEntries.length}</span></summary>{entryList(archivedEntries, "")}</details>}
-    </ForestPageLayout>
+    </LibraryPageLayout>
   );
 }
 

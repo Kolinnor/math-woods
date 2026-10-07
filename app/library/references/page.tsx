@@ -2,7 +2,7 @@ import { LibraryReferenceType, Prisma } from "@prisma/client";
 import Link from "next/link";
 import { Download, ExternalLink, Link2, Pencil, Plus } from "lucide-react";
 import { LibraryReferenceTypeIcon } from "@/components/library/LibraryIcons";
-import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { LibraryEmptyState } from "@/components/library/LibraryEmptyState";
 import { LibraryPagination } from "@/components/library/LibraryPagination";
@@ -62,7 +62,7 @@ export default async function LibraryReferencesPage({ searchParams }: { searchPa
   const returnTo = libraryCatalogueHref("/library/references", { ...activeQuery, page: pagination.page > 1 ? String(pagination.page) : undefined });
   const fr = locale === "fr";
   return (
-    <ForestPageLayout className="library-catalogue-page library-references-page" title={copy.references} description={fr ? "Livres, articles et ressources pour prolonger la lecture." : "Books, articles and resources for further reading."} heroImage="/art/oak-grove.jpg" actions={user && isVerifiedContributor(user) && <Link className="button primary" href="/library/references/new"><Plus size={16} aria-hidden="true" />{fr ? "Ajouter une référence" : "Add a reference"}</Link>}>
+    <LibraryPageLayout locale={locale} className="library-catalogue-page library-references-page" title={copy.references} description={fr ? "Livres, articles et ressources pour prolonger la lecture." : "Books, articles and resources for further reading."} actions={user && isVerifiedContributor(user) && <Link className="button primary" href="/library/references/new"><Plus size={16} aria-hidden="true" />{fr ? "Ajouter une référence" : "Add a reference"}</Link>}>
       <LibraryTabs active="references" locale={locale} />
       <div className="library-catalogue-workspace">
         <aside className="library-catalogue-aside" aria-label={fr ? "Filtres des références" : "Reference filters"}>
@@ -109,6 +109,6 @@ export default async function LibraryReferencesPage({ searchParams }: { searchPa
           </details>
         </section>
       </div>
-    </ForestPageLayout>
+    </LibraryPageLayout>
   );
 }
