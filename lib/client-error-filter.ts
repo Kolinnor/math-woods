@@ -28,3 +28,15 @@ export function isOpaqueWindowScriptError(input: {
     && /^script error\.?$/i.test(input.message?.trim() ?? "")
     && !input.stack?.trim();
 }
+
+// These injected Brave iOS scripts are attributed to the page URL, not an
+// extension URL. Keep reports for inspection and only silence owner alerts.
+export function isKnownInjectedBrowserScriptError(input: {
+  userAgent?: string | null; source?: string | null; message: string; stack?: string | null;
+}) {
+  if (input.source !== "window.error" || !/\bBrave\b/.test(input.userAgent ?? "")
+    || !/\b(?:iPhone|iPad|iPod)\b/.test(input.userAgent ?? "")) return false;
+  const stack = input.stack ?? "";
+  if (!/^global code@https?:\/\/[^\s]+:1:\d+(?:\n|$)/.test(stack) || /\/_next\//.test(stack)) return false;
+  return /^(?:ReferenceError: Can't find variable: (?:__firefox__|DarkReader)|TypeError: undefined is not an object \(evaluating 'window\.__firefox__\.(?:reader|refresh_youtube_quality_[A-F0-9]{32})'\)|TypeError: undefined is not an object \(evaluating 'window\.ethereum\.selectedAddress = undefined'\))$/.test(input.message);
+}

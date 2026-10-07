@@ -2,7 +2,7 @@ import { NotificationType, Role } from "@prisma/client";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { isBrowserExtensionError, isMetaCrawlerResourceError, isOpaqueWindowScriptError } from "@/lib/client-error-filter";
+import { isBrowserExtensionError, isMetaCrawlerResourceError, isKnownInjectedBrowserScriptError, isOpaqueWindowScriptError } from "@/lib/client-error-filter";
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -80,8 +80,9 @@ export async function POST(request: Request) {
     }
   });
 
-  // Keep crawler transport errors for diagnosis; other errors still notify owners.
-  if (isMetaCrawlerResourceError({ userAgent, userId: currentUser?.id, message })) {
+  // Keep known browser injections and crawler transport errors for diagnosis.
+  if (isMetaCrawlerResourceError({ userAgent, userId: currentUser?.id, message })
+    || isKnownInjectedBrowserScriptError({ userAgent, source, message, stack })) {
     return NextResponse.json({ ok: true });
   }
 

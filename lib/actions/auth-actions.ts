@@ -41,9 +41,6 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function registerAction(formData: FormData) {
-  const displayName = boundedText(formData.get("displayName"), 80, "Profile name");
-  const email = boundedText(formData.get("email"), 320, "Email");
-  const password = boundedText(formData.get("password"), 512, "Password", { trim: false });
   const mathLevel = formData.get("mathLevel");
   const returnTo = safeReturnTo(String(formData.get("returnTo") ?? ""));
   const hasCustomReturnTo = returnTo !== "/";
@@ -51,6 +48,9 @@ export async function registerAction(formData: FormData) {
 
   let user;
   try {
+    const displayName = boundedText(formData.get("displayName"), 80, "Profile name");
+    const email = boundedText(formData.get("email"), 320, "Email");
+    const password = boundedText(formData.get("password"), 512, "Password", { trim: false });
     await Promise.all([
       assertRateLimit(`register:email:${email.toLowerCase()}`, 3, 60 * 60_000),
       assertRateLimit(`register:ip:${clientAddress}`, 10, 60 * 60_000)

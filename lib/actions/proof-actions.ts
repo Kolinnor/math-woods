@@ -413,18 +413,19 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
   await assertRateLimit(`proof-comment:${user.id}`, 12, 60_000);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Comment");
   const language = requireActiveContentLanguage(formData.get("language"));
-  const proof = await prisma.problemProof.findUnique({
-    where: { id: proofId },
+  const proof = await prisma.problemProof.findFirst({
+    where: { id: proofId, problem: { OR: [{ slug: problemSlug }, { slugRedirects: { some: { sourceSlug: problemSlug } } }] } },
     select: {
       authorId: true,
       translatedById: true,
       problem: { select: { slug: true, title: true } }
     }
   });
-  if (!proof || proof.problem.slug !== problemSlug) {
+  if (!proof) {
     throw new Error("Solution not found.");
   }
 
+  problemSlug = proof.problem.slug;
   const comment = await prisma.proofComment.create({
     data: {
       proofId,
@@ -455,8 +456,8 @@ export async function updateProofCommentAction(commentId: number, problemSlug: s
   await assertRateLimit(`proof-comment:update:${user.id}`, 30, 60_000);
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Comment");
   const comment = await prisma.proofComment.findFirst({
-    where: { id: commentId, deletedAt: null, proof: { problem: { slug: problemSlug } } },
-    select: { id: true, authorId: true, proofId: true }
+    where: { id: commentId, deletedAt: null, proof: { problem: { OR: [{ slug: problemSlug }, { slugRedirects: { some: { sourceSlug: problemSlug } } }] } } },
+    select: { id: true, authorId: true, proofId: true, proof: { select: { problem: { select: { slug: true } } } } }
   });
   if (!comment) throw new Error("Comment not found.");
   if (!canEditProofComment(user, comment)) {
@@ -472,16 +473,19 @@ export async function updateProofCommentAction(commentId: number, problemSlug: s
     }
   });
 
-  revalidatePath(`/problems/${problemSlug}`);
-  revalidatePath(`/problems/${problemSlug}/proofs/${comment.proofId}/discussion`);
+  const canonicalSlug = comment.proof.problem.slug;
+  const discussionHref = `/problems/${canonicalSlug}/proofs/${comment.proofId}/discussion`;
+  revalidatePath(`/problems/${canonicalSlug}`);
+  revalidatePath(discussionHref);
+  if (canonicalSlug !== problemSlug) redirect(discussionHref as Route);
 }
 
 export async function deleteProofCommentAction(commentId: number, problemSlug: string) {
   const user = await requireVerifiedUser();
   await assertRateLimit(`proof-comment:delete:${user.id}`, 30, 60_000);
   const comment = await prisma.proofComment.findFirst({
-    where: { id: commentId, deletedAt: null, proof: { problem: { slug: problemSlug } } },
-    select: { id: true, authorId: true, proofId: true }
+    where: { id: commentId, deletedAt: null, proof: { problem: { OR: [{ slug: problemSlug }, { slugRedirects: { some: { sourceSlug: problemSlug } } }] } } },
+    select: { id: true, authorId: true, proofId: true, proof: { select: { problem: { select: { slug: true } } } } }
   });
   if (!comment) throw new Error("Comment not found.");
   if (!canEditProofComment(user, comment)) {
@@ -493,6 +497,9 @@ export async function deleteProofCommentAction(commentId: number, problemSlug: s
     data: { deletedAt: new Date() }
   });
 
-  revalidatePath(`/problems/${problemSlug}`);
-  revalidatePath(`/problems/${problemSlug}/proofs/${comment.proofId}/discussion`);
+  const canonicalSlug = comment.proof.problem.slug;
+  const discussionHref = `/problems/${canonicalSlug}/proofs/${comment.proofId}/discussion`;
+  revalidatePath(`/problems/${canonicalSlug}`);
+  revalidatePath(discussionHref);
+  if (canonicalSlug !== problemSlug) redirect(discussionHref as Route);
 }

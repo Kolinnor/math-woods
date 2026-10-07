@@ -347,3 +347,66 @@ test('concept creation and editing explain alias conflicts in both languages whi
     }
   }
 });
+
+
+test('comment creation, editing and deletion accept only the current problem or its own historical URLs', async () => {
+  let deleted = false, authorId = 1;
+  const writes = [], invalidations = [], redirects = [];
+  const matches = where => where.OR.some(condition => condition.slug === 'current' || condition.slugRedirects?.some.sourceSlug === 'old');
+  const problem = { slug: 'current', title: 'Current' };
+  const comment = { id: 70, authorId: 1, proofId: 125, proof: { problem } };
+  const actions = load('lib/actions/proof-actions.ts', {
+    '@/lib/db': { prisma: {
+      problemProof: { findFirst: async ({where}) => where.id === 125 && matches(where.problem) ? {authorId: 2, translatedById: null, problem} : null },
+      proofComment: {
+        findFirst: async ({where}) => where.id === 70 && !deleted && matches(where.proof.problem) ? {...comment, authorId} : null,
+        create: async ({data}) => { writes.push(data); return {id: 71}; },
+        update: async ({where, data}) => { assert.equal(where.id, 70); writes.push(data); }
+      }
+    } },
+    '@/lib/markdown': {renderMarkdown: async text => text},
+    '@/lib/discussion-follows': {notifyDiscussionFollowers: async input => {assert.ok(input.href.startsWith('/problems/current/'));}},
+    '@/lib/user-display': {displayNameForUser: () => 'Editor'},
+    'next/cache': {revalidatePath: path => invalidations.push(path)},
+    'next/navigation': {redirect: path => {redirects.push(path); throw redirectError;}}
+  });
+  const data = new FormData(); data.set('bodyMarkdown', 'Corrected'); data.set('language', 'fr');
+  await assert.rejects(actions.createProofCommentAction(125, 'old', data), e => e === redirectError);
+  await assert.rejects(actions.updateProofCommentAction(70, 'old', data), e => e === redirectError);
+  await assert.rejects(actions.deleteProofCommentAction(70, 'old'), e => e === redirectError);
+  assert.equal(writes.length, 3);
+  assert.ok(redirects.every(path => path.startsWith('/problems/current/proofs/125/discussion')));
+  assert.ok(invalidations.every(path => path.startsWith('/problems/current')));
+  await actions.updateProofCommentAction(70, 'current', data);
+  assert.equal(writes.length, 4);
+  for (const action of [() => actions.createProofCommentAction(125, 'unrelated', data), () => actions.updateProofCommentAction(70, 'unrelated', data), () => actions.deleteProofCommentAction(70, 'unrelated')]) {
+    await assert.rejects(action, /not found/);
+  }
+  authorId = 2;
+  await assert.rejects(actions.updateProofCommentAction(70, 'old', data), /cannot edit/);
+  await assert.rejects(actions.deleteProofCommentAction(70, 'old'), /cannot delete/);
+  deleted = true;
+  await assert.rejects(actions.updateProofCommentAction(70, 'old', data), /not found/);
+  assert.equal(writes.length, 4);
+});
+
+test('invalid registration fields return existing form feedback and never create an account', async () => {
+  let registrations = 0, verifications = 0;
+  const redirects = [];
+  const actions = load('lib/actions/auth-actions.ts', {
+    '@/lib/auth': {registerUser: async () => {registrations++; return {id: 9};}},
+    '@/lib/oauth-utils': {safeReturnTo: () => '/problems'},
+    '@/lib/request-context': {currentClientAddress: async () => 'test'},
+    '@/lib/email-verification': {createAndSendEmailVerification: async () => {verifications++; return {sent: true};}},
+    'next/navigation': {redirect: path => {redirects.push(path); throw redirectError;}}
+  });
+  for (const [name, length] of [['displayName',81], ['email',321], ['password',513]]) {
+    const data = new FormData(); data.set('displayName','Name');data.set('email','user@example.org');data.set('password','Valid password');data.set(name,'x'.repeat(length));
+    await assert.rejects(actions.registerAction(data), e => e === redirectError);
+    assert.equal(redirects.at(-1), '/login?registerError=invalid&returnTo=%2Fproblems');
+  }
+  assert.equal(registrations,0);assert.equal(verifications,0);
+  const valid = new FormData();valid.set('displayName','Name');valid.set('email','user@example.org');valid.set('password','Valid password');
+  await assert.rejects(actions.registerAction(valid), e => e === redirectError);
+  assert.equal(registrations,1);assert.equal(verifications,1);assert.equal(redirects.at(-1),'/problems');
+});

@@ -38,6 +38,8 @@ test('only explicit anonymous Meta crawler identities are classified as crawler 
 
 test('crawler errors remain stored, ordinary and signed-in errors still notify, rate limits still apply', async () => {
   for (const scenario of [
+    { ua: 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Brave', user: {id: 8}, notifications: 0, source: 'window.error', message: "ReferenceError: Can't find variable: __firefox__", stack: 'global code@https://mathwoods.org/problems:1:12' },
+    { ua: 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Brave', user: {id: 8}, notifications: 1, source: 'window.error', message: "ReferenceError: Can't find variable: __firefox__", stack: 'at https://mathwoods.org/_next/static/chunks/app.js:1:12' },
     { ua: crawler, user: null, notifications: 0 },
     { ua: crawler, user: null, notifications: 0, message: 'network error' },
     { ua: crawler, user: null, notifications: 1, message: 'An error occurred in the Server Components render.' },
@@ -62,7 +64,7 @@ test('crawler errors remain stored, ordinary and signed-in errors still notify, 
       '@/lib/security': { sanitizeReportPath: path => path }
     });
     const response = await route.POST(new Request('https://mathwoods.invalid/api/error-reports', {
-      method: 'POST', body: JSON.stringify({ message: scenario.message ?? 'Loading chunk 7395 failed.', path: '/login', source: 'next.global-error-boundary' })
+      method: 'POST', body: JSON.stringify({ message: scenario.message ?? 'Loading chunk 7395 failed.', path: '/login', source: scenario.source ?? 'next.global-error-boundary', stack: scenario.stack })
     }));
     assert.equal(response.status, scenario.limited ? 429 : 200);
     assert.equal(stored.length, scenario.limited ? 0 : 1);
@@ -132,5 +134,23 @@ test('login renders the localized expiration guidance and keeps provider restart
     assert.ok(tree.includes(dictionary.auth.errors.oauthExpired));
     assert.ok(tree.includes('/api/auth/google/start?returnTo=%2F'));
     assert.ok(!tree.includes(dictionary.auth.errors.oauthFailed));
+  }
+});
+
+
+test('injected browser signatures are narrow and never hide application or server errors', () => {
+  const base = { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7_8 like Mac OS X) AppleWebKit/605.1.15 Brave', source: 'window.error', stack: 'global code@https://mathwoods.org/problems:1:19\n    at browser error event (https://mathwoods.org/problems:1:19)' };
+  for (const message of [
+    "ReferenceError: Can't find variable: __firefox__",
+    "ReferenceError: Can't find variable: DarkReader",
+    "TypeError: undefined is not an object (evaluating 'window.__firefox__.reader')",
+    "TypeError: undefined is not an object (evaluating 'window.__firefox__.refresh_youtube_quality_0DD88D11A0414F209C3D07230C65BA5A')",
+    "TypeError: undefined is not an object (evaluating 'window.ethereum.selectedAddress = undefined')"
+  ]) {
+    const input = {...base, message};
+    assert.equal(filters.isKnownInjectedBrowserScriptError(input), true);
+    for (const override of [{userAgent:'Firefox'}, {source:'next.error-boundary'}, {stack:null}, {stack:'global code@https://mathwoods.org/_next/static/chunks/app.js:1:19'}, {message:'TypeError: page failed'}, {message: message + ' unrelated failure'}]) {
+      assert.equal(filters.isKnownInjectedBrowserScriptError({...input, ...override}), false);
+    }
   }
 });
