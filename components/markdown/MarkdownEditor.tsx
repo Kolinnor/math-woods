@@ -913,7 +913,7 @@ function setMarkdownHeadingLevel(view: EditorView, level: number) {
 function markdownShortcutExtension(shortcuts: MarkdownHeadingShortcuts) {
   return EditorView.domEventHandlers({
     keydown(event, view) {
-      if (event.isComposing) return false;
+      if (event.isComposing || view.compositionStarted) return false;
 
       const level = markdownHeadingLevelForEvent(event, shortcuts);
       if (level === null) return false;
@@ -939,7 +939,7 @@ function dispatchLatexShortcutResult(view: EditorView, result: LatexEditorShortc
 function latexShortcutExtension(preferences: LatexPreferenceValues) {
   return [
     EditorView.inputHandler.of((view, from, to, text) => {
-      const result = latexTextInputShortcut(view.state.doc.toString(), from, to, text, preferences);
+      const result = latexTextInputShortcut(view.state.doc.toString(), from, to, text, preferences, view.compositionStarted);
       if (!result) return false;
 
       dispatchLatexShortcutResult(view, result);
@@ -947,7 +947,7 @@ function latexShortcutExtension(preferences: LatexPreferenceValues) {
     }),
     EditorView.domEventHandlers({
       keydown(event, view) {
-        if (event.isComposing) return false;
+        if (event.isComposing || view.compositionStarted) return false;
 
         const selection = view.state.selection.main;
         const source = view.state.doc.toString();

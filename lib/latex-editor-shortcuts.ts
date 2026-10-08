@@ -221,7 +221,17 @@ function previousLatexToken(text: string, rangeFrom: number, cursor: number) {
 function customCommandBeforeCursor(text: string, cursor: number, preferences: LatexPreferenceValues) {
   const commands = parseLatexCustomCommands(preferences.customCommands);
   const before = text.slice(0, cursor);
-  return commands.find((command) => before.endsWith(command.trigger)) ?? null;
+  return commands.find((command) => {
+    if (!before.endsWith(command.trigger)) return false;
+    // Word shortcuts must start a token: never rewrite the tail of \iff,
+    // \diff, \varepsilon or a longer identifier. Symbol shortcuts stay usable
+    // next to variables (for example x->).
+    if (/^[\p{L}\p{N}_]/u.test(command.trigger)) {
+      const prefix = before.slice(0, -command.trigger.length);
+      if (/[\\\p{L}\p{N}_]$/u.test(prefix)) return false;
+    }
+    return true;
+  }) ?? null;
 }
 
 function expandCustomCommand(text: string, cursor: number, preferences: LatexPreferenceValues, suffix: string) {
@@ -276,8 +286,12 @@ export function latexTextInputShortcut(
   from: number,
   to: number,
   input: string,
-  preferences: LatexPreferenceValues
+  preferences: LatexPreferenceValues,
+  compositionStarted = false
 ): LatexEditorShortcutResult | null {
+  // Dead keys and IMEs own the text and caret until composition ends. Moving
+  // either to insert braces can corrupt the browser's next composition update.
+  if (compositionStarted) return null;
   if (isInsideMarkdownCode(source, from)) return null;
 
   if (input === "$$" && preferences.autocloseDollars && from === to) {

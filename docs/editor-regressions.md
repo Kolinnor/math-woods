@@ -27,6 +27,29 @@ These are known behavioral fixes that should not be broken when changing live pr
   cursor enters the relevant range.
 - Right-clicking selected text should open the concept-link menu without losing the selected text.
 
+## 2026-10-08 - Preserve LaTeX commands and keyboard composition (issue #26)
+
+Custom shorthand matched arbitrary suffixes: typing a space after `\iff` or
+`\diff` expanded the `iff` suffix and corrupted the command. Word shorthands now
+require a token boundary, excluding a preceding backslash, letter, number or
+underscore. Keep standalone shortcuts and punctuation triggers working on both
+Space and Tab; explicitly configured backslash-prefixed triggers remain supported.
+
+The reported superscript corruption has not been reproduced with ordinary key
+input. As a conservative guard, leave text and selection to CodeMirror while
+`view.compositionStarted` is true, including the first dead-key/IME update. Do not
+insert braces, expand shorthand or run keyboard shortcuts during composition,
+and do not retroactively rewrite the committed text. Ordinary `^`/`_` input still
+inserts braces; composed input may require the author to enter braces manually.
+This guard is not proof that every platform-specific superscript issue is fixed.
+
+Use darker syntax colors on the light editor background, including identifiers,
+operators and brackets; preserve the light palette for dim/dark themes. Saved
+source and rendered math are unchanged.
+
+Guardrails: core tests cover literal commands, longer identifiers, standalone and
+symbol shortcuts, Space/Tab, composition updates and normal superscript input.
+
 ## 2026-10-06 - Problem titles in existing solution links
 
 Renaming a problem updated its URL and editor lookup, but existing solution links

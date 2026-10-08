@@ -2169,6 +2169,43 @@ assert.deepEqual(latexTabShortcut("$RR$", 3, { ...DEFAULT_LATEX_PREFERENCES, tab
   changes: { from: 1, to: 3, insert: "\\mathbb{R}" },
   anchor: 11
 });
+// Issue #26: Space and Tab must not expand suffixes of literal commands or words.
+for (const literal of [String.raw`\iff`, String.raw`\diff`, String.raw`\RR`, String.raw`\notin`, "diff", "xRR", "2RR", "éRR", "_RR"]) {
+  const source = `$${literal}$`;
+  const cursor = source.length - 1;
+  assert.equal(latexTextInputShortcut(source, cursor, cursor, " ", DEFAULT_LATEX_PREFERENCES), null, literal);
+  assert.equal(latexTabShortcut(source, cursor, { ...DEFAULT_LATEX_PREFERENCES, tabCompletesShorthand: true }), null, literal);
+}
+for (const prefix of ["$", "$A ", "$A+", "${", "$\\forall x,"]) {
+  const source = `${prefix}iff$`;
+  const cursor = source.length - 1;
+  assert.deepEqual(latexTextInputShortcut(source, cursor, cursor, " ", DEFAULT_LATEX_PREFERENCES)?.changes,
+    { from: prefix.length, to: cursor, insert: "\\Longleftrightarrow " });
+  assert.deepEqual(latexTabShortcut(source, cursor, { ...DEFAULT_LATEX_PREFERENCES, tabCompletesShorthand: true })?.changes,
+    { from: prefix.length, to: cursor, insert: "\\Longleftrightarrow" });
+}
+assert.deepEqual(latexTextInputShortcut("$x->$", 4, 4, " ", {
+  ...DEFAULT_LATEX_PREFERENCES, customCommands: String.raw`-> => \to`
+})?.changes, { from: 2, to: 4, insert: "\\to " });
+assert.deepEqual(latexTextInputShortcut("$\\foo$", 5, 5, " ", {
+  ...DEFAULT_LATEX_PREFERENCES, customCommands: String.raw`\foo => \bar`
+})?.changes, { from: 1, to: 5, insert: "\\bar " });
+// Intermediate/replacement composition input belongs to the browser. Never move
+// its caret or insert helper text, even for the first dead-key update.
+for (const input of ["^", "_", "$", "{", " ", "ê", "^n"]) {
+  assert.equal(latexTextInputShortcut("$x$", 2, 2, input, DEFAULT_LATEX_PREFERENCES, true), null);
+  assert.equal(latexTextInputShortcut("$x^$", 2, 3, input, DEFAULT_LATEX_PREFERENCES, true), null);
+}
+assert.equal(latexTextInputShortcut("$iff$", 4, 4, " ", DEFAULT_LATEX_PREFERENCES, true), null);
+assert.deepEqual(latexTextInputShortcut("$x$", 2, 2, "^", DEFAULT_LATEX_PREFERENCES, false), {
+  changes: { from: 2, to: 2, insert: "^{}" }, anchor: 4
+});
+assert.deepEqual(latexTextInputShortcut("$x$", 2, 2, "_", DEFAULT_LATEX_PREFERENCES, false), {
+  changes: { from: 2, to: 2, insert: "_{}" }, anchor: 4
+});
+assert.deepEqual(latexTextInputShortcut("$xn$", 2, 3, "^", DEFAULT_LATEX_PREFERENCES), {
+  changes: { from: 2, to: 3, insert: "^{n}" }, anchor: 5
+});
 assert.deepEqual(latexInlineMathShortcut("abc", 1, 2, DEFAULT_LATEX_PREFERENCES), {
   changes: { from: 1, to: 2, insert: "$b$" },
   anchor: 4

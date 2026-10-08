@@ -3112,29 +3112,37 @@ button.markdown-editor-tool-button:disabled svg {
 }
 
 .markdown-editor .cm-latex-delimiter {
-  color: #a78bfa;
+  color: #6d28d9;
 }
 
 .markdown-editor .cm-latex-command {
-  color: #fb7185;
+  color: #be123c;
   font-style: normal;
 }
 
 .markdown-editor .cm-latex-bracket {
-  color: #60a5fa;
+  color: #1d4ed8;
 }
 
 .markdown-editor .cm-latex-number {
-  color: #c084fc;
+  color: #7e22ce;
 }
 
 .markdown-editor .cm-latex-operator {
-  color: #fbbf24;
+  color: #92400e;
 }
 
 .markdown-editor .cm-latex-identifier {
-  color: #5eead4;
+  color: #0f766e;
 }
+
+/* Retain light syntax colors when the editor itself uses a dark surface. */
+:is([data-theme="dim"], [data-theme="dark"]) .markdown-editor .cm-latex-delimiter { color: #a78bfa; }
+:is([data-theme="dim"], [data-theme="dark"]) .markdown-editor .cm-latex-command { color: #fb7185; }
+:is([data-theme="dim"], [data-theme="dark"]) .markdown-editor .cm-latex-bracket { color: #60a5fa; }
+:is([data-theme="dim"], [data-theme="dark"]) .markdown-editor .cm-latex-number { color: #c084fc; }
+:is([data-theme="dim"], [data-theme="dark"]) .markdown-editor .cm-latex-operator { color: #fbbf24; }
+:is([data-theme="dim"], [data-theme="dark"]) .markdown-editor .cm-latex-identifier { color: #5eead4; }
 
 .markdown-editor .cm-md-heading {
   font-family: var(--font-serif);
