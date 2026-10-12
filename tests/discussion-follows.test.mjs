@@ -147,3 +147,36 @@ test('solution and concept discussion notifications describe followed content wi
     assert.ok(!text.body.includes('votre solution'));
   }
 });
+
+for (const kind of ['problem', 'proof', 'concept']) {
+  test(`${kind}: direct reply produces one targeted notification, respecting muting and global preferences`, async () => {
+    const f = fixture();
+    f.posts.push({ kind, targetId: 10, authorId: 2 }, { kind, targetId: 10, authorId: 2 }, { kind, targetId: 10, authorId: 3 });
+    const send = (replyToAuthorId = 2) => f.notifyDiscussionFollowers({
+      target: { kind, id: 10 }, authorIds: [1, 2], actorId: 3, actorName: 'Alice',
+      replyToAuthorId, contentTitle: 'Example', href: '/discussion#post-9'
+    });
+    await send();
+    assert.deepEqual(f.notifications.map(n => n.userId), [1, 2]);
+    assert.equal(f.notifications[0].title.includes('reply'), false);
+    assert.equal(f.notifications[1].title, 'New reply to your comment');
+    assert.equal(f.notifications[1].href, '/discussion#post-9');
+    assert.deepEqual(localizeNotification(f.notifications[1], 'fr'), {
+      title: 'Nouvelle réponse à votre commentaire',
+      body: 'Alice a répondu à votre commentaire dans la discussion de « Example ».'
+    });
+    assert.equal(localizeNotification(f.notifications[1], 'en').title, 'New reply to your comment');
+    f.notifications.length = 0;
+    await send(3);
+    assert.ok(f.notifications.every(n => n.userId !== 3 && n.title !== 'New reply to your comment'));
+    await f.setDiscussionFollowingAction({ kind, id: 10 }, false);
+    f.notifications.length = 0;
+    await send();
+    assert.deepEqual(f.notifications.map(n => n.userId), [1]);
+    await f.setDiscussionFollowingAction({ kind, id: 10 }, true);
+    f.disabledUsers.add(2);
+    f.notifications.length = 0;
+    await send();
+    assert.deepEqual(f.notifications.map(n => n.userId), [1]);
+  });
+}

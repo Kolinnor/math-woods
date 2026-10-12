@@ -361,6 +361,15 @@ function localizeFrenchNotification(notification: LocalizableNotification): Loca
     case NotificationType.SOLUTION_REPORTED:
       return localizedSolutionReport(notification);
     case NotificationType.DISCUSSION_POSTED: {
+      if (notification.title === "New reply to your comment") {
+        const actor = notificationActor(notification, " replied to your comment in ");
+        return {
+          title: "Nouvelle réponse à votre commentaire",
+          body: problemTitle
+            ? `${actor} a répondu à votre commentaire dans la discussion de « ${problemTitle} ».`
+            : `${actor} a répondu à votre commentaire.`
+        };
+      }
       if (notification.title === "New message in a concept discussion you follow") {
         const actor = notificationActor(notification, " posted in the discussion of ");
         return {

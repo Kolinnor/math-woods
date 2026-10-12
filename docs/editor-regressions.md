@@ -27,6 +27,14 @@ These are known behavioral fixes that should not be broken when changing live pr
   cursor enters the relevant range.
 - Right-clicking selected text should open the concept-link menu without losing the selected text.
 
+## 2026-10-12 - Keep discussion reply drafts tied to their original comment
+
+Reply forms use a separate draft key for each original comment. Use confirmed-save
+receipts for those keys: a failed reply followed by another successful comment must
+not erase the failed draft just because the discussion's reset signal changed.
+Only acknowledge the submitted draft after the reply has actually been saved.
+The editor's existing token check preserves any text edited after submission.
+
 ## 2026-10-08 - Preserve LaTeX commands and keyboard composition (issue #26)
 
 Custom shorthand matched arbitrary suffixes: typing a space after `\iff` or

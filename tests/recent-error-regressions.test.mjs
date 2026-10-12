@@ -366,6 +366,7 @@ test('comment creation, editing and deletion accept only the current problem or 
     } },
     '@/lib/markdown': {renderMarkdown: async text => text},
     '@/lib/discussion-follows': {notifyDiscussionFollowers: async input => {assert.ok(input.href.startsWith('/problems/current/'));}},
+    '@/lib/discussion-replies': {resolveDiscussionReply: async (_target, value) => { assert.equal(value, null); return null; }},
     '@/lib/user-display': {displayNameForUser: () => 'Editor'},
     'next/cache': {revalidatePath: path => invalidations.push(path)},
     'next/navigation': {redirect: path => {redirects.push(path); throw redirectError;}}

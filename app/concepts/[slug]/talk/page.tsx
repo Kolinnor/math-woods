@@ -4,6 +4,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DiscussionFollowControl } from "@/components/DiscussionFollowControl";
+import { DiscussionReplyForm } from "@/components/DiscussionReplyForm";
+import { DiscussionReplyQuote } from "@/components/DiscussionReplyQuote";
+import { discussionReplyPreview } from "@/lib/discussion-reply-preview";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -18,7 +21,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { canEditConceptTalkPost } from "@/lib/permissions";
+import { canEditConceptTalkPost, isVerifiedContributor } from "@/lib/permissions";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +87,8 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
     notFound();
   }
   const ownTalkPostResetSignal = user ? concept.talkPosts.filter((post) => post.authorId === user.id).at(-1)?.id ?? 0 : 0;
+  const replyPreviews = new Map(concept.talkPosts.map((post) => [post.id, discussionReplyPreview(post, interfaceLocale)]));
+  const canReply = Boolean(user && isVerifiedContributor(user));
   const dateFormatter = new Intl.DateTimeFormat(interfaceLocale === "fr" ? "fr-FR" : "en-US", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -131,10 +136,15 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
                 </div>
               </header>
               <div className="discussion-post-body">
+                {post.parentId && <DiscussionReplyQuote reply={replyPreviews.get(post.parentId) ?? null} anchorPrefix="post" locale={interfaceLocale} />}
                 <MarkdownBlock html={post.bodyHtml} />
               </div>
-              {canManagePost && (
+              {(canManagePost || canReply) && (
                 <footer className="discussion-post-footer">
+                  {canReply && <DiscussionReplyForm action={createConceptTalkPostAction.bind(null, concept.id, concept.slug)}
+                    reply={replyPreviews.get(post.id)!} locale={interfaceLocale} anchorPrefix="post"
+                    draftKey={`concept-talk:${concept.id}`} resetSignal={ownTalkPostResetSignal} />}
+                  {canManagePost && <>
                   <details>
                     <summary>
                       <Pencil size={14} aria-hidden="true" />
@@ -158,6 +168,7 @@ export default async function ConceptTalkPage({ params }: { params: Promise<{ sl
                       {copy.delete}
                     </ConfirmSubmitButton>
                   </form>
+                  </>}
                 </footer>
               )}
             </article>

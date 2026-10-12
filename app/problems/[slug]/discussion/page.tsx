@@ -5,6 +5,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DiscussionFollowControl } from "@/components/DiscussionFollowControl";
+import { DiscussionReplyForm } from "@/components/DiscussionReplyForm";
+import { DiscussionReplyQuote } from "@/components/DiscussionReplyQuote";
+import { discussionReplyPreview } from "@/lib/discussion-reply-preview";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { HiddenHint } from "@/components/HiddenHint";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
@@ -22,7 +25,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
-import { canEditDiscussionPost, canViewArchivedProblem } from "@/lib/permissions";
+import { canEditDiscussionPost, canViewArchivedProblem, isVerifiedContributor } from "@/lib/permissions";
 import { canViewProblem } from "@/lib/problem-visibility";
 import { getRequestTimeZone } from "@/lib/server-time-zone";
 
@@ -107,6 +110,8 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
   if (problem.status === "ARCHIVED" && !canViewArchivedProblem(user, problem)) notFound();
   if (!canViewProblem(user, problem)) notFound();
   const posts = problem.thread?.posts ?? [];
+  const replyPreviews = new Map(posts.map((post) => [post.id, discussionReplyPreview(post, interfaceLocale)]));
+  const canReply = Boolean(user && isVerifiedContributor(user));
   const [postVoteGroups, userVotes] = await Promise.all([
     posts.length
       ? prisma.vote.groupBy({
@@ -203,6 +208,7 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
               </header>
 
               <div className="discussion-post-body">
+                {post.parentId && <DiscussionReplyQuote reply={replyPreviews.get(post.parentId) ?? null} anchorPrefix="post" locale={interfaceLocale} />}
                 {post.type === "HINT" ? (
                   <HiddenHint
                     postId={post.id}
@@ -224,6 +230,9 @@ export default async function ProblemDiscussionPage({ params }: { params: Promis
 
               {(canManagePost || user) && (
                 <footer className="discussion-post-footer">
+                  {canReply && <DiscussionReplyForm action={createDiscussionPostAction.bind(null, problem.id, true)}
+                    reply={replyPreviews.get(post.id)!} locale={interfaceLocale} anchorPrefix="post"
+                    draftKey={`problem-discussion:${problem.id}`} resetSignal={ownDiscussionPostResetSignal} />}
                   {canManagePost && (
                     <>
                       <details>

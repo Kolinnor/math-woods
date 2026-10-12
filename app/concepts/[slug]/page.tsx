@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { ConceptShareLauncher } from "@/components/ConceptShareLauncher";
 import { ConceptPracticeQueue } from "@/components/ConceptPracticeQueue";
 import { ConceptEditedBadge, ConceptStatusBadge } from "@/components/ConceptStatusBadge";
+import { StatusDisclosure } from "@/components/StatusDisclosure";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { ContentTranslations } from "@/components/ContentTranslations";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
@@ -507,7 +508,17 @@ export default async function ConceptPage({
       description={
         <>
           {conceptKindLabel} / {conceptDomainLabel} /{" "}
-          <ConceptStatusBadge status={concept.status} label={conceptStatusLabel} />
+          {concept.status === "STUB" ? (
+            <StatusDisclosure label={conceptStatusLabel} closeLabel={t.common.close}
+              badge={<ConceptStatusBadge status={concept.status} label={conceptStatusLabel} />}>
+              <p>{t.conceptDetail.stubExplanation}</p>
+              {user && canChangeConceptStatus(user, concept, ConceptStatus.USABLE) && (
+                <form action={markConceptUsableAction.bind(null, concept.id)}>
+                  <button type="submit" className="secondary">{t.conceptDetail.markUsable}</button>
+                </form>
+              )}
+            </StatusDisclosure>
+          ) : <ConceptStatusBadge status={concept.status} label={conceptStatusLabel} />}
           {concept.needsReviewAfterEdit && (
             <ConceptEditedBadge label={t.conceptDetail.editedSinceReview} />
           )}
@@ -580,11 +591,6 @@ export default async function ConceptPage({
             addTranslationLabel={t.translations.addTranslation}
             createHref={addTranslationHref}
           />
-          {concept.status === "STUB" && (
-            <span className="tab-nav-notice tab-nav-notice-stub">
-              {t.conceptDetail.stubNotice}
-            </span>
-          )}
         </div>
 
         {concept.status === "CONTROVERSIAL" && (
@@ -609,7 +615,7 @@ export default async function ConceptPage({
           </div>
         )}
 
-        {(concept.status === "STUB" || concept.status === "MISSING") && (
+        {concept.status === "MISSING" && (
           <div className="quality-banner quality-stub mb-4">
             <strong>{t.concepts.statuses[concept.status]}.</strong>{" "}
             {t.conceptDetail.stubStatusNotice}

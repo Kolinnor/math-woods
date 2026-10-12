@@ -3,6 +3,7 @@ import { EditSummaryValidationError, editSummaryValidationMessage, parseEditSumm
 import { getInterfaceLocale } from "@/lib/i18n/server";
 
 import { notifyDiscussionFollowers } from "@/lib/discussion-follows";
+import { resolveDiscussionReply } from "@/lib/discussion-replies";
 
 import type { Route } from "next";
 import {
@@ -2887,6 +2888,7 @@ export async function createDiscussionPostAction(
 
   if (!problem) throw new Error("Problem not found.");
   const bodyMarkdown = requiredBoundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.discussionPost, "Discussion message");
+  const parent = await resolveDiscussionReply({ kind: "problem", id: problemId }, formData.get("parentId"), user);
   const typeInput = String(formData.get("type") ?? "COMMENT").toUpperCase();
   const type = Object.values(PostType).includes(typeInput as PostType) ? (typeInput as PostType) : PostType.COMMENT;
   const thread =
@@ -2899,6 +2901,7 @@ export async function createDiscussionPostAction(
     }));
   const post = await prisma.discussionPost.create({
     data: {
+      parentId: parent?.id,
       threadId: thread.id,
       authorId: user.id,
       bodyMarkdown,
@@ -2915,13 +2918,16 @@ export async function createDiscussionPostAction(
   }
   await notifyDiscussionFollowers({
     target: { kind: "problem", id: problemId },
+    replyToAuthorId: parent?.authorId,
     authorIds: [problem.authorId],
     actorId: user.id,
     actorName: displayNameForUser(user),
     contentTitle: problem.title,
     href: `/problems/${problem.slug}/discussion#post-${post.id}`
   });
-  redirect(returnToDiscussion ? (`/problems/${problem.slug}/discussion` as Route) : `/problems/${problem.slug}`);
+  if (parent) await acknowledgeCitationDraft(formData);
+  if (parent && formData.get("replyInline") === "1") return;
+  redirect(returnToDiscussion ? (`/problems/${problem.slug}/discussion#post-${post.id}` as Route) : `/problems/${problem.slug}`);
 }
 
 export async function updateDiscussionPostAction(

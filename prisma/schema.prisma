@@ -1565,6 +1565,9 @@ model ConceptTalkPost {
   id           Int       @id @default(autoincrement())
   conceptId    Int
   authorId     Int
+  parentId     Int?
+  parent       ConceptTalkPost? @relation("ConceptTalkReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies      ConceptTalkPost[] @relation("ConceptTalkReplies")
   bodyMarkdown String
   bodyHtml     String
   createdAt    DateTime  @default(now())
@@ -1575,6 +1578,7 @@ model ConceptTalkPost {
   author       User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([conceptId, createdAt])
+  @@index([parentId])
 }
 
 model InternalLink {
@@ -1745,6 +1749,9 @@ model ProofComment {
   id           Int          @id @default(autoincrement())
   proofId      Int
   authorId     Int
+  parentId     Int?
+  parent       ProofComment? @relation("ProofCommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies      ProofComment[] @relation("ProofCommentReplies")
   language     String       @default("en")
   bodyMarkdown String
   bodyHtml     String
@@ -1756,6 +1763,7 @@ model ProofComment {
   author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([proofId, createdAt])
+  @@index([parentId])
 }
 
 model ProblemVerificationRequest {
@@ -1857,6 +1865,8 @@ model DiscussionPost {
   bodyHtml     String
   parentId     Int?
   type         PostType         @default(COMMENT)
+  parent       DiscussionPost? @relation("DiscussionPostReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies      DiscussionPost[] @relation("DiscussionPostReplies")
   score        Int              @default(0)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
@@ -1864,6 +1874,8 @@ model DiscussionPost {
   deletedAt    DateTime?
   thread       DiscussionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   author       User             @relation(fields: [authorId], references: [id])
+
+  @@index([parentId])
 }
 
 model Vote {

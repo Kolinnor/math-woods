@@ -2,6 +2,7 @@ import type { DeepPartial, Dictionary } from "../types.ts";
 
 export const fr = {
   common: {
+    close: "Fermer",
     allDomains: "tous les domaines",
     by: "par",
     difficultyUnset: "non définie",
@@ -1393,6 +1394,7 @@ export const fr = {
     history: "Historique",
     stubNotice: "Cet article est une ébauche",
     stubStatusNotice: "Ce concept est encore une ébauche minimale.",
+    stubExplanation: "Ce concept est encore incomplet. Un autre contributeur de confiance doit confirmer qu’il est utilisable.",
     usableNotice: "Ce concept est suffisamment clair pour être utilisé, mais n'a pas encore été relu par un autre utilisateur de confiance.",
     controversialNotice: "Cet article est marqué comme controversé. Consultez la discussion et les sources avant de vous y fier.",
     unreviewed: "Non relu",

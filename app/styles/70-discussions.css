@@ -284,6 +284,51 @@
   margin-left: auto;
 }
 
+.discussion-reply-control.is-open {
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.discussion-reply-control > button.discussion-text-action,
+.discussion-reply-control > button.discussion-text-action:hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+.discussion-inline-form.discussion-reply-form {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.discussion-reply-quote {
+  border-left: 3px solid var(--accent);
+  color: var(--mw-secondary);
+  display: grid;
+  font-size: 0.85rem;
+  gap: 0.2rem;
+  margin: 0 0 0.8rem;
+  overflow-wrap: anywhere;
+  padding: 0.4rem 0.75rem;
+  text-decoration: none;
+}
+
+.discussion-reply-quote:hover {
+  color: var(--accent);
+}
+
+.discussion-reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.discussion-reply-actions button {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
 .discussion-inline-form {
   background: #f8f4ea;
   border: 1px solid #d8d0bd;

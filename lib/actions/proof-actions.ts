@@ -1,6 +1,7 @@
 "use server";
 
 import { notifyDiscussionFollowers } from "@/lib/discussion-follows";
+import { resolveDiscussionReply } from "@/lib/discussion-replies";
 
 import type { Route } from "next";
 import { NotificationType, SourceType, TargetType, VoteType } from "@prisma/client";
@@ -426,8 +427,10 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
   }
 
   problemSlug = proof.problem.slug;
+  const parent = await resolveDiscussionReply({ kind: "proof", id: proofId }, formData.get("parentId"), user);
   const comment = await prisma.proofComment.create({
     data: {
+      parentId: parent?.id,
       proofId,
       authorId: user.id,
       language,
@@ -439,6 +442,7 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
   const discussionHref = `/problems/${problemSlug}/proofs/${proofId}/discussion`;
   await notifyDiscussionFollowers({
     target: { kind: "proof", id: proofId },
+    replyToAuthorId: parent?.authorId,
     authorIds: [proof.authorId, proof.translatedById].filter((id): id is number => id !== null),
     actorId: user.id,
     actorName: displayNameForUser(user),
@@ -448,6 +452,8 @@ export async function createProofCommentAction(proofId: number, problemSlug: str
 
   revalidatePath(`/problems/${problemSlug}`);
   revalidatePath(discussionHref);
+  if (parent) await acknowledgeCitationDraft(formData);
+  if (parent && formData.get("replyInline") === "1") return;
   redirect(`${discussionHref}#comment-${comment.id}` as Route);
 }
 

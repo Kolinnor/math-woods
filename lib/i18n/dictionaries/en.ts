@@ -1,5 +1,6 @@
 export const en = {
   common: {
+    close: "Close",
     allDomains: "all domains",
     by: "by",
     difficultyUnset: "unset",
@@ -1388,6 +1389,7 @@ export const en = {
     history: "History",
     stubNotice: "This article is a stub",
     stubStatusNotice: "This concept is still a minimal draft.",
+    stubExplanation: "This concept is still incomplete. Another trusted contributor must confirm that it is usable.",
     usableNotice: "This concept is clear enough to use, but has not yet been reviewed by another trusted user.",
     controversialNotice: "This article is marked controversial. Check the talk page and sources before relying on it.",
     unreviewed: "Unreviewed",

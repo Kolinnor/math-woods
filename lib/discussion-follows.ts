@@ -29,6 +29,7 @@ export async function notifyDiscussionFollowers(input: {
   actorName: string;
   contentTitle: string;
   href: string;
+  replyToAuthorId?: number;
 }) {
   const { target } = input;
   const [participants, preferences] = await Promise.all([
@@ -49,9 +50,12 @@ export async function notifyDiscussionFollowers(input: {
     userId,
     actorId: input.actorId,
     type: NotificationType.DISCUSSION_POSTED,
-    title: target.kind === "proof" ? "New message in a solution discussion you follow"
+    title: userId === input.replyToAuthorId ? "New reply to your comment"
+      : target.kind === "proof" ? "New message in a solution discussion you follow"
       : target.kind === "concept" ? "New message in a concept discussion you follow" : "New discussion message",
-    body: `${input.actorName} posted in the discussion of "${input.contentTitle}".`,
+    body: userId === input.replyToAuthorId
+      ? `${input.actorName} replied to your comment in the discussion of "${input.contentTitle}".`
+      : `${input.actorName} posted in the discussion of "${input.contentTitle}".`,
     href: input.href
   })));
 }

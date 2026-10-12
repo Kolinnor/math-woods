@@ -5,6 +5,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DiscussionFollowControl } from "@/components/DiscussionFollowControl";
+import { DiscussionReplyForm } from "@/components/DiscussionReplyForm";
+import { DiscussionReplyQuote } from "@/components/DiscussionReplyQuote";
+import { discussionReplyPreview } from "@/lib/discussion-reply-preview";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { LazyMarkdownEditor } from "@/components/markdown/LazyMarkdownEditor";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
@@ -158,6 +161,7 @@ export default async function SolutionDiscussionPage({
 
   const isOwnProof = user?.id === proof.authorId || user?.id === proof.translatedById;
   const canContribute = Boolean(user && isVerifiedContributor(user));
+  const replyPreviews = new Map(proof.comments.map((comment) => [comment.id, discussionReplyPreview(comment, interfaceLocale)]));
   const canReport = Boolean(canContribute && !isOwnProof);
   const ownCommentResetSignal = user
     ? proof.comments.filter((comment) => comment.authorId === user.id).at(-1)?.id ?? 0
@@ -249,10 +253,15 @@ export default async function SolutionDiscussionPage({
                 </div>
               </header>
               <div className="discussion-post-body">
+                {comment.parentId && <DiscussionReplyQuote reply={replyPreviews.get(comment.parentId) ?? null} anchorPrefix="comment" locale={interfaceLocale} />}
                 <MarkdownBlock html={comment.bodyHtml} />
               </div>
-              {canManageComment && (
+              {(canManageComment || canContribute) && (
                 <footer className="discussion-post-footer">
+                  {canContribute && <DiscussionReplyForm action={createProofCommentAction.bind(null, proof.id, problem.slug)}
+                    reply={replyPreviews.get(comment.id)!} locale={interfaceLocale} anchorPrefix="comment" withLanguage
+                    draftKey={`solution-discussion:${proof.id}`} resetSignal={ownCommentResetSignal} />}
+                  {canManageComment && <>
                   <details>
                     <summary>
                       <Pencil size={14} aria-hidden="true" />
@@ -276,6 +285,7 @@ export default async function SolutionDiscussionPage({
                       {copy.delete}
                     </ConfirmSubmitButton>
                   </form>
+                  </>}
                 </footer>
               )}
             </article>

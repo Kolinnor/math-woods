@@ -364,6 +364,60 @@
   flex: 0 0 auto;
 }
 
+button.content-status-trigger,
+button.content-status-trigger:hover {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  color: inherit;
+  display: inline-flex;
+  min-height: 0;
+  padding: 0;
+  vertical-align: middle;
+}
+
+.content-status-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.content-status-trigger:hover .concept-status-badge {
+  border-color: var(--accent);
+}
+
+.content-status-panel {
+  background: var(--mw-reading-surface);
+  border: 1px solid var(--mw-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+  color: var(--mw-text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 1rem 2.5rem 1rem 1rem;
+  position: fixed;
+  width: min(22rem, calc(100vw - 24px));
+  z-index: 100;
+}
+
+.content-status-panel p { margin: 0; }
+.content-status-panel form { margin-top: 0.75rem; }
+
+button.content-status-close,
+button.content-status-close:hover {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--mw-secondary);
+  min-height: 1.75rem;
+  padding: 0.2rem;
+  position: absolute;
+  right: 0.35rem;
+  top: 0.35rem;
+}
+
 .concept-status-missing,
 .concept-status-stub {
   background: var(--notice-amber-bg);

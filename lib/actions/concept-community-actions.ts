@@ -5,6 +5,8 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { notifyDiscussionFollowers } from "@/lib/discussion-follows";
+import { resolveDiscussionReply } from "@/lib/discussion-replies";
+import { acknowledgeCitationDraft } from "@/lib/citation-draft-receipt";
 import { displayNameForUser } from "@/lib/user-display";
 import { canEditConceptTalkPost } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -21,8 +23,10 @@ export async function createConceptTalkPostAction(conceptId: number, conceptSlug
 
   const concept = await prisma.concept.findFirst({ where: { id: conceptId, slug: conceptSlug }, select: { title: true } });
   if (!concept) throw new Error("Concept not found.");
+  const parent = await resolveDiscussionReply({ kind: "concept", id: conceptId }, formData.get("parentId"), user);
   const post = await prisma.conceptTalkPost.create({
     data: {
+      parentId: parent?.id,
       conceptId,
       authorId: user.id,
       bodyMarkdown,
@@ -30,8 +34,10 @@ export async function createConceptTalkPostAction(conceptId: number, conceptSlug
     }
   });
 
+  if (parent) await acknowledgeCitationDraft(formData);
   await notifyDiscussionFollowers({
     target: { kind: "concept", id: conceptId },
+    replyToAuthorId: parent?.authorId,
     authorIds: [],
     actorId: user.id,
     actorName: displayNameForUser(user),

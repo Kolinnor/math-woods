@@ -58,6 +58,25 @@ test("a failed submission emits no receipt and preserves body and summary; retry
   assert.ok(b.stored.has(key));
 });
 
+test('reply receipts clear only the successful reply, preserving failed replies and text edited afterwards', () => {
+  for (const kind of ['concept-talk', 'problem-discussion', 'solution-discussion']) {
+    const b = browser();
+    const first = `math-woods-markdown-draft:${kind}:10:reply-to:1`;
+    const other = `math-woods-markdown-draft:${kind}:10:reply-to:2`;
+    b.save(first, 'Failed reply'); b.save(other, 'Successful reply');
+    b.markEditorDraftSubmission(b.form, first, 'Failed reply');
+    b.markEditorDraftSubmission(b.form, other, 'Successful reply');
+    const entries = b.inputs.map(input => JSON.parse(input.value));
+    assert.equal(entries.length, 2);
+    b.acknowledge(entries.filter(entry => entry.key === other));
+    assert.ok(b.stored.has(first));
+    assert.equal(b.stored.has(other), false);
+    b.save(first, 'Newer text');
+    b.acknowledge(entries.filter(entry => entry.key === first));
+    assert.equal(JSON.parse(b.stored.get(first)).value, 'Newer text');
+  }
+});
+
 test("success clears only submitted versions and never subsequent edits or other pages", () => {
   const b = browser();
   b.save(key, "submitted"); b.save(summaryKey, "summary");
