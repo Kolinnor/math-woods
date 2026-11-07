@@ -51,11 +51,11 @@ async function resolveNodes(node) {
 }
 const pageModule=load('@/app/library/mathematicians/[slug]/page');
 const reviewActions=load('@/components/library/LibraryReviewActions');
-const person={username:'editor',profileSlug:'editor',displayName:'Ancient Tree',avatarUrl:null,avatarBackground:null};
+const person={id:1,username:'editor',profileSlug:'editor',displayName:'Ancient Tree',avatarUrl:null,avatarBackground:null};
 function fixture(kind,language) {
   const complete=kind==='complete', empty=kind==='empty';
   const translation={language,displayName:'Emmy Noether',teaser:empty?'':language==='fr'?'Algèbre abstraite et symétries.':'Abstract algebra and symmetries.',birthPlace:empty?'':complete?'Erlangen':'Inconnu',biographyHtml:complete?'<p>Emmy Noether a profondément transformé l’algèbre. Ses travaux portent notamment sur les anneaux, les corps et les idéaux.</p><p>Cette fiche présente quelques repères de sa vie et les contributions qui lui sont associées.</p>':'',contributionsHtml:complete?'<p>Le théorème de Noether relie les symétries continues aux lois de conservation. Ses méthodes ont aussi façonné l’algèbre moderne.</p>':'',relatedItems:empty?[]:[{key:'work',category:'WORK',labelMarkdown:'Emmy Noether — Gesammelte Abhandlungen',href:'/library/references/noether',noteMarkdown:complete?'Articles réunis dans cette édition.':'',relation:''}]};
-  return {id:1,slug:'emmy-noether',name:'Emmy Noether',createdById:2,status:kind==='sparse'?'PENDING_REVIEW':empty?'DRAFT':'PUBLISHED',portraitUrl:empty?null:'/mathematicians/emmy-noether.jpg',portraitCrop:null,portraitDetails:'Portrait conservé dans les archives.',imageAlt:null,aliases:empty?[]:['Amalie Emmy Noether'],lifespan:empty?'':'1882–1935',createdBy:person,reviewedBy:complete?person:null,reviewNote:null,translations:complete?[translation,{...translation,language:language==='fr'?'en':'fr'}]:[translation],milestoneLinks:[]};
+  return {id:1,slug:'emmy-noether',name:'Emmy Noether',createdById:2,status:kind==='sparse'?'PENDING_REVIEW':empty?'DRAFT':'PUBLISHED',portraitUrl:empty?null:'/mathematicians/emmy-noether.jpg',portraitCrop:null,portraitDetails:'Portrait conservé dans les archives.',imageAlt:null,aliases:empty?[]:['Amalie Emmy Noether'],lifespan:empty?'':'1882–1935',createdBy:person,reviewedBy:complete?person:null,reviewNote:null,translations:complete?[translation,{...translation,language:language==='fr'?'en':'fr'}]:[translation],milestoneLinks:[],authoredReferences:[]};
 }
 let css;
 if(existsSync('.next/static/css') && readdirSync('.next/static/css').some(f=>f.endsWith('.css'))) {
@@ -130,7 +130,7 @@ try {
     const contentLanguage=language==='fr'?'en':'fr';
     entry={id:1,slug:'example',status:'PUBLISHED',createdById:1,createdBy:person,reviewedBy:null,reviewedAt:null,reviewNote:null,updatedAt:new Date('2026-09-11T12:00:00Z'),
       sortYear:-300,era:'ANCIENT',milestoneType:'PERIOD',mathematicians:[],referenceLinks:[],conceptLinks:[],
-      canonicalTitle:'Éléments',referenceType:'BOOK',authors:'Euclide',editions:[],mathematicianRelatedItems:[],problemLinks:[],milestoneLinks:[],
+      canonicalTitle:'Éléments',referenceType:'BOOK',authors:'Euclide',authorEntries:[],contributions:[],editions:[],mathematicianRelatedItems:[],problemLinks:[],milestoneLinks:[],
       translations:['fr','en'].map(lang=>({language:lang,title:lang==='fr'?'Mathématiques hellénistiques':'Hellenistic mathematics',displayTitle:lang==='fr'?'Éléments':'Elements',yearLabel:lang==='fr'?'vers 300 av. J.-C.':'c. 300 BCE',summaryMarkdown:'Texte',summaryHtml:'<p>Texte de la fiche.</p>',descriptionHtml:'<p>Description de la référence.</p>'}))};
     const module=load(`@/app/library/${type}/[slug]/page`);
     const tree=await module.default({params:Promise.resolve({slug:'example'}),searchParams:Promise.resolve({lang:contentLanguage})});

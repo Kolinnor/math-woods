@@ -7,6 +7,8 @@ import ts from "typescript";
 import * as permissions from "../lib/permissions.ts";
 import * as limits from "../lib/content-limits.ts";
 import { requireReadableReferenceTitle } from "../lib/reference-title.ts";
+import * as referenceAuthors from "../lib/reference-authors.ts";
+import { validateReferenceAuthors } from "../lib/reference-authors-db.ts";
 
 test("only admins and owners can correct pending references; other entry permissions stay intact", () => {
   for (const role of ["USER", "MODERATOR", "ADMIN", "OWNER"]) {
@@ -29,7 +31,7 @@ const compiled = ts.transpileModule(readFileSync(new URL("../lib/actions/library
 }).outputText;
 const version = new Date("2026-09-06T12:00:00Z");
 function harness(status, race = false) {
-  const entry = { id: 1, slug: "elements", canonicalTitle: "Elements", createdById: 1, status, updatedAt: version, submittedAt: version, publishedAt: version };
+  const entry = { id: 1, slug: "elements", canonicalTitle: "Elements", createdById: 1, status, updatedAt: version, submittedAt: version, publishedAt: version, translations: [{ language: "fr", descriptionMarkdown: "" }, { language: "en", descriptionMarkdown: "English presentation" }] };
   const writes = [];
   const redirects = [];
   const unexpected = () => { throw new Error("Unexpected notification or publication"); };
@@ -39,6 +41,8 @@ function harness(status, race = false) {
     "@/lib/permissions": permissions,
     "@/lib/content-limits": limits,
     "@/lib/reference-title": { requireReadableReferenceTitle },
+    "@/lib/reference-authors": referenceAuthors,
+    "@/lib/reference-authors-db": { validateReferenceAuthors },
     "@/lib/reference-editions": { readReferenceBibliography: () => ({}), validateReferenceWork: async () => null },
     "@/lib/library": { normalizeReferenceDedupeKey: () => "key" },
     "@/lib/markdown": { renderMarkdown: async text => text },
@@ -48,7 +52,7 @@ function harness(status, race = false) {
     "@/lib/db": { prisma: {
       libraryReference: { findUnique: async () => entry, findFirst: async () => null },
       user: { findMany: unexpected },
-      $transaction: async callback => callback({ libraryReference: { update: async ({ where, data }) => {
+      $transaction: async callback => callback({ mathematician: { findMany: async () => [{ id: 12 }] }, libraryReferenceAuthor: { findMany: async () => [] }, libraryReference: { update: async ({ where, data }) => {
         assert.equal(where.id, 1);
         assert.equal(where.updatedAt.getTime(), version.getTime());
         if (race) throw new Error("Concurrent update rejected");
@@ -80,6 +84,7 @@ test("corrections keep publication and archives, reset review and preserve URLs 
       for (const key of ["reviewNote", "slug"]) assert.equal(data[key], undefined);
       assert.equal(data.publishedAt, status === "ARCHIVED" ? undefined : version);
       assert.equal(data.translations.upsert.update.displayTitle, "Éléments");
+      assert.deepEqual(JSON.parse(JSON.stringify(data.contributions)), { upsert: { where: { referenceId_userId: { referenceId: 1, userId: 2 } }, create: { userId: 2, edited: true }, update: { edited: true } } });
       assert.deepEqual(h.redirects, ["/library/references/elements?lang=fr"]);
     }
   }
@@ -92,4 +97,96 @@ test("stale reference forms and a concurrent review cannot overwrite newer chang
   const race = harness("PENDING_REVIEW", true);
   await assert.rejects(race.action(1, form("save")), /Concurrent update/);
   assert.equal(race.writes.length, 0);
+});
+
+test("editing replaces author links and citation names in the same guarded write, including removal", async () => {
+  const h = harness("PUBLISHED");
+  const data = form("save");
+  const authors = [{ name: "Henri Poincaré", mathematicianId: 12 }, { name: "Paul Appell", mathematicianId: null }];
+  data.set("authorEntries", JSON.stringify(authors));
+  await h.action(1, data);
+  assert.equal(h.writes[0].authors, "Henri Poincaré\nPaul Appell");
+  assert.deepEqual(JSON.parse(JSON.stringify(h.writes[0].authorEntries)), { deleteMany: {}, create: authors.map((row, position) => ({ ...row, position })) });
+  data.set("authorEntries", "[]");
+  await h.action(1, data);
+  assert.equal(h.writes[1].authors, null);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.writes[1].authorEntries)), { deleteMany: {}, create: [] });
+});
+
+
+test("presentation revisions record the exact before/after text and editor, scoped to the edited language", async () => {
+  const h = harness("PUBLISHED");
+  h.entry.translations[0].descriptionMarkdown = "Ancienne présentation";
+  const data = form("save");
+  data.set("descriptionMarkdown", "Nouvelle présentation");
+  await h.action(1, data);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.writes[0].presentationRevisions)), {
+    create: { language: "fr", markdown: "Nouvelle présentation", previousMarkdown: "Ancienne présentation", editedById: 2 }
+  });
+  data.set("language", "en");
+  data.set("descriptionMarkdown", "Updated English presentation");
+  await h.action(1, data);
+  assert.equal(h.writes[1].presentationRevisions.create.previousMarkdown, "English presentation");
+  assert.equal(h.writes[1].presentationRevisions.create.language, "en");
+});
+
+test("bibliography-only edits do not add history; clearing a presentation and adding a translation do", async () => {
+  const h = harness("PUBLISHED");
+  const data = form("save");
+  await h.action(1, data);
+  assert.equal(h.writes[0].presentationRevisions, undefined);
+  h.entry.translations[0].descriptionMarkdown = "À supprimer";
+  await h.action(1, data);
+  assert.equal(h.writes[1].presentationRevisions.create.markdown, "");
+  assert.equal(h.writes[1].presentationRevisions.create.previousMarkdown, "À supprimer");
+  h.entry.translations = [];
+  await h.action(1, data);
+  assert.equal(h.writes[2].presentationRevisions.create.previousMarkdown, null);
+});
+
+test("a stale presentation edit cannot create a revision without saving its content", async () => {
+  const h = harness("PUBLISHED", true);
+  const data = form("save");
+  data.set("descriptionMarkdown", "Concurrent edit");
+  await assert.rejects(h.action(1, data), /Concurrent update/);
+  assert.equal(h.writes.length, 0);
+});
+
+
+test("the single title field corrects the original title without replacing other translations", async () => {
+  const h = harness("PUBLISHED");
+  h.entry.canonicalTitle = "Élements";
+  h.entry.translations = [{ language: "fr", displayTitle: "Élements", descriptionMarkdown: "" }, { language: "en", displayTitle: "Elements", descriptionMarkdown: "" }];
+  const data = form("save"); data.delete("canonicalTitle"); data.set("title", "Éléments");
+  await h.action(1, data);
+  assert.equal(h.writes[0].canonicalTitle, "Éléments");
+  assert.equal(h.writes[0].translations.upsert.update.displayTitle, "Éléments");
+  assert.equal(h.writes[0].translations.upsert.where.referenceId_language.language, "fr");
+  assert.equal(h.writes[0].presentationRevisions, undefined);
+});
+
+test("the single localized title preserves the bibliographic title, including new translations", async () => {
+  const h = harness("PUBLISHED");
+  h.entry.canonicalTitle = "La Science et l’Hypothèse";
+  h.entry.translations = [{ language: "fr", displayTitle: h.entry.canonicalTitle, descriptionMarkdown: "" }, { language: "en", displayTitle: "Science and Hypothesis", descriptionMarkdown: "" }];
+  const data = form("save"); data.delete("canonicalTitle"); data.set("language", "en"); data.set("title", "Science and Hypothesis, corrected");
+  await h.action(1, data);
+  assert.equal(h.writes[0].canonicalTitle, h.entry.canonicalTitle);
+  assert.equal(h.writes[0].translations.upsert.update.displayTitle, "Science and Hypothesis, corrected");
+  h.entry.translations.pop();
+  await h.action(1, data);
+  assert.equal(h.writes[1].canonicalTitle, h.entry.canonicalTitle);
+  assert.equal(h.writes[1].translations.upsert.create.displayTitle, "Science and Hypothesis, corrected");
+});
+
+test("a legacy custom title remains editable and malformed original titles can still be repaired", async () => {
+  const h = harness("PUBLISHED");
+  h.entry.translations = [{ language: "fr", displayTitle: "Titre personnalisé", descriptionMarkdown: "" }];
+  const data = form("save"); data.delete("canonicalTitle"); data.set("title", "Titre personnalisé corrigé");
+  await h.action(1, data);
+  assert.equal(h.writes[0].canonicalTitle, "Elements");
+  assert.equal(h.writes[0].translations.upsert.update.displayTitle, "Titre personnalisé corrigé");
+  h.entry.canonicalTitle = "@book{broken,";
+  await h.action(1, data);
+  assert.equal(h.writes[1].canonicalTitle, "Titre personnalisé corrigé");
 });

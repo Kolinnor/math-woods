@@ -1,6 +1,7 @@
 import {
   NotificationType,
   SiteImprovementCompletionReviewStatus,
+  SiteImprovementStatus,
   TrustedUserRecommendationStatus
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -80,6 +81,17 @@ export async function cleanupNotificationsForUser(userId: number) {
   const readBefore = new Date(now - READ_NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
   const anyBefore = new Date(now - ANY_NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
+  // Only query the board for users who actually have a reminder to clean up.
+  // This also removes reminders created before the zero-count delivery guard.
+  const improvementReminder = await prisma.notification.findFirst({
+    where: { userId, type: NotificationType.SITE_IMPROVEMENT_REMINDER },
+    select: { id: true }
+  });
+  const clearImprovementReminders = improvementReminder !== null &&
+    await prisma.siteImprovement.count({
+      where: { status: { not: SiteImprovementStatus.COMPLETED } }
+    }) === 0;
+
   await prisma.notification.deleteMany({
     where: {
       userId,
@@ -89,6 +101,7 @@ export async function cleanupNotificationsForUser(userId: number) {
       ],
       OR: [
         { type: { in: RETIRED_LIBRARY_NOTIFICATION_TYPES } },
+        ...(clearImprovementReminders ? [{ type: NotificationType.SITE_IMPROVEMENT_REMINDER }] : []),
         { readAt: { lt: readBefore } },
         { createdAt: { lt: anyBefore } }
       ]

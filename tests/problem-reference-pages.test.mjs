@@ -26,7 +26,7 @@ const rows=Array.from({length:31},(_,i)=>['fr','en'].map((language,j)=>({
  isExercise:false,difficulty:2,domain:'GEOMETRY',domains:[],styles:[],tags:[],spoilerTags:[],authorId:10,verificationMode:'NONE',
  author:{id:10,displayName:'Auteur',username:'auteur',profileSlug:'auteur'},proofs:[{id:1}]
 }))).flat();
-const conceptRows=['fr','en'].map((language,index)=>({id:100+index,slug:`concept-${language}`,title:'Un concept',bodyMarkdown:'Une définition.',aliases:[],language,translationGroupId:'concept-family',translatedFromConceptId:index?100:null,domainCode:'GEOMETRY'}));
+const conceptRows=['fr','en'].map((language,index)=>({id:100+index,slug:`concept-${language}`,title:'Un concept',bodyMarkdown:'Une définition.',aliases:index?[{alias:'Alias partagé',aliasSlug:'alias-partage'}]:[],language,translationGroupId:'concept-family',translatedFromConceptId:index?100:null,domainCode:'GEOMETRY'}));
 function matches(row,where) {
  return Object.entries(where??{}).every(([key,value])=>{
   if(value===undefined)return true;
@@ -37,6 +37,7 @@ function matches(row,where) {
    if('equals' in value)return String(row[key]??'').toLowerCase()===String(value.equals).toLowerCase();
    if('some' in value)return (row[key]??[]).some(item=>matches(item,value.some));
    if('none' in value)return !(row[key]??[]).some(item=>matches(item,value.none));
+   if(key==='concept')return matches(row[key],value);
    throw Error(`Unsupported filter ${key} ${JSON.stringify(value)}`);
   }
   return row[key]===value;
@@ -62,6 +63,10 @@ async function render(file,query) {
   }},
   '@/lib/db':{prisma:{problemContestSubmission:{findMany:async()=>[]},problem:{findMany:async args=>{calls.push(args);const result=rows.filter(row=>matches(row,args.where));return args.take?result.slice(0,args.take):result;}},concept:{findMany:async args=>conceptRows.filter(row=>matches(row,args.where))},quote:{findMany:async()=>[]},problemAttempt:{findMany:async()=>[]},problemFavorite:{findMany:async()=>[]}}}
  };
+ modules['@/lib/db'].prisma.conceptAlias={findMany:async({where})=>conceptRows.flatMap(concept=>concept.aliases.map(alias=>({...alias,concept}))).filter(row=>matches(row,where))};
+ const aliasExports={};
+ vm.runInNewContext(ts.transpileModule(readFileSync('lib/concept-alias-search.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:aliasExports,require:name=>modules[name]});
+ modules['@/lib/concept-alias-search']=aliasExports;
  const source=ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const exports={};vm.runInNewContext(source,{exports,URLSearchParams,require:name=>modules[name]??new Proxy({}, {get:(_,key)=>String(key)})});
  const tree=await exports.default({searchParams:Promise.resolve(query)}),elements=[];
@@ -86,6 +91,13 @@ test('advanced Origin and Text filters use citation lookup with the existing exa
   assert.ok(!page.elements.some(node=>node.type==='p'&&node.props.children?.[0]==='Référence'));
  }
  const none=await render('app/problems/page.tsx',{filterField:'origin',filterOp:'contains',filterValue:'inconnu'});assert.equal(none.ids.length,0);
+});
+
+test('global search resolves an alias recorded only in English to its French translation',async()=>{
+ const page=await render('app/search/page.tsx',{q:'Alias partagé'});
+ const links=page.elements.filter(node=>typeof node.props.href==='string'&&node.props.href.startsWith('/concepts/'));
+ assert.equal(links.length,1);
+ assert.equal(links[0].props.href,'/concepts/concept-fr');
 });
 
 test('global search includes problems found only in their references and displays the matched reference',async()=>{

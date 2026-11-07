@@ -1,3 +1,7 @@
+import { AdditionalConceptLinksEditor } from "@/components/AdditionalConceptLinksEditor";
+import { resolveAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
+import { ContentHistoryEditor } from "@/components/ContentHistoryEditor";
+import { prepareMarkdownForTranslation as prepareHistoryForTranslation } from "@/lib/translated-markdown";
 import { ConceptCreateForm, ConceptSubmitButton } from "@/components/ConceptCreateForm";
 import { ConceptDuplicateSuggestions } from "@/components/ConceptDuplicateSuggestions";
 import { ConceptContributorGuideLink } from "@/components/ConceptContributorGuideLink";
@@ -55,6 +59,10 @@ export default async function NewConceptPage({
           slug: true,
           title: true,
           bodyMarkdown: true,
+          historyMarkdown: true,
+          additionalConceptSlugs: true,
+          historyEnabled: true,
+          historySpoiler: true,
           domainCode: true,
           kind: true,
           language: true,
@@ -194,6 +202,10 @@ export default async function NewConceptPage({
             draftKey={`concept:new:${draftSession}:body`}
           />
         </div>
+        <AdditionalConceptLinksEditor locale={interfaceLocale} initial={await resolveAdditionalConceptLinks(sourceConcept?.additionalConceptSlugs ?? [], initialLanguage)} />
+        <ContentHistoryEditor locale={interfaceLocale} allowSpoiler={false}
+          initial={sourceConcept ? { ...sourceConcept, historyMarkdown: await prepareHistoryForTranslation(sourceConcept.historyMarkdown, initialLanguage) } : undefined}
+          draftKey={`concept:new:${draftSession}:history`} />
         {sourceConcept && targetTranslationLanguage && sourceConcept.practiceExercises.length > 0 && (
           <section className="translation-exercise-options">
             <div>
@@ -248,6 +260,7 @@ export default async function NewConceptPage({
           title={sourceConcept.title}
           language={sourceConcept.language}
           markdown={sourceConcept.bodyMarkdown}
+          historyMarkdown={sourceConcept.historyMarkdown}
         />
       )}
     </div>

@@ -4661,8 +4661,8 @@ const contestAchievementStats = contestAchievementStatsByUser([
   { userId: 2, placement: "HONORABLE_MENTION" },
   { userId: 3, placement: null }
 ]);
-assert.deepEqual(contestAchievementStats.get(1), { wins: 1, honorableMentions: 1 });
-assert.deepEqual(contestAchievementStats.get(2), { wins: 0, honorableMentions: 2 });
+assert.deepEqual(contestAchievementStats.get(1), { wins: 1 });
+assert.equal(contestAchievementStats.has(2), false);
 assert.equal(contestAchievementStats.has(3), false);
 assert.ok(DEFAULT_DAILY_PROBLEM_IMAGE_URLS.includes(dailyProblemDefaultImageUrl("2026-08-03")));
 

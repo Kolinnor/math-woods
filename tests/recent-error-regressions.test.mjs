@@ -1,3 +1,5 @@
+import * as additionalLinks from '../lib/additional-concept-links.ts';
+import * as conceptLinkReferences from '../lib/concept-link-references.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -14,15 +16,19 @@ import * as titleGuard from '../lib/translation-title-guard.ts';
 import * as contests from '../lib/problem-contests.ts';
 import * as solutionVisibility from '../lib/problem-solution-visibility.ts';
 import * as quality from '../lib/quality.ts';
+import * as contentHistory from '../lib/content-history.ts';
+import * as conceptRevisions from '../lib/concept-revisions.ts';
 
 const require = createRequire(import.meta.url);
 const redirectError = new Error('NEXT_REDIRECT');
 function load(file, overrides = {}) {
   const modules = {
+    '@/lib/additional-concept-links': additionalLinks, './concept-link-references.ts': conceptLinkReferences,
     '@prisma/client': require('@prisma/client'), 'react/jsx-runtime': require('react/jsx-runtime'),
     '@/lib/wikilinks': wikilinks, '@/lib/form-feedback': feedback,
     '@/lib/content-limits': limits, '@/lib/permissions': permissions, '@/lib/languages': languages,
     '@/lib/problem-contests': contests,
+    '@/lib/content-history': contentHistory,
     '@/lib/auth': { requireVerifiedUser: async () => ({ id: 1, role: 'OWNER' }), requireModerator: async () => ({ id: 1 }) },
     '@/lib/rate-limit': { assertRateLimit: async () => {}, isRateLimitError: e => e?.name === 'RateLimitError' },
     '@/lib/transaction-lock': { acquireTransactionLock: async () => {} },
@@ -78,18 +84,21 @@ test('problem and exercise edits preserve reviews; explicit downgrades and rollb
         '@/lib/content-slug': { renamedContentSlug: async () => 'new-title' },
         '@/lib/problem-revisions': {
           buildProblemRevisionSnapshot: problem => ({ ...problem, schemaVersion: 1 }),
-          changedProblemSnapshotFields: (before, after) => ['title', 'bodyMarkdown'].filter(key => before[key] !== after[key]),
+          changedProblemSnapshotFields: (before, after) => ['title', 'bodyMarkdown', ...contentHistory.HISTORY_FIELDS].filter(key => before[key] !== after[key]),
           parseProblemRevisionSnapshot: snapshot => snapshot
         }
       });
       const data = new FormData();
       data.set('baseVersion', '3'); data.set('language', 'fr');
+      data.set('historyMarkdown', 'Un contexte historique'); data.set('historyEnabled', 'on'); data.set('historySpoiler', 'on');
       if (isExercise) data.set('isExercise', 'on');
       for (const field of ['title', 'bodyMarkdown']) {
         data.set('title', current.title); data.set('bodyMarkdown', current.bodyMarkdown);
         data.set(field, `Corrected ${field}`);
         await assert.rejects(actions.updateProblemAction(7, { status: 'idle' }, data), error => error === writeReached);
         assert.equal(written[field], `Corrected ${field}`);
+        assert.equal(written.historyMarkdown, 'Un contexte historique');
+        assert.equal(written.historyEnabled, true); assert.equal(written.historySpoiler, true);
         assert.equal(written.qualityStatus, status);
         assert.equal(written.reviewedById, current.reviewedById);
         assert.equal(written.needsReviewAfterEdit, current.needsReviewAfterEdit);
@@ -112,6 +121,49 @@ test('problem and exercise edits preserve reviews; explicit downgrades and rollb
       assert.equal(written.qualityStatus, status);
       assert.equal(written.reviewedById, current.reviewedById);
       assert.equal(written.needsReviewAfterEdit, current.needsReviewAfterEdit);
+    }
+  }
+});
+
+test('concept history is persisted by direct edits, proposed edits and rollback, with review semantics', async () => {
+  const stop = new Error('inspected database write');
+  const current = { id: 7, title: 'Concept', slug: 'concept', language: 'fr', translationGroupId: 'family',
+    kind: 'DEFINITION', domainCode: 'other', status: 'REVIEWED', needsReviewAfterEdit: false, createdById: 2,
+    updatedAt: new Date('2026-10-12'), bodyMarkdown: 'Definition', references: [], aliases: [], practiceExercises: [],
+    libraryReferences: [], ...contentHistory.contentHistory() };
+  let written, proposed;
+  const restored = { ...conceptRevisions.buildConceptRevisionSnapshot(current), historyMarkdown: 'Old history', historyEnabled: true };
+  const db = {
+    concept: { findUnique: async () => current, update: async ({ data }) => { written = data; throw stop; } },
+    pageRevision: { findFirst: async () => ({ markdown: 'Definition', conceptSnapshot: restored }) },
+    conceptEditProposal: { findMany: async () => [], create: async ({ data }) => { proposed = data; throw stop; } }
+  };
+  db.$transaction = callback => callback(db);
+  for (const publishes of [true, false]) {
+    const actions = load('lib/actions/concept-actions.ts', {
+      '@/lib/db': { prisma: db }, '@/lib/auth': { requireVerifiedUser: async () => ({ id: 1, role: 'OWNER', conceptGuideAcknowledgedAt: new Date() }) },
+      '@/lib/concept-edit-access': { canPublishConceptEditForConcept: async () => publishes },
+      '@/lib/concept-kinds': { parseConceptKind: () => 'DEFINITION' },
+      '@/lib/domains': { parseDomainCode: () => 'other', coarseDomainForCode: () => 'OTHER' },
+      '@/lib/concept-metadata': { parseAliases: () => [] },
+      '@/lib/concept-citations': { submittedConceptCitations: () => undefined },
+      '@/lib/concept-exercises': { parseConceptExerciseIds: () => [] },
+      '@/lib/concept-revisions': conceptRevisions,
+      '@/lib/problem-citations': { mergeProblemCitations: () => ({ merged: undefined, conflict: false }) },
+      '@/lib/markdown': { renderMarkdown: async value => value },
+      '@/lib/content-slug': { renamedContentSlug: async () => 'concept' }
+    });
+    const form = new FormData(); form.set('title', current.title); form.set('bodyMarkdown', current.bodyMarkdown);
+    form.set('language', 'fr'); form.set('baseUpdatedAt', current.updatedAt.toISOString());
+    form.set('historyMarkdown', 'New history'); form.set('historyEnabled', 'on');
+    await assert.rejects(actions.updateConceptAction(7, form), e => e === stop);
+    const saved = publishes ? written : proposed.snapshot;
+    assert.equal(saved.historyMarkdown, 'New history'); assert.equal(saved.historyEnabled, true);
+    assert.equal(saved.needsReviewAfterEdit, true);
+    if (publishes) {
+      await assert.rejects(actions.rollbackConceptRevisionAction(7, 1), e => e === stop);
+      assert.equal(written.historyMarkdown, 'Old history'); assert.equal(written.historyEnabled, true);
+      assert.equal(written.needsReviewAfterEdit, true);
     }
   }
 });
@@ -297,7 +349,7 @@ test('alias namespace conflicts are recoverable validation errors and never repl
   for (const conflict of ['canonical', 'redirect', 'alias']) {
     let writes = 0;
     const db = {
-      concept: { findUnique: async () => ({ slug: 'new-concept' }), findFirst: async () => conflict === 'canonical' ? { title: 'Sphere' } : null },
+      concept: { findUnique: async () => ({ slug: 'new-concept', translationGroupId: 'new-family' }), findFirst: async () => conflict === 'canonical' ? { title: 'Sphere' } : null },
       conceptRedirect: { findFirst: async () => conflict === 'redirect' ? { sourceTitle: 'Sphere' } : null },
       conceptAlias: {
         findFirst: async () => conflict === 'alias' ? { alias: 'sphere', concept: { title: 'Sphere' } } : null,

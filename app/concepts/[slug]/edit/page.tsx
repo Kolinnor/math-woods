@@ -1,3 +1,6 @@
+import { AdditionalConceptLinksEditor } from "@/components/AdditionalConceptLinksEditor";
+import { resolveAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
+import { ContentHistoryEditor } from "@/components/ContentHistoryEditor";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound, redirect } from "next/navigation";
 import { DeleteConceptButton } from "@/components/DeleteConceptButton";
@@ -64,7 +67,7 @@ export default async function EditConceptPage({
         orderBy: { position: "asc" },
       },
       translatedFromConcept: {
-        select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true }
+        select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true, historyMarkdown: true }
       }
     }
   });
@@ -223,6 +226,9 @@ export default async function EditConceptPage({
             sourceUpdatedAt={concept.updatedAt.getTime()}
           />
         </div>
+        <AdditionalConceptLinksEditor locale={interfaceLocale} initial={await resolveAdditionalConceptLinks(concept.additionalConceptSlugs, concept.language)} excludeSlug={concept.slug} />
+        <ContentHistoryEditor locale={interfaceLocale} initial={concept} allowSpoiler={false}
+          draftKey={`concept:${concept.id}:history`} resetSignal={draftResetSignal} sourceUpdatedAt={concept.updatedAt.getTime()} />
         <details className="concept-linked-exercises-editor">
           <summary>
             <span>{t.contentEditor.linkedExercises}</span>
@@ -301,6 +307,7 @@ export default async function EditConceptPage({
           idPrefix={`concept-${concept.id}-translation-source`}
           latestRevisionId={sourceRevisionId}
           markdown={concept.translatedFromConcept.bodyMarkdown}
+          historyMarkdown={concept.translatedFromConcept.historyMarkdown}
           language={concept.translatedFromConcept.language}
           stale={staleTranslation}
           title={concept.translatedFromConcept.title}

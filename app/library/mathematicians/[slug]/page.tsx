@@ -18,6 +18,7 @@ import { mathematicianRelatedInclude, relatedItemViews } from "@/lib/mathematici
 import { localizedTranslation } from "@/lib/library-queries";
 import { libraryEraOfPeriod, type LibraryEraView } from "@/lib/library-display";
 import { getLibraryEras } from "@/lib/library-eras";
+import { formatLibraryReference } from "@/lib/library";
 import { mathematicianName } from "@/lib/mathematician-names";
 import { isMathematicianStub, mathematicianPeriod, mathematiciansReturnHref } from "@/lib/mathematician-browser";
 import { canEditLibraryMathematician, canViewLibraryMathematician } from "@/lib/permissions";
@@ -63,6 +64,7 @@ export default async function LibraryMathematicianPage({ params, searchParams }:
         translations: { include: { relatedItems: { include: mathematicianRelatedInclude, orderBy: [{ position: "asc" }, { id: "asc" }] } } },
         createdBy: true,
         reviewedBy: true,
+        authoredReferences: { where: { reference: { status: "PUBLISHED", searchable: true, mergedIntoId: null } }, include: { reference: true }, orderBy: { reference: { year: "asc" } } },
         milestoneLinks: { where: { milestone: { status: "PUBLISHED" } }, include: { milestone: { include: { translations: true } } }, orderBy: { position: "asc" } }
       }
     })
@@ -77,6 +79,10 @@ export default async function LibraryMathematicianPage({ params, searchParams }:
     relatedItemViews(translation?.relatedItems ?? [], translation?.language ?? contentLanguage),
     contemporaries(entry.id, period, new Date().getFullYear(), eras)
   ]);
+  for (const { reference } of entry.authoredReferences) {
+    if (relatedItems.some(item => item.category === "WORK" && item.referenceId === reference.id)) continue;
+    relatedItems.push({ key: `authored-${reference.id}`, category: "WORK", labelMarkdown: formatLibraryReference(reference), noteMarkdown: "", relation: "", referenceId: reference.id, conceptId: null, problemId: null, href: `/library/references/${reference.slug}` });
+  }
   const canEdit = Boolean(user && canEditLibraryMathematician(user, entry));
   const fr = locale === "fr";
   const displayName = translation?.displayName ?? entry.name;

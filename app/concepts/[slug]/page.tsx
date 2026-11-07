@@ -1,3 +1,7 @@
+import { ConceptBacklinks } from "@/components/ConceptBacklinks";
+import { contentWithHistory } from "@/lib/content-history";
+import { AdditionalConceptLinks } from "@/components/AdditionalConceptLinks";
+import { ContentHistory } from "@/components/ContentHistory";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import type { Metadata, Route } from "next";
 import { ConceptStatus, MathDomain } from "@prisma/client";
@@ -45,6 +49,7 @@ import {
 import { problemDifficultyTone } from "@/lib/problem-difficulty";
 import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { getPreferredContentLanguage } from "@/lib/server-language";
+import { resolveConceptAlias } from "@/lib/concept-alias-search";
 import {
   renderMarkdownForContentLanguage,
   resolveConceptLinksForLanguage,
@@ -201,11 +206,8 @@ export default async function ConceptPage({
   });
 
   if (!concept) {
-    const alias = await prisma.conceptAlias.findUnique({
-      where: { aliasSlug: slug },
-      include: { concept: true }
-    });
-    if (alias) redirect(`/concepts/${alias.concept.slug}`);
+    const alias = await resolveConceptAlias(slug, requestedTranslationLanguage(queryParams.viewLanguage) ?? preferredLanguage);
+    if (alias) redirect(`/concepts/${alias.slug}?viewLanguage=${encodeURIComponent(alias.language)}`);
     const merged = await prisma.conceptRedirect.findUnique({
       where: { sourceSlug: slug },
       include: { targetConcept: true }
@@ -683,6 +685,9 @@ export default async function ConceptPage({
           <MarkdownBlock html={conceptBodyHtml} />
         </section>
 
+        <AdditionalConceptLinks markdown={contentWithHistory(concept.bodyMarkdown, concept)} slugs={concept.additionalConceptSlugs} language={concept.language} locale={interfaceLocale} />
+        <ContentHistory content={concept} locale={interfaceLocale} />
+
         {practiceExercises.length > 0 && (
           <ConceptPracticeQueue
             expectedLanguage={concept.language}
@@ -708,8 +713,9 @@ export default async function ConceptPage({
           />
         )}
 
+        {(regularProblemBacklinks.length > 0 || spoilerProblemBacklinks.length > 0) && (
         <div className="concept-problem-boxes">
-          <details className="concept-problem-box">
+          {regularProblemBacklinks.length > 0 && <details className="concept-problem-box">
             <summary>
               <span>{t.conceptDetail.problemsUsingConcept(regularProblemBacklinks.length)}</span>
             </summary>
@@ -720,11 +726,10 @@ export default async function ConceptPage({
                   <ContentLanguageFallback language={problemBacklinkLinkBySlug.get(problem.slug)?.language ?? problem.language} expectedLanguage={concept.language} />
                 </Link>
               ))}
-              {regularProblemBacklinks.length === 0 && <p>{t.conceptDetail.noProblemsUsingConcept}</p>}
             </div>
-          </details>
+          </details>}
 
-          <details className="concept-problem-box">
+          {spoilerProblemBacklinks.length > 0 && <details className="concept-problem-box">
             <summary>
               <span>{t.conceptDetail.spoilerProblemsUsingConcept(spoilerProblemBacklinks.length)}</span>
             </summary>
@@ -735,10 +740,10 @@ export default async function ConceptPage({
                   <ContentLanguageFallback language={problemBacklinkLinkBySlug.get(problem.slug)?.language ?? problem.language} expectedLanguage={concept.language} />
                 </Link>
               ))}
-              {spoilerProblemBacklinks.length === 0 && <p>{t.conceptDetail.noSpoilerProblemsUsingConcept}</p>}
             </div>
-          </details>
+          </details>}
         </div>
+        )}
 
         <ProblemCitations citations={withCitationImages(parseConceptCitations(concept.libraryReferences), concept.libraryReferences)} locale={interfaceLocale} exportHref={`/concepts/${concept.slug}/export`} />
         {user?.emailVerifiedAt && concept.libraryReferences.some(item => item.referenceId === null) && <details className="zen-meta">
@@ -817,10 +822,7 @@ export default async function ConceptPage({
           </details>
         </section>
 
-        {problemBacklinks.length + conceptBacklinks.length > 0 && (
-        <section className="concept-rail-section">
-          <h2 className="mb-3 font-semibold">{t.conceptDetail.backlinks}</h2>
-          <div className="grid gap-2 text-sm">
+        <ConceptBacklinks labels={{ title: t.conceptDetail.backlinks, showMore: t.conceptDetail.moreBacklinks, showLess: t.conceptDetail.fewerBacklinks }}>
             {problemBacklinks.map((problem) => (
               <Link key={`p-${problem.id}`} href={(problemBacklinkLinkBySlug.get(problem.slug)?.href ?? `/problems/${problem.slug}`) as never} className="underline">
                 <AsyncMarkdownInline markdown={problemBacklinkLinkBySlug.get(problem.slug)?.title ?? problem.title} />
@@ -833,9 +835,7 @@ export default async function ConceptPage({
                 <ContentLanguageFallback language={conceptBacklinkLinkBySlug.get(item.slug)?.language ?? item.language} expectedLanguage={concept.language} />
               </Link>
             ))}
-          </div>
-        </section>
-        )}
+        </ConceptBacklinks>
 
         {uniqueOutgoingLinks.length > 0 && (
         <section className="concept-rail-section">

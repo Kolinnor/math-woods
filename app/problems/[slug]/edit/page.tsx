@@ -1,3 +1,6 @@
+import { AdditionalConceptLinksEditor } from "@/components/AdditionalConceptLinksEditor";
+import { resolveAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
+import { ContentHistoryEditor } from "@/components/ContentHistoryEditor";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound } from "next/navigation";
 import { QualityStatus } from "@prisma/client";
@@ -68,7 +71,7 @@ export default async function EditProblemPage({
       },
       hints: { orderBy: [{ position: "asc" }, { id: "asc" }] },
       translatedFromProblem: {
-        select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true }
+        select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true, historyMarkdown: true }
       },
       relatedGroups: {
         include: {
@@ -225,7 +228,10 @@ export default async function EditProblemPage({
               <button type="submit">{publishesImmediately ? t.contentEditor.saveChanges : t.contentEditor.submitForReview}</button>
               <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
               <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
-                  <ProblemCitationEditor locale={interfaceLocale} initialOriginal={problem.isOriginal} initial={parseProblemCitations(problem.libraryReferences.filter((item) => revealCitations || !item.spoiler))} draftKey={`mw-citations:${user.id}:problem:${problem.id}`} />
+                  <AdditionalConceptLinksEditor locale={interfaceLocale} initial={await resolveAdditionalConceptLinks(problem.additionalConceptSlugs, problem.language)} />
+        <ContentHistoryEditor locale={interfaceLocale} initial={problem} allowSpoiler={true}
+          draftKey={`problem:${problem.id}:history`} resetSignal={draftResetSignal} sourceUpdatedAt={problem.updatedAt.getTime()} />
+        <ProblemCitationEditor locale={interfaceLocale} initialOriginal={problem.isOriginal} initial={parseProblemCitations(problem.libraryReferences.filter((item) => revealCitations || !item.spoiler))} draftKey={`mw-citations:${user.id}:problem:${problem.id}`} />
 
                   <ProblemClassificationFields
                     initialStyles={problem.styles}
@@ -413,6 +419,7 @@ export default async function EditProblemPage({
             idPrefix={`problem-${problem.id}-translation-source`}
             latestRevisionId={sourceRevisionId}
             markdown={problem.translatedFromProblem.bodyMarkdown}
+          historyMarkdown={problem.translatedFromProblem.historyMarkdown}
             language={problem.translatedFromProblem.language}
             stale={staleTranslation}
             title={problem.translatedFromProblem.title}

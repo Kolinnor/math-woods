@@ -179,6 +179,8 @@
 
 .library-link-selects select { min-height: 120px; }
 
+.library-name-hint { font-size: 0.875rem; line-height: 1.5; margin: 0; }
+
 .mathematician-related-editor { display: grid; gap: 24px; }
 
 .mathematician-related-section { display: grid; gap: 12px; min-width: 0; }
@@ -362,6 +364,25 @@
 .library-reference-icon-preview > span { color: var(--mw-secondary); font-size: 12px; }
 
 .library-reference-icon-preview img { flex: 0 0 auto; object-fit: contain; }
+
+.reference-authors-field { min-width: 0; border: 0; margin: 0; padding: 0; }
+.reference-authors-field legend { font-weight: 600; margin-bottom: 10px; }
+.reference-author-list { display: grid; gap: 10px; list-style: none; margin: 0 0 12px; padding: 0; }
+.reference-author-list > li { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--mw-surface); border: 1px solid var(--mw-border); border-radius: 10px; }
+.reference-author-name { flex: 1; min-width: 0; }
+.reference-author-name small { display: block; margin-top: 4px; color: var(--mw-secondary); }
+.reference-author-controls, .reference-author-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.reference-author-controls button { padding: 8px; min-width: 36px; min-height: 36px; }
+.reference-author-buttons button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.reference-author-search { margin-top: 12px; padding: 16px; border: 1px solid var(--mw-border); border-radius: 10px; background: var(--mw-surface); }
+.reference-author-search .problem-reference-results small { display: block; color: var(--mw-secondary); }
+.reference-author-help { font-size: .88rem; margin-bottom: 0; }
+@media (max-width: 600px) {
+  .reference-author-list > li { flex-wrap: wrap; }
+  .reference-author-name { flex-basis: 100%; }
+  .reference-author-controls { margin-left: auto; }
+  .reference-author-buttons { flex-direction: column; align-items: stretch; }
+}
 
 .library-catalogue-form .mathematician-period-filter legend { font-size: 13px; color: var(--mw-secondary); }
 

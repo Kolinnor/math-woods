@@ -6,6 +6,7 @@ import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } f
 import { ensureSlug } from "@/lib/slug";
 import { renderInlineMarkdown } from "@/lib/markdown";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
+import { conceptSearchAliases, matchingConceptAliasGroups } from "@/lib/concept-alias-search";
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store" };
@@ -23,6 +24,11 @@ export async function GET(request: Request) {
   const morphologyVariants = searchMorphologyVariants(query, language);
   const databaseVariants = searchDatabaseVariants(query, morphologyVariants);
   const morphologySlugs = [...new Set(morphologyVariants.map((variant) => ensureSlug(variant, "")).filter(Boolean))];
+  const [exactAliasGroups, matchingAliasGroups] = await Promise.all([
+    matchingConceptAliasGroups(databaseVariants, true),
+    matchingConceptAliasGroups([query])
+  ]);
+  const aliasGroups = new Map([...matchingAliasGroups, ...exactAliasGroups]);
   const conceptSelect = {
     title: true,
     slug: true,
@@ -36,6 +42,7 @@ export async function GET(request: Request) {
       where: {
         language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
+          { translationGroupId: { in: [...exactAliasGroups.keys()] } },
           { title: { in: databaseVariants, mode: "insensitive" } },
           { slug: { in: morphologySlugs, mode: "insensitive" } },
           { aliases: { some: { alias: { in: databaseVariants, mode: "insensitive" } } } }
@@ -48,6 +55,7 @@ export async function GET(request: Request) {
     where: {
       language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
       OR: [
+        { translationGroupId: { in: [...matchingAliasGroups.keys()] } },
         { title: { contains: query, mode: "insensitive" } },
         { slug: { contains: query.toLowerCase(), mode: "insensitive" } },
         { aliases: { some: { alias: { contains: query, mode: "insensitive" } } } }
@@ -61,7 +69,7 @@ export async function GET(request: Request) {
   const rankedCandidates = [...new Map([...exactConcepts, ...matchingConcepts].map((concept) => [concept.slug, concept])).values()]
     .map((concept) => ({
       ...concept,
-      aliases: concept.aliases.map((alias) => alias.alias),
+      aliases: conceptSearchAliases(concept, aliasGroups),
       isSource: concept.translatedFromConceptId === null
     }));
   const concepts = rankSearchMatches(

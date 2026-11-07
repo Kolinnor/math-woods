@@ -1,6 +1,7 @@
 @import "katex/dist/katex.min.css";
 @import "@xyflow/react/dist/style.css";
 @import "./styles/68-library.css";
+@import "./styles/71-content-history.css";
 
 @tailwind base;
 @tailwind components;

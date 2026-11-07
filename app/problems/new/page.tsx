@@ -1,3 +1,7 @@
+import { AdditionalConceptLinksEditor } from "@/components/AdditionalConceptLinksEditor";
+import { resolveAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
+import { ContentHistoryEditor } from "@/components/ContentHistoryEditor";
+import { prepareMarkdownForTranslation as prepareHistoryForTranslation } from "@/lib/translated-markdown";
 import type { Route } from "next";
 import Link from "next/link";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -96,6 +100,10 @@ export default async function NewProblemPage({
           authorId: true,
           title: true,
           bodyMarkdown: true,
+          historyMarkdown: true,
+          additionalConceptSlugs: true,
+          historyEnabled: true,
+          historySpoiler: true,
           language: true,
           translationGroupId: true,
           difficulty: true,
@@ -364,7 +372,11 @@ export default async function NewProblemPage({
             </button>
             <ContentPreviewButton contentType="problem" locale={interfaceLocale} />
             <ProblemDetailsDisclosure label={t.contentEditor.addDetails}>
-                <ProblemCitationEditor locale={interfaceLocale} initialOriginal={sourceProblem?.isOriginal ?? false} initial={parseProblemCitations(sourceProblem?.libraryReferences.filter((item) => revealSourceCitations || !item.spoiler) ?? [])} draftKey={`mw-citations:${user.id}:new:${draftSession}`} />
+                <AdditionalConceptLinksEditor locale={interfaceLocale} initial={await resolveAdditionalConceptLinks(sourceProblem?.additionalConceptSlugs ?? [], initialLanguage)} />
+        <ContentHistoryEditor locale={interfaceLocale} allowSpoiler={true}
+          initial={sourceProblem ? { ...sourceProblem, historyMarkdown: await prepareHistoryForTranslation(sourceProblem.historyMarkdown, initialLanguage) } : undefined}
+          draftKey={`problem:new:${draftSession}:history`} />
+        <ProblemCitationEditor locale={interfaceLocale} initialOriginal={sourceProblem?.isOriginal ?? false} initial={parseProblemCitations(sourceProblem?.libraryReferences.filter((item) => revealSourceCitations || !item.spoiler) ?? [])} draftKey={`mw-citations:${user.id}:new:${draftSession}`} />
 
                 <ProblemClassificationFields
                   initialStyles={sourceProblem?.styles}
@@ -429,6 +441,7 @@ export default async function NewProblemPage({
           title={sourceProblem.title}
           language={sourceProblem.language}
           markdown={sourceProblem.bodyMarkdown}
+          historyMarkdown={sourceProblem.historyMarkdown}
         />
       )}
     </div>

@@ -4,6 +4,9 @@ import { CONTENT_LIMITS } from "@/lib/content-limits";
 import { renderInlineMarkdown, renderMarkdown } from "@/lib/markdown";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { parseProblemCitations } from "@/lib/problem-citations";
+import { parseAdditionalConceptSlugs } from "@/lib/additional-concept-links";
+import { uncitedAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
+import { contentWithHistory } from "@/lib/content-history";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -26,23 +29,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid preview request." }, { status: 400 });
   }
 
-  const { title, bodyMarkdown } = payload as { title?: unknown; bodyMarkdown?: unknown };
-  if (typeof title !== "string" || typeof bodyMarkdown !== "string") {
+  const { title, bodyMarkdown, historyMarkdown = "", historyEnabled, historySpoiler } = payload as { title?: unknown; bodyMarkdown?: unknown; historyMarkdown?: unknown; historyEnabled?: unknown; historySpoiler?: unknown };
+  if (typeof title !== "string" || typeof bodyMarkdown !== "string" || typeof historyMarkdown !== "string") {
     return NextResponse.json({ error: "Invalid preview content." }, { status: 400 });
   }
-  if (title.length > CONTENT_LIMITS.title || bodyMarkdown.length > CONTENT_LIMITS.markdown) {
+  if (title.length > CONTENT_LIMITS.title || bodyMarkdown.length > CONTENT_LIMITS.markdown || historyMarkdown.length > CONTENT_LIMITS.markdown) {
     return NextResponse.json({ error: "This content is too long to preview." }, { status: 413 });
   }
 
-  const [titleHtml, bodyHtml] = await Promise.all([
+  const [titleHtml, bodyHtml, historyHtml] = await Promise.all([
     renderInlineMarkdown(title),
-    renderMarkdown(bodyMarkdown)
+    renderMarkdown(bodyMarkdown),
+    historyEnabled === true && historyMarkdown.trim() ? renderMarkdown(historyMarkdown) : ""
   ]);
 
   try {
     const citations = parseProblemCitations((payload as { citations?: unknown }).citations ?? []);
-    return NextResponse.json({ titleHtml, bodyHtml, citations, isOriginal: (payload as { isOriginal?: unknown }).isOriginal === true });
+    const extras = payload as { additionalConceptSlugs?: unknown; language?: unknown };
+    const slugs = parseAdditionalConceptSlugs(extras.additionalConceptSlugs ?? []);
+    const additionalLinks = await uncitedAdditionalConceptLinks(slugs, contentWithHistory(bodyMarkdown, { historyMarkdown, historyEnabled: historyEnabled === true, historySpoiler: historySpoiler === true }), typeof extras.language === "string" && extras.language.length <= 10 ? extras.language : "en");
+    return NextResponse.json({ titleHtml, bodyHtml, historyHtml, historySpoiler: historySpoiler === true, additionalLinks, citations, isOriginal: (payload as { isOriginal?: unknown }).isOriginal === true });
   } catch {
-    return NextResponse.json({ error: "Invalid references." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid links or references." }, { status: 400 });
   }
 }

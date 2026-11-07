@@ -1,4 +1,8 @@
 "use server";
+
+import { submittedAdditionalConceptSlugs } from "@/lib/additional-concept-links";
+
+import { contentHistory, contentWithHistory, submittedContentHistory, historyFormData } from "@/lib/content-history";
 import { EditSummaryValidationError, editSummaryValidationMessage, parseEditSummary } from "@/lib/form-feedback";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 
@@ -534,6 +538,8 @@ export async function createProblemAction(formData: FormData) {
   const allowSameTranslationTitle = sameTranslationTitleOverrideRequested(formData);
   const bodyMarkdown =
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || "Statement to be written.";
+  const history = submittedContentHistory(formData, undefined, true);
+  const additionalConceptSlugs = submittedAdditionalConceptSlugs(formData);
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
   const domain = domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER;
@@ -659,8 +665,8 @@ export async function createProblemAction(formData: FormData) {
     }
     if (translationSource && !allowMissingTranslationLinks) {
       await assertTranslationWikiLinksPreserved(
-        translationSource.bodyMarkdown,
-        bodyMarkdown,
+        `${translationSource.bodyMarkdown}\n\n${translationSource.historyMarkdown ?? ""}`,
+        `${bodyMarkdown}\n\n${history.historyMarkdown}`,
         translationSource.language,
         language,
         tx
@@ -711,6 +717,8 @@ export async function createProblemAction(formData: FormData) {
           : {}),
         title,
         bodyMarkdown,
+        ...history,
+        additionalConceptSlugs,
         bodyHtml,
         difficulty: sharedSnapshot?.difficulty ?? difficulty,
         editorialDifficulty: sharedSnapshot?.difficulty ?? difficulty,
@@ -873,7 +881,7 @@ export async function createProblemAction(formData: FormData) {
         await linkSpecificProblem(tx, parentProblem.id, created.id);
       }
     }
-    await syncInternalLinks(SourceType.PROBLEM, created.id, bodyMarkdown, tx, language);
+    await syncInternalLinks(SourceType.PROBLEM, created.id, contentWithHistory(bodyMarkdown, history), tx, language, additionalConceptSlugs);
     await syncProblemDomains(tx, created.id, sharedSnapshot?.domains ?? domains);
     await syncProblemRelationGroups(
       tx,
@@ -1180,6 +1188,8 @@ export async function updateProblemAction(
   const language = editableContentLanguage(formData.get("language"), previous.language);
   const bodyMarkdown =
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
+  const history = submittedContentHistory(formData, previous, true);
+  const additionalConceptSlugs = submittedAdditionalConceptSlugs(formData, previous.additionalConceptSlugs);
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
   const origin = formData.has("origin")
@@ -1269,6 +1279,8 @@ export async function updateProblemAction(
     title,
     language,
     bodyMarkdown,
+    ...history,
+        additionalConceptSlugs,
     difficulty,
     domains,
     origin,
@@ -1460,6 +1472,8 @@ export async function updateProblemAction(
           title: resolvedSnapshot.title,
           language: resolvedSnapshot.language,
           bodyMarkdown: resolvedSnapshot.bodyMarkdown,
+          ...contentHistory(resolvedSnapshot),
+          additionalConceptSlugs: resolvedSnapshot.additionalConceptSlugs ?? current.additionalConceptSlugs,
           bodyHtml,
           difficulty: difficultyChanged ? resolvedSnapshot.difficulty : current.difficulty,
           editorialDifficulty: difficultyChanged
@@ -1555,7 +1569,7 @@ export async function updateProblemAction(
         await recalculateProblemDifficulty(tx, current.translationGroupId);
       }
 
-      await syncInternalLinks(SourceType.PROBLEM, problemId, resolvedSnapshot.bodyMarkdown, tx, resolvedSnapshot.language);
+      await syncInternalLinks(SourceType.PROBLEM, problemId, contentWithHistory(resolvedSnapshot.bodyMarkdown, resolvedSnapshot), tx, resolvedSnapshot.language, resolvedSnapshot.additionalConceptSlugs ?? current.additionalConceptSlugs);
       await syncProblemDomains(tx, problemId, resolvedSnapshot.domains);
       if (resolvedSnapshot.citations !== undefined) {
         await syncProblemCitations(tx, problemId, resolvedSnapshot.citations);
@@ -1702,6 +1716,8 @@ export async function approveProblemEditProposalAction(proposalId: number) {
   formData.set("title", snapshot.title);
   formData.set("language", snapshot.language);
   formData.set("bodyMarkdown", snapshot.bodyMarkdown);
+  historyFormData(formData, snapshot);
+  if (snapshot.additionalConceptSlugs !== undefined) formData.set("additionalConceptSlugs", JSON.stringify(snapshot.additionalConceptSlugs));
   if (snapshot.difficulty !== null) formData.set("difficulty", String(snapshot.difficulty));
   for (const domain of snapshot.domains) {
     formData.append("domains", domain.mscCode);
@@ -2180,6 +2196,8 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
         ...(snapshot
           ? {
               title: snapshot.title,
+              ...(snapshot.historyMarkdown !== undefined ? contentHistory(snapshot) : {}),
+              ...(snapshot.additionalConceptSlugs !== undefined ? { additionalConceptSlugs: snapshot.additionalConceptSlugs } : {}),
               language: snapshot.language,
               difficulty: snapshot.difficulty,
               domain: snapshot.domains.find((item) => !item.spoiler)?.domain ?? MathDomain.OTHER,
@@ -2211,7 +2229,7 @@ export async function rollbackProblemRevisionAction(problemId: number, revisionI
     });
     if (updateResult.count !== 1) throw new Error("This problem changed while the rollback was being applied.");
 
-    await syncInternalLinks(SourceType.PROBLEM, problemId, markdown, tx, snapshot?.language ?? current.language);
+    await syncInternalLinks(SourceType.PROBLEM, problemId, contentWithHistory(markdown, snapshot?.historyMarkdown !== undefined ? snapshot : current), tx, snapshot?.language ?? current.language, snapshot?.additionalConceptSlugs ?? current.additionalConceptSlugs);
     if (snapshot) {
       if (snapshot.citations !== undefined) await syncProblemCitations(tx, problemId, snapshot.citations, { historical: snapshot.citations.flatMap((item) => item.referenceId === null ? [] : [item.referenceId]) });
       await syncProblemDomains(tx, problemId, snapshot.domains);

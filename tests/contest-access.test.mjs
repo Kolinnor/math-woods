@@ -12,6 +12,7 @@ import * as contestForm from '../lib/contest-form.ts';
 import * as tipImages from '../lib/tip-images.ts';
 import * as notificationPolicy from '../lib/notification-policy.ts';
 import { localizeNotification } from '../lib/notification-copy.ts';
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { fr } from '../lib/i18n/dictionaries/fr.ts';
 import { en } from '../lib/i18n/dictionaries/en.ts';
@@ -26,6 +27,7 @@ test('contest awards require official public results and a visible submission on
   assert.equal(matches(publicAward,where),true);
   for(const row of [
     {...publicAward,placement:null},
+    {...publicAward,placement:'HONORABLE_MENTION'},
     {...publicAward,contest:{...publicAward.contest,publishedAt:null}},
     {...publicAward,contest:{...publicAward.contest,resultsPublishedAt:null}},
     {...publicAward,problem:{status:'ARCHIVED',listed:true}},
@@ -37,18 +39,17 @@ test('contest awards require official public results and a visible submission on
   }
 });
 
-test('award badges distinguish winners from mentions and expose localized accessible descriptions', () => {
+test('only victories grant badges, with localized accessible descriptions', () => {
   const {ContestAchievementBadge}=load('components/ContestAchievementBadge.tsx',null,{'lucide-react':require('lucide-react')});
   for(const dictionary of [fr,en]){
     const winner=contests.avatarAchievementFromStats({wins:2,honorableMentions:1},dictionary.contestAchievements);
     const mention=contests.avatarAchievementFromStats({wins:0,honorableMentions:1},dictionary.contestAchievements);
-    const winnerHtml=renderToStaticMarkup(ContestAchievementBadge(winner));
-    const mentionHtml=renderToStaticMarkup(ContestAchievementBadge(mention));
+    const winnerHtml=renderToStaticMarkup(createElement(ContestAchievementBadge,winner));
     assert.match(winnerHtml,/avatar-achievement-badge-winner/);assert.match(winnerHtml,/role="img"/);assert.match(winnerHtml,/aria-label=/);
-    assert.doesNotMatch(mentionHtml,/avatar-achievement-badge-winner/);
-    assert.ok(winner.tooltip.includes('2'));assert.ok(mention.tooltip.includes('1'));
+    assert.equal(mention,undefined);
+    assert.ok(winner.tooltip.includes('2'));assert.doesNotMatch(winner.tooltip,/honorable/i);
     assert.equal(contests.avatarAchievementFromStats(undefined,dictionary.contestAchievements),undefined);
-    assert.equal(ContestAchievementBadge({wins:0,honorableMentions:0,tooltip:''}),null);
+    assert.equal(renderToStaticMarkup(createElement(ContestAchievementBadge,{wins:0,tooltip:''})), '');
   }
 });
 test('winner tooltips name each won contest in the interface language, excluding honorable-only contests', () => {
@@ -61,9 +62,9 @@ test('winner tooltips name each won contest in the interface language, excluding
     { userId: 1, placement: null, contest: { titleFr: 'Sans prix', titleEn: 'No award' } }
   ]).get(1);
   assert.equal(contests.avatarAchievementFromStats(stats, fr.contestAchievements).tooltip,
-    'A gagné le concours « Géométrie ».\nA gagné le concours « Algèbre ».\nA obtenu 1 mention honorable.');
+    '2 concours gagnés.\nA gagné le concours « Géométrie ».\nA gagné le concours « Algèbre ».');
   assert.equal(contests.avatarAchievementFromStats(stats, en.contestAchievements).tooltip,
-    'Won the “Geometry” contest.\nWon the “Algebra” contest.\nReceived 1 honorable mention.');
+    '2 contests won.\nWon the “Geometry” contest.\nWon the “Algebra” contest.');
   const single = contests.contestAchievementStatsByUser([{ userId: 1, placement: 'WINNER', contest: geometry }]).get(1);
   assert.equal(contests.avatarAchievementFromStats(single, fr.contestAchievements).tooltip, 'A gagné le concours « Géométrie ».');
 });
@@ -76,6 +77,7 @@ function load(file, role, overrides = {}) {
   const modules = {
     '@prisma/client': require('@prisma/client'),
     'react/jsx-runtime': require('react/jsx-runtime'),
+    'react': require('react'), 'react-dom': require('react-dom'),
     '@/lib/auth': { getCurrentUser: async () => user, requireVerifiedUser: async () => {
       if (!user) throw new Error('Sign in');
       return user;
@@ -231,7 +233,8 @@ test('problem notice follows the translation family and hides drafts, withdrawal
   contest.resultsPublishedAt = new Date();
   assert.match(await render('fr'), /Problème lauréat/);
   entry.placement = 'HONORABLE_MENTION';
-  assert.match(await render('en'), /Honorable mention/);
+  assert.match(await render('en'), /This problem was submitted to/);
+  assert.doesNotMatch(await render('en'), /Honorable mention/);
   contest.publishedAt = null;
   assert.equal(await render('fr'), '');
   entry = null;
@@ -418,7 +421,7 @@ function resultsFixture() {
     for (const id of honorableIds) form.append('honorableSubmissionIds', String(id));
     await actions.publishContestResultsAction(form);
   };
-  return { notifications, mutedUsers, publish };
+  return { notifications, mutedUsers, publish, submissions, actions };
 }
 
 test('first result publication notifies every active participant once with the correct award and contest link', async () => {
@@ -426,7 +429,7 @@ test('first result publication notifies every active participant once with the c
   await f.publish();
   assert.deepEqual(f.notifications.map(n => n.userId), [2, 3, 4, 5]);
   assert.deepEqual(f.notifications.map(n => n.title), [
-    'You won the weekly contest', 'Your problem received an honorable mention',
+    'You won the weekly contest', 'The results of your contest are available',
     'The results of your contest are available', 'The results of your contest are available'
   ]);
   assert.ok(f.notifications.every(n => n.href === '/contest?week=2026-09-12' && n.type === 'CONTEST_UPDATE'));
@@ -449,7 +452,7 @@ test('saving identical results is silent and subsequent new awards only notify t
   assert.deepEqual(f.notifications, []);
   await f.publish(12, [10, 11]);
   assert.deepEqual(f.notifications.map(n => [n.userId, n.title]), [
-    [2, 'Your problem received an honorable mention'], [4, 'You won the weekly contest']
+    [4, 'You won the weekly contest']
   ]);
 });
 
@@ -461,4 +464,33 @@ test('general result announcement is available in French and English', async () 
   const fr = localizeNotification(notification, 'fr');
   assert.equal(fr.title, 'Les résultats de votre concours sont disponibles');
   assert.match(fr.body, /auquel vous avez participé/);
+});
+
+
+test('result publication keeps exactly one winner and ignores retired award fields, including on an old form', async () => {
+  const f = resultsFixture();
+  f.submissions[1].placement = 'HONORABLE_MENTION';
+  await f.publish(10, [11, 12, 999]);
+  assert.deepEqual(f.submissions.filter(row => row.placement).map(row => [row.id, row.placement]), [[10, 'WINNER']]);
+  assert.ok(f.notifications.every(row => !row.title.includes('honorable')));
+  const form = new FormData();
+  form.set('contestId', '3');form.append('winnerSubmissionId','10');form.append('winnerSubmissionId','11');
+  await assert.rejects(f.actions.publishContestResultsAction(form), /Choose one winner/);
+  assert.deepEqual(f.submissions.filter(row => row.placement).map(row => row.id), [10]);
+  await f.publish(12, [10, 11]);
+  assert.deepEqual(f.submissions.filter(row => row.placement).map(row => row.id), [12]);
+});
+
+
+test('multiple victories remain a single trophy with a bounded counter and an exact accessible total', () => {
+  const {ContestAchievementBadge} = load('components/ContestAchievementBadge.tsx', null, {'lucide-react':require('lucide-react')});
+  for (const wins of [1, 2, 12, 145]) {
+    const achievement = contests.avatarAchievementFromStats({wins}, fr.contestAchievements);
+    const html = renderToStaticMarkup(createElement(ContestAchievementBadge,achievement));
+    assert.equal((html.match(/class="lucide lucide-trophy/g) ?? []).length, 1);
+    assert.match(html,new RegExp('aria-label="A gagné '+wins+' concours\\."'));
+    assert.match(html,/tabindex="0"/);
+    if (wins === 1) assert.doesNotMatch(html,/avatar-achievement-count/);
+    else assert.match(html,new RegExp('class="avatar-achievement-count" aria-hidden="true">'+(wins > 99 ? '99\\+' : wins)+'<'));
+  }
 });

@@ -44,6 +44,7 @@ import { combineSearchFilters } from "@/lib/search-filters";
 import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { contentLanguageViewHref, selectContentTranslationsByGroup } from "@/lib/translation-routing";
+import { conceptSearchAliases, matchingConceptAliasGroups } from "@/lib/concept-alias-search";
 
 export const dynamic = "force-dynamic";
 
@@ -259,15 +260,16 @@ export default async function ConceptsPage({
           }
         })
       ).map((group) => group.conceptId);
+  const aliasGroups = await matchingConceptAliasGroups(query ? databaseSearchVariants : []);
   const where: Prisma.ConceptWhereInput = combineSearchFilters<Prisma.ConceptWhereInput>([
     { language: { in: languageValues } },
     query
       ? {
-          OR: databaseSearchVariants.flatMap((variant) => [
+          OR: [{ translationGroupId: { in: [...aliasGroups.keys()] } }, ...databaseSearchVariants.flatMap((variant) => [
             { title: { contains: variant, mode: "insensitive" as const } },
             { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
             { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
-          ])
+          ])]
         }
       : null,
     domainValue ? domainWhere : null,
@@ -369,7 +371,7 @@ export default async function ConceptsPage({
           item: concept,
           title: concept.title,
           slug: concept.slug,
-          aliases: concept.aliases.map(({ alias }) => alias),
+          aliases: conceptSearchAliases(concept, aliasGroups),
           language: concept.language,
           searchText: [concept.bodyMarkdown]
         })),

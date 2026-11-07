@@ -13,19 +13,22 @@ import * as related from '../lib/mathematician-related.ts';
 import * as browser from '../lib/mathematician-browser.ts';
 import * as periods from '../lib/history-period.ts';
 import * as titles from '../lib/reference-title.ts';
+import * as referenceAuthors from '../lib/reference-authors.ts';
+import {validateReferenceAuthors} from '../lib/reference-authors-db.ts';
 import {localizeNotification} from '../lib/notification-copy.ts';
 const require=createRequire(import.meta.url),version=new Date('2026-09-01T12:00:00Z');
 const compiled=ts.transpileModule(readFileSync('lib/actions/library-actions.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 function harness(entity, overrides={}) {
-  const writes=[];
+  const writes=[],credits=[];
   const entry={id:1,slug:'example',name:'Example',canonicalTitle:'Example',status:'PUBLISHED',createdById:1,lastEditedById:1,needsReviewAfterEdit:true,reviewedAt:null,publishedAt:version,updatedAt:version,translations:[{title:'Example',displayTitle:'Example',displayName:'Example'}],...overrides};
   const model={findFirst:async()=>null,findUnique:async()=>entry,create:async({data})=>{writes.push(data);return entry;},updateMany:async({where,data})=>{assert.equal(where.updatedAt,version);writes.push(data);return {count:1};}};
-  const db={mathematician:model,libraryReference:model,historyMilestone:model,user:{findMany:async()=>{throw new Error('Library actions must not look up notification recipients');}},notification:{updateMany:async()=>{throw new Error('Library actions must not manage notifications');}},$transaction:async cb=>cb(db)};
+  const db={mathematician:model,libraryReference:model,historyMilestone:model,libraryReferenceContribution:{upsert:async args=>credits.push(args)},user:{findMany:async()=>{throw new Error('Library actions must not look up notification recipients');}},notification:{updateMany:async()=>{throw new Error('Library actions must not manage notifications');}},$transaction:async cb=>cb(db)};
   const modules={
     '@prisma/client':require('@prisma/client'),'@/lib/db':{prisma:db},
     '@/lib/auth':{requireAdmin:async()=>({id:2,role:'ADMIN',emailVerifiedAt:version}),requireVerifiedUser:async()=>({id:2,role:'USER',emailVerifiedAt:version})},
     '@/lib/permissions':permissions,'@/lib/content-limits':limits,'@/lib/mathematician-names':names,'@/lib/portrait':portraits,'@/lib/mathematician-related':related,'@/lib/mathematician-browser':browser,'@/lib/history-period':periods,'@/lib/reference-title':titles,
     '@/lib/reference-editions':{readReferenceBibliography:()=>({}),validateReferenceWork:async()=>null},
+    '@/lib/reference-authors':referenceAuthors,'@/lib/reference-authors-db':{validateReferenceAuthors},
     '@/lib/library':{normalizeReferenceDedupeKey:()=> 'example'},'@/lib/problem-citations':{citationUrl:()=>null},
     '@/lib/unique-slug':{uniqueSlug:async()=>entry.slug},'@/lib/rate-limit':{assertRateLimit:async()=>{}},
     '@/lib/markdown':{renderMarkdown:async text=>text},'@/lib/user-display':{displayNameForUser:()=> 'Editor'},
@@ -33,7 +36,7 @@ function harness(entity, overrides={}) {
   };
   const exports={};vm.runInNewContext(compiled,{exports,require:name=>modules[name]??{},FormData,Date,URL,Error});
   const form=new FormData();Object.entries({name:'Euclide',title:'Mathématiques hellénistiques',canonicalTitle:'Éléments',referenceType:'BOOK',language:'fr',intent:'submit',era:'ANCIENT',milestoneType:'PERIOD',sortYear:'-323',endYear:'-31',yearLabel:'323–31 av. J.-C.',summaryMarkdown:'Texte',imageUrl:'https://example.com/image.webp',imageCredit:'Auteur',imageCreditUrl:'https://example.com/source',imageLicense:'CC BY',baseUpdatedAt:version.toISOString()}).forEach(([k,v])=>form.set(k,v));
-  return {actions:exports,writes,entry,form};
+  return {actions:exports,writes,credits,entry,form};
 }
 test('Publish creates all three library types immediately; drafts remain unpublished',async()=>{
   for(const [entity,action] of [['mathematician','createMathematicianAction'],['reference','createLibraryReferenceAction'],['milestone','createHistoryMilestoneAction']]) for(const intent of ['submit','draft']) {
@@ -42,12 +45,22 @@ test('Publish creates all three library types immediately; drafts remain unpubli
     assert.equal(data.publishedAt instanceof Date,intent==='submit');
     assert.equal(data.reviewedById,undefined);
     if(entity==='mathematician')assert.equal(data.needsReviewAfterEdit,intent==='submit');
+    if(entity==='reference'){assert.equal(data.contributions.create.userId,2);assert.deepEqual(JSON.parse(JSON.stringify(data.presentationRevisions.create)),{language:'fr',markdown:'',editedById:2});}
     if(entity==='milestone'){assert.equal(data.imageUrl,'https://example.com/image.webp');assert.equal(data.imageCredit,'Auteur');assert.equal(data.imageLicense,'CC BY');}
   }
 });
+test('new references use the single title for both bibliography and the selected language',async()=>{
+  const h=harness('reference');h.form.delete('canonicalTitle');h.form.set('title','La Science et l’Hypothèse');
+  await h.actions.createLibraryReferenceAction(h.form);
+  assert.equal(h.writes[0].canonicalTitle,'La Science et l’Hypothèse');
+  assert.equal(h.writes[0].translations.create.displayTitle,'La Science et l’Hypothèse');
+});
+
 test('optional catalogue additions also publish immediately',async()=>{
   const h=harness('reference');const result=await h.actions.proposeLibraryReferenceAction({},h.form);
   assert.equal(result.success,true);assert.equal(h.writes[0].status,'PUBLISHED');
+  assert.equal(h.writes[0].contributions.create.userId,2);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.writes[0].presentationRevisions.create)),{language:'fr',markdown:'',editedById:2});
 });
 test('historical stubs publish with an empty description and validation errors return to the form',async()=>{
   const h=harness('milestone');h.form.set('summaryMarkdown','');
@@ -79,6 +92,13 @@ test('library review decisions do not notify reviewers or creators',async()=>{
     h.form.set('reviewNote','Préciser les sources.');
     await h.actions.reviewLibraryEntryAction(entity,1,decision,h.form);
     assert.equal(h.writes[0].status,decision==='publish'?'PUBLISHED':'NEEDS_WORK');
+    if(entity==='reference') {
+      assert.equal(h.credits.length,1);
+      assert.equal(h.credits[0].where.referenceId_userId.userId,2);
+      assert.equal(h.credits[0].create.reviewed,true);
+      assert.equal(h.credits[0].update.reviewed,true);
+      assert.equal(h.credits[0].update.edited,undefined);
+    }
   }
 });
 

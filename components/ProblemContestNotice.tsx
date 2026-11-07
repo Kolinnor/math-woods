@@ -23,9 +23,7 @@ export async function ProblemContestNotice({ translationGroupId, locale }: {
   const fr = locale === "fr";
   const label = placement === "WINNER"
     ? (fr ? "Problème lauréat du concours" : "Winning entry in")
-    : placement === "HONORABLE_MENTION"
-      ? (fr ? "Mention honorable au concours" : "Honorable mention in")
-      : (fr ? "Ce problème a été soumis au concours" : "This problem was submitted to");
+    : (fr ? "Ce problème a été soumis au concours" : "This problem was submitted to");
 
   return (
     <p className="problem-contest-notice">

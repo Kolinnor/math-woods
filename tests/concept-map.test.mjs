@@ -89,6 +89,16 @@ test('the Map/List choice: explicit parameter, then remembered cookie, then the 
   assert.equal(view.conceptMapDataHref('fr', 2), '/api/concepts/map?lang=fr&tier=2');
 });
 
+test('map search includes aliases from sibling translations on the displayed French node', () => {
+  const fr = concept('nombre-premier');
+  const en = concept('prime-number', { language: 'en', translationGroupId: fr.translationGroupId,
+    aliases: [{alias:'Premier',aliasSlug:'premier'}] });
+  const graph = buildConceptMapGraph({concepts:[fr,en],redirects:[],links:[]}, 'fr');
+  assert.equal(graph.nodes.length, 1);
+  assert.equal(graph.nodes[0].concept.slug, 'nombre-premier');
+  assert.ok(graph.nodes[0].otherTitles.includes('Premier'));
+});
+
 test('a map only shows the pages of its language, with their own citations resolved like links', () => {
   const groupe = concept('groupe');
   const group = concept('group', { language: 'en', translationGroupId: groupe.translationGroupId, translatedFromConceptId: groupe.id, title: 'Group' });

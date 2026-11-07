@@ -444,7 +444,7 @@ export function createConceptMapRenderer(
       data = next;
       colors = next.domains.map((domain) => domain.color);
       fadedColors = colors.map((color) => mix(color, "#f1ebdc", 0.82));
-      stubColors = colors.map((color) => mix(color, "#f8f4ea", 0.42));
+      stubColors = colors.map((color) => mix(color, "#f8f4ea", 0.18));
       for (let index = from; index < next.x.length; index += 1) {
         const level = next.level[index];
         neighbors[index] = neighbors[index] ?? new Set();

@@ -1,6 +1,6 @@
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ConceptStatus, FriendshipStatus } from "@prisma/client";
-import { ExternalLink, Handshake, Medal, Trophy } from "lucide-react";
+import { ExternalLink, Handshake, Trophy } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -266,8 +266,7 @@ export default async function ProfilePage({
   const achievementUnlockMap = new Map(achievementUnlocks.map((unlock) => [unlock.key, unlock]));
   const achievements = achievementsForLocale(interfaceLocale);
   const contestStats = contestAchievementStatsByUser(contestSubmissions).get(user.id) ?? {
-    wins: 0,
-    honorableMentions: 0
+    wins: 0
   };
   const heroAchievement = avatarAchievementFromStats(contestStats, t.contestAchievements);
   const contributionDateLabel = (date: Date) => date.toLocaleDateString(interfaceLocale, {
@@ -563,22 +562,14 @@ export default async function ProfilePage({
                   <span>{contestStats.wins}</span>
                 </div>
               )}
-              {contestStats.honorableMentions > 0 && (
-                <div className="flex justify-between gap-3">
-                  <span>{t.contestAchievements.honorableBadgeLabel}</span>
-                  <span>{contestStats.honorableMentions}</span>
-                </div>
-              )}
             </div>
             <div className="profile-contest-record-list">
               {contestSubmissions.map((submission) => {
                 const contestTitle = interfaceLocale === "fr" ? submission.contest.titleFr : submission.contest.titleEn;
                 return (
                   <Link key={submission.id} href={`/contest?week=${submission.contest.startDateKey}` as Route}
-                    title={submission.placement === "WINNER" ? t.contestAchievements.winnerBadgeLabel : t.contestAchievements.honorableBadgeLabel}>
-                    {submission.placement === "WINNER"
-                      ? <Trophy size={14} aria-hidden="true" />
-                      : <Medal size={14} aria-hidden="true" />}
+                    title={t.contestAchievements.winnerBadgeLabel}>
+                    <Trophy size={14} aria-hidden="true" />
                     <span>{contestDateLabel(submission.contest.startDateKey, interfaceLocale)}</span>
                     <strong>{contestTitle}</strong>
                   </Link>

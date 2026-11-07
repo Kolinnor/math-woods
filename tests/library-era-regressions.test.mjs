@@ -40,7 +40,7 @@ function load(name) {
 }
 const display = load('@/lib/library-display');
 const { historyEraWhere, milestoneEndYear, overlapsLibraryEra } = load('@/lib/library-era-filters');
-const { selectFriseOverview, selectFriseEra } = load('@/lib/library-frise');
+const { selectFriseOverview, selectFriseEra, friseName } = load('@/lib/library-frise');
 const { LibraryFrise } = load('@/components/library/LibraryFrise');
 const { LibraryEraStrip } = load('@/components/library/LibraryEraStrip');
 const { libraryEraPresets } = load('@/lib/library-eras');
@@ -52,6 +52,15 @@ const modern = eras.find(era => era.slug === 'rigueur-abstraction');
 const contemporary = eras.at(-1);
 const render = props => renderToStaticMarkup(React.createElement(LibraryFrise, { locale: 'fr', ...props }));
 const life = (i, score = 0) => ({ slug: `person-${i}`, name: `Person ${i}`, short: `P${i}`, from: 1900 + i, to: 2000, lifespan: '', score });
+
+test('timeline uses the editorial surname and preserves names with particles instead of showing only a given name', () => {
+  assert.equal(friseName('Henri Poincaré', 'Poincaré, Henri'), 'Poincaré');
+  assert.equal(friseName('Emmy Noether'), 'Noether');
+  assert.equal(friseName('Jean le Rond d’Alembert'), 'Jean le Rond d’Alembert');
+  assert.equal(friseName('Charles de la Vallée Poussin', 'de la Vallée Poussin, Charles'), 'de la Vallée Poussin');
+  assert.equal(friseName('  Al-Khwarizmi  '), 'Al-Khwarizmi');
+  assert.equal(friseName('Henri Poincaré', ', Henri'), 'Poincaré');
+});
 
 test('a featured entry survives lane saturation, and the rendered count matches the selected count', () => {
   const people = Array.from({ length: 45 }, (_, i) => life(i, i === 44 ? 1000 : 0));

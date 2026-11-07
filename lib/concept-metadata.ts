@@ -32,12 +32,14 @@ export async function syncConceptAliases(
   await acquireTransactionLock(tx, "content-slugs:concept");
   const concept = await tx.concept.findUnique({
     where: { id: conceptId },
-    select: { slug: true }
+    select: { slug: true, translationGroupId: true }
   });
-  const filteredAliases = aliases.filter((alias) => alias.aliasSlug !== concept?.slug);
+  if (!concept) throw new Error("Concept not found");
+  const filteredAliases = aliases.filter((alias) => alias.aliasSlug !== concept.slug);
   const canonicalConflict = await tx.concept.findFirst({
     where: {
       id: { not: conceptId },
+      translationGroupId: { not: concept.translationGroupId },
       slug: { in: filteredAliases.map((alias) => alias.aliasSlug) }
     },
     select: { title: true }
@@ -49,6 +51,7 @@ export async function syncConceptAliases(
   const redirectConflict = await tx.conceptRedirect.findFirst({
     where: {
       targetConceptId: { not: conceptId },
+      targetConcept: { translationGroupId: { not: concept.translationGroupId } },
       sourceSlug: { in: filteredAliases.map((alias) => alias.aliasSlug) }
     },
     select: { sourceTitle: true }
@@ -59,6 +62,7 @@ export async function syncConceptAliases(
   const aliasConflict = await tx.conceptAlias.findFirst({
     where: {
       conceptId: { not: conceptId },
+      concept: { translationGroupId: { not: concept.translationGroupId } },
       aliasSlug: { in: filteredAliases.map((alias) => alias.aliasSlug) }
     },
     select: {

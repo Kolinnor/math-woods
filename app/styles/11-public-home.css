@@ -298,8 +298,7 @@ a.home-public-stat:focus-visible span {
 }
 
 .home-daily-art {
-  align-self: start;
-  aspect-ratio: 1 / 1;
+  align-self: stretch;
   background: var(--imgbg);
   border-radius: 0 11px 11px 0;
   overflow: hidden;
@@ -310,7 +309,9 @@ a.home-public-stat:focus-visible span {
 .home-daily-art img {
   display: block;
   height: 100%;
+  inset: 0;
   object-fit: cover;
+  position: absolute;
   width: 100%;
 }
 

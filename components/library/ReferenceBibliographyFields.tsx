@@ -35,7 +35,7 @@ export function ReferenceWorkPicker({ locale, initial, excludeId }: { locale: "f
   </div>;
 }
 
-export function ReferenceBibtexField({ locale, initialValue }: { locale: "fr" | "en"; initialValue: string }) {
+export function ReferenceBibtexField({ locale, initialValue, onAuthorsImport }: { locale: "fr" | "en"; initialValue: string; onAuthorsImport?: (text: string) => void }) {
   const fr = locale === "fr";
   const field = useRef<HTMLTextAreaElement>(null);
   const [report, setReport] = useState<{ errors: string[]; warnings: string[] } | null>(null);
@@ -50,9 +50,10 @@ export function ReferenceBibtexField({ locale, initialValue }: { locale: "fr" | 
       if (!response.ok) throw new Error(data.errors?.join(" ") || (fr ? "Import impossible." : "Unable to import."));
       const form = field.current?.form;
       const current = form ? new FormData(form) : new FormData();
-      const changes = Object.entries(data.fields as Record<string, string>).map(([name, after]) => {
+      const changes = Object.entries(data.fields as Record<string, string>).map(([fieldName, after]) => {
+        const name = fieldName === "canonicalTitle" && form?.elements.namedItem("title") ? "title" : fieldName;
         const element = form?.elements.namedItem(name) as HTMLInputElement | null;
-        const label = element?.closest("label")?.querySelector("span")?.textContent || name;
+        const label = name === "authors" ? (fr ? "Auteurs ou créateurs" : "Authors or creators") : element?.closest("label")?.querySelector("span")?.textContent || name;
         const before = String(current.get(name) ?? "");
         return { name, label, before, after, selected: !before.trim() };
       }).filter(change => change.before !== change.after);
@@ -65,6 +66,7 @@ export function ReferenceBibtexField({ locale, initialValue }: { locale: "fr" | 
     const form = field.current?.form;
     for (const change of proposal ?? []) {
       if (!change.selected) continue;
+      if (change.name === "authors" && onAuthorsImport) { onAuthorsImport(change.after); continue; }
       const element = form?.elements.namedItem(change.name);
       if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
         Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), "value")?.set?.call(element, change.after);
@@ -80,7 +82,7 @@ export function ReferenceBibtexField({ locale, initialValue }: { locale: "fr" | 
     try {
       const form = field.current?.form;
       const submitted = form ? new FormData(form) : new FormData();
-      const data = Object.fromEntries(["canonicalTitle", "referenceType", "authors", "editors", "publisher", "year", "yearLabel", "edition", "volume", "translator", "journal", "issue", "pages", "url", "doi", "isbn", "citationKey", "bibtex"].map(name => [name, submitted.get(name)]));
+      const data = Object.fromEntries(["canonicalTitle", "referenceType", "authors", "editors", "publisher", "year", "yearLabel", "edition", "volume", "translator", "journal", "issue", "pages", "url", "doi", "isbn", "citationKey", "bibtex"].map(name => [name, name === "canonicalTitle" ? submitted.get("title") ?? submitted.get(name) : submitted.get(name)]));
       const response = await fetch("/api/references/bibtex", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, language: locale }) });
       if (!response.ok) throw new Error();
       setReport(await response.json());

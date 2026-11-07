@@ -9,6 +9,8 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { contentLanguageNativeLabel } from "@/lib/languages";
+import { resolveConceptAlias } from "@/lib/concept-alias-search";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
 
@@ -65,10 +67,10 @@ export default async function ConceptMergePage({
   const concept = await prisma.concept.findUnique({ where: { slug } });
   if (!concept) {
     const [alias, merged] = await Promise.all([
-      prisma.conceptAlias.findUnique({ where: { aliasSlug: slug }, select: { concept: { select: { slug: true } } } }),
+      getPreferredContentLanguage().then((language) => resolveConceptAlias(slug, language)),
       prisma.conceptRedirect.findUnique({ where: { sourceSlug: slug }, select: { targetConcept: { select: { slug: true } } } })
     ]);
-    const targetSlug = merged?.targetConcept.slug ?? alias?.concept.slug;
+    const targetSlug = merged?.targetConcept.slug ?? alias?.slug;
     if (targetSlug) redirect(`/concepts/${targetSlug}/merge` as never);
     notFound();
   }

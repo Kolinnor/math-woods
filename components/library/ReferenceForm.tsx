@@ -1,6 +1,8 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
+import { startTransition, useActionState, useState } from "react";
+import { ReferenceAuthorsField } from "@/components/library/ReferenceAuthorsField";
+import { referenceAuthorsFromText, type ReferenceAuthorInput } from "@/lib/reference-authors";
 import { LibraryReferenceType, type LibraryStatus } from "@prisma/client";
 import { ReferenceWorkPicker, ReferenceBibtexField } from "@/components/library/ReferenceBibliographyFields";
 import { LibraryFormActions } from "@/components/library/LibraryFormActions";
@@ -15,6 +17,7 @@ type ReferenceFormValues = {
   canonicalTitle?: string;
   referenceType?: LibraryReferenceType;
   authors?: string | null;
+  authorEntries?: ReferenceAuthorInput[];
   publisher?: string | null;
   edition?: string | null;
   volume?: string | null;
@@ -46,6 +49,7 @@ export function ReferenceForm({ action, locale, contentLanguage = locale, baseUp
   const fr = locale === "fr";
   const saveChanges = values.status === "PUBLISHED" || values.status === "PENDING_REVIEW" || values.status === "ARCHIVED";
   const [state, submit, pending] = useActionState(action, { error: "" });
+  const [authors, setAuthors] = useState(() => referenceAuthorsFromText(values.authors, values.authorEntries));
   return (
     <form onSubmit={event => {
       event.preventDefault();
@@ -60,11 +64,11 @@ export function ReferenceForm({ action, locale, contentLanguage = locale, baseUp
       <input type="hidden" name="language" value={contentLanguage} />
       {baseUpdatedAt && <input type="hidden" name="baseUpdatedAt" value={baseUpdatedAt} />}
       <div className="library-form-grid">
-        <label><span>{fr ? "Titre" : "Title"}</span><input name="canonicalTitle" required defaultValue={values.canonicalTitle ?? ""} /></label>
+        <label><span>{fr ? "Titre" : "Title"}</span><input name="title" required defaultValue={values.translation?.displayTitle || values.canonicalTitle || ""} /></label>
         <label><span>{fr ? "Type" : "Type"}</span><select name="referenceType" defaultValue={values.referenceType ?? LibraryReferenceType.BOOK}>{Object.values(LibraryReferenceType).map((type) => <option key={type} value={type}>{referenceTypeLabel(type, locale)}</option>)}</select></label>
-        <label><span>{fr ? "Auteurs ou créateur" : "Authors or creator"}</span><textarea name="authors" rows={2} defaultValue={values.authors ?? ""} placeholder={fr ? "Un auteur par ligne" : "One author per line"} /></label>
         <label><span>{fr ? "Lien (facultatif)" : "Link (optional)"}</span><input name="url" type="url" defaultValue={values.url ?? ""} /></label>
       </div>
+      <ReferenceAuthorsField locale={locale} authors={authors} onChange={setAuthors} />
       <p className="muted">{fr ? "Ces informations suffisent pour commencer. Complétez les détails ci-dessous seulement si vous les connaissez." : "This is enough to get started. Add details below only if you know them."}</p>
       <details className="library-form-section"><summary>{fr ? "Édition et bibliographie" : "Edition and bibliography"}</summary><div>
         <ReferenceWorkPicker locale={locale} initial={values.work ?? null} excludeId={values.id} />
@@ -88,10 +92,9 @@ export function ReferenceForm({ action, locale, contentLanguage = locale, baseUp
         <label><span>ISBN</span><input name="isbn" defaultValue={values.isbn ?? ""} /></label>
         <label><span>{fr ? "Clé de citation" : "Citation key"}</span><input name="citationKey" defaultValue={values.citationKey ?? ""} /></label>
         </div>
-        <ReferenceBibtexField locale={locale} initialValue={values.bibtex ?? ""} />
+        <ReferenceBibtexField locale={locale} initialValue={values.bibtex ?? ""} onAuthorsImport={text => setAuthors(previous => referenceAuthorsFromText(text, previous))} />
       </div></details>
       <details className="library-form-section"><summary>{fr ? "Présentation personnalisée" : "Custom presentation"}</summary><div>
-      <label><span>{fr ? "Titre affiché dans cette langue" : "Title displayed in this language"}</span><input name="displayTitle" defaultValue={values.translation?.displayTitle ?? ""} /></label>
       <label><span>{fr ? "Citation affichée personnalisée" : "Custom displayed citation"}</span><textarea name="formattedOverride" rows={2} defaultValue={values.formattedOverride ?? ""} /></label>
       <label><span>{fr ? "Alias, un par ligne" : "Aliases, one per line"}</span><textarea name="aliases" rows={3} defaultValue={values.aliases?.join("\n") ?? ""} /></label>
       <div className="library-editor-field"><span>{fr ? "Présentation" : "Description"}</span><MarkdownEditor name="descriptionMarkdown" ariaLabel={fr ? "Présentation" : "Description"} initialValue={values.translation?.descriptionMarkdown ?? ""} minHeight="14rem" /></div>

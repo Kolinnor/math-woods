@@ -1,3 +1,6 @@
+import { resolveAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
+import { extractConceptReferences } from "./concept-link-references.ts";
+import { contentWithHistory } from "./content-history.ts";
 import { Prisma, SourceType, TargetType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ensureSlug } from "@/lib/slug";
@@ -29,10 +32,12 @@ export async function syncInternalLinks(
   sourceId: number,
   markdown: string,
   tx: Prisma.TransactionClient = prisma,
-  sourceLanguage?: string
+  sourceLanguage?: string,
+  additionalConceptSlugs: string[] = []
 ) {
-  const links = extractWikiLinks(markdown);
+  const links = extractConceptReferences(markdown);
   const resolvedKeys = new Set<string>();
+  const citedGroups = new Set<string>();
 
   await tx.internalLink.deleteMany({
     where: { sourceType, sourceId }
@@ -68,6 +73,7 @@ export async function syncInternalLinks(
             select: { slug: true }
           })
         : null;
+    if (matchedConcept) citedGroups.add(matchedConcept.translationGroupId);
     const targetSlug = translatedConcept?.slug ?? matchedConcept?.slug ?? link.targetSlug;
     // Aliases, redirects and translations can collapse distinct source links onto one row.
     const resolvedKey = JSON.stringify([targetSlug, link.label]);
@@ -85,6 +91,23 @@ export async function syncInternalLinks(
       }
     });
   }
+  if (additionalConceptSlugs.length && (sourceType === SourceType.CONCEPT || sourceType === SourceType.PROBLEM)) {
+    const additional = await resolveAdditionalConceptLinks(additionalConceptSlugs, sourceLanguage ?? "en", tx);
+    const self = sourceType === SourceType.CONCEPT
+      ? await tx.concept.findUnique({ where: { id: sourceId }, select: { translationGroupId: true } }) : null;
+    const retained = additional.filter(concept => !citedGroups.has(concept.translationGroupId) && concept.translationGroupId !== self?.translationGroupId);
+    for (const concept of retained) {
+      await tx.internalLink.create({ data: { sourceType, sourceId, targetSlug: concept.slug,
+        targetType: TargetType.CONCEPT, exists: true, label: concept.title } });
+    }
+    const slugs = retained.map(concept => concept.slug);
+    if (JSON.stringify(slugs) !== JSON.stringify(additionalConceptSlugs)) {
+      const data = { additionalConceptSlugs: slugs };
+      if (sourceType === SourceType.CONCEPT) await tx.concept.update({ where: { id: sourceId }, data });
+      else await tx.problem.update({ where: { id: sourceId }, data });
+    }
+  }
+
 }
 
 async function translationLinkIdentity(
@@ -257,11 +280,11 @@ async function refreshLinksForConceptRecord(
   const [impactedProblems, impactedConcepts, impactedProofs] = await Promise.all([
     tx.problem.findMany({
       where: { id: { in: impactedProblemIds } },
-      select: { id: true, bodyMarkdown: true }
+      select: { id: true, bodyMarkdown: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, language: true, additionalConceptSlugs: true }
     }),
     tx.concept.findMany({
       where: { id: { in: impactedConceptIds } },
-      select: { id: true, bodyMarkdown: true }
+      select: { id: true, bodyMarkdown: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, language: true, additionalConceptSlugs: true }
     }),
     tx.problemProof.findMany({
       where: { id: { in: impactedProofIds } },
@@ -269,10 +292,10 @@ async function refreshLinksForConceptRecord(
     })
   ]);
   for (const problem of impactedProblems) {
-    await syncInternalLinks(SourceType.PROBLEM, problem.id, problem.bodyMarkdown, tx, concept.language);
+    await syncInternalLinks(SourceType.PROBLEM, problem.id, contentWithHistory(problem.bodyMarkdown, problem), tx, problem.language, problem.additionalConceptSlugs);
   }
   for (const sourceConcept of impactedConcepts) {
-    await syncInternalLinks(SourceType.CONCEPT, sourceConcept.id, sourceConcept.bodyMarkdown, tx, concept.language);
+    await syncInternalLinks(SourceType.CONCEPT, sourceConcept.id, contentWithHistory(sourceConcept.bodyMarkdown, sourceConcept), tx, sourceConcept.language, sourceConcept.additionalConceptSlugs);
   }
   for (const proof of impactedProofs) {
     await syncInternalLinks(SourceType.PROOF, proof.id, proof.bodyMarkdown, tx, concept.language);

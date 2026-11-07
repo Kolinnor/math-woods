@@ -1,3 +1,7 @@
+import { contentWithHistory } from "@/lib/content-history";
+import { AdditionalConceptLinks } from "@/components/AdditionalConceptLinks";
+import { ContentHistory } from "@/components/ContentHistory";
+import { StatusDisclosure } from "@/components/StatusDisclosure";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 ﻿import { ProblemVerificationMode } from "@prisma/client";
 import type { Metadata } from "next";
@@ -976,7 +980,17 @@ export default async function ProblemPage({
                 {t.problems.exerciseBadge}
               </span>
             )}
-            {(problem.qualityStatus !== "REVIEWED" || !problem.reviewedBy) && (
+            {problem.qualityStatus === "UNREVIEWED" ? (
+              <StatusDisclosure label={t.quality.UNREVIEWED} closeLabel={t.common.close}
+                badge={<span className="problem-review-badge problem-review-unreviewed">{t.quality.UNREVIEWED}</span>}>
+                <p>{problem.needsReviewAfterEdit ? t.problems.editedSinceReviewNotice : t.problemDetail.unreviewedNotice}</p>
+                {user && canReviewProblem(user, problem) && (
+                  <form action={markProblemReviewedAction.bind(null, problem.id, problem.slug)}>
+                    <button type="submit" className="secondary">{t.problemDetail.markReviewed}</button>
+                  </form>
+                )}
+              </StatusDisclosure>
+            ) : (problem.qualityStatus !== "REVIEWED" || !problem.reviewedBy) && (
               <span className={`problem-review-badge problem-review-${problem.qualityStatus.toLowerCase()}`}>
                 {t.quality[problem.qualityStatus]}
               </span>
@@ -1183,9 +1197,8 @@ export default async function ProblemPage({
             </div>
           )}
 
-        {(problem.qualityStatus === "UNREVIEWED" ||
-          problem.qualityStatus === "NEEDS_WORK" ||
-          problem.needsReviewAfterEdit) && (
+        {problem.qualityStatus !== "UNREVIEWED" &&
+          (problem.qualityStatus === "NEEDS_WORK" || problem.needsReviewAfterEdit) && (
           <div
             className={
               problem.qualityStatus === "NEEDS_WORK"
@@ -1362,6 +1375,9 @@ export default async function ProblemPage({
           </div>
         </section>
         <ProblemCitations citations={withCitationImages(readableCitations, problem.libraryReferences)} isOriginal={problem.isOriginal} locale={interfaceLocale} exportHref={`/problems/${problem.slug}/export`} />
+
+        <AdditionalConceptLinks markdown={contentWithHistory(problem.bodyMarkdown, problem)} slugs={problem.additionalConceptSlugs} language={problem.language} locale={interfaceLocale} />
+        <ContentHistory content={problem} locale={interfaceLocale} />
 
         {problem.showRelatedProblems && (
           <section className="zen-hide related-problems-section mt-8">

@@ -468,6 +468,12 @@
 }
 
 .library-detail-attribution .library-attribution { font-size: 13px; line-height: 1.6; margin: 0; }
+
+.reference-contributor-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.reference-contributor-list li { display: grid; gap: 3px; min-width: 0; }
+.reference-contributor-list small { color: var(--mw-secondary); font-size: 12px; line-height: 1.5; }
+.reference-contributor-list .user-name-with-avatar { min-width: 0; }
+.reference-contributor-list .user-name-with-avatar > span:last-child { overflow-wrap: anywhere; }
 .library-detail-management { color: var(--mw-secondary); font-size: 14px; }
 
 .library-rail-people ul { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
@@ -803,6 +809,9 @@ a.library-link-title:hover { color: var(--mw-green); text-decoration-color: var(
 .library-rail-chronology strong { font-weight: 650; }
 
 /* Reference entry: a catalogue record. */
+.reference-article .library-reading-card { padding: 24px; }
+.reference-article .library-reading-card .prose-math { max-width: none; }
+
 .reference-record {
   background: var(--mw-reading-surface);
   border: 1px solid var(--mw-border);
@@ -1060,6 +1069,14 @@ a.library-link-title:hover { color: var(--mw-green); text-decoration-color: var(
 .library-person-card:hover .library-person-card-portrait img { transform: scale(1.025); }
 .library-person-card-status { left: 10px; position: absolute; top: 10px; z-index: 2; }
 .library-person-card .library-portrait-source { z-index: 2; }
+
+.library-person-add { color: var(--mw-green); text-decoration: none; }
+.library-person-add:hover { color: var(--mw-green); text-decoration: none; }
+.library-person-add:focus-visible { outline: 3px solid currentColor; outline-offset: 4px; }
+.library-person-add .library-person-add-symbol { background: var(--mw-muted-surface); color: inherit; }
+.library-person-add-symbol::after { content: none; }
+.library-person-add-symbol svg { width: 48%; height: auto; }
+.library-person-add-label { align-items: center; justify-content: center; font-weight: 700; text-align: center; }
 
 .library-person-card-body { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 14px 16px 16px; }
 .library-person-card-dates { color: var(--mw-rust); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; margin: 0; }
@@ -1950,6 +1967,7 @@ a.library-link-title:hover { color: var(--mw-green); text-decoration-color: var(
   .library-nav-link { flex: 1 0 auto; font-size: 13.5px; justify-content: center; padding: 6px 12px; }
   .library-nav-link svg { display: none; }
   .library-reading-card { padding: 22px 18px 24px; }
+  .reference-article .library-reading-card { padding: 18px 16px; }
   .library-reading-card .prose-math { font-size: 16px; }
   .mathematician-biographical-panel { gap: 16px; grid-template-columns: 124px minmax(0, 1fr); padding: 12px; }
   .mathematician-facts { gap: 12px; grid-template-columns: minmax(0, 1fr); padding: 2px 0; }

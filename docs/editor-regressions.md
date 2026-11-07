@@ -8,6 +8,24 @@ The goal is not ceremony. The goal is to stop a new fix from quietly undoing an 
 
 Entries are ordered newest first; add new dated entries above the older ones.
 
+## 2026-10-13 - Concept aliases shared by translations
+
+Concept link suggestions must match aliases across a translation family before
+choosing the reader's preferred language. An alias recorded only on the English
+page must still suggest the French translation when available. Keep the matching
+alias for ranking, and preserve explicit canonical destinations when reopening links.
+Aliases may be saved on several translations of one concept, but never on unrelated
+families; alias URL redirects are language dependent and must not be permanent.
+
+## 2026-10-12 - Optional historical context drafts
+
+History has a separate Markdown draft and a receipt-protected options draft.
+Hiding the public section must preserve its text. Restore the visibility and
+spoiler flags together with a failed edit; otherwise a restored problem history
+could accidentally lose its spoiler warning. Only confirmed saves acknowledge
+these drafts, and options from a different source baseline are not reapplied.
+The editor mounts only when adding history or recovering an existing draft.
+
 ## Previous editor regressions to preserve
 
 These are known behavioral fixes that should not be broken when changing live preview logic:

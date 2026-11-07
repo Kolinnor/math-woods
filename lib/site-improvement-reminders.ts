@@ -18,6 +18,7 @@ export async function sendSiteImprovementReminder(now = new Date()) {
   if (!owner) return { created: 0 };
 
   const remaining = await prisma.siteImprovement.count({ where: { status: { not: SiteImprovementStatus.COMPLETED } } });
+  if (remaining === 0) return { created: 0, remaining };
   const result = await prisma.notification.createMany({
     data: [{
       userId: owner.id,

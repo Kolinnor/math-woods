@@ -229,7 +229,7 @@
   color: var(--mw-text);
   display: grid;
   gap: 0.85rem;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   min-height: 4rem;
   padding: 0.7rem 0.9rem;
 }
@@ -378,7 +378,7 @@
   border-bottom: 1px solid var(--mw-border);
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   padding: 0.7rem;
 }
 

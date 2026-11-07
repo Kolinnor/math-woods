@@ -16,7 +16,6 @@ type AvatarUser = {
 
 export type AvatarAchievement = {
   wins: number;
-  honorableMentions: number;
   tooltip: string;
 };
 
@@ -40,7 +39,7 @@ export function UserAvatar({ achievement, className, size = "md", user }: UserAv
   ]
     .filter(Boolean)
     .join(" ");
-  const hasBadge = Boolean(achievement && (achievement.wins > 0 || achievement.honorableMentions > 0));
+  const hasBadge = Boolean(achievement && achievement.wins > 0);
 
   const avatar = (
     <span
@@ -68,7 +67,6 @@ export function UserAvatar({ achievement, className, size = "md", user }: UserAv
       {avatar}
       <ContestAchievementBadge
         wins={achievement!.wins}
-        honorableMentions={achievement!.honorableMentions}
         tooltip={achievement!.tooltip}
       />
     </span>

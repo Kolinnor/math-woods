@@ -36,7 +36,7 @@ test('daily concept review and other notifications remain enabled', async () => 
 
 test('cleanup removes retired types for the current user without waiting for retention expiry', async () => {
   let where;
-  const { cleanupNotificationsForUser } = load('lib/notification-lifecycle.ts', { notification: { deleteMany: async args => { where = args.where; } } });
+  const { cleanupNotificationsForUser } = load('lib/notification-lifecycle.ts', { notification: { findFirst: async () => null, deleteMany: async args => { where = args.where; } } });
   await cleanupNotificationsForUser(42);
   assert.equal(where.userId, 42);
   const retired = where.OR.find(condition => condition.type);
@@ -44,4 +44,36 @@ test('cleanup removes retired types for the current user without waiting for ret
   assert.equal(retired.readAt, undefined);
   assert.equal(retired.createdAt, undefined);
   assert.ok(!retired.type.in.includes(NotificationType.DAILY_CONCEPT_REVIEW));
+});
+
+test('cleanup removes obsolete improvement reminders only when no work remains', async () => {
+  for (const remaining of [0, 1, 4]) {
+    let where;
+    const db = {
+      notification: {
+        findFirst: async ({ where, select }) => {
+          assert.equal(where.userId, 42);
+          assert.equal(where.type, NotificationType.SITE_IMPROVEMENT_REMINDER);
+          assert.equal(select.id, true);
+          return { id: 10 };
+        },
+        deleteMany: async args => { where = args.where; }
+      },
+      siteImprovement: { count: async ({ where }) => {
+        assert.equal(where.status.not, 'COMPLETED');
+        return remaining;
+      } }
+    };
+    const { cleanupNotificationsForUser } = load('lib/notification-lifecycle.ts', db);
+    await cleanupNotificationsForUser(42);
+    assert.equal(where.userId, 42);
+    const reminderFilter = where.OR.find(condition => condition.type === NotificationType.SITE_IMPROVEMENT_REMINDER);
+    assert.equal(Boolean(reminderFilter), remaining === 0);
+    if (reminderFilter) {
+      // Remove read and unread reminders, including old positive-count reminders.
+      assert.deepEqual(Object.keys(reminderFilter), ['type']);
+    }
+    assert.ok(!where.OR.some(condition => condition.type === NotificationType.SITE_IMPROVEMENT_COMPLETED));
+    assert.ok(where.NOT.some(condition => condition.siteImprovementReview?.is.status === 'PENDING'));
+  }
 });

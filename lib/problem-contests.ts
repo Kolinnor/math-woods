@@ -86,13 +86,13 @@ export function contestCreationWindow(contest: { startDateKey: string; endDateKe
 }
 
 type WonContest = { titleFr: string; titleEn: string };
-export type ContestAchievementStats = { wins: number; honorableMentions: number; wonContests?: WonContest[] };
+export type ContestAchievementStats = { wins: number; wonContests?: WonContest[] };
 
 // Placements may be prepared before results are announced. Never expose those
 // through badges or profiles, including for owners viewing their own profile.
 export function publicContestAchievementWhere() {
   return {
-    placement: { not: null },
+    placement: "WINNER" as const,
     contest: { publishedAt: { not: null }, resultsPublishedAt: { not: null } },
     problem: { status: "PUBLISHED" as const, listed: true }
   };
@@ -103,31 +103,26 @@ export function contestAchievementStatsByUser(
 ) {
   const statsByUser = new Map<number, ContestAchievementStats>();
   for (const submission of submissions) {
-    if (!submission.placement) continue;
-    const stats = statsByUser.get(submission.userId) ?? { wins: 0, honorableMentions: 0 };
-    if (submission.placement === "WINNER") {
-      stats.wins += 1;
-      if (submission.contest) (stats.wonContests ??= []).push(submission.contest);
-    }
-    else stats.honorableMentions += 1;
+    // Older rows may still contain a retired placement; only victories grant awards.
+    if (submission.placement !== "WINNER") continue;
+    const stats = statsByUser.get(submission.userId) ?? { wins: 0 };
+    stats.wins += 1;
+    if (submission.contest) (stats.wonContests ??= []).push(submission.contest);
     statsByUser.set(submission.userId, stats);
   }
   return statsByUser;
 }
 
 export type AvatarAchievementLabels = {
-  winnerTooltip: (wins: number, honorableMentions: number, contests?: readonly WonContest[]) => string;
-  honorableTooltip: (honorableMentions: number) => string;
+  winnerTooltip: (wins: number, contests?: readonly WonContest[]) => string;
 };
 
 export function avatarAchievementFromStats(stats: ContestAchievementStats | undefined, labels: AvatarAchievementLabels) {
   const wins = stats?.wins ?? 0;
-  const honorableMentions = stats?.honorableMentions ?? 0;
-  if (wins <= 0 && honorableMentions <= 0) return undefined;
+  if (wins <= 0) return undefined;
   return {
     wins,
-    honorableMentions,
-    tooltip: wins > 0 ? labels.winnerTooltip(wins, honorableMentions, stats?.wonContests) : labels.honorableTooltip(honorableMentions)
+    tooltip: labels.winnerTooltip(wins, stats?.wonContests)
   };
 }
 

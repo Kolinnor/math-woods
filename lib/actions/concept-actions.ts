@@ -1,4 +1,8 @@
 "use server";
+
+import { submittedAdditionalConceptSlugs } from "@/lib/additional-concept-links";
+
+import { contentHistory, contentWithHistory, submittedContentHistory, historyFormData } from "@/lib/content-history";
 import { EditSummaryValidationError, editSummaryValidationMessage, parseEditSummary } from "@/lib/form-feedback";
 
 import type { Route } from "next";
@@ -171,6 +175,8 @@ export async function createConceptAction(formData: FormData) {
   const allowMissingTranslationLinks = translationLinkOverrideRequested(formData);
   const allowSameTranslationTitle = sameTranslationTitleOverrideRequested(formData);
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
+  const history = submittedContentHistory(formData);
+  const additionalConceptSlugs = submittedAdditionalConceptSlugs(formData);
   const kind = parseConceptKind(formData.get("kind"));
   const domainCode = parseDomainCode(formData.get("domain"));
   const domain = coarseDomainForCode(domainCode);
@@ -238,8 +244,8 @@ export async function createConceptAction(formData: FormData) {
     }
     if (translationSource && !allowMissingTranslationLinks) {
       await assertTranslationWikiLinksPreserved(
-        translationSource.bodyMarkdown,
-        bodyMarkdown,
+        `${translationSource.bodyMarkdown}\n\n${translationSource.historyMarkdown ?? ""}`,
+        `${bodyMarkdown}\n\n${history.historyMarkdown}`,
         translationSource.language,
         language,
         tx
@@ -276,6 +282,8 @@ export async function createConceptAction(formData: FormData) {
           : {}),
         title,
         bodyMarkdown,
+        ...history,
+        additionalConceptSlugs,
         bodyHtml,
         domain: sharedConcept?.domain ?? domain,
         domainCode: sharedConcept?.domainCode ?? domainCode,
@@ -288,7 +296,7 @@ export async function createConceptAction(formData: FormData) {
         lastEditedById: user.id
       }
     });
-    await syncInternalLinks(SourceType.CONCEPT, created.id, bodyMarkdown, tx, language);
+    await syncInternalLinks(SourceType.CONCEPT, created.id, contentWithHistory(bodyMarkdown, history), tx, language, additionalConceptSlugs);
     await syncConceptAliases(created.id, aliases, tx);
     await syncConceptReferences(
       created.id,
@@ -431,6 +439,8 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
   const language = editableContentLanguage(formData.get("language"), existingConcept.language);
   const bodyMarkdown = boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Concept content");
+  const history = submittedContentHistory(formData, existingConcept);
+  const additionalConceptSlugs = submittedAdditionalConceptSlugs(formData, existingConcept.additionalConceptSlugs);
   const kind = parseConceptKind(formData.get("kind"), existingConcept.kind);
   const domainCode = parseDomainCode(formData.get("domain"));
   const domain = coarseDomainForCode(domainCode);
@@ -455,7 +465,9 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
   const hasReviewSensitiveChanges =
-    title.trim() !== existingConcept.title.trim() || bodyMarkdown !== existingConcept.bodyMarkdown;
+    title.trim() !== existingConcept.title.trim() || bodyMarkdown !== existingConcept.bodyMarkdown ||
+    JSON.stringify(history) !== JSON.stringify(contentHistory(existingConcept)) ||
+    JSON.stringify(additionalConceptSlugs) !== JSON.stringify(existingConcept.additionalConceptSlugs ?? []);
   const needsReviewAfterEdit =
     existingConcept.needsReviewAfterEdit ||
     ((existingConcept.status === ConceptStatus.REVIEWED || existingConcept.status === ConceptStatus.EXCELLENT) &&
@@ -512,6 +524,8 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
           title,
           language,
           bodyMarkdown,
+          ...history,
+        additionalConceptSlugs,
           domainCode,
           kind,
           needsReviewAfterEdit,
@@ -659,6 +673,8 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         title,
         language,
         bodyMarkdown,
+        ...history,
+        additionalConceptSlugs,
         bodyHtml,
         domain,
         domainCode,
@@ -670,7 +686,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
       }
     });
 
-    await syncInternalLinks(SourceType.CONCEPT, updated.id, bodyMarkdown, tx, language);
+    await syncInternalLinks(SourceType.CONCEPT, updated.id, contentWithHistory(bodyMarkdown, history), tx, language, additionalConceptSlugs);
     await syncConceptAliases(updated.id, aliases, tx);
     await syncConceptReferences(updated.id, references, tx);
     if (citationMerge.merged !== undefined) await syncConceptCitations(tx, updated.id, citationMerge.merged);
@@ -854,6 +870,8 @@ export async function approveConceptEditProposalAction(proposalId: number) {
   formData.set("title", snapshot.title);
   formData.set("language", snapshot.language);
   formData.set("bodyMarkdown", snapshot.bodyMarkdown);
+  historyFormData(formData, snapshot);
+  if (snapshot.additionalConceptSlugs !== undefined) formData.set("additionalConceptSlugs", JSON.stringify(snapshot.additionalConceptSlugs));
   formData.set("kind", snapshot.kind);
   formData.set("domain", snapshot.domainCode);
   formData.set("aliases", snapshot.aliases.map(({ alias }) => alias).join(", "));
@@ -1300,17 +1318,21 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
       where: { id: conceptId },
       data: {
         bodyMarkdown: revision.markdown,
+        ...(restoredSnapshot?.historyMarkdown !== undefined ? contentHistory(restoredSnapshot) : {}),
+        ...(restoredSnapshot?.additionalConceptSlugs !== undefined ? { additionalConceptSlugs: restoredSnapshot.additionalConceptSlugs } : {}),
         bodyHtml: await renderMarkdownContent(revision.markdown),
         ...(revision.conceptKind ? { kind: revision.conceptKind } : {}),
         needsReviewAfterEdit:
           existingConcept.needsReviewAfterEdit ||
           ((existingConcept.status === ConceptStatus.REVIEWED || existingConcept.status === ConceptStatus.EXCELLENT) &&
-            revision.markdown !== existingConcept.bodyMarkdown),
+            (revision.markdown !== existingConcept.bodyMarkdown ||
+              (restoredSnapshot?.historyMarkdown !== undefined && JSON.stringify(contentHistory(restoredSnapshot)) !== JSON.stringify(contentHistory(before))) ||
+              (restoredSnapshot?.additionalConceptSlugs !== undefined && JSON.stringify(restoredSnapshot.additionalConceptSlugs) !== JSON.stringify(before.additionalConceptSlugs ?? [])))),
         lastEditedById: user.id
       }
     });
 
-    await syncInternalLinks(SourceType.CONCEPT, conceptId, revision.markdown, tx);
+    await syncInternalLinks(SourceType.CONCEPT, conceptId, contentWithHistory(revision.markdown, updated), tx, updated.language, updated.additionalConceptSlugs);
     if (restoredSnapshot?.citations !== undefined) {
       const historical = restoredSnapshot.citations.flatMap(c => c.referenceId === null ? [] : [c.referenceId]);
       await syncConceptCitations(tx, conceptId, restoredSnapshot.citations, historical);

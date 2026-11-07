@@ -40,7 +40,7 @@ function actionsFor(entry, update = () => { throw new Error("Unexpected database
     "@/lib/reference-title": { requireReadableReferenceTitle },
     "@/lib/rate-limit": { assertRateLimit: async () => {} },
     "@/lib/permissions": { canCreateLibraryEntry: () => true, canEditLibraryReference: () => true, canReviewLibraryEntry: () => true },
-    "@/lib/db": { prisma: { libraryReference: {
+    "@/lib/db": { prisma: { $transaction: async callback => callback({ libraryReference: { updateMany: update }, libraryReferenceContribution: { upsert: unexpectedWrite } }), libraryReference: {
       findUnique: async () => entry, create: unexpectedWrite, update: unexpectedWrite, updateMany: update
     }, notification: { updateMany: unexpectedWrite } } }
   };
@@ -56,7 +56,7 @@ test("proposal, creation and editing reject bad titles before writing", async ()
   const result = await actions.proposeLibraryReferenceAction({}, form({ title: "author = {Calais},", language: "fr" }));
   assert.equal(result.success, false);
   assert.match(result.message, /Indiquez le titre/);
-  for (const titles of [{ canonicalTitle: "}" }, { canonicalTitle: "Éléments", displayTitle: "year = 2014," }]) {
+  for (const titles of [{ title: "author = {Calais}," }, { canonicalTitle: "}" }, { canonicalTitle: "Éléments", displayTitle: "year = 2014," }]) {
     await assert.rejects(actions.createLibraryReferenceAction(form({ ...titles, language: "fr" })), /Indiquez le titre/);
     await assert.rejects(actions.updateLibraryReferenceAction(1, form({ ...titles, language: "en" })), /Enter the resource title/);
   }

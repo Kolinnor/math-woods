@@ -75,17 +75,24 @@ test('owner receives one daily notification even with concurrent or repeated del
   assert.notEqual(f.rows[0].aggregationKey, f.rows[1].aggregationKey);
 });
 
-test('missing, deactivated or opted-out owner is not notified; zero and singular counts are supported', async () => {
+test('missing, deactivated or opted-out owner is not notified; singular counts are supported', async () => {
   const muted = fixture({ eligible: false });
   await muted.send(new Date('2026-09-16T16:00:00Z'));
   assert.equal(muted.rows.length, 0);
-  for (const remaining of [0, 1]) {
-    const f = fixture({ remaining });
-    await f.send(new Date('2026-09-16T16:00:00Z'));
-    assert.equal(f.rows.length, 1);
-    assert.equal(localizeNotification(f.rows[0], 'fr').title,
-      remaining ? 'Il reste 1 amélioration du site à faire' : 'Il reste 0 améliorations du site à faire');
+  const f = fixture({ remaining: 1 });
+  await f.send(new Date('2026-09-16T16:00:00Z'));
+  assert.equal(f.rows.length, 1);
+  assert.equal(localizeNotification(f.rows[0], 'fr').title, 'Il reste 1 amélioration du site à faire');
+});
+
+test('an empty or fully completed board never creates a daily reminder', async () => {
+  const f = fixture({ remaining: 0 });
+  for (const date of ['2026-09-16', '2026-09-17']) {
+    const result = await f.send(new Date(`${date}T16:00:00Z`));
+    assert.equal(result.created, 0);
+    assert.equal(result.remaining, 0);
   }
+  assert.equal(f.rows.length, 0);
 });
 
 test('cron endpoint authenticates requests before delivery and rate-limits authorized callers', async () => {

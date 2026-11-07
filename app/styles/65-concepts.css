@@ -382,7 +382,8 @@ button.content-status-trigger:hover {
   outline-offset: 3px;
 }
 
-.content-status-trigger:hover .concept-status-badge {
+.content-status-trigger:hover .concept-status-badge,
+.content-status-trigger:hover .problem-review-badge {
   border-color: var(--accent);
 }
 
@@ -513,10 +514,17 @@ button.content-status-close:hover {
   text-shadow: none;
 }
 
+.concept-detail-page .forest-page-title-strip .forest-page-hero-content > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .concept-detail-page .forest-page-title-strip h1 {
   color: var(--mw-text);
   font-size: clamp(2rem, 4vw, 2.5rem);
-  max-width: 24ch;
+  max-width: none;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
   text-shadow: none;
 }
 
@@ -592,6 +600,20 @@ button.content-status-close:hover {
   display: flex;
   gap: 0.55rem;
 }
+
+.concept-backlinks-more > summary {
+  color: var(--mw-green);
+  cursor: pointer;
+  font-weight: 600;
+  width: fit-content;
+}
+.concept-backlinks-more > summary:focus-visible {
+  outline: 2px solid var(--mw-green);
+  outline-offset: 3px;
+}
+.concept-backlinks-show-less,
+.concept-backlinks-more[open] > summary .concept-backlinks-show-more { display: none; }
+.concept-backlinks-more[open] > summary .concept-backlinks-show-less { display: inline; }
 
 .concept-rail-section h2 {
   font-family: var(--font-serif);
@@ -729,6 +751,33 @@ button.content-status-close:hover {
   gap: 0.75rem;
   margin-top: 1rem;
 }
+
+.additional-concept-links-editor > summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+.additional-concept-links-selection,
+.additional-concept-links-results {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+.additional-concept-links-selection li {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  overflow-wrap: anywhere;
+}
+.additional-concept-links-selection button { flex-shrink: 0; }
+.additional-concept-links-results { max-height: 16rem; overflow-y: auto; }
+.additional-concept-links-results button { text-align: left; width: 100%; }
+.additional-concept-links { margin: 1.25rem 0; }
+.additional-concept-links h2 { font-size: 1rem; font-weight: 600; }
+.additional-concept-links ul { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; list-style: none; padding: 0; margin-top: 0.5rem; }
+.additional-concept-links a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 
 .concept-practice-queue {
   background: color-mix(in srgb, var(--paper) 72%, var(--panel-muted));

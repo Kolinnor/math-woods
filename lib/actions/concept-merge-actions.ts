@@ -1,5 +1,8 @@
 "use server";
 
+import { contentWithHistory } from "@/lib/content-history";
+import { parseAdditionalConceptSlugs } from "@/lib/additional-concept-links";
+
 import {
   ConceptMergeKind,
   ConceptMergeStatus,
@@ -520,10 +523,12 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
       data: { targetSlug: survivor.slug, targetType: TargetType.CONCEPT, exists: true }
     });
     const survivorSlug = await renamedContentSlug(tx, "concept", survivor, title, admin.id);
+    const additionalConceptSlugs = parseAdditionalConceptSlugs([...new Set([...(survivor.additionalConceptSlugs ?? []), ...(duplicate.additionalConceptSlugs ?? [])])]);
     await tx.concept.update({
       where: { id: survivor.id },
       data: {
         slug: survivorSlug,
+        additionalConceptSlugs,
         title,
         bodyMarkdown,
         bodyHtml,
@@ -550,6 +555,16 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
       }
     });
     if (aliasCandidates.size > 0) {
+      // A partial merge may leave translations in the old family awaiting moderation.
+      // Keep their shared aliases there instead of giving one alias two meanings.
+      const reservedAliases = await tx.conceptAlias.findMany({
+        where: {
+          aliasSlug: { in: [...aliasCandidates.keys()] },
+          concept: { translationGroupId: { not: survivor.translationGroupId } }
+        },
+        select: { aliasSlug: true }
+      });
+      for (const { aliasSlug } of reservedAliases) aliasCandidates.delete(aliasSlug);
       await tx.conceptAlias.createMany({
         data: [...aliasCandidates].map(([aliasSlug, alias]) => ({ conceptId: survivor.id, alias, aliasSlug })),
         skipDuplicates: true
@@ -566,7 +581,7 @@ export async function mergeDuplicateConceptsAction(proposalId: number, survivorC
         data: exerciseIds.map((problemId, position) => ({ conceptId: survivor.id, problemId, position }))
       });
     }
-    await syncInternalLinks(SourceType.CONCEPT, survivor.id, bodyMarkdown, tx, survivor.language);
+    await syncInternalLinks(SourceType.CONCEPT, survivor.id, contentWithHistory(bodyMarkdown, survivor), tx, survivor.language, additionalConceptSlugs);
     await tx.pageRevision.create({
       data: {
         pageType: SourceType.CONCEPT,

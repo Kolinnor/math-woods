@@ -1,15 +1,16 @@
 import type { ReactNode } from "react";
 import type { LibraryStatus } from "@prisma/client";
 import Link from "next/link";
-import { Languages, Pencil } from "lucide-react";
+import { History, Languages, Pencil } from "lucide-react";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { FieldHelp } from "@/components/FieldHelp";
 import { libraryCopy } from "@/lib/library-copy";
 
-export function LibraryEntryRail({ locale, editHref, translateHref, attribution, children, className = "" }: {
+export function LibraryEntryRail({ locale, editHref, translateHref, historyHref, attribution, children, className = "" }: {
   locale: "fr" | "en";
   editHref?: string;
   translateHref?: string;
+  historyHref?: string;
   attribution?: ReactNode;
   /** Extra rail sections, shown after the actions. */
   children?: ReactNode;
@@ -17,9 +18,10 @@ export function LibraryEntryRail({ locale, editHref, translateHref, attribution,
 }) {
   // Same rail as the concept and problem pages.
   return <aside className={`concept-detail-rail library-detail-rail ${className}`} aria-label={locale === "fr" ? "Actions et informations sur la fiche" : "Entry actions and information"}>
-    {(editHref || translateHref) && <nav className="problem-rail-actions" aria-label={locale === "fr" ? "Actions sur la fiche" : "Entry actions"}>
+    {(editHref || translateHref || historyHref) && <nav className="problem-rail-actions" aria-label={locale === "fr" ? "Actions sur la fiche" : "Entry actions"}>
       {editHref && <Link href={editHref as never}><span className="problem-rail-action-label"><Pencil size={16} aria-hidden="true" /><span>{locale === "fr" ? "Modifier" : "Edit"}</span></span></Link>}
       {translateHref && <Link href={translateHref as never}><span className="problem-rail-action-label"><Languages size={16} aria-hidden="true" /><span>{locale === "fr" ? "Traduire" : "Translate"}</span></span></Link>}
+      {historyHref && <Link href={historyHref as never}><span className="problem-rail-action-label"><History size={16} aria-hidden="true" /><span>{locale === "fr" ? "Historique de la présentation" : "Presentation history"}</span></span></Link>}
     </nav>}
     {children}
     {attribution && <div className="concept-rail-section library-detail-attribution">{attribution}</div>}

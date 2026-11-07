@@ -36,6 +36,20 @@ const rows=Array.from({length:181},(_,i)=>['fr','en'].map((language,j)=>({
   needsReviewAfterEdit:false,bodyMarkdown:'Concept example',aliases:[],_count:{practiceExercises:0}
 }))).flat();
 
+function matches(row, where) {
+  return Object.entries(where??{}).every(([key,value])=>{
+    if(key==='AND')return value.every(filter=>matches(row,filter));
+    if(key==='OR')return value.some(filter=>matches(row,filter));
+    if(value&&typeof value==='object'){
+      if('in' in value)return value.in.includes(row[key]);
+      if('contains' in value)return String(row[key]??'').toLowerCase().includes(value.contains.toLowerCase());
+      if('some' in value)return row[key].some(item=>matches(item,value.some));
+      return matches(row[key],value);
+    }
+    return row[key]===value;
+  });
+}
+
 async function page(query, candidates=rows, cookie, role=null) {
   const calls=[];
   const preloads=[];
@@ -58,8 +72,12 @@ async function page(query, candidates=rows, cookie, role=null) {
     '@/lib/internal-links':{missingConcepts:async()=>[]},
     '@/lib/domains':{PROBLEM_DOMAINS:[],translatedDomainLabel:()=>''},
     '@/lib/actions/contribution-request-actions':{createContributionRequestAction:()=>{}},
-    '@/lib/db':{prisma:{concept:{findMany:async args=>{calls.push(args);return args.take===8 ? []:candidates;}},internalLink:{groupBy:async()=>candidates.map(c=>({targetSlug:c.slug,_count:{targetSlug:c.id}}))}}}
+    '@/lib/db':{prisma:{concept:{findMany:async args=>{calls.push(args);return args.take===8 ? []:candidates.filter(row=>matches(row,args.where));}},internalLink:{groupBy:async()=>candidates.map(c=>({targetSlug:c.slug,_count:{targetSlug:c.id}}))}}}
   };
+  modules['@/lib/db'].prisma.conceptAlias={findMany:async({where})=>candidates.flatMap(concept=>concept.aliases.map(alias=>({...alias,concept}))).filter(row=>matches(row,where))};
+  const aliasExports={};
+  vm.runInNewContext(ts.transpileModule(readFileSync('lib/concept-alias-search.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:aliasExports,require:name=>modules[name]});
+  modules['@/lib/concept-alias-search']=aliasExports;
   const exports={};
   vm.runInNewContext(compiled,{exports,URLSearchParams,require:name=>modules[name]??new Proxy({}, {get:(_,key)=>String(key)})});
   const tree=await exports.default({searchParams:Promise.resolve(query)});
@@ -80,6 +98,16 @@ test('actual concepts page exposes every match once, after grouping translations
     assert.equal(pages[0].calls[0].select.bodyMarkdown,Boolean(query.q));
     assert.ok(pages[2].elements.some(e=>e.props.className==='result-summary'&&e.props.children==='151–181 sur 181 concepts'));
   }
+});
+
+test('concept list finds an English-only alias under French filters and preserves the status filter',async()=>{
+  const candidates=rows.slice(0,2).map(row=>({...row,aliases:row.language==='en'?[{alias:'Alias partagé'}]:[]}));
+  for(const language of ['fr','en']){
+    const result=await page({view:'list',q:'Alias partagé',language:[language]},candidates);
+    assert.deepEqual(result.ids,[String(language==='fr'?1:2)]);
+  }
+  const excluded=await page({view:'list',q:'Alias partagé',language:['fr'],status:'STUB'},candidates);
+  assert.equal(excluded.ids.length,0);
 });
 
 test('actual page handles zero matches and a requested page beyond the last result',async()=>{

@@ -16,6 +16,7 @@ import { visibleProblemWhere } from "@/lib/problem-visibility";
 import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
 import { getPreferredContentLanguage } from "@/lib/server-language";
 import { selectContentTranslationsByGroup } from "@/lib/translation-routing";
+import { conceptSearchAliases, matchingConceptAliasGroups } from "@/lib/concept-alias-search";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,7 @@ export default async function SearchPage({
   const conceptReferenceLabelById = new Map(conceptReferenceMatches.map(row => [row.id, row.label]));
   const referenceLabelById = new Map(referenceMatches.map(row => [row.id, row.label]));
   const referenceLabelByGroup = new Map(referenceMatches.map(row => [row.translationGroupId, row.label]));
+  const aliasGroups = await matchingConceptAliasGroups(query ? databaseSearchVariants : []);
   const [conceptRows, problemRows, explorationRows, quotes] = query
     ? await Promise.all([
         prisma.concept.findMany({
@@ -68,7 +70,8 @@ export default async function SearchPage({
               { title: { contains: variant, mode: "insensitive" as const } },
               { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
               { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
-            ]), { id: { in: conceptReferenceMatches.map(row => row.id) } }]
+            ]), { id: { in: conceptReferenceMatches.map(row => row.id) } },
+            { translationGroupId: { in: [...aliasGroups.keys()] } }]
           },
           include: { aliases: true },
           take: 100
@@ -127,7 +130,7 @@ export default async function SearchPage({
           item: concept,
           title: concept.title,
           slug: concept.slug,
-          aliases: concept.aliases.map(({ alias }) => alias),
+          aliases: conceptSearchAliases(concept, aliasGroups),
           language: concept.language,
           searchText: [concept.bodyMarkdown, conceptReferenceLabelById.get(concept.id)]
         })),

@@ -533,6 +533,8 @@ model User {
   mathematiciansLastEdited        Mathematician[]                 @relation("MathematicianLastEditedBy")
   libraryReferencesCreated        LibraryReference[]              @relation("LibraryReferenceCreatedBy")
   libraryReferencesReviewed       LibraryReference[]              @relation("LibraryReferenceReviewedBy")
+  libraryReferenceContributions   LibraryReferenceContribution[]
+  referencePresentationRevisions LibraryReferencePresentationRevision[]
   historyMilestonesCreated        HistoryMilestone[]              @relation("HistoryMilestoneCreatedBy")
   historyMilestonesReviewed       HistoryMilestone[]              @relation("HistoryMilestoneReviewedBy")
   libraryHomepageUpdates          LibraryHomepageSelection[]      @relation("LibraryHomepageUpdatedBy")
@@ -636,6 +638,7 @@ model Mathematician {
   reviewedBy      User?                           @relation("MathematicianReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   translations    MathematicianTranslation[]
   works           MathematicianWork[]
+  authoredReferences LibraryReferenceAuthor[]
   conceptLinks    MathematicianConcept[]
   problemLinks    MathematicianProblem[]
   milestoneLinks  HistoryMilestoneMathematician[]
@@ -857,6 +860,9 @@ model ChatMessageReaction {
 }
 
 model Problem {
+  historyMarkdown String @default("") @db.Text
+  historyEnabled Boolean @default(false)
+  historySpoiler Boolean @default(false)
   slugRedirects            ProblemRedirect[]
   id                       Int                             @id @default(autoincrement())
   version                  Int                             @default(1)
@@ -867,6 +873,7 @@ model Problem {
   translatedFromRevisionId Int?
   title                    String
   bodyMarkdown             String
+  additionalConceptSlugs String[] @default([])
   bodyHtml                 String
   authorId                 Int
   difficulty               Int?
@@ -1031,6 +1038,9 @@ model LibraryReference {
   conceptLinks       ConceptLibraryReference[]
   milestoneLinks     HistoryMilestoneReference[]
   mathematicianWorks MathematicianWork[]
+  authorEntries LibraryReferenceAuthor[]
+  contributions LibraryReferenceContribution[]
+  presentationRevisions LibraryReferencePresentationRevision[]
   mathematicianRelatedItems MathematicianRelatedItem[]
   featuredIn         LibraryHomepageSelection[]
 
@@ -1038,6 +1048,49 @@ model LibraryReference {
   @@index([workId])
   @@index([doi])
   @@index([isbn])
+}
+
+// Snapshots of presentation text only, independently for each language.
+model LibraryReferencePresentationRevision {
+  id               Int @id @default(autoincrement())
+  referenceId      Int
+  language         String
+  markdown         String
+  previousMarkdown String?
+  isBaseline       Boolean @default(false)
+  editedById       Int?
+  createdAt        DateTime @default(now())
+  reference        LibraryReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  editedBy         User? @relation(fields: [editedById], references: [id], onDelete: SetNull)
+
+  @@index([referenceId, language, id])
+  @@index([editedById])
+}
+
+model LibraryReferenceContribution {
+  referenceId        Int
+  userId             Int
+  firstContributedAt DateTime @default(now())
+  edited             Boolean @default(false)
+  reviewed           Boolean @default(false)
+  reference          LibraryReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  user               User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([referenceId, userId])
+  @@index([userId])
+}
+
+model LibraryReferenceAuthor {
+  id              Int @id @default(autoincrement())
+  referenceId     Int
+  mathematicianId Int?
+  name            String
+  position        Int
+  reference       LibraryReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  mathematician   Mathematician? @relation(fields: [mathematicianId], references: [id], onDelete: SetNull)
+
+  @@unique([referenceId, position])
+  @@index([mathematicianId])
 }
 
 model LibraryReferenceTranslation {
@@ -1221,6 +1274,9 @@ model ProblemDomain {
 }
 
 model Concept {
+  historyMarkdown String @default("") @db.Text
+  historyEnabled Boolean @default(false)
+  historySpoiler Boolean @default(false)
   id                        Int                       @id @default(autoincrement())
   slug                      String                    @unique
   creationSubmissionKey     String?                   @unique
@@ -1230,6 +1286,7 @@ model Concept {
   translatedFromRevisionId  Int?
   title                     String
   bodyMarkdown              String
+  additionalConceptSlugs String[] @default([])
   bodyHtml                  String
   domain                    MathDomain                @default(OTHER)
   domainCode                String                    @default("other")
@@ -1530,10 +1587,12 @@ model ConceptAlias {
   id        Int     @id @default(autoincrement())
   conceptId Int
   alias     String
-  aliasSlug String  @unique
+  aliasSlug String
   concept   Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
 
   @@unique([conceptId, alias])
+  @@unique([conceptId, aliasSlug])
+  @@index([aliasSlug])
 }
 
 model ConceptReference {

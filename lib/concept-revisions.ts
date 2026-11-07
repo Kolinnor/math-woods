@@ -1,3 +1,5 @@
+import { parseAdditionalConceptSlugs } from "./additional-concept-links.ts";
+import { contentHistory, HISTORY_FIELDS, type ContentHistory } from "./content-history.ts";
 import { ConceptKind, ConceptStatus, type Prisma } from "@prisma/client";
 import { parseConceptCitations } from "./concept-citations.ts";
 import type { ProblemCitation } from "./problem-citations.ts";
@@ -16,11 +18,12 @@ export type ConceptSnapshotSource = Prisma.ConceptGetPayload<{
   include: typeof conceptRevisionSnapshotInclude;
 }>;
 
-export type ConceptRevisionSnapshot = {
+export type ConceptRevisionSnapshot = Partial<ContentHistory> & {
   schemaVersion: 1;
   title: string;
   language: string;
   bodyMarkdown: string;
+  additionalConceptSlugs?: string[];
   domainCode: string;
   kind: ConceptKind;
   status: ConceptStatus;
@@ -36,6 +39,10 @@ export type ConceptRevisionSnapshot = {
 export const CONCEPT_SNAPSHOT_FIELD_LABELS = {
   title: "title",
   language: "language",
+  historyMarkdown: "history",
+  historyEnabled: "history visibility",
+  historySpoiler: "history spoilers",
+  additionalConceptSlugs: "additional concept links",
   bodyMarkdown: "text",
   domainCode: "domain",
   kind: "type",
@@ -62,6 +69,8 @@ export function buildConceptRevisionSnapshot(source: ConceptSnapshotSource): Con
     title: source.title,
     language: source.language,
     bodyMarkdown: source.bodyMarkdown,
+    additionalConceptSlugs: source.additionalConceptSlugs ?? [],
+    ...contentHistory(source),
     domainCode: source.domainCode,
     kind: source.kind,
     status: source.status,
@@ -100,6 +109,7 @@ export function parseConceptRevisionSnapshot(value: Prisma.JsonValue | null): Co
   ) {
     return null;
   }
+  try { if (candidate.additionalConceptSlugs !== undefined) candidate.additionalConceptSlugs = parseAdditionalConceptSlugs(candidate.additionalConceptSlugs); } catch { return null; }
   try { if (candidate.citations !== undefined) candidate.citations = parseConceptCitations(candidate.citations); }
   catch { return null; }
   return candidate as unknown as ConceptRevisionSnapshot;
@@ -110,6 +120,8 @@ export function changedConceptSnapshotFields(
   after: ConceptRevisionSnapshot
 ): ConceptSnapshotField[] {
   return CONCEPT_SNAPSHOT_FIELDS.filter((field) => {
+    if (HISTORY_FIELDS.some(key => key === field) && (before[field] === undefined || after[field] === undefined)) return false;
+    if (field === "additionalConceptSlugs") return !sameValue(before.additionalConceptSlugs ?? [], after.additionalConceptSlugs ?? []);
     if (field === "citations" && (before.citations === undefined || after.citations === undefined)) return false;
     if (field === "references" && before.citations !== undefined && after.citations !== undefined) return false;
     if (field === "practiceExercises") {
@@ -133,6 +145,7 @@ export function formatConceptSnapshotFieldValue(
   field: ConceptSnapshotField,
   value: ConceptRevisionSnapshot[ConceptSnapshotField]
 ) {
+  if (field === "additionalConceptSlugs") return (value as string[] | undefined)?.join(", ") || "None";
   if (field === "aliases") {
     return (value as ConceptRevisionSnapshot["aliases"]).map(({ alias }) => alias).join(", ") || "None";
   }

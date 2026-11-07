@@ -186,7 +186,7 @@ export function conceptMapDomainOrder(domain: string) {
 export function conceptMapDomainStyle(domain: string) {
   const option = PROBLEM_DOMAINS.find((item) => item.value === domain);
   const family = option?.family ?? "other";
-  return { family, color: PROBLEM_DOMAIN_FAMILIES[family].color };
+  return { family, color: option?.color ?? PROBLEM_DOMAIN_FAMILIES.other.color };
 }
 
 export function isVisibleConceptMapTranslation(concept: Pick<ConceptMapConceptRow, "status" | "language">) {
@@ -258,9 +258,10 @@ export function* conceptMapGraphSteps(rows: ConceptMapRows, requestedLanguage: s
     if (!isVisibleConceptMapTranslation(concept)) continue;
     if (concept.language === language) pages.set(concept.translationGroupId, concept);
     else {
+      const names = [concept.title, ...concept.aliases.map(({ alias }) => alias)];
       const titles = otherTitles.get(concept.translationGroupId);
-      if (titles) titles.push(concept.title);
-      else otherTitles.set(concept.translationGroupId, [concept.title]);
+      if (titles) titles.push(...names);
+      else otherTitles.set(concept.translationGroupId, names);
     }
   }
   yield;

@@ -40,7 +40,6 @@ export default async function AboutPage() {
       }
     >
       <section className="about-promise">
-        <p className="about-eyebrow">{t.about.promiseEyebrow}</p>
         <h1>
           {t.about.promiseTitleBeforeLink}{" "}
           <a
@@ -64,6 +63,20 @@ export default async function AboutPage() {
           ))}
         </section>
       ))}
+
+      <section className="about-section" id="ai-generated-images">
+        <h2>{t.about.aiImagesTitle}</h2>
+        <div className="grid gap-3 max-w-3xl leading-relaxed">
+          <p>{t.about.aiImagesPurpose}</p>
+          <p>
+            {t.about.aiImagesExampleBeforeLink}{" "}
+            <Link className="underline" href={locale === "fr" ? "/concepts/fonction-de-transition-varietes" : "/concepts/transition-map-of-a-manifold"}>
+              {t.about.aiImagesExampleLink}
+            </Link>.
+          </p>
+          <p>{t.about.aiImagesRestrictions}</p>
+        </div>
+      </section>
 
       <section className="about-links">
         <div>

@@ -6,6 +6,8 @@ import { domainLabel } from "@/lib/domains";
 import { parseConceptCitations } from "@/lib/concept-citations";
 import { citationText } from "@/lib/problem-citations";
 import { pageBibliographyResponse } from "@/lib/page-bibliography";
+import { resolveConceptAlias } from "@/lib/concept-alias-search";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -26,8 +28,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
       include: { targetConcept: true }
     });
     if (merged) return Response.redirect(new URL(`/concepts/${merged.targetConcept.slug}/export${new URL(request.url).search}`, request.url), 308);
-    const alias = await prisma.conceptAlias.findUnique({ where: { aliasSlug: slug }, include: { concept: { select: { slug: true } } } });
-    if (alias) return Response.redirect(new URL(`/concepts/${alias.concept.slug}/export${new URL(request.url).search}`, request.url), 308);
+    const alias = await resolveConceptAlias(slug, await getPreferredContentLanguage());
+    // Language depends on the reader: do not permanently cache this redirect.
+    if (alias) return Response.redirect(new URL(`/concepts/${alias.slug}/export${new URL(request.url).search}`, request.url), 307);
     notFound();
   }
 

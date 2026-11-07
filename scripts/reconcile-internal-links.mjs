@@ -1,5 +1,6 @@
+import { contentWithHistory } from "../lib/content-history.ts";
 import { PrismaClient } from "@prisma/client";
-import { extractWikiLinks } from "../lib/wikilinks.ts";
+import { extractConceptReferences } from "../lib/concept-link-references.ts";
 
 const prisma = new PrismaClient();
 
@@ -74,6 +75,7 @@ async function main() {
     }
   }
 
+  const redirects = await prisma.conceptRedirect.findMany({ select: { sourceSlug: true, targetConcept: { select: { slug: true } } } });
   const candidatesByLookup = new Map();
   const addCandidate = (lookup, concept) => {
     const candidates = candidatesByLookup.get(lookup) ?? [];
@@ -86,12 +88,17 @@ async function main() {
     for (const alias of concept.aliases) addCandidate(alias.aliasSlug, concept);
   }
 
+  for (const redirect of redirects) {
+    const target = concepts.find(concept => concept.slug === redirect.targetConcept.slug);
+    if (target) candidatesByLookup.set(redirect.sourceSlug, [target]);
+  }
+
   const [problems, conceptPages, proofs] = await Promise.all([
     prisma.problem.findMany({
-      select: { id: true, bodyMarkdown: true, language: true }
+      select: { id: true, bodyMarkdown: true, language: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, additionalConceptSlugs: true }
     }),
     prisma.concept.findMany({
-      select: { id: true, bodyMarkdown: true, language: true }
+      select: { id: true, bodyMarkdown: true, language: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, additionalConceptSlugs: true }
     }),
     prisma.problemProof.findMany({
       select: {
@@ -113,7 +120,8 @@ async function main() {
   ];
   const indexedLinks = [];
   for (const source of sourcePages) {
-    for (const link of extractWikiLinks(source.bodyMarkdown)) {
+    const citedGroups = new Set();
+    for (const link of extractConceptReferences(contentWithHistory(source.bodyMarkdown, source))) {
       const candidates = candidatesByLookup.get(link.targetSlug) ?? [];
       const matchedConcept = candidates.find((candidate) => candidate.language === source.language) ?? candidates[0];
       const translatedConcept = matchedConcept
@@ -123,6 +131,7 @@ async function main() {
               concept.language === source.language
           )
         : null;
+      if (matchedConcept) citedGroups.add(matchedConcept.translationGroupId);
       indexedLinks.push({
         sourceType: source.sourceType,
         sourceId: source.id,
@@ -131,6 +140,14 @@ async function main() {
         exists: Boolean(matchedConcept),
         label: link.label
       });
+    }
+    for (const slug of source.additionalConceptSlugs ?? []) {
+      const candidates = candidatesByLookup.get(slug) ?? [];
+      const matched = candidates.find(item => item.language === source.language) ?? candidates[0];
+      if (!matched || citedGroups.has(matched.translationGroupId)) continue;
+      citedGroups.add(matched.translationGroupId);
+      const localized = concepts.find(item => item.translationGroupId === matched.translationGroupId && item.language === source.language) ?? matched;
+      indexedLinks.push({ sourceType: source.sourceType, sourceId: source.id, targetSlug: localized.slug, targetType: "CONCEPT", exists: true, label: localized.title });
     }
   }
 

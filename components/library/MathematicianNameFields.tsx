@@ -31,10 +31,13 @@ export function MathematicianNameFields({ locale, language, initialName, aliases
   }, [name, language, excludeId]);
 
   return <div className="library-name-fields">
-    <div className="library-name-label"><label htmlFor="mathematician-name">{fr ? "Nom" : "Name"}</label><FieldHelp text={fr
-      ? "Indiquez le nom sous lequel cette personne est habituellement connue, dans la langue de la fiche. Vous pouvez ajouter ses autres noms, pseudonymes ou variantes d’écriture dans « Autres noms »."
-      : "Use the name this person is commonly known by, in the language of the entry. Add other names, pseudonyms or spelling variants under ‘Other names’."} /></div>
-    <input id="mathematician-name" name="name" required maxLength={160} value={name} onChange={event => setName(event.target.value)} />
+    <div className="library-name-label"><label htmlFor="mathematician-name">{fr ? "Nom usuel" : "Common name"}</label><FieldHelp text={fr
+      ? "Choisissez le nom sous lequel cette personne est habituellement connue, dans la langue de la fiche. En général, le prénom usuel et le nom suffisent. Conservez les noms composés et les particules nécessaires : le site ne raccourcit pas ce nom automatiquement."
+      : "Choose the name this person is commonly known by, in the language of the entry. Usually, the familiar given name and surname are enough. Keep compound names and necessary particles: the site does not automatically shorten this name."} /></div>
+    <input id="mathematician-name" name="name" required maxLength={160} aria-describedby="mathematician-name-help" placeholder="Henri Poincaré" value={name} onChange={event => setName(event.target.value)} />
+    <p id="mathematician-name-help" className="muted library-name-hint">{fr
+      ? "Affiché sur les cartes et en titre de fiche. Les autres prénoms peuvent figurer dans « Nom complet et variantes »."
+      : "Shown on cards and as the entry title. Additional given names can go under ‘Full name and variants’."}</p>
     {suggestions.length > 0 && <aside className="library-name-suggestions" aria-label={fr ? "Fiches similaires" : "Similar entries"}>
       <p>{fr ? "Une fiche existe peut-être déjà :" : "An entry may already exist:"}</p>
       {suggestions.map(person => <Link key={person.id} href={`/library/mathematicians/${person.slug}`} target="_blank" rel="noreferrer">
@@ -42,11 +45,14 @@ export function MathematicianNameFields({ locale, language, initialName, aliases
         <span><strong>{person.name}</strong>{person.lifespan && <small>{person.lifespan}</small>}</span>
       </Link>)}
     </aside>}
-    <details className="library-form-section"><summary>{fr ? "Autres noms (facultatif)" : "Other names (optional)"}</summary>
+    <details className="library-form-section"><summary>{fr ? "Nom complet et variantes (facultatif)" : "Full name and variants (optional)"}</summary>
+      <p id="mathematician-aliases-help" className="muted library-name-hint">{fr
+        ? "Ajoutez le nom complet s’il diffère du nom usuel, puis les autres noms ou pseudonymes utiles. Ils restent visibles dans les informations biographiques et permettent de retrouver cette personne dans la recherche."
+        : "Add the full name if it differs from the common name, then useful alternative names or pseudonyms. They remain visible in the biographical information and help people find this person in search."}</p>
       <div className="library-name-label"><label htmlFor="mathematician-aliases">{fr ? "Un nom par ligne" : "One name per line"}</label><FieldHelp text={fr
         ? "Ajoutez seulement des variantes qui sont utilisées dans la langue de cette page. Il n’est pas utile de mettre des traductions, ni d’écrire des variantes de majuscules ou d’accents."
         : "Only add variants used in the language of this page. There is no need to add translations or variants that differ only in capitalization or accents."} /></div>
-      <textarea id="mathematician-aliases" name="aliases" rows={3} maxLength={4000} defaultValue={aliases.join("\n")} />
+      <textarea id="mathematician-aliases" name="aliases" rows={3} maxLength={4000} aria-describedby="mathematician-aliases-help" defaultValue={aliases.join("\n")} />
     </details>
   </div>;
 }

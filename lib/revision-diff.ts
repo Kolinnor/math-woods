@@ -10,6 +10,27 @@ export type RevisionDiffRow = {
   parts: RevisionDiffPart[];
 };
 
+// Keep a little context around each changed word, even when a paragraph is
+// stored as one very long Markdown line. The complete diff stays available.
+export function compactRevisionDiffParts(parts: RevisionDiffPart[], context = 60): RevisionDiffPart[] {
+  const runs: RevisionDiffPart[] = [];
+  for (const part of parts) {
+    const last = runs.at(-1);
+    if (last && Boolean(last.changed) === Boolean(part.changed)) last.value += part.value;
+    else runs.push({ ...part });
+  }
+  if (!runs.some((part) => part.changed)) return runs;
+  return runs.map((part, index) => {
+    if (part.changed) return part;
+    const leading = index === 0, trailing = index === runs.length - 1;
+    const limit = leading || trailing ? context : context * 2;
+    if (part.value.length <= limit + 3) return part;
+    return { value: leading ? `…${part.value.slice(-context)}`
+      : trailing ? `${part.value.slice(0, context)}…`
+      : `${part.value.slice(0, context)} … ${part.value.slice(-context)}` };
+  });
+}
+
 function tokenizeDiffLine(value: string) {
   return value.match(/\\[A-Za-z]+|\s+|[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g) ?? [];
 }
@@ -55,11 +76,13 @@ function diffTokens(before: string, after: string) {
       (beforeIndex < beforeTokens.length && table[beforeIndex + 1][afterIndex] >= table[beforeIndex][afterIndex + 1])
     ) {
       beforeParts.push({ value: beforeTokens[beforeIndex], changed: true });
+      afterParts.push({ value: "", changed: true }); // Anchor the deletion in the unchanged counterpart.
       beforeIndex += 1;
       continue;
     }
 
     afterParts.push({ value: afterTokens[afterIndex], changed: true });
+    beforeParts.push({ value: "", changed: true }); // Anchor the insertion for the focused view.
     afterIndex += 1;
   }
 

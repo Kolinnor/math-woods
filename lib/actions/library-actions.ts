@@ -33,6 +33,8 @@ import { citationUrl } from "@/lib/problem-citations";
 import { readReferenceBibliography, validateReferenceWork } from "@/lib/reference-editions";
 import { requireReadableReferenceTitle } from "@/lib/reference-title";
 import { parseMathematicianAliases } from "@/lib/mathematician-names";
+import { submittedReferenceAuthors } from "@/lib/reference-authors";
+import { validateReferenceAuthors } from "@/lib/reference-authors-db";
 
 type LibraryEntity = "mathematician" | "reference" | "milestone";
 
@@ -59,6 +61,8 @@ export async function proposeLibraryReferenceAction(_state: { message: string; s
     await prisma.libraryReference.create({ data: {
       canonicalTitle: title, authors, url, dedupeKey, slug, referenceType: LibraryReferenceType.OTHER,
       status: LibraryStatus.PUBLISHED, createdById: user.id, submittedAt: new Date(), publishedAt: new Date(),
+      contributions: { create: { userId: user.id } },
+      presentationRevisions: { create: { language: fr ? "fr" : "en", markdown: "", editedById: user.id } },
       translations: { create: { language: fr ? "fr" : "en", displayTitle: title, descriptionMarkdown: "", descriptionHtml: "" } }
     } });
     revalidateLibrary("reference", slug);
@@ -155,9 +159,11 @@ function revalidateLibrary(entity: LibraryEntity, slug?: string) {
   revalidatePath("/library/history");
   revalidatePath("/library/mathematicians");
   revalidatePath("/library/references");
+  if (entity === "reference") revalidatePath("/library/mathematicians/[slug]", "page");
   if (slug) {
     const segment = entity === "milestone" ? "history" : entity === "reference" ? "references" : "mathematicians";
     revalidatePath(`/library/${segment}/${slug}`);
+    if (entity === "reference") revalidatePath(`/library/references/${slug}/history`);
   }
 }
 
@@ -322,16 +328,37 @@ export async function saveMathematicianFormAction(id: number | null, _state: { e
   }
 }
 
+// The form has one title for the selected language. Keep the original
+// bibliographic title when editing a distinct translation; accept older forms too.
+function referenceTitlesForSave(formData: FormData, entry?: {
+  canonicalTitle: string;
+  translations: Array<{ language: string; displayTitle: string | null }>;
+}) {
+  const language = formLanguage(formData);
+  if (formData.has("title")) {
+    const displayTitle = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
+    requireReadableReferenceTitle(displayTitle, language);
+    const translation = entry?.translations.find(item => item.language === language);
+    let canonicalTitle = !entry || !entry.translations.length || (translation && (!translation.displayTitle || translation.displayTitle === entry.canonicalTitle))
+      ? displayTitle : entry.canonicalTitle;
+    // A malformed legacy title must remain correctable through the single field.
+    try { requireReadableReferenceTitle(canonicalTitle, language); } catch { canonicalTitle = displayTitle; }
+    return { canonicalTitle, displayTitle };
+  }
+  const canonicalTitle = requiredBoundedText(formData.get("canonicalTitle"), CONTENT_LIMITS.title, "Title");
+  const displayTitle = boundedText(formData.get("displayTitle"), CONTENT_LIMITS.title, "Displayed title") || canonicalTitle;
+  requireReadableReferenceTitle(canonicalTitle, language);
+  requireReadableReferenceTitle(displayTitle, language);
+  return { canonicalTitle, displayTitle };
+}
+
 export async function createLibraryReferenceAction(formData: FormData) {
   const user = await requireAdmin();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot create a library entry.");
   await assertRateLimit(`library-reference:${user.id}`, 16, 60_000);
 
-  const canonicalTitle = requiredBoundedText(formData.get("canonicalTitle"), CONTENT_LIMITS.title, "Title");
-  const displayTitle = boundedText(formData.get("displayTitle"), CONTENT_LIMITS.title, "Displayed title") || canonicalTitle;
-  requireReadableReferenceTitle(canonicalTitle, formLanguage(formData));
-  requireReadableReferenceTitle(displayTitle, formLanguage(formData));
-  const authors = optionalBoundedText(formData.get("authors"), CONTENT_LIMITS.mediumText, "Authors");
+  const { canonicalTitle, displayTitle } = referenceTitlesForSave(formData);
+  const { authors, entries: authorEntries } = submittedReferenceAuthors(formData);
   const year = parseOptionalInt(formData.get("year"), "Year", -5000, 3000);
   const url = optionalHttpsUrl(formData.get("url"), "Reference URL");
   const doi = optionalBoundedText(formData.get("doi"), CONTENT_LIMITS.shortText, "DOI");
@@ -354,6 +381,7 @@ export async function createLibraryReferenceAction(formData: FormData) {
 
   const reference = await prisma.$transaction(async tx => {
     const workId = await validateReferenceWork(tx, formData, referenceType);
+    await validateReferenceAuthors(tx, authorEntries, user.id, language);
     return tx.libraryReference.create({
     data: {
       slug,
@@ -361,6 +389,9 @@ export async function createLibraryReferenceAction(formData: FormData) {
       referenceType,
       workId,
       authors,
+      authorEntries: { create: authorEntries.map((author, position) => ({ ...author, position })) },
+      contributions: { create: { userId: user.id } },
+      presentationRevisions: { create: { language, markdown: descriptionMarkdown, editedById: user.id } },
       publisher: optionalBoundedText(formData.get("publisher"), CONTENT_LIMITS.shortText, "Publisher"),
       year,
       yearLabel: optionalBoundedText(formData.get("yearLabel"), CONTENT_LIMITS.shortText, "Date label"),
@@ -391,15 +422,12 @@ export async function createLibraryReferenceAction(formData: FormData) {
 
 export async function updateLibraryReferenceAction(id: number, formData: FormData) {
   const user = await requireAdmin();
-  const entry = await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, canonicalTitle: true, mergedIntoId: true, createdById: true, status: true, submittedAt: true, publishedAt: true, updatedAt: true } });
+  const entry = await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, canonicalTitle: true, mergedIntoId: true, createdById: true, status: true, submittedAt: true, publishedAt: true, updatedAt: true, translations: { select: { language: true, displayTitle: true, descriptionMarkdown: true } } } });
   if (!entry || !canEditLibraryReference(user, entry)) throw new Error("You cannot edit this entry.");
   // Correcting a submitted, published or archived reference is not a review decision.
   const preserveStatus = entry.status === LibraryStatus.PUBLISHED || entry.status === LibraryStatus.PENDING_REVIEW || entry.status === LibraryStatus.ARCHIVED;
-  const canonicalTitle = requiredBoundedText(formData.get("canonicalTitle"), CONTENT_LIMITS.title, "Title");
-  const displayTitle = boundedText(formData.get("displayTitle"), CONTENT_LIMITS.title, "Displayed title") || canonicalTitle;
-  requireReadableReferenceTitle(canonicalTitle, formLanguage(formData));
-  requireReadableReferenceTitle(displayTitle, formLanguage(formData));
-  const authors = optionalBoundedText(formData.get("authors"), CONTENT_LIMITS.mediumText, "Authors");
+  const { canonicalTitle, displayTitle } = referenceTitlesForSave(formData, entry);
+  const { authors, entries: authorEntries } = submittedReferenceAuthors(formData);
   const year = parseOptionalInt(formData.get("year"), "Year", -5000, 3000);
   const url = optionalHttpsUrl(formData.get("url"), "Reference URL");
   const doi = optionalBoundedText(formData.get("doi"), CONTENT_LIMITS.shortText, "DOI");
@@ -419,17 +447,23 @@ export async function updateLibraryReferenceAction(id: number, formData: FormDat
   const baseUpdatedAt = submittedBaseUpdatedAt(formData);
   if (entry.updatedAt.getTime() !== baseUpdatedAt.getTime()) throw new Error("This entry changed after you opened it. Reload the page before saving your work.");
 
+  const previousTranslation = entry.translations.find(translation => translation.language === language);
+  const presentationChanged = !previousTranslation || previousTranslation.descriptionMarkdown !== descriptionMarkdown;
   const descriptionHtml = await renderMarkdown(descriptionMarkdown);
   await prisma.$transaction(async tx => {
     const workId = await validateReferenceWork(tx, formData, referenceType, id);
+    await validateReferenceAuthors(tx, authorEntries, user.id, language, id);
     await tx.libraryReference.update({
     where: { id, updatedAt: baseUpdatedAt },
     data: {
       canonicalTitle,
+      presentationRevisions: presentationChanged ? { create: { language, markdown: descriptionMarkdown, previousMarkdown: previousTranslation?.descriptionMarkdown ?? null, editedById: user.id } } : undefined,
       ...(/^\s*@\w+\s*[{(]/.test(entry.canonicalTitle) && !entry.mergedIntoId ? { searchable: true } : {}),
       referenceType,
       workId,
       authors,
+      authorEntries: { deleteMany: {}, create: authorEntries.map((author, position) => ({ ...author, position })) },
+      contributions: { upsert: { where: { referenceId_userId: { referenceId: id, userId: user.id } }, create: { userId: user.id, edited: true }, update: { edited: true } } },
       publisher: optionalBoundedText(formData.get("publisher"), CONTENT_LIMITS.shortText, "Publisher"),
       year,
       yearLabel: optionalBoundedText(formData.get("yearLabel"), CONTENT_LIMITS.shortText, "Date label"),
@@ -628,7 +662,17 @@ export async function reviewLibraryEntryAction(entity: LibraryEntity, id: number
   const updateResult = entity === "mathematician"
     ? await prisma.mathematician.updateMany({ where: { id, status: entry.status, ...("updatedAt" in entry ? { updatedAt: entry.updatedAt } : {}) }, data: { ...data, ...(decision === "publish" ? { needsReviewAfterEdit: false, ...(confirmingEdit && "publishedAt" in entry ? { publishedAt: entry.publishedAt } : {}) } : {}) } })
     : entity === "reference"
-      ? await prisma.libraryReference.updateMany({ where: { id, status: entry.status, ...("updatedAt" in entry ? { updatedAt: entry.updatedAt } : {}) }, data })
+      ? await prisma.$transaction(async tx => {
+        const result = await tx.libraryReference.updateMany({ where: { id, status: entry.status, updatedAt: entry.updatedAt }, data });
+        if (result.count === 1 && (decision === "publish" || decision === "changes")) {
+          await tx.libraryReferenceContribution.upsert({
+            where: { referenceId_userId: { referenceId: id, userId: user.id } },
+            create: { referenceId: id, userId: user.id, reviewed: true },
+            update: { reviewed: true }
+          });
+        }
+        return result;
+      })
       : await prisma.historyMilestone.updateMany({ where: { id, status: entry.status, updatedAt: entry.updatedAt }, data });
   if (updateResult.count !== 1) throw new Error("This entry was reviewed by someone else. Reload the page to see its current status.");
   if (decision === "archive") {

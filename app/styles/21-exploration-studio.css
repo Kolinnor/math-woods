@@ -5416,6 +5416,31 @@ button.domain-picker-tile > span:last-child {
 .revision-diff-row code {
   color: var(--ink);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.revision-diff-full > summary {
+  justify-content: flex-end;
+  color: var(--accent);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.9rem;
+}
+
+.revision-diff-full:not([open]) .revision-diff-collapse-label,
+.revision-diff-full[open] .revision-diff-expand-label,
+.revision-diff-full[open] + .revision-diff-focused {
+  display: none;
+}
+
+.revision-diff-gap {
+  padding: 0.3rem 0.9rem;
+  color: var(--muted);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.75rem;
+}
+
+.revision-diff > summary {
+  flex-wrap: wrap;
 }
 
 .revision-diff-removed {

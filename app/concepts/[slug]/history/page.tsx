@@ -1,3 +1,4 @@
+import { ContentHistoryRevision } from "@/components/ContentHistoryRevision";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -18,6 +19,8 @@ import { translatedDomainLabel } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
 import { contentLanguageNativeLabel } from "@/lib/languages";
+import { resolveConceptAlias } from "@/lib/concept-alias-search";
+import { getPreferredContentLanguage } from "@/lib/server-language";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +30,12 @@ function joinedOrNone(values: string[], none: string) {
 
 function conceptSnapshotValue(
   snapshot: ConceptRevisionSnapshot,
-  field: Exclude<ConceptSnapshotField, "bodyMarkdown">,
+  field: Exclude<ConceptSnapshotField, "bodyMarkdown" | "historyMarkdown" | "historySpoiler">,
   t: Dictionary
 ) {
   switch (field) {
+    case "additionalConceptSlugs":
+      return joinedOrNone(snapshot.additionalConceptSlugs ?? [], t.historyPage.none);
     case "title":
       return snapshot.title;
     case "language":
@@ -43,6 +48,8 @@ function conceptSnapshotValue(
       return t.concepts.statuses[snapshot.status] ?? snapshot.status.toLowerCase();
     case "needsReviewAfterEdit":
       return snapshot.needsReviewAfterEdit ? t.historyPage.reviewNeeded : t.historyPage.upToDate;
+    case "historyEnabled":
+      return snapshot.historyEnabled ? t.historyPage.listed : t.historyPage.hidden;
     case "canAppearInConceptBrowser":
       return snapshot.canAppearInConceptBrowser ? t.historyPage.listed : t.historyPage.hidden;
     case "translatedFromRevisionId":
@@ -77,11 +84,11 @@ export default async function ConceptHistoryPage({
 
   if (!concept) {
     const [alias, merged] = await Promise.all([
-      prisma.conceptAlias.findUnique({ where: { aliasSlug: slug }, include: { concept: true } }),
+      getPreferredContentLanguage().then((language) => resolveConceptAlias(slug, language)),
       prisma.conceptRedirect.findUnique({ where: { sourceSlug: slug }, include: { targetConcept: true } })
     ]);
     if (merged) redirect(`/concepts/${merged.targetConcept.slug}/history?mergedSource=${merged.sourceConceptId}`);
-    if (alias) redirect(`/concepts/${alias.concept.slug}/history`);
+    if (alias) redirect(`/concepts/${alias.slug}/history`);
     notFound();
   }
 
@@ -98,8 +105,8 @@ export default async function ConceptHistoryPage({
   const revisions = await prisma.pageRevision.findMany({
     where: { pageType: "CONCEPT", pageId: revisionPageId },
     include: { editedBy: true },
-    orderBy: { createdAt: "desc" },
-    take: 50
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 51 // Keep the predecessor of the last displayed revision for comparisons.
   });
 
   return (
@@ -110,7 +117,7 @@ export default async function ConceptHistoryPage({
       heroAlt="Ivan Shishkin, Birch Grove"
       description={t.historyPage.conceptDescription}
       workspaceClassName="forest-page-workspace-narrow"
-      meta={<p>{t.historyPage.revisions(revisions.length)}</p>}
+      meta={<p>{t.historyPage.revisions(Math.min(revisions.length, 50))}</p>}
       actions={
         <Link href={`/concepts/${concept.slug}`} className="button secondary">
           {t.historyPage.back}
@@ -134,16 +141,19 @@ export default async function ConceptHistoryPage({
         </nav>
       )}
       <div className="grid gap-3">
-        {revisions.map((revision, index) => {
+        {revisions.slice(0, 50).map((revision, index) => {
           const previousRevision = revisions[index + 1];
           const snapshot = parseConceptRevisionSnapshot(revision.conceptSnapshot);
           const previousSnapshot = parseConceptRevisionSnapshot(previousRevision?.conceptSnapshot ?? null);
           const metadataChanges = snapshot && previousSnapshot
             ? changedConceptSnapshotFields(previousSnapshot, snapshot).filter(
-                (field): field is Exclude<ConceptSnapshotField, "bodyMarkdown"> => field !== "bodyMarkdown"
+                (field): field is Exclude<ConceptSnapshotField, "bodyMarkdown" | "historyMarkdown" | "historySpoiler"> => field !== "bodyMarkdown" && field !== "historyMarkdown" && field !== "historySpoiler"
               )
             : [];
           const textChanged = Boolean(previousRevision && revision.markdown !== previousRevision.markdown);
+          const historyChanged = snapshot && previousSnapshot && (
+            snapshot.historyMarkdown !== previousSnapshot.historyMarkdown || snapshot.historySpoiler !== previousSnapshot.historySpoiler
+          );
 
           return (
             <section key={revision.id} id={`revision-${revision.id}`} className="revision-card panel p-4 scroll-mt-24">
@@ -201,6 +211,7 @@ export default async function ConceptHistoryPage({
                 </ins>
               </div>
             ))}
+            <ContentHistoryRevision before={previousSnapshot} after={snapshot} revisionId={revision.id} beforeRevisionId={previousRevision?.id} locale={interfaceLocale} labels={t.historyPage} />
             {previousRevision ? (
               textChanged ? (
                 <RevisionDiff
@@ -211,7 +222,7 @@ export default async function ConceptHistoryPage({
                   revisionId={revision.id}
                   labels={t.historyPage}
                 />
-              ) : metadataChanges.length === 0 ? (
+              ) : metadataChanges.length === 0 && !historyChanged ? (
                 <p className="muted mt-3 text-sm">
                   {snapshot && previousSnapshot
                     ? t.historyPage.noRecordedChanges

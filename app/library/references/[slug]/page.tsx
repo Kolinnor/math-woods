@@ -4,7 +4,8 @@ import { BookCopy, Clock3, Code2, ExternalLink, Puzzle, Sigma, TreePine, UsersRo
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { ImageCredit } from "@/components/library/ImageCredit";
-import { LibraryAttribution } from "@/components/library/LibraryAttribution";
+import { ReferenceContributors } from "@/components/library/ReferenceContributors";
+import { referenceContributorUserSelect } from "@/lib/reference-contributors";
 import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
 import { LibraryBreadcrumb, LibraryEntryRail, LibraryEntryToolbar } from "@/components/library/LibraryEntryNavigation";
 import { LibraryReferenceTypeIcon } from "@/components/library/LibraryIcons";
@@ -39,8 +40,9 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
         work: true,
         editions: { where: { status: "PUBLISHED", searchable: true, mergedIntoId: null }, orderBy: [{ year: "asc" }, { id: "asc" }] },
         translations: true,
-        createdBy: true,
-        reviewedBy: true,
+        authorEntries: { where: { mathematician: { status: "PUBLISHED" } }, include: { mathematician: { include: { translations: { select: { language: true, displayName: true } } } } }, orderBy: { position: "asc" } },
+        createdBy: { select: referenceContributorUserSelect },
+        contributions: { include: { user: { select: referenceContributorUserSelect } }, orderBy: [{ firstContributedAt: "asc" }, { userId: "asc" }] },
         problemLinks: { where: { problem: { listed: true, status: "PUBLISHED" } }, include: { problem: true }, orderBy: { position: "asc" } },
         conceptLinks: { where: { concept: { canAppearInConceptBrowser: true } }, include: { concept: true }, orderBy: { position: "asc" } },
         mathematicianRelatedItems: { where: { translation: { mathematician: { status: "PUBLISHED" } } }, include: { translation: { include: { mathematician: true } } }, orderBy: { position: "asc" } },
@@ -52,7 +54,15 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
   if (entry.mergedInto) permanentRedirect(`/library/references/${entry.mergedInto.slug}`);
   // One backlink per person and role, rather than one per translated citation.
   const preferredItems = [...entry.mathematicianRelatedItems].sort((a, b) => Number(a.translation.language === locale) - Number(b.translation.language === locale));
-  const relatedPeople = [...new Map(preferredItems.map(item => [`${item.translation.mathematicianId}:${item.category}`, item])).values()];
+  const peopleByRole = new Map(preferredItems.map(item => [`${item.translation.mathematicianId}:${item.category}`, {
+    person: item.translation.mathematician, name: item.translation.displayName, language: item.translation.language, category: item.category
+  }]));
+  for (const author of entry.authorEntries) {
+    if (!author.mathematician) continue;
+    const translation = localizedTranslation(author.mathematician.translations, locale);
+    peopleByRole.set(`${author.mathematicianId}:WORK`, { person: author.mathematician, name: translation?.displayName ?? author.name, language: translation?.language ?? locale, category: "WORK" });
+  }
+  const relatedPeople = [...peopleByRole.values()];
   const milestones = [...entry.milestoneLinks].sort((a, b) => a.milestone.sortYear - b.milestone.sortYear);
   const contentLanguage = libraryLanguage(query.lang ?? locale);
   const returnTo = libraryReturnHref(query.returnTo, "/library/references");
@@ -123,11 +133,11 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
           {relatedPeople.length > 0 && <section className="library-entry-section" data-category="people">
             <h2><UsersRound size={18} aria-hidden="true" />{fr ? "Mathématiciens" : "Mathematicians"}<span className="library-entry-section-count">{relatedPeople.length}</span></h2>
             <ul className="library-people-cards">{relatedPeople.map(item => {
-              const person = item.translation.mathematician;
+              const person = item.person;
               const period = mathematicianPeriod(person, currentYear);
-              return <li key={`${item.translation.mathematicianId}:${item.category}`}><Link href={`/library/mathematicians/${person.slug}?lang=${item.translation.language}` as never}>
-                <span className="library-thumb library-thumb-large"><LibraryPersonPortrait variant="thumb" name={item.translation.displayName} portraitUrl={person.portraitUrl} crop={person.portraitCrop} era={period ? libraryEraOfPeriod(eras, period.from, period.to) : null} /></span>
-                <span><strong>{item.translation.displayName}</strong><small>{peopleRole(item.category)}</small></span>
+              return <li key={`${person.id}:${item.category}`}><Link href={`/library/mathematicians/${person.slug}?lang=${item.language}` as never}>
+                <span className="library-thumb library-thumb-large"><LibraryPersonPortrait variant="thumb" name={item.name} portraitUrl={person.portraitUrl} crop={person.portraitCrop} era={period ? libraryEraOfPeriod(eras, period.from, period.to) : null} /></span>
+                <span><strong>{item.name}</strong><small>{peopleRole(item.category)}</small></span>
               </Link></li>;
             })}</ul>
           </section>}
@@ -162,10 +172,12 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
         </article>
 
         <LibraryEntryRail locale={locale} className="reference-rail"
+          historyHref={`/library/references/${entry.slug}/history?lang=${editLanguage}`}
           editHref={canEdit ? `/library/references/${entry.slug}/edit?lang=${editLanguage}` : undefined}
           translateHref={canEdit ? `/library/references/${entry.slug}/edit?lang=${editLanguage === "fr" ? "en" : "fr"}` : undefined}
-          attribution={(entry.createdBy || entry.reviewedBy) && <LibraryAttribution creator={entry.createdBy} reviewer={entry.reviewedBy} locale={locale} />}
-        />
+        >
+          <ReferenceContributors creator={entry.createdBy} contributions={entry.contributions} locale={locale} />
+        </LibraryEntryRail>
       </div>
     </LibraryPageLayout>
   );

@@ -586,18 +586,14 @@ export const en = {
   },
   contestAchievements: {
     winnerBadgeLabel: "Winner",
-    honorableBadgeLabel: "Honorable mention",
-    winnerTooltip: (wins: number, honorableMentions: number, contests: readonly { titleFr: string; titleEn: string }[] = []) =>
+    winnerTooltip: (wins: number, contests: readonly { titleFr: string; titleEn: string }[] = []) =>
       [
+        ...(wins > 1 && contests.length ? [`${wins} contests won.`] : []),
         ...(contests.length ? contests.map(contest => `Won the “${contest.titleEn || contest.titleFr}” contest.`) : [`Won ${wins} contest${wins === 1 ? "" : "s"}.`]),
-        ...(honorableMentions > 0 ? [`Received ${honorableMentions} honorable mention${honorableMentions === 1 ? "" : "s"}.`] : [])
       ].join("\n"),
-    honorableTooltip: (honorableMentions: number) =>
-      `Received ${honorableMentions} honorable mention${honorableMentions === 1 ? "" : "s"} in the weekly Contests.`,
     recordTitle: "Contest record",
     noRecord: "No contest results yet.",
     winsCount: (count: number) => `${count} contest win${count === 1 ? "" : "s"}`,
-    honorableMentionsCount: (count: number) => `${count} honorable mention${count === 1 ? "" : "s"}`
   },
   footer: {
     legal:
@@ -1427,6 +1423,8 @@ export const en = {
     noProblemsUsingConcept: "No listed problems link to this concept yet.",
     noSpoilerProblemsUsingConcept: "No listed problems use this concept as a spoiler yet.",
     backlinks: "Backlinks",
+    moreBacklinks: (count: number) => `Show more (${count})`,
+    fewerBacklinks: "Show less",
     outgoingLinks: "Outgoing links",
     missingEyebrow: "Missing concept",
     missingDescription: "This concept does not exist yet.",
@@ -1696,6 +1694,11 @@ export const en = {
     promiseLink: "Free",
     promiseTitleAfterLink: "Math Knowledge Graph.",
     promiseDescription: "An open-source, community-curated database of mathematical problems and concepts.",
+    aiImagesTitle: "AI-generated images",
+    aiImagesPurpose: "AI-generated images are accepted only when they serve an exclusively educational purpose: explaining a mathematical idea or making it easier to understand.",
+    aiImagesExampleBeforeLink: "For example, this may be a schematic or diagram, as on the page",
+    aiImagesExampleLink: "Transition map of a manifold",
+    aiImagesRestrictions: "These images must not depict any characters, real or fictional, even in an educational context. AI-generated images used for decoration or atmosphere are not allowed.",
     usefulDocuments: "Useful documents",
     usefulDocumentsDescription: "Short references for editing and contributing.",
     contributionGuidelines: "Contribution guidelines",
@@ -1859,6 +1862,11 @@ export const en = {
     compareWith: (id: number) => `Compare with revision ${id}`,
     changedLines: (count: number) => `${count} changed ${count === 1 ? "line" : "lines"}`,
     noTextChanges: "No text changes",
+    changedPassages: (count: number) => `${count} changed passage${count === 1 ? "" : "s"}`,
+    showAll: "Show all",
+    showChangesOnly: "Show changes only",
+    revisionDetails: "Show this revision’s details",
+    omittedLines: (count: number) => `${count} unchanged line${count === 1 ? "" : "s"} hidden`,
     diffAria: (id: number) => `Revision ${id} diff`,
     none: "None",
     reviewNeeded: "Review needed after an edit",
@@ -1875,11 +1883,13 @@ export const en = {
     noRecordedChanges: "No content or metadata changes were recorded.",
     predatesTracking: "This older revision predates detailed metadata tracking.",
     fields: {
+      additionalConceptSlugs: "Additional links",
       title: "title",
       language: "language",
       domainCode: "domain",
       kind: "type",
       status: "status",
+      historyEnabled: "history visibility",
       needsReviewAfterEdit: "review state",
       canAppearInConceptBrowser: "browser visibility",
       translatedFromRevisionId: "translation freshness",

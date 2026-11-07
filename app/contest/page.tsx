@@ -1,4 +1,4 @@
-import { Award, CalendarDays, Medal, Plus, Trophy } from "lucide-react";
+import { Award, CalendarDays, Plus, Trophy } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import type { Route } from "next";
 import Link from "next/link";
@@ -57,7 +57,6 @@ const copy = {
     rules: "Rules",
     archive: "Previous contests",
     winner: "Winner",
-    honorable: "Honorable mention",
     submitted: "Your problem has been entered in the contest.",
     signIn: "Sign in to participate",
     upcoming: "Submissions open on Saturday.",
@@ -83,7 +82,6 @@ const copy = {
     rules: "Règles",
     archive: "Concours précédents",
     winner: "Gagnant",
-    honorable: "Mention honorable",
     submitted: "Votre problème a bien été soumis au concours.",
     signIn: "Se connecter pour participer",
     upcoming: "Vous pourrez participer dès samedi.",
@@ -310,7 +308,6 @@ export default async function ContestPage({
                     )}
                   />
                   {submission.placement === "WINNER" && <span className="contest-placement winner"><Trophy size={15} /> {t.winner}</span>}
-                  {submission.placement === "HONORABLE_MENTION" && <span className="contest-placement"><Medal size={15} /> {t.honorable}</span>}
                 </Link>
               );
             })}

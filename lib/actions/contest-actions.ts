@@ -157,9 +157,7 @@ export async function publishContestResultsAction(formData: FormData) {
   if (!canUseOwnerTools(user)) throw new Error("Only the site owner can publish contest results.");
   const contestId = Number(formData.get("contestId"));
   const winnerId = Number(formData.get("winnerSubmissionId"));
-  const honorableIds = new Set(formData.getAll("honorableSubmissionIds").map(Number).filter(Number.isInteger));
-  if (!Number.isInteger(contestId) || !Number.isInteger(winnerId)) throw new Error("Choose one winner.");
-  honorableIds.delete(winnerId);
+  if (!Number.isInteger(contestId) || contestId <= 0 || !Number.isInteger(winnerId) || winnerId <= 0 || formData.getAll("winnerSubmissionId").length !== 1) throw new Error("Choose one winner.");
 
   const result = await prisma.$transaction(async (tx) => {
     await acquireTransactionLock(tx, `contest-results:${contestId}`);
@@ -169,24 +167,16 @@ export async function publishContestResultsAction(formData: FormData) {
     });
     if (!contest) throw new Error("Contest not found.");
     const submissionIds = new Set(contest.submissions.map(({ id }) => id));
-    if (!submissionIds.has(winnerId) || [...honorableIds].some((id) => !submissionIds.has(id))) {
+    if (!submissionIds.has(winnerId)) {
       throw new Error("A selected result does not belong to this contest.");
     }
     await tx.problemContestSubmission.updateMany({ where: { contestId }, data: { placement: null } });
     await tx.problemContestSubmission.update({ where: { id: winnerId }, data: { placement: ContestPlacement.WINNER } });
-    if (honorableIds.size) {
-      await tx.problemContestSubmission.updateMany({
-        where: { id: { in: [...honorableIds] }, contestId },
-        data: { placement: ContestPlacement.HONORABLE_MENTION }
-      });
-    }
     await tx.problemContest.update({ where: { id: contestId }, data: { resultsPublishedAt: new Date() } });
     const recipients = contest.submissions.filter((submission) => {
       const nextPlacement = submission.id === winnerId
         ? ContestPlacement.WINNER
-        : honorableIds.has(submission.id)
-          ? ContestPlacement.HONORABLE_MENTION
-          : null;
+        : null;
       // Announce the first publication to everyone; later saves only announce new awards.
       return contest.resultsPublishedAt === null || (nextPlacement !== null && submission.placement !== nextPlacement);
     });
@@ -200,11 +190,9 @@ export async function publishContestResultsAction(formData: FormData) {
         actorId: user.id,
         type: NotificationType.CONTEST_UPDATE,
         title: submission.id === winnerId ? "You won the weekly contest"
-          : honorableIds.has(submission.id) ? "Your problem received an honorable mention"
           : "The results of your contest are available",
         body: submission.id === winnerId ? "Your problem earned the weekly contest prize."
-          : honorableIds.has(submission.id) ? "The admins highlighted your contest entry."
-          : "The results of the contest you entered have been published. Discover the winning problems.",
+          : "The results of the contest you entered have been published. Discover the winning problem.",
         href: `/contest?week=${result.startDateKey}`
       })
     ));

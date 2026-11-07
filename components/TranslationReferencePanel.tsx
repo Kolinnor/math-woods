@@ -11,6 +11,7 @@ type TranslationReferencePanelProps = {
   title: string;
   language: string;
   markdown: string;
+  historyMarkdown?: string;
   stale?: boolean;
 };
 
@@ -22,9 +23,11 @@ export async function TranslationReferencePanel({
   title,
   language,
   markdown,
+  historyMarkdown,
   stale = false
 }: TranslationReferencePanelProps) {
-  const html = await renderMarkdownForContentLanguage(markdown, language);
+  const referenceMarkdown = historyMarkdown?.trim() ? `${markdown}\n\n## ${language === "fr" ? "Histoire" : "History"}\n\n${historyMarkdown}` : markdown;
+  const html = await renderMarkdownForContentLanguage(referenceMarkdown, language);
   const renderedId = `${idPrefix}-rendered`;
   const markdownId = `${idPrefix}-markdown`;
   const groupName = `${idPrefix}-mode`;
@@ -75,7 +78,7 @@ export async function TranslationReferencePanel({
         <div className="translation-reference-view translation-reference-rendered">
           <MarkdownBlock html={html} />
         </div>
-        <pre className="translation-reference-view translation-reference-markdown">{markdown}</pre>
+        <pre className="translation-reference-view translation-reference-markdown">{referenceMarkdown}</pre>
       </div>
     </aside>
   );

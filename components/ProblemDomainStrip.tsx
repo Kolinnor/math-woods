@@ -160,9 +160,9 @@ export function ProblemDomainStrip({
                 className={active ? "problem-domain-tile active" : "problem-domain-tile"}
                 scroll={false}
               >
-                <span className="problem-domain-glyph" style={{ backgroundColor: families[domain.family].color }}>
+                <span className="problem-domain-glyph" style={{ backgroundColor: domain.color }}>
                   {domain.value === "general-topology" ? (
-                    <TopologyBlobGlyph fill={families[domain.family].color} />
+                    <TopologyBlobGlyph fill={domain.color} />
                   ) : domain.value === "linear-algebra" ? (
                     <MatrixGlyph />
                   ) : domain.value === "computation" ? (

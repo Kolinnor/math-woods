@@ -589,18 +589,14 @@ export const fr = {
   },
   contestAchievements: {
     winnerBadgeLabel: "Gagnant",
-    honorableBadgeLabel: "Mention honorable",
-    winnerTooltip: (wins: number, honorableMentions: number, contests: readonly { titleFr: string; titleEn: string }[] = []) =>
+    winnerTooltip: (wins: number, contests: readonly { titleFr: string; titleEn: string }[] = []) =>
       [
+        ...(wins > 1 && contests.length ? [`${wins} concours gagnés.`] : []),
         ...(contests.length ? contests.map(contest => `A gagné le concours « ${contest.titleFr || contest.titleEn} ».`) : [`A gagné ${wins} concours.`]),
-        ...(honorableMentions > 0 ? [`A obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"}.`] : [])
       ].join("\n"),
-    honorableTooltip: (honorableMentions: number) =>
-      `A obtenu ${honorableMentions} mention${honorableMentions === 1 ? "" : "s"} honorable${honorableMentions === 1 ? "" : "s"} lors des Concours.`,
     recordTitle: "Palmarès",
     noRecord: "Aucun résultat de concours pour le moment.",
     winsCount: (count: number) => `${count} concours gagné${count === 1 ? "" : "s"}`,
-    honorableMentionsCount: (count: number) => `${count} mention${count === 1 ? "" : "s"} honorable${count === 1 ? "" : "s"}`
   },
   footer: {
     legal:
@@ -1432,6 +1428,8 @@ export const fr = {
     noProblemsUsingConcept: "Aucun problème listé ne renvoie encore vers ce concept.",
     noSpoilerProblemsUsingConcept: "Aucun problème listé n'utilise encore ce concept comme spoiler.",
     backlinks: "Liens entrants",
+    moreBacklinks: (count: number) => `Voir plus (${count})`,
+    fewerBacklinks: "Voir moins",
     outgoingLinks: "Liens sortants",
     missingEyebrow: "Concept manquant",
     missingDescription: "Ce concept n’existe pas encore.",
@@ -1701,6 +1699,11 @@ export const fr = {
     promiseLink: "libre",
     promiseTitleAfterLink: "des connaissances mathématiques.",
     promiseDescription: "Une base ouverte et enrichie par la communauté, consacrée aux problèmes et aux concepts mathématiques.",
+    aiImagesTitle: "Images générées par IA",
+    aiImagesPurpose: "Les images générées par IA ne sont acceptées que si elles ont une fonction exclusivement pédagogique : expliquer ou rendre plus compréhensible une notion mathématique.",
+    aiImagesExampleBeforeLink: "Il peut s’agir, par exemple, d’un schéma ou d’un diagramme, comme dans la page",
+    aiImagesExampleLink: "Fonction de transition (variétés)",
+    aiImagesRestrictions: "Ces images ne doivent représenter aucun personnage, réel ou fictif, même dans un contexte pédagogique. Les images générées par IA à visée décorative ou d’ambiance ne sont pas autorisées.",
     usefulDocuments: "Documents utiles",
     usefulDocumentsDescription: "Quelques références pour contribuer et modifier le contenu.",
     contributionGuidelines: "Guide de contribution",
@@ -1864,6 +1867,11 @@ export const fr = {
     compareWith: (id: number) => `Comparer avec la révision ${id}`,
     changedLines: (count: number) => `${count} ligne${count > 1 ? "s" : ""} modifiée${count > 1 ? "s" : ""}`,
     noTextChanges: "Aucune modification du texte",
+    showAll: "Voir tout",
+    changedPassages: (count: number) => `${count} passage${count > 1 ? "s" : ""} modifié${count > 1 ? "s" : ""}`,
+    showChangesOnly: "Voir uniquement les modifications",
+    revisionDetails: "Voir les informations de cette révision",
+    omittedLines: (count: number) => `${count} ligne${count > 1 ? "s" : ""} inchangée${count > 1 ? "s" : ""} masquée${count > 1 ? "s" : ""}`,
     diffAria: (id: number) => `Différences de la révision ${id}`,
     none: "Aucun",
     reviewNeeded: "Relecture nécessaire après une modification",
@@ -1880,11 +1888,13 @@ export const fr = {
     noRecordedChanges: "Aucune modification du contenu ou des métadonnées n’a été enregistrée.",
     predatesTracking: "Cette ancienne révision précède le suivi détaillé des métadonnées.",
     fields: {
+      additionalConceptSlugs: "Liens complémentaires",
       title: "titre",
       language: "langue",
       domainCode: "domaine",
       kind: "type",
       status: "statut",
+      historyEnabled: "visibilité de l’histoire",
       needsReviewAfterEdit: "état de relecture",
       canAppearInConceptBrowser: "visibilité dans le navigateur",
       translatedFromRevisionId: "actualité de la traduction",

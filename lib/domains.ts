@@ -4,6 +4,7 @@ export type DomainOption = {
   value: string;
   label: string;
   domain: MathDomain;
+  color?: string;
   aliases?: string[];
   children?: DomainOption[];
 };
@@ -137,6 +138,7 @@ export type ProblemDomainFamily = "found" | "geom" | "ana" | "prob" | "app" | "o
 
 export type ProblemDomainOption = DomainOption & {
   glyph: string;
+  color: string;
   family: ProblemDomainFamily;
   diff: number;
   year: number;
@@ -151,6 +153,34 @@ export const PROBLEM_DOMAIN_FAMILIES: Record<ProblemDomainFamily, { label: strin
   other: { label: "Other", color: "#1f1f1f", order: 5 }
 };
 
+// Stable domain identities: filtering or reordering never assigns a new colour.
+// Family colours describe groups; individual domains use this shared palette
+// in the map, its legend and the domain selectors.
+const PROBLEM_DOMAIN_COLORS: Record<string, string> = {
+  "logic": "#526473",
+  "category-theory": "#a42a83",
+  "algebra": "#7c3fb3",
+  "linear-algebra": "#4058c5",
+  "arithmetic": "#ba3d43",
+  "algebraic-geometry": "#79395c",
+  "geometry": "#9b6900",
+  "differential-geometry": "#677900",
+  "general-topology": "#087d77",
+  "algebraic-topology": "#267346",
+  "real-analysis": "#1263a3",
+  "functional-analysis": "#7661a8",
+  "complex-analysis": "#b33c79",
+  "several-variable-functions": "#087991",
+  "differential-equations": "#b35716",
+  "probability-statistics": "#37813f",
+  "graphs-discrete-math": "#4e4388",
+  "computation": "#bb4a2b",
+  "history-of-mathematics": "#745b42",
+  "applied-mathematics": "#005460",
+  "enigma": "#7b7131",
+  "other": "#636569"
+};
+
 function problemDomain(
   value: string,
   label: string,
@@ -161,7 +191,7 @@ function problemDomain(
   year: number,
   aliases: string[] = []
 ): ProblemDomainOption {
-  return { ...option(value, label, domain, aliases), glyph, family, diff, year };
+  return { ...option(value, label, domain, aliases), color: PROBLEM_DOMAIN_COLORS[value] ?? PROBLEM_DOMAIN_COLORS.other, glyph, family, diff, year };
 }
 
 function withSubdomains(

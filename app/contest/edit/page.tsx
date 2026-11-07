@@ -29,8 +29,8 @@ const defaultCriteria = {
 };
 
 const defaultRules = {
-  en: "One entry per person. You may edit your problem until Friday at 23:59, Paris time. Admins select one winner and may also award honorable mentions. Translations of the same problem count as one entry.",
-  fr: "Un seul problème par personne. Vous pouvez modifier votre problème jusqu'au vendredi à 23 h 59, heure de Paris. Les admins choisissent un seul gagnant et peuvent aussi attribuer des mentions honorables. Les traductions d'un même problème comptent comme une seule participation."
+  en: "One entry per person. You may edit your problem until Friday at 23:59, Paris time. Admins select one winner. Translations of the same problem count as one entry.",
+  fr: "Un seul problème par personne. Vous pouvez modifier votre problème jusqu'au vendredi à 23 h 59, heure de Paris. Les admins choisissent un seul gagnant. Les traductions d'un même problème comptent comme une seule participation."
 };
 
 export default async function EditContestPage({
@@ -156,14 +156,13 @@ export default async function EditContestPage({
         <form action={publishContestResultsAction} className="contest-results-form">
           <input type="hidden" name="contestId" value={selected.id} />
           <div className="contest-admin-section-title"><Trophy size={20} /><h2>{locale === "fr" ? "Résultats" : "Results"}</h2></div>
-          <p className="muted">{locale === "fr" ? "Choisissez exactement un gagnant. Les mentions honorables sont facultatives." : "Choose exactly one winner. Honorable mentions are optional."}</p>
+          <p className="muted">{locale === "fr" ? "Choisissez exactement un gagnant." : "Choose exactly one winner."}</p>
           <div className="contest-result-list">
             {selected.submissions.map((submission) => (
               <div key={submission.id}>
                 <UserAvatar user={submission.user} size="sm" />
                 <span><strong><AsyncMarkdownInline markdown={submission.problem.title} /></strong><small>{displayNameForUser(submission.user)}</small></span>
                 <label><input type="radio" name="winnerSubmissionId" value={submission.id} defaultChecked={submission.placement === "WINNER"} required /> {locale === "fr" ? "Gagnant" : "Winner"}</label>
-                <label><input type="checkbox" name="honorableSubmissionIds" value={submission.id} defaultChecked={submission.placement === "HONORABLE_MENTION"} /> {locale === "fr" ? "Mention" : "Honorable mention"}</label>
               </div>
             ))}
           </div>

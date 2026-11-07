@@ -2,6 +2,7 @@ export type TranslationTextRevision = {
   id: number;
   markdown: string;
   title: string | null;
+  history?: string;
 };
 
 export function revisionSnapshotTitle(snapshot: unknown): string | null {
@@ -14,6 +15,7 @@ export function latestTranslationTextRevisionId(revisions: TranslationTextRevisi
   let latestRevisionId: number | null = null;
   let previousMarkdown: string | null = null;
   let previousTitle: string | null = null;
+  let previousHistory = "";
   let hasPreviousRevision = false;
 
   for (const revision of [...revisions].sort((left, right) => left.id - right.id)) {
@@ -25,7 +27,9 @@ export function latestTranslationTextRevisionId(revisions: TranslationTextRevisi
       effectiveTitle !== null &&
       effectiveTitle !== previousTitle;
 
-    if (markdownChanged || titleChanged) latestRevisionId = revision.id;
+    const history = revision.history ?? previousHistory;
+    if (markdownChanged || titleChanged || history !== previousHistory) latestRevisionId = revision.id;
+    previousHistory = history;
 
     previousMarkdown = revision.markdown;
     previousTitle = effectiveTitle;
@@ -42,6 +46,7 @@ export function latestProblemTextRevisionIdFromRevisions(
     revisions.map((revision) => ({
       id: revision.id,
       markdown: revision.markdown,
+      history: revisionHistory(revision.problemSnapshot),
       title: revisionSnapshotTitle(revision.problemSnapshot)
     }))
   );
@@ -54,7 +59,15 @@ export function latestConceptTextRevisionIdFromRevisions(
     revisions.map((revision) => ({
       id: revision.id,
       markdown: revision.markdown,
+      history: revisionHistory(revision.conceptSnapshot),
       title: revision.conceptTitle ?? revisionSnapshotTitle(revision.conceptSnapshot)
     }))
   );
+}
+
+function revisionHistory(snapshot: unknown): string | undefined {
+  if (!snapshot || typeof snapshot !== "object" || !("historyMarkdown" in snapshot)) return undefined;
+  const value = snapshot as { historyMarkdown: string; historyEnabled?: boolean; historySpoiler?: boolean };
+  if (!value.historyMarkdown && !value.historyEnabled && !value.historySpoiler) return "";
+  return JSON.stringify([value.historyMarkdown, value.historyEnabled === true, value.historySpoiler === true]);
 }

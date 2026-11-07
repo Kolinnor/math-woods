@@ -1,3 +1,4 @@
+import { ContentHistoryRevision } from "@/components/ContentHistoryRevision";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -101,6 +102,31 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
             ? t.historyPage.difficultyNotRecorded
             : value === null ? t.historyPage.difficultyUnset : String(value);
 
+          const titleInfo = (
+            <p className={`mt-2 text-sm${titleChanged ? " font-semibold" : " muted"}`}>
+                {titleChanged ? t.historyPage.titleChanged : t.historyPage.recordedTitle}{": "}
+                {titleChanged && <><AsyncMarkdownInline markdown={previousTitle} /> <span aria-label={t.historyPage.changedTo}>→</span>{" "}</>}
+                {title === undefined ? t.historyPage.titleNotRecorded : <AsyncMarkdownInline markdown={title} />}
+                {title !== undefined && previousRevision && previousTitle === undefined && (
+                  <span className="muted">{` (${t.historyPage.previousTitleNotRecorded})`}</span>
+                )}
+              </p>
+          );
+          const difficultyInfo = (
+            <p className={`mt-2 text-sm${difficultyChanged ? " font-semibold" : " muted"}`} title={t.historyPage.difficultyExplanation}>
+                {difficultyChanged ? t.historyPage.difficultyChanged : t.historyPage.recordedDifficulty}{": "}
+                {difficultyChanged && <>{difficultyText(previousDifficulty)} <span aria-label={t.historyPage.changedTo}>→</span>{" "}</>}
+                {difficultyText(difficulty)}
+              </p>
+          );
+          const referencesChanged = Boolean(previousRevision && citationHistoryText(revision.problemSnapshot) !== citationHistoryText(previousRevision.problemSnapshot));
+          const referenceInfo = (
+            <details className="mt-3" open={referencesChanged}><summary>{interfaceLocale === "fr" ? "Références de cette révision" : "References in this revision"}</summary>
+                {!previousRevision && <pre className="whitespace-pre-wrap break-words">{citationHistoryText(revision.problemSnapshot)}</pre>}
+                {previousRevision && <RevisionDiff afterMarkdown={citationHistoryText(revision.problemSnapshot)} beforeMarkdown={citationHistoryText(previousRevision.problemSnapshot)} beforeRevisionId={previousRevision.id} revisionId={revision.id} labels={t.historyPage} defaultOpen={referencesChanged} />}
+              </details>
+          );
+
           return (
             <section key={revision.id} id={`revision-${revision.id}`} className="revision-card panel p-4 scroll-mt-24">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -125,23 +151,24 @@ export default async function ProblemHistoryPage({ params }: { params: Promise<{
                 )}
               </div>
               <p className="mt-3">{revision.editSummary || t.historyPage.noSummary}</p>
-              <p className={`mt-2 text-sm${titleChanged ? " font-semibold" : " muted"}`}>
-                {titleChanged ? t.historyPage.titleChanged : t.historyPage.recordedTitle}{": "}
-                {titleChanged && <><AsyncMarkdownInline markdown={previousTitle} /> <span aria-label={t.historyPage.changedTo}>→</span>{" "}</>}
-                {title === undefined ? t.historyPage.titleNotRecorded : <AsyncMarkdownInline markdown={title} />}
-                {title !== undefined && previousRevision && previousTitle === undefined && (
-                  <span className="muted">{` (${t.historyPage.previousTitleNotRecorded})`}</span>
-                )}
-              </p>
-              <p className={`mt-2 text-sm${difficultyChanged ? " font-semibold" : " muted"}`} title={t.historyPage.difficultyExplanation}>
-                {difficultyChanged ? t.historyPage.difficultyChanged : t.historyPage.recordedDifficulty}{": "}
-                {difficultyChanged && <>{difficultyText(previousDifficulty)} <span aria-label={t.historyPage.changedTo}>→</span>{" "}</>}
-                {difficultyText(difficulty)}
-              </p>
-              <details className="mt-3"><summary>{interfaceLocale === "fr" ? "Références de cette révision" : "References in this revision"}</summary>
-                <pre className="whitespace-pre-wrap break-words">{citationHistoryText(revision.problemSnapshot)}</pre>
-                {previousRevision && <RevisionDiff afterMarkdown={citationHistoryText(revision.problemSnapshot)} beforeMarkdown={citationHistoryText(previousRevision.problemSnapshot)} beforeRevisionId={previousRevision.id} revisionId={revision.id} labels={t.historyPage} />}
+              {titleChanged && titleInfo}
+              {difficultyChanged && difficultyInfo}
+              {referencesChanged && referenceInfo}
+              <details className="mt-3 revision-metadata">
+                <summary>{t.historyPage.revisionDetails}</summary>
+                {!titleChanged && titleInfo}
+                {!difficultyChanged && difficultyInfo}
+                {!referencesChanged && referenceInfo}
               </details>
+              {previousRevision && JSON.stringify(parseProblemRevisionSnapshot(previousRevision.problemSnapshot)?.additionalConceptSlugs ?? []) !== JSON.stringify(parseProblemRevisionSnapshot(revision.problemSnapshot)?.additionalConceptSlugs ?? []) && (
+                <div className="revision-field-diff mt-3">
+                  <strong>{t.historyPage.fields.additionalConceptSlugs}</strong>
+                  <del>{parseProblemRevisionSnapshot(previousRevision.problemSnapshot)?.additionalConceptSlugs?.join(", ") || t.historyPage.none}</del>
+                  <span aria-hidden="true">→</span>
+                  <ins>{parseProblemRevisionSnapshot(revision.problemSnapshot)?.additionalConceptSlugs?.join(", ") || t.historyPage.none}</ins>
+                </div>
+              )}
+              <ContentHistoryRevision before={parseProblemRevisionSnapshot(previousRevision?.problemSnapshot ?? null)} after={parseProblemRevisionSnapshot(revision.problemSnapshot)} revisionId={revision.id} beforeRevisionId={previousRevision?.id} locale={interfaceLocale} labels={t.historyPage} />
               {previousRevision ? (
                 <RevisionDiff
                   afterMarkdown={revision.markdown}

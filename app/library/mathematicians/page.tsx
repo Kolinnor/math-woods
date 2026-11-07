@@ -74,7 +74,7 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
     { value: "added", label: fr ? "Dernières fiches ajoutées" : "Recently added entries" },
     { value: "updated", label: fr ? "Dernières fiches modifiées" : "Recently updated entries" }
   ];
-  return <LibraryPageLayout locale={locale} className="library-catalogue-page mathematician-browser" title={copy.mathematicians} description={fr ? "Les personnes et les idées qui ont façonné les mathématiques." : "The people and ideas that shaped mathematics."} actions={canAdd && <Link className="button primary" href="/library/mathematicians/new"><Plus size={16} aria-hidden="true" />{copy.addMathematician}</Link>}>
+  return <LibraryPageLayout locale={locale} className="library-catalogue-page mathematician-browser" title={copy.mathematicians} description={fr ? "Les personnes et les idées qui ont façonné les mathématiques." : "The people and ideas that shaped mathematics."}>
     <LibraryTabs active="mathematicians" locale={locale} />
     <div className="library-catalogue-workspace">
       <aside className="library-catalogue-aside" aria-label={fr ? "Filtres des mathématiciens" : "Mathematician filters"}>
@@ -98,7 +98,11 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
         <div className="library-results-header"><p className="result-summary" role="status">{fr ? `${matches.length} fiche${matches.length === 1 ? "" : "s"}` : `${matches.length} ${matches.length === 1 ? "entry" : "entries"}`}</p>
           <ProblemSortControl value={filters.sort} defaultValue="alphabetical" options={sortOptions} label={fr ? "Trier :" : "Sort:"} ariaLabel={fr ? "Trier les mathématiciens" : "Sort mathematicians"} />
         </div>
-        {selected.length > 0 && <div className="library-person-grid">
+        {(canAdd || selected.length > 0) && <div className="library-person-grid">
+          {canAdd && <Link className="library-person-card library-person-add" href="/library/mathematicians/new">
+            <span className="library-person-card-portrait"><span className="library-monogram library-monogram-card library-person-add-symbol"><Plus aria-hidden="true" strokeWidth={1} /></span></span>
+            <span className="library-person-card-body library-person-add-label">{copy.addMathematician}</span>
+          </Link>}
           {selected.map(match => {
             const entry = rowById.get(match.person.id);
             const translation = entry?.translations.find(t => t.language === match.translation.language);

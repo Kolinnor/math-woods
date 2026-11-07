@@ -16,9 +16,11 @@ export type FriseTotals = Record<string, { people: number; milestones: number }>
 
 /** The name shown on the timeline: the family name ("Euler"), or the whole name when it has no clear one. */
 export function friseName(displayName: string, sortName = "") {
-  if (sortName.includes(",")) return sortName.split(",")[0].trim();
-  const words = displayName.split(/\s+/);
-  if (words.length < 2 || /\b(?:de|du|des|van|von|ibn|ben|al|le|la)\b|\bd['’]/i.test(displayName)) return words[0];
+  const explicit = sortName.includes(",") ? sortName.split(",")[0].trim() : "";
+  if (explicit) return explicit;
+  const name = displayName.trim();
+  const words = name.split(/\s+/);
+  if (words.length < 2 || /\b(?:de|du|des|van|von|ibn|ben|al|le|la)\b|\bd['’]/i.test(name)) return name;
   return words[words.length - 1];
 }
 

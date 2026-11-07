@@ -31,7 +31,7 @@ async function findBySlug(model: SlugModel, slug: string) {
   if (model === "concept") {
     const [concept, alias, redirect] = await Promise.all([
       prisma.concept.findUnique({ where: { slug }, select: { id: true } }),
-      prisma.conceptAlias.findUnique({ where: { aliasSlug: slug }, select: { id: true } }),
+      prisma.conceptAlias.findFirst({ where: { aliasSlug: slug }, select: { id: true } }),
       prisma.conceptRedirect.findUnique({ where: { sourceSlug: slug }, select: { id: true } })
     ]);
     return concept ?? alias ?? redirect;

@@ -21,6 +21,57 @@ function load(file, modules) {
   return exports;
 }
 
+test('focused diffs retain every edit and shorten only unchanged context without mutating the full diff', () => {
+  const prefix = 'Un contexte inchangé. '.repeat(30);
+  const suffix = ' Une conclusion inchangée.'.repeat(30);
+  const rows = revisionDiff.buildRevisionDiff(`${prefix}$x^2$${suffix}`, `${prefix}$x^3$${suffix}`);
+  const original = structuredClone(rows);
+  for (const row of rows) {
+    const compact = revisionDiff.compactRevisionDiffParts(row.parts);
+    assert.deepEqual(compact.filter(part => part.changed).map(part => part.value).join(''), row.parts.filter(part => part.changed).map(part => part.value).join(''));
+    assert.ok(compact.map(part => part.value).join('').length < 140);
+    assert.match(compact.map(part => part.value).join(''), /…/);
+  }
+  assert.deepEqual(rows, original);
+  for (const [before, after] of [[`${prefix}mot${suffix}`, `${prefix}${suffix}`], [`${prefix}${suffix}`, `${prefix}mot${suffix}`]]) {
+    for (const row of revisionDiff.buildRevisionDiff(before, after)) {
+      const compact = revisionDiff.compactRevisionDiffParts(row.parts);
+      assert.ok(compact.map(part => part.value).join('').length < 140);
+    }
+  }
+  for (const [before, after] of [['', 'Texte ajouté'], ['Texte retiré', ''], ['identique', 'identique']]) {
+    for (const row of revisionDiff.buildRevisionDiff(before, after)) {
+      assert.equal(revisionDiff.compactRevisionDiffParts(row.parts).map(part => part.value).join(''), row.parts.map(part => part.value).join(''));
+    }
+  }
+  const parts = [{ value: 'a', changed: true }, { value: prefix }, { value: 'b', changed: true }];
+  const compact = revisionDiff.compactRevisionDiffParts(parts);
+  assert.equal(compact[0].value, 'a'); assert.equal(compact[2].value, 'b');
+  assert.ok(compact[1].value.length < prefix.length);
+});
+
+test('focused comparison hides unchanged lines, keeps separate edit locations and provides a closed full-text disclosure in FR/EN', () => {
+  const { RevisionDiff } = load('components/RevisionDiff.tsx', { '@/lib/revision-diff': revisionDiff });
+  for (const dictionary of [fr, en]) {
+    const html = renderToStaticMarkup(React.createElement(RevisionDiff, {
+      beforeMarkdown: 'INTRO_UNCHANGED\n$x^2$\nMIDDLE_UNCHANGED\nancien\nEND_UNCHANGED',
+      afterMarkdown: 'INTRO_UNCHANGED\n$x^3$\nMIDDLE_UNCHANGED\nnouveau\nEND_UNCHANGED',
+      revisionId: 2, beforeRevisionId: 1, defaultOpen: true, labels: dictionary.historyPage
+    }));
+    const focused = html.slice(html.indexOf('class="revision-diff-table revision-diff-focused"'));
+    for (const text of ['INTRO_UNCHANGED', 'MIDDLE_UNCHANGED', 'END_UNCHANGED']) {
+      assert.ok(html.includes(text)); assert.ok(!focused.includes(text));
+    }
+    assert.match(html, /<details class="revision-diff-full">/);
+    assert.ok(html.includes(dictionary.historyPage.showAll));
+    assert.ok(html.includes(dictionary.historyPage.showChangesOnly));
+    assert.ok(html.includes(dictionary.historyPage.changedPassages(2)));
+    assert.equal((focused.match(/revision-diff-gap/g) ?? []).length, 3);
+    assert.ok(focused.includes('ancien')); assert.ok(focused.includes('nouveau'));
+    assert.match(focused, /revision-diff-highlight/);
+  }
+});
+
 test('historical titles preserve exact spelling and LaTeX, without inventing missing values', () => {
   for (const value of [null, undefined, [], {}, { schemaVersion: 1 }, { schemaVersion: 2, title: 'New' }, { schemaVersion: 1, title: null }, { schemaVersion: 1, title: '' }, { schemaVersion: 1, title: '  ' }]) {
     assert.equal(recordedProblemTitle(value), undefined);
@@ -49,6 +100,7 @@ test('problem history shows title-only changes, unchanged statements and missing
         'next/navigation': { notFound() { throw Error('unexpected not found'); } },
         '@/lib/content-slug-redirect': { redirectHistoricalContentSlug: async () => {} },
         '@/components/RevisionDiff': { RevisionDiff },
+        '@/components/ContentHistoryRevision': { ContentHistoryRevision: () => null },
         '@/components/AsyncMarkdownInline': { AsyncMarkdownInline: ({ markdown }) => React.createElement('span', null, markdown) },
         '@/components/UserName': { UserName: () => null },
         '@/lib/actions/problem-actions': {},
@@ -67,6 +119,10 @@ test('problem history shows title-only changes, unchanged statements and missing
       const { default: Page } = load('app/problems/[slug]/history/page.tsx', modules);
       const html = renderToStaticMarkup(await Page({ params: Promise.resolve({ slug: 'current' }) }));
       const card = html.slice(html.indexOf('id="revision-2"'), html.indexOf('id="revision-1"'));
+      const metadataStart = card.indexOf('<details class="mt-3 revision-metadata">');
+      assert.ok(metadataStart > 0);
+      assert.ok(!card.slice(0, metadataStart).includes(dictionary.historyPage.recordedDifficulty));
+      if (beforeTitle === afterTitle) assert.ok(!card.slice(0, metadataStart).includes(dictionary.historyPage.recordedTitle));
       assert.ok(card.includes(dictionary.historyPage.noStatementChanges));
       assert.ok(!card.includes('TODAYS_TITLE_MUST_NOT_REPLACE_HISTORY'));
       if (beforeTitle && afterTitle && beforeTitle !== afterTitle) {

@@ -28,6 +28,16 @@ body:has(.problem-detail-shell) {
 .problem-solver-avatars .user-avatar {
   border: 2px solid var(--mw-surface);
 }
+/* The next avatar covers the right edge. Keep awards on their owner's visible side. */
+.problem-solver-avatars .avatar-achievement-badge {
+  left: 0.15rem;
+  right: auto;
+}
+/* A trophy with a count needs the full avatar width to remain unambiguous. */
+.problem-solver-avatar-link:has(.avatar-achievement-badge-multiple) + .problem-solver-avatar-link,
+.problem-solver-avatar-link:has(.avatar-achievement-badge-multiple) + .problem-solver-more {
+  margin-left: 0;
+}
 .problem-solved-banner .user-avatar {
   border-color: #226a46;
 }
@@ -459,6 +469,10 @@ body:has(.problem-detail-shell) .site-main {
   gap: 12px;
   margin-bottom: 16px;
   padding: 14px 18px;
+  /* The retained entry animation creates a stacking context. Raise the whole
+     banner so its popovers stay above positioned KaTeX in the statement. */
+  position: relative;
+  z-index: 1;
 }
 @keyframes mwSolvedIn {
   from { opacity: 0; transform: translateY(6px); }

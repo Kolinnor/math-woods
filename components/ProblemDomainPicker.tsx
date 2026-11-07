@@ -4,18 +4,10 @@ import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { MatrixGlyph } from "@/components/MatrixGlyph";
 import { TopologyBlobGlyph } from "@/components/TopologyBlobGlyph";
-import type { DomainOption, ProblemDomainFamily, ProblemDomainOption } from "@/lib/domains";
+import type { DomainOption, ProblemDomainOption } from "@/lib/domains";
 import type { Dictionary, InterfaceLocale } from "@/lib/i18n/types";
 
 const MAX_PROBLEM_DOMAINS = 3;
-const DOMAIN_FAMILY_COLORS: Record<ProblemDomainFamily, string> = {
-  found: "#3f6b45",
-  geom: "#a87f2e",
-  ana: "#2f6f6a",
-  prob: "#3d5f7a",
-  app: "#a13a3a",
-  other: "#1f1f1f"
-};
 
 type ProblemDomainPickerProps = {
   domains: DomainOption[];
@@ -166,7 +158,7 @@ export function ProblemDomainPicker({
           const selected = selectedSet.has(domain.value);
           const hasSelectedChild = domain.children?.some((child) => selectedSet.has(child.value)) ?? false;
           const hasChildren = showSubdomains && Boolean(domain.children?.length);
-          const color = isProblemDomainOption(domain) ? DOMAIN_FAMILY_COLORS[domain.family] : undefined;
+          const color = domain.color;
           const glyph = isProblemDomainOption(domain) ? domain.glyph : domain.label.charAt(0);
           const isExpanded = expandedDomain === domain.value;
           return (

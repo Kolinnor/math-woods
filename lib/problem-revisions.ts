@@ -1,3 +1,5 @@
+import { parseAdditionalConceptSlugs } from "./additional-concept-links.ts";
+import { contentHistory, HISTORY_FIELDS, type ContentHistory } from "./content-history.ts";
 import {
   MathDomain,
   ProblemStatus,
@@ -8,13 +10,14 @@ import {
 } from "@prisma/client";
 import { citationText, mergeProblemCitations, parseProblemCitations, type ProblemCitation } from "./problem-citations.ts";
 
-export type ProblemRevisionSnapshot = {
+export type ProblemRevisionSnapshot = Partial<ContentHistory> & {
   isOriginal?: boolean;
   citations?: ProblemCitation[];
   schemaVersion: 1;
   title: string;
   language: string;
   bodyMarkdown: string;
+  additionalConceptSlugs?: string[];
   difficulty: number | null;
   domains: Array<{ domain: MathDomain; mscCode: string; spoiler: boolean }>;
   origin: string;
@@ -39,12 +42,13 @@ export type ProblemRevisionSnapshot = {
   relatedProblemGroups: Array<{ title: string; slugs: string[] }>;
 };
 
-export type ProblemSnapshotSource = {
+export type ProblemSnapshotSource = Partial<ContentHistory> & {
   isOriginal?: boolean;
   libraryReferences?: ProblemCitation[];
   title: string;
   language: string;
   bodyMarkdown: string;
+  additionalConceptSlugs?: string[];
   difficulty: number | null;
   editorialDifficulty?: number | null;
   domains: Array<{ domain: MathDomain; mscCode: string; spoiler: boolean }>;
@@ -78,6 +82,10 @@ export const PROBLEM_SNAPSHOT_FIELD_LABELS = {
   citations: "references",
   title: "title",
   language: "language",
+  historyMarkdown: "history",
+  historyEnabled: "history visibility",
+  historySpoiler: "history spoilers",
+  additionalConceptSlugs: "additional concept links",
   bodyMarkdown: "statement",
   difficulty: "difficulty",
   domains: "domains",
@@ -118,6 +126,8 @@ export function buildProblemRevisionSnapshot(source: ProblemSnapshotSource): Pro
     title: source.title,
     language: source.language,
     bodyMarkdown: source.bodyMarkdown,
+    additionalConceptSlugs: source.additionalConceptSlugs ?? [],
+    ...contentHistory(source),
     difficulty: source.editorialDifficulty ?? source.difficulty,
     domains: source.domains.map((domain) => ({
       domain: domain.domain,
@@ -165,6 +175,7 @@ export function parseProblemRevisionSnapshot(value: Prisma.JsonValue | null): Pr
   if (typeof candidate.title !== "string" || typeof candidate.bodyMarkdown !== "string") return null;
   if (!Array.isArray(candidate.domains) || !Array.isArray(candidate.tags) || !Array.isArray(candidate.spoilerTags)) return null;
   if (!Array.isArray(candidate.relatedProblemGroups)) return null;
+  try { if (candidate.additionalConceptSlugs !== undefined) parseAdditionalConceptSlugs(candidate.additionalConceptSlugs); } catch { return null; }
   const legacyQualityStatus = String(candidate.qualityStatus ?? "");
   const qualityStatus = Object.values(QualityStatus).includes(legacyQualityStatus as QualityStatus)
     ? (legacyQualityStatus as QualityStatus)
@@ -202,14 +213,16 @@ export function changedProblemSnapshotFields(
   after: ProblemRevisionSnapshot
 ): ProblemSnapshotField[] {
   return PROBLEM_SNAPSHOT_FIELDS.filter((field) =>
+    !(HISTORY_FIELDS.some(key => key === field) && (before[field] === undefined || after[field] === undefined)) &&
     !((field === "citations" || field === "isOriginal") && (before[field] === undefined || after[field] === undefined)) &&
-    !sameValue(before[field], after[field]));
+    !sameValue(field === "additionalConceptSlugs" ? before[field] ?? [] : before[field], field === "additionalConceptSlugs" ? after[field] ?? [] : after[field]));
 }
 
 export function formatProblemSnapshotFieldValue(
   field: ProblemSnapshotField,
   value: ProblemRevisionSnapshot[ProblemSnapshotField]
 ) {
+  if (field === "additionalConceptSlugs") return (value as string[] | undefined)?.join(", ") || "None";
   if (field === "citations") {
     return Array.isArray(value) ? (value as ProblemCitation[]).map((item) =>
       `${citationText(item)}${item.url ? ` (${item.url})` : ""}${item.note ? ` — ${item.note}` : ""} [${item.role}${item.spoiler ? ", hidden until solved" : ""}]`).join("\n") || "None" : "Not recorded in this revision";
@@ -244,6 +257,10 @@ export function mergeProblemRevisionSnapshots(
   const conflicts: ProblemSnapshotField[] = [];
 
   for (const field of PROBLEM_SNAPSHOT_FIELDS) {
+    if (field === "additionalConceptSlugs" && submitted.additionalConceptSlugs === undefined) { merged.additionalConceptSlugs = current.additionalConceptSlugs; continue; }
+    if (HISTORY_FIELDS.some(key => key === field) && submitted[field] === undefined) {
+      (merged as unknown as Record<string, unknown>)[field] = current[field]; continue;
+    }
     if (field === "isOriginal" && submitted.isOriginal === undefined) { merged.isOriginal = current.isOriginal; continue; }
     if (field === "citations") {
       const result = mergeProblemCitations(base.citations, current.citations, submitted.citations);
@@ -251,8 +268,10 @@ export function mergeProblemRevisionSnapshots(
       if (result.conflict) conflicts.push(field);
       continue;
     }
-    const currentChanged = !sameValue(base[field], current[field]);
-    const submittedChanged = !sameValue(base[field], submitted[field]);
+    const baseValue = field === "historyMarkdown" || field === "historyEnabled" || field === "historySpoiler"
+      ? contentHistory(base)[field] : field === "additionalConceptSlugs" ? base[field] ?? [] : base[field];
+    const currentChanged = !sameValue(baseValue, current[field]);
+    const submittedChanged = !sameValue(baseValue, submitted[field]);
 
     if (!submittedChanged) {
       (merged as unknown as Record<string, unknown>)[field] = current[field];
