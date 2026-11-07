@@ -10,7 +10,7 @@ import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
 import { LibraryBreadcrumb, LibraryEntryRail, LibraryEntryToolbar } from "@/components/library/LibraryEntryNavigation";
 import { LibraryReferenceTypeIcon } from "@/components/library/LibraryIcons";
 import { LibraryPersonPortrait } from "@/components/library/LibraryPersonPortrait";
-import { getCurrentUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { formatLibraryReference, libraryLanguage, referenceRoleLabel, referenceTypeLabel } from "@/lib/library";
@@ -32,7 +32,7 @@ function hostName(url: string) {
 export default async function LibraryReferencePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ duplicate?: string; lang?: string; returnTo?: string }> }) {
   const { slug } = await params;
   const [locale, user, query, eras, entry] = await Promise.all([
-    getInterfaceLocale(), getCurrentUser(), searchParams, getLibraryEras(),
+    getInterfaceLocale(), requireModerator(), searchParams, getLibraryEras(),
     prisma.libraryReference.findUnique({
       where: { slug },
       include: {

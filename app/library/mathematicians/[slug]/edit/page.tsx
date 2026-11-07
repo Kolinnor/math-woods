@@ -4,7 +4,7 @@ import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { MathematicianForm } from "@/components/library/MathematicianForm";
 import { LibraryTranslationEditorNav } from "@/components/library/LibraryTranslationEditorNav";
 import { saveMathematicianFormAction } from "@/lib/actions/library-actions";
-import { requireVerifiedUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryLanguage } from "@/lib/library";
@@ -16,7 +16,7 @@ import { LibraryReviewActions } from "@/components/library/LibraryReviewActions"
 
 export default async function EditLibraryMathematicianPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ lang?: string }> }) {
   const { slug } = await params;
-  const [user, locale, query, entry] = await Promise.all([requireVerifiedUser(), getInterfaceLocale(), searchParams, prisma.mathematician.findUnique({ where: { slug }, include: { translations: { include: { relatedItems: { include: mathematicianRelatedInclude, orderBy: [{ position: "asc" }, { id: "asc" }] } } } } })]);
+  const [user, locale, query, entry] = await Promise.all([requireModerator(), getInterfaceLocale(), searchParams, prisma.mathematician.findUnique({ where: { slug }, include: { translations: { include: { relatedItems: { include: mathematicianRelatedInclude, orderBy: [{ position: "asc" }, { id: "asc" }] } } } } })]);
   if (!entry || !canEditLibraryMathematician(user, entry)) notFound();
   const contentLanguage = libraryLanguage(query.lang ?? locale);
   const translation = entry.translations.find((item) => item.language === contentLanguage) ?? null;

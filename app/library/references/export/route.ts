@@ -1,8 +1,14 @@
+import { getCurrentUser } from "@/lib/auth";
+import { hasTrustedPrivileges } from "@/lib/permissions";
 import { LibraryStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { exportReferenceBibtex, generatedBibtex, upgradeLegacyBibliography } from "@/lib/reference-bibtex";
 
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user || !hasTrustedPrivileges(user.role)) {
+    return Response.json({ error: "Access restricted to trusted members." }, { status: 403, headers: { "Cache-Control": "private, no-store" } });
+  }
   const format = new URL(request.url).searchParams.get("format") === "json" ? "json" : "bibtex";
   const references = await prisma.libraryReference.findMany({
     where: { status: LibraryStatus.PUBLISHED, searchable: true, mergedIntoId: null },

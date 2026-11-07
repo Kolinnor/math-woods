@@ -33,7 +33,7 @@ test('creation and translation edits persist shared dates and leave displayed da
   };
   const modules={
     '@prisma/client':require('@prisma/client'), '@/lib/history-period':{submittedHistoryPeriod},
-    '@/lib/auth':{requireVerifiedUser:async()=>({id:1,role:'ADMIN'})},
+    '@/lib/auth':{requireModerator:async()=>({id:1,role:'ADMIN'})},
     '@/lib/permissions':{canCreateLibraryEntry:()=>true,canEditLibraryDraft:()=>true},
     '@/lib/content-limits':limits, '@/lib/unique-slug':{uniqueSlug:async()=>entry.slug},
     '@/lib/markdown':{renderMarkdown:async text=>'<p>'+text+'</p>'},

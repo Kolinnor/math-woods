@@ -11,7 +11,7 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
-import { requireAdmin, requireVerifiedUser } from "@/lib/auth";
+import { requireAdmin, requireModerator, requireVerifiedUser } from "@/lib/auth";
 import { CONTENT_LIMITS, boundedText, optionalBoundedText, requiredBoundedText } from "@/lib/content-limits";
 import { prisma } from "@/lib/db";
 import { normalizeReferenceDedupeKey } from "@/lib/library";
@@ -168,7 +168,7 @@ function revalidateLibrary(entity: LibraryEntity, slug?: string) {
 }
 
 export async function createMathematicianAction(formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot create a library entry.");
   await assertRateLimit(`library-mathematician:${user.id}`, 12, 60_000);
 
@@ -231,7 +231,7 @@ export async function createMathematicianAction(formData: FormData) {
 }
 
 export async function updateMathematicianAction(id: number, formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   const entry = await prisma.mathematician.findUnique({ where: { id }, select: { id: true, slug: true, createdById: true, status: true, submittedAt: true, publishedAt: true, updatedAt: true } });
   if (!entry || !canEditLibraryMathematician(user, entry)) throw new Error("You cannot edit this entry.");
   await assertRateLimit(`library-mathematician-edit:${user.id}`, 20, 60_000);
@@ -316,7 +316,7 @@ export async function updateMathematicianAction(id: number, formData: FormData) 
 }
 
 export async function saveMathematicianFormAction(id: number | null, _state: { error: string }, formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot edit library entries.");
   try {
     if (id === null) await createMathematicianAction(formData);
@@ -353,7 +353,7 @@ function referenceTitlesForSave(formData: FormData, entry?: {
 }
 
 export async function createLibraryReferenceAction(formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot create a library entry.");
   await assertRateLimit(`library-reference:${user.id}`, 16, 60_000);
 
@@ -421,7 +421,7 @@ export async function createLibraryReferenceAction(formData: FormData) {
 }
 
 export async function updateLibraryReferenceAction(id: number, formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   const entry = await prisma.libraryReference.findUnique({ where: { id }, select: { id: true, slug: true, canonicalTitle: true, mergedIntoId: true, createdById: true, status: true, submittedAt: true, publishedAt: true, updatedAt: true, translations: { select: { language: true, displayTitle: true, descriptionMarkdown: true } } } });
   if (!entry || !canEditLibraryReference(user, entry)) throw new Error("You cannot edit this entry.");
   // Correcting a submitted, published or archived reference is not a review decision.
@@ -501,7 +501,7 @@ export async function updateLibraryReferenceAction(id: number, formData: FormDat
 }
 
 export async function saveLibraryReferenceFormAction(id: number | null, _state: { error: string }, formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot edit library entries.");
   try {
     if (id === null) await createLibraryReferenceAction(formData);
@@ -514,7 +514,7 @@ export async function saveLibraryReferenceFormAction(id: number | null, _state: 
 }
 
 export async function createHistoryMilestoneAction(formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot create a library entry.");
   const language = formLanguage(formData);
   const title = requiredBoundedText(formData.get("title"), CONTENT_LIMITS.title, "Title");
@@ -553,7 +553,7 @@ export async function createHistoryMilestoneAction(formData: FormData) {
 }
 
 export async function updateHistoryMilestoneAction(id: number, formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   const entry = await prisma.historyMilestone.findUnique({ where: { id }, select: { id: true, slug: true, createdById: true, status: true, submittedAt: true, publishedAt: true, updatedAt: true } });
   if (!entry || !canEditLibraryDraft(user, entry)) throw new Error("You cannot edit this entry.");
   const language = formLanguage(formData);
@@ -605,7 +605,7 @@ export async function updateHistoryMilestoneAction(id: number, formData: FormDat
 }
 
 export async function saveHistoryMilestoneFormAction(id: number | null, _state: { error: string }, formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   if (!canCreateLibraryEntry(user)) throw new Error("You cannot edit library entries.");
   try {
     if (id === null) await createHistoryMilestoneAction(formData);
@@ -618,7 +618,7 @@ export async function saveHistoryMilestoneFormAction(id: number | null, _state: 
 }
 
 export async function reviewLibraryEntryAction(entity: LibraryEntity, id: number, decision: ReviewDecision, formData: FormData) {
-  const user = await requireVerifiedUser();
+  const user = await requireModerator();
   await assertRateLimit(`library-review:${user.id}`, 60, 60_000);
   const entry = entity === "mathematician"
     ? await prisma.mathematician.findUnique({ where: { id }, select: { id: true, slug: true, name: true, createdById: true, lastEditedById: true, needsReviewAfterEdit: true, updatedAt: true, publishedAt: true, status: true, translations: { select: { displayName: true }, take: 1 } } }).then((value) => value && ({ ...value, title: value.translations[0]?.displayName ?? value.name }))

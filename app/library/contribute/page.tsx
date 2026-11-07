@@ -4,7 +4,7 @@ import { BookOpen, Clock3, Plus, UsersRound } from "lucide-react";
 import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
-import { requireVerifiedUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { localizedTranslation } from "@/lib/library-queries";
@@ -13,7 +13,7 @@ import { canUseAdminTools, hasTrustedPrivileges } from "@/lib/permissions";
 export const dynamic = "force-dynamic";
 
 export default async function LibraryContributePage() {
-  const [user, locale] = await Promise.all([requireVerifiedUser(), getInterfaceLocale()]);
+  const [user, locale] = await Promise.all([requireModerator(), getInterfaceLocale()]);
   const reviewer = hasTrustedPrivileges(user.role);
   const admin = canUseAdminTools(user);
   const where = reviewer

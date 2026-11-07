@@ -14,7 +14,7 @@ import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { LibraryCatalogueForm, LibraryLanguageFilter } from "@/components/library/LibraryCatalogueForm";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
-import { getCurrentUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryPage, milestoneTypeLabel } from "@/lib/library";
@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 30;
 
 export default async function LibraryHistoryPage({ searchParams }: { searchParams: Promise<{ era?: string; q?: string; page?: string; language?: string; sort?: string }> }) {
-  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), getCurrentUser(), searchParams, getLibraryEras()]);
+  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), requireModerator(), searchParams, getLibraryEras()]);
   const fr = locale === "fr";
   const selectedEra = libraryEraBySlug(eras, query.era);
   const era = selectedEra?.slug;

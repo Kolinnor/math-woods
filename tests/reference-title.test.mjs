@@ -35,7 +35,7 @@ function actionsFor(entry, update = () => { throw new Error("Unexpected database
   const unexpectedWrite = () => { throw new Error("Unexpected database write"); };
   const mocks = {
     "@prisma/client": require("@prisma/client"),
-    "@/lib/auth": { requireAdmin: async () => ({ id: 2 }), requireVerifiedUser: async () => ({ id: 2 }) },
+    "@/lib/auth": { requireModerator: async () => ({ id: 2 }), requireVerifiedUser: async () => ({ id: 2 }) },
     "@/lib/content-limits": limits,
     "@/lib/reference-title": { requireReadableReferenceTitle },
     "@/lib/rate-limit": { assertRateLimit: async () => {} },

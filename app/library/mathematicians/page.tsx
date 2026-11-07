@@ -15,7 +15,7 @@ import { LibraryPagination } from "@/components/library/LibraryPagination";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { MathematicianPeriodFilter } from "@/components/library/MathematicianPeriodFilter";
-import { getCurrentUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryPage } from "@/lib/library";
@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 24;
 
 export default async function LibraryMathematiciansPage({ searchParams }: { searchParams: Promise<BrowserQuery> }) {
-  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), getCurrentUser(), searchParams, getLibraryEras()]);
+  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), requireModerator(), searchParams, getLibraryEras()]);
   const fr = locale === "fr", currentYear = new Date().getFullYear();
   const presets = libraryEraPresets(eras, MIN_HISTORY_YEAR);
   const filters = parseMathematicianFilters(query, locale, currentYear, presets);

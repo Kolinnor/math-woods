@@ -1,12 +1,12 @@
 # Math Woods Library
 
-## Public access (2026-11-07)
+## Trusted-member access (2026-11-07)
 
-The Library home, catalogues, published entries, reference presentation history and bibliographic exports are accessible to everyone, including visitors without an account. Published entries appear in the sitemap. Drafts, entries awaiting review and archived entries retain their existing visibility restrictions.
+Library pages, contributions, presentation history, dedicated search APIs and catalogue exports require a trusted member (MODERATOR), ADMIN or OWNER account. Each page and server action checks access, in addition to the shared layout. The navigation link is hidden from visitors and ordinary members. Library URLs are excluded from the sitemap and pages are marked noindex.
 
-Verified members can create entries and edit their own drafts or entries needing work. Editing published entries, reviewing and archiving retain the existing trusted-contributor checks. Era management, homepage curation and its entry picker remain restricted to ADMIN and OWNER accounts. Contributor pickers require a verified account and filter results using entry visibility rules. Review notifications currently go to admins and the owner.
+Existing entry visibility and editing rules still apply. Era management and homepage curation remain restricted to ADMIN and OWNER. Public citations in problems and concepts, their per-page exports, and verified-member reference suggestions through the contribution interface remain available.
 
-The Library replaces the separate mathematician and known problem-source interfaces. It keeps three public catalogues under `/library`:
+The Library replaces the separate mathematician and known problem-source interfaces. It keeps three catalogues under `/library`:
 
 - historical milestones;
 - mathematicians;
@@ -45,7 +45,7 @@ translation fallback. Other names are collapsed on the detail page.
 
 Search matches aliases and translated names. Nonblocking suggestions show similar
 entries with dates and portraits; homonyms remain valid and are never merged
-automatically. The suggestion API requires a verified contributor account and
+automatically. The suggestion API requires a trusted-member account and
 retains entry visibility rules. The server ranks a compact index for this small
 catalogue; biographies are not loaded and the client receives at most five suggestions.
 
@@ -115,7 +115,7 @@ to BibTeX `crossref`: an edition is exported with its own bibliographic data.
 Additional imported fields survive export. Original TeX spelling is reused when it
 still represents the current structured value; changed or cleared fields supersede
 the source. String macros are expanded so separately imported records cannot collide.
-The public JSON export includes generated `bibtex` and separate `originalBibtex`.
+The trusted-member JSON export includes generated `bibtex` and separate `originalBibtex`.
 
 Migration `20260905230000_concept_citations` marks existing records for a one-time
 upgrade. `npm run bibliography:check` previews it; `npm run bibliography:upgrade`
@@ -131,7 +131,7 @@ separates bibliographic metadata from each page’s text, URL, locator, note and
 Free citations use `@misc` with a note, without invented titles, authors or years.
 Hidden problem citations are filtered using the same access rules as reading the
 page; exports are never publicly cached. Unavailable catalogue records fall back to
-the saved free citation. The full Library export is public and includes only published,
+the saved free citation. The full Library export requires a trusted-member account and includes only published,
 searchable, unmerged references; unpublished parent works are not exposed.
 
 Validation: `npm run test:bibliography`; the database case uses only the isolated

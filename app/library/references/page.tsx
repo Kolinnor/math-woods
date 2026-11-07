@@ -8,7 +8,7 @@ import { LibraryEmptyState } from "@/components/library/LibraryEmptyState";
 import { LibraryPagination } from "@/components/library/LibraryPagination";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
-import { getCurrentUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryPage, referenceTypeLabel } from "@/lib/library";
@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 30;
 
 export default async function LibraryReferencesPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; page?: string; language?: string; sort?: string }> }) {
-  const [locale, user, query] = await Promise.all([getInterfaceLocale(), getCurrentUser(), searchParams]);
+  const [locale, user, query] = await Promise.all([getInterfaceLocale(), requireModerator(), searchParams]);
   const type = Object.values(LibraryReferenceType).includes(query.type as LibraryReferenceType) ? query.type as LibraryReferenceType : undefined;
   const q = query.q?.trim().slice(0, 160);
   const language = query.language === "fr" || query.language === "en" ? query.language : undefined;

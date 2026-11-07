@@ -248,7 +248,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/problems" data-tour-target="nav-problems">{t.nav.problems}</Link>
               <Link href="/concepts" data-tour-target="nav-concepts">{t.nav.concepts}</Link>
               {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
-              <Link href={libraryRoute}>{t.nav.library}</Link>
+              {user && canUseModerationTools(user) && <Link href={libraryRoute}>{t.nav.library}</Link>}
               <Link href={usersRoute}>{t.nav.users}</Link>
               <Link href="/contest">{t.nav.contest}</Link>
             </div>
@@ -272,7 +272,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <Link href="/problems" data-tour-target="nav-problems">{t.nav.problems}</Link>
                     <Link href="/concepts" data-tour-target="nav-concepts">{t.nav.concepts}</Link>
                     {user && canUseAdminTools(user) && <Link href="/tips">{t.nav.tips}</Link>}
-                    <Link href={libraryRoute}>{t.nav.library}</Link>
+                    {user && canUseModerationTools(user) && <Link href={libraryRoute}>{t.nav.library}</Link>}
                     <Link href={usersRoute}>{t.nav.users}</Link>
                     <Link href="/contest">{t.nav.contest}</Link>
                   </div>

@@ -2,12 +2,12 @@ import { LibraryEditorBack } from "@/components/library/LibraryEditorBack";
 import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { HistoryMilestoneForm } from "@/components/library/HistoryMilestoneForm";
 import { saveHistoryMilestoneFormAction } from "@/lib/actions/library-actions";
-import { requireVerifiedUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryFormOptions } from "@/lib/library-queries";
 
 export default async function NewHistoryMilestonePage() {
-  const [, locale, rawOptions] = await Promise.all([requireVerifiedUser(), getInterfaceLocale(), libraryFormOptions()]);
+  const [, locale, rawOptions] = await Promise.all([requireModerator(), getInterfaceLocale(), libraryFormOptions()]);
   const options = { mathematicians: rawOptions.mathematicians.map((item) => ({ id: item.id, label: item.name })), references: rawOptions.references.map((item) => ({ id: item.id, label: item.canonicalTitle })), concepts: rawOptions.concepts.map((item) => ({ id: item.id, label: item.title })) };
   return <LibraryPageLayout locale={locale} className="library-editor-page" titleBelowHero title={locale === "fr" ? "Ajouter un repère historique" : "Add a historical milestone"}><LibraryEditorBack href="/library/history" locale={locale} /><HistoryMilestoneForm action={saveHistoryMilestoneFormAction.bind(null, null)} locale={locale} options={options} /></LibraryPageLayout>;
 }

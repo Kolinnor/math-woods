@@ -12,9 +12,12 @@ body:has(.problem-detail-shell) {
   background: var(--mw-page);
   color: var(--mw-text);
 }
+/* Reserve the absolute navigation's space even when filters lengthen the
+   progress summary or wrap the actions onto two rows. */
 .problems-page-shell .problems-hero {
-  height: var(--mw-hero-band);
+  height: auto;
   min-height: var(--mw-hero-band);
+  padding-top: calc(var(--mw-header-height) + 0.75rem);
 }
 /* From 12-problem-experience.css */
 /* Problem browser, recommendations, and problem reading experience. */
@@ -2094,9 +2097,14 @@ body:has(.problem-detail-shell) .site-header {
     min-height: 250px;
   }
 
+  .problems-page-shell .problems-hero {
+    /* Match the compact navigation from 91-mobile-density.css. */
+    padding-top: 5rem;
+  }
+
   .problems-page-shell .problems-hero-content {
     gap: 1rem;
-    padding: 4.5rem 0.875rem 1.25rem;
+    padding: 0 0.875rem 1.25rem;
   }
 
   .problems-page-shell .problems-hero-actions {

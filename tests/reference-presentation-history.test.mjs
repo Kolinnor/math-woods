@@ -13,7 +13,7 @@ async function page({query={},status='PUBLISHED',role='ADMIN',count=21}={}) {
  const modules={
   'react/jsx-runtime':require('react/jsx-runtime'),
   'next/navigation':{notFound:()=>{throw new Error('NOT_FOUND');}},
-  '@/lib/auth':{getCurrentUser:async()=>role ? ({id:2,role}) : null},
+  '@/lib/auth':{requireModerator:async()=>{if(!role || !permissions.hasTrustedPrivileges(role))throw Error('TRUSTED_GATE');return {id:2,role};}},
   '@/lib/i18n/server':{getInterfaceLocale:async()=>'fr',getTranslations:async()=>fr},
   '@/lib/library':{libraryLanguage:value=>value==='fr'?'fr':'en'},
   '@/lib/library-queries':{localizedTranslation:(rows,lang)=>rows.find(r=>r.language===lang)??rows[0]},
@@ -41,10 +41,11 @@ test('history uses the chosen language, limits pages and keeps exact before/afte
  assert.ok(elements.some(e=>e.props.href==='/library/references/livre/history?lang=en'));
 });
 test('history enforces the same visibility as a reference before reading revisions',async()=>{
- assert.equal((await page({role:null})).calls.length,1);
- await assert.rejects(page({status:'DRAFT',role:null}),/NOT_FOUND/);
- await assert.rejects(page({status:'DRAFT',role:'USER'}),/NOT_FOUND/);
- await assert.rejects(page({status:'ARCHIVED',role:'USER'}),/NOT_FOUND/);
+ await assert.rejects(page({role:null}),/TRUSTED_GATE/);
+ assert.equal((await page({role:'MODERATOR'})).calls.length,1);
+ await assert.rejects(page({status:'DRAFT',role:null}),/TRUSTED_GATE/);
+ await assert.rejects(page({status:'DRAFT',role:'USER'}),/TRUSTED_GATE/);
+ await assert.rejects(page({status:'ARCHIVED',role:'USER'}),/TRUSTED_GATE/);
  assert.equal((await page({status:'ARCHIVED'})).calls.length,1);
 });
 test('legacy baseline is explained, deleted editors remain readable and invalid cursors are ignored',async()=>{

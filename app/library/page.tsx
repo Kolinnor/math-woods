@@ -15,7 +15,7 @@ import { LibraryMilestoneTypeIcon, LibraryReferenceTypeIcon } from "@/components
 import { LibraryPersonPortrait } from "@/components/library/LibraryPersonPortrait";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { updateLibraryHomepageAction } from "@/lib/actions/library-actions";
-import { getCurrentUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { milestoneTypeLabel, referenceTypeLabel } from "@/lib/library";
@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
 const PUBLISHED = LibraryStatus.PUBLISHED;
 
 export default async function LibraryPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), getCurrentUser(), searchParams, getLibraryEras()]);
+  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), requireModerator(), searchParams, getLibraryEras()]);
   const q = query.q?.trim().slice(0, 160);
   const fr = locale === "fr";
   const copy = libraryCopy[locale];
@@ -159,7 +159,6 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
             </div>
           </div>
           <LibraryFrise locale={locale} eras={eras} milestones={frise.milestones} people={frise.people} />
-          <p className="library-era-zoom-note">{fr ? "Époques à largeur égale" : "Equal-width eras"}</p>
         </section>
 
         <section className="library-home-section">

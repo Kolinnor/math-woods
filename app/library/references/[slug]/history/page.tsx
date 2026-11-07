@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { RevisionDiff } from "@/components/RevisionDiff";
 import { UserName } from "@/components/UserName";
-import { getCurrentUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import { libraryLanguage } from "@/lib/library";
@@ -18,7 +18,7 @@ export default async function ReferencePresentationHistoryPage({ params, searchP
   searchParams: Promise<{ lang?: string; before?: string }>;
 }) {
   const [{ slug }, query, user, locale, t] = await Promise.all([
-    params, searchParams, getCurrentUser(), getInterfaceLocale(), getTranslations()
+    params, searchParams, requireModerator(), getInterfaceLocale(), getTranslations()
   ]);
   const entry = await prisma.libraryReference.findUnique({
     where: { slug },

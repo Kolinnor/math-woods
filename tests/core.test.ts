@@ -5112,7 +5112,7 @@ assert.equal(canViewLibraryEntry({ id: 2, role: Role.MODERATOR }, { createdById:
 assert.equal(canViewLibraryEntry({ id: 2, role: Role.MODERATOR }, { createdById: 1, status: LibraryStatus.PENDING_REVIEW }), true);
 assert.equal(canViewLibraryEntry({ id: 2, role: Role.ADMIN }, { createdById: 1, status: LibraryStatus.ARCHIVED }), true);
 
-// Public reading, verified contributions and administration have distinct gates.
+// Library access requires trusted membership; administration stays admin-only.
 assert.equal(canUseAdminTools(Role.USER), false);
 assert.equal(canUseAdminTools(Role.MODERATOR), false);
 assert.equal(canUseAdminTools(Role.ADMIN), true);
@@ -5121,8 +5121,7 @@ for (const path of tsxFiles(join("app", "library")).filter((path) => path.endsWi
   const source = readFileSync(path, "utf-8");
   const normalized = path.replaceAll("\\", "/");
   if (normalized.includes("/eras/")) assert.match(source, /requireAdmin\(\)/, path);
-  else if (/\/(new|edit|contribute)\/page\.tsx$/.test(normalized)) assert.match(source, /requireVerifiedUser\(\)/, path);
-  else assert.doesNotMatch(source, /requireAdmin\(\)|requireVerifiedUser\(\)/, path);
+  else assert.match(source, /requireModerator\(\)/, path);
 }
 const libraryActionsSource = readFileSync(join("lib", "actions", "library-actions.ts"), "utf-8");
 const libraryActionBodies = libraryActionsSource.split(/export async function /).slice(1);
@@ -5132,16 +5131,17 @@ for (const body of libraryActionBodies) {
     assert.match(body, /requireVerifiedUser\(\)/);
     assert.match(body, /status: LibraryStatus.PUBLISHED/);
   } else if (body.startsWith("updateLibraryHomepageAction(")) assert.match(body, /requireAdmin\(\)/);
-  else assert.match(body, /requireVerifiedUser\(\)/);
+  else assert.match(body, /requireModerator\(\)/);
 }
 assert.doesNotMatch(libraryActionsSource, /requireUser\(|Role\.MODERATOR/);
 const libraryExportSource = readFileSync(join("app", "library", "references", "export", "route.ts"), "utf-8");
 assert.doesNotMatch(libraryExportSource, /requireAdmin|canUseAdminTools/);
 assert.match(libraryExportSource, /status: LibraryStatus.PUBLISHED, searchable: true, mergedIntoId: null/);
 assert.match(libraryExportSource, /"Cache-Control": "private, no-store"/);
-assert.match(sitemapSource, /\/library/);
+assert.doesNotMatch(sitemapSource, /\/library/);
 assert.equal((layoutSource.match(/<Link href=\{libraryRoute\}/g) ?? []).length, 2);
-assert.doesNotMatch(layoutSource, /canUseAdminTools\(user\) && <Link href=\{libraryRoute\}/);
+assert.equal((layoutSource.match(/canUseModerationTools\(user\) && <Link href=\{libraryRoute\}/g) ?? []).length, 2);
+assert.match(libraryExportSource, /hasTrustedPrivileges\(user.role\)/);
 assert.match(conceptActionsSource, /submittedConceptCitations\(formData\)/);
 assert.match(conceptActionsSource, /validateConceptCitations\(/);
 assert.match(conceptActionsSource, /syncConceptCitations\(/);

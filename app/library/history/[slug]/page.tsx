@@ -9,7 +9,7 @@ import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
 import { LibraryBreadcrumb, LibraryEntryRail, LibraryEntryToolbar } from "@/components/library/LibraryEntryNavigation";
 import { LibraryMilestoneTypeIcon, LibraryReferenceTypeIcon } from "@/components/library/LibraryIcons";
 import { LibraryPersonPortrait } from "@/components/library/LibraryPersonPortrait";
-import { getCurrentUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryLanguage, milestoneTypeLabel } from "@/lib/library";
@@ -38,7 +38,7 @@ async function chronology(id: number) {
 export default async function HistoryMilestonePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; returnTo?: string }> }) {
   const { slug } = await params;
   const [locale, user, eras, entry] = await Promise.all([
-    getInterfaceLocale(), getCurrentUser(), getLibraryEras(),
+    getInterfaceLocale(), requireModerator(), getLibraryEras(),
     prisma.historyMilestone.findUnique({ where: { slug }, include: { translations: true, createdBy: true, reviewedBy: true, mathematicians: { where: { mathematician: { status: "PUBLISHED" } }, include: { mathematician: { include: { translations: true } } }, orderBy: { position: "asc" } }, referenceLinks: { where: { reference: { status: "PUBLISHED" } }, include: { reference: { include: { translations: true } } }, orderBy: { position: "asc" } }, conceptLinks: { where: { concept: { canAppearInConceptBrowser: true } }, include: { concept: true }, orderBy: { position: "asc" } } } })
   ]);
   if (!entry || !canViewLibraryEntry(user, entry)) notFound();

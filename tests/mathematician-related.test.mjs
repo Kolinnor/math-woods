@@ -72,7 +72,7 @@ test('unavailable new targets fail before any link deletion', async () => {
 test('search requires access and returns a bounded list with one preferred translation per concept', async () => {
   let user = null, searches = 0, limit = false;
   const api = compiled('../app/api/library/related/search/route.ts', {
-    '@/lib/auth': { getCurrentUser: async () => user }, '@/lib/permissions': { isVerifiedContributor: u => u.role === 'ADMIN' || Boolean(u.emailVerifiedAt) },
+    '@/lib/auth': { getCurrentUser: async () => user }, '@/lib/permissions': { hasTrustedPrivileges: role => ['MODERATOR','ADMIN','OWNER'].includes(role) },
     '@/lib/rate-limit': { assertRateLimit: async () => { if (limit) throw new Error(); } },
     '@/lib/markdown': { renderInlineMarkdown: async x => x }, '@/lib/translation-routing': { selectContentTranslationsByGroup },
     '@/lib/db': { prisma: { concept: { findMany: async ({ where }) => { searches++; assert.equal(where.status.not, 'MISSING'); return Array.from({ length: 12 }, (_, i) => ['en', 'fr'].map(language => ({ id: 2 * i + Number(language === 'fr'), title: `Concept ${i}`, slug: `${i}-${language}`, language, translationGroupId: String(i) }))).flat(); } } } }
@@ -80,6 +80,8 @@ test('search requires access and returns a bounded list with one preferred trans
   const request = offset => new Request(`http://localhost/api/library/related/search?kind=CONCEPT&q=concept&lang=fr&offset=${offset}`);
   assert.equal((await api.GET(request(0))).status, 403); assert.equal(searches, 0);
   user = { id: 1, role: 'USER', emailVerifiedAt: new Date() };
+  assert.equal((await api.GET(request(0))).status, 403); assert.equal(searches, 0);
+  user.role = 'MODERATOR';
   const response = await api.GET(request(0)), first = await response.json();
   assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
   assert.equal(first.results.length, 10); assert.equal(first.more, true); assert.ok(first.results.every(r => r.language === 'fr'));

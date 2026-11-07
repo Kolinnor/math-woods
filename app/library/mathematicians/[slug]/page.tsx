@@ -9,7 +9,7 @@ import { LibraryAttribution } from "@/components/library/LibraryAttribution";
 import { LibraryBreadcrumb, LibraryEntryRail, LibraryEntryToolbar } from "@/components/library/LibraryEntryNavigation";
 import { LibraryPersonPortrait } from "@/components/library/LibraryPersonPortrait";
 import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
-import { getCurrentUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { MathematicianRelatedList } from "@/components/library/MathematicianRelatedList";
@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 type PageProps = { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; returnTo?: string }> };
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
-  const user = await getCurrentUser();
+  const user = await requireModerator();
   const { slug } = await params;
   const [locale, entry] = await Promise.all([getInterfaceLocale(), prisma.mathematician.findUnique({ where: { slug }, select: { status: true, createdById: true, name: true, translations: { select: { language: true, displayName: true } } } })]);
   const query = await searchParams;
@@ -56,7 +56,7 @@ export default async function LibraryMathematicianPage({ params, searchParams }:
   const { slug } = await params;
   const [locale, user, eras, entry] = await Promise.all([
     getInterfaceLocale(),
-    getCurrentUser(),
+    requireModerator(),
     getLibraryEras(),
     prisma.mathematician.findUnique({
       where: { slug },

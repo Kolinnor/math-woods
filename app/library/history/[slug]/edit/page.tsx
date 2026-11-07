@@ -4,7 +4,7 @@ import { LibraryPageLayout } from "@/components/library/LibraryPageLayout";
 import { HistoryMilestoneForm } from "@/components/library/HistoryMilestoneForm";
 import { LibraryTranslationEditorNav } from "@/components/library/LibraryTranslationEditorNav";
 import { saveHistoryMilestoneFormAction } from "@/lib/actions/library-actions";
-import { requireVerifiedUser } from "@/lib/auth";
+import { requireModerator } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryLanguage } from "@/lib/library";
@@ -15,7 +15,7 @@ import { LibraryReviewActions } from "@/components/library/LibraryReviewActions"
 
 export default async function EditHistoryMilestonePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ lang?: string }> }) {
   const { slug } = await params;
-  const [user, locale, query, entry, rawOptions] = await Promise.all([requireVerifiedUser(), getInterfaceLocale(), searchParams, prisma.historyMilestone.findUnique({ where: { slug }, include: { translations: true, mathematicians: true, referenceLinks: true, conceptLinks: true } }), libraryFormOptions()]);
+  const [user, locale, query, entry, rawOptions] = await Promise.all([requireModerator(), getInterfaceLocale(), searchParams, prisma.historyMilestone.findUnique({ where: { slug }, include: { translations: true, mathematicians: true, referenceLinks: true, conceptLinks: true } }), libraryFormOptions()]);
   if (!entry || !canEditLibraryDraft(user, entry)) notFound();
   const contentLanguage = libraryLanguage(query.lang ?? locale);
   const translation = entry.translations.find((item) => item.language === contentLanguage) ?? null;
