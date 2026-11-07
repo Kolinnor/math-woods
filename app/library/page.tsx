@@ -15,7 +15,7 @@ import { LibraryMilestoneTypeIcon, LibraryReferenceTypeIcon } from "@/components
 import { LibraryPersonPortrait } from "@/components/library/LibraryPersonPortrait";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { updateLibraryHomepageAction } from "@/lib/actions/library-actions";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { milestoneTypeLabel, referenceTypeLabel } from "@/lib/library";
@@ -32,12 +32,12 @@ export const dynamic = "force-dynamic";
 const PUBLISHED = LibraryStatus.PUBLISHED;
 
 export default async function LibraryPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), requireAdmin(), searchParams, getLibraryEras()]);
+  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), getCurrentUser(), searchParams, getLibraryEras()]);
   const q = query.q?.trim().slice(0, 160);
   const fr = locale === "fr";
   const copy = libraryCopy[locale];
   const isAdmin = Boolean(user && canUseAdminTools(user));
-  const reviewer = hasTrustedPrivileges(user.role);
+  const reviewer = Boolean(user && hasTrustedPrivileges(user.role));
   const currentYear = new Date().getFullYear();
 
   const [selection, candidates, recentMilestones, recentPeople, recentReferences, pending, searchResults] = await Promise.all([

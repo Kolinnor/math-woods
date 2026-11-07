@@ -1,3 +1,4 @@
+import { contentWithProofs } from "../lib/concept-proofs.ts";
 import { contentWithHistory } from "../lib/content-history.ts";
 import { PrismaClient } from "@prisma/client";
 import { extractConceptReferences } from "../lib/concept-link-references.ts";
@@ -98,7 +99,7 @@ async function main() {
       select: { id: true, bodyMarkdown: true, language: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, additionalConceptSlugs: true }
     }),
     prisma.concept.findMany({
-      select: { id: true, bodyMarkdown: true, language: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, additionalConceptSlugs: true }
+      select: { id: true, bodyMarkdown: true, proofs: true, language: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, additionalConceptSlugs: true }
     }),
     prisma.problemProof.findMany({
       select: {
@@ -121,7 +122,7 @@ async function main() {
   const indexedLinks = [];
   for (const source of sourcePages) {
     const citedGroups = new Set();
-    for (const link of extractConceptReferences(contentWithHistory(source.bodyMarkdown, source))) {
+    for (const link of extractConceptReferences(contentWithProofs(contentWithHistory(source.bodyMarkdown, source), source))) {
       const candidates = candidatesByLookup.get(link.targetSlug) ?? [];
       const matchedConcept = candidates.find((candidate) => candidate.language === source.language) ?? candidates[0];
       const translatedConcept = matchedConcept

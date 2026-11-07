@@ -1,8 +1,10 @@
 # Math Woods Library
 
-## Temporary admin preview (2026-09-04)
+## Public access (2026-11-07)
 
-The Library management pages and exports are currently restricted to ADMIN and OWNER accounts; they are excluded from the public sitemap and marked noindex. Verified contributors can search published, searchable references through `/api/references/search` and optionally submit a new reference through `/contributing/references`. These narrow entry points do not open the Library management interface. Review notifications go only to admins and the owner during this preview. The broader publication workflow below describes the intended future public release, not current access.
+The Library home, catalogues, published entries, reference presentation history and bibliographic exports are accessible to everyone, including visitors without an account. Published entries appear in the sitemap. Drafts, entries awaiting review and archived entries retain their existing visibility restrictions.
+
+Verified members can create entries and edit their own drafts or entries needing work. Editing published entries, reviewing and archiving retain the existing trusted-contributor checks. Era management, homepage curation and its entry picker remain restricted to ADMIN and OWNER accounts. Contributor pickers require a verified account and filter results using entry visibility rules. Review notifications currently go to admins and the owner.
 
 The Library replaces the separate mathematician and known problem-source interfaces. It keeps three public catalogues under `/library`:
 
@@ -43,8 +45,8 @@ translation fallback. Other names are collapsed on the detail page.
 
 Search matches aliases and translated names. Nonblocking suggestions show similar
 entries with dates and portraits; homonyms remain valid and are never merged
-automatically. The suggestion API retains the Library's admin/owner access check
-and entry visibility rules. The server ranks a compact index for this small
+automatically. The suggestion API requires a verified contributor account and
+retains entry visibility rules. The server ranks a compact index for this small
 catalogue; biographies are not loaded and the client receives at most five suggestions.
 
 Migration `20260906190000_mathematician_aliases` adds an empty array without changing
@@ -113,7 +115,7 @@ to BibTeX `crossref`: an edition is exported with its own bibliographic data.
 Additional imported fields survive export. Original TeX spelling is reused when it
 still represents the current structured value; changed or cleared fields supersede
 the source. String macros are expanded so separately imported records cannot collide.
-The admin JSON export includes generated `bibtex` and separate `originalBibtex`.
+The public JSON export includes generated `bibtex` and separate `originalBibtex`.
 
 Migration `20260905230000_concept_citations` marks existing records for a one-time
 upgrade. `npm run bibliography:check` previews it; `npm run bibliography:upgrade`
@@ -129,7 +131,8 @@ separates bibliographic metadata from each page’s text, URL, locator, note and
 Free citations use `@misc` with a note, without invented titles, authors or years.
 Hidden problem citations are filtered using the same access rules as reading the
 page; exports are never publicly cached. Unavailable catalogue records fall back to
-the saved free citation. The full Library export retains its admin restriction.
+the saved free citation. The full Library export is public and includes only published,
+searchable, unmerged references; unpublished parent works are not exposed.
 
 Validation: `npm run test:bibliography`; the database case uses only the isolated
 `CITATION_TEST_DATABASE_URL` on local port 55436.

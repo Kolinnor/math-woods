@@ -93,3 +93,20 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--mw-green) 24%, transparent);
   scroll-margin-top: 24px;
 }
+
+
+/* Optional concept proofs: quiet, keyboard-accessible folds after the statement. */
+.concept-proofs { display: grid; gap: .65rem; margin-block: 1rem; min-width: 0; }
+.concept-proof { border: 1px solid var(--line); border-radius: .65rem; background: var(--panel); min-width: 0; }
+.concept-proof > summary { padding: 1rem 1.25rem; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.concept-proof > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.concept-proof-body { padding: 0 1.25rem 1.25rem; min-width: 0; }
+.concept-proofs-editor { display: grid; gap: 1rem; min-width: 0; }
+.concept-proof-editor { border: 1px solid var(--line); border-radius: .65rem; padding: 1rem; display: grid; gap: .8rem; min-width: 0; }
+.concept-proof-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.concept-proof-editor-heading h3 { margin: 0; font-weight: 600; }
+@media (max-width: 600px) {
+  .concept-proof > summary { padding: .85rem 1rem; }
+  .concept-proof-body { padding: 0 1rem 1rem; }
+  .concept-proof-editor { padding: .75rem; }
+}

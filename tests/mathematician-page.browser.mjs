@@ -17,7 +17,7 @@ let locale='fr', entry;
 const mocks={
   'next/link':{default:({href,children,...props})=>React.createElement('a',{href,...props},children)},
   'next/navigation':{notFound:()=>{throw new Error('Not found');}},
-  '@/lib/auth':{requireAdmin:async()=>({id:2,role:'OWNER'})},
+  '@/lib/auth':{getCurrentUser:async()=>({id:2,role:'OWNER'})},
   // Neighbouring entries (contemporaries, timeline) are not part of these fixtures.
   '@/lib/db':{prisma:{mathematician:{findUnique:async()=>entry,findMany:async()=>[]},historyMilestone:{findUnique:async()=>entry,findMany:async()=>[]},libraryReference:{findUnique:async()=>entry},libraryEra:{findMany:async()=>[]}}},
   '@/lib/i18n/server':{getInterfaceLocale:async()=>locale},

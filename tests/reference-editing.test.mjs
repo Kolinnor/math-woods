@@ -37,7 +37,7 @@ function harness(status, race = false) {
   const unexpected = () => { throw new Error("Unexpected notification or publication"); };
   const modules = {
     "@prisma/client": require("@prisma/client"),
-    "@/lib/auth": { requireAdmin: async () => ({ id: 2, role: "ADMIN" }) },
+    "@/lib/auth": { requireVerifiedUser: async () => ({ id: 2, role: "ADMIN" }) },
     "@/lib/permissions": permissions,
     "@/lib/content-limits": limits,
     "@/lib/reference-title": { requireReadableReferenceTitle },

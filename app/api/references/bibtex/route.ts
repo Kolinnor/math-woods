@@ -1,11 +1,11 @@
 import { getCurrentUser } from "@/lib/auth";
-import { canUseAdminTools } from "@/lib/permissions";
+import { isVerifiedContributor } from "@/lib/permissions";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { importBibtexFields, referenceBibtexReport } from "@/lib/reference-bibtex";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user || !canUseAdminTools(user)) return Response.json({ error: "Administrator access required." }, { status: 403 });
+  if (!user || !isVerifiedContributor(user)) return Response.json({ error: "A verified account is required." }, { status: 403 });
   try { await assertRateLimit(`bibtex-validation:${user.id}`, 30, 60_000); }
   catch { return Response.json({ error: "Too many requests." }, { status: 429 }); }
   const text = await request.text();

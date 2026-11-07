@@ -64,7 +64,7 @@ function harness() {
   const redirects = [];
   const modules = {
     "@prisma/client": require("@prisma/client"),
-    "@/lib/auth": { requireAdmin: async () => ({ id: 2 }) },
+    "@/lib/auth": { requireVerifiedUser: async () => ({ id: 2 }) },
     "@/lib/db": { prisma: { mathematician: { findUnique: async () => state }, $transaction: async fn => fn(tx) } },
     "@/lib/permissions": { canEditLibraryMathematician: () => true, canCreateLibraryEntry: () => true },
     "@/lib/rate-limit": { assertRateLimit: async () => {} },
@@ -142,7 +142,7 @@ test("suggestions enforce access, visibility, exclusion and a bounded private re
   const visible = { OR: [{ status: "PUBLISHED" }, { createdById: 2, status: "DRAFT" }] };
   const modules = {
     "@/lib/auth": { getCurrentUser: async () => user },
-    "@/lib/permissions": { canUseAdminTools: u => u.role === "ADMIN" },
+    "@/lib/permissions": { isVerifiedContributor: u => u.role === "ADMIN" || Boolean(u.emailVerifiedAt) },
     "@/lib/rate-limit": { assertRateLimit: async () => {} },
     "@/lib/mathematician-names": names,
     "@/lib/library-queries": { visibleLibraryEntryWhere: () => visible, searchMathematicians: async (...args) => {
@@ -157,7 +157,7 @@ test("suggestions enforce access, visibility, exclusion and a bounded private re
   user = { id: 2, role: "MEMBER" };
   assert.equal((await exports.GET(request)).status, 403);
   assert.equal(searches.length, 0);
-  user.role = "ADMIN";
+  user.emailVerifiedAt = new Date();
   await exports.GET(new Request("https://example.test/?q=!!!"));
   assert.equal(searches.length, 0);
   const response = await exports.GET(request);

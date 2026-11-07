@@ -1,3 +1,4 @@
+import * as conceptProofs from "../lib/concept-proofs.ts";
 import * as additionalLinks from '../lib/additional-concept-links.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -111,6 +112,7 @@ test('the preview API renders history only when enabled and rejects oversized in
   const { POST } = load('app/api/content-preview/route.ts', {
     'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
     '@/lib/auth': { getCurrentUser: async () => ({ id: 1 }) },
+    '@/lib/concept-proofs': conceptProofs,
     '@/lib/content-limits': limits,
     '@/lib/additional-concept-links': additionalLinks, '@/lib/additional-concept-links-db': { uncitedAdditionalConceptLinks: async (...args) => { resolvedLinks.push(args); return args[0].map(slug => ({ slug, title: slug })); } }, '@/lib/content-history': history,
     '@/lib/rate-limit': { assertRateLimit: async () => {} },

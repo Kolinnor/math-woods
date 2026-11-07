@@ -27,7 +27,7 @@ function harness(status, actorId = 2, race = false) {
   const notifications = [];
   const modules = {
     '@prisma/client': require('@prisma/client'),
-    '@/lib/auth': { requireAdmin: async () => ({ id: actorId, role: 'ADMIN' }) },
+    '@/lib/auth': { requireVerifiedUser: async () => ({ id: actorId, role: 'ADMIN' }) },
     '@/lib/permissions': permissions,
     '@/lib/content-limits': limits,
     '@/lib/mathematician-names': names,

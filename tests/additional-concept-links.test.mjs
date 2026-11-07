@@ -1,3 +1,4 @@
+import * as conceptProofs from "../lib/concept-proofs.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -49,6 +50,7 @@ function fixture() {
   const resolver = load('lib/additional-concept-links-db.ts', { '@/lib/db': { prisma: db }, './concept-link-references.ts': references });
   const { syncInternalLinks } = load('lib/internal-links.ts', {
     '@/lib/db': { prisma: db }, '@/lib/additional-concept-links-db': resolver,
+    './concept-proofs.ts': conceptProofs,
     './concept-link-references.ts': references, './content-history.ts': history,
     '@/lib/slug': slug, '@/lib/wikilinks': wikilinks
   });

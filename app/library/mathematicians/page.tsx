@@ -15,7 +15,7 @@ import { LibraryPagination } from "@/components/library/LibraryPagination";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { MathematicianPeriodFilter } from "@/components/library/MathematicianPeriodFilter";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryPage } from "@/lib/library";
@@ -30,13 +30,13 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 24;
 
 export default async function LibraryMathematiciansPage({ searchParams }: { searchParams: Promise<BrowserQuery> }) {
-  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), requireAdmin(), searchParams, getLibraryEras()]);
+  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), getCurrentUser(), searchParams, getLibraryEras()]);
   const fr = locale === "fr", currentYear = new Date().getFullYear();
   const presets = libraryEraPresets(eras, MIN_HISTORY_YEAR);
   const filters = parseMathematicianFilters(query, locale, currentYear, presets);
   const visible = visibleLibraryEntryWhere(user);
   const where: Prisma.MathematicianWhereInput = {
-    AND: [filters.review && hasTrustedPrivileges(user.role) ? { OR: [visible, { status: "PENDING_REVIEW" }] } : visible,
+    AND: [filters.review && user && hasTrustedPrivileges(user.role) ? { OR: [visible, { status: "PENDING_REVIEW" }] } : visible,
       { translations: { some: { language: { in: filters.languages } } } }]
   };
   const people = await prisma.mathematician.findMany({ where, select: {
@@ -59,7 +59,7 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
   const rows = await prisma.mathematician.findMany({ where: { AND: [where, { id: { in: selected.map(row => row.person.id) } }] }, include: { translations: true } });
   const rowById = new Map(rows.map(row => [row.id, row]));
   const copy = libraryCopy[locale];
-  const canAdd = isVerifiedContributor(user);
+  const canAdd = Boolean(user && isVerifiedContributor(user));
   const activeQuery: BrowserQuery = {
     q: filters.q, languagesSet: "1", language: filters.languages, sort: filters.sort === "alphabetical" ? undefined : filters.sort,
     era: filters.era, from: !filters.era && filters.period ? String(filters.period.from) : undefined,
@@ -94,7 +94,7 @@ export default async function LibraryMathematiciansPage({ searchParams }: { sear
         <LibraryEraStrip locale={locale} eras={eras} counts={eraCounts} totalCount={allEraMatches.length} active={libraryEraBySlug(eras, filters.era)?.slug ?? null} allActive={!filters.period}
           label={fr ? "Époques" : "Eras"} allHref={mathematiciansHref({ ...activeQuery, era: undefined, from: undefined, to: undefined })}
           hrefFor={era => mathematiciansHref({ ...activeQuery, era, from: undefined, to: undefined })}
-          manageHref={canUseAdminTools(user) ? "/library/eras" : undefined} />
+          manageHref={user && canUseAdminTools(user) ? "/library/eras" : undefined} />
         <div className="library-results-header"><p className="result-summary" role="status">{fr ? `${matches.length} fiche${matches.length === 1 ? "" : "s"}` : `${matches.length} ${matches.length === 1 ? "entry" : "entries"}`}</p>
           <ProblemSortControl value={filters.sort} defaultValue="alphabetical" options={sortOptions} label={fr ? "Trier :" : "Sort:"} ariaLabel={fr ? "Trier les mathématiciens" : "Sort mathematicians"} />
         </div>

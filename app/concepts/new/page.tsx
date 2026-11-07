@@ -1,3 +1,5 @@
+import { ConceptProofsEditor } from "@/components/ConceptProofsEditor";
+import { parseConceptProofs } from "@/lib/concept-proofs";
 import { AdditionalConceptLinksEditor } from "@/components/AdditionalConceptLinksEditor";
 import { resolveAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
 import { ContentHistoryEditor } from "@/components/ContentHistoryEditor";
@@ -60,6 +62,7 @@ export default async function NewConceptPage({
           title: true,
           bodyMarkdown: true,
           historyMarkdown: true,
+          proofs: true,
           additionalConceptSlugs: true,
           historyEnabled: true,
           historySpoiler: true,
@@ -202,6 +205,8 @@ export default async function NewConceptPage({
             draftKey={`concept:new:${draftSession}:body`}
           />
         </div>
+        <ConceptProofsEditor locale={interfaceLocale} draftKey={`concept:new:${draftSession}:proofs`}
+          initial={await Promise.all(parseConceptProofs(sourceConcept?.proofs ?? []).map(async proof => ({ ...proof, markdown: await prepareMarkdownForTranslation(proof.markdown, initialLanguage) })))} />
         <AdditionalConceptLinksEditor locale={interfaceLocale} initial={await resolveAdditionalConceptLinks(sourceConcept?.additionalConceptSlugs ?? [], initialLanguage)} />
         <ContentHistoryEditor locale={interfaceLocale} allowSpoiler={false}
           initial={sourceConcept ? { ...sourceConcept, historyMarkdown: await prepareHistoryForTranslation(sourceConcept.historyMarkdown, initialLanguage) } : undefined}
@@ -261,6 +266,7 @@ export default async function NewConceptPage({
           language={sourceConcept.language}
           markdown={sourceConcept.bodyMarkdown}
           historyMarkdown={sourceConcept.historyMarkdown}
+          proofs={sourceConcept.proofs}
         />
       )}
     </div>

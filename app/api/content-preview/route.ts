@@ -1,3 +1,4 @@
+import { contentWithProofs, parseConceptProofs } from "@/lib/concept-proofs";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { CONTENT_LIMITS } from "@/lib/content-limits";
@@ -44,12 +45,14 @@ export async function POST(request: Request) {
   ]);
 
   try {
+    const rawProofs = parseConceptProofs((payload as { proofs?: unknown }).proofs ?? []);
+    const proofs = await Promise.all(rawProofs.filter(proof => proof.markdown.trim()).map(async proof => ({ id: proof.id, title: proof.title, html: await renderMarkdown(proof.markdown) })));
     const citations = parseProblemCitations((payload as { citations?: unknown }).citations ?? []);
     const extras = payload as { additionalConceptSlugs?: unknown; language?: unknown };
     const slugs = parseAdditionalConceptSlugs(extras.additionalConceptSlugs ?? []);
-    const additionalLinks = await uncitedAdditionalConceptLinks(slugs, contentWithHistory(bodyMarkdown, { historyMarkdown, historyEnabled: historyEnabled === true, historySpoiler: historySpoiler === true }), typeof extras.language === "string" && extras.language.length <= 10 ? extras.language : "en");
-    return NextResponse.json({ titleHtml, bodyHtml, historyHtml, historySpoiler: historySpoiler === true, additionalLinks, citations, isOriginal: (payload as { isOriginal?: unknown }).isOriginal === true });
+    const additionalLinks = await uncitedAdditionalConceptLinks(slugs, contentWithProofs(contentWithHistory(bodyMarkdown, { historyMarkdown, historyEnabled: historyEnabled === true, historySpoiler: historySpoiler === true }), { proofs: rawProofs }), typeof extras.language === "string" && extras.language.length <= 10 ? extras.language : "en");
+    return NextResponse.json({ titleHtml, bodyHtml, proofs, historyHtml, historySpoiler: historySpoiler === true, additionalLinks, citations, isOriginal: (payload as { isOriginal?: unknown }).isOriginal === true });
   } catch {
-    return NextResponse.json({ error: "Invalid links or references." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid proofs, links or references." }, { status: 400 });
   }
 }

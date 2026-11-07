@@ -18,14 +18,14 @@ import {validateReferenceAuthors} from '../lib/reference-authors-db.ts';
 import {localizeNotification} from '../lib/notification-copy.ts';
 const require=createRequire(import.meta.url),version=new Date('2026-09-01T12:00:00Z');
 const compiled=ts.transpileModule(readFileSync('lib/actions/library-actions.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-function harness(entity, overrides={}) {
+function harness(entity, overrides={}, actor={id:2,role:"ADMIN",emailVerifiedAt:version}) {
   const writes=[],credits=[];
   const entry={id:1,slug:'example',name:'Example',canonicalTitle:'Example',status:'PUBLISHED',createdById:1,lastEditedById:1,needsReviewAfterEdit:true,reviewedAt:null,publishedAt:version,updatedAt:version,translations:[{title:'Example',displayTitle:'Example',displayName:'Example'}],...overrides};
   const model={findFirst:async()=>null,findUnique:async()=>entry,create:async({data})=>{writes.push(data);return entry;},updateMany:async({where,data})=>{assert.equal(where.updatedAt,version);writes.push(data);return {count:1};}};
   const db={mathematician:model,libraryReference:model,historyMilestone:model,libraryReferenceContribution:{upsert:async args=>credits.push(args)},user:{findMany:async()=>{throw new Error('Library actions must not look up notification recipients');}},notification:{updateMany:async()=>{throw new Error('Library actions must not manage notifications');}},$transaction:async cb=>cb(db)};
   const modules={
     '@prisma/client':require('@prisma/client'),'@/lib/db':{prisma:db},
-    '@/lib/auth':{requireAdmin:async()=>({id:2,role:'ADMIN',emailVerifiedAt:version}),requireVerifiedUser:async()=>({id:2,role:'USER',emailVerifiedAt:version})},
+    '@/lib/auth':{requireAdmin:async()=>({id:2,role:'ADMIN',emailVerifiedAt:version}),requireVerifiedUser:async()=>actor},
     '@/lib/permissions':permissions,'@/lib/content-limits':limits,'@/lib/mathematician-names':names,'@/lib/portrait':portraits,'@/lib/mathematician-related':related,'@/lib/mathematician-browser':browser,'@/lib/history-period':periods,'@/lib/reference-title':titles,
     '@/lib/reference-editions':{readReferenceBibliography:()=>({}),validateReferenceWork:async()=>null},
     '@/lib/reference-authors':referenceAuthors,'@/lib/reference-authors-db':{validateReferenceAuthors},
@@ -54,6 +54,24 @@ test('new references use the single title for both bibliography and the selected
   await h.actions.createLibraryReferenceAction(h.form);
   assert.equal(h.writes[0].canonicalTitle,'La Science et l’Hypothèse');
   assert.equal(h.writes[0].translations.create.displayTitle,'La Science et l’Hypothèse');
+});
+
+test('verified ordinary members can create entries but cannot edit published entries or perform reviews',async()=>{
+  const member={id:2,role:'USER',emailVerifiedAt:version};
+  for(const [entity,create,update] of [
+    ['mathematician','createMathematicianAction','updateMathematicianAction'],
+    ['reference','createLibraryReferenceAction','updateLibraryReferenceAction'],
+    ['milestone','createHistoryMilestoneAction','updateHistoryMilestoneAction']
+  ]) {
+    const creation=harness(entity,{},member);await creation.actions[create](creation.form);
+    assert.equal(creation.writes[0].status,'PUBLISHED');
+    const edit=harness(entity,{},member);
+    await assert.rejects(edit.actions[update](1,edit.form),/cannot edit/);
+    assert.equal(edit.writes.length,0);
+    await assert.rejects(edit.actions.reviewLibraryEntryAction(entity,1,'publish',edit.form),/trusted contributor/);
+    await assert.rejects(edit.actions.reviewLibraryEntryAction(entity,1,'archive',edit.form),/Only admins/);
+    assert.equal(edit.writes.length,0);
+  }
 });
 
 test('optional catalogue additions also publish immediately',async()=>{

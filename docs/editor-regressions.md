@@ -8,6 +8,17 @@ The goal is not ceremony. The goal is to stop a new fix from quietly undoing an 
 
 Entries are ordered newest first; add new dated entries above the older ones.
 
+## 2026-11-07 - Multiple concept proof editors keep stable input and drafts
+
+Proof editors report their Markdown to a parent-owned, receipt-protected draft.
+Do not feed the changing Markdown back as `initialValue`: that prop is part of
+CodeMirror's setup dependencies and would reconstruct the editor on each keystroke,
+losing focus, selection and undo state. Freeze it for the lifetime of each proof
+editor; remount only for explicit draft recovery. Keep stable proof IDs when
+reordering. Read the real editor textareas when submitting or previewing, so the
+last keystroke is included even before the parent notification effect runs.
+Failed saves must retain the complete list, titles, order and Markdown together.
+
 ## 2026-10-13 - Concept aliases shared by translations
 
 Concept link suggestions must match aliases across a translation family before

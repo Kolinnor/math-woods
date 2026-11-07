@@ -21,7 +21,7 @@ const alias={
   'next/link':write('link.js',`import React from 'react';import {useRouter} from './navigation.js';export default function Link({href,children,...props}){const router=useRouter();return React.createElement('a',{...props,href,onClick:e=>{if(!e.ctrlKey&&!e.metaKey){e.preventDefault();router.replace(href)}}},children)}`),
   '@prisma/client':client,
   '@/lib/db':db,
-  '@/lib/auth':write('auth.js',`export const requireAdmin=async()=>({id:2,role:'OWNER',emailVerifiedAt:new Date()});`),
+  '@/lib/auth':write('auth.js',`export const getCurrentUser=async()=>({id:2,role:'OWNER',emailVerifiedAt:new Date()});`),
   '@/lib/i18n/server':write('locale.js',`export const getInterfaceLocale=async()=>window.locale;`),
   '@/lib/library-queries':write('queries.js',`export const visibleLibraryEntryWhere=user=>({OR:[{status:'PUBLISHED'},{createdById:user.id,status:{in:['DRAFT','PENDING_REVIEW','NEEDS_WORK']}}]});`),
   '@/components/AsyncMarkdownInline':write('markdown.js',`import React from 'react';export const AsyncMarkdownInline=({markdown})=>React.createElement('span',null,markdown);`),

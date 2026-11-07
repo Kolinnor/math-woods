@@ -14,7 +14,7 @@ import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
 import { LibraryCatalogueForm, LibraryLanguageFilter } from "@/components/library/LibraryCatalogueForm";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryPage, milestoneTypeLabel } from "@/lib/library";
@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 30;
 
 export default async function LibraryHistoryPage({ searchParams }: { searchParams: Promise<{ era?: string; q?: string; page?: string; language?: string; sort?: string }> }) {
-  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), requireAdmin(), searchParams, getLibraryEras()]);
+  const [locale, user, query, eras] = await Promise.all([getInterfaceLocale(), getCurrentUser(), searchParams, getLibraryEras()]);
   const fr = locale === "fr";
   const selectedEra = libraryEraBySlug(eras, query.era);
   const era = selectedEra?.slug;
@@ -79,7 +79,7 @@ export default async function LibraryHistoryPage({ searchParams }: { searchParam
   const grouped = sort !== "updated" && !selectedEra;
   const Title = grouped ? "h3" : "h2";
 
-  return <LibraryPageLayout locale={locale} className="library-catalogue-page library-history-page" title={copy.history} description={fr ? "Découvertes, idées et rencontres à travers les siècles." : "Discoveries, ideas and encounters across the centuries."} actions={isVerifiedContributor(user) && <Link className="button primary" href="/library/history/new"><Plus size={16} aria-hidden="true" />{fr ? "Ajouter un repère" : "Add a milestone"}</Link>}>
+  return <LibraryPageLayout locale={locale} className="library-catalogue-page library-history-page" title={copy.history} description={fr ? "Découvertes, idées et rencontres à travers les siècles." : "Discoveries, ideas and encounters across the centuries."} actions={Boolean(user && isVerifiedContributor(user)) && <Link className="button primary" href="/library/history/new"><Plus size={16} aria-hidden="true" />{fr ? "Ajouter un repère" : "Add a milestone"}</Link>}>
     <LibraryTabs active="history" locale={locale} />
     <div className="library-catalogue-workspace">
       <aside className="library-catalogue-aside" aria-label={fr ? "Filtres de l’histoire" : "History filters"}>
@@ -92,7 +92,7 @@ export default async function LibraryHistoryPage({ searchParams }: { searchParam
         <LibraryEraStrip locale={locale} eras={eras} counts={eraCounts} totalCount={years.length} active={era ?? null} label={fr ? "Époques" : "Eras"}
           allHref={libraryCatalogueHref("/library/history", { ...activeQuery, era: undefined })}
           hrefFor={value => libraryCatalogueHref("/library/history", { ...activeQuery, era: value })}
-          manageHref={canUseAdminTools(user) ? "/library/eras" : undefined} />
+          manageHref={user && canUseAdminTools(user) ? "/library/eras" : undefined} />
         {selectedEra && zoom && <section className="library-era-zoom" style={libraryEraStyle(selectedEra)} aria-label={fr ? `Frise : ${selectedEra.name.fr}` : `Timeline: ${selectedEra.name.en}`}>
           <div className="library-era-zoom-heading">
             <h2>{selectedEra.name[locale]}</h2>

@@ -1,28 +1,19 @@
 import { LibraryStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { canUseAdminTools } from "@/lib/permissions";
 import { exportReferenceBibtex, generatedBibtex, upgradeLegacyBibliography } from "@/lib/reference-bibtex";
 
 export async function GET(request: Request) {
-  const user = await getCurrentUser();
-  if (!user || !canUseAdminTools(user)) {
-    return Response.json({ error: "Administrator access required." }, {
-      status: user ? 403 : 401,
-      headers: { "Cache-Control": "private, no-store" }
-    });
-  }
   const format = new URL(request.url).searchParams.get("format") === "json" ? "json" : "bibtex";
   const references = await prisma.libraryReference.findMany({
     where: { status: LibraryStatus.PUBLISHED, searchable: true, mergedIntoId: null },
-    include: { translations: true, work: { select: { slug: true } } },
+    include: { translations: true, work: { select: { slug: true, status: true } } },
     orderBy: { canonicalTitle: "asc" }
   });
   try {
   if (format === "json") {
     const publicReferences = references.map(upgradeLegacyBibliography).map((reference) => ({
       slug: reference.slug,
-      workSlug: reference.work?.slug ?? null,
+      workSlug: reference.work?.status === "PUBLISHED" ? reference.work.slug : null,
       type: reference.referenceType,
       title: reference.canonicalTitle,
       authors: reference.authors,

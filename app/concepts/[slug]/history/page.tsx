@@ -1,3 +1,4 @@
+import { ConceptProofsRevision } from "@/components/ConceptProofsRevision";
 import { ContentHistoryRevision } from "@/components/ContentHistoryRevision";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import Link from "next/link";
@@ -30,7 +31,7 @@ function joinedOrNone(values: string[], none: string) {
 
 function conceptSnapshotValue(
   snapshot: ConceptRevisionSnapshot,
-  field: Exclude<ConceptSnapshotField, "bodyMarkdown" | "historyMarkdown" | "historySpoiler">,
+  field: Exclude<ConceptSnapshotField, "bodyMarkdown" | "historyMarkdown" | "historySpoiler" | "proofs">,
   t: Dictionary
 ) {
   switch (field) {
@@ -147,9 +148,10 @@ export default async function ConceptHistoryPage({
           const previousSnapshot = parseConceptRevisionSnapshot(previousRevision?.conceptSnapshot ?? null);
           const metadataChanges = snapshot && previousSnapshot
             ? changedConceptSnapshotFields(previousSnapshot, snapshot).filter(
-                (field): field is Exclude<ConceptSnapshotField, "bodyMarkdown" | "historyMarkdown" | "historySpoiler"> => field !== "bodyMarkdown" && field !== "historyMarkdown" && field !== "historySpoiler"
+                (field): field is Exclude<ConceptSnapshotField, "bodyMarkdown" | "historyMarkdown" | "historySpoiler" | "proofs"> => field !== "bodyMarkdown" && field !== "historyMarkdown" && field !== "historySpoiler" && field !== "proofs"
               )
             : [];
+          const proofsChanged = snapshot?.proofs !== undefined && previousSnapshot?.proofs !== undefined && JSON.stringify(snapshot.proofs) !== JSON.stringify(previousSnapshot.proofs);
           const textChanged = Boolean(previousRevision && revision.markdown !== previousRevision.markdown);
           const historyChanged = snapshot && previousSnapshot && (
             snapshot.historyMarkdown !== previousSnapshot.historyMarkdown || snapshot.historySpoiler !== previousSnapshot.historySpoiler
@@ -211,6 +213,7 @@ export default async function ConceptHistoryPage({
                 </ins>
               </div>
             ))}
+            <ConceptProofsRevision before={previousSnapshot?.proofs} after={snapshot?.proofs} revisionId={revision.id} beforeRevisionId={previousRevision?.id} locale={interfaceLocale} labels={t.historyPage} />
             <ContentHistoryRevision before={previousSnapshot} after={snapshot} revisionId={revision.id} beforeRevisionId={previousRevision?.id} locale={interfaceLocale} labels={t.historyPage} />
             {previousRevision ? (
               textChanged ? (
@@ -222,7 +225,7 @@ export default async function ConceptHistoryPage({
                   revisionId={revision.id}
                   labels={t.historyPage}
                 />
-              ) : metadataChanges.length === 0 && !historyChanged ? (
+              ) : metadataChanges.length === 0 && !historyChanged && !proofsChanged ? (
                 <p className="muted mt-3 text-sm">
                   {snapshot && previousSnapshot
                     ? t.historyPage.noRecordedChanges

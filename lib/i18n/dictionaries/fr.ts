@@ -1888,6 +1888,7 @@ export const fr = {
     noRecordedChanges: "Aucune modification du contenu ou des métadonnées n’a été enregistrée.",
     predatesTracking: "Cette ancienne révision précède le suivi détaillé des métadonnées.",
     fields: {
+      proofs: "Preuves",
       additionalConceptSlugs: "Liens complémentaires",
       title: "titre",
       language: "langue",

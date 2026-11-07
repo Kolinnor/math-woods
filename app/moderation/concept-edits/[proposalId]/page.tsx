@@ -1,3 +1,5 @@
+import { ConceptProofsRevision } from "@/components/ConceptProofsRevision";
+import { dictionaryForLocale } from "@/lib/i18n/dictionary";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
@@ -49,7 +51,7 @@ export default async function ConceptEditProposalPage({
   const current = buildConceptRevisionSnapshot(proposal.concept);
   const changedSnapshotFields = changedConceptSnapshotFields(current, proposed);
   const changedFields = changedSnapshotFields.map((field) => CONCEPT_SNAPSHOT_FIELD_LABELS[field]);
-  const metadataFields = changedSnapshotFields.filter((field) => field !== "bodyMarkdown");
+  const metadataFields = changedSnapshotFields.filter((field) => field !== "bodyMarkdown" && field !== "proofs");
   const stale = changedConceptSnapshotFields(base, current).length > 0;
 
   return (
@@ -103,6 +105,9 @@ export default async function ConceptEditProposalPage({
             diffAria: () => "Proposed concept text diff"
           }}
         />
+
+        <ConceptProofsRevision before={current.proofs} after={proposed.proofs} beforeRevisionId={proposal.id} revisionId={proposal.id} locale="en" labels={dictionaryForLocale("en").historyPage} />
+
 
         {metadataFields.length > 0 && (
           <div className="grid gap-3">

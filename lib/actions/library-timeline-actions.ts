@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireVerifiedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasTrustedPrivileges } from "@/lib/permissions";
 
@@ -10,7 +10,7 @@ import { hasTrustedPrivileges } from "@/lib/permissions";
  * without touching `updatedAt`, so that a form open on the same entry can still be saved.
  */
 export async function setTimelineFeaturedAction(entity: "mathematician" | "milestone", id: number, featured: boolean) {
-  const user = await requireAdmin();
+  const user = await requireVerifiedUser();
   if (!hasTrustedPrivileges(user.role)) throw new Error("You cannot choose the entries of the timeline.");
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid entry.");
   const rows = entity === "mathematician"

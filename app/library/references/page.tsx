@@ -8,13 +8,13 @@ import { LibraryEmptyState } from "@/components/library/LibraryEmptyState";
 import { LibraryPagination } from "@/components/library/LibraryPagination";
 import { LibraryStatusBadge } from "@/components/library/LibraryStatusBadge";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { libraryPage, referenceTypeLabel } from "@/lib/library";
 import { libraryCopy } from "@/lib/library-copy";
 import { localizedTranslation, visibleLibraryEntryWhere } from "@/lib/library-queries";
-import { canEditLibraryReference, isVerifiedContributor } from "@/lib/permissions";
+import { canEditLibraryReference, hasTrustedPrivileges, isVerifiedContributor } from "@/lib/permissions";
 import { matchingReferenceIds } from "@/lib/reference-search";
 import { LibraryCatalogueForm, LibraryLanguageFilter } from "@/components/library/LibraryCatalogueForm";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 30;
 
 export default async function LibraryReferencesPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; page?: string; language?: string; sort?: string }> }) {
-  const [locale, user, query] = await Promise.all([getInterfaceLocale(), requireAdmin(), searchParams]);
+  const [locale, user, query] = await Promise.all([getInterfaceLocale(), getCurrentUser(), searchParams]);
   const type = Object.values(LibraryReferenceType).includes(query.type as LibraryReferenceType) ? query.type as LibraryReferenceType : undefined;
   const q = query.q?.trim().slice(0, 160);
   const language = query.language === "fr" || query.language === "en" ? query.language : undefined;
@@ -33,8 +33,8 @@ export default async function LibraryReferencesPage({ searchParams }: { searchPa
   const matchingIds = q ? await matchingReferenceIds(prisma, q, { publishedOnly: false, includeDescriptions: true }) : null;
   const baseFilters: Prisma.LibraryReferenceWhereInput[] = [
     { searchable: true, mergedIntoId: null },
-    // This management page requires an admin: include submissions to review.
-    { OR: [visibleLibraryEntryWhere(user), { status: "PENDING_REVIEW" }] },
+    // Pending submissions are visible only to their author and trusted reviewers.
+    user && hasTrustedPrivileges(user.role) ? { OR: [visibleLibraryEntryWhere(user), { status: "PENDING_REVIEW" }] } : visibleLibraryEntryWhere(user),
     language ? { translations: { some: { language } } } : {},
     matchingIds ? { id: { in: matchingIds } } : {}
   ];
@@ -94,7 +94,7 @@ export default async function LibraryReferencesPage({ searchParams }: { searchPa
               </div>
               <div className="library-ledger-side">
                 {linkCount > 0 && <span className="library-ledger-usage" title={fr ? `Citée dans ${linkCount} fiche${linkCount > 1 ? "s" : ""}` : `Cited in ${linkCount} ${linkCount === 1 ? "entry" : "entries"}`}><Link2 size={14} aria-hidden="true" />{linkCount}<span className="sr-only">{fr ? ` fiche${linkCount > 1 ? "s" : ""} liée${linkCount > 1 ? "s" : ""}` : ` linked ${linkCount === 1 ? "entry" : "entries"}`}</span></span>}
-                {canEditLibraryReference(user, entry) && <Link href={`/library/references/${entry.slug}/edit?lang=${locale}` as never} className="library-ledger-action" title={copy.edit} aria-label={`${copy.edit} : ${title}`}><Pencil size={15} aria-hidden="true" /></Link>}
+                {user && canEditLibraryReference(user, entry) && <Link href={`/library/references/${entry.slug}/edit?lang=${locale}` as never} className="library-ledger-action" title={copy.edit} aria-label={`${copy.edit} : ${title}`}><Pencil size={15} aria-hidden="true" /></Link>}
                 {entry.url && <a className="library-ledger-action" href={entry.url} rel="noreferrer" target="_blank" title={fr ? "Ouvrir la ressource" : "Open the resource"} aria-label={`${fr ? "Ouvrir" : "Open"} : ${title}`}><ExternalLink size={15} aria-hidden="true" /></a>}
               </div>
             </li>;

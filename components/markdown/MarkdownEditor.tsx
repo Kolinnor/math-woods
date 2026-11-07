@@ -260,6 +260,7 @@ type ImageUploadResponse = {
 type MarkdownEditorProps = {
   name: string;
   initialValue?: string;
+  onValueChange?: (value: string) => void;
   minHeight?: string;
   lineNumbers?: boolean;
   mode?: "document" | "title";
@@ -1466,6 +1467,7 @@ const previewFocusEvents = EditorView.domEventHandlers({
 export function MarkdownEditor({
   name,
   initialValue = "",
+  onValueChange,
   minHeight = "14rem",
   lineNumbers: showLineNumbers = true,
   mode = "document",
@@ -1496,6 +1498,9 @@ export function MarkdownEditor({
   const linkResultsId = useId();
   const linkTargetInputRef = useRef<HTMLInputElement | null>(null);
   const [value, setValue] = useState(initialValue);
+  const onValueChangeRef = useRef(onValueChange);
+  onValueChangeRef.current = onValueChange;
+  useEffect(() => { onValueChangeRef.current?.(value); }, [value]);
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
   const [conflictingDraft, setConflictingDraft] = useState<MarkdownDraft | null>(null);
   const [linkMenu, setLinkMenu] = useState<LinkMenuState | null>(null);

@@ -1,3 +1,4 @@
+import * as conceptProofs from "../lib/concept-proofs.ts";
 import * as additionalLinks from '../lib/additional-concept-links.ts';
 import * as conceptLinkReferences from '../lib/concept-link-references.ts';
 import test from 'node:test';
@@ -28,7 +29,7 @@ function load(file, overrides = {}) {
     '@/lib/wikilinks': wikilinks, '@/lib/form-feedback': feedback,
     '@/lib/content-limits': limits, '@/lib/permissions': permissions, '@/lib/languages': languages,
     '@/lib/problem-contests': contests,
-    '@/lib/content-history': contentHistory,
+    '@/lib/content-history': contentHistory, '@/lib/concept-proofs': conceptProofs,
     '@/lib/auth': { requireVerifiedUser: async () => ({ id: 1, role: 'OWNER' }), requireModerator: async () => ({ id: 1 }) },
     '@/lib/rate-limit': { assertRateLimit: async () => {}, isRateLimitError: e => e?.name === 'RateLimitError' },
     '@/lib/transaction-lock': { acquireTransactionLock: async () => {} },

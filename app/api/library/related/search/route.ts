@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
-import { canUseAdminTools } from "@/lib/permissions";
+import { isVerifiedContributor } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { assertRateLimit } from "@/lib/rate-limit";
 import { renderInlineMarkdown } from "@/lib/markdown";
@@ -9,7 +9,7 @@ import { matchingReferenceIds } from "@/lib/reference-search";
 export async function GET(request: Request) {
   const headers = { "Cache-Control": "private, no-store" };
   const user = await getCurrentUser();
-  if (!user || !canUseAdminTools(user)) return Response.json({ results: [] }, { status: 403, headers });
+  if (!user || !isVerifiedContributor(user)) return Response.json({ results: [] }, { status: 403, headers });
   try { await assertRateLimit(`library-related:${user.id}`, 90, 60_000); }
   catch { return Response.json({ results: [] }, { status: 429, headers }); }
   const params = new URL(request.url).searchParams;

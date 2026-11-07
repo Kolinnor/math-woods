@@ -1,3 +1,4 @@
+import { contentWithProofs } from "./concept-proofs.ts";
 import { resolveAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
 import { extractConceptReferences } from "./concept-link-references.ts";
 import { contentWithHistory } from "./content-history.ts";
@@ -284,7 +285,7 @@ async function refreshLinksForConceptRecord(
     }),
     tx.concept.findMany({
       where: { id: { in: impactedConceptIds } },
-      select: { id: true, bodyMarkdown: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, language: true, additionalConceptSlugs: true }
+      select: { id: true, bodyMarkdown: true, proofs: true, historyMarkdown: true, historyEnabled: true, historySpoiler: true, language: true, additionalConceptSlugs: true }
     }),
     tx.problemProof.findMany({
       where: { id: { in: impactedProofIds } },
@@ -295,7 +296,7 @@ async function refreshLinksForConceptRecord(
     await syncInternalLinks(SourceType.PROBLEM, problem.id, contentWithHistory(problem.bodyMarkdown, problem), tx, problem.language, problem.additionalConceptSlugs);
   }
   for (const sourceConcept of impactedConcepts) {
-    await syncInternalLinks(SourceType.CONCEPT, sourceConcept.id, contentWithHistory(sourceConcept.bodyMarkdown, sourceConcept), tx, sourceConcept.language, sourceConcept.additionalConceptSlugs);
+    await syncInternalLinks(SourceType.CONCEPT, sourceConcept.id, contentWithProofs(contentWithHistory(sourceConcept.bodyMarkdown, sourceConcept), sourceConcept), tx, sourceConcept.language, sourceConcept.additionalConceptSlugs);
   }
   for (const proof of impactedProofs) {
     await syncInternalLinks(SourceType.PROOF, proof.id, proof.bodyMarkdown, tx, concept.language);

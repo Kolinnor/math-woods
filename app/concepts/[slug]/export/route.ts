@@ -1,3 +1,4 @@
+import { contentWithProofs } from "@/lib/concept-proofs";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound } from "next/navigation";
 import { frontmatter, markdownResponse } from "@/lib/export-markdown";
@@ -49,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
       aliases: concept.aliases.map((alias) => alias.alias),
       lastEditedBy: concept.lastEditedBy?.username
     }) +
-    concept.bodyMarkdown +
+    contentWithProofs(concept.bodyMarkdown, concept) +
     (citations.length
       ? `\n\n## References\n\n${citations
           .map((reference) => `- ${reference.url ? `[${citationText(reference)}](${reference.url})` : citationText(reference)}${reference.note ? ` — ${reference.note}` : ""}`)

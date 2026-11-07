@@ -1,3 +1,4 @@
+import { contentWithProofs } from "@/lib/concept-proofs";
 import { MarkdownBlock } from "@/components/MarkdownBlock";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { contentLanguageLabel } from "@/lib/languages";
@@ -12,6 +13,7 @@ type TranslationReferencePanelProps = {
   language: string;
   markdown: string;
   historyMarkdown?: string;
+  proofs?: unknown;
   stale?: boolean;
 };
 
@@ -24,10 +26,11 @@ export async function TranslationReferencePanel({
   language,
   markdown,
   historyMarkdown,
+  proofs,
   stale = false
 }: TranslationReferencePanelProps) {
   const referenceMarkdown = historyMarkdown?.trim() ? `${markdown}\n\n## ${language === "fr" ? "Histoire" : "History"}\n\n${historyMarkdown}` : markdown;
-  const html = await renderMarkdownForContentLanguage(referenceMarkdown, language);
+  const html = await renderMarkdownForContentLanguage(contentWithProofs(referenceMarkdown, { proofs }), language);
   const renderedId = `${idPrefix}-rendered`;
   const markdownId = `${idPrefix}-markdown`;
   const groupName = `${idPrefix}-mode`;
@@ -78,7 +81,7 @@ export async function TranslationReferencePanel({
         <div className="translation-reference-view translation-reference-rendered">
           <MarkdownBlock html={html} />
         </div>
-        <pre className="translation-reference-view translation-reference-markdown">{referenceMarkdown}</pre>
+        <pre className="translation-reference-view translation-reference-markdown">{contentWithProofs(referenceMarkdown, { proofs })}</pre>
       </div>
     </aside>
   );

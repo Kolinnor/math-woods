@@ -1274,6 +1274,7 @@ model ProblemDomain {
 }
 
 model Concept {
+  proofs Json @default("[]")
   historyMarkdown String @default("") @db.Text
   historyEnabled Boolean @default(false)
   historySpoiler Boolean @default(false)

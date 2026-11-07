@@ -10,7 +10,7 @@ import { LibraryReviewNote } from "@/components/library/LibraryReviewNote";
 import { LibraryBreadcrumb, LibraryEntryRail, LibraryEntryToolbar } from "@/components/library/LibraryEntryNavigation";
 import { LibraryReferenceTypeIcon } from "@/components/library/LibraryIcons";
 import { LibraryPersonPortrait } from "@/components/library/LibraryPersonPortrait";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getInterfaceLocale } from "@/lib/i18n/server";
 import { formatLibraryReference, libraryLanguage, referenceRoleLabel, referenceTypeLabel } from "@/lib/library";
@@ -32,7 +32,7 @@ function hostName(url: string) {
 export default async function LibraryReferencePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ duplicate?: string; lang?: string; returnTo?: string }> }) {
   const { slug } = await params;
   const [locale, user, query, eras, entry] = await Promise.all([
-    getInterfaceLocale(), requireAdmin(), searchParams, getLibraryEras(),
+    getInterfaceLocale(), getCurrentUser(), searchParams, getLibraryEras(),
     prisma.libraryReference.findUnique({
       where: { slug },
       include: {
@@ -70,7 +70,7 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
   const copy = libraryCopy[locale];
   const fr = locale === "fr";
   const bibliography = referenceBibtexReport(entry, locale);
-  const canEdit = canEditLibraryReference(user, entry);
+  const canEdit = Boolean(user && canEditLibraryReference(user, entry));
   const editLanguage = libraryLanguage(translation?.language ?? contentLanguage);
   const currentYear = new Date().getFullYear();
   const doi = entry.doi?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "");
@@ -110,10 +110,10 @@ export default async function LibraryReferencePage({ params, searchParams }: { p
               <p className="library-kicker">{referenceTypeLabel(entry.referenceType, locale)}</p>
               <p className="library-citation">{formatLibraryReference(entry)}</p>
               {facts.length > 0 && <dl className="reference-record-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
-              {(entry.url || doi || entry.work) && <div className="reference-record-actions">
+              {(entry.url || doi || entry.work?.status === "PUBLISHED") && <div className="reference-record-actions">
                 {entry.url && <a className="button primary library-consult" href={entry.url} rel="noreferrer" target="_blank"><ExternalLink size={16} aria-hidden="true" />{fr ? "Consulter" : "Open"}<span className="reference-record-host">{hostName(entry.url)}</span></a>}
                 {doi && <a className="button secondary" href={`https://doi.org/${doi}`} rel="noreferrer" target="_blank">DOI <span className="reference-record-host">{doi}</span></a>}
-                {entry.work && <p className="reference-record-work">{fr ? "Édition de " : "Edition of "}<Link href={`/library/references/${entry.work.slug}` as never}>{entry.work.canonicalTitle}</Link></p>}
+                {entry.work?.status === "PUBLISHED" && <p className="reference-record-work">{fr ? "Édition de " : "Edition of "}<Link href={`/library/references/${entry.work.slug}` as never}>{entry.work.canonicalTitle}</Link></p>}
               </div>}
             </div>
           </section>

@@ -1,5 +1,7 @@
 "use client";
 
+import { submittedConceptProofs } from "@/lib/concept-proofs";
+import { ConceptProofsSection, type RenderedConceptProof } from "@/components/ConceptProofsSection";
 import { ContentHistorySection } from "@/components/ContentHistorySection";
 import { additionalLinksCopy, type AdditionalConceptLink } from "@/lib/additional-concept-links";
 import { Eye, Loader2, X } from "lucide-react";
@@ -23,6 +25,7 @@ type PreviewResponse = {
   titleHtml?: string;
   bodyHtml?: string;
   historyHtml?: string;
+  proofs?: RenderedConceptProof[];
   historySpoiler?: boolean;
   error?: string;
 };
@@ -50,7 +53,7 @@ export function ContentPreviewButton({ contentType, locale = "en" }: ContentPrev
       const response = await fetch("/api/content-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, bodyMarkdown, language: formData.get("language"), additionalConceptSlugs: JSON.parse(String(formData.get("additionalConceptSlugs") ?? "[]")), historyMarkdown: formData.get("historyMarkdown") ?? "", historyEnabled: formData.get("historyEnabled") === "on", historySpoiler: contentType === "problem" && formData.get("historySpoiler") === "on", isOriginal: contentType === "problem" && formData.get("isOriginal") === "true", citations: JSON.parse(String(formData.get(contentType === "concept" ? "conceptCitations" : "problemCitations") ?? "[]")) })
+        body: JSON.stringify({ title, bodyMarkdown, proofs: contentType === "concept" ? submittedConceptProofs(formData) : [], language: formData.get("language"), additionalConceptSlugs: JSON.parse(String(formData.get("additionalConceptSlugs") ?? "[]")), historyMarkdown: formData.get("historyMarkdown") ?? "", historyEnabled: formData.get("historyEnabled") === "on", historySpoiler: contentType === "problem" && formData.get("historySpoiler") === "on", isOriginal: contentType === "problem" && formData.get("isOriginal") === "true", citations: JSON.parse(String(formData.get(contentType === "concept" ? "conceptCitations" : "problemCitations") ?? "[]")) })
       });
       const result = await response.json() as PreviewResponse;
       if (!response.ok) throw new Error(result.error || t.contentEditor.previewFailed);
@@ -125,6 +128,7 @@ export function ContentPreviewButton({ contentType, locale = "en" }: ContentPrev
               <div className="content-preview-markdown">
                 <MarkdownBlock html={preview.bodyHtml} />
               </div>
+              <ConceptProofsSection proofs={preview.proofs ?? []} locale={locale} />
               {preview.historyHtml && <ContentHistorySection html={preview.historyHtml} spoiler={preview.historySpoiler} locale={locale} />}
               {Boolean(preview.additionalLinks?.length) && <section className="additional-concept-links"><h2>{additionalLinksCopy(locale).title}</h2>
                 <ul>{preview.additionalLinks!.map(link => <li key={link.slug}><a href={`/concepts/${link.slug}`} target="_blank" rel="noreferrer">{link.title}</a></li>)}</ul>

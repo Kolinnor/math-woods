@@ -1883,6 +1883,7 @@ export const en = {
     noRecordedChanges: "No content or metadata changes were recorded.",
     predatesTracking: "This older revision predates detailed metadata tracking.",
     fields: {
+      proofs: "Proofs",
       additionalConceptSlugs: "Additional links",
       title: "title",
       language: "language",

@@ -1,3 +1,5 @@
+import { ConceptProofsEditor } from "@/components/ConceptProofsEditor";
+import { parseConceptProofs } from "@/lib/concept-proofs";
 import { AdditionalConceptLinksEditor } from "@/components/AdditionalConceptLinksEditor";
 import { resolveAdditionalConceptLinks } from "@/lib/additional-concept-links-db";
 import { ContentHistoryEditor } from "@/components/ContentHistoryEditor";
@@ -67,7 +69,7 @@ export default async function EditConceptPage({
         orderBy: { position: "asc" },
       },
       translatedFromConcept: {
-        select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true, historyMarkdown: true }
+        select: { id: true, slug: true, title: true, language: true, bodyMarkdown: true, historyMarkdown: true, proofs: true }
       }
     }
   });
@@ -226,6 +228,7 @@ export default async function EditConceptPage({
             sourceUpdatedAt={concept.updatedAt.getTime()}
           />
         </div>
+        <ConceptProofsEditor locale={interfaceLocale} initial={parseConceptProofs(concept.proofs)} draftKey={`concept:${concept.id}:proofs`} />
         <AdditionalConceptLinksEditor locale={interfaceLocale} initial={await resolveAdditionalConceptLinks(concept.additionalConceptSlugs, concept.language)} excludeSlug={concept.slug} />
         <ContentHistoryEditor locale={interfaceLocale} initial={concept} allowSpoiler={false}
           draftKey={`concept:${concept.id}:history`} resetSignal={draftResetSignal} sourceUpdatedAt={concept.updatedAt.getTime()} />
@@ -308,6 +311,7 @@ export default async function EditConceptPage({
           latestRevisionId={sourceRevisionId}
           markdown={concept.translatedFromConcept.bodyMarkdown}
           historyMarkdown={concept.translatedFromConcept.historyMarkdown}
+          proofs={concept.translatedFromConcept.proofs}
           language={concept.translatedFromConcept.language}
           stale={staleTranslation}
           title={concept.translatedFromConcept.title}

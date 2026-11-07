@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
-import { canUseAdminTools } from "@/lib/permissions";
+import { isVerifiedContributor } from "@/lib/permissions";
 import { searchMathematicians, visibleLibraryEntryWhere } from "@/lib/library-queries";
 import { mathematicianName, normalizeMathematicianName } from "@/lib/mathematician-names";
 import { assertRateLimit } from "@/lib/rate-limit";
@@ -9,8 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   const headers = { "Cache-Control": "private, no-store" };
-  // The Library remains reserved to admins/owners, including this search API.
-  if (!user || !canUseAdminTools(user)) return Response.json({ mathematicians: [] }, { status: 403, headers });
+  if (!user || !isVerifiedContributor(user)) return Response.json({ mathematicians: [] }, { status: 403, headers });
   await assertRateLimit(`mathematician-suggestions:${user.id}`, 120, 60_000);
   const params = new URL(request.url).searchParams;
   const query = (params.get("q") ?? "").trim().slice(0, 160);

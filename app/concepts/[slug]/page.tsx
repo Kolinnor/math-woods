@@ -1,3 +1,5 @@
+import { ConceptProofs } from "@/components/ConceptProofs";
+import { contentWithProofs } from "@/lib/concept-proofs";
 import { ConceptBacklinks } from "@/components/ConceptBacklinks";
 import { contentWithHistory } from "@/lib/content-history";
 import { AdditionalConceptLinks } from "@/components/AdditionalConceptLinks";
@@ -685,7 +687,8 @@ export default async function ConceptPage({
           <MarkdownBlock html={conceptBodyHtml} />
         </section>
 
-        <AdditionalConceptLinks markdown={contentWithHistory(concept.bodyMarkdown, concept)} slugs={concept.additionalConceptSlugs} language={concept.language} locale={interfaceLocale} />
+        <ConceptProofs value={concept.proofs} language={concept.language} locale={interfaceLocale} />
+        <AdditionalConceptLinks markdown={contentWithProofs(contentWithHistory(concept.bodyMarkdown, concept), concept)} slugs={concept.additionalConceptSlugs} language={concept.language} locale={interfaceLocale} />
         <ContentHistory content={concept} locale={interfaceLocale} />
 
         {practiceExercises.length > 0 && (

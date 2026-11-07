@@ -1,0 +1,1 @@
+ALTER TABLE "Concept" ADD COLUMN "proofs" JSONB NOT NULL DEFAULT '[]';

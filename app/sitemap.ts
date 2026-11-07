@@ -11,7 +11,7 @@ function absoluteUrl(path: string) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [problems, concepts] = await Promise.all([
+  const [problems, concepts, mathematicians, milestones, references] = await Promise.all([
     prisma.problem.findMany({
       where: { listed: true, status: ProblemStatus.PUBLISHED },
       select: { slug: true, updatedAt: true }
@@ -22,7 +22,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         status: { not: ConceptStatus.MISSING }
       },
       select: { slug: true, updatedAt: true }
-    })
+    }),
+    prisma.mathematician.findMany({ where: { status: "PUBLISHED" }, select: { slug: true, updatedAt: true } }),
+    prisma.historyMilestone.findMany({ where: { status: "PUBLISHED" }, select: { slug: true, updatedAt: true } }),
+    prisma.libraryReference.findMany({ where: { status: "PUBLISHED", searchable: true, mergedIntoId: null }, select: { slug: true, updatedAt: true } })
   ]);
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -40,6 +43,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticPages,
+    ...["/library", "/library/history", "/library/mathematicians", "/library/references"].map(path => ({ url: absoluteUrl(path), changeFrequency: "weekly" as const, priority: 0.7 })),
+    ...[{ section: "mathematicians", entries: mathematicians }, { section: "history", entries: milestones }, { section: "references", entries: references }].flatMap(({ section, entries }) =>
+      entries.map(entry => ({ url: absoluteUrl(`/library/${section}/${entry.slug}`), lastModified: entry.updatedAt, changeFrequency: "monthly" as const, priority: 0.6 }))),
     ...problems.map((problem) => ({
       url: absoluteUrl(`/problems/${problem.slug}`),
       lastModified: problem.updatedAt,
