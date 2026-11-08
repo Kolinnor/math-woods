@@ -1,5 +1,7 @@
 "use server";
 
+import { conceptDomainData, parseConceptDomains } from "@/lib/concept-domains";
+
 import { MathDomain, QualityStatus, SourceType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
@@ -14,7 +16,7 @@ import {
 } from "@/lib/frontmatter";
 import { prisma } from "@/lib/db";
 import { parseAliases, syncConceptAliases } from "@/lib/concept-metadata";
-import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
+import { parseDomainCode } from "@/lib/domains";
 import { refreshLinksForConceptId, syncInternalLinks } from "@/lib/internal-links";
 import { requireActiveContentLanguage } from "@/lib/languages";
 import { parseProblemDomains, syncProblemDomains } from "@/lib/problem-domains";
@@ -49,6 +51,8 @@ export async function importMarkdownAction(formData: FormData) {
 
   if (importType === "concept") {
     const domainCode = parseDomainCode(getStringAttribute(parsed.attributes, "domain") ?? null);
+    const importedDomains = getStringArrayAttribute(parsed.attributes, "domains");
+    const domainCodes = parseConceptDomains(importedDomains.length ? importedDomains : [domainCode]);
     const concept = await prisma.$transaction(async (tx) => {
       await assertDailyContentCreationQuota(tx, user);
       const slug = await availableContentSlug(tx, "concept", safeTitle);
@@ -59,8 +63,7 @@ export async function importMarkdownAction(formData: FormData) {
           title: safeTitle,
           bodyMarkdown,
           bodyHtml: await renderMarkdownContent(bodyMarkdown),
-          domain: coarseDomainForCode(domainCode),
-          domainCode,
+          ...conceptDomainData(domainCodes),
           createdById: user.id,
           lastEditedById: user.id
         }

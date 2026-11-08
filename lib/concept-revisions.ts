@@ -1,3 +1,4 @@
+import { conceptDomainCodes, parseConceptDomains } from "./concept-domains.ts";
 import { parseConceptProofs, proofsMarkdown, type ConceptProof } from "./concept-proofs.ts";
 import { parseAdditionalConceptSlugs } from "./additional-concept-links.ts";
 import { contentHistory, HISTORY_FIELDS, type ContentHistory } from "./content-history.ts";
@@ -27,6 +28,7 @@ export type ConceptRevisionSnapshot = Partial<ContentHistory> & {
   proofs?: ConceptProof[];
   additionalConceptSlugs?: string[];
   domainCode: string;
+  domainCodes?: string[];
   kind: ConceptKind;
   status: ConceptStatus;
   needsReviewAfterEdit: boolean;
@@ -47,7 +49,8 @@ export const CONCEPT_SNAPSHOT_FIELD_LABELS = {
   additionalConceptSlugs: "additional concept links",
   bodyMarkdown: "text",
   proofs: "proofs",
-  domainCode: "domain",
+  domainCode: "primary domain",
+  domainCodes: "domains",
   kind: "type",
   status: "status",
   needsReviewAfterEdit: "review state",
@@ -76,6 +79,7 @@ export function buildConceptRevisionSnapshot(source: ConceptSnapshotSource): Con
     additionalConceptSlugs: source.additionalConceptSlugs ?? [],
     ...contentHistory(source),
     domainCode: source.domainCode,
+    domainCodes: conceptDomainCodes(source),
     kind: source.kind,
     status: source.status,
     needsReviewAfterEdit: source.needsReviewAfterEdit,
@@ -113,6 +117,7 @@ export function parseConceptRevisionSnapshot(value: Prisma.JsonValue | null): Co
   ) {
     return null;
   }
+  try { if (candidate.domainCodes !== undefined) candidate.domainCodes = parseConceptDomains(candidate.domainCodes); } catch { return null; }
   try { if (candidate.proofs !== undefined) candidate.proofs = parseConceptProofs(candidate.proofs); } catch { return null; }
   try { if (candidate.additionalConceptSlugs !== undefined) candidate.additionalConceptSlugs = parseAdditionalConceptSlugs(candidate.additionalConceptSlugs); } catch { return null; }
   try { if (candidate.citations !== undefined) candidate.citations = parseConceptCitations(candidate.citations); }
@@ -126,6 +131,8 @@ export function changedConceptSnapshotFields(
 ): ConceptSnapshotField[] {
   return CONCEPT_SNAPSHOT_FIELDS.filter((field) => {
     if (HISTORY_FIELDS.some(key => key === field) && (before[field] === undefined || after[field] === undefined)) return false;
+    if (field === "domainCode" && before.domainCodes !== undefined && after.domainCodes !== undefined) return false;
+    if (field === "domainCodes") return before.domainCodes !== undefined && after.domainCodes !== undefined && !sameValue(before.domainCodes, after.domainCodes);
     if (field === "proofs") return before.proofs !== undefined && after.proofs !== undefined && !sameValue(before.proofs, after.proofs);
     if (field === "additionalConceptSlugs") return !sameValue(before.additionalConceptSlugs ?? [], after.additionalConceptSlugs ?? []);
     if (field === "citations" && (before.citations === undefined || after.citations === undefined)) return false;
@@ -151,6 +158,7 @@ export function formatConceptSnapshotFieldValue(
   field: ConceptSnapshotField,
   value: ConceptRevisionSnapshot[ConceptSnapshotField]
 ) {
+  if (field === "domainCodes") return (value as string[] | undefined)?.join(", ") || "None";
   if (field === "proofs") return proofsMarkdown(value ?? []) || "None";
   if (field === "additionalConceptSlugs") return (value as string[] | undefined)?.join(", ") || "None";
   if (field === "aliases") {

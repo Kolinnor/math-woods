@@ -1,3 +1,4 @@
+import { conceptMapDomainHidden } from "@/lib/concept-map-domains";
 import Graph from "graphology";
 import Sigma from "sigma";
 import type { NodeDisplayData, PartialButFor } from "sigma/types";
@@ -19,6 +20,7 @@ export type ConceptMapRendererData = {
   y: number[];
   label: string[];
   domain: number[];
+  secondaryDomains?: Record<number, number[]>;
   status: number[];
   degree: number[];
   level: number[];
@@ -177,7 +179,7 @@ export function createConceptMapRenderer(
     nodeReducer: (node, attributes) => {
       const index = Number(node);
       const domain = attributes.domain as number;
-      if (state.hiddenDomains.has(domain) || hiddenByLevel(index)) return { ...attributes, hidden: true };
+      if (conceptMapDomainHidden(data!, index, state.hiddenDomains) || hiddenByLevel(index)) return { ...attributes, hidden: true };
       if (index === state.selected) return { ...attributes, highlighted: true, forceLabel: true, zIndex: 4 };
       const focused = focusNode();
       if (focused !== null) {
@@ -193,8 +195,7 @@ export function createConceptMapRenderer(
     },
     edgeReducer: (edge, attributes) => {
       const [source, target] = edgeEnds.get(edge)!;
-      const domains = data!.domain;
-      if (state.hiddenDomains.has(domains[source]) || state.hiddenDomains.has(domains[target]) || hiddenByLevel(source) || hiddenByLevel(target)) {
+      if (conceptMapDomainHidden(data!, source, state.hiddenDomains) || conceptMapDomainHidden(data!, target, state.hiddenDomains) || hiddenByLevel(source) || hiddenByLevel(target)) {
         return { ...attributes, hidden: true };
       }
       const focused = focusNode();

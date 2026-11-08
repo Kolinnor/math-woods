@@ -1,3 +1,4 @@
+import { conceptDomainCodes } from "@/lib/concept-domains";
 import { ConceptProofs } from "@/components/ConceptProofs";
 import { contentWithProofs } from "@/lib/concept-proofs";
 import { ConceptBacklinks } from "@/components/ConceptBacklinks";
@@ -428,7 +429,7 @@ export default async function ConceptPage({
       )
     : [];
   const conceptKindLabel = t.concepts.kinds[concept.kind];
-  const conceptDomainLabel = translatedDomainLabel(concept.domainCode, t);
+  const conceptDomainLabel = conceptDomainCodes(concept).map(code => translatedDomainLabel(code, t)).join(" · ");
   const hasReadingHeader =
     isLanguageFallback ||
     Boolean(translationFreshness?.stale) ||
@@ -502,6 +503,24 @@ export default async function ConceptPage({
     resolveConceptLinksForLanguage(conceptBacklinks.map((item) => item.slug), concept.language),
     resolveConceptTitlesForLanguage(conceptBacklinks.map((item) => item.slug), concept.language)
   ]);
+  const backlinkCollator = new Intl.Collator(concept.language, { sensitivity: "base", numeric: true });
+  const sortedBacklinks = [
+    ...problemBacklinks.map((problem) => {
+      const resolved = problemBacklinkLinkBySlug.get(problem.slug);
+      return {
+        key: `p-${problem.id}`,
+        href: resolved?.href ?? `/problems/${problem.slug}`,
+        title: resolved?.title ?? problem.title,
+        language: resolved?.language ?? problem.language
+      };
+    }),
+    ...conceptBacklinks.map((item) => ({
+      key: `c-${item.id}`,
+      href: conceptBacklinkLinkBySlug.get(item.slug)?.href ?? `/concepts/${item.slug}`,
+      title: conceptBacklinkTitleBySlug.get(item.slug) ?? item.title,
+      language: conceptBacklinkLinkBySlug.get(item.slug)?.language ?? item.language
+    }))
+  ].sort((left, right) => backlinkCollator.compare(left.title, right.title) || backlinkCollator.compare(left.key, right.key));
 
   return (
     <ForestPageLayout
@@ -826,18 +845,12 @@ export default async function ConceptPage({
         </section>
 
         <ConceptBacklinks labels={{ title: t.conceptDetail.backlinks, showMore: t.conceptDetail.moreBacklinks, showLess: t.conceptDetail.fewerBacklinks }}>
-            {problemBacklinks.map((problem) => (
-              <Link key={`p-${problem.id}`} href={(problemBacklinkLinkBySlug.get(problem.slug)?.href ?? `/problems/${problem.slug}`) as never} className="underline">
-                <AsyncMarkdownInline markdown={problemBacklinkLinkBySlug.get(problem.slug)?.title ?? problem.title} />
-                <ContentLanguageFallback language={problemBacklinkLinkBySlug.get(problem.slug)?.language ?? problem.language} expectedLanguage={concept.language} />
-              </Link>
-            ))}
-            {conceptBacklinks.map((item) => (
-              <Link key={`c-${item.id}`} href={(conceptBacklinkLinkBySlug.get(item.slug)?.href ?? `/concepts/${item.slug}`) as never} className="underline">
-                <AsyncMarkdownInline markdown={conceptBacklinkTitleBySlug.get(item.slug) ?? item.title} />
-                <ContentLanguageFallback language={conceptBacklinkLinkBySlug.get(item.slug)?.language ?? item.language} expectedLanguage={concept.language} />
-              </Link>
-            ))}
+          {sortedBacklinks.map((link) => (
+            <Link key={link.key} href={link.href as never} className="underline">
+              <AsyncMarkdownInline markdown={link.title} />
+              <ContentLanguageFallback language={link.language} expectedLanguage={concept.language} />
+            </Link>
+          ))}
         </ConceptBacklinks>
 
         {uniqueOutgoingLinks.length > 0 && (

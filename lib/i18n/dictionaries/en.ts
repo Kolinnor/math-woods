@@ -1887,6 +1887,7 @@ export const en = {
       additionalConceptSlugs: "Additional links",
       title: "title",
       language: "language",
+      domainCodes: "domains",
       domainCode: "domain",
       kind: "type",
       status: "status",

@@ -1,3 +1,4 @@
+import * as conceptDomains from "../lib/concept-domains.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -154,6 +155,7 @@ function actionFixture(initialProofs = []) {
   const modules = {
     '@prisma/client': require('@prisma/client'),
     'next/navigation': { redirect: href => { throw new Error(`REDIRECT:${href}`); } }, 'next/cache': { revalidatePath: () => {} },
+    '@/lib/concept-domains': conceptDomains,
     '@/lib/db': { prisma: db }, '@/lib/auth': { requireVerifiedUser: async () => actor },
     '@/lib/concept-proofs': proofs, '@/lib/concept-revisions': snapshots, '@/lib/content-history': history,
     '@/lib/content-limits': limits, '@/lib/additional-concept-links': additionalLinks,

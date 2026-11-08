@@ -12,6 +12,7 @@ import * as browserTranslations from '../lib/problem-browser-translations.ts';
 import * as contentTypes from '../lib/problem-content-types.ts';
 import * as styles from '../lib/problem-styles.ts';
 import * as domains from '../lib/domains.ts';
+import * as conceptDomains from '../lib/concept-domains.ts';
 import * as permissions from '../lib/permissions.ts';
 import * as difficulty from '../lib/problem-difficulty.ts';
 import * as progress from '../lib/progress.ts';
@@ -53,7 +54,7 @@ async function render(file,query) {
   '@/lib/languages':languages,'@/lib/translation-routing':translations,'@/lib/problem-browser-translations':browserTranslations,
   '@/lib/problem-content-types':contentTypes,'@/lib/problem-styles':styles,'@/lib/domains':domains,'@/lib/permissions':permissions,
   '@/lib/problem-difficulty':difficulty,'@/lib/progress':progress,'@/lib/slug':slug,
-  '@/lib/problem-contests':contests,
+  '@/lib/problem-contests':contests, '@/lib/concept-domains':conceptDomains,
   '@/lib/concept-reference-search':{matchingConceptReferences:async(_db,q)=>q==='Source auteur'?conceptRows.map(row=>({id:row.id,label:'Source auteur'})):[]},
   '@/lib/user-display':{displayNameForUser:user=>user.displayName},'@/lib/problem-link':{problemLinkClass:value=>value},
   '@/lib/problem-visibility':{visibleProblemWhere:()=>({})},'@/lib/feature-flags':{EXPLORATIONS_ENABLED:false},

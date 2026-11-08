@@ -41,6 +41,8 @@ function conceptSnapshotValue(
       return snapshot.title;
     case "language":
       return contentLanguageNativeLabel(snapshot.language);
+    case "domainCodes":
+      return joinedOrNone((snapshot.domainCodes ?? [snapshot.domainCode]).map(code => translatedDomainLabel(code, t.home.domainLabels)), t.historyPage.none);
     case "domainCode":
       return translatedDomainLabel(snapshot.domainCode, t.home.domainLabels);
     case "kind":

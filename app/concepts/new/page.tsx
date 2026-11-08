@@ -1,3 +1,4 @@
+import { conceptDomainCodes, MAX_CONCEPT_DOMAINS } from "@/lib/concept-domains";
 import { ConceptProofsEditor } from "@/components/ConceptProofsEditor";
 import { parseConceptProofs } from "@/lib/concept-proofs";
 import { AdditionalConceptLinksEditor } from "@/components/AdditionalConceptLinksEditor";
@@ -67,6 +68,7 @@ export default async function NewConceptPage({
           historyEnabled: true,
           historySpoiler: true,
           domainCode: true,
+          domainCodes: true,
           kind: true,
           language: true,
           translationGroupId: true,
@@ -171,13 +173,14 @@ export default async function NewConceptPage({
         <div className="grid gap-4">
           <ProblemDomainPicker
             domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
-            helpText={null}
-            initialValues={[sourceConcept?.domainCode ?? "other"]}
-            inputName="domain"
-            label={t.problems.domainPicker.domain}
+            helpText={interfaceLocale === "fr" ? "Jusqu’à trois domaines, comme pour les problèmes. Le domaine principal détermine la couleur sur la carte." : "Up to three domains, as for problems. The primary domain determines the map color."}
+            initialValues={sourceConcept ? conceptDomainCodes(sourceConcept) : ["other"]}
+            inputName="domains"
+            label={t.problems.domainPicker.domains}
             labels={t.problems.domainPicker}
             locale={interfaceLocale}
-            maxDomains={1}
+            maxDomains={MAX_CONCEPT_DOMAINS}
+            showPrimaryDomain
             showSubdomains
             showSpoilerToggle={false}
           />

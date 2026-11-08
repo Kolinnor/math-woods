@@ -1,3 +1,4 @@
+import { conceptDomainCodes } from "@/lib/concept-domains";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
 import Link from "next/link";
@@ -235,7 +236,7 @@ export default async function SearchPage({
               <Link key={concept.id} href={`/concepts/${concept.slug}`} className="panel block p-4">
                 <div className="font-medium"><AsyncMarkdownInline markdown={concept.title} /><ContentLanguageFallback language={concept.language} expectedLanguage={preferredLanguage} /></div>
                 <div className="muted mt-1 text-xs">
-                  {translatedDomainLabel(concept.domainCode, t.home.domainLabels)} / {t.concepts.statuses[concept.status]}
+                  {conceptDomainCodes(concept).map(code => translatedDomainLabel(code, t.home.domainLabels)).join(" · ")} / {t.concepts.statuses[concept.status]}
                 </div>
                 {concept.aliases.length > 0 && (
                   <div className="muted mt-1 text-xs"><AsyncMarkdownInline markdown={concept.aliases.map((alias) => alias.alias).join(", ")} /></div>

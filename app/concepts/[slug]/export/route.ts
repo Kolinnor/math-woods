@@ -1,3 +1,4 @@
+import { conceptDomainCodes } from "@/lib/concept-domains";
 import { contentWithProofs } from "@/lib/concept-proofs";
 import { redirectHistoricalContentSlug } from "@/lib/content-slug-redirect";
 import { notFound } from "next/navigation";
@@ -46,6 +47,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
       language: concept.language,
       translationGroupId: concept.translationGroupId,
       domain: domainLabel(concept.domainCode),
+      domains: conceptDomainCodes(concept),
       status: concept.status.toLowerCase(),
       aliases: concept.aliases.map((alias) => alias.alias),
       lastEditedBy: concept.lastEditedBy?.username

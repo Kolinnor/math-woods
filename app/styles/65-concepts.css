@@ -1886,3 +1886,8 @@ button.content-status-close:hover {
     animation: none;
   }
 }
+
+/* Ordered concept domains share the problem picker; the first sets the map color. */
+.domain-picker-primary-selection { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.6rem 0; }
+.domain-picker-primary-selection button { min-width: 0; white-space: normal; text-align: left; }
+.domain-picker-primary-selection button[aria-pressed="true"] { border-color: var(--mw-green); background: var(--accent-soft); }

@@ -1,5 +1,7 @@
 "use client";
 
+import { conceptMapDomainHidden } from "@/lib/concept-map-domains";
+
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -31,6 +33,7 @@ type ConceptMapData = Omit<ConceptMapRendererData, "domains"> & {
   loadedTiers: number;
   maxLevel: number;
   domains: ConceptMapDomain[];
+  domainMembershipCounts?: { domains: number[]; count: number }[];
   slug: string[];
   kind: number[];
   title: Record<string, string>;
@@ -111,11 +114,13 @@ function mergeTier(previous: ConceptMapData | null, payload: ConceptMapResponseP
       maxLevel: payload.maxLevel,
       bounds: payload.bounds,
       domains: payload.domains,
+      domainMembershipCounts: payload.domainMembershipCounts,
       slug: nodes.slug,
       label: nodes.label,
       x: nodes.x,
       y: nodes.y,
       domain: nodes.domain,
+      secondaryDomains: nodes.secondaryDomains,
       status: nodes.status,
       kind: nodes.kind,
       degree: nodes.degree,
@@ -134,6 +139,7 @@ function mergeTier(previous: ConceptMapData | null, payload: ConceptMapResponseP
     x: previous.x.concat(nodes.x),
     y: previous.y.concat(nodes.y),
     domain: previous.domain.concat(nodes.domain),
+    secondaryDomains: { ...previous.secondaryDomains, ...nodes.secondaryDomains },
     status: previous.status.concat(nodes.status),
     kind: previous.kind.concat(nodes.kind),
     degree: previous.degree.concat(nodes.degree),
@@ -426,7 +432,7 @@ export function ConceptMap({
       if (!data || normalizedQuery.length === 0) return null;
       const ranked: { index: number; score: number }[] = [];
       searchableFor(data).forEach(({ label, terms }, index) => {
-        if (hiddenDomains.has(data.domain[index])) return;
+        if (conceptMapDomainHidden(data, index, hiddenDomains)) return;
         let score = -1;
         if (label === normalizedQuery) score = 0;
         else if (label.startsWith(normalizedQuery)) score = 1;
@@ -508,7 +514,7 @@ export function ConceptMap({
   }, []);
 
   useEffect(() => {
-    if (selected !== null && data && hiddenDomains.has(data.domain[selected])) setSelected(null);
+    if (selected !== null && data && conceptMapDomainHidden(data, selected, hiddenDomains)) setSelected(null);
   }, [hiddenDomains, selected, data]);
 
   function toggleFullscreen() {
@@ -576,7 +582,7 @@ export function ConceptMap({
     const code = data!.domains[index].code;
     return domainLabels[code] ?? code;
   };
-  const visibleCount = data ? data.domains.reduce((sum, domain, index) => sum + (hiddenDomains.has(index) ? 0 : domain.count), 0) : 0;
+  const visibleCount = data ? (data.domainMembershipCounts ?? data.domains.map((domain, index) => ({ domains: [index], count: domain.count }))).reduce((sum, entry) => sum + (entry.domains.some(index => !hiddenDomains.has(index)) ? entry.count : 0), 0) : 0;
   const selectedTitleHtml = data && selected !== null ? data.titleHtml[String(selected)] : undefined;
   const resultsId = `${ids}-results`;
   const helpId = `${ids}-help`;
@@ -680,7 +686,7 @@ export function ConceptMap({
                   >
                     <span className="concept-map-dot" style={{ background: data!.domains[data!.domain[index]].color }} aria-hidden="true" />
                     <span className="concept-map-result-label">{data!.label[index]}</span>
-                    <span className="concept-map-result-domain">{domainLabel(data!.domain[index])}</span>
+                    <span className="concept-map-result-domain">{[data!.domain[index], ...(data!.secondaryDomains?.[index] ?? [])].map(domainLabel).join(" · ")}</span>
                   </li>
                 ))}
                 {search && search.results.length === 0 && (
@@ -752,7 +758,7 @@ export function ConceptMap({
                 </button>
               </div>
               <p className="concept-map-meta">
-                <span>{domainLabel(data.domain[selected])}</span>
+                <span>{[data.domain[selected], ...(data.secondaryDomains?.[selected] ?? [])].map(domainLabel).join(" · ")}</span>
                 <span>{kindLabels[KINDS[data.kind[selected]]] ?? KINDS[data.kind[selected]]}</span>
                 <span>{statusLabels[STATUSES[data.status[selected]]] ?? STATUSES[data.status[selected]]}</span>
                 <span>{format(copy.linkCount, { count: data.degree[selected] })}</span>

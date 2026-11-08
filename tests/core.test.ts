@@ -1060,7 +1060,7 @@ assert.deepEqual(
 );
 assert.equal(
   conceptRevisionAutomaticSummary(changedConceptSnapshotFields(baseConceptSnapshot, editedConceptSnapshot)),
-  "Updated domain, aliases and linked exercises"
+  "Updated primary domain, aliases and linked exercises"
 );
 assert.deepEqual(parseConceptRevisionSnapshot(baseConceptSnapshot), baseConceptSnapshot);
 assert.equal(parseConceptRevisionSnapshot({ ...baseConceptSnapshot, schemaVersion: 2 }), null);
@@ -3961,7 +3961,7 @@ assert.equal(contentHasIllustration("```jsxgraph\nconst board = JXG.JSXGraph.ini
 assert.equal(contentHasIllustration("Only text and $x^2$."), false);
 assert.equal(dailyProblemReputationBonus(3, Role.USER), 150);
 assert.equal(dailyProblemReputationBonus(3, Role.MODERATOR), 150);
-assert.equal(dailyProblemReputationBonus(3, Role.ADMIN), 0);
+assert.equal(dailyProblemReputationBonus(3, Role.ADMIN), 150);
 assert.equal(dailyProblemReputationBonus(3, Role.OWNER), 0);
 assert.equal(dailyProblemReputationBonus(-2, Role.USER), 0);
 
@@ -4909,12 +4909,13 @@ assert.deepEqual(
     "title",
     "bodyMarkdown",
     "domainCode",
+    "domainCodes",
     "status",
     "aliases",
     "references",
     "practiceExercises"
   ]),
-  ["domainCode", "practiceExercises"]
+  ["domainCode", "domainCodes", "practiceExercises"]
 );
 
 assert.equal(

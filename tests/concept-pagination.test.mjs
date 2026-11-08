@@ -12,6 +12,8 @@ import * as exercises from '../lib/concept-exercises.ts';
 import * as languages from '../lib/languages.ts';
 import * as browserView from '../lib/concept-browser-view.ts';
 import * as permissions from '../lib/permissions.ts';
+import * as conceptDomains from '../lib/concept-domains.ts';
+import * as domains from '../lib/domains.ts';
 import { fr } from '../lib/i18n/dictionaries/fr.ts';
 const require = createRequire(import.meta.url);
 
@@ -42,6 +44,7 @@ function matches(row, where) {
     if(key==='OR')return value.some(filter=>matches(row,filter));
     if(value&&typeof value==='object'){
       if('in' in value)return value.in.includes(row[key]);
+      if('hasSome' in value)return (row[key]??[]).some(code=>value.hasSome.includes(code));
       if('contains' in value)return String(row[key]??'').toLowerCase().includes(value.contains.toLowerCase());
       if('some' in value)return row[key].some(item=>matches(item,value.some));
       return matches(row[key],value);
@@ -59,7 +62,7 @@ async function page(query, candidates=rows, cookie, role=null) {
     '@/lib/concept-browser-view':browserView,
     'react/jsx-runtime':require('react/jsx-runtime'),
     '@prisma/client':require('@prisma/client'),
-    '@/lib/concept-pagination':pagination,
+    '@/lib/concept-pagination':pagination, '@/lib/concept-domains':conceptDomains,
     '@/lib/translation-routing':translations,
     '@/lib/search-ranking':ranking,
     '@/lib/search-filters':filters,
@@ -70,7 +73,7 @@ async function page(query, candidates=rows, cookie, role=null) {
     '@/lib/server-language':{getPreferredContentLanguage:async()=>'fr'},
     '@/lib/permissions':permissions,
     '@/lib/internal-links':{missingConcepts:async()=>[]},
-    '@/lib/domains':{PROBLEM_DOMAINS:[],translatedDomainLabel:()=>''},
+    '@/lib/domains':domains,
     '@/lib/actions/contribution-request-actions':{createContributionRequestAction:()=>{}},
     '@/lib/db':{prisma:{concept:{findMany:async args=>{calls.push(args);return args.take===8 ? []:candidates.filter(row=>matches(row,args.where));}},internalLink:{groupBy:async()=>candidates.map(c=>({targetSlug:c.slug,_count:{targetSlug:c.id}}))}}}
   };
@@ -146,4 +149,15 @@ test('every role can choose map or list and the remembered choice is preserved',
     assert.equal(result.elements.find(e=>e.props.view)?.props.view,expected);
     assert.ok(!result.elements.some(e=>e.props.className==='concept-map-admin-notice'));
   }
+});
+
+
+test('actual concept list includes secondary domains once and respects the primary and status filters',async()=>{
+  const candidates=rows.slice(0,4).map(row=>({...row,domainCode:'algebra',domainCodes:row.id<=2?['algebra','general-topology']:['algebra'],status:row.id<=2?'USABLE':'STUB'}));
+  const secondary=await page({view:'list',domain:'general-topology'},candidates);
+  assert.equal(secondary.ids.length,1);
+  const primary=await page({view:'list',domain:'algebra'},candidates);
+  assert.equal(primary.ids.length,2);
+  const absent=await page({view:'list',domain:'general-topology',status:'STUB'},candidates);
+  assert.equal(absent.ids.length,0);
 });

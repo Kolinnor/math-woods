@@ -19,6 +19,7 @@ type ProblemDomainPickerProps = {
   locale: InterfaceLocale;
   maxDomains?: number;
   showSubdomains?: boolean;
+  showPrimaryDomain?: boolean;
   showSpoilerToggle?: boolean;
   helpText?: string | null;
 };
@@ -48,6 +49,7 @@ export function ProblemDomainPicker({
   locale,
   maxDomains = MAX_PROBLEM_DOMAINS,
   showSubdomains = false,
+  showPrimaryDomain = false,
   showSpoilerToggle = true,
   helpText
 }: ProblemDomainPickerProps) {
@@ -153,6 +155,14 @@ export function ProblemDomainPicker({
       {values.map((value) => (
         <input key={value} type="hidden" name={inputName} value={value} />
       ))}
+      {showPrimaryDomain && <div className="domain-picker-primary-selection">
+        {selectedOptions.map((option, index) => <button key={option.value} type="button" className="secondary"
+          aria-pressed={index === 0}
+          aria-label={index === 0 ? `${option.label} — ${locale === "fr" ? "domaine principal" : "primary domain"}` : `${locale === "fr" ? "Définir comme domaine principal" : "Make primary domain"} : ${option.label}`}
+          onClick={() => setValues(current => [option.value, ...current.filter(value => value !== option.value)])}>
+          {option.label}{index === 0 && <strong> · {locale === "fr" ? "Principal" : "Primary"}</strong>}
+        </button>)}
+      </div>}
       <div className="domain-picker-grid">
         {domains.map((domain) => {
           const selected = selectedSet.has(domain.value);

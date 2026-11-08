@@ -31,6 +31,7 @@ export function problemTranslationSharedChanges(fields: readonly ProblemSnapshot
 
 export const CONCEPT_TRANSLATION_SHARED_FIELDS = [
   "domainCode",
+  "domainCodes",
   "kind",
   "canAppearInConceptBrowser",
   "practiceExercises"

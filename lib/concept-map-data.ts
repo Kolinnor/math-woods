@@ -129,6 +129,7 @@ async function loadConceptMapRows(): Promise<ConceptMapRows> {
           status: true,
           kind: true,
           domainCode: true,
+          domainCodes: true,
           aliases: { select: { alias: true, aliasSlug: true } }
         },
         orderBy: { id: "asc" },

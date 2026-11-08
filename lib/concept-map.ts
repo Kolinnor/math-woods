@@ -1,3 +1,4 @@
+import { conceptDomainCodes } from "./concept-domains.ts";
 import { createHash } from "node:crypto";
 import { parentProblemDomainForCode, PROBLEM_DOMAIN_FAMILIES, PROBLEM_DOMAINS } from "./domains.ts";
 import { isActiveContentLanguage, parseContentLanguage } from "./languages.ts";
@@ -17,6 +18,7 @@ export type ConceptMapConceptRow = {
   status: string;
   kind: string;
   domainCode: string;
+  domainCodes?: string[];
   aliases: readonly { alias: string; aliasSlug: string }[];
 };
 
@@ -41,6 +43,7 @@ export type ConceptMapNodeSource = {
   /** Translation group id: stable across renames, used to seed the layout. */
   id: string;
   domain: string;
+  domains: string[];
   concept: ConceptMapConceptRow;
   /** Titles of the other translations, only used by the search. */
   otherTitles: string[];
@@ -82,6 +85,7 @@ export type ConceptMapNodeColumns = {
   y: number[];
   /** Index in ConceptMapPayload.domains. */
   domain: number[];
+  secondaryDomains?: Record<number, number[]>;
   /** Index in CONCEPT_MAP_STATUSES. */
   status: number[];
   /** Index in CONCEPT_MAP_KINDS. */
@@ -113,6 +117,7 @@ export type ConceptMapPayload = {
   tiers: ConceptMapTierInfo[];
   maxLevel: number;
   domains: ConceptMapDomain[];
+  domainMembershipCounts: { domains: number[]; count: number }[];
   nodes: ConceptMapNodeColumns;
   /** Flattened directed citations between global node indexes: [source0, target0, …]. */
   links: number[];
@@ -271,6 +276,7 @@ export function* conceptMapGraphSteps(rows: ConceptMapRows, requestedLanguage: s
     .map(([id, concept]) => ({
       id,
       domain: conceptMapTopDomain(concept.domainCode),
+      domains: [...new Set(conceptDomainCodes(concept).map(conceptMapTopDomain))],
       concept,
       otherTitles: otherTitles.get(id) ?? []
     }));
@@ -339,7 +345,7 @@ export function* conceptMapSignatureSteps(graph: ConceptMapGraph): ConceptMapSte
   hash.update(`${graph.language}\u0003`);
   for (let index = 0; index < graph.nodes.length; index += 1) {
     const node = graph.nodes[index];
-    hash.update(`${node.id}\u0001${node.domain}\u0002`);
+    hash.update(`${node.id}\u0001${node.domain}\u0001${node.domains.slice(1).join(",")}\u0002`);
     if (pauseAt(index)) yield;
   }
   hash.update("\u0003");
@@ -458,6 +464,7 @@ export type ConceptMapPrepared = {
   tiers: ConceptMapTierInfo[];
   degree: number[];
   domains: ConceptMapDomain[];
+  domainMembershipCounts: { domains: number[]; count: number }[];
   domainIndex: Map<string, number>;
   undirectedLinks: number;
   bounds: { x: [number, number]; y: [number, number] };
@@ -504,10 +511,19 @@ export function* prepareConceptMapSteps(
   const degree = neighbors.map((set) => set.size);
   yield;
   const domainCounts = new Map<string, number>();
-  for (const node of graph.nodes) domainCounts.set(node.domain, (domainCounts.get(node.domain) ?? 0) + 1);
+  for (const node of graph.nodes) for (const domain of node.domains) domainCounts.set(domain, (domainCounts.get(domain) ?? 0) + 1);
   const domains: ConceptMapDomain[] = [...domainCounts.entries()]
     .sort(([left], [right]) => conceptMapDomainOrder(left) - conceptMapDomainOrder(right) || left.localeCompare(right))
     .map(([code, count]) => ({ code, count, ...conceptMapDomainStyle(code) }));
+  const domainIndex = new Map(domains.map((domain, index) => [domain.code, index]));
+  const memberships = new Map<string, { domains: number[]; count: number }>();
+  for (const node of graph.nodes) {
+    const indices = node.domains.map(code => domainIndex.get(code)!).sort((a, b) => a - b);
+    const key = indices.join(",");
+    const entry = memberships.get(key) ?? { domains: indices, count: 0 };
+    entry.count += 1;
+    memberships.set(key, entry);
+  }
   const undirectedLinks = degree.reduce((sum, value) => sum + value, 0) / 2;
   const bounds: { x: [number, number]; y: [number, number] } = { x: [Infinity, -Infinity], y: [Infinity, -Infinity] };
   for (const point of positions) {
@@ -527,7 +543,8 @@ export function* prepareConceptMapSteps(
     tiers,
     degree,
     domains,
-    domainIndex: new Map(domains.map((domain, position) => [domain.code, position])),
+    domainIndex,
+    domainMembershipCounts: [...memberships.values()],
     undirectedLinks
   };
 }
@@ -551,7 +568,7 @@ export function* conceptMapPayloadSteps(prepared: ConceptMapPrepared, tier: numb
   });
 
   const nodes: ConceptMapNodeColumns = {
-    slug: [], label: [], x: [], y: [], domain: [], status: [], kind: [], degree: [], level: [], title: {}, terms: {}
+    slug: [], label: [], x: [], y: [], domain: [], secondaryDomains: {}, status: [], kind: [], degree: [], level: [], title: {}, terms: {}
   };
   for (let payloadIndex = start; payloadIndex < end; payloadIndex += 1) {
     if (pauseAt(payloadIndex - start, 1024)) yield;
@@ -566,6 +583,7 @@ export function* conceptMapPayloadSteps(prepared: ConceptMapPrepared, tier: numb
     nodes.x.push(roundCoordinate(position.x));
     nodes.y.push(roundCoordinate(position.y));
     nodes.domain.push(domainIndex.get(source.domain) ?? 0);
+    if (source.domains.length > 1) nodes.secondaryDomains![payloadIndex] = source.domains.slice(1).map(code => domainIndex.get(code)!);
     nodes.status.push(Math.max(0, CONCEPT_MAP_STATUSES.indexOf(concept.status as (typeof CONCEPT_MAP_STATUSES)[number])));
     nodes.kind.push(Math.max(0, CONCEPT_MAP_KINDS.indexOf(concept.kind as (typeof CONCEPT_MAP_KINDS)[number])));
     nodes.degree.push(degree[graphIndex]);
@@ -603,6 +621,7 @@ export function* conceptMapPayloadSteps(prepared: ConceptMapPrepared, tier: numb
     tiers,
     maxLevel: prepared.maxLevel,
     domains: prepared.domains,
+    domainMembershipCounts: prepared.domainMembershipCounts,
     nodes,
     links
   };

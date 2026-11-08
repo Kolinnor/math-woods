@@ -1,3 +1,4 @@
+import { conceptDomainCodes, conceptDomainWhere } from "@/lib/concept-domains";
 import { ConceptKind, ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import type { Metadata } from "next";
 import type { Route } from "next";
@@ -28,9 +29,6 @@ import {
 import { prisma } from "@/lib/db";
 import { CONCEPTS_PER_PAGE, conceptPagination, conceptPageHref } from "@/lib/concept-pagination";
 import {
-  coarseDomainForCode,
-  domainCodeAliases,
-  parentProblemDomainForCode,
   parseDomainCode,
   PROBLEM_DOMAINS,
   translatedDomainLabel as translatedDomainOptionLabel
@@ -201,16 +199,7 @@ export default async function ConceptsPage({
   const canFilterByProblemLinks = Boolean(user && canUseAdminTools(user));
   const problemLinkFilter = canFilterByProblemLinks ? parseProblemLinkFilter(problemLinks) : "all";
   const domainValue = domain ? parseDomainCode(domain) : undefined;
-  const domainWhere: Prisma.ConceptWhereInput = domainValue
-    ? {
-        OR: [
-          { domainCode: { in: domainCodeAliases(domainValue) } },
-          ...(parentProblemDomainForCode(domainValue)?.value === domainValue
-            ? [{ domain: coarseDomainForCode(domainValue) }]
-            : [])
-        ]
-      }
-    : {};
+  const domainWhere: Prisma.ConceptWhereInput = domainValue ? conceptDomainWhere(domainValue) : {};
   const statusValue = Object.values(ConceptStatus).includes(status as ConceptStatus)
     ? (status as ConceptStatus)
     : undefined;
@@ -299,7 +288,7 @@ export default async function ConceptsPage({
     // Rank and group all matches before paging, without loading rendered bodies.
     select: {
       id: true, slug: true, title: true, language: true, updatedAt: true,
-      domainCode: true, status: true, kind: true, needsReviewAfterEdit: true,
+      domainCode: true, domainCodes: true, status: true, kind: true, needsReviewAfterEdit: true,
       translationGroupId: true, translatedFromConceptId: true,
       bodyMarkdown: Boolean(query),
       aliases: { select: { alias: true } },
@@ -337,7 +326,7 @@ export default async function ConceptsPage({
         title: true,
         language: true,
         domain: true,
-        domainCode: true,
+        domainCode: true, domainCodes: true,
         status: true,
         translationGroupId: true,
         translatedFromConceptId: true,
@@ -515,7 +504,7 @@ export default async function ConceptsPage({
                   </div>
                   <p className="concept-ledger-meta">
                     <span>{t.concepts.kinds[concept.kind]}</span>
-                    <span>{translatedDomainLabel(concept.domainCode, t)}</span>
+                    <span>{conceptDomainCodes(concept).map(code => translatedDomainLabel(code, t)).join(" · ")}</span>
                     <span>{t.concepts.incomingLinks(incomingLinkCountBySlug.get(concept.slug) ?? 0)}</span>
                     <span>{t.concepts.exerciseCountLabel}: {concept._count.practiceExercises}</span>
                   </p>
@@ -544,7 +533,7 @@ export default async function ConceptsPage({
                     className="featured-concept-link"
                   >
                     <strong><AsyncMarkdownInline markdown={concept.title} /><ContentLanguageFallback language={concept.language} expectedLanguage={preferredLanguage} /></strong>
-                    <span>{translatedDomainLabel(concept.domainCode, t)} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}</span>
+                    <span>{conceptDomainCodes(concept).map(code => translatedDomainLabel(code, t)).join(" · ")} / {t.concepts.statuses[concept.status] ?? concept.status.toLowerCase()}</span>
                   </Link>
                 ))}
               </div>

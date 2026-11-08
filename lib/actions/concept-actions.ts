@@ -1,5 +1,7 @@
 "use server";
 
+import { conceptDomainCodes, conceptDomainData, submittedConceptDomains, ConceptDomainsValidationError } from "@/lib/concept-domains";
+
 import { submittedAdditionalConceptSlugs } from "@/lib/additional-concept-links";
 
 import { ConceptProofValidationError, contentWithProofs, parseConceptProofs, submittedConceptProofs } from "@/lib/concept-proofs";
@@ -46,7 +48,6 @@ import { legacyConceptCitations, parseConceptCitations, submittedConceptCitation
 import { syncConceptCitations, validateConceptCitations } from "@/lib/concept-citations-db";
 import { mergeProblemCitations, translatedProblemCitations } from "@/lib/problem-citations";
 import { acknowledgeCitationDraft } from "@/lib/citation-draft-receipt";
-import { coarseDomainForCode, parseDomainCode } from "@/lib/domains";
 import {
   assertTranslationWikiLinksPreserved,
   refreshLinksForConcept,
@@ -113,12 +114,13 @@ async function pinLatestConceptRevisionMetadata(
     select: { id: true, conceptTitle: true, conceptKind: true, conceptSnapshot: true }
   });
   const latestSnapshot = parseConceptRevisionSnapshot(latestRevision?.conceptSnapshot ?? null);
+  const missingDomains = latestSnapshot !== null && latestSnapshot.domainCodes === undefined;
   const missingProofs = latestSnapshot !== null && latestSnapshot.proofs === undefined;
   if (
     latestRevision &&
     (latestRevision.conceptTitle === null ||
       latestRevision.conceptKind === null ||
-      latestRevision.conceptSnapshot === null || missingProofs)
+      latestRevision.conceptSnapshot === null || missingProofs || missingDomains)
   ) {
     await tx.pageRevision.update({
       where: { id: latestRevision.id },
@@ -127,7 +129,7 @@ async function pinLatestConceptRevisionMetadata(
         ...(latestRevision.conceptKind === null ? { conceptKind: concept.kind } : {}),
         ...(latestRevision.conceptSnapshot === null
           ? { conceptSnapshot: conceptRevisionSnapshotJson(snapshot) }
-          : missingProofs && latestSnapshot ? { conceptSnapshot: conceptRevisionSnapshotJson({ ...latestSnapshot, proofs: snapshot.proofs }) } : {})
+          : latestSnapshot && (missingProofs || missingDomains) ? { conceptSnapshot: conceptRevisionSnapshotJson({ ...latestSnapshot, ...(missingProofs ? { proofs: snapshot.proofs } : {}), ...(missingDomains ? { domainCodes: snapshot.domainCodes } : {}) }) } : {})
       }
     });
   }
@@ -182,8 +184,8 @@ export async function createConceptAction(formData: FormData) {
   const proofs = submittedConceptProofs(formData);
   const additionalConceptSlugs = submittedAdditionalConceptSlugs(formData);
   const kind = parseConceptKind(formData.get("kind"));
-  const domainCode = parseDomainCode(formData.get("domain"));
-  const domain = coarseDomainForCode(domainCode);
+  const domainCodes = submittedConceptDomains(formData);
+  const { domainCode, domain } = conceptDomainData(domainCodes);
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"));
   const submittedCitations = submittedConceptCitations(formData);
@@ -292,6 +294,7 @@ export async function createConceptAction(formData: FormData) {
         bodyHtml,
         domain: sharedConcept?.domain ?? domain,
         domainCode: sharedConcept?.domainCode ?? domainCode,
+        domainCodes: sharedConcept ? conceptDomainCodes(sharedConcept) : domainCodes,
         kind: sharedConcept?.kind ?? kind,
         status: ConceptStatus.STUB,
         needsReviewAfterEdit: false,
@@ -378,6 +381,7 @@ export async function createConceptFormAction(
     await createConceptAction(formData);
     return { error: null };
   } catch (error) {
+    if (error instanceof ConceptDomainsValidationError) return { error: (await getInterfaceLocale()) === "fr" ? "Choisissez entre un et trois domaines." : error.message };
     if (error instanceof ConceptProofValidationError) return { error: (await getInterfaceLocale()) === "fr" ? "Preuves invalides ou trop longues : 10 preuves maximum, 60 000 caractères par preuve et 120 000 au total." : error.message };
     if (error instanceof ConceptAliasConflictError) {
       return {
@@ -413,6 +417,7 @@ export async function updateConceptFormAction(
     await updateConceptAction(conceptId, formData);
     return { error: "" };
   } catch (error) {
+    if (error instanceof ConceptDomainsValidationError) return { error: locale === "fr" ? "Choisissez entre un et trois domaines." : error.message };
     if (error instanceof ConceptProofValidationError) return { error: locale === "fr" ? "Preuves invalides ou trop longues : 10 preuves maximum, 60 000 caractères par preuve et 120 000 au total." : error.message };
     if (error instanceof EditSummaryValidationError) return { error: editSummaryValidationMessage(locale) };
     if (error instanceof ConceptAliasConflictError) return { error: conceptAliasConflictMessage(error, locale) };
@@ -450,8 +455,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
   const proofs = submittedConceptProofs(formData, existingConcept.proofs);
   const additionalConceptSlugs = submittedAdditionalConceptSlugs(formData, existingConcept.additionalConceptSlugs);
   const kind = parseConceptKind(formData.get("kind"), existingConcept.kind);
-  const domainCode = parseDomainCode(formData.get("domain"));
-  const domain = coarseDomainForCode(domainCode);
+  submittedConceptDomains(formData, existingConcept); // Validate before rendering; read again under the transaction lock.
   const aliases = parseAliases(boundedText(formData.get("aliases"), CONTENT_LIMITS.mediumText, "Aliases"));
   const references = formData.has("references")
     ? parseReferences(boundedText(formData.get("references"), CONTENT_LIMITS.longNote, "References"))
@@ -536,7 +540,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
           ...history,
           proofs: formData.has("conceptProofs") ? proofs : parseConceptProofs(current.proofs ?? []),
           additionalConceptSlugs,
-          domainCode,
+          ...conceptDomainData(submittedConceptDomains(formData, current)),
           kind,
           needsReviewAfterEdit,
           aliases: aliases
@@ -687,8 +691,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         proofs: formData.has("conceptProofs") ? proofs : parseConceptProofs(currentSnapshotSource.proofs ?? []),
         additionalConceptSlugs,
         bodyHtml,
-        domain,
-        domainCode,
+        ...conceptDomainData(submittedConceptDomains(formData, currentSnapshotSource)),
         kind,
         needsReviewAfterEdit,
           canAppearInConceptBrowser,
@@ -762,7 +765,7 @@ export async function updateConceptAction(conceptId: number, formData: FormData)
         where: { id: sibling.id },
         data: {
           ...(changedFields.includes("citations") ? { updatedAt: new Date() } : {}),
-          ...(sharedChangedFieldSet.has("domainCode") ? { domain, domainCode } : {}),
+          ...(sharedChangedFieldSet.has("domainCode") || sharedChangedFieldSet.has("domainCodes") ? conceptDomainData(conceptDomainCodes(updated)) : {}),
           ...(sharedChangedFieldSet.has("kind") ? { kind } : {}),
           ...(sharedChangedFieldSet.has("canAppearInConceptBrowser")
             ? { canAppearInConceptBrowser: updated.canAppearInConceptBrowser }
@@ -885,7 +888,8 @@ export async function approveConceptEditProposalAction(proposalId: number) {
   if (snapshot.proofs !== undefined) formData.set("conceptProofs", JSON.stringify(snapshot.proofs));
   if (snapshot.additionalConceptSlugs !== undefined) formData.set("additionalConceptSlugs", JSON.stringify(snapshot.additionalConceptSlugs));
   formData.set("kind", snapshot.kind);
-  formData.set("domain", snapshot.domainCode);
+  if (snapshot.domainCodes !== undefined) for (const code of conceptDomainCodes(snapshot)) formData.append("domains", code);
+  else formData.set("domain", snapshot.domainCode);
   formData.set("aliases", snapshot.aliases.map(({ alias }) => alias).join(", "));
   if (snapshot.citations !== undefined) formData.set("conceptCitations", JSON.stringify(snapshot.citations));
   formData.set(
@@ -1330,6 +1334,7 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
       where: { id: conceptId },
       data: {
         bodyMarkdown: revision.markdown,
+        ...(restoredSnapshot?.domainCodes !== undefined ? conceptDomainData(conceptDomainCodes(restoredSnapshot)) : {}),
         ...(restoredSnapshot?.proofs !== undefined ? { proofs: restoredSnapshot.proofs } : {}),
         ...(restoredSnapshot?.historyMarkdown !== undefined ? contentHistory(restoredSnapshot) : {}),
         ...(restoredSnapshot?.additionalConceptSlugs !== undefined ? { additionalConceptSlugs: restoredSnapshot.additionalConceptSlugs } : {}),
@@ -1347,16 +1352,16 @@ export async function rollbackConceptRevisionAction(conceptId: number, revisionI
     });
 
     await syncInternalLinks(SourceType.CONCEPT, conceptId, contentWithProofs(contentWithHistory(revision.markdown, updated), updated), tx, updated.language, updated.additionalConceptSlugs);
-    if (restoredSnapshot?.citations !== undefined) {
-      const historical = restoredSnapshot.citations.flatMap(c => c.referenceId === null ? [] : [c.referenceId]);
-      await syncConceptCitations(tx, conceptId, restoredSnapshot.citations, historical);
+    if (restoredSnapshot?.citations !== undefined || restoredSnapshot?.domainCodes !== undefined) {
+      const historical = (restoredSnapshot.citations ?? []).flatMap(c => c.referenceId === null ? [] : [c.referenceId]);
+      if (restoredSnapshot.citations !== undefined) await syncConceptCitations(tx, conceptId, restoredSnapshot.citations, historical);
       const siblings = await tx.concept.findMany({ where: { translationGroupId: before.translationGroupId, id: { not: conceptId } }, include: conceptRevisionSnapshotInclude });
       for (const sibling of siblings) {
         await pinLatestConceptRevisionMetadata(tx, sibling);
-        await syncConceptCitations(tx, sibling.id, translatedProblemCitations(parseConceptCitations(before.libraryReferences), restoredSnapshot.citations, parseConceptCitations(sibling.libraryReferences)), historical);
-        await tx.concept.update({ where: { id: sibling.id }, data: { updatedAt: new Date() } });
+        if (restoredSnapshot.citations !== undefined) await syncConceptCitations(tx, sibling.id, translatedProblemCitations(parseConceptCitations(before.libraryReferences), restoredSnapshot.citations, parseConceptCitations(sibling.libraryReferences)), historical);
+        await tx.concept.update({ where: { id: sibling.id }, data: { updatedAt: new Date(), ...(restoredSnapshot.domainCodes !== undefined ? conceptDomainData(conceptDomainCodes(restoredSnapshot)) : {}) } });
         const after = await conceptSnapshotSource(tx, sibling.id);
-        await tx.pageRevision.create({ data: { pageType: SourceType.CONCEPT, pageId: sibling.id, markdown: after.bodyMarkdown, conceptTitle: after.title, conceptKind: after.kind, conceptSnapshot: conceptRevisionSnapshotJson(buildConceptRevisionSnapshot(after)), editedById: user.id, editSummary: `References restored from ${updated.language} translation` } });
+        await tx.pageRevision.create({ data: { pageType: SourceType.CONCEPT, pageId: sibling.id, markdown: after.bodyMarkdown, conceptTitle: after.title, conceptKind: after.kind, conceptSnapshot: conceptRevisionSnapshotJson(buildConceptRevisionSnapshot(after)), editedById: user.id, editSummary: `Shared settings restored from ${updated.language} translation` } });
       }
     }
     const updatedSnapshot = buildConceptRevisionSnapshot(await conceptSnapshotSource(tx, updated.id));

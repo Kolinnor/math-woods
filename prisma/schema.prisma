@@ -1291,6 +1291,7 @@ model Concept {
   bodyHtml                  String
   domain                    MathDomain                @default(OTHER)
   domainCode                String                    @default("other")
+  domainCodes               String[]                  @default([])
   kind                      ConceptKind               @default(DEFINITION)
   status                    ConceptStatus             @default(STUB)
   needsReviewAfterEdit      Boolean                   @default(false)
@@ -1325,6 +1326,7 @@ model Concept {
   @@index([language, canAppearInConceptBrowser, updatedAt])
   @@index([language, kind, updatedAt])
   @@index([domainCode])
+  @@index([domainCodes], type: Gin)
   @@index([translationGroupId])
   @@index([translatedFromConceptId])
 }

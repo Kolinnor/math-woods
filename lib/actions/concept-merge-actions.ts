@@ -1,5 +1,7 @@
 "use server";
 
+import { conceptDomainCodes } from "@/lib/concept-domains";
+
 import { contentWithProofs, mergeConceptProofs } from "@/lib/concept-proofs";
 import { contentWithHistory } from "@/lib/content-history";
 import { parseAdditionalConceptSlugs } from "@/lib/additional-concept-links";
@@ -123,6 +125,7 @@ async function linkConceptGroups(
       data: {
         domain: canonical.domain,
         domainCode: canonical.domainCode,
+        domainCodes: conceptDomainCodes(canonical),
         kind: canonical.kind,
         canAppearInConceptBrowser: canonical.canAppearInConceptBrowser,
         translatedFromConceptId: concept.id === root.id ? null : root.id,

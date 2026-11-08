@@ -1892,6 +1892,7 @@ export const fr = {
       additionalConceptSlugs: "Liens complémentaires",
       title: "titre",
       language: "langue",
+      domainCodes: "domaines",
       domainCode: "domaine",
       kind: "type",
       status: "statut",

@@ -1,3 +1,4 @@
+import * as conceptDomains from "../lib/concept-domains.ts";
 import * as conceptProofs from "../lib/concept-proofs.ts";
 import * as additionalLinks from '../lib/additional-concept-links.ts';
 import * as conceptLinkReferences from '../lib/concept-link-references.ts';
@@ -24,6 +25,7 @@ const require = createRequire(import.meta.url);
 const redirectError = new Error('NEXT_REDIRECT');
 function load(file, overrides = {}) {
   const modules = {
+    '@/lib/concept-domains': conceptDomains,
     '@/lib/additional-concept-links': additionalLinks, './concept-link-references.ts': conceptLinkReferences,
     '@prisma/client': require('@prisma/client'), 'react/jsx-runtime': require('react/jsx-runtime'),
     '@/lib/wikilinks': wikilinks, '@/lib/form-feedback': feedback,

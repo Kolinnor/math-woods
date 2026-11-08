@@ -106,7 +106,7 @@ export function contentHasIllustration(markdown: string) {
 }
 
 export function dailyProblemReputationBonus(dailyProblemCount: number, role: Role) {
-  if (role === Role.ADMIN || role === Role.OWNER) return 0;
+  if (role === Role.OWNER) return 0;
   return Math.max(0, dailyProblemCount) * DAILY_PROBLEM_REPUTATION_POINTS;
 }
 
