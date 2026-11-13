@@ -9,7 +9,12 @@ type ReportableMetric = {
   value: number;
 };
 
+// Mirrors WEB_VITAL_NAMES in lib/observability-metrics.ts (server-only module).
+// Next also reports FID and Next.js-* metrics, which the endpoint rejects with 400.
+const REPORTED_METRICS = new Set(["CLS", "FCP", "INP", "LCP", "TTFB"]);
+
 function reportMetric(metric: ReportableMetric) {
+  if (!REPORTED_METRICS.has(metric.name)) return;
   const payload = JSON.stringify({
     name: metric.name,
     rating: metric.rating,

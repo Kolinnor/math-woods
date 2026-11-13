@@ -37,32 +37,38 @@ function DifficultyMark({ compact, showBand, value }: { compact: boolean; showBa
   );
 }
 
+// Rendered inside inline text (spans, paragraphs), so it must only use
+// phrasing elements: <div>, <p> or <ol> here would break hydration.
 function DifficultyPopover({ value }: { value: number | null }) {
   return (
-    <div className="mw-difficulty-popover">
+    <span className="mw-difficulty-popover">
       <strong><LocalizedText en="Difficulty scale" fr="Échelle de difficulté" /></strong>
-      <p>
+      <span className="mw-difficulty-popover-text">
         <LocalizedText
           en="This score reflects both the level of the required concepts and the difficulty of the solution."
           fr="Ce score tient compte à la fois du niveau des notions nécessaires et de la difficulté de la résolution."
         />
-      </p>
-      <div className="mw-difficulty-scale-track" aria-hidden="true"><i /></div>
-      <ol>
+      </span>
+      <span className="mw-difficulty-scale-track" aria-hidden="true"><i /></span>
+      <span className="mw-difficulty-popover-bands" role="list">
         {PROBLEM_DIFFICULTY_BANDS.map((band) => (
-          <li key={band.min} className={value !== null && value >= band.min && value <= band.max ? "is-current" : undefined}>
+          <span
+            key={band.min}
+            role="listitem"
+            className={value !== null && value >= band.min && value <= band.max ? "mw-difficulty-popover-band is-current" : "mw-difficulty-popover-band"}
+          >
             <b>{band.min}–{band.max}</b>
             <span><LocalizedText en={band.detailEn} fr={band.detailFr} /></span>
-          </li>
+          </span>
         ))}
-      </ol>
+      </span>
       <small>
         <LocalizedText
           en="These levels are approximate guides."
           fr="Ces niveaux sont des repères approximatifs."
         />
       </small>
-    </div>
+    </span>
   );
 }
 

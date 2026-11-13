@@ -1097,6 +1097,9 @@ export default async function ProblemsPage({
                   isOwnProblem={isOwnProblem}
                   labels={{
                     addFavorite: t.problemDetail.addFavorite,
+                    likePromptClose: t.problemDetail.likePromptClose,
+                    likePromptMessage: t.problemDetail.likePromptMessage,
+                    likePromptQuestion: t.problemDetail.likePromptQuestion,
                     attempted: t.problemDetail.attempted,
                     favoriteProblem: t.problems.favoriteProblem,
                     favorites: t.problems.favorites,
