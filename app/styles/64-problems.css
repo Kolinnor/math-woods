@@ -3594,3 +3594,55 @@ body:has(.problem-detail-shell) {
 .known-problem-source-preview .problem-origin-note {
   padding-bottom: 0.2rem;
 }
+
+/* Invitation to like a problem after three consecutive solves without a like. */
+.problem-like-prompt-dialog {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  margin: auto;
+  max-width: calc(100vw - 2rem);
+  padding: 1.6rem 1.5rem 1.4rem;
+  /* Must stay fixed (the modal default): a relative/static dialog is laid out at
+     the top of the document and focusing it scrolls the page back up. Fixed also
+     anchors the absolutely positioned close button. */
+  position: fixed;
+  inset: 0;
+  height: fit-content;
+  text-align: center;
+  width: 26rem;
+}
+.problem-like-prompt-dialog[open] {
+  animation: problem-like-prompt-in 180ms ease-out;
+}
+.problem-like-prompt-dialog::backdrop {
+  background: color-mix(in srgb, #111 28%, transparent);
+}
+.problem-like-prompt-dialog p {
+  font-size: 1.02rem;
+  white-space: pre-line;
+  line-height: 1.5;
+  margin: 0.4rem 0.8rem 1.2rem;
+}
+.problem-like-prompt-close {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+}
+.problem-like-prompt-dialog form {
+  display: flex;
+  justify-content: center;
+}
+.problem-action-tile.problem-like-prompt-button {
+  margin: 0 auto;
+  width: auto;
+}
+@keyframes problem-like-prompt-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .problem-like-prompt-dialog[open] { animation: none; }
+}

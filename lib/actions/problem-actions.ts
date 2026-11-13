@@ -27,6 +27,8 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { LIKE_PROMPT_COOKIE, LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS, shouldPromptLikeAfterSolve } from "@/lib/problem-like-prompt";
 import {
   checkHintAchievements,
   checkProblemSolvedByOthersAchievements,
@@ -2426,11 +2428,12 @@ export async function unmarkProblemAttemptAction(problemId: number, problemSlug:
   revalidatePath("/me");
 }
 
+/** Marks the problem solved; returns true when it was not already solved. */
 async function markSolvedNow(
   problemId: number,
   problemSlug: string,
   user: { id: number; username: string; profileSlug: string; displayName?: string | null }
-) {
+): Promise<boolean> {
   const now = new Date();
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
@@ -2509,6 +2512,7 @@ async function markSolvedNow(
       await checkProblemSolvedByOthersAchievements(problem.authorId);
     }
   }
+  return !wasAlreadySolved;
 }
 
 export async function markProblemSolvedAction(problemId: number, problemSlug: string, formData?: FormData) {
@@ -2524,7 +2528,8 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
       verificationMode: true,
       verificationAnswer: true,
       language: true,
-      isConjecture: true
+      isConjecture: true,
+      translationGroupId: true
     }
   });
 
@@ -2541,7 +2546,9 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
     if (!verificationMatches(problem.verificationAnswer, answer)) {
       redirect(contentLanguageViewHref("/problems", problemSlug, problem.language, { verification: "incorrect" }) as Route);
     }
-    await markSolvedNow(problemId, problemSlug, user);
+    if (await markSolvedNow(problemId, problemSlug, user)) {
+      await queueLikePromptAfterSolve(user.id, problem.translationGroupId);
+    }
     return;
   }
 
@@ -2568,7 +2575,21 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
     return;
   }
 
-  await markSolvedNow(problemId, problemSlug, user);
+  if (await markSolvedNow(problemId, problemSlug, user)) {
+    await queueLikePromptAfterSolve(user.id, problem.translationGroupId);
+  }
+}
+
+/** Leaves a short-lived marker so the problem page can invite the solver to like the problem. */
+async function queueLikePromptAfterSolve(userId: number, translationGroupId: string) {
+  if (!(await shouldPromptLikeAfterSolve(userId, translationGroupId))) return;
+  (await cookies()).set(LIKE_PROMPT_COOKIE, translationGroupId, {
+    httpOnly: false,
+    maxAge: LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS,
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production"
+  });
 }
 
 export async function unmarkProblemSolvedAction(problemId: number, problemSlug: string) {

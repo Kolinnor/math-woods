@@ -3368,6 +3368,10 @@ assert.match(difficultyNumberRule, /min-width:\s*3ch/);
 assert.match(editorCssSource, /--mw-difficulty-column-width:\s*70px/);
 assert.match(editorCssSource, /\.mw-difficulty-label/);
 assert.match(editorCssSource, /\.mw-difficulty-popover/);
+// The difficulty popover sits inside inline text (<span>, <p>): phrasing elements only.
+const difficultyPopoverSource = readFileSync("components/Difficulty.tsx", "utf8").match(/function DifficultyPopover[\s\S]*?\n\}/)?.[0] ?? "";
+assert.ok(difficultyPopoverSource.length > 0);
+assert.doesNotMatch(difficultyPopoverSource, /<(div|p|ol|ul|li)[\s>]/);
 assert.match(
   editorCssSource,
   /\.home-news-list > a \{[^}]*grid-template-columns:\s*var\(--mw-difficulty-column-width\) minmax\(0, 1fr\) auto;/s

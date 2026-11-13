@@ -177,8 +177,9 @@ html[lang="fr"] .mw-locale-fr {
   z-index: 30;
 }
 
-.mw-difficulty-popover > p,
+.mw-difficulty-popover > .mw-difficulty-popover-text,
 .mw-difficulty-popover > small {
+  display: block;
   color: var(--mw-secondary);
   font-family: var(--font-sans);
   font-size: 12.5px;
@@ -189,6 +190,7 @@ html[lang="fr"] .mw-locale-fr {
 .mw-difficulty-scale-track {
   background: linear-gradient(90deg, #4f7955, #617a42 20%, #857a35 40%, #a26831 60%, #a84d2f 80%, #87342d);
   border-radius: 999px;
+  display: block;
   height: 7px;
   position: relative;
 }
@@ -205,7 +207,7 @@ html[lang="fr"] .mw-locale-fr {
   width: 13px;
 }
 
-.mw-difficulty-popover ol {
+.mw-difficulty-popover-bands {
   display: grid;
   gap: 2px;
   list-style: none;
@@ -213,7 +215,7 @@ html[lang="fr"] .mw-locale-fr {
   padding: 0;
 }
 
-.mw-difficulty-popover li {
+.mw-difficulty-popover-band {
   align-items: baseline;
   border-radius: 4px;
   display: grid;
@@ -224,11 +226,11 @@ html[lang="fr"] .mw-locale-fr {
   padding: 0.3rem 0.4rem;
 }
 
-.mw-difficulty-popover li.is-current {
+.mw-difficulty-popover-band.is-current {
   background: var(--mw-muted-surface);
 }
 
-.mw-difficulty-popover li b {
+.mw-difficulty-popover-band b {
   font-variant-numeric: tabular-nums;
 }
 
