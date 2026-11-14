@@ -139,10 +139,12 @@ import {
   translationBodyFieldName
 } from "@/lib/translation-companions";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
+import { conceptLinkReminderAcknowledged, needsConceptLinkReminder } from "@/lib/problem-link-reminder";
 
 export type ProblemEditActionState =
   | { status: "idle" }
   | { status: "invalid"; error: string }
+  | { status: "concept-link-reminder" }
   | {
       status: "conflict";
       currentVersion: number;
@@ -1124,12 +1126,20 @@ export type ProblemCreateActionState = {
   error: string | null;
   errorKind?: "translation-links" | "same-translation-title";
   sameTranslationTitleConfirmed?: boolean;
+  conceptLinkReminder?: boolean;
 };
 
 export async function createProblemFormAction(
   _state: ProblemCreateActionState,
   formData: FormData
 ): Promise<ProblemCreateActionState> {
+  if (needsConceptLinkReminder(String(formData.get("bodyMarkdown") ?? ""), conceptLinkReminderAcknowledged(formData))) {
+    return {
+      error: null,
+      conceptLinkReminder: true,
+      sameTranslationTitleConfirmed: sameTranslationTitleOverrideRequested(formData)
+    };
+  }
   try {
     await createProblemAction(formData);
     return { error: null };
@@ -1188,6 +1198,10 @@ export async function updateProblemAction(
   const language = editableContentLanguage(formData.get("language"), previous.language);
   const bodyMarkdown =
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
+  const approvingProposal = Number.isInteger(approvedProposalId) && approvedProposalId > 0;
+  if (!approvingProposal && needsConceptLinkReminder(bodyMarkdown, conceptLinkReminderAcknowledged(formData))) {
+    return { status: "concept-link-reminder" };
+  }
   const history = submittedContentHistory(formData, previous, true);
   const additionalConceptSlugs = submittedAdditionalConceptSlugs(formData, previous.additionalConceptSlugs);
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));

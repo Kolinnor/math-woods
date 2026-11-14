@@ -2,7 +2,9 @@
 
 import type { ReactNode } from "react";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { ConceptLinkReminder, revealBanner } from "@/components/ConceptLinkReminder";
 import type { ProblemEditActionState } from "@/lib/actions/problem-actions";
+import { CONCEPT_LINK_REMINDER_FIELD } from "@/lib/problem-link-reminder";
 import { dictionaryForLocale } from "@/lib/i18n/dictionary";
 import type { InterfaceLocale } from "@/lib/i18n/types";
 
@@ -30,6 +32,20 @@ export function ProblemConcurrentEditForm({
   const errorRef = useRef<HTMLParagraphElement | null>(null);
   const [acceptedConflictVersion, setAcceptedConflictVersion] = useState<number | null>(null);
   const conflictRef = useRef<HTMLElement | null>(null);
+  const reminderRef = useRef<HTMLDivElement | null>(null);
+  // Once the server has shown the concept-link reminder, the next submit goes through.
+  const [reminded, setReminded] = useState(false);
+  const [showReminder, setShowReminder] = useState(false);
+
+  useEffect(() => {
+    if (state.status !== "concept-link-reminder") return;
+    setReminded(true);
+    setShowReminder(true);
+  }, [state]);
+
+  useEffect(() => {
+    if (showReminder) revealBanner(reminderRef.current);
+  }, [showReminder]);
 
   useEffect(() => {
     if (state.status === "invalid") errorRef.current?.focus();
@@ -65,11 +81,16 @@ export function ProblemConcurrentEditForm({
       if (pending) return;
       const submitter = (event.nativeEvent as SubmitEvent).submitter;
       const data = new FormData(event.currentTarget, submitter);
+      setShowReminder(false);
       startTransition(() => formAction(data));
     }}>
       <fieldset disabled={pending} className="contents" aria-busy={pending}>
       {state.status === "invalid" && <p ref={errorRef} role="alert" tabIndex={-1} className="quality-banner">{state.error}</p>}
+      {showReminder && (
+        <ConceptLinkReminder ref={reminderRef} labels={t.contentEditor} />
+      )}
       <input type="hidden" name="baseVersion" value={baseVersion} />
+      {reminded && <input type="hidden" name={CONCEPT_LINK_REMINDER_FIELD} value="1" />}
       {acceptedConflictVersion !== null && (
         <input type="hidden" name="acceptedConflictVersion" value={acceptedConflictVersion} />
       )}

@@ -1546,6 +1546,8 @@ export const en = {
     creationRateLimitMessage: "Please wait a few seconds before trying again. Your draft has been kept.",
     publishing: "Publishing…",
     publishAnyway: "Publish anyway",
+    conceptLinkReminderHeading: "Your problem isn't linked to any concept.",
+    conceptLinkReminderMessage: "Select a word that readers might not understand and right-click it to link it to a Concept page.",
     statement: "Statement",
     content: "Content",
     translationLinksNote: "Concept links are carried over automatically. Translate the visible text after |, but keep the target before it so every language stays connected to the same mathematical idea.",

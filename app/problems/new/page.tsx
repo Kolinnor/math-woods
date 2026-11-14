@@ -253,6 +253,8 @@ export default async function NewProblemPage({
         )}
         <ProblemCreateForm
           labels={{
+            conceptLinkReminderHeading: t.contentEditor.conceptLinkReminderHeading,
+            conceptLinkReminderMessage: t.contentEditor.conceptLinkReminderMessage,
             keepSameTranslationTitle: t.contentEditor.keepSameTranslationTitle,
             publishAnyway: t.contentEditor.publishAnyway,
             sameTranslationTitleHeading: t.contentEditor.sameTranslationTitleHeading,

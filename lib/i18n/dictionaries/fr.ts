@@ -1551,6 +1551,8 @@ export const fr = {
     creationRateLimitMessage: "Veuillez patienter quelques secondes avant de réessayer. Votre brouillon est conservé.",
     publishing: "Publication…",
     publishAnyway: "Publier quand même",
+    conceptLinkReminderHeading: "Votre problème n'est relié à aucun concept.",
+    conceptLinkReminderMessage: "Sélectionnez un mot que les utilisateurs pourraient ne pas comprendre et faites un clic droit afin de le relier à une page Concept.",
     statement: "Énoncé",
     content: "Contenu",
     translationLinksNote: "Les liens vers les concepts sont repris automatiquement. Traduisez le texte visible après |, mais conservez la cible placée avant afin que toutes les langues restent reliées à la même idée mathématique.",
