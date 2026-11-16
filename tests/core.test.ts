@@ -1656,7 +1656,8 @@ const renamedProblemDomains: Record<string, string> = {
   "topology-differential-geometry": "differential-geometry",
   "topology-general-topology": "general-topology",
   "real-analysis-ordinary-differential-equations": "differential-equations-ordinary",
-  "discrete-mathematics-combinatorics": "combinatorics"
+  "discrete-mathematics-combinatorics": "combinatorics",
+  "linear-algebra-geometry": "geometry"
 };
 for (const legacy of legacyProblemDomains) {
   for (const raw of [legacy.value, ...legacy.aliases]) {
@@ -1668,7 +1669,9 @@ for (const legacy of legacyProblemDomains) {
           ? "arithmetic"
           : renamedProblemDomains[legacy.value] ?? legacy.value;
     assert.equal(parseDomainCode(raw), expected, `Legacy domain ${raw}`);
-    const expectedCoarse = legacy.value === "topology-differential-geometry" ? MathDomain.GEOMETRY : legacy.domain;
+    const expectedCoarse = ["topology-differential-geometry", "linear-algebra-geometry"].includes(legacy.value)
+      ? MathDomain.GEOMETRY
+      : legacy.domain;
     assert.deepEqual(parseProblemDomains([raw], null, [raw]), [
       { domain: expectedCoarse, mscCode: expected, spoiler: true }
     ], `Editing legacy domain ${raw}`);
