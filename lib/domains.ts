@@ -415,17 +415,25 @@ export function translatedDomainLabel(
   return labels[option.value] ?? labels[option.domain] ?? option.label;
 }
 
+/** Alphabetical order by displayed label, with the catch-all "other" domain last. */
+export function compareDomainOptions(left: DomainOption, right: DomainOption) {
+  const leftIsOther = left.value === "other";
+  const rightIsOther = right.value === "other";
+  if (leftIsOther !== rightIsOther) return leftIsOther ? 1 : -1;
+  return left.label.localeCompare(right.label, undefined, { sensitivity: "base" });
+}
+
 export function translatedDomainOptions<T extends DomainOption>(
   domains: readonly T[],
   labels: Partial<Record<string, string>>
 ): T[] {
-  return domains.map((domain) => ({
+  return (domains.map((domain) => ({
     ...domain,
     label: translatedDomainLabel(domain.value, labels),
     ...(domain.children
       ? { children: translatedDomainOptions(domain.children, labels) }
       : {})
-  })) as T[];
+  })) as T[]).sort(compareDomainOptions);
 }
 
 export function domainDescription(domain: MathDomain | string | null | undefined) {

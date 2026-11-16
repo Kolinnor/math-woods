@@ -2274,8 +2274,9 @@ body:has(.problem-detail-shell) .site-header {
   margin-bottom: 0.55rem;
 }
 .problem-domain-strip-title-row {
-  align-items: baseline;
+  align-items: center;
   display: flex;
+  flex-wrap: nowrap;
   gap: 0.65rem;
 }
 .problem-domain-strip-header h2 {
@@ -2284,27 +2285,27 @@ body:has(.problem-detail-shell) .site-header {
   margin: 0;
   white-space: nowrap;
 }
-.problem-domain-strip-title-row a {
-  color: #5a665c;
-  font-size: 0.78rem;
-  font-weight: 650;
-  text-decoration: none;
-}
-.problem-domain-strip-title-row a:hover {
-  color: #1c211b;
-}
 .problem-domain-visibility-toggle {
   align-items: center;
   appearance: none;
   background: transparent;
-  border: 0;
+  border: 1px solid rgba(90, 102, 92, 0.35);
+  border-radius: 999px;
   color: #5a665c;
   cursor: pointer;
   display: inline-flex;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  gap: 0.3rem;
   justify-content: center;
-  padding: 2px;
+  line-height: 1.2;
+  min-height: 0;
+  padding: 0.2rem 0.45rem 0.2rem 0.6rem;
+  white-space: nowrap;
 }
 .problem-domain-visibility-toggle:hover {
+  border-color: rgba(28, 33, 27, 0.55);
   color: #1c211b;
 }
 .problem-domain-visibility-toggle svg {

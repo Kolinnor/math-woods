@@ -31,7 +31,8 @@ import { CONCEPTS_PER_PAGE, conceptPagination, conceptPageHref } from "@/lib/con
 import {
   parseDomainCode,
   PROBLEM_DOMAINS,
-  translatedDomainLabel as translatedDomainOptionLabel
+  translatedDomainLabel as translatedDomainOptionLabel,
+  translatedDomainOptions
 } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
@@ -400,11 +401,11 @@ export default async function ConceptsPage({
             <div className="concept-filter-section">
               <select name="domain" defaultValue={domainValue ?? ""}>
                 <option value="">{t.concepts.anyDomain}</option>
-                {PROBLEM_DOMAINS.flatMap((item) => [
-                  <option key={item.value} value={item.value}>{translatedDomainLabel(item.value, t)}</option>,
+                {translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels).flatMap((item) => [
+                  <option key={item.value} value={item.value}>{item.label}</option>,
                   ...(item.children ?? []).map((subdomain) => (
                     <option key={subdomain.value} value={subdomain.value}>
-                      {"  - "}{translatedDomainLabel(subdomain.value, t)}
+                      {"  - "}{subdomain.label}
                     </option>
                   ))
                 ])}

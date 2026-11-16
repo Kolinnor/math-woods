@@ -4028,6 +4028,16 @@ for (const domainValue of problemDomainValues) {
   assert.equal(typeof frenchDomainLabels[domainValue], "string", `Missing French domain label for ${domainValue}`);
 }
 const frenchProblemDomains = translatedDomainOptions(PROBLEM_DOMAINS, frenchDomainLabels);
+// Domains are listed alphabetically by displayed label, with "Autre" always last.
+for (const [labels, list] of [
+  [frenchDomainLabels, frenchProblemDomains],
+  [englishDomainLabels, translatedDomainOptions(PROBLEM_DOMAINS, englishDomainLabels)]
+] as const) {
+  assert.equal(list.at(-1)?.value, "other", "The other domain must stay last");
+  const named = list.slice(0, -1).map((domain) => domain.label);
+  assert.deepEqual(named, [...named].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })));
+  assert.equal(list.length, PROBLEM_DOMAINS.length, `Every domain is listed (${labels === frenchDomainLabels ? "fr" : "en"})`);
+}
 assert.equal(frenchProblemDomains.find((domain) => domain.value === "linear-algebra")?.label, "Algèbre linéaire");
 assert.equal(
   frenchProblemDomains

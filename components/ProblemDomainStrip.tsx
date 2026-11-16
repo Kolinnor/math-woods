@@ -49,7 +49,7 @@ export function ProblemDomainStrip({
   progress,
   selectedDomain
 }: ProblemDomainStripProps) {
-  const [sort, setSort] = useState<SortKey>("family");
+  const [sort, setSort] = useState<SortKey>("name");
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(initiallyExpanded);
   const searchParams = useSearchParams();
@@ -57,14 +57,16 @@ export function ProblemDomainStrip({
   const domainHref = (domain?: string) => searchFilterHref("/problems", searchParams.toString(), "domain", domain);
   const sortedDomains = useMemo(() => {
     return [...domains].sort((a, b) => {
+      // The catch-all "other" domain always stays last.
+      if ((a.value === "other") !== (b.value === "other")) return a.value === "other" ? 1 : -1;
+      const byName = a.label.localeCompare(b.label, locale, { sensitivity: "base" });
       if (sort === "count") {
-        return (problemCounts?.[b.value] ?? 0) - (problemCounts?.[a.value] ?? 0)
-          || a.label.localeCompare(b.label, locale);
+        return (problemCounts?.[b.value] ?? 0) - (problemCounts?.[a.value] ?? 0) || byName;
       }
-      if (sort === "name") return a.label.localeCompare(b.label, locale);
-      if (sort === "diff") return a.diff - b.diff || a.label.localeCompare(b.label, locale);
-      if (sort === "date") return a.year - b.year || a.label.localeCompare(b.label, locale);
-      return families[a.family].order - families[b.family].order;
+      if (sort === "name") return byName;
+      if (sort === "diff") return a.diff - b.diff || byName;
+      if (sort === "date") return a.year - b.year || byName;
+      return families[a.family].order - families[b.family].order || byName;
     });
   }, [domains, families, locale, problemCounts, sort]);
   const activeSortLabel =
@@ -102,18 +104,15 @@ export function ProblemDomainStrip({
       <div className="problem-domain-strip-header">
         <div className="problem-domain-strip-title-row">
           <h2 id="problem-domain-strip-title">{labels.title}</h2>
-          <Link href={domainHref() as never} scroll={false}>
-            {labels.allDomains}
-          </Link>
           {domains.length > 8 && (
             <button
               type="button"
               className="problem-domain-visibility-toggle"
               aria-expanded={expanded}
-              aria-label={expanded ? labels.collapseDomains : labels.showAllDomains}
               title={expanded ? labels.collapseDomains : labels.showAllDomains}
               onClick={() => setExpanded((value) => !value)}
             >
+              <span>{labels.allDomains}</span>
               <ChevronDown size={13} aria-hidden="true" />
             </button>
           )}

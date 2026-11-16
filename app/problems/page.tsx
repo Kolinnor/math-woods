@@ -24,7 +24,6 @@ import {
   domainCodeAliases,
   domainDescription,
   domainLabel,
-  FLAT_PROBLEM_DOMAIN_OPTIONS,
   parseDomainCode,
   parentProblemDomainForCode,
   PROBLEM_DOMAIN_FAMILIES,
@@ -1010,10 +1009,9 @@ export default async function ProblemsPage({
             </div>
 
             <ProblemFilterBuilder
-              domains={FLAT_PROBLEM_DOMAIN_OPTIONS.map((item) => ({
-                value: item.value,
-                label: translatedDomainLabel(item.value, t)
-              }))}
+              domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)
+                .flatMap((item) => [item, ...(item.children ?? [])])
+                .map(({ value, label }) => ({ value, label }))}
               initialFilters={advancedFilters}
               initialLogic={advancedLogic}
               labels={t.problems.advancedFilters}
