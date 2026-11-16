@@ -221,7 +221,7 @@ export default async function NewProblemPage({
     ? sourceProblem.domains.length
       ? sourceProblem.domains.map((item) => item.mscCode)
       : [sourceProblem.domain]
-    : ["OTHER"];
+    : [];
   const initialDomainSpoilers = sourceProblem
     ? sourceProblem.domains.filter((item) => item.spoiler).map((item) => item.mscCode)
     : [];
@@ -254,11 +254,15 @@ export default async function NewProblemPage({
         <ProblemCreateForm
           labels={{
             keepSameTranslationTitle: t.contentEditor.keepSameTranslationTitle,
+            missingDifficulty: t.contentEditor.missingProblemDifficulty,
+            missingDomain: t.contentEditor.missingProblemDomain,
+            missingFieldsHeading: t.contentEditor.missingProblemFieldsHeading,
             publishAnyway: t.contentEditor.publishAnyway,
             sameTranslationTitleHeading: t.contentEditor.sameTranslationTitleHeading,
             sameTranslationTitleWarning: t.contentEditor.sameTranslationTitleWarning,
             translationLinksHeading: t.contentEditor.translationLinksHeading
           }}
+          requireClassification={!sourceProblem}
         >
           {explorationSlug && <input type="hidden" name="addToExplorationSlug" value={explorationSlug} />}
           {parentProblem && <input type="hidden" name="parentProblemSlug" value={parentProblem.slug} />}
@@ -326,13 +330,16 @@ export default async function NewProblemPage({
                 }
               />
               <ProblemDifficultyField
+                allowUnset
                 defaultValue={sourceProblem?.difficulty}
                 help={t.contentEditor.difficultyHelp}
                 label={t.contentEditor.difficulty}
+                unsetHint={t.contentEditor.difficultyNotSet}
               />
             </div>
 
             <ProblemDomainPicker
+              allowEmpty
               domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)}
               initialValues={initialDomains}
               initialSpoilers={initialDomainSpoilers}

@@ -1120,9 +1120,12 @@ export async function createProblemAction(formData: FormData) {
     : contentLanguageViewHref("/problems", problem.created.slug, problem.created.language) as Route);
 }
 
+export type ProblemCreateMissingField = "difficulty" | "domain";
+
 export type ProblemCreateActionState = {
   error: string | null;
-  errorKind?: "translation-links" | "same-translation-title";
+  errorKind?: "translation-links" | "same-translation-title" | "missing-fields";
+  missingFields?: ProblemCreateMissingField[];
   sameTranslationTitleConfirmed?: boolean;
 };
 
@@ -1130,6 +1133,16 @@ export async function createProblemFormAction(
   _state: ProblemCreateActionState,
   formData: FormData
 ): Promise<ProblemCreateActionState> {
+  // New (non-translation) problems must have an explicit difficulty and at least one domain;
+  // translations inherit both from their translation group.
+  if (!formData.get("translationGroupId")) {
+    const missingFields: ProblemCreateMissingField[] = [];
+    if (parseProblemDifficulty(formData.get("difficulty")) === null) missingFields.push("difficulty");
+    if (!formData.getAll("domains").some((value) => String(value).trim())) missingFields.push("domain");
+    if (missingFields.length) {
+      return { error: "Missing difficulty or domain.", errorKind: "missing-fields", missingFields };
+    }
+  }
   try {
     await createProblemAction(formData);
     return { error: null };

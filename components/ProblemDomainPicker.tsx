@@ -22,6 +22,8 @@ type ProblemDomainPickerProps = {
   showPrimaryDomain?: boolean;
   showSpoilerToggle?: boolean;
   helpText?: string | null;
+  /** When true, the picker may start and stay empty instead of preselecting the first domain. */
+  allowEmpty?: boolean;
 };
 
 function isProblemDomainOption(domain: DomainOption): domain is ProblemDomainOption {
@@ -51,13 +53,14 @@ export function ProblemDomainPicker({
   showSubdomains = false,
   showPrimaryDomain = false,
   showSpoilerToggle = true,
-  helpText
+  helpText,
+  allowEmpty = false
 }: ProblemDomainPickerProps) {
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const subdomainMenuRef = useRef<HTMLDivElement | null>(null);
   const initial = initialValues.length
     ? initialValues.map((value) => findOption(domains, value)?.value ?? value).slice(0, maxDomains)
-    : [domains[0]?.value];
+    : allowEmpty ? [] : [domains[0]?.value];
   const [values, setValues] = useState(initial.filter(Boolean));
   const [spoilers, setSpoilers] = useState(() => new Set(initialSpoilers.map((value) => findOption(domains, value)?.value ?? value)));
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
@@ -124,9 +127,10 @@ export function ProblemDomainPicker({
       if (maxDomains === 1) {
         next = [value];
       } else if (current.includes(value)) {
-        next = current.length > 1 ? current.filter((item) => item !== value) : current;
+        next = current.length > 1 || allowEmpty ? current.filter((item) => item !== value) : current;
       } else {
-        const withoutDefaultOther = current.length === 1 && current[0] === "other" && value !== "other" ? [] : current;
+        // Without allowEmpty, a lone "other" is the implicit default and gets replaced by the first real choice.
+        const withoutDefaultOther = !allowEmpty && current.length === 1 && current[0] === "other" && value !== "other" ? [] : current;
         next = [...withoutDefaultOther, value].slice(0, maxDomains);
       }
       pruneSpoilers(next);
