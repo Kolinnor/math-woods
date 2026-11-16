@@ -223,6 +223,7 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
       ["algebra-galois-theory", "Galois theory"],
       ["algebra-groups", "Group"],
       ["algebra-modules", "Module"],
+      ["algebra-permutations", "Permutation"],
       ["algebra-rings", "Ring"],
       ["representation-theory", "Representation theory", ["20", "20-XX"]]
     ]
@@ -231,7 +232,6 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
     problemDomain("linear-algebra", "Linear algebra", MathDomain.ALGEBRA, "▦", "found", 2, 1850, ["15", "15-XX"]),
     [
       ["linear-algebra-euclidean-spaces", "Euclidean vector space"],
-      ["linear-algebra-geometry", "Geometry"],
       ["linear-algebra-hilbert-spaces", "Hilbert and pre-Hilbert space"],
       ["linear-algebra-lie-algebras", "Lie algebra"],
       ["linear-algebra-endomorphism-reduction", "Reduction of endomorphism"],
@@ -245,7 +245,7 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
   ),
   problemDomain("algebraic-geometry", "Algebraic geometry", MathDomain.ALGEBRA, "⊙", "geom", 4, 1900, ["14", "14-XX"]),
   withSubdomains(
-    problemDomain("geometry", "Geometry", MathDomain.GEOMETRY, "△", "geom", 2, -300, [MathDomain.GEOMETRY, "51", "51-XX", "52", "52-XX"]),
+    problemDomain("geometry", "Geometry", MathDomain.GEOMETRY, "△", "geom", 2, -300, [MathDomain.GEOMETRY, "51", "51-XX", "52", "52-XX", "linear-algebra-geometry"]),
     [["geometry-non-euclidean-geometry", "Non-euclidean geometry"]]
   ),
   withSubdomains(
@@ -415,17 +415,25 @@ export function translatedDomainLabel(
   return labels[option.value] ?? labels[option.domain] ?? option.label;
 }
 
+/** Alphabetical order by displayed label, with the catch-all "other" domain last. */
+export function compareDomainOptions(left: DomainOption, right: DomainOption) {
+  const leftIsOther = left.value === "other";
+  const rightIsOther = right.value === "other";
+  if (leftIsOther !== rightIsOther) return leftIsOther ? 1 : -1;
+  return left.label.localeCompare(right.label, undefined, { sensitivity: "base" });
+}
+
 export function translatedDomainOptions<T extends DomainOption>(
   domains: readonly T[],
   labels: Partial<Record<string, string>>
 ): T[] {
-  return domains.map((domain) => ({
+  return (domains.map((domain) => ({
     ...domain,
     label: translatedDomainLabel(domain.value, labels),
     ...(domain.children
       ? { children: translatedDomainOptions(domain.children, labels) }
       : {})
-  })) as T[];
+  })) as T[]).sort(compareDomainOptions);
 }
 
 export function domainDescription(domain: MathDomain | string | null | undefined) {

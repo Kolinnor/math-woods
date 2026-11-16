@@ -8,6 +8,16 @@ The goal is not ceremony. The goal is to stop a new fix from quietly undoing an 
 
 Entries are ordered newest first; add new dated entries above the older ones.
 
+## 2026-11-16 - Problem publication warnings preserve the whole form
+
+The concept-link reminder and mandatory classification checks must compose with
+translation-title confirmations. Submit the creation form in a transition without
+React's automatic successful-action reset: a warning is not a saved problem.
+Preserve title, statement, citations, checkboxes, classification and submitter fields
+across retries. Concept links include ordinary Markdown, additional links and
+exercise attachments. `tests/problem-publication.browser.mjs` checks the real form
+components in Chromium and WebKit; server validation has separate regression tests.
+
 ## 2026-11-07 - Multiple concept proof editors keep stable input and drafts
 
 Proof editors report their Markdown to a parent-owned, receipt-protected draft.

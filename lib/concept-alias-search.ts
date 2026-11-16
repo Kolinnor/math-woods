@@ -1,3 +1,4 @@
+import { matchingSearchTextIds } from "@/lib/search-text-db";
 import { prisma } from "@/lib/db";
 import { ACTIVE_CONTENT_LANGUAGES } from "@/lib/languages";
 import { selectContentTranslation } from "@/lib/translation-routing";
@@ -5,11 +6,12 @@ import { selectContentTranslation } from "@/lib/translation-routing";
 /** An alias names a concept family, even when only one translation records it. */
 export async function matchingConceptAliasGroups(variants: readonly string[], exact = false) {
   if (!variants.length) return new Map<string, string[]>();
+  const normalizedIds = await matchingSearchTextIds("alias", variants, { exact });
   const rows = await prisma.conceptAlias.findMany({
     where: {
-      OR: variants.map((value) => ({ alias: exact
+      OR: [{ id: { in: normalizedIds } }, ...variants.map((value) => ({ alias: exact
         ? { equals: value, mode: "insensitive" as const }
-        : { contains: value, mode: "insensitive" as const } })),
+        : { contains: value, mode: "insensitive" as const } }))],
       concept: { language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) } }
     },
     select: { alias: true, concept: { select: { translationGroupId: true } } }

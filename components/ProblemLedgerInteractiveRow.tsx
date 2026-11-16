@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Check, Heart, House, Target } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { ParticleBurstZone } from "@/components/ParticleBurstZone";
+import { ProblemLikePromptDialog } from "@/components/ProblemLikePromptDialog";
 
 type BrowserOperation = "solve" | "unsolve" | "attempt" | "unattempt" | "favorite";
 
@@ -12,6 +13,9 @@ type Labels = {
   attempted: string;
   favoriteProblem: string;
   favorites: string;
+  likePromptClose: string;
+  likePromptMessage: string;
+  likePromptQuestion: string;
   markSolved: string;
   removeFavorite: string;
   startAttempting: string;
@@ -57,8 +61,14 @@ export function ProblemLedgerInteractiveRow({
   const [favoriteCount, setFavoriteCount] = useState(initialFavoriteCount);
   const [pending, setPending] = useState<BrowserOperation | null>(null);
   const [failed, setFailed] = useState(false);
+  const [likePrompt, setLikePrompt] = useState(false);
 
-  async function persist(operation: BrowserOperation, optimistic: () => void, rollback: () => void) {
+  async function persist(
+    operation: BrowserOperation,
+    optimistic: () => void,
+    rollback: () => void,
+    onSuccess?: (result: { likePrompt?: boolean }) => void
+  ) {
     if (pending) return;
     setFailed(false);
     setPending(operation);
@@ -70,6 +80,7 @@ export function ProblemLedgerInteractiveRow({
         body: JSON.stringify({ operation })
       });
       if (!response.ok) throw new Error("Problem state update failed.");
+      onSuccess?.(await response.json().catch(() => ({})));
     } catch {
       rollback();
       setFailed(true);
@@ -125,6 +136,9 @@ export function ProblemLedgerInteractiveRow({
                   () => {
                     setSolved(wasSolved);
                     setAttempted(wasAttempted);
+                  },
+                  (result) => {
+                    if (!wasSolved && result.likePrompt) setLikePrompt(true);
                   }
                 );
               }}
@@ -207,6 +221,28 @@ export function ProblemLedgerInteractiveRow({
           </ParticleBurstZone>
         )}
       </div>
+
+      {likePrompt && (
+        <ProblemLikePromptDialog
+          labels={{ question: labels.likePromptQuestion, message: labels.likePromptMessage, like: labels.addFavorite, close: labels.likePromptClose }}
+          onClose={() => setLikePrompt(false)}
+          onLike={() => {
+            if (favorite) return;
+            const previousCount = favoriteCount;
+            void persist(
+              "favorite",
+              () => {
+                setFavorite(true);
+                setFavoriteCount(previousCount + 1);
+              },
+              () => {
+                setFavorite(false);
+                setFavoriteCount(previousCount);
+              }
+            );
+          }}
+        />
+      )}
 
       <span className="sr-only" role="status" aria-live="polite">
         {failed ? labels.updateFailed : ""}

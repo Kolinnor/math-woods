@@ -1,3 +1,4 @@
+import * as problemLinkReminder from "../lib/problem-link-reminder.ts";
 import * as conceptDomains from "../lib/concept-domains.ts";
 import * as conceptProofs from "../lib/concept-proofs.ts";
 import * as additionalLinks from '../lib/additional-concept-links.ts';
@@ -25,6 +26,7 @@ const require = createRequire(import.meta.url);
 const redirectError = new Error('NEXT_REDIRECT');
 function load(file, overrides = {}) {
   const modules = {
+    '@/lib/problem-link-reminder': problemLinkReminder,
     '@/lib/concept-domains': conceptDomains,
     '@/lib/additional-concept-links': additionalLinks, './concept-link-references.ts': conceptLinkReferences,
     '@prisma/client': require('@prisma/client'), 'react/jsx-runtime': require('react/jsx-runtime'),
@@ -92,6 +94,7 @@ test('problem and exercise edits preserve reviews; explicit downgrades and rollb
         }
       });
       const data = new FormData();
+      data.set('conceptLinkReminderSeen', '1');
       data.set('baseVersion', '3'); data.set('language', 'fr');
       data.set('historyMarkdown', 'Un contexte historique'); data.set('historyEnabled', 'on'); data.set('historySpoiler', 'on');
       if (isExercise) data.set('isExercise', 'on');

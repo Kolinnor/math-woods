@@ -1,8 +1,8 @@
+import { foldSearchText } from "./search-text.ts";
 import { Prisma } from "@prisma/client";
 
 export function referenceSearchWords(query: string, deduplicate = true) {
-  const words = query.slice(0, 160).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
-    .replace(/œ/g, "oe").replace(/æ/g, "ae").replace(/ß/g, "ss")
+  const words = foldSearchText(query.slice(0, 160))
     .replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/).filter(Boolean);
   return deduplicate ? [...new Set(words)] : words;
 }

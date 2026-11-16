@@ -1,3 +1,4 @@
+import { matchingSearchTextIds } from "@/lib/search-text-db";
 import { conceptDomainCodes } from "@/lib/concept-domains";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ContentLanguageFallback } from "@/components/ContentLanguageFallback";
@@ -26,11 +27,11 @@ async function searchQuotes(query: string, language: string, databaseSearchVaria
     const quotes = await prisma.quote.findMany({
       where: {
         language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-        OR: databaseSearchVariants.flatMap((variant) => [
+        OR: [{ id: { in: await matchingSearchTextIds("quote", databaseSearchVariants) } }, ...databaseSearchVariants.flatMap((variant) => [
           { text: { contains: variant, mode: "insensitive" as const } },
           { attributedTo: { contains: variant, mode: "insensitive" as const } },
           { provenance: { contains: variant, mode: "insensitive" as const } }
-        ])
+        ])]
       },
       take: 100
     });
@@ -62,12 +63,17 @@ export default async function SearchPage({
   const referenceLabelById = new Map(referenceMatches.map(row => [row.id, row.label]));
   const referenceLabelByGroup = new Map(referenceMatches.map(row => [row.translationGroupId, row.label]));
   const aliasGroups = await matchingConceptAliasGroups(query ? databaseSearchVariants : []);
+  const [conceptIds, problemIds, explorationIds] = await Promise.all([
+    matchingSearchTextIds("concept", query ? databaseSearchVariants : []),
+    matchingSearchTextIds("problem", query ? databaseSearchVariants : []),
+    matchingSearchTextIds("exploration", query && EXPLORATIONS_ENABLED ? databaseSearchVariants : [])
+  ]);
   const [conceptRows, problemRows, explorationRows, quotes] = query
     ? await Promise.all([
         prisma.concept.findMany({
           where: {
             language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-            OR: [...databaseSearchVariants.flatMap((variant) => [
+            OR: [{ id: { in: conceptIds } }, ...databaseSearchVariants.flatMap((variant) => [
               { title: { contains: variant, mode: "insensitive" as const } },
               { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
               { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
@@ -84,6 +90,7 @@ export default async function SearchPage({
             language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
             ...visibleProblemWhere(user),
             OR: [
+              { id: { in: problemIds } },
               ...databaseSearchVariants.flatMap((variant) => [
                 { title: { contains: variant, mode: "insensitive" as const } },
                 { bodyMarkdown: { contains: variant, mode: "insensitive" as const } }
@@ -99,10 +106,10 @@ export default async function SearchPage({
                 visibility: "PUBLIC",
                 status: "PUBLISHED",
                 language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-                OR: databaseSearchVariants.flatMap((variant) => [
+                OR: [{ id: { in: explorationIds } }, ...databaseSearchVariants.flatMap((variant) => [
                   { title: { contains: variant, mode: "insensitive" as const } },
                   { descriptionMarkdown: { contains: variant, mode: "insensitive" as const } }
-                ])
+                ])]
               },
               take: 100
             })

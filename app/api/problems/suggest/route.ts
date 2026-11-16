@@ -1,3 +1,4 @@
+import { matchingSearchTextIds } from "@/lib/search-text-db";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -29,6 +30,10 @@ export async function GET(request: Request) {
   const t = await getTranslations();
   const morphologyVariants = searchMorphologyVariants(query, language);
   const databaseVariants = searchDatabaseVariants(query, morphologyVariants);
+  const [normalizedIds, exactIds] = await Promise.all([
+    matchingSearchTextIds("problem", databaseVariants, { titleOnly: true }),
+    matchingSearchTextIds("problem", databaseVariants, { titleOnly: true, exact: true })
+  ]);
   const commonWhere = {
     status: listedOnly ? "PUBLISHED" as const : { not: "ARCHIVED" as const },
     listed: listedOnly ? true : undefined,
@@ -53,6 +58,7 @@ export async function GET(request: Request) {
         ...commonWhere,
         language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
+          { id: { in: exactIds } },
           { title: { equals: query, mode: "insensitive" } },
           { slug: { equals: query.toLowerCase(), mode: "insensitive" } }
         ]
@@ -64,10 +70,10 @@ export async function GET(request: Request) {
     where: {
       ...commonWhere,
       language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
-      OR: databaseVariants.flatMap((variant) => [
+      OR: [{ id: { in: normalizedIds } }, ...databaseVariants.flatMap((variant) => [
         { title: { contains: variant, mode: "insensitive" as const } },
         { slug: { contains: variant, mode: "insensitive" as const } }
-      ])
+      ])]
     },
     select: problemSelect,
     orderBy: { title: "asc" },

@@ -1,3 +1,4 @@
+import { matchingSearchTextIds } from "@/lib/search-text-db";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getPreferredContentLanguage } from "@/lib/server-language";
@@ -29,6 +30,10 @@ export async function GET(request: Request) {
     matchingConceptAliasGroups([query])
   ]);
   const aliasGroups = new Map([...matchingAliasGroups, ...exactAliasGroups]);
+  const [normalizedIds, exactIds] = await Promise.all([
+    matchingSearchTextIds("concept", databaseVariants, { titleOnly: true }),
+    matchingSearchTextIds("concept", databaseVariants, { titleOnly: true, exact: true })
+  ]);
   const conceptSelect = {
     title: true,
     slug: true,
@@ -42,6 +47,7 @@ export async function GET(request: Request) {
       where: {
         language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
+          { id: { in: exactIds } },
           { translationGroupId: { in: [...exactAliasGroups.keys()] } },
           { title: { in: databaseVariants, mode: "insensitive" } },
           { slug: { in: morphologySlugs, mode: "insensitive" } },
@@ -55,6 +61,7 @@ export async function GET(request: Request) {
     where: {
       language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
       OR: [
+        { id: { in: normalizedIds } },
         { translationGroupId: { in: [...matchingAliasGroups.keys()] } },
         { title: { contains: query, mode: "insensitive" } },
         { slug: { contains: query.toLowerCase(), mode: "insensitive" } },

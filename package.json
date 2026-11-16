@@ -42,7 +42,7 @@
     "prod:migrate": "docker compose --env-file .env.production -f docker-compose.infomaniak.yml run --rm migrate",
     "prod:up": "docker compose --env-file .env.production -f docker-compose.infomaniak.yml up -d app uptime-kuma caddy",
     "prod:logs": "docker compose --env-file .env.production -f docker-compose.infomaniak.yml logs -f app caddy",
-    "test:core": "node --experimental-strip-types tests/core.test.ts && npm run test:polls && npm run test:guides && npm run test:citations && npm run test:bibliography && npm run test:typography && npm run test:mathematician-names && npm run test:editor-drafts && npm run test:editor-links && npm run test:runtime && node --experimental-strip-types --test tests/problem-history.test.mjs tests/concept-pagination.test.mjs tests/concept-map.test.mjs tests/discussion-replies.test.mjs tests/content-history.test.mjs tests/additional-concept-links.test.mjs tests/concept-proofs.test.mjs tests/concept-domains.test.mjs",
+    "test:core": "node --experimental-strip-types tests/core.test.ts && npm run test:polls && npm run test:guides && npm run test:citations && npm run test:bibliography && npm run test:typography && npm run test:mathematician-names && npm run test:editor-drafts && npm run test:editor-links && npm run test:runtime && node --experimental-strip-types --test tests/problem-history.test.mjs tests/concept-pagination.test.mjs tests/concept-map.test.mjs tests/discussion-replies.test.mjs tests/content-history.test.mjs tests/additional-concept-links.test.mjs tests/concept-proofs.test.mjs tests/concept-domains.test.mjs tests/problem-like-prompt.test.mjs tests/problem-link-reminder.test.mjs tests/problem-create-validation.test.mjs tests/search-text.test.mjs",
     "test:mathematician-names": "node --experimental-strip-types --test tests/mathematician-names.test.mjs tests/portrait.test.mjs tests/mathematician-related.test.mjs tests/mathematician-review.test.mjs tests/mathematician-browser.test.mjs",
     "test:editor-drafts": "node --experimental-strip-types --test tests/editor-draft-receipts.test.mjs",
     "test:jsxgraph:browser": "node --experimental-strip-types tests/jsxgraph-html.browser.mjs",
@@ -53,7 +53,8 @@
     "test:guides": "node --experimental-strip-types --test tests/guide-sync.test.mjs",
     "test:visual": "cross-env VISUAL_INJECT_BUILD_CSS=1 playwright test --config=playwright.visual.config.ts",
     "test:visual:reference": "playwright test --config=playwright.visual.config.ts",
-    "test:visual:update": "playwright test --config=playwright.visual.config.ts --update-snapshots"
+    "test:visual:update": "playwright test --config=playwright.visual.config.ts --update-snapshots",
+    "test:problem-publication:browser": "node tests/problem-publication.browser.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.8.0",
@@ -88,6 +89,7 @@
     "@types/sanitize-html": "^2.13.0",
     "autoprefixer": "^10.4.20",
     "cross-env": "^10.1.0",
+    "esbuild": "0.28.2",
     "graphology-types": "^0.24.8",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.17",

@@ -1,3 +1,4 @@
+import { matchingSearchTextIds } from "@/lib/search-text-db";
 import { MathDomain, Prisma, QualityStatus } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -24,7 +25,6 @@ import {
   domainCodeAliases,
   domainDescription,
   domainLabel,
-  FLAT_PROBLEM_DOMAIN_OPTIONS,
   parseDomainCode,
   parentProblemDomainForCode,
   PROBLEM_DOMAIN_FAMILIES,
@@ -483,6 +483,7 @@ export default async function ProblemsPage({
             : { createdAt: sortValue === "oldest" ? "asc" : "desc" };
   const queryClauses: Prisma.ProblemWhereInput[] = [];
   if (query) {
+    queryClauses.push({ id: { in: await matchingSearchTextIds("problem", databaseSearchVariants) } });
     for (const variant of databaseSearchVariants) {
       queryClauses.push(
         { title: { contains: variant, mode: "insensitive" } },
@@ -1010,10 +1011,9 @@ export default async function ProblemsPage({
             </div>
 
             <ProblemFilterBuilder
-              domains={FLAT_PROBLEM_DOMAIN_OPTIONS.map((item) => ({
-                value: item.value,
-                label: translatedDomainLabel(item.value, t)
-              }))}
+              domains={translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels)
+                .flatMap((item) => [item, ...(item.children ?? [])])
+                .map(({ value, label }) => ({ value, label }))}
               initialFilters={advancedFilters}
               initialLogic={advancedLogic}
               labels={t.problems.advancedFilters}
@@ -1097,6 +1097,9 @@ export default async function ProblemsPage({
                   isOwnProblem={isOwnProblem}
                   labels={{
                     addFavorite: t.problemDetail.addFavorite,
+                    likePromptClose: t.problemDetail.likePromptClose,
+                    likePromptMessage: t.problemDetail.likePromptMessage,
+                    likePromptQuestion: t.problemDetail.likePromptQuestion,
                     attempted: t.problemDetail.attempted,
                     favoriteProblem: t.problems.favoriteProblem,
                     favorites: t.problems.favorites,

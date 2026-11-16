@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
+import { ProposalStatementPreview } from "@/components/ProposalStatementPreview";
 import { RevisionDiff } from "@/components/RevisionDiff";
 import { UserName } from "@/components/UserName";
 import {
@@ -116,6 +117,8 @@ export default async function ProblemEditProposalPage({
           defaultOpen
           revisionId={proposal.id}
         />
+
+        <ProposalStatementPreview current={current} proposed={proposed} language={proposed.language} />
 
         {metadataFields.length > 0 && (
           <div className="grid gap-3">

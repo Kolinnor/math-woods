@@ -1656,7 +1656,8 @@ const renamedProblemDomains: Record<string, string> = {
   "topology-differential-geometry": "differential-geometry",
   "topology-general-topology": "general-topology",
   "real-analysis-ordinary-differential-equations": "differential-equations-ordinary",
-  "discrete-mathematics-combinatorics": "combinatorics"
+  "discrete-mathematics-combinatorics": "combinatorics",
+  "linear-algebra-geometry": "geometry"
 };
 for (const legacy of legacyProblemDomains) {
   for (const raw of [legacy.value, ...legacy.aliases]) {
@@ -1668,7 +1669,9 @@ for (const legacy of legacyProblemDomains) {
           ? "arithmetic"
           : renamedProblemDomains[legacy.value] ?? legacy.value;
     assert.equal(parseDomainCode(raw), expected, `Legacy domain ${raw}`);
-    const expectedCoarse = legacy.value === "topology-differential-geometry" ? MathDomain.GEOMETRY : legacy.domain;
+    const expectedCoarse = ["topology-differential-geometry", "linear-algebra-geometry"].includes(legacy.value)
+      ? MathDomain.GEOMETRY
+      : legacy.domain;
     assert.deepEqual(parseProblemDomains([raw], null, [raw]), [
       { domain: expectedCoarse, mscCode: expected, spoiler: true }
     ], `Editing legacy domain ${raw}`);
@@ -3368,6 +3371,10 @@ assert.match(difficultyNumberRule, /min-width:\s*3ch/);
 assert.match(editorCssSource, /--mw-difficulty-column-width:\s*70px/);
 assert.match(editorCssSource, /\.mw-difficulty-label/);
 assert.match(editorCssSource, /\.mw-difficulty-popover/);
+// The difficulty popover sits inside inline text (<span>, <p>): phrasing elements only.
+const difficultyPopoverSource = readFileSync("components/Difficulty.tsx", "utf8").match(/function DifficultyPopover[\s\S]*?\n\}/)?.[0] ?? "";
+assert.ok(difficultyPopoverSource.length > 0);
+assert.doesNotMatch(difficultyPopoverSource, /<(div|p|ol|ul|li)[\s>]/);
 assert.match(
   editorCssSource,
   /\.home-news-list > a \{[^}]*grid-template-columns:\s*var\(--mw-difficulty-column-width\) minmax\(0, 1fr\) auto;/s
@@ -4025,6 +4032,16 @@ for (const domainValue of problemDomainValues) {
   assert.equal(typeof frenchDomainLabels[domainValue], "string", `Missing French domain label for ${domainValue}`);
 }
 const frenchProblemDomains = translatedDomainOptions(PROBLEM_DOMAINS, frenchDomainLabels);
+// Domains are listed alphabetically by displayed label, with "Autre" always last.
+for (const [labels, list] of [
+  [frenchDomainLabels, frenchProblemDomains],
+  [englishDomainLabels, translatedDomainOptions(PROBLEM_DOMAINS, englishDomainLabels)]
+] as const) {
+  assert.equal(list.at(-1)?.value, "other", "The other domain must stay last");
+  const named = list.slice(0, -1).map((domain) => domain.label);
+  assert.deepEqual(named, [...named].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })));
+  assert.equal(list.length, PROBLEM_DOMAINS.length, `Every domain is listed (${labels === frenchDomainLabels ? "fr" : "en"})`);
+}
 assert.equal(frenchProblemDomains.find((domain) => domain.value === "linear-algebra")?.label, "Algèbre linéaire");
 assert.equal(
   frenchProblemDomains

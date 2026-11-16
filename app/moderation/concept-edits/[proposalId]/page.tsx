@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ForestPageLayout } from "@/components/ForestPageLayout";
+import { ProposalStatementPreview } from "@/components/ProposalStatementPreview";
 import { RevisionDiff } from "@/components/RevisionDiff";
 import { UserName } from "@/components/UserName";
 import {
@@ -105,6 +106,8 @@ export default async function ConceptEditProposalPage({
             diffAria: () => "Proposed concept text diff"
           }}
         />
+
+        <ProposalStatementPreview current={current} proposed={proposed} language={proposed.language} label="Concept text" />
 
         <ConceptProofsRevision before={current.proofs} after={proposed.proofs} beforeRevisionId={proposal.id} revisionId={proposal.id} locale="en" labels={dictionaryForLocale("en").historyPage} />
 

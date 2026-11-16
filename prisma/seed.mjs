@@ -345,12 +345,12 @@ async function main() {
   await syncLinks(SourceType.CONCEPT, viete.id, viete.bodyMarkdown);
 
   await prisma.conceptAlias.upsert({
-    where: { aliasSlug: "vietas-formulas" },
+    where: { conceptId_aliasSlug: { conceptId: viete.id, aliasSlug: "vietas-formulas" } },
     update: { alias: "Vieta's formulas", conceptId: viete.id },
     create: { alias: "Vieta's formulas", aliasSlug: "vietas-formulas", conceptId: viete.id }
   });
   await prisma.conceptAlias.upsert({
-    where: { aliasSlug: "vietes-relations" },
+    where: { conceptId_aliasSlug: { conceptId: viete.id, aliasSlug: "vietes-relations" } },
     update: { alias: "Viète relations", conceptId: viete.id },
     create: { alias: "Viète relations", aliasSlug: "vietes-relations", conceptId: viete.id }
   });

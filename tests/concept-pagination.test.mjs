@@ -57,6 +57,7 @@ async function page(query, candidates=rows, cookie, role=null) {
   const calls=[];
   const preloads=[];
   const modules={
+    "@/lib/search-text-db": { matchingSearchTextIds: async () => [] },
     'react-dom':{preload:(href,options)=>preloads.push({href,options})},
     'next/headers':{cookies:async()=>({get:name=>name===browserView.CONCEPT_BROWSER_VIEW_COOKIE&&cookie?{value:cookie}:undefined})},
     '@/lib/concept-browser-view':browserView,

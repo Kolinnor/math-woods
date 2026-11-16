@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ProblemVerificationMode } from "@prisma/client";
 import {
@@ -9,6 +10,7 @@ import {
 } from "@/lib/actions/problem-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { LIKE_PROMPT_COOKIE } from "@/lib/problem-like-prompt";
 import { isVerifiedContributor } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +42,7 @@ export async function PATCH(
 
     const problem = await prisma.problem.findUnique({
       where: { id: problemId },
-      select: { id: true, authorId: true, slug: true, verificationMode: true, isConjecture: true }
+      select: { id: true, translationGroupId: true, authorId: true, slug: true, verificationMode: true, isConjecture: true }
     });
     if (!problem) return NextResponse.json({ error: "Problem not found." }, { status: 404 });
 
@@ -68,7 +70,16 @@ export async function PATCH(
     if (operation === "unattempt") await unmarkProblemAttemptAction(problem.id, problem.slug);
     if (operation === "favorite") await toggleProblemFavoriteAction(problem.id, problem.slug);
 
-    return NextResponse.json({ ok: true });
+    // The solve action queues the like invitation as a cookie for the problem page;
+    // this client shows it inline instead, so hand it over and clear the cookie.
+    let likePrompt = false;
+    if (operation === "solve") {
+      const cookieStore = await cookies();
+      likePrompt = cookieStore.get(LIKE_PROMPT_COOKIE)?.value === problem.translationGroupId;
+      cookieStore.delete(LIKE_PROMPT_COOKIE);
+    }
+
+    return NextResponse.json({ ok: true, likePrompt });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Problem state could not be updated.";
     return NextResponse.json(

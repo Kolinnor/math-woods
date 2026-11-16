@@ -1,3 +1,5 @@
+import { foldSearchText } from "./search-text.ts";
+
 export type SearchRankCandidate = {
   title: string;
   slug: string;
@@ -7,10 +9,7 @@ export type SearchRankCandidate = {
 };
 
 export function normalizeSearchText(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase()
+  return foldSearchText(value)
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }

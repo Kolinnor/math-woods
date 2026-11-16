@@ -1,3 +1,4 @@
+import { matchingSearchTextIds } from "@/lib/search-text-db";
 import Link from "next/link";
 import { BookOpen, Clock3, Search, Users } from "lucide-react";
 import { MathDomain } from "@prisma/client";
@@ -30,6 +31,7 @@ export default async function ExplorationsPage({
   const domain = Object.values(MathDomain).includes(filters.domain as MathDomain) ? filters.domain as MathDomain : null;
   const maxDuration = Number(filters.duration) || null;
   const maxDifficulty = Number(filters.difficulty) || null;
+  const normalizedIds = await matchingSearchTextIds("exploration", query ? [query, ...morphologyVariants] : []);
   const explorationRows = await prisma.playlist.findMany({
     where: {
       ...explorationCatalogWhere,
@@ -39,12 +41,12 @@ export default async function ExplorationsPage({
       ...(maxDifficulty ? { difficulty: { lte: maxDifficulty } } : {}),
       ...(query
         ? {
-            OR: morphologyVariants.flatMap((variant) => [
+            OR: [{ id: { in: normalizedIds } }, ...morphologyVariants.flatMap((variant) => [
               { title: { contains: variant, mode: "insensitive" as const } },
               { summary: { contains: variant, mode: "insensitive" as const } },
               { descriptionMarkdown: { contains: variant, mode: "insensitive" as const } },
               { audience: { contains: variant, mode: "insensitive" as const } }
-            ])
+            ])]
           }
         : {})
     },

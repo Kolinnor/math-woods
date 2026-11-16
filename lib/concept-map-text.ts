@@ -1,3 +1,5 @@
+import { foldSearchText } from "./search-text.ts";
+
 // Client-safe text helpers for the concept map: canvas labels cannot render KaTeX,
 // so titles are approximated with Unicode, and search ignores case and accents.
 
@@ -182,10 +184,7 @@ export function conceptTitleNeedsRichRendering(markdown: string) {
 
 /** Lowercase, accent-insensitive form used by the map search. */
 export function normalizeConceptMapSearch(text: string) {
-  return text
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
+  return foldSearchText(text)
     .replace(/[’']/g, "'")
     .replace(/[\^_{}$\\]/g, "")
     .replace(/[^\p{L}\p{N}'+]+/gu, " ")

@@ -1,5 +1,9 @@
 "use server";
 
+import { assertProblemClassification, ProblemClassificationError } from "@/lib/problem-create-validation";
+export type { ProblemCreateMissingField } from "@/lib/problem-create-validation";
+import type { ProblemCreateMissingField } from "@/lib/problem-create-validation";
+import { ConceptLinkReminderError } from "@/lib/problem-link-reminder";
 import { submittedAdditionalConceptSlugs } from "@/lib/additional-concept-links";
 
 import { contentHistory, contentWithHistory, submittedContentHistory, historyFormData } from "@/lib/content-history";
@@ -27,6 +31,8 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { LIKE_PROMPT_COOKIE, LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS, shouldPromptLikeAfterSolve } from "@/lib/problem-like-prompt";
 import {
   checkHintAchievements,
   checkProblemSolvedByOthersAchievements,
@@ -139,10 +145,12 @@ import {
   translationBodyFieldName
 } from "@/lib/translation-companions";
 import { acquireTransactionLock } from "@/lib/transaction-lock";
+import { conceptLinkReminderAcknowledged, needsConceptLinkReminder } from "@/lib/problem-link-reminder";
 
 export type ProblemEditActionState =
   | { status: "idle" }
   | { status: "invalid"; error: string }
+  | { status: "concept-link-reminder" }
   | {
       status: "conflict";
       currentVersion: number;
@@ -532,6 +540,8 @@ export async function createProblemAction(formData: FormData) {
   const title = boundedText(formData.get("title"), CONTENT_LIMITS.problemTitle, "Title") || "Untitled problem";
   const language = requireActiveContentLanguage(formData.get("language"));
   const translationGroupId = parseTranslationGroupId(formData.get("translationGroupId"));
+  // A parsed translation group is checked against its source below before any write.
+  if (!translationGroupId) assertProblemClassification(formData);
   const translationSourceSlug = ensureSlug(String(formData.get("translationSourceSlug") ?? ""), "");
   const contributionTask = parseProblemTranslationTaskKey(formData.get("contributionTask"));
   const allowMissingTranslationLinks = translationLinkOverrideRequested(formData);
@@ -639,6 +649,11 @@ export async function createProblemAction(formData: FormData) {
   if (translationSourceIdentity) {
     assertTranslationTitleChanged(translationSourceIdentity.title, title, allowSameTranslationTitle);
   }
+
+  if (!translationSourceIdentity && needsConceptLinkReminder(bodyMarkdown, conceptLinkReminderAcknowledged(formData), {
+    additionalConceptSlugs,
+    linkedConcept: Boolean(linkConceptSlug)
+  })) throw new ConceptLinkReminderError();
 
   const bodyHtml = await renderMarkdownContent(bodyMarkdown);
 
@@ -1122,8 +1137,10 @@ export async function createProblemAction(formData: FormData) {
 
 export type ProblemCreateActionState = {
   error: string | null;
-  errorKind?: "translation-links" | "same-translation-title";
+  errorKind?: "translation-links" | "same-translation-title" | "missing-fields";
+  missingFields?: ProblemCreateMissingField[];
   sameTranslationTitleConfirmed?: boolean;
+  conceptLinkReminder?: boolean;
 };
 
 export async function createProblemFormAction(
@@ -1134,6 +1151,14 @@ export async function createProblemFormAction(
     await createProblemAction(formData);
     return { error: null };
   } catch (error) {
+    if (error instanceof ProblemClassificationError) {
+      return { error: error.message, errorKind: "missing-fields", missingFields: error.missingFields,
+        sameTranslationTitleConfirmed: sameTranslationTitleOverrideRequested(formData) };
+    }
+    if (error instanceof ConceptLinkReminderError) {
+      return { error: null, conceptLinkReminder: true,
+        sameTranslationTitleConfirmed: sameTranslationTitleOverrideRequested(formData) };
+    }
     if (error instanceof SameTranslationTitleError) {
       return { error: error.message, errorKind: "same-translation-title" };
     }
@@ -1188,8 +1213,16 @@ export async function updateProblemAction(
   const language = editableContentLanguage(formData.get("language"), previous.language);
   const bodyMarkdown =
     boundedText(formData.get("bodyMarkdown"), CONTENT_LIMITS.markdown, "Statement") || previous.bodyMarkdown;
+  const approvingProposal = Number.isInteger(approvedProposalId) && approvedProposalId > 0;
   const history = submittedContentHistory(formData, previous, true);
   const additionalConceptSlugs = submittedAdditionalConceptSlugs(formData, previous.additionalConceptSlugs);
+  if (!approvingProposal && needsConceptLinkReminder(bodyMarkdown, conceptLinkReminderAcknowledged(formData), { additionalConceptSlugs })) {
+    const exerciseLink = await prisma.conceptExercise.findFirst({
+      where: { problem: { translationGroupId: previous.translationGroupId } },
+      select: { conceptId: true }
+    });
+    if (!exerciseLink) return { status: "concept-link-reminder" };
+  }
   const difficulty = parseProblemDifficulty(formData.get("difficulty"));
   const domains = parseProblemDomains(formData.getAll("domains"), formData.get("domain"), formData.getAll("domainSpoilers"));
   const origin = formData.has("origin")
@@ -2426,11 +2459,12 @@ export async function unmarkProblemAttemptAction(problemId: number, problemSlug:
   revalidatePath("/me");
 }
 
+/** Marks the problem solved; returns true when it was not already solved. */
 async function markSolvedNow(
   problemId: number,
   problemSlug: string,
   user: { id: number; username: string; profileSlug: string; displayName?: string | null }
-) {
+): Promise<boolean> {
   const now = new Date();
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
@@ -2509,6 +2543,7 @@ async function markSolvedNow(
       await checkProblemSolvedByOthersAchievements(problem.authorId);
     }
   }
+  return !wasAlreadySolved;
 }
 
 export async function markProblemSolvedAction(problemId: number, problemSlug: string, formData?: FormData) {
@@ -2524,7 +2559,8 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
       verificationMode: true,
       verificationAnswer: true,
       language: true,
-      isConjecture: true
+      isConjecture: true,
+      translationGroupId: true
     }
   });
 
@@ -2541,7 +2577,9 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
     if (!verificationMatches(problem.verificationAnswer, answer)) {
       redirect(contentLanguageViewHref("/problems", problemSlug, problem.language, { verification: "incorrect" }) as Route);
     }
-    await markSolvedNow(problemId, problemSlug, user);
+    if (await markSolvedNow(problemId, problemSlug, user)) {
+      await queueLikePromptAfterSolve(user.id, problem.translationGroupId);
+    }
     return;
   }
 
@@ -2568,7 +2606,21 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
     return;
   }
 
-  await markSolvedNow(problemId, problemSlug, user);
+  if (await markSolvedNow(problemId, problemSlug, user)) {
+    await queueLikePromptAfterSolve(user.id, problem.translationGroupId);
+  }
+}
+
+/** Leaves a short-lived marker so the problem page can invite the solver to like the problem. */
+async function queueLikePromptAfterSolve(userId: number, translationGroupId: string) {
+  if (!(await shouldPromptLikeAfterSolve(userId, translationGroupId))) return;
+  (await cookies()).set(LIKE_PROMPT_COOKIE, translationGroupId, {
+    httpOnly: false,
+    maxAge: LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS,
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production"
+  });
 }
 
 export async function unmarkProblemSolvedAction(problemId: number, problemSlug: string) {

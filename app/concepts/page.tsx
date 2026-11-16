@@ -1,3 +1,4 @@
+import { matchingSearchTextIds } from "@/lib/search-text-db";
 import { conceptDomainCodes, conceptDomainWhere } from "@/lib/concept-domains";
 import { ConceptKind, ConceptStatus, MathDomain, Prisma } from "@prisma/client";
 import type { Metadata } from "next";
@@ -31,7 +32,8 @@ import { CONCEPTS_PER_PAGE, conceptPagination, conceptPageHref } from "@/lib/con
 import {
   parseDomainCode,
   PROBLEM_DOMAINS,
-  translatedDomainLabel as translatedDomainOptionLabel
+  translatedDomainLabel as translatedDomainOptionLabel,
+  translatedDomainOptions
 } from "@/lib/domains";
 import { getInterfaceLocale, getTranslations } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/types";
@@ -249,12 +251,15 @@ export default async function ConceptsPage({
           }
         })
       ).map((group) => group.conceptId);
-  const aliasGroups = await matchingConceptAliasGroups(query ? databaseSearchVariants : []);
+  const [aliasGroups, normalizedIds] = await Promise.all([
+    matchingConceptAliasGroups(query ? databaseSearchVariants : []),
+    matchingSearchTextIds("concept", query ? databaseSearchVariants : [])
+  ]);
   const where: Prisma.ConceptWhereInput = combineSearchFilters<Prisma.ConceptWhereInput>([
     { language: { in: languageValues } },
     query
       ? {
-          OR: [{ translationGroupId: { in: [...aliasGroups.keys()] } }, ...databaseSearchVariants.flatMap((variant) => [
+          OR: [{ id: { in: normalizedIds } }, { translationGroupId: { in: [...aliasGroups.keys()] } }, ...databaseSearchVariants.flatMap((variant) => [
             { title: { contains: variant, mode: "insensitive" as const } },
             { bodyMarkdown: { contains: variant, mode: "insensitive" as const } },
             { aliases: { some: { alias: { contains: variant, mode: "insensitive" as const } } } }
@@ -400,11 +405,11 @@ export default async function ConceptsPage({
             <div className="concept-filter-section">
               <select name="domain" defaultValue={domainValue ?? ""}>
                 <option value="">{t.concepts.anyDomain}</option>
-                {PROBLEM_DOMAINS.flatMap((item) => [
-                  <option key={item.value} value={item.value}>{translatedDomainLabel(item.value, t)}</option>,
+                {translatedDomainOptions(PROBLEM_DOMAINS, t.home.domainLabels).flatMap((item) => [
+                  <option key={item.value} value={item.value}>{item.label}</option>,
                   ...(item.children ?? []).map((subdomain) => (
                     <option key={subdomain.value} value={subdomain.value}>
-                      {"  - "}{translatedDomainLabel(subdomain.value, t)}
+                      {"  - "}{subdomain.label}
                     </option>
                   ))
                 ])}

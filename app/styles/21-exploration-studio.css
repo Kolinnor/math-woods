@@ -4773,6 +4773,14 @@ a:hover .content-language-fallback {
   padding: 0.4rem 0.75rem;
 }
 
+.concept-link-reminder strong {
+  display: block;
+}
+
+.concept-link-reminder p {
+  margin: 0.35rem 0 0;
+}
+
 .translation-stale-banner form {
   display: inline-flex;
 }

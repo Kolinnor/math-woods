@@ -45,7 +45,7 @@ function fixture() {
     { id: 2, title: 'Nombre premier', slug: 'nombre-premier', language: 'fr', translationGroupId: 'prime', translatedFromConceptId: 1, aliases: [] },
     { id: 3, title: 'Premiers résultats', slug: 'premiers-resultats', language: 'fr', translationGroupId: 'other', translatedFromConceptId: null, aliases: [] }
   ];
-  const aliasRows = () => concepts.flatMap(concept => concept.aliases.map(alias => ({ ...alias, conceptId: concept.id, concept })));
+  const aliasRows = () => concepts.flatMap(concept => concept.aliases.map(alias => ({ ...alias, id: concept.id * 100 + concept.aliases.indexOf(alias), conceptId: concept.id, concept })));
   let locks = 0;
   const db = {
     concept: {
@@ -62,6 +62,13 @@ function fixture() {
     }
   };
   const modules = {
+    "@/lib/search-text-db": { matchingSearchTextIds: async (kind, variants, {exact = false} = {}) => {
+      const source = kind === "alias" ? aliasRows() : concepts;
+      const values = row => kind === "alias" ? [row.alias] : [row.title, row.slug];
+      return source.filter(row => values(row).some(value => variants.some(query => exact
+        ? ranking.normalizeSearchText(value) === ranking.normalizeSearchText(query)
+        : ranking.normalizeSearchText(value).includes(ranking.normalizeSearchText(query))))).map(row => row.id);
+    } },
     '@/lib/db': { prisma: db }, '@/lib/languages': languages, '@/lib/translation-routing': translations,
     '@prisma/client': require('@prisma/client'), '@/lib/concept-aliases': aliases, '@/lib/form-feedback': feedback,
     '@/lib/transaction-lock': { acquireTransactionLock: async (_tx, key) => { assert.equal(key, 'content-slugs:concept'); locks++; } }
@@ -144,4 +151,19 @@ test('alias searches support partial and case-insensitive matches without matchi
   assert.equal((await f.search.matchingConceptAliasGroups(['PREM'], true)).size, 0);
   f.concepts[0].language = 'zz';
   assert.equal((await f.search.matchingConceptAliasGroups(['Premier'])).size, 0);
+});
+
+test('suggestions accept ligatures, accents and their keyboard spellings while keeping legacy URLs', async () => {
+  const f = fixture();
+  f.concepts.push({ id: 4, title: 'Nœud', slug: 'n-ud', language: 'fr', translationGroupId: 'knot', translatedFromConceptId: null, aliases: [{alias:'Entrelacs fermé',aliasSlug:'entrelacs-ferme'}] });
+  f.concepts.push({ id: 5, title: 'Autre notion', slug: 'autre-notion', language: 'fr', translationGroupId: 'another', translatedFromConceptId: null, aliases: [{alias:'Cœur',aliasSlug:'c-ur'}] });
+  for (const query of ['noeud','nœud','NŒUD','NOEUD','entrelacs ferme','ENTRELACS FERMÉ']) {
+    const data = await (await f.suggestions('fr')(new Request('https://example.test/api/concepts/suggest?q='+encodeURIComponent(query)))).json();
+    assert.equal(data.concepts[0].title, 'Nœud');
+    assert.equal(data.concepts[0].slug, 'n-ud');
+  }
+  for (const query of ['coeur','CŒUR']) {
+    const data = await (await f.suggestions('fr')(new Request('https://example.test/api/concepts/suggest?q='+encodeURIComponent(query)))).json();
+    assert.equal(data.concepts[0].slug, 'autre-notion');
+  }
 });

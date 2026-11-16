@@ -1,3 +1,4 @@
+import { matchingSearchTextIds } from "@/lib/search-text-db";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { Prisma } from "@prisma/client";
 import Link from "next/link";
@@ -67,10 +68,12 @@ export default async function QuotesPage({
   const canContribute = Boolean(user && isVerifiedContributor(user));
   const { q = "" } = await searchParams;
   const query = q.trim();
+  const normalizedIds = query ? await matchingSearchTextIds("quote", [query]) : [];
   const where: Prisma.QuoteWhereInput = query
     ? {
         language: { in: ACTIVE_CONTENT_LANGUAGES.map(({ code }) => code) },
         OR: [
+          { id: { in: normalizedIds } },
           { text: { contains: query, mode: "insensitive" } },
           { attributedTo: { contains: query, mode: "insensitive" } },
           { provenance: { contains: query, mode: "insensitive" } },

@@ -47,6 +47,7 @@ function matches(row,where) {
 async function render(file,query) {
  const calls=[],referenceCalls=[];
  const modules={
+    "@/lib/search-text-db": { matchingSearchTextIds: async () => [] },
   'react/jsx-runtime':require('react/jsx-runtime'),'@prisma/client':require('@prisma/client'),
   'next/headers':{cookies:async()=>({get:()=>undefined})},
   '@/lib/auth':{getCurrentUser:async()=>null},'@/lib/i18n/server':{getTranslations:async()=>fr,getInterfaceLocale:async()=>'fr'},

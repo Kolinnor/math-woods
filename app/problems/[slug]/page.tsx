@@ -9,6 +9,8 @@ import Link from "next/link";
 import { FriendshipStatus, QualityStatus, ReportStatus, TargetType } from "@prisma/client";
 import { Check, Flag, Heart, History, Languages, Lightbulb, MessageCircle, Pencil, Target, ThumbsUp, Users } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { LIKE_PROMPT_COOKIE } from "@/lib/problem-like-prompt";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { ActionFeedbackForm } from "@/components/ActionFeedbackForm";
 import { AutoClosingDetails } from "@/components/AutoClosingDetails";
@@ -23,6 +25,7 @@ import { ParticleBurstZone } from "@/components/ParticleBurstZone";
 import { ProblemChallengeLauncher } from "@/components/ProblemChallengeLauncher";
 import { ProblemContestNotice } from "@/components/ProblemContestNotice";
 import { ProblemHints } from "@/components/ProblemHints";
+import { ProblemLikePromptDialog } from "@/components/ProblemLikePromptDialog";
 import { ProblemReactions } from "@/components/ProblemReactions";
 import { ProblemRecommendationExposure } from "@/components/ProblemRecommendationExposure";
 import { SolutionHintForm } from "@/components/SolutionHintForm";
@@ -367,6 +370,7 @@ export default async function ProblemPage({
       })
     : null;
   const isOwnProblem = user?.id === problem.authorId;
+  const likePromptGroupId = user ? (await cookies()).get(LIKE_PROMPT_COOKIE)?.value : undefined;
   const canViewArchived = canViewArchivedProblem(user, problem);
   if (problem.status === "ARCHIVED" && !canViewArchived) notFound();
   if (!canViewProblem(user, problem)) notFound();
@@ -1374,6 +1378,19 @@ export default async function ProblemPage({
             )}
           </div>
         </section>
+        {user && !isOwnProblem && !favorite && attempt?.status === "SOLVED" && likePromptGroupId === problem.translationGroupId && (
+          <ProblemLikePromptDialog
+            clearCookie
+            onceKey={`${problem.translationGroupId}:${solvedAt?.getTime() ?? ""}`}
+            likeAction={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}
+            labels={{
+              question: t.problemDetail.likePromptQuestion,
+              message: t.problemDetail.likePromptMessage,
+              like: t.problemDetail.addFavorite,
+              close: t.problemDetail.likePromptClose
+            }}
+          />
+        )}
         <ProblemCitations citations={withCitationImages(readableCitations, problem.libraryReferences)} isOriginal={problem.isOriginal} locale={interfaceLocale} exportHref={`/problems/${problem.slug}/export`} />
 
         <AdditionalConceptLinks markdown={contentWithHistory(problem.bodyMarkdown, problem)} slugs={problem.additionalConceptSlugs} language={problem.language} locale={interfaceLocale} />
