@@ -140,6 +140,7 @@ export type ProblemDomainOption = DomainOption & {
   glyph: string;
   color: string;
   family: ProblemDomainFamily;
+  /** Relative sorting weight, not a problem difficulty score. */
   diff: number;
   year: number;
 };
@@ -218,25 +219,25 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
   withSubdomains(
     problemDomain("algebra", "General algebra", MathDomain.ALGEBRA, "x", "found", 2, 820, [MathDomain.ALGEBRA, "06", "06-XX", "08", "08-XX", "12", "12-XX", "13", "13-XX", "16", "16-XX", "17", "17-XX", "19", "19-XX", "22", "22-XX"]),
     [
-      ["algebra-group-actions", "Group action"],
-      ["algebra-fields", "Field"],
+      ["algebra-group-actions", "Group actions", ["Group action"]],
+      ["algebra-fields", "Fields", ["Field"]],
       ["algebra-galois-theory", "Galois theory"],
-      ["algebra-groups", "Group"],
-      ["algebra-modules", "Module"],
-      ["algebra-permutations", "Permutation"],
-      ["algebra-rings", "Ring"],
+      ["algebra-groups", "Groups", ["Group"]],
+      ["algebra-modules", "Modules", ["Module"]],
+      ["algebra-permutations", "Permutations", ["Permutation"]],
+      ["algebra-rings", "Rings", ["Ring"]],
       ["representation-theory", "Representation theory", ["20", "20-XX"]]
     ]
   ),
   withSubdomains(
     problemDomain("linear-algebra", "Linear algebra", MathDomain.ALGEBRA, "▦", "found", 2, 1850, ["15", "15-XX"]),
     [
-      ["linear-algebra-euclidean-spaces", "Euclidean vector space"],
-      ["linear-algebra-hilbert-spaces", "Hilbert and pre-Hilbert space"],
-      ["linear-algebra-lie-algebras", "Lie algebra"],
-      ["linear-algebra-endomorphism-reduction", "Reduction of endomorphism"],
-      ["linear-algebra-polynomial", "Polynomial"],
-      ["linear-algebra-representations-characters", "Representation and character"]
+      ["linear-algebra-euclidean-spaces", "Euclidean vector spaces", ["Euclidean vector space"]],
+      ["linear-algebra-hilbert-spaces", "Pre-Hilbert and Hilbert spaces", ["Hilbert and pre-Hilbert space"]],
+      ["linear-algebra-lie-algebras", "Lie algebras", ["Lie algebra"]],
+      ["linear-algebra-endomorphism-reduction", "Reduction of endomorphisms", ["Reduction of endomorphism"]],
+      ["linear-algebra-polynomial", "Polynomials", ["Polynomial"]],
+      ["linear-algebra-representations-characters", "Representations and characters", ["Representation and character"]]
     ]
   ),
   withSubdomains(
@@ -250,23 +251,24 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
   ),
   withSubdomains(
     problemDomain("differential-geometry", "Differential geometry", MathDomain.GEOMETRY, "∂", "geom", 4, 1827, ["53", "53-XX", "58", "58-XX", "topology-differential-geometry"]),
-    [["differential-geometry-de-rham-cohomology", "De Rham cohomology"]]
+    [["differential-geometry-de-rham-cohomology", "de Rham cohomology", ["De Rham cohomology"]]]
   ),
   withSubdomains(
     problemDomain("general-topology", "Topology", MathDomain.TOPOLOGY, "∞", "geom", 3, 1895, [MathDomain.TOPOLOGY, "54", "54-XX", "57", "57-XX", "topology-general-topology"]),
     [
-      ["topology-compact-sets", "Compact set"],
+      ["topology-compact-sets", "Compactness", ["Compact set"]],
       ["topology-connectedness", "Connectedness"],
-      ["topology-metric-spaces", "Metric space"],
-      ["topology-normed-vector-spaces", "Normed vector space"]
+      ["algebraic-topology-knot-theory", "Knot theory"],
+      ["topology-metric-spaces", "Metric spaces", ["Metric space"]],
+      ["topology-normed-vector-spaces", "Normed vector spaces", ["Normed vector space"]]
     ]
   ),
   {
     ...problemDomain("algebraic-topology", "Algebraic topology", MathDomain.TOPOLOGY, "π₁", "geom", 4, 1895, ["topology-algebraic-topology", "55", "55-XX"]),
     children: [
-      option("algebraic-topology-fundamental-group", "Fundamental group", MathDomain.TOPOLOGY),
-      option("algebraic-topology-homology-cohomology", "Homology/Cohomology", MathDomain.TOPOLOGY),
-      option("topology-riemann-surfaces", "Riemann surface", MathDomain.TOPOLOGY)
+      option("algebraic-topology-fundamental-group", "Fundamental groups", MathDomain.TOPOLOGY, ["Fundamental group"]),
+      option("algebraic-topology-homology-cohomology", "Homology and cohomology", MathDomain.TOPOLOGY, ["Homology/Cohomology"]),
+      option("topology-riemann-surfaces", "Riemann surfaces", MathDomain.TOPOLOGY, ["Riemann surface"])
     ]
   },
   withSubdomains(
@@ -275,16 +277,16 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
       ["real-analysis-continuity", "Continuity and uniform continuity"],
       ["real-analysis-differentiation", "Differentiation"],
       ["real-analysis-power-series", "Power series"],
-      ["real-analysis-real-functions", "Real function"],
+      ["real-analysis-real-functions", "Real functions", ["Real function"]],
       ["real-analysis-riemann-integration", "Riemann integration"],
-      ["real-analysis-sequences-series", "Sequence and series"],
-      ["real-analysis-sequences-series-functions", "Sequence and series of function"]
+      ["real-analysis-sequences-series", "Sequences and series", ["Sequence and series"]],
+      ["real-analysis-sequences-series-functions", "Sequences and series of functions", ["Sequence and series of function"]]
     ]
   ),
   withSubdomains(
     problemDomain("functional-analysis", "Functional analysis", MathDomain.ANALYSIS, "ƒ", "ana", 4, 1900, ["46", "46-XX", "47", "47-XX"]),
     [
-      ["multivariable-analysis-distributions", "Distribution"],
+      ["multivariable-analysis-distributions", "Distributions", ["Distribution"]],
       ["multivariable-analysis-functional-analysis", "Functional analysis"],
       ["multivariable-analysis-lebesgue-integration", "Lebesgue integration"],
       ["multivariable-analysis-measure-theory", "Measure theory"]
@@ -298,27 +300,27 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
     ]
   ),
   withSubdomains(
-    problemDomain("several-variable-functions", "Function of several variables", MathDomain.ANALYSIS, "ℝᵈ", "ana", 3, 1800),
+    problemDomain("several-variable-functions", "Functions of several variables", MathDomain.ANALYSIS, "ℝᵈ", "ana", 3, 1800, ["Function of several variables"]),
     [
-      ["multivariable-analysis-differentiation", "Differential"],
+      ["multivariable-analysis-differentiation", "Differential calculus", ["Differential"]],
       ["multivariable-analysis-fourier-integration", "Fourier transform"]
     ]
   ),
   withSubdomains(
-    problemDomain("differential-equations", "Differential equation", MathDomain.ANALYSIS, "∇", "ana", 3, 1690, ["34", "34-XX", "35", "35-XX", "37", "37-XX", "39", "39-XX"]),
+    problemDomain("differential-equations", "Differential equations", MathDomain.ANALYSIS, "∇", "ana", 3, 1690, ["Differential equation", "34", "34-XX", "35", "35-XX", "37", "37-XX", "39", "39-XX"]),
     [
-      ["differential-equations-ordinary", "Ordinary differential equation", ["real-analysis-ordinary-differential-equations"]],
-      ["differential-equations-partial", "Partial differential equation"]
+      ["differential-equations-ordinary", "Ordinary differential equations", ["Ordinary differential equation", "real-analysis-ordinary-differential-equations"]],
+      ["differential-equations-partial", "Partial differential equations", ["Partial differential equation"]]
     ]
   ),
   withSubdomains(
     problemDomain("probability-statistics", "Probability and statistics", MathDomain.PROBABILITY, "ℙ", "prob", 2, 1654, [MathDomain.PROBABILITY, "60", "60-XX", "62", "62-XX"]),
     [
-      ["probability-finite-spaces", "Probability on finite space"],
+      ["probability-finite-spaces", "Probability on finite sample spaces", ["Probability on finite space"]],
       ["probability-game-theory", "Game theory"],
-      ["probability-random-variables", "Random variable"],
+      ["probability-random-variables", "Random variables", ["Random variable"]],
       ["probability-statistical-methods", "Statistics"],
-      ["probability-stochastic-processes", "Stochastic process"]
+      ["probability-stochastic-processes", "Stochastic processes", ["Stochastic process"]]
     ]
   ),
   {
@@ -330,11 +332,14 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
     ]
   },
   withSubdomains(
-    problemDomain("computation", "Computation", MathDomain.ALGEBRA, "√", "app", 2, 1000),
+    problemDomain("computation", "Computation", MathDomain.ALGEBRA, "√", "app", 0.5, 1000),
     [
+      ["computation-numerical-calculation", "Numerical calculation"],
+      ["computation-algebraic-manipulation", "Algebraic manipulation"],
+      ["computation-proportionality-percentages", "Proportionality and percentages"],
       ["computation-asymptotics", "Asymptotic analysis"],
       ["computation-equation-solving", "Equation solving"],
-      ["computation-inequalities", "Inequality"]
+      ["computation-inequalities", "Inequalities and inequality solving", ["Inequality"]]
     ]
   ),
   problemDomain("history-of-mathematics", "History of mathematics", MathDomain.OTHER, "𓀞", "app", 1, -600, ["01", "01-XX"]),
@@ -344,13 +349,14 @@ export const PROBLEM_DOMAINS: ProblemDomainOption[] = [
       ["other-biology", "Biology"],
       ["other-chemistry", "Chemistry"],
       ["other-computing", "Computing"],
+      ["other-economics-finance", "Economics and finance"],
       ["other-physics", "Physics"],
-      ["other-real-world-problem", "Real-world problem"],
+      ["other-real-world-problem", "Everyday life problems", ["Real-world problem"]],
       ["scientific-computing", "Scientific computing", ["65", "65-XX"]],
       ["mathematical-physics", "Mathematical physics", ["70", "70-XX", "74", "74-XX", "76", "76-XX", "78", "78-XX", "80", "80-XX", "81", "81-XX", "82", "82-XX", "83", "83-XX"]]
     ]
   ),
-  problemDomain("enigma", "Enigma", MathDomain.OTHER, "?", "other", 1, 9999),
+  problemDomain("enigma", "Puzzles", MathDomain.OTHER, "?", "other", 0, 9999, ["Enigma"]),
   // Keep the persisted default code distinct from applied mathematics.
   problemDomain("other", "Other", MathDomain.OTHER, "⋯", "other", 1, 9999, [MathDomain.OTHER, "misc", "00", "00-XX", "33", "33-XX", "41", "41-XX", "42", "42-XX", "43", "43-XX", "44", "44-XX", "45", "45-XX", "49", "49-XX", "85", "85-XX", "86", "86-XX", "91", "91-XX", "92", "92-XX", "93", "93-XX", "97", "97-XX"])
 ];
@@ -382,7 +388,7 @@ export function findDomainOption(value: string | MathDomain | null | undefined) 
   const codeMatch = options.find((item) => {
     const itemValue = item.value.toUpperCase();
     const aliases = item.aliases?.map((alias) => alias.toUpperCase()) ?? [];
-    return itemValue === normalized || aliases.includes(normalized);
+    return itemValue === normalized || aliases.includes(normalized) || aliases.includes(raw.toUpperCase());
   });
   if (codeMatch) return codeMatch;
 
