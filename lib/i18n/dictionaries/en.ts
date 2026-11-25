@@ -1154,7 +1154,7 @@ export const en = {
     favorited: "I like this problem",
     addFavorite: "I like this problem",
     likePromptQuestion: "Did you enjoy this problem?",
-    likePromptMessage: "Feel free to say so,\nit’s what keeps the site alive!",
+    likePromptMessage: "A like encourages the author and helps them know what you enjoy.",
     likePromptClose: "Close",
     edit: "Edit",
     discussions: "Discussions",

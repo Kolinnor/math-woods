@@ -3605,30 +3605,55 @@ body:has(.problem-detail-shell) {
   z-index: 80;
   background: var(--panel);
   border: 1px solid var(--line-strong);
+  border-top: 4px solid #c2415f;
   border-radius: 8px;
   box-shadow: var(--shadow);
   color: var(--ink);
   max-width: calc(100vw - 2rem);
-  width: 21rem;
-  padding: 1rem 2.6rem 1rem 1rem;
+  width: 26.25rem;
+  padding: 1.375rem 2.75rem 1.375rem 1.375rem;
   animation: problem-like-prompt-in 180ms ease-out;
 }
 .problem-like-prompt-dialog p {
-  font-size: 0.95rem;
+  font-size: 1rem;
   white-space: pre-line;
   line-height: 1.5;
-  margin: 0 0 0.75rem;
+  margin: 0 0 1.125rem;
+}
+.problem-like-prompt-dialog p > strong {
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
 }
 .problem-like-prompt-close {
   position: absolute;
   right: 0.35rem;
   top: 0.35rem;
+  min-width: 2rem;
+  min-height: 2rem;
 }
 .problem-action-tile.problem-like-prompt-button {
+  background: #bc3657;
+  border-color: #bc3657;
+  color: #fff;
   margin: 0;
   width: auto;
+  max-width: 100%;
   min-height: 0;
-  padding: 0.45rem 0.8rem;
+  padding: 0.6875rem 1rem;
+}
+.problem-action-tile.problem-like-prompt-button:hover {
+  background: #a92e4c;
+  border-color: #a92e4c;
+}
+@media (pointer: coarse) {
+  .problem-like-prompt-close {
+    min-width: 44px;
+    min-height: 44px;
+    right: 0;
+    top: 0;
+  }
 }
 @keyframes problem-like-prompt-in {
   from { opacity: 0; transform: translateY(6px); }

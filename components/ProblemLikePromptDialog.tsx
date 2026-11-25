@@ -106,7 +106,6 @@ export function ProblemLikePromptDialog({
       </button>
       <p id={messageId} role="status">
         <strong>{labels.question}</strong>
-        <br />
         {labels.message}
       </p>
       <ParticleBurstZone kind="heart" active>
