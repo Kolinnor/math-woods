@@ -34,6 +34,14 @@
   color: var(--accent, #32a852);
 }
 
+/* Exclamation marks fired around the like invitation when it appears. */
+.mw-particle-exclamation {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+}
+
 @keyframes mw-particle-fly {
   0% {
     opacity: 1;

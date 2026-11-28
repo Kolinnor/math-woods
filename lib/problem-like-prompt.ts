@@ -1,40 +1,59 @@
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { isLikePromptDue } from "@/lib/problem-like-prompt-shared";
+import {
+  formatLikePromptPresses,
+  isLikePromptDue,
+  LIKE_PROMPT_COOKIE,
+  LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS,
+  LIKE_PROMPT_PRESSES_COOKIE,
+  LIKE_PROMPT_PRESSES_COOKIE_MAX_AGE_SECONDS,
+  parseLikePromptPresses
+} from "@/lib/problem-like-prompt-shared";
 
 export { LIKE_PROMPT_COOKIE, LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS } from "@/lib/problem-like-prompt-shared";
 
-/**
- * Whether a user who has just solved a problem should be invited to like it.
- * Only solved problems the user has not liked count (per translation family,
- * own problems excluded), starting after their most recent like; the prompt
- * appears when the just-solved, not-yet-liked problem completes a run of three.
- */
-export async function shouldPromptLikeAfterSolve(userId: number, translationGroupId: string) {
-  const likes = await prisma.problemFavorite.findMany({
-    where: { userId },
-    select: { createdAt: true, problem: { select: { translationGroupId: true } } }
-  });
-  const likedGroups = new Set(likes.map((like) => like.problem.translationGroupId));
-  if (likedGroups.has(translationGroupId)) return false;
-  const lastLikeAt = likes.reduce<Date | null>(
-    (latest, like) => (!latest || like.createdAt > latest ? like.createdAt : latest),
-    null
-  );
+const cookieOptions = (maxAge: number, httpOnly: boolean) => ({
+  httpOnly,
+  maxAge,
+  path: "/",
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production"
+});
 
-  const solved = await prisma.problemAttempt.findMany({
-    where: {
-      userId,
-      status: "SOLVED",
-      ...(lastLikeAt ? { solvedAt: { gt: lastLikeAt } } : {}),
-      problem: { authorId: { not: userId } }
-    },
-    select: { problem: { select: { translationGroupId: true } } }
-  });
-  const unlikedSolvedGroups = new Set(
-    solved
-      .map((attempt) => attempt.problem.translationGroupId)
-      .filter((group) => !likedGroups.has(group))
+/** A user can be invited to like a problem only if it is not theirs and not already liked. */
+async function canBeInvitedToLike(userId: number, translationGroupId: string) {
+  const [ownProblem, like] = await Promise.all([
+    prisma.problem.findFirst({ where: { translationGroupId, authorId: userId }, select: { id: true } }),
+    prisma.problemFavorite.findFirst({ where: { userId, problem: { translationGroupId } }, select: { problemId: true } })
+  ]);
+  return !ownProblem && !like;
+}
+
+/**
+ * Counts a press on "I solved it" or "Add to my list". On the third press since the
+ * latest invitation or like, and for a problem the user can like, it leaves a
+ * short-lived marker so the page shows the "Did you enjoy this problem?" invitation.
+ * When the problem cannot be liked, the invitation waits for the next eligible press.
+ */
+export async function registerLikePromptPress(userId: number, translationGroupId: string) {
+  const store = await cookies();
+  const presses = parseLikePromptPresses(store.get(LIKE_PROMPT_PRESSES_COOKIE)?.value, userId) + 1;
+  const prompt = isLikePromptDue(presses) && (await canBeInvitedToLike(userId, translationGroupId));
+  store.set(
+    LIKE_PROMPT_PRESSES_COOKIE,
+    formatLikePromptPresses(userId, prompt ? 0 : presses),
+    cookieOptions(LIKE_PROMPT_PRESSES_COOKIE_MAX_AGE_SECONDS, true)
   );
-  if (!unlikedSolvedGroups.has(translationGroupId)) return false;
-  return isLikePromptDue(unlikedSolvedGroups.size);
+  if (prompt) {
+    store.set(LIKE_PROMPT_COOKIE, translationGroupId, cookieOptions(LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS, false));
+  }
+}
+
+/** Liking any problem starts a new count. */
+export async function resetLikePromptPresses(userId: number) {
+  (await cookies()).set(
+    LIKE_PROMPT_PRESSES_COOKIE,
+    formatLikePromptPresses(userId, 0),
+    cookieOptions(LIKE_PROMPT_PRESSES_COOKIE_MAX_AGE_SECONDS, true)
+  );
 }
