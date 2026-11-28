@@ -2,6 +2,7 @@ import { AttemptStatus, FriendshipStatus } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
+import { Target } from "lucide-react";
 import { AsyncMarkdownInline } from "@/components/AsyncMarkdownInline";
 import { DailyProblemCard } from "@/components/DailyProblemCard";
 import { DailyTipCard } from "@/components/DailyTipCard";
@@ -762,15 +763,26 @@ export default async function HomePage({
                 <ContentLanguageFallback language={resumeProblem.language} expectedLanguage={preferredLanguage} />
               </Link>
             )}
-            <Link
-              href={"/announcements" as Route}
-              className="home-button home-button-light home-announcements-button"
-            >
-              {t.home.hero.announcements}
-              {unreadAnnouncements > 0 && (
-                <span className="home-announcement-badge">{unreadAnnouncements}</span>
-              )}
-            </Link>
+            {/* Announcements take this spot only while there is news; otherwise they live in the ☰ menu. */}
+            {user && unreadAnnouncements === 0 ? (
+              <Link
+                href={"/problems?progress=inProgress" as Route}
+                className="home-button home-in-progress-button"
+              >
+                <Target size={17} strokeWidth={2.5} aria-hidden="true" />
+                {t.home.hero.inProgressList}
+              </Link>
+            ) : (
+              <Link
+                href={"/announcements" as Route}
+                className="home-button home-button-light home-announcements-button"
+              >
+                {t.home.hero.announcements}
+                {unreadAnnouncements > 0 && (
+                  <span className="home-announcement-badge">{unreadAnnouncements}</span>
+                )}
+              </Link>
+            )}
           </div>
         </div>
       </section>
