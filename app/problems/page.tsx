@@ -15,6 +15,7 @@ import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/Proble
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { RandomProblemButton } from "@/components/RandomProblemButton";
+import { ProblemShortcutPanels } from "@/components/ProblemShortcutPanels";
 import { RecommendedProblemReader } from "@/components/RecommendedProblemReader";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
@@ -40,6 +41,7 @@ import { matchingProblemReferences, type ProblemReferenceMatch } from "@/lib/pro
 import { selectProblemBrowserTranslation } from "@/lib/problem-browser-translations";
 import { PROBLEM_STYLE_OPTIONS, parseProblemStyle, problemStyleLabel } from "@/lib/problem-styles";
 import { renderInlineMarkdown } from "@/lib/markdown";
+import { renderMarkdownForContentLanguage } from "@/lib/translated-markdown";
 import {
   defaultProblemContentTypesForMathLevel,
   problemContentTypesCookieName,
@@ -50,6 +52,7 @@ import {
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
 import { avatarAchievementFromStats, contestAchievementStatsByUser, publicContestAchievementWhere } from "@/lib/problem-contests";
 import { buildProgressMap } from "@/lib/progress";
+import { inProgressProblemsForUser } from "@/lib/in-progress-problems";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { combineSearchFilters } from "@/lib/search-filters";
 import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
@@ -809,14 +812,20 @@ export default async function ProblemsPage({
     : showsExercises
       ? t.problems.showingProblemsAndExercises(totalProblems)
       : t.problems.showingResults(totalProblems);
-  const recommendationData = user ? await recommendationsForUser(user.id, 5, interfaceLocale) : null;
+  const [recommendationData, inProgressPage] = user
+    ? await Promise.all([
+        recommendationsForUser(user.id, 5, interfaceLocale),
+        inProgressProblemsForUser(user, t, interfaceLocale)
+      ])
+    : [null, null];
   const recommendationItems = await Promise.all(
     (recommendationData?.recommendations ?? []).map(async ({ problem }) => ({
       id: problem.id,
       slug: problem.slug,
       title: problem.title,
       titleHtml: await renderInlineMarkdown(problem.title),
-      bodyHtml: problem.bodyHtml,
+      // Render from Markdown like the problem page: stored HTML can predate KaTeX or concept links.
+      bodyHtml: await renderMarkdownForContentLanguage(problem.bodyMarkdown, problem.language),
       difficulty: problem.difficulty,
       domain: translatedDomainLabel(problem.domains[0] ?? "OTHER", t),
       isExercise: problem.isExercise
@@ -855,34 +864,55 @@ export default async function ProblemsPage({
         </div>
       </section>
 
-      {recommendationItems.length > 0 && (
-        <section className="problems-recommendations">
-          <div className="problems-recommendations-heading">
-            <h2>{interfaceLocale === "fr" ? "Recommandés pour vous" : "Recommended for you"}</h2>
-          </div>
-          <RecommendedProblemReader
-            items={recommendationItems}
-            labels={{
+      {user && inProgressPage && (
+        <ProblemShortcutPanels
+          labels={{ recommended: t.problems.recommendedForYou, inProgress: t.problems.inProgressProblems }}
+          recommended={recommendationItems.length > 0 ? (
+            <RecommendedProblemReader
+              items={recommendationItems}
+              labels={{
+                open: t.problems.openRecommendation,
+                previous: t.problems.previousRecommendation,
+                next: t.problems.nextRecommendation,
+                menu: t.problems.recommendationMenu,
+                notInterested: t.problems.notInterested,
+                report: t.problemDetail.report,
+                hidden: t.problems.recommendationHidden,
+                undo: t.problems.undo,
+                tellUsWhy: t.problems.tellUsWhy,
+                whyTitle: t.problems.whyNotInterested,
+                tooHard: t.problems.recommendationTooHard,
+                tooEasy: t.problems.recommendationTooEasy,
+                alreadyKnown: t.problems.recommendationAlreadyKnown,
+                notInterestedInDomain: t.problems.notInterestedInDomain,
+                fewerLikeThis: t.problems.fewerLikeThis,
+                thanks: t.problems.feedbackThanks,
+                updateFailed: t.problems.recommendationUpdateFailed
+              }}
+            />
+          ) : null}
+          inProgress={{
+            initialPage: inProgressPage,
+            labels: {
               open: t.problems.openRecommendation,
-              previous: t.problems.previousRecommendation,
-              next: t.problems.nextRecommendation,
-              menu: t.problems.recommendationMenu,
-              notInterested: t.problems.notInterested,
-              report: t.problemDetail.report,
-              hidden: t.problems.recommendationHidden,
-              undo: t.problems.undo,
-              tellUsWhy: t.problems.tellUsWhy,
-              whyTitle: t.problems.whyNotInterested,
-              tooHard: t.problems.recommendationTooHard,
-              tooEasy: t.problems.recommendationTooEasy,
-              alreadyKnown: t.problems.recommendationAlreadyKnown,
-              notInterestedInDomain: t.problems.notInterestedInDomain,
-              fewerLikeThis: t.problems.fewerLikeThis,
-              thanks: t.problems.feedbackThanks,
-              updateFailed: t.problems.recommendationUpdateFailed
-            }}
-          />
-        </section>
+              previous: t.problems.previousInProgress,
+              next: t.problems.nextInProgress,
+              empty: t.problems.inProgressEmpty,
+              like: t.problemDetail.addFavorite,
+              unlike: t.problemDetail.removeFavorite,
+              markSolved: t.problemDetail.markSolved,
+              unmarkSolved: t.problemDetail.unmarkSolved,
+              verifyToSolve: t.problems.verifyToSolve,
+              remove: t.problems.removeFromInProgress,
+              restore: t.problems.restoreToInProgress,
+              loadingMore: t.problems.loadingMore,
+              updateFailed: t.problems.browserUpdateFailed,
+              likePromptQuestion: t.problemDetail.likePromptQuestion,
+              likePromptMessage: t.problemDetail.likePromptMessage,
+              likePromptClose: t.problemDetail.likePromptClose
+            }
+          }}
+        />
       )}
 
       <ProblemDomainStrip

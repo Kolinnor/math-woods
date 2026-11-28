@@ -5,6 +5,7 @@ import { Check, Heart, House, Target } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { ParticleBurstZone } from "@/components/ParticleBurstZone";
 import { ProblemLikePromptDialog } from "@/components/ProblemLikePromptDialog";
+import { announceProblemStateChange } from "@/lib/problem-state-events";
 
 type BrowserOperation = "solve" | "unsolve" | "attempt" | "unattempt" | "favorite";
 
@@ -81,6 +82,8 @@ export function ProblemLedgerInteractiveRow({
       });
       if (!response.ok) throw new Error("Problem state update failed.");
       onSuccess?.(await response.json().catch(() => ({})));
+      // Lets the "Problems in progress" panel drop solved or removed problems right away.
+      announceProblemStateChange();
     } catch {
       rollback();
       setFailed(true);
