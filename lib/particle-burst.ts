@@ -1,13 +1,22 @@
 "use client";
 
-export type ParticleKind = "confetti" | "heart" | "thumb";
+export type ParticleKind = "confetti" | "heart" | "thumb" | "exclamation";
 
-type BurstKind = "heart" | "thumb";
+type BurstKind = "heart" | "thumb" | "exclamation";
 
 const PARTICLE_COUNT: Record<BurstKind, number> = {
   heart: 9,
-  thumb: 9
+  thumb: 9,
+  exclamation: 5
 };
+
+const PARTICLE_TEXT: Record<BurstKind, string> = {
+  heart: "♥",
+  thumb: "\u{1F44D}",
+  exclamation: "!"
+};
+
+const EXCLAMATION_COLORS = ["#d94674", "#f59e0b", "#bc3657", "#4a90ff", "#ff6b6b"];
 
 const FIREWORK_SPARK_COUNT = 22;
 
@@ -28,11 +37,14 @@ function spawnBurst(x: number, y: number, kind: BurstKind) {
     const particle = document.createElement("span");
     particle.className = `mw-particle mw-particle-${kind}`;
     const angle = (Math.PI * 2 * index) / count + Math.random() * 0.6;
-    const distance = 34 + Math.random() * 32;
+    const distance = (kind === "exclamation" ? 46 : 34) + Math.random() * 32;
     particle.style.setProperty("--mw-particle-dx", `${Math.cos(angle) * distance}px`);
     particle.style.setProperty("--mw-particle-dy", `${Math.sin(angle) * distance - 18}px`);
     particle.style.setProperty("--mw-particle-delay", `${Math.random() * 70}ms`);
-    particle.textContent = kind === "heart" ? "♥" : "\u{1F44D}";
+    if (kind === "exclamation") {
+      particle.style.color = EXCLAMATION_COLORS[index % EXCLAMATION_COLORS.length];
+    }
+    particle.textContent = PARTICLE_TEXT[kind];
     burst.appendChild(particle);
   }
 

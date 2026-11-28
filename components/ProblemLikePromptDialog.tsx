@@ -1,10 +1,11 @@
 "use client";
 
 import { Heart, X } from "lucide-react";
-import { useEffect, useState, useId } from "react";
+import { useEffect, useRef, useState, useId } from "react";
 import { createPortal } from "react-dom";
 import { ParticleBurstZone } from "@/components/ParticleBurstZone";
-import { LIKE_PROMPT_COOKIE, likePromptCooldownElapsed } from "@/lib/problem-like-prompt-shared";
+import { triggerParticleBurst } from "@/lib/particle-burst";
+import { LIKE_PROMPT_COOKIE } from "@/lib/problem-like-prompt-shared";
 
 export type ProblemLikePromptLabels = {
   question: string;
@@ -15,8 +16,10 @@ export type ProblemLikePromptLabels = {
 
 // Let the solve confetti play before displaying the unobtrusive invitation.
 const OPEN_DELAY_MS = 700;
-const LAST_SHOWN_STORAGE_KEY = "mw-like-prompt-last-shown";
 const SHOWN_STORAGE_PREFIX = "mw-like-prompt-shown:";
+// The four corners (as fractions of the invitation's box), popping one after another.
+const EXCLAMATION_BURST_POINTS: Array<[number, number]> = [[0, 0], [1, 0], [1, 1], [0, 1]];
+const EXCLAMATION_BURST_STAGGER_MS = 110;
 
 function wasShown(key: string) {
   try {
@@ -53,20 +56,29 @@ export function ProblemLikePromptDialog({
 }) {
   const [visible, setVisible] = useState(false);
   const messageId = useId();
+  const dialogRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (clearCookie) document.cookie = `${LIKE_PROMPT_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
     if (onceKey && wasShown(onceKey)) return;
     const timer = window.setTimeout(() => {
-      try {
-        if (!likePromptCooldownElapsed(window.localStorage.getItem(LAST_SHOWN_STORAGE_KEY), Date.now())) return;
-        window.localStorage.setItem(LAST_SHOWN_STORAGE_KEY, String(Date.now()));
-      } catch { /* Storage may be unavailable; the invitation still remains dismissible. */ }
       if (onceKey) rememberShown(onceKey);
       setVisible(true);
     }, OPEN_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [clearCookie, onceKey]);
+
+  // Celebrate the entrance with bursts of exclamation marks around the invitation.
+  useEffect(() => {
+    if (!visible || !dialogRef.current) return;
+    const rect = dialogRef.current.getBoundingClientRect();
+    const timers = EXCLAMATION_BURST_POINTS.map(([fx, fy], index) =>
+      window.setTimeout(() => {
+        triggerParticleBurst(rect.left + rect.width * fx, rect.top + rect.height * fy, "exclamation");
+      }, index * EXCLAMATION_BURST_STAGGER_MS)
+    );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [visible]);
 
   function close() {
     setVisible(false);
@@ -100,7 +112,7 @@ export function ProblemLikePromptDialog({
   );
 
   return createPortal(
-    <aside className="problem-like-prompt-dialog" aria-labelledby={messageId}>
+    <aside ref={dialogRef} className="problem-like-prompt-dialog" aria-labelledby={messageId}>
       <button type="button" className="icon-button secondary problem-like-prompt-close" onClick={close} title={labels.close} aria-label={labels.close}>
         <X size={17} aria-hidden="true" />
       </button>

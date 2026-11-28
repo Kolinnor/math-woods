@@ -280,7 +280,9 @@ export function InProgressProblemReader({
   function toggleRemoved(item: InProgressProblemItem) {
     const removed = marks[item.translationGroupId] === "removed";
     void run(async () => {
-      await changeMark(item, removed ? undefined : "removed", removed ? "attempt" : "unattempt");
+      const result = await changeMark(item, removed ? undefined : "removed", removed ? "attempt" : "unattempt");
+      // Putting it back is an "Add to my list" press, which can bring the like invitation.
+      if (removed && result.likePrompt && !item.favorite) setLikePromptItem(item);
     });
   }
 
