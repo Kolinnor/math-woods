@@ -15,6 +15,7 @@ import { ProblemFilterBuilder, type ProblemFilterRow } from "@/components/Proble
 import { ProblemDifficultyFilter } from "@/components/ProblemDifficultyFilter";
 import { ProblemSortControl } from "@/components/ProblemSortControl";
 import { RandomProblemButton } from "@/components/RandomProblemButton";
+import { ProblemShortcutPanels } from "@/components/ProblemShortcutPanels";
 import { RecommendedProblemReader } from "@/components/RecommendedProblemReader";
 import { UserAvatar } from "@/components/UserAvatar";
 import { getCurrentUser } from "@/lib/auth";
@@ -40,6 +41,7 @@ import { matchingProblemReferences, type ProblemReferenceMatch } from "@/lib/pro
 import { selectProblemBrowserTranslation } from "@/lib/problem-browser-translations";
 import { PROBLEM_STYLE_OPTIONS, parseProblemStyle, problemStyleLabel } from "@/lib/problem-styles";
 import { renderInlineMarkdown } from "@/lib/markdown";
+import { renderMarkdownForContentLanguage } from "@/lib/translated-markdown";
 import {
   defaultProblemContentTypesForMathLevel,
   problemContentTypesCookieName,
@@ -50,6 +52,7 @@ import {
 import { problemDifficultyBars, problemDifficultyTone } from "@/lib/problem-difficulty";
 import { avatarAchievementFromStats, contestAchievementStatsByUser, publicContestAchievementWhere } from "@/lib/problem-contests";
 import { buildProgressMap } from "@/lib/progress";
+import { inProgressProblemsForUser } from "@/lib/in-progress-problems";
 import { recommendationsForUser } from "@/lib/recommendation-engine";
 import { combineSearchFilters } from "@/lib/search-filters";
 import { rankSearchMatches, searchDatabaseVariants, searchMorphologyVariants } from "@/lib/search-ranking";
@@ -73,7 +76,7 @@ type DifficultyRange = {
   min?: number;
   max?: number;
 };
-type ProgressFilter = "unsolved" | "solved" | "all";
+type ProgressFilter = "unsolved" | "solved" | "inProgress" | "all";
 type OwnershipFilter = "all" | "mine" | "others";
 type SolutionFilter = "with" | "without" | "all";
 
@@ -104,7 +107,7 @@ function translatedDomainLabel(domain: MathDomain | string, t: Dictionary) {
 }
 
 function parseProgressFilter(value: string | undefined): ProgressFilter {
-  return value === "unsolved" || value === "solved" ? value : "all";
+  return value === "unsolved" || value === "solved" || value === "inProgress" ? value : "all";
 }
 
 function parseOwnershipFilter(value: string | undefined): OwnershipFilter {
@@ -428,12 +431,24 @@ export default async function ProblemsPage({
     : [];
   const solvedTranslationGroupIds = solvedProblemGroups.map((problem) => problem.translationGroupId);
   const solvedTranslationGroupIdSet = new Set(solvedTranslationGroupIds);
+  // "In progress": opened (any unsolved attempt) and not solved in any translation.
+  const inProgressTranslationGroupIds = user && progressValue === "inProgress"
+    ? (await prisma.problem.findMany({
+        where: { attempts: { some: { userId: user.id, status: { not: "SOLVED" } } } },
+        distinct: ["translationGroupId"],
+        select: { translationGroupId: true }
+      }))
+        .map((problem) => problem.translationGroupId)
+        .filter((groupId) => !solvedTranslationGroupIdSet.has(groupId))
+    : [];
   const progressFilterWhere: Prisma.ProblemWhereInput | null =
     user && progressValue === "unsolved"
       ? { translationGroupId: { notIn: solvedTranslationGroupIds } }
       : user && progressValue === "solved"
         ? { translationGroupId: { in: solvedTranslationGroupIds } }
-        : null;
+        : user && progressValue === "inProgress"
+          ? { translationGroupId: { in: inProgressTranslationGroupIds } }
+          : null;
   const ownershipWhere: Prisma.ProblemWhereInput | null =
     user && ownershipValue === "mine"
       ? { authorId: user.id }
@@ -463,9 +478,10 @@ export default async function ProblemsPage({
   const queryReferenceLabelById = new Map(queryReferenceMatches.map(row => [row.id, row.label]));
   const isTrustedViewer = user ? hasTrustedPrivileges(user.role) : false;
   const hasExplicitStatusFilter = Boolean(qualityValue) || advancedFilters.some((filter) => filter.field === "status");
+  // The in-progress list shows every problem the user is working on, reviewed or not.
   const qualityWhereClause: Prisma.ProblemWhereInput | undefined = qualityValue
     ? { qualityStatus: qualityValue }
-    : hasExplicitStatusFilter || isTrustedViewer
+    : hasExplicitStatusFilter || isTrustedViewer || (user && progressValue === "inProgress")
       ? undefined
       : user
         ? { OR: [{ qualityStatus: QualityStatus.REVIEWED }, { authorId: user.id }] }
@@ -794,7 +810,10 @@ export default async function ProblemsPage({
   const progressScope = domainValue ? translatedDomainLabel(domainValue, t) : t.common.allDomains;
   const difficultyRanges = t.problems.difficultyRanges;
   const sortOptions = t.problems.sortOptions;
-  const heroTitle = showsExercises && !showsProblems
+  const inProgressView = Boolean(user) && progressValue === "inProgress";
+  const heroTitle = inProgressView
+    ? t.problems.inProgressListTitle
+    : showsExercises && !showsProblems
     ? t.problems.exerciseType
     : showsExercises
       ? t.problems.mixedTitle
@@ -809,19 +828,50 @@ export default async function ProblemsPage({
     : showsExercises
       ? t.problems.showingProblemsAndExercises(totalProblems)
       : t.problems.showingResults(totalProblems);
-  const recommendationData = user ? await recommendationsForUser(user.id, 5, interfaceLocale) : null;
+  const [recommendationData, inProgressPage] = user
+    ? await Promise.all([
+        recommendationsForUser(user.id, 5, interfaceLocale),
+        inProgressView ? null : inProgressProblemsForUser(user, t, interfaceLocale)
+      ])
+    : [null, null];
   const recommendationItems = await Promise.all(
     (recommendationData?.recommendations ?? []).map(async ({ problem }) => ({
       id: problem.id,
       slug: problem.slug,
       title: problem.title,
       titleHtml: await renderInlineMarkdown(problem.title),
-      bodyHtml: problem.bodyHtml,
+      // Render from Markdown like the problem page: stored HTML can predate KaTeX or concept links.
+      bodyHtml: await renderMarkdownForContentLanguage(problem.bodyMarkdown, problem.language),
       difficulty: problem.difficulty,
       domain: translatedDomainLabel(problem.domains[0] ?? "OTHER", t),
       isExercise: problem.isExercise
     }))
   );
+
+  const recommendedReader = recommendationItems.length > 0 ? (
+    <RecommendedProblemReader
+      items={recommendationItems}
+      labels={{
+        open: t.problems.openRecommendation,
+        previous: t.problems.previousRecommendation,
+        next: t.problems.nextRecommendation,
+        menu: t.problems.recommendationMenu,
+        notInterested: t.problems.notInterested,
+        report: t.problemDetail.report,
+        hidden: t.problems.recommendationHidden,
+        undo: t.problems.undo,
+        tellUsWhy: t.problems.tellUsWhy,
+        whyTitle: t.problems.whyNotInterested,
+        tooHard: t.problems.recommendationTooHard,
+        tooEasy: t.problems.recommendationTooEasy,
+        alreadyKnown: t.problems.recommendationAlreadyKnown,
+        notInterestedInDomain: t.problems.notInterestedInDomain,
+        fewerLikeThis: t.problems.fewerLikeThis,
+        thanks: t.problems.feedbackThanks,
+        updateFailed: t.problems.recommendationUpdateFailed
+      }}
+    />
+  ) : null;
 
   return (
     <div className="problems-page-shell">
@@ -855,34 +905,42 @@ export default async function ProblemsPage({
         </div>
       </section>
 
-      {recommendationItems.length > 0 && (
+      {/* "My problems in progress" view: new problems to try first, then the filtered list below. */}
+      {inProgressView && recommendedReader && (
         <section className="problems-recommendations">
           <div className="problems-recommendations-heading">
-            <h2>{interfaceLocale === "fr" ? "Recommandés pour vous" : "Recommended for you"}</h2>
+            <h2>{t.problems.recommendedForYou}</h2>
           </div>
-          <RecommendedProblemReader
-            items={recommendationItems}
-            labels={{
-              open: t.problems.openRecommendation,
-              previous: t.problems.previousRecommendation,
-              next: t.problems.nextRecommendation,
-              menu: t.problems.recommendationMenu,
-              notInterested: t.problems.notInterested,
-              report: t.problemDetail.report,
-              hidden: t.problems.recommendationHidden,
-              undo: t.problems.undo,
-              tellUsWhy: t.problems.tellUsWhy,
-              whyTitle: t.problems.whyNotInterested,
-              tooHard: t.problems.recommendationTooHard,
-              tooEasy: t.problems.recommendationTooEasy,
-              alreadyKnown: t.problems.recommendationAlreadyKnown,
-              notInterestedInDomain: t.problems.notInterestedInDomain,
-              fewerLikeThis: t.problems.fewerLikeThis,
-              thanks: t.problems.feedbackThanks,
-              updateFailed: t.problems.recommendationUpdateFailed
-            }}
-          />
+          {recommendedReader}
         </section>
+      )}
+
+      {!inProgressView && user && inProgressPage && (
+        <ProblemShortcutPanels
+          labels={{ recommended: t.problems.recommendedForYou, inProgress: t.problems.inProgressProblems }}
+          recommended={recommendedReader}
+          inProgress={{
+            initialPage: inProgressPage,
+            labels: {
+              open: t.problems.openRecommendation,
+              previous: t.problems.previousInProgress,
+              next: t.problems.nextInProgress,
+              empty: t.problems.inProgressEmpty,
+              like: t.problemDetail.addFavorite,
+              unlike: t.problemDetail.removeFavorite,
+              markSolved: t.problemDetail.markSolved,
+              unmarkSolved: t.problemDetail.unmarkSolved,
+              verifyToSolve: t.problems.verifyToSolve,
+              remove: t.problems.removeFromInProgress,
+              restore: t.problems.restoreToInProgress,
+              loadingMore: t.problems.loadingMore,
+              updateFailed: t.problems.browserUpdateFailed,
+              likePromptQuestion: t.problemDetail.likePromptQuestion,
+              likePromptMessage: t.problemDetail.likePromptMessage,
+              likePromptClose: t.problemDetail.likePromptClose
+            }
+          }}
+        />
       )}
 
       <ProblemDomainStrip
@@ -982,6 +1040,7 @@ export default async function ProblemsPage({
                 <select name="progress" defaultValue={progressValue} aria-label={t.problems.solvedStatus}>
                   <option value="unsolved">{t.problems.unsolved}</option>
                   <option value="solved">{t.problems.solved}</option>
+                  <option value="inProgress">{t.problems.inProgress}</option>
                   <option value="all">{t.problems.allProblems}</option>
                 </select>
               )}
@@ -1171,7 +1230,9 @@ export default async function ProblemsPage({
             })}
             {problems.length === 0 && (
               <p className="empty-state">
-                {t.problems.noMatches}
+                {inProgressView && inProgressTranslationGroupIds.length === 0
+                  ? t.problems.inProgressEmpty
+                  : t.problems.noMatches}
               </p>
             )}
           </div>

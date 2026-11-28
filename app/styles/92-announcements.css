@@ -179,3 +179,27 @@
 .announcement-poll-change summary { cursor: pointer; font-size: .85rem; }
 .announcement-poll-manage { margin-top: 1rem; border-top: 1px solid var(--border, #d7cfbd); padding-top: .8rem; }
 .announcement-poll-manage button { font-size: .8rem; }
+
+/* Replaces the announcements button while there is no news: light like its
+   neighbour, with the blue outline and icon of problems in progress. */
+.home-dashboard .home-member-hero-copy .home-in-progress-button {
+  background: #f6f2e6;
+  border: 2px solid #2563eb;
+  border-radius: 8px;
+  box-shadow: none;
+  color: #22201d;
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 0.5em;
+  padding: 8px 16px;
+}
+
+.home-dashboard .home-member-hero-copy .home-in-progress-button svg {
+  color: #2563eb;
+}
+
+.home-dashboard .home-member-hero-copy .home-in-progress-button:hover,
+.home-dashboard .home-member-hero-copy .home-in-progress-button:focus-visible {
+  background: #eaf1fd;
+}

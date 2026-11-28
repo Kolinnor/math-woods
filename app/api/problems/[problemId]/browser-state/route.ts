@@ -70,10 +70,10 @@ export async function PATCH(
     if (operation === "unattempt") await unmarkProblemAttemptAction(problem.id, problem.slug);
     if (operation === "favorite") await toggleProblemFavoriteAction(problem.id, problem.slug);
 
-    // The solve action queues the like invitation as a cookie for the problem page;
-    // this client shows it inline instead, so hand it over and clear the cookie.
+    // Solving or adding to the list queues the like invitation as a cookie for the
+    // problem page; this client shows it inline instead, so hand it over and clear it.
     let likePrompt = false;
-    if (operation === "solve") {
+    if (operation === "solve" || operation === "attempt") {
       const cookieStore = await cookies();
       likePrompt = cookieStore.get(LIKE_PROMPT_COOKIE)?.value === problem.translationGroupId;
       cookieStore.delete(LIKE_PROMPT_COOKIE);

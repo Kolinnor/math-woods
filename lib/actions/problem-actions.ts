@@ -31,8 +31,7 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { LIKE_PROMPT_COOKIE, LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS, shouldPromptLikeAfterSolve } from "@/lib/problem-like-prompt";
+import { registerLikePromptPress, resetLikePromptPresses } from "@/lib/problem-like-prompt";
 import {
   checkHintAchievements,
   checkProblemSolvedByOthersAchievements,
@@ -2398,6 +2397,11 @@ export async function startAttemptAction(problemId: number, problemSlug: string)
     skipDuplicates: true
   });
 
+  // Only a press that actually adds the problem to the list counts towards the like invitation.
+  if (!existingAttempt && createdAttempts.count > 0) {
+    await registerLikePromptPress(user.id, problem.translationGroupId);
+  }
+
   await recordRecommendationOutcomeIfRelevant({
     userId: user.id,
     eventType: RecommendationEventType.STARTED,
@@ -2450,7 +2454,7 @@ export async function unmarkProblemAttemptAction(problemId: number, problemSlug:
     where: {
       userId: user.id,
       problemId: { in: translations.map((translation) => translation.id) },
-      status: AttemptStatus.STARTED
+      status: { not: AttemptStatus.SOLVED }
     }
   });
 
@@ -2578,7 +2582,7 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
       redirect(contentLanguageViewHref("/problems", problemSlug, problem.language, { verification: "incorrect" }) as Route);
     }
     if (await markSolvedNow(problemId, problemSlug, user)) {
-      await queueLikePromptAfterSolve(user.id, problem.translationGroupId);
+      await registerLikePromptPress(user.id, problem.translationGroupId);
     }
     return;
   }
@@ -2607,20 +2611,8 @@ export async function markProblemSolvedAction(problemId: number, problemSlug: st
   }
 
   if (await markSolvedNow(problemId, problemSlug, user)) {
-    await queueLikePromptAfterSolve(user.id, problem.translationGroupId);
+    await registerLikePromptPress(user.id, problem.translationGroupId);
   }
-}
-
-/** Leaves a short-lived marker so the problem page can invite the solver to like the problem. */
-async function queueLikePromptAfterSolve(userId: number, translationGroupId: string) {
-  if (!(await shouldPromptLikeAfterSolve(userId, translationGroupId))) return;
-  (await cookies()).set(LIKE_PROMPT_COOKIE, translationGroupId, {
-    httpOnly: false,
-    maxAge: LIKE_PROMPT_COOKIE_MAX_AGE_SECONDS,
-    path: "/",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
-  });
 }
 
 export async function unmarkProblemSolvedAction(problemId: number, problemSlug: string) {
@@ -2922,6 +2914,7 @@ export async function toggleProblemFavoriteAction(problemId: number, problemSlug
       })),
       skipDuplicates: true
     });
+    await resetLikePromptPresses(user.id);
   }
 
   for (const translation of translations) revalidatePath(`/problems/${translation.slug}`);

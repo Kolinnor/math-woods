@@ -1378,10 +1378,11 @@ export default async function ProblemPage({
             )}
           </div>
         </section>
-        {user && !isOwnProblem && !favorite && attempt?.status === "SOLVED" && likePromptGroupId === problem.translationGroupId && (
+        {/* Queued by the third press on "I solved it" or "Add to my list". */}
+        {user && !isOwnProblem && !favorite && attempt && likePromptGroupId === problem.translationGroupId && (
           <ProblemLikePromptDialog
             clearCookie
-            onceKey={`${problem.translationGroupId}:${solvedAt?.getTime() ?? ""}`}
+            onceKey={`${problem.translationGroupId}:${attempt.status === "SOLVED" ? solvedAt?.getTime() ?? "" : attempt.startedAt.getTime()}`}
             likeAction={toggleProblemFavoriteAction.bind(null, problem.id, problem.slug)}
             labels={{
               question: t.problemDetail.likePromptQuestion,

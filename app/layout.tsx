@@ -277,6 +277,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <Link href="/contest">{t.nav.contest}</Link>
                   </div>
                   <div className="nav-menu-divider nav-menu-primary-divider" />
+                  {/* Always reachable here: the home page shows its button only when there is news. */}
+                  <Link href={"/announcements" as Route}>{t.nav.announcements}</Link>
                   <Link href="/recent-changes">{t.nav.recentChanges}</Link>
                   <Link href={"/contributing/tasks" as Route}>{t.nav.contributionTasks}</Link>
                   {user && canUseAdminTools(user) && <Link href="/contributing">{t.nav.contributing}</Link>}
