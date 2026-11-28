@@ -2450,7 +2450,7 @@ export async function unmarkProblemAttemptAction(problemId: number, problemSlug:
     where: {
       userId: user.id,
       problemId: { in: translations.map((translation) => translation.id) },
-      status: AttemptStatus.STARTED
+      status: { not: AttemptStatus.SOLVED }
     }
   });
 
